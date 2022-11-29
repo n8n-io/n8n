@@ -5,9 +5,11 @@
 		width="50%"
 		:center="true"
 		:loading="loading"
-		maxWidth="800px"
+		minWidth="750px"
+		maxWidth="900px"
 		minHeight="500px"
-		maxHeight="700px"
+		maxHeight="80%"
+		:beforeClose="onModalClose"
 	>
 	<template #header>
 			<el-row :gutter="20" justify="start">
@@ -74,13 +76,6 @@
 </template>
 
 <script lang="ts">
-import {
-	Form as ElForm,
-	FormItem as ElFormItem,
-	Input as ElInput,
-	Collapse as ElCollapse,
-	CollapseItem as ElCollapseItem,
-} from 'element-ui';
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
@@ -93,12 +88,12 @@ import EventLevelSelection from './EventLevelSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
-import { deepCopy, defaultMessageEventBusDestinationWebhookOptions, IDataObject, INodeCredentials, INodeParameters, INodeProperties, MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhookOptions, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationWebhookOptions, IDataObject, INodeCredentials, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
 import {WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { useUIStore } from '../../stores/ui';
-import { destinationToFakeINodeUi } from './Helpers';
+import { destinationToFakeINodeUi, saveDestinationToDb } from './Helpers';
 
 export default mixins(
 	restApi,
@@ -108,7 +103,7 @@ export default mixins(
 		modalName: String,
 		destination: {
 			type: Object,
-			default: deepCopy(defaultMessageEventBusDestinationWebhookOptions),
+			default: ()=>deepCopy(defaultMessageEventBusDestinationWebhookOptions),
 		},
 		isNew: Boolean,
 		eventBus: {
@@ -121,16 +116,10 @@ export default mixins(
 		NodeCredentials,
 		EventTreeSelection,
 		EventLevelSelection,
-		ElForm,
-		ElFormItem,
-		ElInput,
-		ElCollapse,
-		ElCollapseItem,
 	},
 	data() {
 		return {
 			unchanged: !this.$props.isNew,
-			isOpen: false,
 			loading: false,
 			showRemoveConfirm: false,
 			treeData: {} as EventNamesTreeCollection,
@@ -138,7 +127,6 @@ export default mixins(
 			uiDescription: description,
 			modalBus: new Vue(),
 			WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
-			destinationTypeNames: MessageEventBusDestinationTypeNames,
 		};
 	},
 	computed: {
@@ -154,8 +142,7 @@ export default mixins(
 	},
 	mounted() {
 		this.ndvStore.activeNodeName = this.destination.id ?? 'thisshouldnothappen';
-		// merge destination data with defaults
-		// this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
+		this.workflowsStore.addNode(destinationToFakeINodeUi(this.destination));
 		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), this.destination);
 		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
 		this.workflowsStore.$onAction(
@@ -223,18 +210,15 @@ export default mixins(
 			this.$props.eventBus.$emit('remove', this.destination.id);
 			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
+		onModalClose() {
+			this.$props.eventBus.$emit('closing', this.destination.id);
+		},
 		async saveDestination() {
 			if (this.unchanged || !this.destination.id) {
 				return;
 			}
-			const data: MessageEventBusDestinationWebhookOptions = {
-				...this.nodeParameters,
-				subscribedEvents: Array.from(this.eventTreeStore.items[this.destination.id].selectedEvents.values()),
-				subscribedLevels: Array.from(this.eventTreeStore.items[this.destination.id].selectedLevels.values()),
-			};
-			await this.restApi().makeRestApiRequest('POST', '/eventbus/destination', data);
+			await saveDestinationToDb(this.restApi(), this.nodeParameters);
 			this.unchanged = true;
-			this.eventTreeStore.updateDestination(this.nodeParameters);
 			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
 			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},

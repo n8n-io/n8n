@@ -218,6 +218,6 @@ eventBusRouter.delete(
 eventBusRouter.get(
 	`/eventnames`,
 	ResponseHelper.send(async (): Promise<any> => {
-		return { eventnames: eventNamesAll };
+		return eventNamesAll;
 	}),
 );

@@ -32,7 +32,7 @@ import { EventMessageLevel } from 'n8n-workflow';
 				useEventTreeStore,
 			),
 			storedEventLevels() {
-				console.log(Object.values(EventMessageLevel), this.levelCheckList, this.eventTreeStore.getSelectedLevels(this.destinationId));
+				console.log(this.destinationId, Object.values(EventMessageLevel), this.levelCheckList, this.eventTreeStore.getSelectedLevels(this.destinationId));
 				return Object.values(EventMessageLevel);
 			},
 		},

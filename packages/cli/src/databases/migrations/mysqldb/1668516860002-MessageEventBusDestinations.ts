@@ -8,7 +8,7 @@ export class MessageEventBusDestinations1668516860002 implements MigrationInterf
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}eventdestinations_entity" (` +
+			`CREATE TABLE ${tablePrefix}eventdestinations_entity (` +
 				'`id` varchar(36) PRIMARY KEY NOT NULL,' +
 				'`destination` text NOT NULL,' +
 				'`createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +

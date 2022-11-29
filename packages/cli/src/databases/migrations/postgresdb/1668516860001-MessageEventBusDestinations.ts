@@ -8,13 +8,13 @@ export class MessageEventBusDestinations1668516860001 implements MigrationInterf
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
-			`CREATE TABLE "${tablePrefix}eventdestinations_entity" (` +
-				`"id"	UUID PRIMARY KEY NOT NULL,` +
-				`"destination" text NOT NULL,` +
-				'"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
-				'"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,' +
-				`);`,
+			`CREATE TABLE ${tablePrefix}eventdestinations_entity (` +
+				`"id" UUID PRIMARY KEY NOT NULL,` +
+				`"destination" JSONB NOT NULL,` +
+				`"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,` +
+				`"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP);`,
 		);
+
 		logMigrationEnd(this.name);
 	}
 

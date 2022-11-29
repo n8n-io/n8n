@@ -1,7 +1,8 @@
 import { INodeCredentials, INodeParameters, MessageEventBusDestinationOptions } from "n8n-workflow";
-import { INodeUi } from "../../Interface";
+import { INodeUi, IRestApi } from "../../Interface";
+import { useEventTreeStore } from '../../stores/eventTreeStore';
 
-export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.httpRequest'): INodeUi {
+export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.n8n'): INodeUi {
 	return {
 		id: destination.id,
 		name: destination.id,
@@ -15,4 +16,17 @@ export function destinationToFakeINodeUi(destination: MessageEventBusDestination
 			...destination as unknown as INodeParameters,
 		},
 	} as INodeUi;
+}
+
+export async function saveDestinationToDb(restApi: IRestApi, destination: MessageEventBusDestinationOptions) {
+	const eventTreeStore = useEventTreeStore();
+	if (destination.id) {
+		const data: MessageEventBusDestinationOptions = {
+			...destination,
+			subscribedEvents: Array.from(eventTreeStore.items[destination.id].selectedEvents.values()),
+			subscribedLevels: Array.from(eventTreeStore.items[destination.id].selectedLevels.values()),
+		};
+		await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
+		eventTreeStore.updateDestination(destination);
+	}
 }
