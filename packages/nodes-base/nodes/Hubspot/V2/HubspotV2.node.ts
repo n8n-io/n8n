@@ -2108,12 +2108,13 @@ export class HubspotV2 implements INodeType {
 							if (operation === 'getRecentlyCreated') {
 								endpoint = `/companies/v2/companies/recent/created`;
 							} else {
-								const filters = this.getNodeParameter('filters', i) as IDataObject;
-								if (filters.since) {
-									qs.since = new Date(filters.since as string).getTime();
-								}
 								endpoint = `/companies/v2/companies/recent/modified`;
 							}
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							if (filters.since) {
+								qs.since = new Date(filters.since as string).getTime();
+							}
+							qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,

@@ -1052,7 +1052,7 @@ export const companyFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['company'],
-				operation: ['getRecentlyModified'],
+				operation: ['getRecentlyModified', 'getRecentlyCreated'],
 			},
 		},
 		options: [
