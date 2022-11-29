@@ -103,8 +103,6 @@ export class WorkflowDataProxy {
 			? deepCopy(connectionInputData)
 			: connectionInputData;
 
-		console.log('this.connectionInputData', this.connectionInputData);
-
 		this.defaultReturnRunIndex = defaultReturnRunIndex;
 		this.runIndex = runIndex;
 		this.itemIndex = itemIndex;
