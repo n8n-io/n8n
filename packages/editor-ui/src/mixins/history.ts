@@ -163,7 +163,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 						name: command.data.name,
 						commands: reverseCommands,
 					},
-				});
+				}, false);
 				return;
 			}
 			if (command.type === 'command') {
