@@ -95,7 +95,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.3.4
+      '@n8n_io/license-sdk': ^1.6.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -125,6 +125,7 @@ importers:
       '@types/parseurl': ^1.3.1
       '@types/passport-jwt': ^3.0.6
       '@types/psl': ^1.1.0
+      '@types/replacestream': ^4.0.1
       '@types/send': ^0.17.1
       '@types/shelljs': ^0.8.11
       '@types/superagent': 4.1.13
@@ -193,6 +194,7 @@ importers:
       posthog-node: ^1.3.0
       prom-client: ^13.1.0
       psl: ^1.8.0
+      replacestream: ^4.0.3
       run-script-os: ^1.0.7
       semver: ^7.3.8
       shelljs: ^0.8.5
@@ -211,7 +213,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.3.4
+      '@n8n_io/license-sdk': 1.6.0
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -276,6 +278,7 @@ importers:
       posthog-node: 1.3.0
       prom-client: 13.2.0
       psl: 1.9.0
+      replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
       sqlite3: 5.1.2
@@ -312,6 +315,7 @@ importers:
       '@types/parseurl': 1.3.1
       '@types/passport-jwt': 3.0.7
       '@types/psl': 1.1.0
+      '@types/replacestream': 4.0.1
       '@types/send': 0.17.1
       '@types/shelljs': 0.8.11
       '@types/superagent': 4.1.13
@@ -3324,8 +3328,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.3.4:
-    resolution: {integrity: sha512-t/J228ftRwTbuCYTqMtjRjfqeNE8Aq0DErYFZS5N9EbX5brNIzWbgGio+25utoI9t31xRPwpviDF+e0kPz8Fvg==}
+  /@n8n_io/license-sdk/1.6.0:
+    resolution: {integrity: sha512-e3VJZr1LcJibZsy3cF3LLTjKux14bKmAhkl4ArrHjhqwPYUXZtx2vc6u8FbnkR/TdeHlwxSIQfNmTNXlmcOY9A==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3
@@ -5988,6 +5992,10 @@ packages:
     resolution: {integrity: sha512-7jkMKxcGq9p242exlbsVzuJb57KqHRhNl4dHoQu2Y5v9bCAbtIXXH0R3HleSQW4CTOqpHIYUW3t6tpUj4BVQ+w==}
     dependencies:
       '@types/node': 16.11.65
+    dev: true
+
+  /@types/replacestream/4.0.1:
+    resolution: {integrity: sha512-3ecTmnzB90sgarVpIszCF1cX2cnxwqDovWb31jGrKfxAL0Knui1H7Reaz/zlT9zaE3u0un7L5cNy9fQPy0d2sg==}
     dev: true
 
   /@types/request-promise-native/1.0.18:
@@ -18462,6 +18470,14 @@ packages:
       chalk: 4.1.2
       glob: 7.2.3
       yargs: 17.6.0
+    dev: false
+
+  /replacestream/4.0.3:
+    resolution: {integrity: sha512-AC0FiLS352pBBiZhd4VXB1Ab/lh0lEgpP+GGvZqbQh8a5cmXVoTe5EX/YeTFArnp4SRGTHh1qCHu9lGs1qG8sA==}
+    dependencies:
+      escape-string-regexp: 1.0.5
+      object-assign: 4.1.1
+      readable-stream: 2.3.7
     dev: false
 
   /request-progress/3.0.0:
