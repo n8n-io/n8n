@@ -69,7 +69,7 @@
 				</span>
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-button
-						type="tertiary"
+						type="secondary"
 						class="mr-2xs"
 						@click="onShareButtonClick"
 					>
@@ -77,7 +77,7 @@
 					</n8n-button>
 				</enterprise-edition>
 				<SaveButton
-					type="secondary"
+					type="primary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
 					data-test-id="workflow-save-button"
