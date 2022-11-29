@@ -2,7 +2,7 @@ import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
 import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
+import { BULK_COMMANDS, NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
 import {
 	INodeTypeDescription,
@@ -288,6 +288,7 @@ export const nodeBase = mixins(
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
 						let newNodePosition: XYPosition;
+						this.historyStore.startRecordingUndo(BULK_COMMANDS.MOVE_NODES);
 						moveNodes.forEach((node: INodeUi) => {
 							const element = document.getElementById(node.id);
 							if (element === null) {
@@ -310,6 +311,7 @@ export const nodeBase = mixins(
 							this.historyStore.updateNodePosition(node.name, oldPosition, newNodePosition);
 							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
+						this.historyStore.stopRecordingUndo();
 
 						this.$emit('moved', node);
 					}

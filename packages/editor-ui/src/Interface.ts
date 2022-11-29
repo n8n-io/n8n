@@ -1327,13 +1327,18 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: NodePositionChangeCommand | AddOrRemoveConnectionCommand | AddNodeCommand | RemoveNodeCommand;
+	data: NodePositionChangeCommand |
+				AddOrRemoveConnectionCommand |
+				AddNodeCommand |
+				RemoveNodeCommand;
 }
 
 export interface BulkCommands {
 	type: 'bulk';
 	data: {
-		name: BULK_COMMANDS.IMPORT_WORKFLOW | BULK_COMMANDS.RECONNECT_NODES;
+		name: BULK_COMMANDS.IMPORT_WORKFLOW |
+					BULK_COMMANDS.RECONNECT_NODES |
+					BULK_COMMANDS.MOVE_NODES;
 		commands: Command[];
 	}
 }

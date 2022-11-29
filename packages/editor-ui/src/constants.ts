@@ -444,6 +444,7 @@ export enum COMMANDS {
 export enum BULK_COMMANDS {
 	IMPORT_WORKFLOW = 'importWorkflow',
 	RECONNECT_NODES = 'reconnectNodes',
+	MOVE_NODES = 'moveNodes',
 }
 
 // TODO: Check if this is still needed
