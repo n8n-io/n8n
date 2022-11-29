@@ -465,14 +465,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
-	getCredentialTestFunction(
+	private getCredentialTestFunction(
 		credentialType: string,
-		nodeToTestWith?: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
-		const nodeTypesToTestWith = nodeToTestWith
-			? [nodeToTestWith]
-			: this.credentialTypes.getNodeTypesToTestWith(credentialType);
-
+		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
 		for (const nodeName of nodeTypesToTestWith) {
 			const node = this.nodeTypes.getByName(nodeName);
 
@@ -490,31 +486,29 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Check each of the node versions for credential tests
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
-				for (const credential of nodeType.description.credentials ?? []) {
-					if (credential.name === credentialType && !!credential.testedBy) {
-						if (typeof credential.testedBy === 'string') {
+				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (name === credentialType && !!testedBy) {
+						if (typeof testedBy === 'string') {
 							if (node instanceof VersionedNodeType) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
 								const versions = Object.keys(node.nodeVersions).sort().reverse();
 								for (const version of versions) {
 									const versionedNode = node.nodeVersions[parseInt(version, 10)];
-									if (
-										versionedNode.methods?.credentialTest &&
-										versionedNode.methods?.credentialTest[credential.testedBy]
-									) {
-										return versionedNode.methods?.credentialTest[credential.testedBy];
+									const credentialTest = versionedNode.methods?.credentialTest;
+									if (credentialTest && testedBy in credentialTest) {
+										return credentialTest[testedBy];
 									}
 								}
 							}
 							// Test is defined as string which links to a function
-							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
+							return (node as unknown as INodeType).methods?.credentialTest![testedBy];
 						}
 
 						// Test is defined as JSON with a definition for the request to make
 						return {
 							nodeType,
-							testRequest: credential.testedBy,
+							testRequest: testedBy,
 						};
 					}
 				}
@@ -536,9 +530,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
-		nodeToTestWith?: string,
 	): Promise<INodeCredentialTestResult> {
-		const credentialTestFunction = this.getCredentialTestFunction(credentialType, nodeToTestWith);
+		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
 			return Promise.resolve({
 				status: 'Error',
