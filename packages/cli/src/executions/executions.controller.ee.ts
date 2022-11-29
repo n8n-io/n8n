@@ -34,3 +34,18 @@ EEExecutionsController.get(
 		return EEExecutionsService.getExecutionsList(req, sharedWorkflowIds);
 	}),
 );
+
+/**
+ * GET /executions/:id
+ */
+EEExecutionsController.get(
+	'/:id',
+	ResponseHelper.send(
+		async (
+			req: ExecutionRequest.Get,
+		): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
+			const sharedWorkflowIds = await EEExecutionsService.getWorkflowIdsForUser(req.user);
+			return EEExecutionsService.getExecution(req, sharedWorkflowIds);
+		},
+	),
+);

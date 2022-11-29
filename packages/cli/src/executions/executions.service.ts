@@ -254,4 +254,39 @@ export class ExecutionsService {
 			estimated,
 		};
 	}
+
+	static async getExecution(
+		req: ExecutionRequest.Get,
+		sharedWorkflowIds: number[],
+	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
+		if (!sharedWorkflowIds.length) return undefined;
+
+		const { id: executionId } = req.params;
+		const execution = await Db.collections.Execution.findOne({
+			where: {
+				id: executionId,
+				workflowId: In(sharedWorkflowIds),
+			},
+		});
+
+		if (!execution) {
+			LoggerProxy.info('Attempt to read execution was blocked due to insufficient permissions', {
+				userId: req.user.id,
+				executionId,
+			});
+			return undefined;
+		}
+
+		if (req.query.unflattedResponse === 'true') {
+			return ResponseHelper.unflattenExecutionData(execution);
+		}
+
+		const { id, ...rest } = execution;
+
+		// @ts-ignore
+		return {
+			id: id.toString(),
+			...rest,
+		};
+	}
 }
