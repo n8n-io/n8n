@@ -101,11 +101,10 @@ import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
-	FAKE_DOOR_FEATURES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import {IFakeDoor, IUser, IWorkflowDb, NestedRecord} from "@/Interface";
+import {IUser, IWorkflowDb, NestedRecord} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/mixins/showMessage";
