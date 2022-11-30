@@ -33,8 +33,7 @@ executionsController.use('/', EEExecutionsController);
 executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
-		return ExecutionsService.getExecutionsList(req, sharedWorkflowIds);
+		return ExecutionsService.getExecutionsList(req);
 	}),
 );
 
@@ -47,8 +46,7 @@ executionsController.get(
 		async (
 			req: ExecutionRequest.Get,
 		): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
-			const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
-			return ExecutionsService.getExecution(req, sharedWorkflowIds);
+			return ExecutionsService.getExecution(req);
 		},
 	),
 );
@@ -59,8 +57,7 @@ executionsController.get(
 executionsController.post(
 	'/:id/retry',
 	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
-		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
-		return ExecutionsService.retryExecution(req, sharedWorkflowIds);
+		return ExecutionsService.retryExecution(req);
 	}),
 );
 
@@ -72,7 +69,6 @@ executionsController.post(
 executionsController.post(
 	'/delete',
 	ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
-		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
-		await ExecutionsService.deleteExecutions(req, sharedWorkflowIds);
+		await ExecutionsService.deleteExecutions(req);
 	}),
 );

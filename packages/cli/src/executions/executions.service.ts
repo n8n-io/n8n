@@ -57,7 +57,6 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<number[]> {
 		// Get all workflows using owner role
-		console.log('FE list called');
 		return getSharedWorkflowIds(user, ['owner']);
 	}
 
@@ -111,10 +110,8 @@ export class ExecutionsService {
 		return { count, estimated: false };
 	}
 
-	static async getExecutionsList(
-		req: ExecutionRequest.GetAll,
-		sharedWorkflowIds: number[],
-	): Promise<IExecutionsListResponse> {
+	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -264,8 +261,8 @@ export class ExecutionsService {
 
 	static async getExecution(
 		req: ExecutionRequest.Get,
-		sharedWorkflowIds: number[],
 	): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (!sharedWorkflowIds.length) return undefined;
 
 		const { id: executionId } = req.params;
@@ -297,10 +294,8 @@ export class ExecutionsService {
 		};
 	}
 
-	static async retryExecution(
-		req: ExecutionRequest.Retry,
-		sharedWorkflowIds: number[],
-	): Promise<boolean> {
+	static async retryExecution(req: ExecutionRequest.Retry): Promise<boolean> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (!sharedWorkflowIds.length) return false;
 
 		const { id: executionId } = req.params;
@@ -419,10 +414,8 @@ export class ExecutionsService {
 		return !!executionData.finished;
 	}
 
-	static async deleteExecutions(
-		req: ExecutionRequest.Delete,
-		sharedWorkflowIds: number[],
-	): Promise<void> {
+	static async deleteExecutions(req: ExecutionRequest.Delete): Promise<void> {
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
