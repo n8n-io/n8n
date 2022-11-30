@@ -13,7 +13,7 @@ export const userOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: "Get User's Info",
+				name: 'Get',
 				value: 'info',
 				description: 'Get information about a user',
 				action: 'Get information about a user',
@@ -29,6 +29,12 @@ export const userOperations: INodeProperties[] = [
 				value: 'getPresence',
 				description: 'Get online status of a user',
 				action: "Get a user's presence status",
+			},
+			{
+				name: "Update User's Profile",
+				value: 'updateProfile',
+				description: "Update a user's profile",
+				action: "Update a user's profile",
 			},
 		],
 		default: 'info',
@@ -154,6 +160,135 @@ export const userFields: INodeProperties[] = [
 					},
 				],
 				placeholder: 'U123AB45JGM',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                user:update user profile                     */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['updateProfile'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Custom Fields',
+				name: 'customFieldUi',
+				placeholder: 'Add Custom Fields',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'customFieldValues',
+						displayName: 'Custom Field',
+						values: [
+							{
+								displayName: 'Field Name or ID',
+								name: 'id',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getTeamFields',
+								},
+								default: '',
+								description:
+									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Field Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+								description: 'Value of the field to set',
+							},
+							{
+								displayName: 'Alt',
+								name: 'alt',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Email',
+				name: 'email',
+				type: 'string',
+				placeholder: 'name@email.com',
+				default: '',
+				description: 'This field can only be changed by admins for users on paid teams',
+			},
+			{
+				displayName: 'First Name',
+				name: 'first_name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Last Name',
+				name: 'last_name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Set Status',
+				name: 'status',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Set Status',
+				options: [
+					{
+						displayName: 'Set Status',
+						name: 'set_status',
+						values: [
+							{
+								displayName: 'Status Emoji',
+								name: 'status_emoji',
+								type: 'string',
+								default: '',
+								description:
+									'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
+							},
+							{
+								displayName: 'Status Expiration',
+								name: 'status_expiration',
+								type: 'dateTime',
+								default: '',
+								description:
+									'The number of minutes to wait until this status expires and is cleared. Optional.',
+							},
+							{
+								displayName: 'Status Text',
+								name: 'status_text',
+								type: 'string',
+								default: '',
+								description: 'Allows up to 100 characters, though we strongly encourage brevity',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'User ID',
+				name: 'user',
+				type: 'string',
+				default: '',
+				description:
+					'ID of user to change. This argument may only be specified by team admins on paid teams.',
 			},
 		],
 	},

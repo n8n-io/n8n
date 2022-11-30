@@ -20,7 +20,6 @@ import { fileFields, fileOperations } from './FileDescription';
 import { reactionFields, reactionOperations } from './ReactionDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
-import { userProfileFields, userProfileOperations } from './UserProfileDescription';
 import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { IAttachment } from './MessageInterface';
 
@@ -152,10 +151,6 @@ export class SlackV2 implements INodeType {
 						name: 'User Group',
 						value: 'userGroup',
 					},
-					{
-						name: 'User Profile',
-						value: 'userProfile',
-					},
 				],
 				default: 'message',
 			},
@@ -174,8 +169,6 @@ export class SlackV2 implements INodeType {
 			...userFields,
 			...userGroupOperations,
 			...userGroupFields,
-			...userProfileOperations,
-			...userProfileFields,
 		],
 	};
 
@@ -260,10 +253,6 @@ export class SlackV2 implements INodeType {
 							name: 'User Group',
 							value: 'userGroup',
 						},
-						{
-							name: 'User Profile',
-							value: 'userProfile',
-						},
 					],
 					default: 'message',
 				},
@@ -282,8 +271,6 @@ export class SlackV2 implements INodeType {
 				...userFields,
 				...userGroupOperations,
 				...userGroupFields,
-				...userProfileOperations,
-				...userProfileFields,
 			],
 		};
 	}
@@ -894,10 +881,10 @@ export class SlackV2 implements INodeType {
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
 										extractValue: true,
-								}) as string)
+								  }) as string)
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
-							}) as string);
+								  }) as string);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
 						switch (messageType) {
@@ -1315,6 +1302,51 @@ export class SlackV2 implements INodeType {
 					if (operation === 'getPresence') {
 						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
+					}
+					if (operation === 'updateProfile') {
+						const options = this.getNodeParameter('options', i) as IDataObject;
+						const timezone = this.getTimezone();
+
+						const body: IDataObject = {};
+						let status;
+						if (options.status) {
+							// @ts-ignore
+							status = options.status?.set_status[0] as IDataObject;
+							if (status.status_expiration === undefined) {
+								status.status_expiration = 0;
+							} else {
+								status.status_expiration = moment
+									.tz(status.status_expiration as string, timezone)
+									.unix();
+							}
+						}
+						Object.assign(body, status);
+						delete options.status;
+
+						if (options.customFieldUi) {
+							const customFields = (options.customFieldUi as IDataObject)
+								.customFieldValues as IDataObject[];
+
+							options.fields = {};
+
+							for (const customField of customFields) {
+								//@ts-ignore
+								options.fields[customField.id] = {
+									value: customField.value,
+									alt: customField.alt,
+								};
+							}
+						}
+						Object.assign(body, options);
+						responseData = await slackApiRequest.call(
+							this,
+							'POST',
+							'/users.profile.set',
+							{ profile: body },
+							qs,
+						);
+
+						responseData = responseData.profile;
 					}
 				}
 				if (resource === 'userGroup') {
