@@ -65,6 +65,7 @@ module.exports = {
 			rules: {
 				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
+				'n8n-nodes-base/cred-class-field-display-name-miscased': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
