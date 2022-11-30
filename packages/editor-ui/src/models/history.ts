@@ -1,4 +1,4 @@
-import { XYPosition } from "./Interface";
+import { XYPosition } from "../Interface";
 
 export abstract class Undoable { }
 
@@ -44,5 +44,4 @@ export class MoveNodeCommand extends Undoable {
 			this.oldPosition,
 		);
 	}
-
 }

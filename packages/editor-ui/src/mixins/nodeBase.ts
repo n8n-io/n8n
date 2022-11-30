@@ -14,7 +14,7 @@ import { useNodeTypesStore } from "@/stores/nodeTypes";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getStyleTokenValue } from "@/utils";
 import { useHistoryStore } from "@/stores/history";
-import { MoveNodeCommand } from "@/classes";
+import { MoveNodeCommand } from "@/models/history";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,

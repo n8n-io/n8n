@@ -1,4 +1,4 @@
-import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/classes";
+import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/models/history";
 import { STORES } from "@/constants";
 import { HistoryState, XYPosition } from "@/Interface";
 import { defineStore } from "pinia";

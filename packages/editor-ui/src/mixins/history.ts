@@ -1,11 +1,11 @@
-import { BulkCommand } from './../classes';
+import { BulkCommand } from '@/models/history';
 import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { Command } from '@/classes';
+import { Command } from '@/models/history';
 
 export const historyHelper = mixins(deviceSupportHelpers).extend({
 	computed: {
