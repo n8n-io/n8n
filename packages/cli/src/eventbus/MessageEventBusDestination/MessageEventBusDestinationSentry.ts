@@ -7,7 +7,6 @@ import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
 import {
-	EventMessageLevel,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationTypeNames,
@@ -20,25 +19,6 @@ export const isMessageEventBusDestinationSentryOptions = (
 	if (!o) return false;
 	return o.dsn !== undefined;
 };
-
-function eventMessageLevelToSentrySeverity(emLevel: EventMessageLevel): Sentry.SeverityLevel {
-	switch (emLevel) {
-		case EventMessageLevel.log:
-			return 'log';
-		case EventMessageLevel.debug:
-			return 'debug';
-		case EventMessageLevel.info:
-			return 'info';
-		case EventMessageLevel.error:
-			return 'error';
-		case EventMessageLevel.verbose:
-			return 'debug';
-		case EventMessageLevel.warn:
-			return 'warning';
-		default:
-			return 'log';
-	}
-}
 
 export class MessageEventBusDestinationSentry
 	extends MessageEventBusDestination
@@ -85,7 +65,9 @@ export class MessageEventBusDestinationSentry
 		try {
 			const user = await getInstanceOwner();
 			const context = {
-				level: eventMessageLevelToSentrySeverity(msg.level),
+				level: (msg.eventName.toLowerCase().endsWith('error')
+					? 'error'
+					: 'log') as Sentry.SeverityLevel,
 				user: {
 					id: user.id,
 					email: user.email,

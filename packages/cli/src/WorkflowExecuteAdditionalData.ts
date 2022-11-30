@@ -36,7 +36,6 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
-	EventMessageLevel,
 } from 'n8n-workflow';
 
 import { LessThanOrEqual } from 'typeorm';
@@ -491,7 +490,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 			): Promise<void> {
 				await eventBus.sendWorkflowEvent({
 					eventName: 'n8n.workflow.started',
-					level: EventMessageLevel.verbose,
 					payload: {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -658,7 +656,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					});
 					await eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.error',
-						level: EventMessageLevel.error,
 						payload: {
 							workflowData: this.workflowData,
 							msg: error,
@@ -679,7 +676,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				} finally {
 					await eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.finished',
-						level: EventMessageLevel.log,
 						payload: {
 							workflowData: this.workflowData,
 						},

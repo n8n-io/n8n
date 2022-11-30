@@ -6,7 +6,6 @@ import {
 	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationTypeNames,
-	EventMessageLevel,
 } from 'n8n-workflow';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
@@ -27,8 +26,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	subscribedEvents: string[];
 
-	subscribedLevels: EventMessageLevel[];
-
 	credentials: INodeCredentials = {};
 
 	constructor(options: MessageEventBusDestinationOptions) {
@@ -37,12 +34,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.label = options.label ?? 'Log Destination';
 		this.enabled = options.enabled ?? false;
 		this.subscribedEvents = options.subscribedEvents ?? [];
-		this.subscribedLevels = options.subscribedLevels ?? [
-			EventMessageLevel.log,
-			EventMessageLevel.error,
-			EventMessageLevel.warn,
-			EventMessageLevel.info,
-		];
 		if (options.credentials) this.credentials = options.credentials;
 		LoggerProxy.debug(`${this.__type}(${this.id}) event destination initialized`);
 	}
@@ -74,11 +65,9 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	hasSubscribedToEvent(msg: AbstractEventMessage) {
 		if (!this.enabled) return false;
-		if (this.subscribedLevels.includes(msg.level)) {
-			for (const eventName of this.subscribedEvents) {
-				if (eventName === '*' || msg.eventName.startsWith(eventName)) {
-					return true;
-				}
+		for (const eventName of this.subscribedEvents) {
+			if (eventName === '*' || msg.eventName.startsWith(eventName)) {
+				return true;
 			}
 		}
 		return false;
@@ -114,7 +103,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			label: this.label,
 			enabled: this.enabled,
 			subscribedEvents: this.subscribedEvents,
-			subscribedLevels: this.subscribedLevels,
 		};
 	}
 

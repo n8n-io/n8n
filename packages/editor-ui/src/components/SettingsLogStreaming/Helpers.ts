@@ -24,7 +24,6 @@ export async function saveDestinationToDb(restApi: IRestApi, destination: Messag
 		const data: MessageEventBusDestinationOptions = {
 			...destination,
 			subscribedEvents: Array.from(eventTreeStore.items[destination.id].selectedEvents.values()),
-			subscribedLevels: Array.from(eventTreeStore.items[destination.id].selectedLevels.values()),
 		};
 		await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
 		eventTreeStore.updateDestination(destination);

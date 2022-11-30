@@ -4,15 +4,6 @@ import { INodeCredentials } from '.';
 // General Enums And Interfaces
 // ===============================
 
-export enum EventMessageLevel {
-	debug = 'debug',
-	verbose = 'verbose',
-	log = 'log',
-	info = 'info',
-	warn = 'warn',
-	error = 'error',
-}
-
 export enum EventMessageTypeNames {
 	generic = '$$EventMessage',
 	audit = '$$EventMessageAudit',
@@ -39,7 +30,6 @@ export interface MessageEventBusDestinationOptions {
 	label?: string;
 	enabled?: boolean;
 	subscribedEvents?: string[];
-	subscribedLevels?: EventMessageLevel[];
 	credentials?: INodeCredentials;
 	anonymizeMessages?: boolean;
 }
@@ -128,12 +118,6 @@ export const defaultMessageEventBusDestinationOptions: MessageEventBusDestinatio
 	label: 'Event Destination',
 	enabled: false,
 	subscribedEvents: [],
-	subscribedLevels: [
-		EventMessageLevel.log,
-		EventMessageLevel.error,
-		EventMessageLevel.warn,
-		EventMessageLevel.info,
-	],
 	credentials: {},
 	anonymizeMessages: false,
 };

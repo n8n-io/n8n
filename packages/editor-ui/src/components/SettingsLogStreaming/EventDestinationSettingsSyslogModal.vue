@@ -42,19 +42,6 @@
 					<div class="multi-parameter">
 						<n8n-input-label
 							:class="$style.labelMargins"
-							label="Levels"
-							tooltipText="Select event levels you want to listen to"
-							:bold="true"
-							size="small"
-							:underline="true"
-						></n8n-input-label>
-						<event-level-selection
-							class="collection-parameter"
-							:destinationId="destination.id"
-							@input="onInput"
-						/>
-						<n8n-input-label
-							:class="$style.labelMargins"
 							label="Events"
 							tooltipText="Select event names and groups you want to listen to"
 							:bold="true"
@@ -83,7 +70,6 @@ import mixins from 'vue-typed-mixins';
 import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
-import EventLevelSelection from './EventLevelSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { IUpdateInformation } from '../../Interface';
@@ -126,7 +112,6 @@ export default mixins(
 		ParameterInputList,
 		NodeCredentials,
 		EventTreeSelection,
-		EventLevelSelection,
 	},
 	computed: {
 		...mapStores(

@@ -155,7 +155,6 @@ class MessageEventBus extends EventEmitter {
 		if (Object.keys(this.destinations).includes(destinationId)) {
 			return {
 				events: this.destinations[destinationId].subscribedEvents,
-				levels: this.destinations[destinationId].subscribedLevels,
 			};
 		}
 		return {};

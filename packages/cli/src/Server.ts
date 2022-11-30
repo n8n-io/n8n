@@ -1562,7 +1562,6 @@ class App {
 			// );
 			// something.subscribe('event', (event)=>eventBus.send(new EventMessage({
 			// 	eventName: event.name,
-			// 	level: 'debug',
 			// 	payload: event,
 			// }) ))
 		}

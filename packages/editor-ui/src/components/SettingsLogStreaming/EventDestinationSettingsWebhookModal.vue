@@ -41,19 +41,6 @@
 					<div class="multi-parameter">
 						<n8n-input-label
 							:class="$style.labelMargins"
-							label="Levels"
-							tooltipText="Select event levels you want to listen to"
-							:bold="true"
-							size="small"
-							:underline="true"
-						></n8n-input-label>
-						<event-level-selection
-							class="collection-parameter"
-							:destinationId="destination.id"
-							@input="onInput"
-						/>
-						<n8n-input-label
-							:class="$style.labelMargins"
 							label="Events"
 							tooltipText="Select event names and groups you want to listen to"
 							:bold="true"
@@ -84,7 +71,6 @@ import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
-import EventLevelSelection from './EventLevelSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
@@ -115,7 +101,6 @@ export default mixins(
 		ParameterInputList,
 		NodeCredentials,
 		EventTreeSelection,
-		EventLevelSelection,
 	},
 	data() {
 		return {
@@ -251,24 +236,8 @@ const description = [
 					type: 'options',
 					options: [
 						{
-							name: 'DELETE',
-							value: 'DELETE',
-						},
-						{
 							name: 'GET',
 							value: 'GET',
-						},
-						{
-							name: 'HEAD',
-							value: 'HEAD',
-						},
-						{
-							name: 'OPTIONS',
-							value: 'OPTIONS',
-						},
-						{
-							name: 'PATCH',
-							value: 'PATCH',
 						},
 						{
 							name: 'POST',
@@ -537,7 +506,7 @@ const description = [
 							noDataExpression: true,
 							default: false,
 							description:
-								'Whether to download the response even if SSL certificate validation is not possible',
+								'Whether to ignore SSL certificate validation',
 						},
 						{
 							displayName: 'Array Format in Query Parameters',
@@ -602,80 +571,6 @@ const description = [
 											},
 											default: 21,
 											description: 'Max number of redirects to follow',
-										},
-									],
-								},
-							],
-						},
-						{
-							displayName: 'Response',
-							name: 'response',
-							placeholder: 'Add response',
-							type: 'fixedCollection',
-							typeOptions: {
-								multipleValues: false,
-							},
-							default: {
-								response: {},
-							},
-							options: [
-								{
-									displayName: 'Response',
-									name: 'response',
-									values: [
-										{
-											displayName: 'Include Response Headers and Status',
-											name: 'fullResponse',
-											type: 'boolean',
-											default: false,
-											description:
-												'Whether to return the full reponse (headers and response status code) data instead of only the body',
-										},
-										{
-											displayName: 'Never Error',
-											name: 'neverError',
-											type: 'boolean',
-											default: false,
-											description: 'Whether to succeeds also when status code is not 2xx',
-										},
-										{
-											displayName: 'Response Format',
-											name: 'responseFormat',
-											type: 'options',
-											noDataExpression: true,
-											options: [
-												{
-													name: 'Autodetect',
-													value: 'autodetect',
-												},
-												{
-													name: 'File',
-													value: 'file',
-												},
-												{
-													name: 'JSON',
-													value: 'json',
-												},
-												{
-													name: 'Text',
-													value: 'text',
-												},
-											],
-											default: 'autodetect',
-											description: 'The format in which the data gets returned from the URL',
-										},
-										{
-											displayName: 'Put Output in Field',
-											name: 'outputPropertyName',
-											type: 'string',
-											default: 'data',
-											displayOptions: {
-												show: {
-													responseFormat: ['file', 'text'],
-												},
-											},
-											description:
-												'Name of the binary property to which to write the data of the read file',
 										},
 									],
 								},

@@ -34,7 +34,6 @@ import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { useEventTreeStore } from '../../stores/eventTreeStore';
 import EventTreeSelection from './EventTreeSelection.vue';
-import EventLevelSelection from './EventLevelSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { IUpdateInformation } from '../../Interface';
@@ -68,7 +67,6 @@ export default mixins(
 		ParameterInputList,
 		NodeCredentials,
 		EventTreeSelection,
-		EventLevelSelection,
 	},
 	computed: {
 		...mapStores(

@@ -1,5 +1,4 @@
 import { DateTime } from 'luxon';
-import { EventMessageLevel } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 
 export interface AbstractEventMessageOptions {
@@ -12,8 +11,6 @@ export interface AbstractEventMessageOptions {
 	eventName: string;
 
 	message?: string;
-
-	level?: EventMessageLevel | string;
 
 	payload?: AbstractEventPayload;
 

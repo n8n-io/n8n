@@ -8,7 +8,6 @@ import {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationTypeNames,
-	EventMessageLevel,
 } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination';
 
@@ -19,25 +18,6 @@ export const isMessageEventBusDestinationSyslogOptions = (
 	if (!o) return false;
 	return o.host !== undefined;
 };
-
-function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
-	switch (emLevel) {
-		case EventMessageLevel.log:
-			return syslog.Severity.Debug;
-		case EventMessageLevel.debug:
-			return syslog.Severity.Debug;
-		case EventMessageLevel.info:
-			return syslog.Severity.Informational;
-		case EventMessageLevel.error:
-			return syslog.Severity.Error;
-		case EventMessageLevel.verbose:
-			return syslog.Severity.Debug;
-		case EventMessageLevel.warn:
-			return syslog.Severity.Warning;
-		default:
-			return syslog.Severity.Debug;
-	}
-}
 
 export class MessageEventBusDestinationSyslog
 	extends MessageEventBusDestination
@@ -100,7 +80,9 @@ export class MessageEventBusDestinationSyslog
 			this.client.log(
 				msg.toString(),
 				{
-					severity: eventMessageLevelToSyslogSeverity(msg.level),
+					severity: msg.eventName.toLowerCase().endsWith('error')
+						? syslog.Severity.Error
+						: syslog.Severity.Debug,
 					msgid: msg.id,
 					timestamp: msg.ts.toJSDate(),
 				},

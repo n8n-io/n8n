@@ -1,6 +1,5 @@
-import { EventMessageLevel, MessageEventBusDestinationOptions } from "n8n-workflow";
+import { MessageEventBusDestinationOptions } from "n8n-workflow";
 import { defineStore } from "pinia";
-// import { MessageEventBusDestinationOptions } from "../components/SettingsLogStreaming/types";
 
 export class EventNamesTreeCollection {
 	label = '';
@@ -14,7 +13,6 @@ export interface TreeAndSelectionStoreItem {
 		destination: MessageEventBusDestinationOptions,
 		tree: EventNamesTreeCollection,
 		selectedEvents: Set<string>,
-		selectedLevels: Set<EventMessageLevel>,
 }
 
 export interface TreeAndSelectionStore {
@@ -112,24 +110,6 @@ export const useEventTreeStore = defineStore('eventTree', {
 				}
 			}
 		},
-		addSelectedLevel(id:string, name: EventMessageLevel) {
-			this.items[id]?.selectedLevels?.add(name);
-		},
-		removeSelectedLevel(id:string, name: EventMessageLevel) {
-			this.items[id]?.selectedLevels?.delete(name);
-		},
-		setSelectedLevels(id:string, levelCheckList: EventMessageLevel[]) {
-			if (id in this.items) {
-				this.items[id].selectedLevels = new Set<EventMessageLevel>(levelCheckList);
-			}
-		},
-		getSelectedLevels(id:string): EventMessageLevel[] {
-			if (id in this.items) {
-				return Array.from(this.items[id]?.selectedLevels.values()) ?? [];
-			} else {
-				return [];
-			}
-		},
 		getEventTree(id:string): EventNamesTreeCollection {
 			return this.items[id]?.tree ?? {};
 		},
@@ -153,11 +133,6 @@ export const useEventTreeStore = defineStore('eventTree', {
 				if (destination.subscribedEvents) {
 					for (const eventName of destination.subscribedEvents) {
 						this.items[destination.id]?.selectedEvents?.add(eventName);
-					}
-				}
-				if (destination.subscribedLevels) {
-					for (const eventLevel of destination.subscribedLevels) {
-						this.items[destination.id]?.selectedLevels?.add(eventLevel);
 					}
 				}
 				this.items[destination.id].tree = treeCollectionFromStringList(this.eventNames, this.items[destination.id]?.selectedEvents);
