@@ -2684,7 +2684,7 @@ export function getLoadOptionsFunctions(
 				let returnData = get(nodeParameters, parameterPath);
 
 				// This is outside the try/catch because it throws errors with proper messages
-				if (options?.extractValue) {
+				if (returnData && options?.extractValue) {
 					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 					if (nodeType === undefined) {
 						throw new Error(
