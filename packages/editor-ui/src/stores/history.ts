@@ -24,8 +24,9 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			if (this.currentBulkAction) {
 				this.currentBulkAction.commands.push(undoable);
 				return;
+			} else {
+				this.undoStack.push(undoable);
 			}
-			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
 			if (clearRedo) {
 				this.clearRedoStack();
@@ -75,7 +76,6 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			if (this.currentBulkAction) {
 				this.undoStack.push(this.currentBulkAction);
 				this.checkUndoStackLimit();
-				this.clearRedoStack();
 				this.currentBulkAction = null;
 			}
 		},
