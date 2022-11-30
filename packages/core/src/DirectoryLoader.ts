@@ -104,6 +104,11 @@ export abstract class DirectoryLoader {
 				: tmpNode.description.version;
 		}
 
+		this.known.nodes[fullNodeName] = {
+			className: nodeName,
+			sourcePath: filePath,
+		};
+
 		this.nodeTypes[fullNodeName] = {
 			type: tempNode,
 			sourcePath: filePath,
@@ -138,6 +143,11 @@ export abstract class DirectoryLoader {
 				throw e;
 			}
 		}
+
+		this.known.credentials[tempCredential.name] = {
+			className: credentialName,
+			sourcePath: filePath,
+		};
 
 		this.credentialTypes[tempCredential.name] = {
 			type: tempCredential,
@@ -319,7 +329,10 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 		await this.readPackageJson();
 
 		try {
-			this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			const knownNodes: typeof this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			for (const nodeName in knownNodes) {
+				this.known.nodes[`${this.packageName}.${nodeName}`] = knownNodes[nodeName];
+			}
 			this.known.credentials = await this.readJSON('dist/known/credentials.json');
 
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
