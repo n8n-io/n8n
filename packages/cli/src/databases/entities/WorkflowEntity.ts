@@ -90,32 +90,8 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	pinData: ISimplifiedPinData;
 
-	/**
-	 * Hash of editable workflow state.
-	 */
+	@Column({ length: 36 })
 	hash: string;
-
-	@AfterLoad()
-	@AfterUpdate()
-	@AfterInsert()
-	setHash(): void {
-		const { name, active, nodes, connections, settings, staticData, pinData } = this;
-
-		// Workflow listing page does not request the `connections` column, so we can use this for `undefined` to avoid generating hashes for all the workflows.
-		if (!connections) return;
-
-		const state = JSON.stringify({
-			name,
-			active,
-			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
-			connections,
-			settings,
-			staticData,
-			pinData,
-		});
-
-		this.hash = crypto.createHash('md5').update(state).digest('hex');
-	}
 }
 
 /**

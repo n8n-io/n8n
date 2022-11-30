@@ -2,6 +2,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
 import pick from 'lodash.pick';
+import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -152,7 +153,7 @@ export class WorkflowsService {
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes'] : fields,
+			select: isSharingEnabled ? [...fields, 'nodes', 'hash'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -205,6 +206,17 @@ export class WorkflowsService {
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 			);
 		}
+
+		// Update the workflow's hash
+		workflow.hash = uuid();
+
+		LoggerProxy.verbose(
+			`Updating hash for workflow ${workflowId} for user ${user.id} after saving`,
+			{
+				previousHash: shared.workflow.hash,
+				newHash: workflow.hash,
+			},
+		);
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
@@ -260,6 +272,7 @@ export class WorkflowsService {
 				'settings',
 				'staticData',
 				'pinData',
+				'hash',
 			]),
 		);
 
