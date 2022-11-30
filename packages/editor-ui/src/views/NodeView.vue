@@ -234,7 +234,7 @@ import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
-import { AddNodeCommand, RemoveNodeCommand } from '@/models/history';
+import { AddConnectionCommand, AddNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1123,9 +1123,13 @@ export default mixins(
 				const nodesToDelete: string[] = this.uiStore.getSelectedNodes.map((node: INodeUi) => {
 					return node.name;
 				});
+				this.historyStore.startRecordingUndo();
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName);
+					this.removeNode(nodeName, true);
 				});
+				setTimeout(() => {
+					this.historyStore.stopRecordingUndo();
+				}, 200);
 			},
 
 			selectAllNodes() {
@@ -1739,7 +1743,7 @@ export default mixins(
 
 				return undefined;
 			},
-			connectTwoNodes(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number) {
+			connectTwoNodes(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number, trackHistory = false) {
 				if (this.getConnection(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex)) {
 					return;
 				}
@@ -1757,7 +1761,7 @@ export default mixins(
 					},
 				] as [IConnection, IConnection];
 
-				this.__addConnection(connectionData, true);
+				this.__addConnection(connectionData, true, trackHistory);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
@@ -1835,7 +1839,7 @@ export default mixins(
 								const sourceNodeName = sourceNode.name;
 								const outputIndex = connection.getParameters().index;
 
-								this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+								this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 								this.pullConnActiveNodeName = null;
 							}
 							return;
@@ -1960,7 +1964,7 @@ export default mixins(
 							NodeViewUtils.addConnectionActionsOverlay(info.connection,
 								() => {
 									activeConnection = null;
-									this.__deleteJSPlumbConnection(info.connection);
+									this.__deleteJSPlumbConnection(info.connection, true);
 								},
 								() => {
 									setTimeout(() => {
@@ -2032,7 +2036,7 @@ export default mixins(
 					try {
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
-						this.__removeConnectionByConnectionInfo(info, false);
+						this.__removeConnectionByConnectionInfo(info, false, true);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
 							const sourceNode = this.workflowsStore.getNodeById(info.connection.sourceId);
@@ -2269,7 +2273,7 @@ export default mixins(
 
 				return NodeViewUtils.getInputEndpointUUID(node.id, index);
 			},
-			__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
+			__addConnection(connection: [IConnection, IConnection], addVisualConnection = false, trackHistory = false) {
 				if (addVisualConnection) {
 					const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
 					const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
@@ -2295,18 +2299,27 @@ export default mixins(
 					this.workflowsStore.addConnection(connectionProperties);
 				}
 
+				if (trackHistory) {
+					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connection, this));
+				}
+
 				setTimeout(() => {
 					this.addPinDataConnections(this.workflowsStore.pinData);
 				});
 			},
 			__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection) {
-					const sourceId = this.workflowsStore.getNodeByName(connection[0].node);
-					const targetId = this.workflowsStore.getNodeByName(connection[1].node);
+					const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
+					const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
+
+					if (!sourceNode || !targetNode) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: sourceId,
-						target: targetId,
+						source: sourceNode.id,
+						target: targetNode.id,
 					});
 
 					// @ts-ignore
@@ -2317,7 +2330,7 @@ export default mixins(
 
 				this.workflowsStore.removeConnection({ connection });
 			},
-			__deleteJSPlumbConnection(connection: Connection) {
+			__deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
 				// Make sure to remove the overlay else after the second move
 				// it visibly stays behind free floating without a connection.
 				connection.removeOverlays();
@@ -2329,8 +2342,15 @@ export default mixins(
 					const endpoints = this.instance.getEndpoints(sourceEndpoint.elementId);
 					endpoints.forEach((endpoint: Endpoint) => endpoint.repaint()); // repaint both circle and plus endpoint
 				}
+				if (trackHistory && connection.__meta) {
+					const connectionData: [IConnection, IConnection] = [
+						{ index: connection.__meta?.sourceOutputIndex, node: connection.__meta.sourceNodeName, type: 'main' },
+						{ index: connection.__meta?.targetOutputIndex, node: connection.__meta.targetNodeName, type: 'main' },
+					];
+					this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionData, this));
+				}
 			},
-			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false) {
+			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false, trackHistory = false) {
 				const sourceInfo = info.sourceEndpoint.getParameters();
 				const sourceNode = this.workflowsStore.getNodeById(sourceInfo.nodeId);
 				const targetInfo = info.targetEndpoint.getParameters();
@@ -2351,7 +2371,7 @@ export default mixins(
 					] as [IConnection, IConnection];
 
 					if (removeVisualConnection) {
-						this.__deleteJSPlumbConnection(info.connection);
+						this.__deleteJSPlumbConnection(info.connection, trackHistory);
 					}
 
 					this.workflowsStore.removeConnection({ connection: connectionInfo });
@@ -3281,6 +3301,12 @@ export default mixins(
 			onRevertRemoveNode({node}: {node: INodeUi}): void {
 				this.addNode(node.type, { position: node.position });
 			},
+			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.__removeConnection(connection, true);
+			},
+			onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.__addConnection(connection, true);
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3386,6 +3412,8 @@ export default mixins(
 			this.$root.$on('nodeMove', this.onMoveNode);
 			this.$root.$on('revertAddNode', this.onRevertAddNode);
 			this.$root.$on('revertRemoveNode', this.onRevertRemoveNode);
+			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
+			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3404,6 +3432,8 @@ export default mixins(
 			this.$root.$off('nodeMove', this.onMoveNode);
 			this.$root.$off('revertAddNode', this.onRevertAddNode);
 			this.$root.$off('revertRemoveNode', this.onRevertRemoveNode);
+			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
+			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);

@@ -1,4 +1,5 @@
 import { INodeUi } from '@/Interface';
+import { IConnection } from 'n8n-workflow';
 import Vue from "vue";
 import { XYPosition } from "../Interface";
 
@@ -97,5 +98,39 @@ export class RemoveNodeCommand extends Command {
 
 	revert(): void {
 		this.eventBus.$root.$emit('revertRemoveNode', { node: this.node });
+	}
+}
+
+export class AddConnectionCommand extends Command {
+	connectionData: [IConnection, IConnection];
+
+	constructor(connectionData: [IConnection, IConnection], eventBus: Vue) {
+		super(COMMANDS.ADD_CONNECTION, eventBus);
+		this.connectionData = connectionData;
+	}
+
+	getReverseCommand(): Command {
+			return new RemoveConnectionCommand(this.connectionData, this.eventBus);
+	}
+
+	revert(): void {
+		this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
+	}
+}
+
+export class RemoveConnectionCommand extends Command {
+	connectionData: [IConnection, IConnection];
+
+	constructor(connectionData: [IConnection, IConnection], eventBus: Vue) {
+		super(COMMANDS.REMOVE_CONNECtiON, eventBus);
+		this.connectionData = connectionData;
+	}
+
+	getReverseCommand(): Command {
+			return new AddConnectionCommand(this.connectionData, this.eventBus);
+	}
+
+	revert(): void {
+		this.eventBus.$root.$emit('revertRemoveConnection', { connection: this.connectionData });
 	}
 }
