@@ -147,7 +147,6 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		placeholder: 'e.g. country, city',
 		default: '',
-		required: true,
 		description: 'The name of the input fields that you want to split the summary by',
 		hint: 'Enter the name of the fields as text (separated by commas)',
 		displayOptions: {
@@ -157,6 +156,27 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['itemList'],
+				operation: ['summarize'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Output Data as Object',
+				name: 'outputDataAsObject',
+				type: 'boolean',
+				default: false,
+			},
+		],
+	},
 ];
 
 export async function execute(
@@ -164,6 +184,12 @@ export async function execute(
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[][]> {
 	const newItems = items.map(({ json }) => json);
+
+	const outputDataAsObject = this.getNodeParameter(
+		'options.outputDataAsObject',
+		0,
+		false,
+	) as boolean;
 
 	const fieldsToSplitBy = (this.getNodeParameter('fieldsToSplitBy', 0, '') as string)
 		.split(',')
@@ -177,62 +203,58 @@ export async function execute(
 	) as Aggregations;
 
 	if (fieldsToSummarize.length === 0) {
-		throw new NodeOperationError(this.getNode(), 'Please select at least one field to summarize');
+		return this.prepareOutputData(
+			this.helpers.returnJsonArray(aggregateData(newItems, fieldsToSummarize)),
+		);
 	}
 
 	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
 
-	const getSummaries = (data: IDataObject[]) => {
-		const displayNames = {
-			append: 'List',
-			concatenate: 'Concatenation',
-			count: 'Count',
-			countUnique: 'Unique count',
-			max: 'Max value',
-			min: 'Min value',
-			sum: 'Sum',
-		};
-		return fieldsToSummarize.reduce((acc, entry) => {
-			acc[`${displayNames[entry.aggregation as AggregationType]} of ${entry.field}`] =
-				summarizeField(data, entry);
-			return acc;
-		}, {} as IDataObject);
-	};
+	const aggregationResult = splitData(fieldsToSplitBy, newItems, fieldsToSummarize) as IDataObject;
 
-	const groupDataByKeys = (splitKeys: string[], data: IDataObject[]) => {
-		if (!splitKeys || splitKeys.length === 0) {
-			return getSummaries(data);
-		}
+	const result = outputDataAsObject
+		? aggregationResult
+		: processAggregation(aggregationResult, fieldsToSplitBy, {});
 
-		const [firstSplitKey, ...restSplitKeys] = splitKeys;
-
-		const groupedData = data.reduce((acc, item) => {
-			const keyValuee = item[firstSplitKey] as string;
-
-			if (acc[keyValuee] === undefined) {
-				acc[keyValuee] = [item];
-			} else {
-				(acc[keyValuee] as IDataObject[]).push(item);
-			}
-			return acc;
-		}, {} as IDataObject);
-
-		return Object.keys(groupedData).reduce((acc, key) => {
-			const value = groupedData[key] as IDataObject[];
-			acc[key] = groupDataByKeys(restSplitKeys, value);
-			return acc;
-		}, {} as IDataObject);
-	};
-
-	const groupedDataAsObject = groupDataByKeys(fieldsToSplitBy, newItems) as IDataObject;
-
-	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(groupedDataAsObject));
+	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
 
 	return executionData;
 }
 
-//types
+function processAggregation(
+	aggregationResult: IDataObject,
+	fieldsToSplitBy: string[],
+	previousStage: IDataObject,
+) {
+	const result: IDataObject[] = [];
+
+	const curentColumnName = fieldsToSplitBy[0];
+	const nextColumnName = fieldsToSplitBy[1];
+
+	if (nextColumnName === undefined) {
+		for (const key of Object.keys(aggregationResult)) {
+			result.push({
+				...previousStage,
+				[curentColumnName]: key,
+				...(aggregationResult[key] as IDataObject),
+			});
+		}
+		return result;
+	} else {
+		for (const key of Object.keys(aggregationResult)) {
+			result.push(
+				...processAggregation(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+					...previousStage,
+					[curentColumnName]: key,
+				}),
+			);
+		}
+		return result;
+	}
+}
+
 type AggregationType = 'append' | 'concatenate' | 'count' | 'countUnique' | 'max' | 'min' | 'sum';
+
 type Aggregation = {
 	aggregation: AggregationType;
 	field: string;
@@ -240,9 +262,19 @@ type Aggregation = {
 	separateBy?: string;
 	customSeparator?: string;
 };
+
 type Aggregations = Aggregation[];
 
-//utils
+enum AggregationDisplayNames {
+	append = 'List',
+	concatenate = 'Concatenation',
+	count = 'Count',
+	countUnique = 'Unique count',
+	max = 'Max value',
+	min = 'Min value',
+	sum = 'Sum',
+}
+
 function checkAggregationsFieldType(
 	this: IExecuteFunctions,
 	items: IDataObject[],
@@ -266,43 +298,79 @@ function checkAggregationsFieldType(
 	}
 }
 
-function summarizeField(items: IDataObject[], entry: Aggregation) {
-	const { aggregation, field } = entry;
-	if (aggregation === 'append') {
-		if (!entry.includeEmpty) {
-			items = items.filter((item) => item[field] || typeof item[field] === 'number');
-		}
-		return items.map((item) => item[field]);
-	} else if (aggregation === 'concatenate') {
-		const separateBy = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
-		return items
-			.map((item) => {
-				let value = item[field];
-				if (value !== null && typeof value === 'object') {
-					value = JSON.stringify(value);
-				}
-				return value;
-			})
-			.join(separateBy);
-	} else if (aggregation === 'sum') {
-		return items.reduce((acc, item) => {
-			return acc + (item[field] as number);
-		}, 0);
-	} else if (aggregation === 'count') {
-		return items.map((item) => item[field]).filter((item) => item).length;
-	} else if (aggregation === 'countUnique') {
-		return new Set(items.map((item) => item[field])).size;
-	} else if (aggregation === 'min') {
-		return Math.min(
-			...(items.map((item) => {
-				return item[field];
-			}) as number[]),
-		);
-	} else if (aggregation === 'max') {
-		return Math.max(
-			...(items.map((item) => {
-				return item[field];
-			}) as number[]),
-		);
+function splitData(splitKeys: string[], data: IDataObject[], fieldsToSummarize: Aggregations) {
+	if (!splitKeys || splitKeys.length === 0) {
+		return aggregateData(data, fieldsToSummarize);
 	}
+
+	const [firstSplitKey, ...restSplitKeys] = splitKeys;
+
+	const groupedData = data.reduce((acc, item) => {
+		const keyValuee = item[firstSplitKey] as string;
+
+		if (acc[keyValuee] === undefined) {
+			acc[keyValuee] = [item];
+		} else {
+			(acc[keyValuee] as IDataObject[]).push(item);
+		}
+		return acc;
+	}, {} as IDataObject);
+
+	return Object.keys(groupedData).reduce((acc, key) => {
+		const value = groupedData[key] as IDataObject[];
+		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize);
+		return acc;
+	}, {} as IDataObject);
+}
+
+function aggregate(items: IDataObject[], entry: Aggregation) {
+	const { aggregation, field } = entry;
+
+	switch (aggregation) {
+		case 'append':
+			if (!entry.includeEmpty) {
+				items = items.filter((item) => item[field] || typeof item[field] === 'number');
+			}
+			return items.map((item) => item[field]);
+		case 'concatenate':
+			const separateBy = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
+			return items
+				.map((item) => {
+					let value = item[field];
+					if (value !== null && typeof value === 'object') {
+						value = JSON.stringify(value);
+					}
+					return value;
+				})
+				.join(separateBy);
+		case 'sum':
+			return items.reduce((acc, item) => {
+				return acc + (item[field] as number);
+			}, 0);
+		case 'countUnique':
+			return new Set(items.map((item) => item[field])).size;
+		case 'min':
+			return Math.min(
+				...(items.map((item) => {
+					return item[field];
+				}) as number[]),
+			);
+		case 'max':
+			return Math.max(
+				...(items.map((item) => {
+					return item[field];
+				}) as number[]),
+			);
+		default:
+			//count by default
+			return items.map((item) => item[field]).filter((item) => item).length;
+	}
+}
+
+function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
+	return fieldsToSummarize.reduce((acc, entry) => {
+		acc[`${AggregationDisplayNames[entry.aggregation as AggregationType]} of ${entry.field}`] =
+			aggregate(data, entry);
+		return acc;
+	}, {} as IDataObject);
 }
