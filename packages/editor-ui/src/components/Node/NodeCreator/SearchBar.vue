@@ -10,7 +10,9 @@
 				@input="onInput"
 				:class="$style.input"
 				ref="inputRef"
+				autofocus
 				data-test-id="node-creator-search-bar"
+				tabindex="0"
 			/>
 		</div>
 		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
@@ -61,7 +63,9 @@ function clear() {
 
 onMounted(() => {
 	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.inputRef });
-	focus();
+	setTimeout(() => {
+		focus();
+	}, 0);
 });
 
 onBeforeUnmount(() => {
