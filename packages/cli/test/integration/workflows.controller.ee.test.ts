@@ -333,7 +333,7 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.data.sharedWith).toHaveLength(0);
 	});
 
-	test('GET should return workflow with credentials saying owner has access even when not shared', async () => {
+	test('GET should return workflow with credentials saying owner does not have access when not shared', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -351,7 +351,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				currentUserHasAccess: true, // owner has access to any cred
+				currentUserHasAccess: false, // although owner can see, he does not have access
 			},
 		]);
 

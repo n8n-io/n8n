@@ -1022,6 +1022,10 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
+export interface NestedRecord<T> {
+	[key: string]: T | NestedRecord<T>;
+}
+
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 export type nodePanelType = 'input' | 'output';
 
@@ -1095,6 +1099,7 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
+	dynamicTranslations: NestedRecord<string>;
 	draggable: {
 		isDragging: boolean;
 		type: string;
