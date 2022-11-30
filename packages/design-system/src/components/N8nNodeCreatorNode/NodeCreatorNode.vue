@@ -32,12 +32,12 @@
 			</div>
 		</transition>
 		<slot name="dragContent" />
-		<div
+		<button
 			:class="{ [$style.panelIcon]: true, [$style.visible]: !!$slots.panel }"
 			@click="$emit('openPanel')"
 		>
 			<font-awesome-icon :class="$style.panelArrow" icon="arrow-right" />
-		</div>
+		</button>
 	</div>
 </template>
 
@@ -107,6 +107,8 @@ defineEmits<{
 	margin-left: var(--spacing-2xs);
 	color: var(--color-text-lighter);
 	cursor: pointer;
+	background: transparent;
+	border: none;
 
 	&.visible {
 		opacity: 1;

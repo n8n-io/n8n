@@ -267,9 +267,3 @@ const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 	height: 1px;
 }
 </style>
-
-<style lang="scss" scoped>
-.el-tooltip svg {
-	color: var(--color-foreground-xdark);
-}
-</style>
