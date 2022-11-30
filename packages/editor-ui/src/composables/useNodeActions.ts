@@ -1,5 +1,5 @@
 import { INodeAction, INodePropertyCollection, INodePropertyOptions, INodeProperties, INodeTypeDescription, deepCopy } from 'n8n-workflow';
-import { reactive, del, computed, onMounted, onUnmounted, getCurrentInstance } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import startcase from 'lodash.startcase';
 import { CUSTOM_API_CALL_KEY, CORE_NODES_CATEGORY, EMAIL_IMAP_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
@@ -11,14 +11,18 @@ const WHITELISTED_APP_CORE_NODES = [
 	WEBHOOK_NODE_TYPE,
 ];
 
-const customNodeActionsParsers: {[key: string]: (matchedProperty: INodeProperties) => INodeAction[] | undefined} = {
-	['n8n-nodes-base.hubspotTrigger']: (matchedProperty) => {
+const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
+
+const customNodeActionsParsers: {[key: string]: (matchedProperty: INodeProperties, $locale: I18nClass) => INodeAction[] | undefined} = {
+	['n8n-nodes-base.hubspotTrigger']: (matchedProperty, $locale) => {
 		const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
 
 		return (collection?.values[0]?.options as INodePropertyOptions[])?.map((categoryItem) => ({
 			nodeName: 'n8n-nodes-base.hubspotTrigger',
 			key: categoryItem.value as string,
-			title: `On ${startcase(categoryItem.name)}`,
+			title: $locale.baseText('nodeCreator.actionsCategory.onEvent', {
+				interpolate: {event: startcase(categoryItem.name)},
+			}),
 			description: categoryItem.description,
 			displayOptions: matchedProperty.displayOptions,
 			values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
@@ -27,16 +31,10 @@ const customNodeActionsParsers: {[key: string]: (matchedProperty: INodePropertie
 };
 
 function operationsCategory(nodeTypeDescription: INodeTypeDescription, $locale: I18nClass): INodeAction | null {
-	console.log($locale.baseText('nodeCreator.actionsCategory.recommended'));
-	const matchingKeys = ['operation'];
-	const excludedKeys = ['resource'];
+	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return null;
 
-	if (!!nodeTypeDescription.properties.find((property) => excludedKeys.includes(property.name)))
-		return null;
-
-	const matchedProperty = nodeTypeDescription.properties.find((property) =>
-		matchingKeys.includes(property.name?.toLowerCase()),
-	);
+	const matchedProperty = nodeTypeDescription.properties
+		.find((property) =>property.name?.toLowerCase() === 'operation');
 
 	if (!matchedProperty || !matchedProperty.options) return null;
 
@@ -60,13 +58,13 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription, $locale: 
 
 	return {
 		key: matchedProperty.name,
-		title: 'Operations',
+		title: $locale.baseText('nodeCreator.actionsCategory.operations'),
 		type: 'category',
 		items,
 	};
 }
 
-function recommendedCategory(nodeTypeDescription: INodeTypeDescription,  $locale: I18nClass): INodeAction | null {
+function recommendedCategory(nodeTypeDescription: INodeTypeDescription, $locale: I18nClass): INodeAction | null {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
@@ -79,16 +77,16 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription,  $locale
 	// so user is able to add node to the canvas from the actions panel
 	if (!matchedProperty || !matchedProperty.options) {
 		return {
-			key: 'placeholder_recommended',
-			title: 'Recommended',
+			key: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
+			title: $locale.baseText('nodeCreator.actionsCategory.recommended'),
 			type: 'category',
 			items: [
 				{
 					nodeName: nodeTypeDescription.name,
 					key: nodeTypeDescription.name,
-					title: `On new ${nodeTypeDescription.displayName
-						.replace('Trigger', '')
-						.trimEnd()} event`,
+					title: $locale.baseText('nodeCreator.actionsCategory.onNewEvent', {
+						interpolate: {event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd()},
+					}),
 					displayOptions: {},
 					values: {},
 				},
@@ -100,14 +98,16 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription,  $locale
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 	);
 
-	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty);
+	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty, $locale);
 
 	const items =
 		customParsedItem ??
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
 			nodeName: nodeTypeDescription.name,
 			key: categoryItem.value as string,
-			title: `On ${startcase(categoryItem.name)}`,
+			title: $locale.baseText('nodeCreator.actionsCategory.onEvent', {
+				interpolate: {event: startcase(categoryItem.name)},
+			}),
 			description: categoryItem.description,
 			displayOptions: matchedProperty.displayOptions,
 			values: {
@@ -121,7 +121,7 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription,  $locale
 
 	return {
 		key: matchedProperty.name,
-		title: 'Recommended',
+		title: $locale.baseText('nodeCreator.actionsCategory.recommended'),
 		type: 'category',
 		items,
 	};
@@ -129,14 +129,11 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription,  $locale
 
 function resourceCategories(nodeTypeDescription: INodeTypeDescription, $locale: I18nClass): INodeAction[] {
 	const categories: INodeAction[] = [];
-	const matchingKeys = ['resource'];
-	const matchedProperties = nodeTypeDescription.properties?.filter((property) =>
-		matchingKeys.includes(property.displayName?.toLowerCase()),
-	);
+	const matchedProperties = nodeTypeDescription.properties.filter((property) =>property.displayName?.toLowerCase() === 'resource');
 
 	matchedProperties.forEach((property) => {
-		(property.options as INodePropertyOptions[])
-			?.filter((option) => option.value !== CUSTOM_API_CALL_KEY)
+		(property.options as INodePropertyOptions[] || [])
+			.filter((option) => option.value !== CUSTOM_API_CALL_KEY)
 			.forEach((resourceOption, i, options) => {
 				const isSingleResource = options.length === 1;
 				const resourceCategory: INodeAction = {
@@ -146,6 +143,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription, $locale: 
 					items: [],
 				};
 
+				// Match operations for the resource by checking if displayOptions matches or contains the resource name
 				const operations = nodeTypeDescription.properties.find(
 					(operation) =>
 						operation.name === 'operation' &&
@@ -190,6 +188,8 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription, $locale: 
 	return categories;
 }
 
+const getNodeType = (nodeCreateElement: INodeCreateElement): INodeTypeDescription => (nodeCreateElement.properties as INodeItemProps).nodeType;
+
 export default () => {
 	const instance = getCurrentInstance();
 	const $locale = instance?.proxy.$locale as I18nClass;
@@ -198,13 +198,15 @@ export default () => {
 	const categorizedNodesWithActions = computed<INodeCreateElement[]>(() => {
 		const nodes = deepCopy(categorizedItems).filter((i) => i.type === 'node');
 
-		const nodesWithActions = nodes.map((node) => {
-			const nodeTypeDescription = (node.properties as INodeItemProps).nodeType;
+		const uniqueNodes = [...new Map(nodes.map((node: INodeCreateElement) => [getNodeType(node).name, node])).values()];
 
-			nodeTypeDescription.actions = [
-				recommendedCategory(nodeTypeDescription, $locale),
-				...resourceCategories(nodeTypeDescription, $locale),
-				operationsCategory(nodeTypeDescription, $locale),
+		const nodesWithActions = uniqueNodes.map((node) => {
+			const nodeType = getNodeType(node);
+
+			nodeType.actions = [
+				recommendedCategory(nodeType, $locale),
+				...resourceCategories(nodeType, $locale),
+				operationsCategory(nodeType, $locale),
 			].filter((action: INodeAction | null) => action) as INodeAction[];
 
 			return node;
@@ -214,34 +216,34 @@ export default () => {
 	});
 
 	function getMergedNodesActions(excludedCoreNode = false): INodeCreateElement[] {
-		console.log('Recalculating merged nodes actions');
-		return Object.values(
-			categorizedNodesWithActions.value.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
-				const clonedNode = deepCopy(node);
-				const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
-				const actions = nodeType.actions || [];
-				const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.key);
-				const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+		const mergedNodes = categorizedNodesWithActions.value.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
+			const clonedNode = deepCopy(node);
+			const nodeType = getNodeType(clonedNode);
+			const actions = nodeType.actions || [];
+			const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.key);
+			const normalizedName = nodeType.name.toLowerCase().replace('trigger', '');
 
-				if(excludedCoreNode && isCoreNode) return acc;
+			if(excludedCoreNode && isCoreNode) return acc;
 
-				const existingNode = acc[normalizedName];
-				if(existingNode) {
-					(existingNode.properties as INodeItemProps).nodeType.actions?.push(...actions);
-				} else {
-					acc[normalizedName] = clonedNode;
-				}
+			const existingNode = acc[normalizedName];
 
-				// Filter-out placeholder recommended actions if they are the only actions
-				nodeType.actions = (nodeType.actions || []).filter((action: INodeAction, _: number, arr: INodeAction[]) => {
-					const isPlaceholderCategory = action.key === 'placeholder_recommended';
+			if(existingNode) getNodeType(existingNode).actions?.push(...actions);
+			else acc[normalizedName] = clonedNode;
+
+			// Filter-out placeholder recommended actions if they are the only actions
+			nodeType.actions = (nodeType.actions || [])
+				.filter((action: INodeAction, _: number, arr: INodeAction[]) => {
+					const isPlaceholderCategory = action.key === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
 					return !isPlaceholderCategory || (isPlaceholderCategory && arr.length > 1);
 				});
 
-				return acc;
-			}, {}),
-		);
+			return acc;
+		}, {});
+
+		return Object.values(mergedNodes)
+			.sort((a, b) => getNodeType(a).displayName.localeCompare(getNodeType(b).displayName));
 	}
+
 	return {
 		categorizedNodesWithActions,
 		getMergedNodesActions,

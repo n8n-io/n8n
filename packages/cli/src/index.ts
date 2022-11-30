@@ -7,7 +7,6 @@ export * from './Interfaces';
 export * from './InternalHooksManager';
 export * from './LoadNodesAndCredentials';
 export * from './NodeTypes';
-export * from './NodeTypeActions';
 export * from './WaitTracker';
 export * from './WaitingWebhooks';
 export * from './WorkflowCredentials';

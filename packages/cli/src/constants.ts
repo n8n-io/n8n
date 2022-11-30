@@ -10,9 +10,6 @@ export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
-export const CUSTOM_API_CALL_NAME = 'Custom API Call';
-export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;

@@ -146,7 +146,6 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
-import { NodeTypeActions } from '@/NodeTypeActions';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';

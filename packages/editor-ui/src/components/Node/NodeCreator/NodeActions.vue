@@ -82,7 +82,7 @@ import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import SearchBar from './SearchBar.vue';
 import { sublimeSearch } from '@/utils';
-import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 export interface Props {
 	nodeType: INodeTypeDescription,
@@ -103,6 +103,7 @@ const emit = defineEmits<{
 const state = reactive({
 	subtractedCategories: [] as string[],
 	search: '',
+	latestNodeData: null as INodeTypeDescription | null,
 });
 
 const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
@@ -117,11 +118,7 @@ const orderedActions = computed(() => {
 	];
 });
 
-const containsAPIAction = computed(() => {
-	return props.actions
-		.flatMap(action => action.items || [action])
-		.some(action => action.key === CUSTOM_API_CALL_KEY);
-});
+const containsAPIAction = computed(() => state.latestNodeData?.properties.some((p) => p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME)) === true);
 
 const filteredActions = computed(() => {
 	if(state.search.length === 0) return orderedActions.value;
@@ -135,20 +132,24 @@ const filteredActions = computed(() => {
 	return matchedActions.map(({item}) => item);
 });
 
+
 const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
 
+// The nodes.json doesn't contain API CALL option so we need to fetch the node detail
+// to determine if need to render the API CALL hint
 async function fechNodeDetails() {
 	const { getNodesInformation } = useNodeTypesStore();
 	const { version, name } = props.nodeType;
 	const payload = {
 		name,
-		version: Array.isArray(version) ? version.slice(-1)[0] : version,
+		version: Array.isArray(version) ? version?.slice(-1)[0] : version,
 	} as INodeTypeNameVersion;
 
-	const details = await getNodesInformation([payload]);
-	console.log("🚀 ~ file: NodeActions.vue:149 ~ fechNodeDetails ~ details", details);
+	const nodesInfo = await getNodesInformation([payload], false);
+
+	state.latestNodeData = nodesInfo[0];
 }
-fechNodeDetails();
+
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
 		state.subtractedCategories = state.subtractedCategories.filter((item) => item !== category);
@@ -216,6 +217,7 @@ function trackView() {
 	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
 	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
+fechNodeDetails();
 onMounted(() => {
 	trackView();
 });

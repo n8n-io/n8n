@@ -7,6 +7,7 @@ export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]'
 
 // parameter input
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';

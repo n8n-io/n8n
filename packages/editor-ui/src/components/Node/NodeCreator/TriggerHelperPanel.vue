@@ -179,10 +179,6 @@ const mergedNodes = computed(() => getMergedNodesActions(isAppEventSubcategory.v
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');
 	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
-
-	window.__debug = () => {
-		console.log('Actions: ', categorizedNodesWithActions.value);
-	};
 });
 
 const { isRoot } = toRefs(state);

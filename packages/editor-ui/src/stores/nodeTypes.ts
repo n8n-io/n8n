@@ -79,6 +79,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				}
 
 				for (const version of newNodeVersions) {
+					// Node exists with the same name
 					if (acc[newNodeType.name]) {
 						acc[newNodeType.name][version] = Object.assign(acc[newNodeType.name][version] ?? {}, newNodeType);
 					} else {
@@ -88,7 +89,6 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 
 				return acc;
 			}, { ...this.nodeTypes });
-
 			Vue.set(this, 'nodeTypes', nodeTypes);
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
@@ -97,7 +97,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				this.nodeTypes,
 			);
 		},
-		async getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+		async getNodesInformation(nodeInfos: INodeTypeNameVersion[], replace = true): Promise<INodeTypeDescription[]> {
 			const rootStore = useRootStore();
 			const nodesInformation = await getNodesInformation(rootStore.getRestApiContext, nodeInfos);
 
@@ -111,7 +111,9 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 					);
 				}
 			});
-			this.setNodeTypes(nodesInformation);
+			if(replace) this.setNodeTypes(nodesInformation);
+
+			return nodesInformation;
 		},
 		async getFullNodesProperties(nodesToBeFetched: INodeTypeNameVersion[]): Promise<void> {
 			const credentialsStore = useCredentialsStore();

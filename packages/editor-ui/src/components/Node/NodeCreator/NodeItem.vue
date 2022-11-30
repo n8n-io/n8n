@@ -19,16 +19,12 @@
 		</template>
 
 		<template #tooltip v-if="isCommunityNode">
-			<div
+			<p
 				:class="$style.communityNodeIcon"
-				slot="content"
 				v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
 				@click="onCommunityNodeTooltipClick"
-			>
-			</div>
-			<n8n-icon icon="cube" />
+			/>
 		</template>
-
 		<template #dragContent>
 			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
 			<div
@@ -44,7 +40,7 @@
 			<node-actions
 				:class="$style.actions"
 				:nodeType="nodeType"
-				:actions="nodeType.actions"
+				:actions="nodeType.actions || []"
 				@actionSelected="onActionSelected"
 				@back="showActionsPanel = false"
 				@dragstart.stop="onDragStart"
@@ -55,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
+import { reactive, computed, toRefs, onMounted, getCurrentInstance } from 'vue';
 import { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
@@ -67,6 +63,7 @@ import { externalHooks } from '@/mixins/externalHooks';
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
 import { useWorkflowsStore } from '@/stores/workflows';
+import useNodeActions from '@/composables/useNodeActions';
 
 export interface Props {
 	nodeType: INodeTypeDescription;
@@ -88,7 +85,7 @@ const emit = defineEmits<{
 const { $externalHooks } = new externalHooks();
 const instance = getCurrentInstance();
 const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-
+const { categorizedNodesWithActions } = useNodeActions();
 const state = reactive({
 	dragging: false,
 	showActionsPanel: false,

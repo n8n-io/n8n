@@ -1,62 +1,71 @@
 import express from 'express';
 import { readFile } from 'fs/promises';
-import { NodeTypeActions } from '@/NodeTypeActions';
-
-import { NodeHelpers } from 'n8n-workflow';
 import get from 'lodash.get';
 
-import type { INodeTypeDescription, INodeTypeNameVersion, INodeType } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
+import { CredentialTypes } from '@/CredentialTypes';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getNodeTranslationPath } from '@/TranslationHelpers';
 
-export const nodeTypesController = express.Router();
+function isOAuth(credType: ICredentialType) {
+	return (
+		Array.isArray(credType.extends) &&
+		credType.extends.some((parentType) =>
+			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+		)
+	);
+}
 
-// Returns all the node-types
-nodeTypesController.get(
-	'/',
-	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const returnData: INodeTypeDescription[] = [];
-		const onlyLatest = req.query.onlyLatest === 'true';
-		const withActions = req.query.withActions === 'true';
+/**
+ * Whether any of the node's credential types may be used to
+ * make a request from a node other than itself.
+ */
+function supportsProxyAuth(description: INodeTypeDescription) {
+	if (!description.credentials) return false;
 
-		const nodeTypes = NodeTypes();
-		const nodeTypeActions = NodeTypeActions();
-		const allNodes = nodeTypes.getAll();
+	const credentialTypes = CredentialTypes();
 
-		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-			const nodeInfo = withActions
-				? nodeTypeActions.extendWithActions({ ...nodeType.description })
-				: { ...nodeType.description };
+	return description.credentials.some(({ name }) => {
+		const credType = credentialTypes.getByName(name);
 
-			if (req.query.includeProperties !== 'true') {
-				// @ts-ignore
-				delete nodeInfo.properties;
-			}
-			return nodeInfo;
-		};
+		if (credType.authenticate !== undefined) return true;
 
-		if (onlyLatest) {
-			allNodes.forEach((nodeData) => {
-				const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-				const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-				returnData.push(nodeInfo);
-			});
-		} else {
-			allNodes.forEach((nodeData) => {
-				const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-				allNodeTypes.forEach((element) => {
-					const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-					returnData.push(nodeInfo);
-				});
+		return isOAuth(credType);
+	});
+}
+
+const CUSTOM_API_CALL_NAME = 'Custom API Call';
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+/**
+ * Inject a `Custom API Call` option into `resource` and `operation`
+ * parameters in a node that supports proxy auth.
+ */
+function injectCustomApiCallOption(description: INodeTypeDescription) {
+	if (!supportsProxyAuth(description)) return description;
+
+	description.properties.forEach((p) => {
+		if (
+			['resource', 'operation'].includes(p.name) &&
+			Array.isArray(p.options) &&
+			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+		) {
+			p.options.push({
+				name: CUSTOM_API_CALL_NAME,
+				value: CUSTOM_API_CALL_KEY,
 			});
 		}
 
-		return returnData;
-	}),
-);
+		return p;
+	});
+
+	return description;
+}
+
+export const nodeTypesController = express.Router();
 
 // Returns node information based on node names and versions
 nodeTypesController.post(
@@ -69,7 +78,7 @@ nodeTypesController.post(
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 				const { description } = NodeTypes().getByNameAndVersion(name, version);
-				acc.push(NodeTypes().injectCustomApiCallOption(description));
+				acc.push(injectCustomApiCallOption(description));
 				return acc;
 			}, []);
 		}
@@ -94,7 +103,7 @@ nodeTypesController.post(
 				// ignore - no translation exists at path
 			}
 
-			nodeTypes.push(NodeTypes().injectCustomApiCallOption(description));
+			nodeTypes.push(injectCustomApiCallOption(description));
 		}
 
 		const nodeTypes: INodeTypeDescription[] = [];

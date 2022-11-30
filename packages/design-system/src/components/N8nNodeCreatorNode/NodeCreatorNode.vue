@@ -1,27 +1,41 @@
 <template>
-	<div :class="{[$style.creatorNode]: true, [$style.padingless]: padingless, [$style.hasPanel]: !!$slots.panel }" v-on="$listeners" v-bind="$attrs">
-		<div :class="$style.nodeIcon" >
+	<div
+		:class="{
+			[$style.creatorNode]: true,
+			[$style.padingless]: padingless,
+			[$style.hasPanel]: !!$slots.panel,
+		}"
+		v-on="$listeners"
+		v-bind="$attrs"
+	>
+		<div :class="$style.nodeIcon">
 			<slot name="icon" />
 		</div>
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" v-text="title" />
 				<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
-
-				<n8n-tooltip v-if="$slots.tooltip" placement="top" >
-					<slot name="tooltip" />
+				<n8n-tooltip v-if="!!$slots.tooltip" placement="top">
+					<!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
+					<p slot="content">
+						<slot name="tooltip" />
+					</p>
+					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>
 			<p :class="$style.description" v-if="description" v-text="description" />
 		</div>
 
-		<transition name="slide-fade" >
+		<transition name="slide-fade">
 			<div :class="$style.panel" v-if="isPanelActive">
 				<slot name="panel" />
 			</div>
 		</transition>
 		<slot name="dragContent" />
-		<div :class="{[$style.panelIcon]: true, [$style.visible]: !!$slots.panel}" @click="$emit('openPanel')" >
+		<div
+			:class="{ [$style.panelIcon]: true, [$style.visible]: !!$slots.panel }"
+			@click="$emit('openPanel')"
+		>
 			<font-awesome-icon :class="$style.panelArrow" icon="arrow-right" />
 		</div>
 	</div>
@@ -44,22 +58,23 @@ export interface Props {
 defineProps<Props>();
 
 defineEmits<{
-	(event: 'openPanel', $e: DragEvent): void,
-	(event: 'tooltipClick', $e: MouseEvent): void,
+	(event: 'openPanel', $e: DragEvent): void;
+	(event: 'tooltipClick', $e: MouseEvent): void;
 }>();
 </script>
 
 <style lang="scss">
-	.slide-fade-enter-active, .slide-fade-leave-active {
-		transition: all .3s ease;
-	}
-	.slide-fade-enter, .slide-fade-leave-to {
-		transform: translateX(100%);
-	}
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+	transition: all 0.3s ease;
+}
+.slide-fade-enter,
+.slide-fade-leave-to {
+	transform: translateX(100%);
+}
 </style>
 
 <style lang="scss" module>
-
 .creatorNode {
 	display: flex;
 	align-items: center;
@@ -74,7 +89,7 @@ defineEmits<{
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--color-text-light)
+	color: var(--color-text-light);
 }
 .panel {
 	position: absolute;
