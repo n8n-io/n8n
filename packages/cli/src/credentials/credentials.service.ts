@@ -33,7 +33,7 @@ export class CredentialsService {
 
 	static async getAll(
 		user: User,
-		options?: { relations?: string[]; roles?: string[] },
+		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
 	): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
@@ -46,7 +46,7 @@ export class CredentialsService {
 
 		// if instance owner, return all credentials
 
-		if (user.globalRole.name === 'owner') {
+		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
 			return Db.collections.Credentials.find({
 				select: SELECT_FIELDS,
 				relations: options?.relations,
@@ -282,10 +282,9 @@ export class CredentialsService {
 		user: User,
 		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
-		nodeToTestWith: string | undefined,
 	): Promise<INodeCredentialTestResult> {
 		const helper = new CredentialsHelper(encryptionKey);
 
-		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
+		return helper.testCredentials(user, credentials.type, credentials);
 	}
 }

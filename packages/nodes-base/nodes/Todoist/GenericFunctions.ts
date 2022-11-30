@@ -23,7 +23,7 @@ export async function todoistApiRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
-	const endpoint = 'api.todoist.com/rest/v1';
+	const endpoint = 'api.todoist.com/rest/v2';
 
 	const options: OptionsWithUri = {
 		method,
@@ -56,7 +56,7 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v8/sync`,
+		uri: `https://api.todoist.com/sync/v9/sync`,
 		json: true,
 	};
 

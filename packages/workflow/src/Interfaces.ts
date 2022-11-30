@@ -181,11 +181,7 @@ export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
 export abstract class ICredentialsHelper {
-	encryptionKey: string;
-
-	constructor(encryptionKey: string) {
-		this.encryptionKey = encryptionKey;
-	}
+	constructor(readonly encryptionKey: string) {}
 
 	abstract getParentTypes(name: string): string[];
 
@@ -329,6 +325,7 @@ export interface ICredentialType {
 export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
+	getNodeTypesToTestWith(type: string): string[];
 }
 
 // The way the credentials get saved in the database (data encrypted)
@@ -1209,7 +1206,6 @@ export interface INodeCredentialTestResult {
 }
 
 export interface INodeCredentialTestRequest {
-	nodeToTestWith?: string; // node name i.e. slack
 	credentials: ICredentialsDecrypted;
 }
 
@@ -1249,7 +1245,7 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
-export interface IWorfklowIssues {
+export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
@@ -1474,8 +1470,8 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
-	getAll(): Array<INodeType | IVersionedNodeType>;
-	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
+	getByName(nodeType: string): INodeType | IVersionedNodeType;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType;
 }
 
 export type LoadingDetails = {
@@ -1483,9 +1479,15 @@ export type LoadingDetails = {
 	sourcePath: string;
 };
 
+export type CredentialLoadingDetails = LoadingDetails & {
+	nodesToTestWith?: string[];
+};
+
+export type NodeLoadingDetails = LoadingDetails;
+
 export type KnownNodesAndCredentials = {
-	nodes: Record<string, LoadingDetails>;
-	credentials: Record<string, LoadingDetails>;
+	nodes: Record<string, NodeLoadingDetails>;
+	credentials: Record<string, CredentialLoadingDetails>;
 };
 
 export interface LoadedClass<T> {
