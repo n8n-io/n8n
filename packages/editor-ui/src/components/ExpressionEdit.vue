@@ -273,7 +273,7 @@ export default mixins(
 			margin-top: 3px;
 			height: 16px;
 			line-height: 1;
-			background-color: #f0f0f0;
+			background-color: var(--color-expression-syntax-example);
 			color: var(--color-text-dark);
 			margin-right: var(--spacing-4xs);
 		}

@@ -16,7 +16,7 @@ export const EXPRESSION_EDITOR_THEME = [
 			borderStyle: 'var(--input-border-style, var(--border-style-base))',
 			borderColor: 'var(--input-border-color, var(--border-color-base))',
 			borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
-			backgroundColor: '#ffffff',
+			backgroundColor: 'var(--color-expression-editor-background)',
 		},
 		'&.cm-focused': {
 			borderColor: 'var(--color-secondary)',
@@ -52,11 +52,11 @@ export const EXPRESSION_EDITOR_THEME = [
 
 export const DYNAMICALLY_STYLED_RESOLVABLES_THEME = EditorView.theme({
 	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
-		color: '#29a568',
-		backgroundColor: '#e1f3d8',
+		color: 'var(--color-valid-resolvable-foreground)',
+		backgroundColor: 'var(--color-valid-resolvable-background)',
 	},
 	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: {
-		color: '#f45959',
-		backgroundColor: '#fef0f0',
+		color: 'var(--color-invalid-resolvable-foreground)',
+		backgroundColor: 'var(--color-invalid-resolvable-background)',
 	},
 });
