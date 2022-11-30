@@ -2,7 +2,7 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 
-describe('HTTP Request node', () => {
+describe('Expression editor modal', () => {
 	before(() => {
 		cy.task('db:reset');
 		cy.skipSetup();
