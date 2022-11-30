@@ -94,18 +94,17 @@ const onDragEnd = (el: HTMLElement) => {
 	left: 0;
 	bottom: 0;
 	right: 0;
-	padding-left: var(--spacing-s);
 	overflow: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
 	width: 100%;
-	padding-bottom: var(--spacing-s);
 	background-color: var(--color-background-base);
 }
 
 .schema {
 	display: inline-block;
+	padding: 0 var(--spacing-s) var(--spacing-s);
 }
 
 .dragPill {

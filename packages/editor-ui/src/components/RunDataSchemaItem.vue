@@ -27,7 +27,7 @@
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
 		</label>
-		<div v-if="isSchemaValueArray" :class="$style.sub">
+		<div v-if="isSchemaValueArray" :class="{[$style.sub]: true, [$style.flat]: isFlat}">
 			<run-data-schema-item v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
@@ -63,6 +63,7 @@ const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
+const isFlat = computed(() => props.level === 0 && Array.isArray(props.schema.value) && props.schema.value.every(v => !Array.isArray(v.value)));
 const key = computed((): string | undefined => isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key);
 const schemaName = computed(() => isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
 const text = computed(() => Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0));
@@ -144,6 +145,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	overflow: hidden;
 	transition: all 0.2s $ease-out-expo;
 	clear: both;
+
+	&.flat {
+		> .item {
+			padding-left: 0;
+		}
+	}
 
 	&:nth-of-type(1) {
 		> .item:nth-of-type(1) {
