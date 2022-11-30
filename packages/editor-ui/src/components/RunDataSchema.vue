@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.schema">
+	<div :class="$style.schemaWrapper">
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -11,16 +11,18 @@
 				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
 			</template>
 			<template>
-				<run-data-schema-item
-					:schema="schema"
-					:level="0"
-					:parent="null"
-					:subKey="`${schema.type}-0-0`"
-					:mappingEnabled="mappingEnabled"
-					:draggingPath="draggingPath"
-					:distanceFromActive="distanceFromActive"
-					:node="node"
-				/>
+				<div :class="$style.schema">
+					<run-data-schema-item
+						:schema="schema"
+						:level="0"
+						:parent="null"
+						:subKey="`${schema.type}-0-0`"
+						:mappingEnabled="mappingEnabled"
+						:draggingPath="draggingPath"
+						:distanceFromActive="distanceFromActive"
+						:node="node"
+					/>
+				</div>
 			</template>
 		</draggable>
 	</div>
@@ -86,15 +88,24 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <style lang="scss" module>
-.schema {
-	display: inline-block;
+.schemaWrapper {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
 	padding-left: var(--spacing-s);
 	overflow: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
+	width: 100%;
+	padding-bottom: var(--spacing-s);
 	background-color: var(--color-background-base);
+}
+
+.schema {
+	display: inline-block;
 }
 
 .dragPill {

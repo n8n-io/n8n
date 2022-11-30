@@ -1164,9 +1164,13 @@ export default mixins(
 
 
 .droppable {
-	--input-border-color: var(--color-secondary-tint-1);
+	--input-border-color: var(--color-secondary);
 	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: dashed;
+
+	textarea, input {
+		border-width: 2px;
+	}
 }
 
 .activeDrop {
@@ -1176,6 +1180,7 @@ export default mixins(
 
 	textarea, input {
 		cursor: grabbing !important;
+		border-width: 1px;
 	}
 }
 
