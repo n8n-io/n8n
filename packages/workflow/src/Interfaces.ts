@@ -1245,7 +1245,7 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
-export interface IWorfklowIssues {
+export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
@@ -1474,7 +1474,7 @@ export interface INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType;
 }
 
-type LoadingDetails = {
+export type LoadingDetails = {
 	className: string;
 	sourcePath: string;
 };
