@@ -1169,7 +1169,7 @@ export default mixins(
 	--input-border-style: dashed;
 
 	textarea, input {
-		border-width: 2px;
+		border-width: 1.5px;
 	}
 }
 

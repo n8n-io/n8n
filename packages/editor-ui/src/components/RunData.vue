@@ -554,7 +554,7 @@ export default mixins(
 					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
 				}
 
-				if (this.isPaneTypeInput/* && window.posthog?.isFeatureEnabled?.('schema-view')*/) {
+				if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
 					defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema'});
 				}
 
