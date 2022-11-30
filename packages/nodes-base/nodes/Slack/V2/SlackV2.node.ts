@@ -1103,18 +1103,26 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/stars.add
 					if (operation === 'add') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
+						const target = this.getNodeParameter('target', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {};
-						if (options.channelId) {
-							body.channel = options.channelId as string;
+						body.channel = channel;
+
+						if (target === 'message') {
+							const timestamp = this.getNodeParameter('timestamp', i) as string;
+							body.timestamp = timestamp as string;
 						}
-						if (options.fileId) {
-							body.file = options.fileId as string;
+						if (target === 'file') {
+							const file = this.getNodeParameter('fileId', i) as string;
+							body.file = file as string;
 						}
 						if (options.fileComment) {
 							body.file_comment = options.fileComment as string;
-						}
-						if (options.timestamp) {
-							body.timestamp = options.timestamp as string;
 						}
 						responseData = await slackApiRequest.call(this, 'POST', '/stars.add', body, qs);
 					}

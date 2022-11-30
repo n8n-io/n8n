@@ -40,6 +40,120 @@ export const starFields: INodeProperties[] = [
 	/*                                star:add                                    */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Item to add star',
+		name: 'target',
+		type: 'options',
+		required: true,
+		description: 'Choose whether to add a star to a message or a file',
+		default: '',
+		placeholder: 'Select...',
+		displayOptions: {
+			show: {
+				operation: ['add'],
+				resource: ['star'],
+			},
+		},
+		options: [
+			{
+				name: 'Message',
+				value: 'message',
+			},
+			{
+				name: 'File',
+				value: 'file',
+			},
+		],
+	},
+	{
+		name: 'channelId',
+		displayName: 'Channel',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a channel...',
+		description: 'The Slack channel to add a star to',
+		displayOptions: {
+			show: {
+				resource: ['star'],
+				operation: ['add'],
+				target: ['message', 'file'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a channel...',
+				typeOptions: {
+					searchListMethod: 'getChannels',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Slack Channel ID',
+						},
+					},
+				],
+				placeholder: 'C0122KQ70S7E',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				placeholder: 'https://app.slack.com/client/TS9594PZK/B0556F47Z3A',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: 'http(s)?://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
+							errorMessage: 'Not a valid Slack Channel URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})',
+				},
+			},
+		],
+	},
+	{
+		displayName: 'File ID',
+		name: 'fileId',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['star'],
+				operation: ['add'],
+				target: ['file'],
+			},
+		},
+		description: 'File to add star to',
+	},
+	{
+		displayName: 'Message Timestamp',
+		name: 'timestamp',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['star'],
+				operation: ['add'],
+				target: ['message'],
+			},
+		},
+		description: 'Timestamp of the message to add.',
+		placeholder: '1663233118.856619',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -54,37 +168,11 @@ export const starFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Channel Name or ID',
-				name: 'channelId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getChannels',
-				},
-				default: '',
-				description:
-					'Channel to add star to, or channel where the message to add star to was posted (used with timestamp). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
 				displayName: 'File Comment',
 				name: 'fileComment',
 				type: 'string',
 				default: '',
 				description: 'File comment to add star to',
-			},
-			{
-				displayName: 'File ID',
-				name: 'fileId',
-				type: 'string',
-				default: '',
-				description: 'File to add star to',
-			},
-			{
-				displayName: 'Message Timestamp',
-				name: 'timestamp',
-				type: 'string',
-				default: '',
-				description: 'Timestamp of the message to add.',
-				placeholder: '1663233118.856619',
 			},
 		],
 	},

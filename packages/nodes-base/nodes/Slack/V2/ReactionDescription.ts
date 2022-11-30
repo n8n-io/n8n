@@ -97,21 +97,6 @@ export const reactionFields: INodeProperties[] = [
 		description: 'The Slack channel to get the reactions from',
 	},
 	{
-		displayName: 'Emoji',
-		name: 'name',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['reaction'],
-				operation: ['add', 'remove'],
-			},
-		},
-		description: 'Name of emoji',
-		placeholder: '+1',
-	},
-	{
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		type: 'string',
@@ -125,5 +110,20 @@ export const reactionFields: INodeProperties[] = [
 		},
 		description: 'Timestamp of the message to add, get or remove.',
 		placeholder: '1663233118.856619',
+	},
+	{
+		displayName: 'Emoji',
+		name: 'name',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['reaction'],
+				operation: ['add', 'remove'],
+			},
+		},
+		description: 'Emoji to use for the message reaction',
+		placeholder: '+1',
 	},
 ];
