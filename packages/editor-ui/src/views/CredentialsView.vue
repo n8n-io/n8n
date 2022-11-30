@@ -23,7 +23,7 @@
 				/>
 				<n8n-select
 					:value="filters.type"
-					size="small"
+					size="medium"
 					multiple
 					filterable
 					ref="typeInput"

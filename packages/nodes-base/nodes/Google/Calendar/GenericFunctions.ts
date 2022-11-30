@@ -2,7 +2,15 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeListSearchItems,
+	INodeListSearchResult,
+	IPollFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
+
+import moment from 'moment-timezone';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -61,4 +69,63 @@ export async function googleApiRequestAllItems(
 	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
 
 	return returnData;
+}
+
+export function encodeURIComponentOnce(uri: string) {
+	// load options used to save encoded uri strings
+	return encodeURIComponent(decodeURIComponent(uri));
+}
+
+export async function getCalendars(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const calendars = (await googleApiRequestAllItems.call(
+		this,
+		'items',
+		'GET',
+		'/calendar/v3/users/me/calendarList',
+	)) as Array<{ id: string; summary: string }>;
+
+	const results: INodeListSearchItems[] = calendars
+		.map((c) => ({
+			name: c.summary,
+			value: c.id,
+		}))
+		.filter(
+			(c) =>
+				!filter ||
+				c.name.toLowerCase().includes(filter.toLowerCase()) ||
+				c.value?.toString() === filter,
+		)
+		.sort((a, b) => {
+			if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+			return 0;
+		});
+	return { results };
+}
+
+export const TIMEZONE_VALIDATION_REGEX = `(${moment.tz
+	.names()
+	.map((t) => t.replace('+', '\\+'))
+	.join('|')})[ \t]*`;
+
+export async function getTimezones(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const results: INodeListSearchItems[] = moment.tz
+		.names()
+		.map((timezone) => ({
+			name: timezone,
+			value: timezone,
+		}))
+		.filter(
+			(c) =>
+				!filter ||
+				c.name.toLowerCase().includes(filter.toLowerCase()) ||
+				c.value?.toString() === filter,
+		);
+	return { results };
 }
