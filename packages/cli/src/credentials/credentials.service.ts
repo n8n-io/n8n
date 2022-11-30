@@ -282,10 +282,9 @@ export class CredentialsService {
 		user: User,
 		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
-		nodeToTestWith: string | undefined,
 	): Promise<INodeCredentialTestResult> {
 		const helper = new CredentialsHelper(encryptionKey);
 
-		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
+		return helper.testCredentials(user, credentials.type, credentials);
 	}
 }
