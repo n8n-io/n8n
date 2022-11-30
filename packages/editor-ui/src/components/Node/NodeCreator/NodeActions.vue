@@ -29,7 +29,6 @@
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
 						<n8n-node-creator-node
 							v-for="item in action.items"
-							v-show="item.key !== CUSTOM_API_CALL_KEY"
 							:key="`${action.key}_${item.key}`"
 							@click="onActionClick(item)"
 							@dragstart="$e => onDragStart($e, item)"
@@ -49,7 +48,6 @@
 				<!-- Flat actions -->
 				<n8n-node-creator-node
 					v-else
-					v-show="action.key !== CUSTOM_API_CALL_KEY"
 					:key="`${action.key}__${action.title}`"
 					@click="onActionClick(action)"
 					@dragstart="$e => onDragStart($e, action)"
