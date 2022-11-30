@@ -106,7 +106,7 @@ EECredentialsController.get(
 EECredentialsController.post(
 	'/test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
-		const { credentials, nodeToTestWith } = req.body;
+		const { credentials } = req.body;
 
 		const encryptionKey = await EECredentials.getEncryptionKey();
 
@@ -122,7 +122,7 @@ EECredentialsController.post(
 			Object.assign(credentials, { data: decryptedData });
 		}
 
-		return EECredentials.test(req.user, encryptionKey, credentials, nodeToTestWith);
+		return EECredentials.test(req.user, encryptionKey, credentials);
 	}),
 );
 
