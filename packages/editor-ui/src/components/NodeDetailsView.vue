@@ -254,7 +254,7 @@ export default mixins(
 			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
 		},
 		workflow(): Workflow {
-			return this.getCurrentWorkflow(true);
+			return this.getCurrentWorkflow();
 		},
 		parentNodes(): string[] {
 			if (this.activeNode) {
