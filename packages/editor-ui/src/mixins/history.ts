@@ -38,6 +38,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 			if (command instanceof BulkCommand) {
+				this.historyStore.bulkInProgress = true;
 				const commands = command.commands;
 				const reverseCommands: Command[] = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
@@ -48,6 +49,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 					}
 				}
 				this.historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
+				this.historyStore.bulkInProgress = false;
 				return;
 			}
 			if (command instanceof Command) {
@@ -65,6 +67,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 			if (command instanceof BulkCommand) {
+				this.historyStore.bulkInProgress = true;
 				const commands = command.commands;
 				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
@@ -75,6 +78,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 					}
 				}
 				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
+				this.historyStore.bulkInProgress = false;
 				return;
 			}
 			if (command instanceof Command) {

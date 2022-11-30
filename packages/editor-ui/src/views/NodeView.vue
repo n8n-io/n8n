@@ -2036,7 +2036,7 @@ export default mixins(
 					try {
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
-						this.__removeConnectionByConnectionInfo(info, false);
+						this.__removeConnectionByConnectionInfo(info, false, !this.historyStore.bulkInProgress);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
 							const sourceNode = this.workflowsStore.getNodeById(info.connection.sourceId);
@@ -2317,7 +2317,6 @@ export default mixins(
 					const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
 
 					if (!sourceNode || !targetNode) {
-						return;
 					}
 
 					// @ts-ignore
@@ -2360,6 +2359,8 @@ export default mixins(
 				if (connectionInfo) {
 					if (removeVisualConnection) {
 						this.__deleteJSPlumbConnection(info.connection, trackHistory);
+					} else if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
 					}
 					this.workflowsStore.removeConnection({ connection: connectionInfo });
 				}
@@ -2567,6 +2568,8 @@ export default mixins(
 					return;
 				}
 
+				this.historyStore.startRecordingUndo();
+
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes: string[] = [];
 
@@ -2620,7 +2623,7 @@ export default mixins(
 							const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
 
 							setTimeout(() => {
-								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
+								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex, true);
 
 								if (waitForNewConnection) {
 									this.instance.setSuspendDrawing(false, true);
@@ -2657,6 +2660,10 @@ export default mixins(
 					if (trackHistory) {
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
+
+					setTimeout(() => {
+						this.historyStore.stopRecordingUndo();
+					}, 100);
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {
@@ -3291,8 +3298,10 @@ export default mixins(
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__removeConnection(connection, true);
 			},
-			onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
-				this.__addConnection(connection, true);
+			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				setTimeout(() => {
+					this.__addConnection(connection, true);
+				}, 0);
 			},
 		},
 		async mounted() {

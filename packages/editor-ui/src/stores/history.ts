@@ -10,6 +10,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		undoStack: [],
 		redoStack: [],
 		currentBulkAction: null,
+		bulkInProgress: false,
 	}),
 	actions: {
 		popUndoableToUndo(): Undoable | undefined {

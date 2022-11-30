@@ -1297,4 +1297,5 @@ export interface HistoryState {
 	redoStack: Undoable[];
 	undoStack: Undoable[];
 	currentBulkAction: BulkCommand | null;
+	bulkInProgress: boolean;
 }
