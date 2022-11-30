@@ -150,7 +150,7 @@ export default Vue.extend({
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-xlight);
+	background-color: var(--menu-background, var(--color-background-xlight));
 }
 
 .menuContent {
