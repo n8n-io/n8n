@@ -432,23 +432,3 @@ export enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 }
-
-export enum COMMANDS {
-	POSITION_CHANGE = 'nodePositionChange',
-	ADD_CONNECTION = 'addConnection',
-	REMOVE_CONNECTION = 'removeConnection',
-	ADD_NODE = 'addNode',
-	REMOVE_NODE = 'removeNode',
-};
-
-export enum BULK_COMMANDS {
-	IMPORT_WORKFLOW = 'importWorkflow',
-	RECONNECT_NODES = 'reconnectNodes',
-	MOVE_NODES = 'moveNodes',
-}
-
-// TODO: Check if this is still needed
-export const UNDOABLE_NODE_PROPERTIES = new Set([
-	'position',
-]);
-

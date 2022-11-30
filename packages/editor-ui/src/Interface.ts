@@ -37,7 +37,7 @@ import {
 	NodeParameterValueType,
 	IConnection,
 } from 'n8n-workflow';
-import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
+import { FAKE_DOOR_FEATURES } from './constants';
 import {ICredentialsDb} from "n8n";
 import { BulkCommand, Undoable } from './classes';
 

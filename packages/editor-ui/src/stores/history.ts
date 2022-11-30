@@ -11,8 +11,6 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		redoStack: [],
 		currentBulkAction: null,
 	}),
-	getters: {
-	},
 	actions: {
 		popUndoableToUndo(): Undoable | undefined {
 			if (this.undoStack.length > 0) {
@@ -63,7 +61,6 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			if (this.redoStack.length > 0) {
 				return this.redoStack.pop();
 			}
-
 			return undefined;
 		},
 		pushUndoableToRedo(undoable: Undoable): void {

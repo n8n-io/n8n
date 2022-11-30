@@ -7,7 +7,6 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { Command } from '@/classes';
 
-
 export const historyHelper = mixins(deviceSupportHelpers).extend({
 	computed: {
 		...mapStores(
@@ -49,7 +48,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				const reverseCommands: Command[] = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
 					this.revertCommand(commands[i]);
-					const reverse = commands[i].getReverseCommand();//getReversedCommand(commands[i]);
+					const reverse = commands[i].getReverseCommand();
 					if (reverse) {
 						reverseCommands.push(reverse);
 					}
@@ -59,7 +58,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 			}
 			if (command instanceof Command) {
 				this.revertCommand(command);
-				const reverse = command.getReverseCommand(); //getReversedCommand(command);
+				const reverse = command.getReverseCommand();
 				if (reverse) {
 					this.historyStore.pushUndoableToRedo(reverse);
 				}
