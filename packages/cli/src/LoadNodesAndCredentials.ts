@@ -370,7 +370,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				this.known.credentials[type] = {
 					className,
 					sourcePath: path.join(dir, sourcePath),
-					nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
+					nodesToTestWith: nodesToTestWith?.map((nodeName: string) => `${packageName}.${nodeName}`),
 				};
 			}
 		}
