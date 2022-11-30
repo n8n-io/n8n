@@ -160,8 +160,8 @@ export default mixins(workflowHelpers).extend({
 						s.kind === 'resolvable' &&
 						typeof s.resolved === 'string' &&
 						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
-							s.resolved === '[empty]' ||
-							s.resolved === 'null')
+							s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
+							s.resolved === this.$locale.baseText('expressionModalInput.null'))
 					) {
 						return false;
 					}
@@ -230,20 +230,20 @@ export default mixins(workflowHelpers).extend({
 			}
 
 			if (result.resolved === '') {
-				result.resolved = '[empty]';
+				result.resolved = this.$locale.baseText('expressionModalInput.empty');
 			}
 
 			if (result.resolved === undefined && this.isEmptyExpression(resolvable)) {
-				result.resolved = '[empty]';
+				result.resolved = this.$locale.baseText('expressionModalInput.empty');
 			}
 
 			if (result.resolved === undefined) {
-				result.resolved = '[undefined]';
+				result.resolved = this.$locale.baseText('expressionModalInput.undefined');
 				result.error = true;
 			}
 
 			if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
-				result.resolved = 'null';
+				result.resolved = this.$locale.baseText('expressionModalInput.null');
 			}
 
 			return result;
