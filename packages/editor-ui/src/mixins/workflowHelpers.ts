@@ -335,10 +335,6 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | IVersionedNodeType> => {
-						// Does not get used in Workflow so no need to return it
-						return [];
-					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 						const nodeTypeDescription = this.nodeTypesStore.getNodeType(nodeType, version);
 
