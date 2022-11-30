@@ -89,7 +89,7 @@ oauth2CredentialController.get(
 			true,
 		);
 
-		if (decryptedDataOriginal && !decryptedDataOriginal.scope) {
+		if (decryptedDataOriginal?.scope) {
 			delete decryptedDataOriginal.scope;
 		}
 
