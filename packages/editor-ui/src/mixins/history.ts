@@ -32,12 +32,6 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				}
 			}
 		},
-		revertCommand(command: Command) {
-			const eventData = command.getRevertEventData();
-			if (eventData) {
-				this.$root.$emit(eventData.eventName, eventData.data);
-			}
-		},
 		async undo() {
 			const command = this.historyStore.popUndoableToUndo();
 			if (!command) {
@@ -47,7 +41,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				const commands = command.commands;
 				const reverseCommands: Command[] = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
-					this.revertCommand(commands[i]);
+					commands[i].revert();
 					const reverse = commands[i].getReverseCommand();
 					if (reverse) {
 						reverseCommands.push(reverse);
@@ -57,7 +51,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 			if (command instanceof Command) {
-				this.revertCommand(command);
+				command.revert();
 				const reverse = command.getReverseCommand();
 				if (reverse) {
 					this.historyStore.pushUndoableToRedo(reverse);
@@ -74,7 +68,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				const commands = command.commands;
 				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
-					this.revertCommand(commands[i]);
+					commands[i].revert();
 					const reverse = commands[i].getReverseCommand();
 					if (reverse) {
 						reverseCommands.push(reverse);
@@ -84,7 +78,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				return;
 			}
 			if (command instanceof Command) {
-				this.revertCommand(command);
+				command.revert();
 				const reverse = command.getReverseCommand();
 				if (reverse) {
 					this.historyStore.pushCommandToUndo(reverse, false);

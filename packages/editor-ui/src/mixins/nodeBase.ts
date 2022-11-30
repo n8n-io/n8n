@@ -309,7 +309,7 @@ export const nodeBase = mixins(
 								},
 							};
 							const oldPosition = node.position;
-							this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition));
+							this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition, this));
 							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
 						this.historyStore.stopRecordingUndo();
