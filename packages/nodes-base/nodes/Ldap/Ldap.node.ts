@@ -14,6 +14,7 @@ import {
 
 import { Attribute, Change, Client, ClientOptions } from 'ldapts';
 import { ldapFields } from './LdapDescription';
+import { resolveBinaryAttributes } from './Helpers';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -292,6 +293,7 @@ export class Ldap implements INodeType {
 					if (!returnAll) {
 						results.searchEntries = results.searchEntries.slice(0, limit);
 					}
+					resolveBinaryAttributes(results.searchEntries);
 
 					returnItems.push.apply(
 						returnItems,
