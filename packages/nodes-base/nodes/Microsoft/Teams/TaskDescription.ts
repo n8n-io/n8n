@@ -79,23 +79,49 @@ export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group',
 		name: 'groupId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getGroups',
-			loadOptionsDependsOn: ['groupSource'],
-		},
+		modes: [
+			{
+				displayName: 'Group',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Group...',
+				typeOptions: {
+					searchListMethod: 'getGroups',
+					// missing searchListDependsOn: ['groupSource'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['create'],
 				resource: ['task'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Plan Name or ID',
@@ -273,23 +299,49 @@ export const taskFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Group Name or ID',
+		displayName: 'Group',
 		name: 'groupId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getGroups',
-			loadOptionsDependsOn: ['groupSource'],
-		},
+		modes: [
+			{
+				displayName: 'Group',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Group...',
+				typeOptions: {
+					searchListMethod: 'getGroups',
+					// missing searchListDependsOn: ['groupSource'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
 				resource: ['task'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Member Name or ID',
@@ -424,16 +476,43 @@ export const taskFields: INodeProperties[] = [
 					'Date and time at which the task is due. The Timestamp type represents date and time information using ISO 8601 format and is always in UTC time.',
 			},
 			{
-				displayName: 'Group Name or ID',
+				displayName: 'Group',
 				name: 'groupId',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getGroups',
-					loadOptionsDependsOn: ['groupSource'],
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Group',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Group...',
+						typeOptions: {
+							searchListMethod: 'getGroups',
+							// missing searchListDependsOn: ['groupSource'],
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '12f0ca7d-b77f-4c4e-93d2-5cbdb4f464c6',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+									errorMessage: 'Not a valid Microsoft Teams Team ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Label Names or IDs',

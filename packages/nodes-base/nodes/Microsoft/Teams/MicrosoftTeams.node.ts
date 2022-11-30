@@ -167,6 +167,27 @@ export class MicrosoftTeams implements INodeType {
 				const results = filterSortSearchListItems(returnData, filter);
 				return { results };
 			},
+			async getGroups(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const groupSource = this.getCurrentNodeParameter('groupSource') as string;
+				let requestUrl = '/v1.0/groups' as string;
+				if (groupSource === 'mine') {
+					requestUrl = '/v1.0/me/transitiveMemberOf';
+				}
+				const { value } = await microsoftApiRequest.call(this, 'GET', requestUrl);
+				for (const group of value) {
+					returnData.push({
+						name: group.displayName || group.mail || group.id,
+						value: group.id,
+						description: group.mail,
+					});
+				}
+				const results = filterSortSearchListItems(returnData, filter);
+				return { results };
+			},
 		},
 		loadOptions: {
 			// Get all the groups to display them to user so that he can
@@ -192,11 +213,13 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getPlans(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let groupId = this.getCurrentNodeParameter('groupId') as string;
+				let groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
 				if (operation === 'update' && (groupId === undefined || groupId === null)) {
 					// groupId not found at base, check updateFields for the groupId
-					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
+					groupId = this.getCurrentNodeParameter('updateFields.groupId', {
+						extractValue: true,
+					}) as string;
 				}
 				const { value } = await microsoftApiRequest.call(
 					this,
@@ -238,11 +261,13 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getMembers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let groupId = this.getCurrentNodeParameter('groupId') as string;
+				let groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
 				if (operation === 'update' && (groupId === undefined || groupId === null)) {
 					// groupId not found at base, check updateFields for the groupId
-					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
+					groupId = this.getCurrentNodeParameter('updateFields.groupId', {
+						extractValue: true,
+					}) as string;
 				}
 				const { value } = await microsoftApiRequest.call(
 					this,
