@@ -1,7 +1,7 @@
 import { INodeAction, INodePropertyCollection, INodePropertyOptions, INodeProperties, INodeTypeDescription, deepCopy } from 'n8n-workflow';
 import { computed, getCurrentInstance } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import startcase from 'lodash.startcase';
+import startCase from 'lodash.startCase';
 import { CUSTOM_API_CALL_KEY, CORE_NODES_CATEGORY, EMAIL_IMAP_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeCreateElement, INodeItemProps } from '@/Interface';
 import { I18nClass } from '@/plugins/i18n';
@@ -21,7 +21,7 @@ const customNodeActionsParsers: {[key: string]: (matchedProperty: INodePropertie
 			nodeName: 'n8n-nodes-base.hubspotTrigger',
 			key: categoryItem.value as string,
 			title: $locale.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: {event: startcase(categoryItem.name)},
+				interpolate: {event: startCase(categoryItem.name)},
 			}),
 			description: categoryItem.description,
 			displayOptions: matchedProperty.displayOptions,
@@ -45,7 +45,7 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription, $locale: 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
 		nodeName: nodeTypeDescription.name,
 		key: item.value as string,
-		title: item.action ?? startcase(item.name),
+		title: item.action ?? startCase(item.name),
 		description: item.description,
 		displayOptions: matchedProperty.displayOptions,
 		values: {
@@ -106,7 +106,7 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription, $locale:
 			nodeName: nodeTypeDescription.name,
 			key: categoryItem.value as string,
 			title: $locale.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: {event: startcase(categoryItem.name)},
+				interpolate: {event: startCase(categoryItem.name)},
 			}),
 			description: categoryItem.description,
 			displayOptions: matchedProperty.displayOptions,
@@ -157,7 +157,7 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription, $locale: 
 					(operationOption) => {
 						const title =
 							operationOption.action ??
-							`${resourceOption.name} ${startcase(operationOption.name)}`;
+							`${resourceOption.name} ${startCase(operationOption.name)}`;
 
 						// We need to manually populate displayOptions as they are not present in the node description
 						// if the resource has only one option

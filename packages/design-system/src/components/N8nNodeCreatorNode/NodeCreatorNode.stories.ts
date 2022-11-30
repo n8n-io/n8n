@@ -1,5 +1,5 @@
 /* tslint:disable:variable-name */
-import N8nNodeCreatorNode from "./NodeCreatorNode.vue";
+import N8nNodeCreatorNode from './NodeCreatorNode.vue';
 import { StoryFn } from '@storybook/vue';
 
 export default {
@@ -25,7 +25,8 @@ export const WithTitle = DefaultTemplate.bind({});
 WithTitle.args = {
 	title: 'Node with title',
 	tooltipHtml: '<b>Bold</b> tooltip',
-	description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean et vehicula ipsum, eu facilisis lacus. Aliquam commodo vel elit eget mollis. Quisque ac elit non purus iaculis placerat. Quisque fringilla ultrices nisi sed porta.',
+	description:
+		'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aenean et vehicula ipsum, eu facilisis lacus. Aliquam commodo vel elit eget mollis. Quisque ac elit non purus iaculis placerat. Quisque fringilla ultrices nisi sed porta.',
 };
 
 const PanelTemplate: StoryFn = (args, { argTypes }) => ({

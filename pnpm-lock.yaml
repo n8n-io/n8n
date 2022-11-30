@@ -498,6 +498,7 @@ importers:
       '@types/express': ^4.17.6
       '@types/file-saver': ^2.0.1
       '@types/jsonpath': ^0.2.0
+      '@types/lodash-es': ^4.17.6
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
@@ -571,6 +572,7 @@ importers:
       '@fortawesome/free-regular-svg-icons': 6.2.0
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
+      '@types/lodash-es': 4.17.6
       axios: 0.21.4
       dateformat: 3.0.3
       esprima-next: 5.8.4
@@ -5757,6 +5759,12 @@ packages:
   /@types/localtunnel/1.9.0:
     resolution: {integrity: sha512-3YxO7RHRrmtYNX6Rhkr97bnXHrF1Ckfo4axENWLcBXWi+8B1WsNbqPqe5Eg6TA5survjAWWvLTu1KQesuLHVgQ==}
     dev: true
+
+  /@types/lodash-es/4.17.6:
+    resolution: {integrity: sha512-R+zTeVUKDdfoRxpAryaQNRKk3105Rrgx2CFRClIgRGaqDTdjsm8h6IYA8ir584W3ePzkZfst5xIgDwYrlh9HLg==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: false
 
   /@types/lodash.camelcase/4.3.7:
     resolution: {integrity: sha512-Nfi6jpo9vuEOSIJP+mpbTezKyEt75DQlbwjiDvs/JctWkbnHDoyQo5lWqdvgNiJmVUjcmkfvlrvSEgJYvurOKg==}
