@@ -51,7 +51,6 @@ const state = reactive({
 const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
 const searchItems = computed<INodeCreateElement[]>(() => {
 	const sorted = [...visibleNodeTypes.value];
-	console.log("🚀 ~ file: NodeCreator.vue:54 ~ searchItems ~ sorted", sorted);
 	sorted.sort((a, b) => {
 		const textA = a.displayName.toLowerCase();
 		const textB = b.displayName.toLowerCase();

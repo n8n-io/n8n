@@ -182,14 +182,12 @@ const searchFilter = computed<string> (() => nodeCreatorStore.itemsFilter.toLowe
 
 
 const matchedTypeNodes = computed<INodeCreateElement[]> (() => {
-  console.log("🚀 ~ file: CategorizedItems.vue:186 ~ matchedTypeNodes ~ props.searchItems", props.searchItems);
   if(!props.filterByType) return props.searchItems;
   return props.searchItems.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
 const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
   const filter = searchFilter.value;
-  console.log("🚀 ~ file: CategorizedItems.vue:192 ~ filteredNodeTypes ~ filter", filter);
 
   let returnItems: INodeCreateElement[] = [];
   if (defaultLocale !== 'en') {
@@ -206,7 +204,6 @@ const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
     returnItems = matchedCategorizedNodes.map(({item}) => item);
   }
 
-  console.log("🚀 ~ file: CategorizedItems.vue:210 ~ filteredNodeTypes ~ returnItems", returnItems);
   return returnItems;
 });
 
