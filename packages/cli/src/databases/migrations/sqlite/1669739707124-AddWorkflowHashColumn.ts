@@ -41,15 +41,7 @@ export class AddWorkflowHashColumn1669739707124 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}workflow_entity\` RENAME TO "temporary_workflow_entity"`,
+			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN "hash"`,
 		);
-		await queryRunner.query(
-			`CREATE TABLE \`${tablePrefix}workflow_entity\` (
-				"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar(128) NOT NULL, "active" boolean NOT NULL, "nodes" text NOT NULL, "connections" text NOT NULL, "createdAt" datetime NOT NULL, "updatedAt" datetime NOT NULL, "settings" text, "staticData" text, "pinData" text`,
-		);
-		await queryRunner.query(
-			`INSERT INTO \`${tablePrefix}workflow_entity\` ("id", "name", "active", "nodes", "connections", "createdAt", "updatedAt", "settings", "staticData", "pinData") SELECT "id", "name", "active", "nodes", "connections", "createdAt", "updatedAt", "settings", "staticData", "pinData" FROM "temporary_workflow_entity"`,
-		);
-		await queryRunner.query(`DROP TABLE "temporary_workflow_entity"`);
 	}
 }
