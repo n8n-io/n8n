@@ -1,7 +1,11 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -30,6 +34,7 @@ export class Ldap implements INodeType {
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'ldap',
 				required: true,
+				testedBy: 'ldapConnectionTest',
 			},
 		],
 		properties: [
@@ -68,6 +73,49 @@ export class Ldap implements INodeType {
 			},
 			...ldapFields,
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async ldapConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const protocol = !credentials.secure || credentials.starttls ? 'ldap' : 'ldaps';
+					const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
+
+					const ldapOptions: ClientOptions = { url };
+					const tlsOptions: IDataObject = {};
+
+					if (credentials.secure) {
+						tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
+						if (credentials.caCertificate) {
+							tlsOptions.ca = [credentials.caCertificate as string];
+						}
+						if (!credentials.starttls) {
+							ldapOptions.tlsOptions = tlsOptions;
+						}
+					}
+
+					const client = new Client(ldapOptions);
+					if (credentials.starttls) {
+						await client.startTLS(tlsOptions);
+					}
+					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
