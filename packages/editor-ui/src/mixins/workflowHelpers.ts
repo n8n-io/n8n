@@ -24,7 +24,7 @@ import {
 	IPinData,
 	IRunData,
 	IRunExecutionData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
@@ -271,7 +271,7 @@ export const workflowHelpers = mixins(
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
-				const workflowIssues: IWorfklowIssues = {};
+				const workflowIssues: IWorkflowIssues = {};
 
 				let checkNodes = Object.keys(workflow.nodes);
 				if (lastNodeName) {

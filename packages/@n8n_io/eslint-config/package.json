@@ -4,10 +4,10 @@
   "version": "0.0.1",
   "devDependencies": {
     "@types/eslint": "~8.4",
-    "@typescript-eslint/eslint-plugin": "~5.36",
-    "@typescript-eslint/parser": "~5.36",
+    "@typescript-eslint/eslint-plugin": "~5.45",
+    "@typescript-eslint/parser": "~5.45",
     "@vue/eslint-config-typescript": "~8.0",
-    "eslint": "~8.26",
+    "eslint": "~8.28",
     "eslint-config-airbnb-typescript": "~17.0",
     "eslint-config-prettier": "~8.5",
     "eslint-plugin-diff": "~2.0",
