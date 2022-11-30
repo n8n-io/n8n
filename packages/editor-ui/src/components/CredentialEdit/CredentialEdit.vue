@@ -909,6 +909,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		async oAuthCredentialAuthorize() {
 			let url;
 
+
 			const credential = await this.saveCredential();
 			if (!credential) {
 				return;
@@ -947,7 +948,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
 			Vue.set(this.credentialData, 'oauthTokenData', null);
 
-			const receiveMessage = (event: MessageEvent) => {
+			const receiveMessage = async (event: MessageEvent) => {
 				// // TODO: Add check that it came from n8n
 				// if (event.origin !== 'http://example.org:8080') {
 				// 	return;
@@ -955,9 +956,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 				if (event.data === 'success') {
 					window.removeEventListener('message', receiveMessage, false);
 
-					// Set some kind of data that status changes.
-					// As data does not get displayed directly it does not matter what data.
-					Vue.set(this.credentialData, 'oauthTokenData', {});
+					Vue.set(this.credentialData, 'oauthTokenData', null);
+					// Load the credentials again as there is a new access token
+					await this.loadCurrentCredential();
+
+					this.retestCredential();
+
 					this.credentialsStore.enableOAuthCredential(credential);
 
 					// Close the window
@@ -968,6 +972,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 
 			window.addEventListener('message', receiveMessage, false);
+
 		},
 	},
 

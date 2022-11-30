@@ -7,24 +7,24 @@
 		/>
 
 		<banner
-			v-if="authError && !showValidationWarning"
-			theme="danger"
-			:message="$locale.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
-			:details="authError"
-			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
-			buttonLoadingLabel="Retrying"
-			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
-			:buttonLoading="isRetesting"
-			@click="$emit('retest')"
-		/>
-
-		<banner
 			v-show="showOAuthSuccessBanner && !showValidationWarning"
 			theme="success"
 			:message="$locale.baseText('credentialEdit.credentialConfig.accountConnected')"
 			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
+		/>
+
+		<banner
+			v-if="authError && !showValidationWarning"
+			theme="danger"
+			:message="$locale.baseText('credentialEdit.credentialConfig.errorTestingCredentials')"
+			:details="authError"
+			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
+			buttonLoadingLabel="Retrying"
+			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.retryCredentialTest')"
+			:buttonLoading="isRetesting"
+			@click="$emit('retest')"
 		/>
 
 		<banner
@@ -235,7 +235,7 @@ export default mixins(restApi).extend({
 			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
-			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
+			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected;
 		},
 	},
 	methods: {

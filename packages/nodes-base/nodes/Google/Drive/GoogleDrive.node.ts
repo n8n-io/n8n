@@ -1,6 +1,7 @@
-import { ICredentialTestFunctions, IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	ICredentialTestFunctions,
 	ICredentialsDecrypted,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -2035,6 +2036,40 @@ export class GoogleDrive implements INodeType {
 	};
 
 	methods = {
+		credentialTest: {
+			async testGoogleDriveCredentials(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as { oauthTokenData: { access_token: string } };
+
+				console.log('este es el token papa');
+				console.log(JSON.stringify(credentials.oauthTokenData, undefined, 2));
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					uri: 'https://www.googleapis.com/drive/v3/files',
+					headers: {
+						Authorization: `Bearer ${credentials.oauthTokenData.access_token}`,
+					},
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+				} catch (error) {
+					console.log(JSON.stringify(error.response.body, undefined, 2));
+					return {
+						status: 'Error',
+						message: error.response.body.error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
+				};
+			},
+		},
 		listSearch: {
 			async fileSearch(
 				this: ILoadOptionsFunctions,
@@ -2101,36 +2136,6 @@ export class GoogleDrive implements INodeType {
 						value: i.id,
 					})),
 					paginationToken: res.nextPageToken,
-				};
-			},
-		},
-		credentialTest: {
-			async testGoogleDriveCredentials(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as { oauthTokenData: { access_token: string } };
-
-				const options: OptionsWithUri = {
-					method: 'GET',
-					uri: 'https://www.googleapis.com/drive/v3/files',
-					headers: {
-						Authorization: `Bearer ${credentials.oauthTokenData.access_token}`,
-					},
-					json: true,
-				};
-
-				try {
-					await this.helpers.request(options);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.response.body.error.message,
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Authentication successful!',
 				};
 			},
 		},
