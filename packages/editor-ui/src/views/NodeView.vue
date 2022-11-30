@@ -1728,7 +1728,7 @@ export default mixins(
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
-				const preventDetailOpen = window?.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
+				const preventDetailOpen = window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
 				if(showDetail && !preventDetailOpen) {
 					setTimeout(() => {
 						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);

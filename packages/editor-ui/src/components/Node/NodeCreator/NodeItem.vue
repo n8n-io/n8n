@@ -135,8 +135,8 @@ function getActionNodeTypes(action: IUpdateInformation): string[] {
 }
 
 function setAddedNodeActionParameters(action: IUpdateInformation) {
-	const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters } }) => {
-		if (name !== 'addNode') return;
+	const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters }, args }) => {
+		if (name !== 'addNode' || args[0].type !== action.key) return;
 		after(() => {
 			setLastNodeParameters(action);
 			trackActionSelected(action);

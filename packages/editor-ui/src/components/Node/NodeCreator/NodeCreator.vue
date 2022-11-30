@@ -43,15 +43,15 @@ const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void,
 }>();
 
-const { visibleNodeTypes } = useNodeTypesStore();
-const uiStore = useUIStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 });
 
+const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
 const searchItems = computed<INodeCreateElement[]>(() => {
-	const sorted = [...visibleNodeTypes];
+	const sorted = [...visibleNodeTypes.value];
+	console.log("🚀 ~ file: NodeCreator.vue:54 ~ searchItems ~ sorted", sorted);
 	sorted.sort((a, b) => {
 		const textA = a.displayName.toLowerCase();
 		const textB = b.displayName.toLowerCase();

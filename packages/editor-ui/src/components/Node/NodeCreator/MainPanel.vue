@@ -43,7 +43,7 @@ export interface Props {
 	searchItems?: INodeCreateElement[];
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
 	searchItems: () => [],
 });
 
@@ -64,6 +64,9 @@ watch(() => nodeCreatorStore.selectedType, (newValue, oldValue) => {
 	});
 });
 
+watch(() => props.searchItems, (items) => {
+	console.log("🚀 Search items:", items);
+});
 onMounted(() => {
 	$externalHooks().run('nodeCreateList.mounted');
 	// Make sure tabs are visible on mount
