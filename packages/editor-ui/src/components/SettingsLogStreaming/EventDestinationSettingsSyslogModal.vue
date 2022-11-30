@@ -30,6 +30,8 @@
 		</template>
 		<template #content>
 			<div :class="$style.narrowCardBody">
+				<el-row :gutter="20" justify="start">
+					<el-col :span="16">
 					<parameter-input-list
 						:parameters="uiDescription"
 						:hideDelete="true"
@@ -39,10 +41,12 @@
 						@valueChanged="valueChanged"
 					>
 					</parameter-input-list>
+				</el-col>
+					<el-col :span="8">
 					<div class="multi-parameter">
 						<n8n-input-label
 							:class="$style.labelMargins"
-							label="Events"
+							label="Subscribed Events"
 							tooltipText="Select event names and groups you want to listen to"
 							:bold="true"
 							size="small"
@@ -58,6 +62,8 @@
 								@input="onInput"
 							></event-tree-selection>
 					</div>
+				</el-col>
+			</el-row>
 				</div>
 		</template>
 	</Modal>

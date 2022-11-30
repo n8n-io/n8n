@@ -11,53 +11,59 @@
 		maxHeight="80%"
 		:beforeClose="onModalClose"
 	>
-	<template #header>
+		<template #header>
 			<el-row :gutter="20" justify="start">
-					<el-col :span="16">
-						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
-					</el-col>
-					<el-col :span="8" style="text-align: right">
-						<span v-if="showRemoveConfirm">
-							<el-button class="button" text @click="removeThis">Confirm</el-button>
-							<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
-						</span>
-						<span v-else>
-							<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
-						</span>
-						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
-					</el-col>
-				</el-row>
-	</template>
-	<template #content>
+				<el-col :span="16">
+					Edit &nbsp;<strong>{{ destination.label }}</strong> settings
+				</el-col>
+				<el-col :span="8" style="text-align: right">
+					<span v-if="showRemoveConfirm">
+						<el-button class="button" text @click="removeThis">Confirm</el-button>
+						<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
+					</span>
+					<span v-else>
+						<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
+					</span>
+					<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
+				</el-col>
+			</el-row>
+		</template>
+		<template #content>
 			<div :class="$style.narrowCardBody">
-					<parameter-input-list
-						:parameters="uiDescription"
-						:hideDelete="true"
-						:nodeValues="nodeParameters"
-						:isReadOnly="false"
-						path=""
-						@valueChanged="valueChanged"
-					/>
-					<div class="multi-parameter">
-						<n8n-input-label
+				<el-row :gutter="20" justify="start">
+					<el-col :span="16">
+						<parameter-input-list
+							:parameters="uiDescription"
+							:hideDelete="true"
+							:nodeValues="nodeParameters"
+							:isReadOnly="false"
+							path=""
+							@valueChanged="valueChanged"
+						/>
+					</el-col>
+					<el-col :span="8">
+						<div class="multi-parameter">
+							<n8n-input-label
 							:class="$style.labelMargins"
-							label="Events"
+							label="Subscribed Events"
 							tooltipText="Select event names and groups you want to listen to"
 							:bold="true"
 							size="small"
-							:underline="true"
+						:underline="true"
 						></n8n-input-label>
-							<event-tree-selection
-								v-for="(child, index) in treeData.children"
-								class="item collection-parameter"
-								:key="index"
-								:item="child"
-								:destinationId="destination.id"
-								:depth="0"
-								@input="onInput"
-							></event-tree-selection>
+						<event-tree-selection
+						v-for="(child, index) in treeData.children"
+						class="item collection-parameter"
+						:key="index"
+						:item="child"
+						:destinationId="destination.id"
+						:depth="0"
+						@input="onInput"
+						></event-tree-selection>
 					</div>
-				</div>
+				</el-col>
+			</el-row>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -188,62 +194,29 @@ export default mixins(
 });
 
 const description = [
-				{
-					displayName: 'Enabled',
-					name: 'enabled',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: 'Whether events are actually sent to the destination',
-				},
-				{
-					displayName: 'Label',
-					name: 'label',
-					type: 'string',
-					default: 'Sentry DSN',
-					noDataExpression: true,
-					description: 'Custom label',
-				},
-				{
-					displayName: 'DSN',
-					name: 'dsn',
-					type: 'string',
-					default: 'https://',
-					noDataExpression: true,
-					description: 'Your Sentry DSN Client Key',
-				},
-				{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
+			{
+				displayName: 'Enabled',
+				name: 'enabled',
+				type: 'boolean',
+				default: false,
 				noDataExpression: true,
-				options: [
-					{
-						name: 'Event',
-						value: 'event',
-					},
-					{
-						name: 'Issue',
-						value: 'issue',
-					},
-					{
-						name: 'Organization',
-						value: 'organization',
-					},
-					{
-						name: 'Project',
-						value: 'project',
-					},
-					{
-						name: 'Release',
-						value: 'release',
-					},
-					{
-						name: 'Team',
-						value: 'team',
-					},
-				],
-				default: 'event',
+				description: 'Whether events are actually sent to the destination',
+			},
+			{
+				displayName: 'Label',
+				name: 'label',
+				type: 'string',
+				default: 'Sentry DSN',
+				noDataExpression: true,
+				description: 'Custom label',
+			},
+			{
+				displayName: 'DSN',
+				name: 'dsn',
+				type: 'string',
+				default: 'https://',
+				noDataExpression: true,
+				description: 'Your Sentry DSN Client Key',
 			},
 			{
 				displayName: 'Send Payload',

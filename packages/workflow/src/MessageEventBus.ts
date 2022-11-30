@@ -101,11 +101,8 @@ export interface MessageEventBusDestinationSyslogOptions extends MessageEventBus
 
 export interface MessageEventBusDestinationSentryOptions extends MessageEventBusDestinationOptions {
 	dsn: string;
-	resource?: string;
 	tracesSampleRate?: number;
 	sendPayload?: boolean;
-	authentication: 'none' | 'predefinedCredentialType';
-	nodeCredentialType: 'sentryIoApi';
 }
 
 // ==================================
@@ -165,8 +162,6 @@ export const defaultMessageEventBusDestinationSentryOptions: MessageEventBusDest
 	{
 		...defaultMessageEventBusDestinationOptions,
 		__type: MessageEventBusDestinationTypeNames.sentry,
-		authentication: 'none',
-		nodeCredentialType: 'sentryIoApi',
 		label: 'Sentry DSN',
 		dsn: 'https://',
 		sendPayload: true,
