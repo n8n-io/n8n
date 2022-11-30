@@ -29,6 +29,7 @@ importers:
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
       n8n: '*'
+      node-fetch: ^2.6.7
       prettier: ^2.3.2
       rimraf: ^3.0.2
       run-script-os: ^1.0.7
@@ -50,6 +51,7 @@ importers:
       jest: 29.3.1_@types+node@16.11.65
       jest-environment-jsdom: 29.3.1
       jest-mock: 29.3.1
+      node-fetch: 2.6.7
       prettier: 2.7.1
       rimraf: 3.0.2
       run-script-os: 1.1.6
@@ -93,7 +95,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.3.4
+      '@n8n_io/license-sdk': ^1.6.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -123,6 +125,7 @@ importers:
       '@types/parseurl': ^1.3.1
       '@types/passport-jwt': ^3.0.6
       '@types/psl': ^1.1.0
+      '@types/replacestream': ^4.0.1
       '@types/send': ^0.17.1
       '@types/shelljs': ^0.8.11
       '@types/superagent': 4.1.13
@@ -174,10 +177,10 @@ importers:
       lodash.unset: ^4.5.2
       mustache: ^4.2.0
       mysql2: ~2.3.0
-      n8n-core: ~0.143.0
-      n8n-editor-ui: ~0.169.0
-      n8n-nodes-base: ~0.201.1
-      n8n-workflow: ~0.125.0
+      n8n-core: ~0.144.0
+      n8n-editor-ui: ~0.170.0
+      n8n-nodes-base: ~0.202.0
+      n8n-workflow: ~0.126.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -193,6 +196,7 @@ importers:
       posthog-node: ^1.3.0
       prom-client: ^13.1.0
       psl: ^1.8.0
+      replacestream: ^4.0.3
       run-script-os: ^1.0.7
       semver: ^7.3.8
       shelljs: ^0.8.5
@@ -211,7 +215,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.3.4
+      '@n8n_io/license-sdk': 1.6.0
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -278,6 +282,7 @@ importers:
       posthog-node: 1.3.0
       prom-client: 13.2.0
       psl: 1.9.0
+      replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
       sqlite3: 5.1.2
@@ -314,6 +319,7 @@ importers:
       '@types/parseurl': 1.3.1
       '@types/passport-jwt': 3.0.7
       '@types/psl': 1.1.0
+      '@types/replacestream': 4.0.1
       '@types/send': 0.17.1
       '@types/shelljs': 0.8.11
       '@types/superagent': 4.1.13
@@ -350,9 +356,10 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.125.0
+      n8n-workflow: ~0.126.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
+      pretty-bytes: ^5.6.0
       qs: ^6.10.1
       request: ^2.88.2
       request-promise-native: ^1.0.7
@@ -371,6 +378,7 @@ importers:
       n8n-workflow: link:../workflow
       oauth-1.0a: 2.2.6
       p-cancelable: 2.1.1
+      pretty-bytes: 5.6.0
       qs: 6.11.0
       request: 2.88.2
       request-promise-native: 1.0.9_request@2.88.2
@@ -403,7 +411,7 @@ importers:
       '@vitejs/plugin-vue2': ^1.1.2
       c8: 7.11.0
       core-js: ^3.6.5
-      element-ui: ~2.15.7
+      element-ui: ~2.15.12
       jsdom: 19.0.0
       markdown-it: ^12.3.2
       markdown-it-emoji: ^2.0.0
@@ -429,7 +437,7 @@ importers:
       webpack: ^4.46.0
       xss: ^1.0.10
     dependencies:
-      element-ui: 2.15.10_vue@2.7.13
+      element-ui: 2.15.12_vue@2.7.13
       markdown-it: 12.3.2
       markdown-it-emoji: 2.0.2
       markdown-it-link-attributes: 4.0.1
@@ -524,8 +532,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.43.0
-      n8n-workflow: ~0.125.0
+      n8n-design-system: ~0.44.0
+      n8n-workflow: ~0.126.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -652,8 +660,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.143.0
-      n8n-workflow: ~0.125.0
+      n8n-core: ~0.144.0
+      n8n-workflow: ~0.126.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -743,8 +751,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.143.0
-      n8n-workflow: ~0.125.0
+      n8n-core: ~0.144.0
+      n8n-workflow: ~0.126.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -3332,8 +3340,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.3.4:
-    resolution: {integrity: sha512-t/J228ftRwTbuCYTqMtjRjfqeNE8Aq0DErYFZS5N9EbX5brNIzWbgGio+25utoI9t31xRPwpviDF+e0kPz8Fvg==}
+  /@n8n_io/license-sdk/1.6.0:
+    resolution: {integrity: sha512-e3VJZr1LcJibZsy3cF3LLTjKux14bKmAhkl4ArrHjhqwPYUXZtx2vc6u8FbnkR/TdeHlwxSIQfNmTNXlmcOY9A==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3
@@ -6013,6 +6021,10 @@ packages:
     resolution: {integrity: sha512-7jkMKxcGq9p242exlbsVzuJb57KqHRhNl4dHoQu2Y5v9bCAbtIXXH0R3HleSQW4CTOqpHIYUW3t6tpUj4BVQ+w==}
     dependencies:
       '@types/node': 16.11.65
+    dev: true
+
+  /@types/replacestream/4.0.1:
+    resolution: {integrity: sha512-3ecTmnzB90sgarVpIszCF1cX2cnxwqDovWb31jGrKfxAL0Knui1H7Reaz/zlT9zaE3u0un7L5cNy9fQPy0d2sg==}
     dev: true
 
   /@types/request-promise-native/1.0.18:
@@ -10470,8 +10482,8 @@ packages:
     resolution: {integrity: sha512-xs7vEuSZ84+JsHSTFqqG0TE3i8EAivHomRQZhhcRvsmnjsh5C2KdhwNKf4ZRYtzq75wojpFyqb62m32Oam57wA==}
     dev: true
 
-  /element-ui/2.15.10_vue@2.7.13:
-    resolution: {integrity: sha512-jmD++mU2wKXbisvx4fxOl2mHaU+HWHTAq/3Wf8x9Bwyu4GdDZPLABb+CGi3DWN6fPqdgRcd74aX39DO+YHObLw==}
+  /element-ui/2.15.12_vue@2.7.13:
+    resolution: {integrity: sha512-Y5FMT2BPOindU2GkDEQ5ZKUVxDawKONRNMh2eL3uBx1FOtvUJ+L6IxXLVsNxq4WnaX/UnVNgWXebl7DobygZMg==}
     peerDependencies:
       vue: ^2.5.17
     dependencies:
@@ -17547,7 +17559,6 @@ packages:
   /pretty-bytes/5.6.0:
     resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
     engines: {node: '>=6'}
-    dev: true
 
   /pretty-error/2.1.2:
     resolution: {integrity: sha512-EY5oDzmsX5wvuynAByrmY0P0hcp+QpnAKbJng2A2MPjVKXCxrDSUkzghVJ4ZGPIv+JC4gX8fPUWscC0RtjsWGw==}
@@ -18550,6 +18561,14 @@ packages:
       chalk: 4.1.2
       glob: 7.2.3
       yargs: 17.6.0
+    dev: false
+
+  /replacestream/4.0.3:
+    resolution: {integrity: sha512-AC0FiLS352pBBiZhd4VXB1Ab/lh0lEgpP+GGvZqbQh8a5cmXVoTe5EX/YeTFArnp4SRGTHh1qCHu9lGs1qG8sA==}
+    dependencies:
+      escape-string-regexp: 1.0.5
+      object-assign: 4.1.1
+      readable-stream: 2.3.7
     dev: false
 
   /request-progress/3.0.0:

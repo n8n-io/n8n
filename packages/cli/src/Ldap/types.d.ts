@@ -19,8 +19,8 @@ export interface LdapConfig {
 	loginIdAttribute: string;
 	ldapIdAttribute: string;
 	userFilter: string;
-	syncronizationEnabled: boolean;
-	syncronizationInterval: number; // minutes
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
 }
@@ -40,7 +40,7 @@ export declare namespace LdapConfiguration {
 	type GetSync = AuthenticatedRequest<{}, {}, {}, { page?: string; perPage?: string }>;
 }
 
-export interface SyncronizationList {
+export interface SynchronizationList {
 	id: number;
 	runTime: string;
 	scanned: number;

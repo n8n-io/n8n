@@ -182,7 +182,7 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 	config.bindingAdminPassword = await encryptPassword(config.bindingAdminPassword);
 
 	if (!config.loginEnabled) {
-		config.syncronizationEnabled = false;
+		config.synchronizationEnabled = false;
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await transformAllLdapUsersToEmailUsers();
@@ -422,21 +422,21 @@ export const processUsers = async (
 };
 
 /**
- * Save a LDAP syncronization data
+ * Save a LDAP synchronization data
  * to the database
  * @param  {LdapSyncHistory} sync
  * @returns Promise
  */
-export const saveLdapSyncronization = async (sync: LdapSyncHistory): Promise<void> => {
+export const saveLdapSynchronization = async (sync: LdapSyncHistory): Promise<void> => {
 	await Db.collections.LdapSyncHistory.save<LdapSyncHistory>(sync);
 };
 
 /**
- * Retrieve all LDAP syncronizations
+ * Retrieve all LDAP synchronizations
  * in the database
  * @returns Promise
  */
-export const getLdapSyncronizations = async (
+export const getLdapSynchronizations = async (
 	page: number,
 	perPage: number,
 ): Promise<LdapSyncHistory[]> => {

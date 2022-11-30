@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -74,7 +74,7 @@
     "webpack": "^4.46.0"
   },
   "dependencies": {
-    "element-ui": "~2.15.7",
+    "element-ui": "~2.15.12",
     "sanitize-html": "2.7.0",
     "vue2-boring-avatars": "0.3.4"
   }

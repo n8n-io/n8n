@@ -7,20 +7,17 @@ import "regenerator-runtime/runtime";
 
 import VueAgile from 'vue-agile';
 
+import ElementUI from 'element-ui';
+import { Loading, MessageBox, Message, Notification } from 'element-ui';
 import {
-	Loading,
-	MessageBox,
-	Message,
-	Notification,
 	designSystemComponents,
-	elementUIComponents,
 } from 'n8n-design-system';
 import { ElMessageBoxOptions } from "element-ui/types/message-box";
 import EnterpriseEdition from "@/components/EnterpriseEdition.ee.vue";
 
 Vue.use(Fragment.Plugin);
 
-Vue.use(elementUIComponents);
+Vue.use(ElementUI);
 Vue.use(designSystemComponents);
 
 Vue.component('enterprise-edition', EnterpriseEdition);

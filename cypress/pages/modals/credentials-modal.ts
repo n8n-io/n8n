@@ -3,6 +3,7 @@ import { BasePage } from "../base";
 export class CredentialsModal extends BasePage {
 	getters = {
 		newCredentialModal: () => cy.getByTestId('selectCredential-modal', { timeout: 5000 }),
+		editCredentialModal: () => cy.getByTestId('editCredential-modal', { timeout: 5000 }),
 		newCredentialTypeSelect: () => cy.getByTestId('new-credential-type-select'),
 		newCredentialTypeOption: (credentialType: string) => cy.getByTestId('new-credential-type-select-option').contains(credentialType),
 		newCredentialTypeButton: () => cy.getByTestId('new-credential-type-button'),
@@ -12,7 +13,8 @@ export class CredentialsModal extends BasePage {
 			.find('.n8n-input input'),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
-		saveButton: () => cy.getByTestId('credential-save-button')
+		saveButton: () => cy.getByTestId('credential-save-button'),
+		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 	};
 	actions = {
 		setName: (name: string) => {
@@ -21,6 +23,10 @@ export class CredentialsModal extends BasePage {
 		},
 		save: () => {
 			this.getters.saveButton().click();
-		}
+			this.getters.saveButton().should('contain.text', 'Saved');
+		},
+		close: () => {
+			this.getters.closeButton().click();
+		},
 	};
 }

@@ -18,6 +18,6 @@ export function runLdapSync(context: IRestApiContext, data: IDataObject): Promis
 	return makeRestApiRequest(context, 'POST', '/ldap/sync', data as unknown as IDataObject);
 }
 
-export function getLdapSyncronizations(context: IRestApiContext, pagination: { page: number }): Promise<ILdapSyncData[]> {
+export function getLdapSynchronizations(context: IRestApiContext, pagination: { page: number }): Promise<ILdapSyncData[]> {
 	return makeRestApiRequest(context, 'GET', '/ldap/sync', pagination);
 }

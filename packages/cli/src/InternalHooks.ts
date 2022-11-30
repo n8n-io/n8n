@@ -510,8 +510,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 		ldapIdAttribute: string;
 		searchPageSize: number;
 		searchTimeout: number;
-		syncronizationEnabled: boolean;
-		syncronizationInterval: number;
+		synchronizationEnabled: boolean;
+		synchronizationInterval: number;
 		loginLabel: string;
 		loginEnabled: boolean;
 	}): Promise<void> {

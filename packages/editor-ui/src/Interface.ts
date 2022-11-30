@@ -216,6 +216,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
+	getBinaryUrl(dataPath: string): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -225,14 +226,6 @@ export interface INodeTranslationHeaders {
 			description: string;
 		},
 	};
-}
-
-export interface IBinaryDisplayData {
-	index: number;
-	key: string;
-	node: string;
-	outputIndex: number;
-	runIndex: number;
 }
 
 export interface IStartRunData {
@@ -1035,6 +1028,10 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
+export interface NestedRecord<T> {
+	[key: string]: T | NestedRecord<T>;
+}
+
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 export type nodePanelType = 'input' | 'output';
 
@@ -1108,6 +1105,7 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
+	dynamicTranslations: NestedRecord<string>;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -1340,9 +1338,8 @@ export interface ILdapConfig {
 	loginIdAttribute: string;
 	ldapIdAttribute: string;
 	userFilter: string;
-	syncronizationEnabled: boolean;
-	syncronizationInterval: number; // minutes
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
 }
-

@@ -4,7 +4,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
-import { randomEmail, randomName, randomString, uniqueId } from './../shared/random';
+import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
@@ -210,21 +210,21 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.DRY);
-	expect(syncronization.scanned).toBe(1);
-	expect(syncronization.created).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.scanned).toBe(1);
+	expect(synchronization.created).toBe(1);
 
 	// Make sure only the instance owner is on the DB
 
@@ -267,21 +267,21 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.DRY);
-	expect(syncronization.scanned).toBe(1);
-	expect(syncronization.updated).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.scanned).toBe(1);
+	expect(synchronization.updated).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were not persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
@@ -316,21 +316,21 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.DRY);
-	expect(syncronization.scanned).toBe(0);
-	expect(syncronization.disabled).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.scanned).toBe(0);
+	expect(synchronization.disabled).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were not persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
@@ -367,21 +367,21 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.LIVE);
-	expect(syncronization.scanned).toBe(1);
-	expect(syncronization.created).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.scanned).toBe(1);
+	expect(synchronization.created).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
@@ -429,21 +429,21 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.LIVE);
-	expect(syncronization.scanned).toBe(1);
-	expect(syncronization.updated).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.scanned).toBe(1);
+	expect(synchronization.updated).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
@@ -492,21 +492,21 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 
 	expect(response.statusCode).toBe(200);
 
-	const syncronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
 
-	expect(syncronization.id).toBeDefined();
-	expect(syncronization.startedAt).toBeDefined();
-	expect(syncronization.endedAt).toBeDefined();
-	expect(syncronization.created).toBeDefined();
-	expect(syncronization.updated).toBeDefined();
-	expect(syncronization.disabled).toBeDefined();
-	expect(syncronization.status).toBeDefined();
-	expect(syncronization.scanned).toBeDefined();
-	expect(syncronization.error).toBeDefined();
-	expect(syncronization.runMode).toBeDefined();
-	expect(syncronization.runMode).toBe(RunningMode.LIVE);
-	expect(syncronization.scanned).toBe(0);
-	expect(syncronization.disabled).toBe(1);
+	expect(synchronization.id).toBeDefined();
+	expect(synchronization.startedAt).toBeDefined();
+	expect(synchronization.endedAt).toBeDefined();
+	expect(synchronization.created).toBeDefined();
+	expect(synchronization.updated).toBeDefined();
+	expect(synchronization.disabled).toBeDefined();
+	expect(synchronization.status).toBeDefined();
+	expect(synchronization.scanned).toBeDefined();
+	expect(synchronization.error).toBeDefined();
+	expect(synchronization.runMode).toBeDefined();
+	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.scanned).toBe(0);
+	expect(synchronization.disabled).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
@@ -519,10 +519,10 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 	expect(localLdapUsers[0].disabled).toBe(true);
 });
 
-test('GET /ldap/sync should return paginated syncronizations', async () => {
+test('GET /ldap/sync should return paginated synchronizations', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const syncronizationData = {
+	const synchronizationData = {
 		created: 0,
 		scanned: 0,
 		updated: 0,
@@ -534,9 +534,9 @@ test('GET /ldap/sync should return paginated syncronizations', async () => {
 	};
 
 	for (const _ of Array(2).fill(2)) {
-		const syncronization = new ADSync();
-		Object.assign(syncronization, syncronizationData);
-		await Db.collections.LdapSyncHistory.save(syncronization);
+		const synchronization = new ADSync();
+		Object.assign(synchronization, synchronizationData);
+		await Db.collections.LdapSyncHistory.save(synchronization);
 	}
 
 	let response = await authAgent(owner).get('/ldap/sync?perPage=1&page=0');
@@ -548,7 +548,7 @@ test('GET /ldap/sync should return paginated syncronizations', async () => {
 	// expect(response.body.data[0].id).toBe(1);
 });
 
-test('POST /login should allow new LDAP user to login and syncronize data', async () => {
+test('POST /login should allow new LDAP user to login and synchronize data', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
@@ -601,7 +601,7 @@ test('POST /login should allow new LDAP user to login and syncronize data', asyn
 	expect(localLdapUsers[0].disabled).toBe(false);
 });
 
-test('POST /login should allow existing LDAP user to login and syncronize data', async () => {
+test('POST /login should allow existing LDAP user to login and synchronize data', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',

@@ -76,32 +76,32 @@
 				>
 					<el-table-column
 						prop="status"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
 					>
 					</el-table-column>
 					<el-table-column
 						prop="endedAt"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
 					>
 					</el-table-column>
 					<el-table-column
 						prop="runMode"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
 					>
 					</el-table-column>
 					<el-table-column
 						prop="runTime"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
 					>
 					</el-table-column>
 					<el-table-column
 						prop="details"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
 					>
 					</el-table-column>
 					<template #append>
 					<infinite-loading
-						@infinite="getLdapSyncronizations"
+						@infinite="getLdapSynchronizations"
 						force-use-infinite-wrapper=".el-table__body-wrapper"
 					>
 					</infinite-loading>
@@ -157,9 +157,9 @@ type FormValues = {
 	lastName: string;
 	firstName: string;
 	ldapId: string;
-	syncronizationEnabled: boolean;
+	synchronizationEnabled: boolean;
 	allowUnauthorizedCerts: boolean;
-	syncronizationInterval: number;
+	synchronizationInterval: number;
 	userFilter: string;
 	pageSize: number;
 	searchTimeout: number;
@@ -283,8 +283,8 @@ export default mixins(showMessage).extend({
 				loginIdAttribute: formInputs.values.loginId,
 				ldapIdAttribute: formInputs.values.ldapId,
 				userFilter: formInputs.values.userFilter,
-				syncronizationEnabled: formInputs.values.syncronizationEnabled,
-				syncronizationInterval: formInputs.values.syncronizationInterval,
+				synchronizationEnabled: formInputs.values.synchronizationEnabled,
+				synchronizationInterval: formInputs.values.synchronizationInterval,
 				searchPageSize: +formInputs.values.pageSize,
 				searchTimeout: formInputs.values.searchTimeout,
 			};
@@ -348,14 +348,14 @@ export default mixins(showMessage).extend({
 				await this.settingsStore.runLdapSync({ type: 'dry' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
-					message: 'Syncronization succeded',
+					message: 'Synchronization succeded',
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingDryRun = false;
-				await this.reloadLdapSyncronizations();
+				await this.reloadLdapSynchronizations();
 			}
 		},
 		async onLiveRunClick() {
@@ -364,14 +364,14 @@ export default mixins(showMessage).extend({
 				await this.settingsStore.runLdapSync({ type: 'live' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
-					message: 'Syncronization succeded',
+					message: 'Synchronization succeded',
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
-				await this.reloadLdapSyncronizations();
+				await this.reloadLdapSynchronizations();
 			}
 		},
 		async getLdapConfig() {
@@ -643,9 +643,9 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'syncronizationInfo',
+						name: 'synchronizationInfo',
 						properties: {
-							label: 'Syncronization Info',
+							label: 'Synchronization Info',
 							type: 'info',
 							labelSize: 'large',
 							labelAlignment: 'left',
@@ -655,12 +655,12 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'syncronizationEnabled',
-						initialValue: this.adConfig.syncronizationEnabled,
+						name: 'synchronizationEnabled',
+						initialValue: this.adConfig.synchronizationEnabled,
 						properties: {
 							type: 'toggle',
-							label: 'Enable LDAP Syncronization',
-							tooltipText: 'Whether to enable background syncronizations.',
+							label: 'Enable LDAP Synchronization',
+							tooltipText: 'Whether to enable background synchronizations.',
 							required: true,
 						},
 						shouldDisplay(values): boolean {
@@ -668,16 +668,16 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'syncronizationInterval',
-						initialValue: this.adConfig.syncronizationInterval,
+						name: 'synchronizationInterval',
+						initialValue: this.adConfig.synchronizationInterval,
 						properties: {
-							label: 'Syncronization Interval (Minutes)',
+							label: 'Synchronization Interval (Minutes)',
 							type: 'text',
-							infoText: 'How often the syncronization should run.',
+							infoText: 'How often the synchronization should run.',
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -687,11 +687,11 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Page Size',
 							type: 'text',
-							infoText: 'Max number of records to return per page during syncronization. 0 for unlimited.',
+							infoText: 'Max number of records to return per page during synchronization. 0 for unlimited.',
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -705,7 +705,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -714,10 +714,10 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
-		async getLdapSyncronizations(state: any) {
+		async getLdapSynchronizations(state: any) {
 			try {
 				this.loadingTable = true;
-				const data = await this.settingsStore.getLdapSyncronizations({
+				const data = await this.settingsStore.getLdapSynchronizations({
 					page: this.page,
 				});
 
@@ -730,16 +730,16 @@ export default mixins(showMessage).extend({
 				}
 				this.loadingTable = false;
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
-		async reloadLdapSyncronizations() {
+		async reloadLdapSynchronizations() {
 			try {
 				this.page = 0;
 				this.tableKey += 1;
 				this.dataTable = [];
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
 	},
@@ -787,4 +787,3 @@ export default mixins(showMessage).extend({
 	margin-bottom: var(--spacing-s);
 }
 </style>
-
