@@ -9,7 +9,8 @@
 			:style="iconStyleData"
 			v-on="$listeners"
 		>
-			<n8n-tooltip placement="top" :disabled="!showTooltip">
+			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style['icon']">
 					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
@@ -20,6 +21,16 @@
 					?
 				</div>
 			</n8n-tooltip>
+			<template v-else>
+				<div v-if="type !== 'unknown'" :class="$style['icon']">
+					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
+					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
+				</div>
+				<div v-else :class="$style['node-icon-placeholder']">
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
+					?
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
