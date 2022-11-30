@@ -502,7 +502,6 @@ importers:
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
-      '@types/lodash.startcase': ^4.4.7
       '@types/luxon': ^2.0.9
       '@types/quill': ^2.0.1
       '@types/uuid': ^8.3.2
@@ -525,7 +524,6 @@ importers:
       lodash.get: ^4.4.2
       lodash.orderby: ^4.6.0
       lodash.set: ^4.3.2
-      lodash.startcase: ^4.4.0
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
       n8n-design-system: ~0.44.0
@@ -588,7 +586,6 @@ importers:
       lodash.get: 4.4.2
       lodash.orderby: 4.6.0
       lodash.set: 4.3.2
-      lodash.startcase: 4.4.0
       luxon: 2.3.2
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
@@ -625,7 +622,6 @@ importers:
       '@types/lodash.camelcase': 4.3.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
-      '@types/lodash.startcase': 4.4.7
       '@types/luxon': 2.4.0
       '@types/quill': 2.0.9
       '@types/uuid': 8.3.4
@@ -5820,12 +5816,6 @@ packages:
       '@types/lodash': 4.14.186
     dev: true
 
-  /@types/lodash.startcase/4.4.7:
-    resolution: {integrity: sha512-6v8FVOcfxdomO1Vammc1Zsah7/4aif/Lx16oQQ0WZmKVGF/Yf5c5m68LqI/ELOhKaKUr8KfnDdKrytdrThoRQw==}
-    dependencies:
-      '@types/lodash': 4.14.186
-    dev: true
-
   /@types/lodash.unset/4.5.7:
     resolution: {integrity: sha512-/i371dATnLQ4tazwcX/n+rGk3M6RnMbA3lJKrKFjELicPExmZ1LcKtGfHBECuPS2TTl3yDuaFmWtmfACVuBBAQ==}
     dependencies:
@@ -7681,7 +7671,7 @@ packages:
   /axios/0.24.0:
     resolution: {integrity: sha512-Q6cWsys88HoPgAaFAVUb0WpPk0O8iTeisR9IMqy9G8AbO4NlpVknrnQS03zzF9PGAWgO3cgletO3VjV/P7VztA==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -7689,7 +7679,7 @@ packages:
   /axios/0.27.2_debug@3.2.7:
     resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
       form-data: 4.0.0
     transitivePeerDependencies:
       - debug
@@ -7698,7 +7688,7 @@ packages:
   /axios/1.1.3:
     resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -11902,18 +11892,6 @@ packages:
         optional: true
     dev: false
 
-  /follow-redirects/1.15.2_debug@3.2.7:
-    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
-    dependencies:
-      debug: 3.2.7
-    dev: false
-
   /follow-redirects/1.15.2_debug@4.3.2:
     resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
     engines: {node: '>=4.0'}
@@ -15176,10 +15154,6 @@ packages:
 
   /lodash.split/4.4.2:
     resolution: {integrity: sha512-kn1IDX0aHfg0FsnPIyxCHTamZXt3YK3aExRH1LW8YhzP6+sCldTm8+E4aIg+nSmM6R4eqdWGrXWtfYI961bwIw==}
-    dev: false
-
-  /lodash.startcase/4.4.0:
-    resolution: {integrity: sha512-+WKqsK294HMSc2jEbNgpHpd0JfIBhp7rEV4aqXWqFr6AlXov+SlcgB1Fv01y2kGe3Gc8nMW7VA0SrGuSkRfIEg==}
     dev: false
 
   /lodash.throttle/4.1.1:
