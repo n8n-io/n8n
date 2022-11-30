@@ -8,7 +8,7 @@
 		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
-				<span :class="$style.name">
+				<span :class="$style.name" data-test-id="node-item-name">
 					{{ $locale.headerText({
 							key: `headers.${shortNodeType}.displayName`,
 							fallback: nodeType.displayName,
