@@ -109,6 +109,7 @@ export default mixins(
 			displayValue: '',
 			latestValue: '',
 			segments: [] as Segment[],
+			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
 	computed: {
@@ -116,9 +117,6 @@ export default mixins(
 			useNDVStore,
 			useWorkflowsStore,
 		),
-		expressionsDocsUrl(): string {
-			return EXPRESSIONS_DOCS_URL;
-		},
 	},
 	methods: {
 		valueChanged ({ value, segments }: { value: string, segments: Segment[] }, forceUpdate = false) {
