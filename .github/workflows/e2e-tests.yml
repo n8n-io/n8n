@@ -1,9 +1,9 @@
-name: Test Master
+name: End-to-End tests
 
 on:
-  push:
-    branches:
-      - master
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -32,13 +32,10 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Test
-        run: pnpm test
-
-      - name: Lint
-        env:
-          CI_LINT_MASTER: true
-        run: pnpm lint
+      - name: Test E2E
+        run: |
+          pnpm cypress:install
+          pnpm test:e2e:all
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0

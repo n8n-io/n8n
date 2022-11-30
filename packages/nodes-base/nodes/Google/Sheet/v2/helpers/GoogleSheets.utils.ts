@@ -129,6 +129,7 @@ export function trimLeadingEmptyRows(
 }
 
 export function removeEmptyColumns(data: SheetRangeData) {
+	if (!data || data.length === 0) return [];
 	const returnData: SheetRangeData = [];
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
@@ -138,7 +139,7 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return returnData[0].map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
 }
 
 export function prepareSheetData(

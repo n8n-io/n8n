@@ -37,7 +37,7 @@
 		<div :class="$style.header">
 			<slot name="header"></slot>
 
-			<div v-show="!hasRunError" @click.stop :class="$style.displayModes">
+			<div v-show="!hasRunError" @click.stop :class="$style.displayModes" data-test-id="run-data-pane-header">
 				<n8n-radio-buttons
 					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) && !editMode.enabled"
 					:value="displayMode"
