@@ -89,6 +89,10 @@ oauth2CredentialController.get(
 			true,
 		);
 
+		if (decryptedDataOriginal && !decryptedDataOriginal.scope) {
+			delete decryptedDataOriginal.scope;
+		}
+
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
 			(credential as unknown as ICredentialsEncrypted).type,
