@@ -74,14 +74,6 @@ export default mixins(
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
 				},
-				{
-					id: 'settings-logstreaming',
-					icon: 'question',
-					label: this.$locale.baseText('settings.logstreaming'),
-					position: 'top',
-					available: this.canAccessApiSettings(),
-					activateOnRouteNames: [ VIEWS.LOGSTREAMING_SETTINGS ],
-				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -96,6 +88,17 @@ export default mixins(
 					});
 				}
 			}
+
+			menuItems.push(
+				{
+					id: 'settings-logstreaming',
+					icon: 'sign-in-alt',
+					label: this.$locale.baseText('settings.logstreaming'),
+					position: 'top',
+					available: this.canAccessApiSettings(),
+					activateOnRouteNames: [ VIEWS.LOGSTREAMING_SETTINGS ],
+				},
+			);
 
 			menuItems.push(
 				{

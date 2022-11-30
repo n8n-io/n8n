@@ -377,6 +377,7 @@ export enum WORKFLOW_MENU_ACTIONS {
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	WorkflowSharing = 'workflowSharing',
+	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

@@ -10,23 +10,24 @@
 		minHeight="500px"
 		maxHeight="80%"
 		:beforeClose="onModalClose"
+		:scrollable="true"
 	>
 	<template #header>
-			<el-row :gutter="20" justify="start">
-					<el-col :span="16">
-						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
-					</el-col>
-					<el-col :span="8" style="text-align: right">
-						<span v-if="showRemoveConfirm">
-							<el-button class="button" text @click="removeThis">Confirm</el-button>
-							<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
-						</span>
-						<span v-else>
-							<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
-						</span>
-						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
-					</el-col>
-				</el-row>
+		<el-row :gutter="20" justify="start">
+			<el-col :span="16">
+				Edit &nbsp;<strong>{{ destination.label }}</strong> settings
+			</el-col>
+			<el-col :span="7" style="text-align: right">
+				<span v-if="showRemoveConfirm">
+					<el-button class="button" text @click="removeThis">Confirm</el-button>
+					<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
+				</span>
+				<span v-else>
+					<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
+				</span>
+				<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
+			</el-col>
+		</el-row>
 	</template>
 	<template #content>
 			<div :class="$style.narrowCardBody">
@@ -72,7 +73,7 @@
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
+import { EventNamesTreeCollection, useLogStreamingStore } from '../../stores/logStreamingStore';
 import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
@@ -123,7 +124,7 @@ export default mixins(
 	computed: {
 		...mapStores(
 			useUIStore,
-			useEventTreeStore,
+			useLogStreamingStore,
 			useNDVStore,
 			useWorkflowsStore,
 		),
@@ -135,7 +136,7 @@ export default mixins(
 		this.ndvStore.activeNodeName = this.destination.id ?? 'thisshouldnothappen';
 		this.workflowsStore.addNode(destinationToFakeINodeUi(this.destination, "n8n-nodes-base.stickyNote"));
 		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), this.destination);
-		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
+		this.treeData = this.logStreamingStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
 		this.workflowsStore.$onAction(
 		({
 			name, // name of the action
@@ -659,6 +660,6 @@ const description = [
 	.narrowCardBody {
 		padding: 0 70px 20px 70px;
 		overflow: auto;
-		max-height: 600px;
+		max-height: 50%;
 	}
 </style>

@@ -57,6 +57,7 @@ export class MessageEventBusDestinationSentry
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
+		if (!eventBus.isLogStreamingEnabled()) return false;
 		try {
 			let sentryResult = '';
 			Sentry.withScope((scope: Sentry.Scope) => {

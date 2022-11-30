@@ -30,7 +30,7 @@
 <script lang="ts">
 	import { Checkbox as ElCheckbox} from 'element-ui';
 	import { mapStores } from 'pinia';
-	import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
+	import { EventNamesTreeCollection, useLogStreamingStore } from '../../stores/logStreamingStore';
 
 
 
@@ -65,7 +65,7 @@
 		},
 		computed: {
 			...mapStores(
-				useEventTreeStore,
+				useLogStreamingStore,
 			),
 			isFolder() {
 				return this.item && this.item.children.length > 0;
@@ -121,7 +121,7 @@
 			tellParentChildCheckChanged(someChildChecked: boolean) {
 				this.isIndeterminate = this.computeIndeterminate();
 				if (this.item) {
-					this.eventTreeStore.setIndeterminateInTree(this.destinationId, this.item._name, this.isIndeterminate);
+					this.logStreamingStore.setIndeterminateInTree(this.destinationId, this.item._name, this.isIndeterminate);
 				}
 				if (this.$parent) {
 					try {
@@ -134,9 +134,9 @@
 				if (this.item?._name) {
 					this.isChecked = checked;
 					if (checked) {
-						this.eventTreeStore.addSelectedEvent(this.destinationId, this.item._name);
+						this.logStreamingStore.addSelectedEvent(this.destinationId, this.item._name);
 					} else {
-						this.eventTreeStore.removeSelectedEvent(this.destinationId, this.item._name);
+						this.logStreamingStore.removeSelectedEvent(this.destinationId, this.item._name);
 					}
 					this.tellParentChildCheckChanged(checked);
 				}

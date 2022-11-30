@@ -149,16 +149,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['settings'],
 			},
 			{
-				id: FAKE_DOOR_FEATURES.LOGGING,
-				featureName: 'fakeDoor.settings.logging.name',
-				icon: 'sign-in-alt',
-				infoText: 'fakeDoor.settings.logging.infoText',
-				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
-				uiLocations: ['settings'],
-			},
-			{
 				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
 				featureName: 'fakeDoor.credentialEdit.sharing.name',
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',

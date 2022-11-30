@@ -32,7 +32,7 @@
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { useEventTreeStore } from '../../stores/eventTreeStore';
+import { useLogStreamingStore } from '../../stores/logStreamingStore';
 import EventTreeSelection from './EventTreeSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
@@ -71,7 +71,7 @@ export default mixins(
 	computed: {
 		...mapStores(
 			useUIStore,
-			useEventTreeStore,
+			useLogStreamingStore,
 		),
 		isFolder() {
 			return true;
@@ -80,7 +80,7 @@ export default mixins(
 	mounted() {
 			this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination);
 			this.eventBus.$on('destinationWasUpdated', () => {
-				const updatedDestination = this.eventTreeStore.getDestination(this.destination.id);
+				const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
 				if (updatedDestination) {
 					this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination);
 				}

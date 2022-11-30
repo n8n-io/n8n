@@ -1,6 +1,6 @@
 import { INodeCredentials, INodeParameters, MessageEventBusDestinationOptions } from "n8n-workflow";
 import { INodeUi, IRestApi } from "../../Interface";
-import { useEventTreeStore } from '../../stores/eventTreeStore';
+import { useLogStreamingStore } from '../../stores/logStreamingStore';
 
 export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.stickyNote'): INodeUi {
 	return {
@@ -19,13 +19,13 @@ export function destinationToFakeINodeUi(destination: MessageEventBusDestination
 }
 
 export async function saveDestinationToDb(restApi: IRestApi, destination: MessageEventBusDestinationOptions) {
-	const eventTreeStore = useEventTreeStore();
+	const logStreamingStore = useLogStreamingStore();
 	if (destination.id) {
 		const data: MessageEventBusDestinationOptions = {
 			...destination,
-			subscribedEvents: Array.from(eventTreeStore.items[destination.id].selectedEvents.values()),
+			subscribedEvents: Array.from(logStreamingStore.items[destination.id].selectedEvents.values()),
 		};
 		await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
-		eventTreeStore.updateDestination(destination);
+		logStreamingStore.updateDestination(destination);
 	}
 }

@@ -108,6 +108,10 @@ export class License {
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
+
+	isLogStreamingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOGSTREAMING);
+	}
 }
 
 let licenseInstance: License | undefined;

@@ -29,7 +29,6 @@
     "postpack": "rm -f oclif.manifest.json",
     "prepack": "oclif-dev manifest",
     "start": "run-script-os",
-    "start:darwin": "cd bin && node --trace-warnings ./n8n",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
     "swagger": "swagger-cli",

@@ -1,4 +1,4 @@
-import { JsonValue, LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
 import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
@@ -18,6 +18,7 @@ import {
 	EventMessageWorkflowOptions,
 	EventMessageWorkflow,
 } from '../EventMessageClasses/EventMessageWorkflow';
+import { getLicense } from '../../License';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -42,11 +43,6 @@ class MessageEventBus extends EventEmitter {
 	static getInstance(): MessageEventBus {
 		if (!MessageEventBus.#instance) {
 			MessageEventBus.#instance = new MessageEventBus();
-		}
-		if (!MessageEventBus.#instance.isInitialized) {
-			// console.log(
-			// 	'eventBus called before initialization. Call eventBus.initialize() once before use.',
-			// );
 		}
 		return MessageEventBus.#instance;
 	}
@@ -117,6 +113,13 @@ class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
+	isLogStreamingEnabled(): boolean {
+		// TODO: REMOVE BEFORE RELEASE
+		console.log(`LogStreaming License: ${getLicense().isLogStreamingEnabled().toString()}`);
+		return true;
+		return getLicense().isLogStreamingEnabled();
+	}
+
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
 		this.destinations[destination.getId()] = destination;
@@ -144,20 +147,6 @@ class MessageEventBus extends EventEmitter {
 			delete this.destinations[id];
 		}
 		return result;
-	}
-
-	/**
-	 * Resets SubscriptionsSet to empty values on the selected destination
-	 * @param destinationId the destination id
-	 * @returns serialized destination after reset
-	 */
-	getDestinationSubscriptionSet(destinationId: string): JsonValue {
-		if (Object.keys(this.destinations).includes(destinationId)) {
-			return {
-				events: this.destinations[destinationId].subscribedEvents,
-			};
-		}
-		return {};
 	}
 
 	async #trySendingUnsent(msgs?: EventMessageTypes[]) {
@@ -199,11 +188,13 @@ class MessageEventBus extends EventEmitter {
 
 	async #emitMessage(msg: EventMessageTypes) {
 		// generic emit for external modules to capture events
+		// this is for internal use ONLY and not for use with custom destinations!
 		this.emit('message', msg);
-		console.log('Listeners:', this.eventNames());
+
+		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		// if there are no set up destinations, immediately mark the event as sent
-		if (Object.keys(this.destinations).length === 0) {
+		if (!this.isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {

@@ -60,6 +60,7 @@ export class MessageEventBusDestinationRedis
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
+		if (!eventBus.isLogStreamingEnabled()) return false;
 		if (this.client?.status === 'ready') {
 			if (this.anonymizeMessages) {
 				msg = msg.anonymize();

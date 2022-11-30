@@ -19,7 +19,7 @@ export interface TreeAndSelectionStore {
 	[key:string]: TreeAndSelectionStoreItem
 }
 
-export const useEventTreeStore = defineStore('eventTree', {
+export const useLogStreamingStore = defineStore('logStreaming', {
   state: () => ({
 		items: {} as TreeAndSelectionStore,
 		eventNames: new Set<string>(),

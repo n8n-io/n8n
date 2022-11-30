@@ -10,13 +10,14 @@
 		minHeight="500px"
 		maxHeight="80%"
 		:beforeClose="onModalClose"
+		:scrollable="true"
 	>
 		<template #header>
 			<el-row :gutter="20" justify="start">
 				<el-col :span="16">
 					Edit &nbsp;<strong>{{ destination.label }}</strong> settings
 				</el-col>
-				<el-col :span="8" style="text-align: right">
+				<el-col :span="7" style="text-align: right">
 					<span v-if="showRemoveConfirm">
 						<el-button class="button" text @click="removeThis">Confirm</el-button>
 						<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
@@ -72,7 +73,7 @@
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
+import { EventNamesTreeCollection, useLogStreamingStore } from '../../stores/logStreamingStore';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
@@ -121,7 +122,7 @@ export default mixins(
 	computed: {
 		...mapStores(
 			useUIStore,
-			useEventTreeStore,
+			useLogStreamingStore,
 		),
 		node(): INodeUi {
 			return destinationToFakeINodeUi(this.nodeParameters);
@@ -129,7 +130,7 @@ export default mixins(
 	},
 	mounted() {
 		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), this.destination);
-		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
+		this.treeData = this.logStreamingStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
 	},
 	methods: {
 		onInput() {

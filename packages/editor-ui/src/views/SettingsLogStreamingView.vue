@@ -2,40 +2,77 @@
 	<div :class="$style.container">
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.logstreaming') }}</n8n-heading>
-			<strong>Experimental</strong>
+			<strong>Development Fake License&nbsp;</strong>
+			<el-switch
+				v-model="fakeLicense"
+				size="large"
+				/>
 		</div>
-		<template>
-			<el-row :gutter="10">
-				<el-col>
-					<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationSyslog">
-						Syslog
-					</el-button>
 
-					<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationWebhook">
-						Webhook
-					</el-button>
+		<template v-if="isLicensed">
+			<div v-if="$locale.baseText('settings.logstreaming.infoText')" class="mb-l">
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+					</template>
+				</n8n-info-tip>
+			</div>
+			<n8n-card class="mb-4xs" :class="$style.card">
+				<n8n-input-label :label="$locale.baseText('settings.logstreaming.addDestination')">
+					<el-row :gutter="10">
+						<el-col>
+							<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationSyslog">
+								Syslog
+							</el-button>
 
-					<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationSentry">
-						Sentry
-					</el-button>
-				</el-col>
-			</el-row>
+							<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationWebhook">
+								Webhook
+							</el-button>
+
+							<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationSentry">
+								Sentry
+							</el-button>
+						</el-col>
+					</el-row>
+				</n8n-input-label>
+			</n8n-card>
+			<n8n-card class="mb-4xs" :class="$style.card">
+				<n8n-input-label :label="$locale.baseText('settings.logstreaming.destinations')">
+				<el-row :gutter="10">
+					<el-col
+						v-for="(value, propertyName, index) in logStreamingStore.items" :key="propertyName"
+						:xoffset="index % 2 == 0 ? 0 : 2"
+						:xs="24" :sm="24" :md="12" :lg="12" :xl="12"
+					>
+						<event-destination-settings-card
+							:destination="value.destination"
+							:eventBus="eventBus"
+							@remove="onRemove(value.destination.id)"
+							@edit="onEdit(value.destination.id)"
+						/>
+					</el-col>
+				</el-row>
+			</n8n-input-label>
+			</n8n-card>
 		</template>
-		<template>
-			<el-row :gutter="10">
-				<el-col
-					v-for="(value, propertyName, index) in eventTreeStore.items" :key="propertyName"
-					:xoffset="index % 2 == 0 ? 0 : 2"
-					:xs="24" :sm="24" :md="12" :lg="12" :xl="12"
+		<template v-else>
+			<div v-if="$locale.baseText('settings.logstreaming.infoText')" class="mb-l">
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+					</template>
+				</n8n-info-tip>
+			</div>
+			<div :class="$style.actionBoxContainer">
+				<n8n-action-box
+					:description="$locale.baseText('fakeDoor.settings.logging.actionBox.description')"
+					:buttonText="$locale.baseText('fakeDoor.actionBox.button.label')"
 				>
-					<event-destination-settings-card
-						:destination="value.destination"
-						:eventBus="eventBus"
-						@remove="onRemove(value.destination.id)"
-						@edit="onEdit(value.destination.id)"
-					/>
-				</el-col>
-			</el-row>
+					<template #heading>
+						<span v-html="$locale.baseText('fakeDoor.settings.logging.actionBox.title')"/>
+					</template>
+				</n8n-action-box>
+			</div>
 		</template>
 	</div>
 </template>
@@ -49,9 +86,15 @@ import { useWorkflowsStore } from '../stores/workflows';
 import { useCredentialsStore } from '../stores/credentials';
 import EventTree from '@/components/SettingsLogStreaming/EventTreeSelection.vue';
 import EventDestinationSettingsCard from '@/components/SettingsLogStreaming/EventDestinationSettingsCard.vue';
-import { useEventTreeStore } from '../stores/eventTreeStore';
+import { useLogStreamingStore } from '../stores/logStreamingStore';
+import { useSettingsStore } from '../stores/settings';
 import { useUIStore } from '../stores/ui';
-import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY, SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY } from '../constants';
+import {
+	WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
+	SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
+	SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
+EnterpriseEditionFeature,
+} from '../constants';
 import Vue from 'vue';
 import { restApi } from '../mixins/restApi';
 import { deepCopy, defaultMessageEventBusDestinationSentryOptions, defaultMessageEventBusDestinationSyslogOptions, defaultMessageEventBusDestinationWebhookOptions, MessageEventBusDestinationOptions, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -65,6 +108,7 @@ export default mixins(
 		return {
 			eventBus: new Vue(),
 			destinations: Array<MessageEventBusDestinationOptions>,
+			fakeLicense: false,
 		};
 	},
 	async mounted() {
@@ -77,7 +121,7 @@ export default mixins(
 		await this.getDestinationDataFromREST();
 
 		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
-		this.eventTreeStore.$onAction(({name, after})=>{
+		this.logStreamingStore.$onAction(({name, after})=>{
 			if (name==='removeDestination') {
 				after(async () => {
 					await this.getDestinationDataFromREST();
@@ -105,27 +149,31 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
-			useEventTreeStore,
+			useSettingsStore,
+			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
 			useCredentialsStore,
 		),
+		isLicensed(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming) || this.fakeLicense;
+		},
 	},
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
-			this.eventTreeStore.clearEventNames();
-			this.eventTreeStore.clearDestinationItemTrees();
+			this.logStreamingStore.clearEventNames();
+			this.logStreamingStore.clearDestinationItemTrees();
 			// this.workflowsStore.removeAllNodes({setStateDirty: false, removePinData: true});
 			const eventNamesData = await this.restApi().makeRestApiRequest('get', '/eventbus/eventnames');
 			if (eventNamesData) {
 				for (const eventName of eventNamesData) {
-					this.eventTreeStore.addEventName(eventName);
+					this.logStreamingStore.addEventName(eventName);
 				}
 			}
 			const destinationData: MessageEventBusDestinationOptions[] = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
 			if (destinationData) {
 				for (const destination of destinationData) {
-					this.eventTreeStore.addDestination(destination);
+					this.logStreamingStore.addDestination(destination);
 				}
 			}
 			this.$forceUpdate();
@@ -154,14 +202,14 @@ export default mixins(
 			}
 			if (newDestination) {
 				newDestination.id = uuid();
-				this.eventTreeStore.addDestination(newDestination);
+				this.logStreamingStore.addDestination(newDestination);
 				this.uiStore.openModalWithData({ name: modalKey, data: { destination: newDestination, isNew: false, eventBus: this.eventBus } });
 			}
 		},
 		async onRemove(destinationId?: string) {
 			if (!destinationId) return;
 			await this.restApi().makeRestApiRequest('DELETE', `/eventbus/destination?id=${destinationId}`);
-			this.eventTreeStore.removeDestination(destinationId);
+			this.logStreamingStore.removeDestination(destinationId);
 			const foundNode = this.workflowsStore.getNodeByName(destinationId);
 			if (foundNode) {
 				this.workflowsStore.removeNode(foundNode);
@@ -169,7 +217,7 @@ export default mixins(
 		},
 		async onEdit(destinationId?: string) {
 			if (!destinationId) return;
-			const destination = this.eventTreeStore.getDestination(destinationId);
+			const destination = this.logStreamingStore.getDestination(destinationId);
 			if (destination) {
 				switch(destination.__type) {
 					case MessageEventBusDestinationTypeNames.syslog:
@@ -189,13 +237,15 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-
-
 .container {
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
 	padding-bottom: 100px;
+}
+
+.card {
+	margin-bottom: 2em!important;
 }
 
 .header {
@@ -210,6 +260,7 @@ export default mixins(
 
 .buttonInRow {
 	margin-right: 1em;
-	margin-bottom: 1em;
+	margin-top: .5em;
+	margin-bottom: .5em;
 }
 </style>

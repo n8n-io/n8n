@@ -72,6 +72,7 @@ export class MessageEventBusDestinationSyslog
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
+		if (!eventBus.isLogStreamingEnabled()) return false;
 		if (!this.hasSubscribedToEvent(msg)) return false;
 		try {
 			if (this.anonymizeMessages) {
