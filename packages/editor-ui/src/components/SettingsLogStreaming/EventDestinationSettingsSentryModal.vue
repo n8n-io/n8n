@@ -80,8 +80,6 @@ import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
-import { useNDVStore } from '../../stores/ndv';
-import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
@@ -133,34 +131,14 @@ export default mixins(
 		...mapStores(
 			useUIStore,
 			useEventTreeStore,
-			useNDVStore,
-			useWorkflowsStore,
 		),
 		node(): INodeUi {
 			return destinationToFakeINodeUi(this.nodeParameters);
 		},
 	},
 	mounted() {
-		this.ndvStore.activeNodeName = this.destination.id ?? 'thisshouldnothappen';
-		this.workflowsStore.addNode(destinationToFakeINodeUi(this.destination));
 		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), this.destination);
 		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
-		this.workflowsStore.$onAction(
-		({
-			name, // name of the action
-			args, // array of parameters passed to the action
-		}) => {
-			if (name === 'updateNodeProperties') {
-				for (const arg of args) {
-					if (arg.name === this.destination.id) {
-						if ('credentials' in arg.properties) {
-							this.unchanged = false;
-							this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
-						}
-					}
-				}
-			}
-		});
 	},
 	methods: {
 		onInput() {
@@ -198,10 +176,6 @@ export default mixins(
 			}
 
 			this.nodeParameters = deepCopy(nodeParameters);
-			this.workflowsStore.updateNodeProperties({
-				name: this.node.name,
-				properties: { parameters: this.nodeParameters as unknown as IDataObject },
-			});
 		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
@@ -253,38 +227,6 @@ const description = [
 					noDataExpression: true,
 					description: 'Your Sentry DSN Client Key',
 				},
-				// {
-				// 	displayName: 'Authentication',
-				// 	name: 'authentication',
-				// 	noDataExpression: true,
-				// 	type: 'options',
-				// 	default: 'none',
-				// 	options: [
-				// 		{
-				// 			name: 'None',
-				// 			value: 'none',
-				// 		},
-				// 		{
-				// 			name: 'Predefined Credential Type',
-				// 			value: 'predefinedCredentialType',
-				// 			description:
-				// 				"We've already implemented auth for many services so that you don't have to set it up manually",
-				// 		},
-				// 	],
-				// },
-				// {
-				// 	displayName: 'Credential Type',
-				// 	name: 'nodeCredentialType',
-				// 	type: 'credentialsSelect',
-				// 	noDataExpression: true,
-				// 	default: '',
-				// 	credentialTypes: ['sentryIoApi'],
-				// 	displayOptions: {
-				// 		show: {
-				// 			authentication: ['predefinedCredentialType'],
-				// 		},
-				// 	},
-				// },
 				{
 				displayName: 'Resource',
 				name: 'resource',

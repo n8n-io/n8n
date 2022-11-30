@@ -300,12 +300,12 @@ const description = [
 							name: 'None',
 							value: 'none',
 						},
-						{
-							name: 'Predefined Credential Type',
-							value: 'predefinedCredentialType',
-							description:
-								"We've already implemented auth for many services so that you don't have to set it up manually",
-						},
+						// {
+						// 	name: 'Predefined Credential Type',
+						// 	value: 'predefinedCredentialType',
+						// 	description:
+						// 		"We've already implemented auth for many services so that you don't have to set it up manually",
+						// },
 						{
 							name: 'Generic Credential Type',
 							value: 'genericCredentialType',
@@ -314,21 +314,21 @@ const description = [
 					],
 					default: 'none',
 				},
+				// {
+				// 	displayName: 'Credential Type',
+				// 	name: 'nodeCredentialType',
+				// 	type: 'credentialsSelect',
+				// 	noDataExpression: true,
+				// 	default: '',
+				// 	credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
+				// 	displayOptions: {
+				// 		show: {
+				// 			authentication: ['predefinedCredentialType'],
+				// 		},
+				// 	},
+				// },
 				{
-					displayName: 'Credential Type',
-					name: 'nodeCredentialType',
-					type: 'credentialsSelect',
-					noDataExpression: true,
-					default: '',
-					credentialTypes: ['extends:oAuth2Api', 'extends:oAuth1Api', 'has:authenticate'],
-					displayOptions: {
-						show: {
-							authentication: ['predefinedCredentialType'],
-						},
-					},
-				},
-				{
-					displayName: 'Generic Auth Type',
+					displayName: 'Generic Auth Type (OAuth not supported yet)',
 					name: 'genericAuthType',
 					type: 'credentialsSelect',
 					default: '',
