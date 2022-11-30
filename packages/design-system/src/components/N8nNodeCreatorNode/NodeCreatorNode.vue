@@ -13,7 +13,7 @@
 		</div>
 		<div>
 			<div :class="$style.details">
-				<span :class="$style.name" v-text="title" />
+				<span :class="$style.name" v-text="title" data-test-id="node-creator-item-name" />
 				<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
 				<n8n-tooltip v-if="!!$slots.tooltip" placement="top">
 					<!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
