@@ -1022,7 +1022,7 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'json-schema';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1291,16 +1291,15 @@ export type Primitives = Basic | bigint | symbol;
 
 export type Optional<T> = T | undefined | null;
 
-export type JsonSchemaType =
+export type SchemaType =
 	| 'string'
 	| 'number'
 	| 'boolean'
 	| 'bigint'
 	| 'symbol'
-	| 'date'
-	| 'list'
+	| 'array'
 	| 'object'
 	| 'function'
 	| 'null'
 	| 'undefined';
-export type JsonSchema = { type: JsonSchemaType, key?: string, value: string | JsonSchema[], path: string };
+export type Schema = { type: SchemaType, key?: string, value: string | Schema[], path: string };

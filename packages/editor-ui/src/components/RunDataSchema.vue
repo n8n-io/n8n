@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.jsonSchema">
+	<div :class="$style.schema">
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -11,14 +11,14 @@
 				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
 			</template>
 			<template>
-				<run-data-json-schema-item
+				<run-data-schema-item
 					:schema="schema"
 					:level="0"
 					:parent="null"
-					:sub-key="`${schema.type}-0-0`"
-					:mapping-enabled="mappingEnabled"
-					:dragging-path="draggingPath"
-					:distance-from-active="distanceFromActive"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
 					:node="node"
 				/>
 			</template>
@@ -27,8 +27,8 @@
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { INodeUi, JsonSchema } from "@/Interface";
-import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
+import { INodeUi, Schema } from "@/Interface";
+import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
@@ -36,7 +36,7 @@ import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 
 type Props = {
-	schema: JsonSchema
+	schema: Schema
 	mappingEnabled: boolean
 	distanceFromActive: number
 	runIndex: number
@@ -71,7 +71,7 @@ const onDragEnd = (el: HTMLElement) => {
 			src_run_index: props.runIndex,
 			src_runs_total: props.totalRuns,
 			src_field_nest_level: el.dataset.depth || 0,
-			src_view: 'json-schema',
+			src_view: 'schema',
 			src_element: el,
 			success: false,
 			...mappingTelemetry,
@@ -86,19 +86,15 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <style lang="scss" module>
-.jsonSchema {
-	position: absolute;
-	top: 0;
-	left: 0;
+.schema {
+	display: inline-block;
 	padding-left: var(--spacing-s);
-	right: 0;
-	overflow-y: auto;
+	overflow: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
 	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 }
 
 .dragPill {

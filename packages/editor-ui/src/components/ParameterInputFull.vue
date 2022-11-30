@@ -24,7 +24,7 @@
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
-				:stickyOffset="4"
+				:stickyOffset="3"
 				@drop="onDrop"
 			>
 				<template #default="{ droppable, activeDrop }">

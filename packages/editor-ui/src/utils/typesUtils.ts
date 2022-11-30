@@ -1,6 +1,6 @@
 import dateformat from 'dateformat';
 import { IDataObject, jsonParse } from 'n8n-workflow';
-import { JsonSchema, Optional, Primitives } from "@/Interface";
+import { Schema, Optional, Primitives } from "@/Interface";
 import { isObj } from "@/utils/typeGuards";
 
 /*
@@ -203,30 +203,27 @@ export const mergeDeep = <T extends object | Primitives>(sources: T[], options?:
 	}
 }, (Array.isArray(sources[0]) ? [] : {}) as T);
 
-export const getJsonSchema = (input: Optional<Primitives | object>, path = ''): JsonSchema => {
-	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
+export const getSchema = (input: Optional<Primitives | object>, path = ''): Schema => {
+	let schema:Schema = { type: 'undefined', value: 'undefined', path };
 	switch (typeof input) {
 		case 'object':
 			if (input === null) {
-				schema = { type: 'string', value: '[null]', path };
+				schema = { type: 'null', value: '[null]', path };
 			} else if (input instanceof Date) {
-				schema = { type: 'date', value: input.toISOString(), path };
+				schema = { type: 'string', value: input.toISOString(), path };
 			} else if (Array.isArray(input)) {
 				schema = {
-					type: 'list',
-					value: input.map((item, index) => ({key: index.toString(), ...getJsonSchema(item,`${path}[${index}]`)})),
+					type: 'array',
+					value: input.map((item, index) => ({key: index.toString(), ...getSchema(item,`${path}[${index}]`)})),
 					path,
 				};
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, path + `["${ k }"]`)})),
+					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getSchema(v, path + `["${ k }"]`)})),
 					path,
 				};
 			}
-			break;
-		case 'string':
-			schema = { type: isValidDate(input) ? 'date' : 'string', value: input, path };
 			break;
 		case 'function':
 			schema =  { type: 'function', value: ``, path };

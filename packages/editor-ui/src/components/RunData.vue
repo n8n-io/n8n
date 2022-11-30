@@ -247,14 +247,14 @@
 				:totalRuns="maxRunIndex"
 			/>
 
-			<run-data-json-schema
-				v-else-if="hasNodeRun && displayMode === 'json-schema'"
-				:schema="jsonSchema"
-				:mapping-enabled="mappingEnabled"
-				:distance-from-active="distanceFromActive"
+			<run-data-schema
+				v-else-if="hasNodeRun && displayMode === 'schema'"
+				:schema="schema"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
 				:node="node"
-				:run-index="runIndex"
-				:total-runs="maxRunIndex"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
 			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
@@ -360,7 +360,7 @@ import {
 	IRunDataDisplayMode,
 	ITab,
 	NodePanelType,
-	JsonSchema,
+	Schema,
 } from '@/Interface';
 
 import {
@@ -384,7 +384,7 @@ import { pinData } from '@/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty, getJsonSchema, mergeDeep } from '@/utils';
+import { isEmpty, getSchema, mergeDeep } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
@@ -392,7 +392,7 @@ import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
-const RunDataJsonSchema = () => import('@/components/RunDataJsonSchema.vue');
+const RunDataSchema = () => import('@/components/RunDataSchema.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -413,7 +413,7 @@ export default mixins(
 			CodeEditor,
 			RunDataTable,
 			RunDataJson,
-			RunDataJsonSchema,
+			RunDataSchema,
 		},
 		props: {
 			nodeUi: {
@@ -554,8 +554,8 @@ export default mixins(
 					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
 				}
 
-				if (window.posthog?.isFeatureEnabled?.('json-schema-view')) {
-					defaults.push({ label: this.$locale.baseText('runData.jsonSchema'), value: 'json-schema'});
+				if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
+					defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema'});
 				}
 
 				return defaults;
@@ -717,9 +717,9 @@ export default mixins(
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
 			},
-			jsonSchema(): JsonSchema {
+			schema(): Schema {
 				const [head, ...tail] = this.jsonData;
-				return getJsonSchema(mergeDeep([head, ...tail, head]));
+				return getSchema(mergeDeep([head, ...tail, head]));
 			},
 		},
 		methods: {

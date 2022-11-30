@@ -1165,13 +1165,13 @@ export default mixins(
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: dashed;
 }
 
 .activeDrop {
 	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-2);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 
 	textarea, input {
