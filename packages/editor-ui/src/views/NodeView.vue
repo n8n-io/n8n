@@ -232,7 +232,7 @@ import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge, getNodeViewTab } from '@/utils';
+import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
 import { AddConnectionCommand, AddNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
 
@@ -2036,14 +2036,18 @@ export default mixins(
 					try {
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
-						this.__removeConnectionByConnectionInfo(info, false, true);
+						this.__removeConnectionByConnectionInfo(info, false);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
 							const sourceNode = this.workflowsStore.getNodeById(info.connection.sourceId);
 							const sourceNodeName = sourceNode.name;
 							const outputIndex = info.connection.getParameters().index;
+							const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 
-							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							if (connectionInfo) {
+								this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
+							}
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
 						}
 					} catch (e) {
@@ -2351,29 +2355,12 @@ export default mixins(
 				}
 			},
 			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false, trackHistory = false) {
-				const sourceInfo = info.sourceEndpoint.getParameters();
-				const sourceNode = this.workflowsStore.getNodeById(sourceInfo.nodeId);
-				const targetInfo = info.targetEndpoint.getParameters();
-				const targetNode = this.workflowsStore.getNodeById(targetInfo.nodeId);
+				const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 
-				if (sourceNode && targetNode) {
-					const connectionInfo = [
-						{
-							node: sourceNode.name,
-							type: sourceInfo.type,
-							index: sourceInfo.index,
-						},
-						{
-							node: targetNode.name,
-							type: targetInfo.type,
-							index: targetInfo.index,
-						},
-					] as [IConnection, IConnection];
-
+				if (connectionInfo) {
 					if (removeVisualConnection) {
 						this.__deleteJSPlumbConnection(info.connection, trackHistory);
 					}
-
 					this.workflowsStore.removeConnection({ connection: connectionInfo });
 				}
 			},
