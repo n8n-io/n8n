@@ -48,4 +48,5 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
+	LOGSTREAMING = 'feat:logStreaming',
 }

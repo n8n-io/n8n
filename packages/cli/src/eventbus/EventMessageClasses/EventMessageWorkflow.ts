@@ -1,25 +1,36 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
-import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
+import { EventMessageTypeNames, IWorkflowBase, JsonObject } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
 	'n8n.workflow.finished',
-	'n8n.workflow.exploded',
+	'n8n.workflow.error',
+	'n8n.workflow.created',
+	'n8n.workflow.changed',
+	'n8n.workflow.deleted',
+	'n8n.workflow.shared',
 ] as const;
 export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
 
 // --------------------------------------
 // EventMessage class for Workflow events
 // --------------------------------------
-export class EventPayloadWorkflow extends AbstractEventPayload {
-	id: number;
+export interface EventPayloadWorkflow extends AbstractEventPayload {
+	msg?: string;
 
-	msg: string;
+	workflowData?: IWorkflowBase;
+
+	executionId?: string;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	workflowId?: number | string | any;
 }
 
-export class EventMessageWorkflowOptions extends AbstractEventMessageOptions {
+export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions {
+	eventName: EventNamesWorkflowType;
+
 	payload?: EventPayloadWorkflow | undefined;
 }
 

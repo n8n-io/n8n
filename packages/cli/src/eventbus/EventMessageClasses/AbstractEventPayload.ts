@@ -1,5 +1,5 @@
-import { JsonValue } from 'n8n-workflow';
+import { IWorkflowBase, JsonValue } from 'n8n-workflow';
 
-export abstract class AbstractEventPayload {
-	[key: string]: JsonValue;
+export interface AbstractEventPayload {
+	[key: string]: JsonValue | IWorkflowBase | undefined;
 }

@@ -8,13 +8,17 @@ import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker
 import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
 import events from 'events';
-import { EventMessageTypeNames, jsonParse, JsonValue } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
-import { DateTime } from 'luxon';
+import {
+	EventMessageConfirm,
+	EventMessageConfirmSource,
+	isEventMessageConfirm,
+} from '../EventMessageClasses/EventMessageConfirm';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
@@ -23,36 +27,6 @@ interface MessageEventBusLogWriterOptions {
 	keepLogCount?: number;
 	maxFileSizeInKB?: number;
 }
-
-class EventMessageConfirm {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	readonly __type = EventMessageTypeNames.confirm;
-
-	readonly confirm: string;
-
-	readonly ts: DateTime;
-
-	constructor(confirm: string) {
-		this.confirm = confirm;
-		this.ts = DateTime.now();
-	}
-
-	serialize(): JsonValue {
-		// TODO: filter payload for sensitive info here?
-		return {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			__type: this.__type,
-			confirm: this.confirm,
-			ts: this.ts.toISO(),
-		};
-	}
-}
-
-const isEventMessageConfirm = (candidate: unknown): candidate is EventMessageConfirm => {
-	const o = candidate as EventMessageConfirm;
-	if (!o) return false;
-	return o.confirm !== undefined && o.ts !== undefined;
-};
 
 /**
  * MessageEventBusWriter for Files
@@ -157,9 +131,9 @@ export class MessageEventBusLogWriter {
 		}
 	}
 
-	async confirmMessageSent(msgId: string): Promise<void> {
+	async confirmMessageSent(msgId: string, source?: EventMessageConfirmSource): Promise<void> {
 		if (this.#worker) {
-			await this.#worker.confirmMessageSent(new EventMessageConfirm(msgId).serialize());
+			await this.#worker.confirmMessageSent(new EventMessageConfirm(msgId, source).serialize());
 		}
 	}
 

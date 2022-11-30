@@ -71,6 +71,7 @@ export default mixins(
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		const result = await this.credentialsStore.fetchAllCredentials();
+		this.uiStore.nodeViewInitialized = false;
 
 		// fetch Destination data from the backend
 		await this.getDestinationDataFromREST();
@@ -95,6 +96,7 @@ export default mixins(
 		// listen to modal closing and remove nodes from store
 		this.eventBus.$on('closing', async (destinationId: string) => {
 			this.workflowsStore.removeAllNodes({setStateDirty: false, removePinData: true});
+			this.uiStore.stateIsDirty = false;
 		});
 	},
 	components: {
@@ -113,7 +115,7 @@ export default mixins(
 		async getDestinationDataFromREST(): Promise<any> {
 			this.eventTreeStore.clearEventNames();
 			this.eventTreeStore.clearDestinationItemTrees();
-			this.workflowsStore.removeAllNodes({setStateDirty: false, removePinData: true});
+			// this.workflowsStore.removeAllNodes({setStateDirty: false, removePinData: true});
 			const eventNamesData = await this.restApi().makeRestApiRequest('get', '/eventbus/eventnames');
 			if (eventNamesData) {
 				for (const eventName of eventNamesData) {

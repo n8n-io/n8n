@@ -16,6 +16,7 @@ export enum EventMessageLevel {
 export enum EventMessageTypeNames {
 	generic = '$$EventMessage',
 	audit = '$$EventMessageAudit',
+	user = '$$EventMessageUser',
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
 }
@@ -40,6 +41,7 @@ export interface MessageEventBusDestinationOptions {
 	subscribedEvents?: string[];
 	subscribedLevels?: EventMessageLevel[];
 	credentials?: INodeCredentials;
+	anonymizeMessages?: boolean;
 }
 
 export interface MessageEventBusDestinationWebhookParameterItem {
@@ -133,6 +135,7 @@ export const defaultMessageEventBusDestinationOptions: MessageEventBusDestinatio
 		EventMessageLevel.info,
 	],
 	credentials: {},
+	anonymizeMessages: false,
 };
 
 export const defaultMessageEventBusDestinationSyslogOptions: MessageEventBusDestinationSyslogOptions =

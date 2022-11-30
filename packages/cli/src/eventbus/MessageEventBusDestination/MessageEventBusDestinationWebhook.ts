@@ -73,6 +73,8 @@ export class MessageEventBusDestinationWebhook
 
 	axiosRequestOptions: AxiosRequestConfig;
 
+	anonymizeMessages?: boolean;
+
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
 		this.url = options.url;
@@ -94,6 +96,7 @@ export class MessageEventBusDestinationWebhook
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
+		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -290,11 +293,11 @@ export class MessageEventBusDestinationWebhook
 	// 		if (this.responseCodeMustMatch) {
 	// 			const postResult = await axios.post(this.url, msg);
 	// 			if (postResult.status === this.expectedStatusCode) {
-	// 				await eventBus.confirmSent(msg);
+	// 				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 	// 			}
 	// 		} else {
 	// 			await axios.post(this.url, msg);
-	// 			await eventBus.confirmSent(msg);
+	// 			await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 	// 		}
 	// 		return true;
 	// 	} catch (error) {
@@ -397,16 +400,20 @@ export class MessageEventBusDestinationWebhook
 		requestPromise.catch(() => {});
 		const requestResponse = await requestPromise;
 
+		if (this.anonymizeMessages) {
+			msg = msg.anonymize();
+		}
+
 		if (this.responseCodeMustMatch) {
 			if (requestResponse.status === this.expectedStatusCode) {
-				await eventBus.confirmSent(msg);
+				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 				return true;
 			} else {
 				return false;
 			}
 		}
 
-		await eventBus.confirmSent(msg);
+		await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 		return true;
 	}
 }

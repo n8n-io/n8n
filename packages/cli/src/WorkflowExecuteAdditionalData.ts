@@ -36,6 +36,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	EventMessageLevel,
 } from 'n8n-workflow';
 
 import { LessThanOrEqual } from 'typeorm';
@@ -64,6 +65,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
+import { eventBus } from './eventbus';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -481,7 +483,23 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [],
 		nodeExecuteAfter: [],
-		workflowExecuteBefore: [],
+		workflowExecuteBefore: [
+			async function (
+				this: WorkflowHooks,
+				workflow: Workflow,
+				data: IRunExecutionData,
+			): Promise<void> {
+				await eventBus.sendWorkflowEvent({
+					eventName: 'n8n.workflow.started',
+					level: EventMessageLevel.verbose,
+					payload: {
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
+					},
+				});
+				return;
+			},
+		],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -638,6 +656,16 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						workflowId: this.workflowData.id,
 						error,
 					});
+					await eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.error',
+						level: EventMessageLevel.error,
+						payload: {
+							workflowData: this.workflowData,
+							msg: error,
+							executionId: this.executionId,
+							workflowId: this.workflowData.id,
+						},
+					});
 
 					if (!isManualMode) {
 						executeErrorWorkflow(
@@ -648,6 +676,14 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 					}
+				} finally {
+					await eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.finished',
+						level: EventMessageLevel.log,
+						payload: {
+							workflowData: this.workflowData,
+						},
+					});
 				}
 			},
 		],

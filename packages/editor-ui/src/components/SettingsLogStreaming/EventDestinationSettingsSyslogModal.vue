@@ -13,10 +13,10 @@
 	>
 		<template #header>
 			<el-row :gutter="20" justify="start">
-					<el-col :span="12">
+					<el-col :span="16">
 						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
 					</el-col>
-					<el-col :span="11" style="text-align: right">
+					<el-col :span="8" style="text-align: right">
 						<span v-if="showRemoveConfirm">
 							<el-button class="button" text @click="removeThis">Confirm</el-button>
 							<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
@@ -180,9 +180,11 @@ export default mixins(
 		removeThis() {
 			this.$props.eventBus.$emit('remove', this.destination.id);
 			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
+			this.uiStore.stateIsDirty = false;
 		},
 		onModalClose() {
 			this.$props.eventBus.$emit('closing', this.destination.id);
+			this.uiStore.stateIsDirty = false;
 		},
 		async saveDestination() {
 			if (this.unchanged || !this.destination.id) {
@@ -192,6 +194,7 @@ export default mixins(
 			this.unchanged = true;
 			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
 			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
+			this.uiStore.stateIsDirty = false;
 		},
 	},
 });
@@ -275,6 +278,14 @@ const description = [
 					default: 'n8n',
 					placeholder: 'n8n',
 					description: 'Syslog app name parameter',
+				},
+				{
+					displayName: 'Anonymize Messages',
+					name: 'anonymizeMessages',
+					type: 'boolean',
+					default: false,
+					noDataExpression: true,
+					description: 'Anonymize user information where possible',
 				},
 			] as INodeProperties[];
 

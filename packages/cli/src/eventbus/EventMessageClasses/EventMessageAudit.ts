@@ -4,22 +4,26 @@ import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const eventNamesAudit = [
-	'n8n.audit.created',
-	'n8n.audit.updated',
-	'n8n.audit.deleted',
+	'n8n.audit.userCreated',
+	'n8n.audit.userUpdated',
+	'n8n.audit.userDeleted',
 ] as const;
 export type EventNamesAuditType = typeof eventNamesAudit[number];
 
 // --------------------------------------
 // EventMessage class for Audit events
 // --------------------------------------
-export class EventPayloadAudit extends AbstractEventPayload {
-	id: number;
+export interface EventPayloadAudit extends AbstractEventPayload {
+	msg?: string;
 
-	msg: string;
+	userId?: string;
+
+	userEmail?: string;
 }
 
-export class EventMessageAuditOptions extends AbstractEventMessageOptions {
+export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
+	eventName: EventNamesAuditType;
+
 	payload?: EventPayloadAudit;
 }
 

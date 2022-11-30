@@ -8,6 +8,16 @@ import config from '../../config';
 import { Db } from '../..';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
 import uniqby from 'lodash.uniqby';
+import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
+import { EventMessageUser, EventMessageUserOptions } from '../EventMessageClasses/EventMessageUser';
+import {
+	EventMessageAuditOptions,
+	EventMessageAudit,
+} from '../EventMessageClasses/EventMessageAudit';
+import {
+	EventMessageWorkflowOptions,
+	EventMessageWorkflow,
+} from '../EventMessageClasses/EventMessageWorkflow';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -184,8 +194,8 @@ class MessageEventBus extends EventEmitter {
 		}
 	}
 
-	async confirmSent(msg: EventMessageTypes) {
-		await this.logWriter.confirmMessageSent(msg.id);
+	async confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
+		await this.logWriter.confirmMessageSent(msg.id, source);
 	}
 
 	async #emitMessage(msg: EventMessageTypes) {
@@ -195,7 +205,7 @@ class MessageEventBus extends EventEmitter {
 
 		// if there are no set up destinations, immediately mark the event as sent
 		if (Object.keys(this.destinations).length === 0) {
-			await this.confirmSent(msg);
+			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {
 				this.emit(this.destinations[destinationName].getId(), msg);
@@ -228,6 +238,22 @@ class MessageEventBus extends EventEmitter {
 	async getEventsUnsent(): Promise<EventMessageTypes[]> {
 		const unSentMessages = await this.getEvents('unsent');
 		return unSentMessages;
+	}
+
+	/**
+	 * Convenience Methods
+	 */
+
+	async sendUserEvent(options: EventMessageUserOptions) {
+		await this.send(new EventMessageUser(options));
+	}
+
+	async sendAuditEvent(options: EventMessageAuditOptions) {
+		await this.send(new EventMessageAudit(options));
+	}
+
+	async sendWorkflowEvent(options: EventMessageWorkflowOptions) {
+		await this.send(new EventMessageWorkflow(options));
 	}
 }
 

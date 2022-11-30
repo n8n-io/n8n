@@ -38,9 +38,12 @@ export class MessageEventBusDestinationRedis
 
 	redisOptions: RedisOptions;
 
+	anonymizeMessages?: boolean;
+
 	constructor(options: MessageEventBusDestinationRedisOptions) {
 		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.redis;
+		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
 		this.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
 			host: '127.0.0.1', // Redis host
@@ -58,10 +61,13 @@ export class MessageEventBusDestinationRedis
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		if (this.client?.status === 'ready') {
+			if (this.anonymizeMessages) {
+				msg = msg.anonymize();
+			}
 			const publishResult = await this.client?.publish(this.channelName, msg.toString());
 			console.log(publishResult);
 			console.debug(`MessageEventBusDestinationRedis forwarded  ${msg.eventName} - ${msg.id}`);
-			await eventBus.confirmSent(msg);
+			await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 			return true;
 		} else {
 			console.debug(`MessageForwarderToRedis not in ready state`);

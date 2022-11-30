@@ -1,9 +1,9 @@
 <template>
-	<div :style="{ 'margin-left': (depth ?? 0) * 10 + 'px' }">
+	<div :style="{ 'margin-left': indentation + 'px' }">
 		<div>
 				<span v-if="isFolder" @click="toggleFolder" :class="$style['folder-icon']">
-					<font-awesome-icon v-if="isOpen" icon="chevron-down" size="xs" slot="prefix"/>
-					<font-awesome-icon v-else icon="chevron-right" size="xs" slot="prefix"/>
+					<font-awesome-icon v-if="isOpen" icon="chevron-down" size="xs"/>
+					<font-awesome-icon v-else icon="chevron-right" size="xs"/>
 				</span>
 			<el-checkbox
 				:value="isChecked"
@@ -69,6 +69,17 @@
 			),
 			isFolder() {
 				return this.item && this.item.children.length > 0;
+			},
+			indentation() {
+				if (this.depth === 0) {
+					return 0;
+				} else {
+					if (this.isFolder) {
+						return this.depth * 30;
+					} else {
+						return this.depth * 30  - 10;
+					}
+				}
 			},
 		},
 		methods: {

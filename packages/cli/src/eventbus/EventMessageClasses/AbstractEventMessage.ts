@@ -87,7 +87,12 @@ export abstract class AbstractEventMessage {
 		this.eventName = options.eventName;
 		this.message = options.message ?? options.eventName;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-		this.level = options.level ?? EventMessageLevel.log;
+		this.level =
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+			options.level && Object.values(EventMessageLevel).includes(options.level as EventMessageLevel)
+				? (options.level as EventMessageLevel)
+				: // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				  EventMessageLevel.log;
 		if (typeof options.ts === 'string') {
 			this.ts = DateTime.fromISO(options.ts) ?? DateTime.now();
 		} else {

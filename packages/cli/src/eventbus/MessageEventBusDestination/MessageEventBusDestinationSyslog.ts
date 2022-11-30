@@ -59,6 +59,8 @@ export class MessageEventBusDestinationSyslog
 
 	eol: string;
 
+	anonymizeMessages?: boolean;
+
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
@@ -71,6 +73,7 @@ export class MessageEventBusDestinationSyslog
 		this.app_name = options.app_name ?? 'n8n';
 		this.eol = options.eol ?? '\n';
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
+		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
 
 		this.client = syslog.createClient(this.host, {
 			appName: this.app_name,
@@ -91,6 +94,9 @@ export class MessageEventBusDestinationSyslog
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		if (!this.hasSubscribedToEvent(msg)) return false;
 		try {
+			if (this.anonymizeMessages) {
+				msg = msg.anonymize();
+			}
 			this.client.log(
 				msg.toString(),
 				{
@@ -103,7 +109,7 @@ export class MessageEventBusDestinationSyslog
 						console.log(error);
 						return false;
 					} else {
-						await eventBus.confirmSent(msg);
+						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						return true;
 					}
 				},

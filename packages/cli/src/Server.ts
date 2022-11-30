@@ -66,6 +66,9 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	INodeTypes,
 	ICredentialTypes,
+	INode,
+	IWorkflowBase,
+	IRun,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -1552,6 +1555,11 @@ class App {
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 			// NOTE: subscribe to emitters and generate eventMessages from them
+			// eventEmitter.on('nodeFetchedData', (workflowId: string, node: INode) => {});
+			// eventEmitter.on(
+			// 	'workflowExecutionCompleted',
+			// 	(workflowData: IWorkflowBase, fullRunData: IRun) => {},
+			// );
 			// something.subscribe('event', (event)=>eventBus.send(new EventMessage({
 			// 	eventName: event.name,
 			// 	level: 'debug',

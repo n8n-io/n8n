@@ -7,13 +7,13 @@
 						@input="onEnabledSwitched($event, destination.id)"
 						/>
 				&nbsp;
-				<span @click="editThis(destination.id)">{{ nodeParameters.label }}</span>
+				<n8n-text size="large" color="text-dark" @click="editThis(destination.id)" :class="$style.item">{{ nodeParameters.label }}</n8n-text>
 			<div>
 			<el-row :gutter="10" style="margin-top: 20px;">
-				<el-col style="text-align: left;" :span="8">
+				<!-- <el-col style="text-align: left;" :span="8">
 					<el-button class="button" text @click="editThis(destination.id)">Edit</el-button>
-				</el-col>
-				<el-col style="text-align: right;" :span="16">
+				</el-col> -->
+				<el-col style="text-align: right;" :span="24">
 					<span v-if="showRemoveConfirm">
 						<el-button class="button" text @click="removeThis">Confirm</el-button>
 						<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>

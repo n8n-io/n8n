@@ -2,7 +2,7 @@ import { INodeCredentials, INodeParameters, MessageEventBusDestinationOptions } 
 import { INodeUi, IRestApi } from "../../Interface";
 import { useEventTreeStore } from '../../stores/eventTreeStore';
 
-export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.n8n'): INodeUi {
+export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.stickyNote'): INodeUi {
 	return {
 		id: destination.id,
 		name: destination.id,

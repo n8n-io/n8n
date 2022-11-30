@@ -5,6 +5,7 @@ import {
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
+	JsonValue,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
@@ -17,6 +18,7 @@ import {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
+import { eventBus } from './eventbus';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -268,12 +270,22 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId: string,
 		userDeletionData: ITelemetryUserDeletionData,
 		publicApi: boolean,
-	): Promise<void> {
-		return this.telemetry.track('User deleted user', {
-			...userDeletionData,
-			user_id: userId,
-			public_api: publicApi,
-		});
+	): Promise<any> {
+		return Promise.all([
+			eventBus.sendUserEvent({
+				eventName: 'n8n.user.deleted',
+				payload: {
+					userId,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					userDeletionData: userDeletionData as unknown as JsonValue,
+				},
+			}),
+			this.telemetry.track('User deleted user', {
+				...userDeletionData,
+				user_id: userId,
+				public_api: publicApi,
+			}),
+		]);
 	}
 
 	async onUserInvite(userInviteData: {
@@ -281,6 +293,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 	}): Promise<void> {
+		await eventBus.sendUserEvent({
+			eventName: 'n8n.user.invited',
+			payload: {
+				userId: userInviteData.user_id,
+				targetUserId: userInviteData.target_user_id,
+			},
+		});
 		return this.telemetry.track('User invited new user', userInviteData);
 	}
 
@@ -335,7 +354,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
-		return this.telemetry.track('User changed personal settings', userUpdateData);
+		// eslint-disable-next-line @typescript-eslint/no-floating-promises
+		Promise.all([
+			eventBus.sendUserEvent({
+				eventName: 'n8n.user.updated',
+				payload: {
+					userId: userUpdateData.user_id,
+				},
+			}),
+			this.telemetry.track('User changed personal settings', userUpdateData),
+		]);
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void> {

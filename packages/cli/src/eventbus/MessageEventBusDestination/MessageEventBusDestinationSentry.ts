@@ -56,6 +56,8 @@ export class MessageEventBusDestinationSentry
 
 	nodeCredentialType: 'sentryIoApi';
 
+	anonymizeMessages?: boolean;
+
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -66,6 +68,7 @@ export class MessageEventBusDestinationSentry
 		if (options.tracesSampleRate) this.tracesSampleRate = options.tracesSampleRate;
 		if (options.authentication) this.authentication = options.authentication;
 		if (options.nodeCredentialType) this.nodeCredentialType = options.nodeCredentialType;
+		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
 		const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
 		Sentry.init({
@@ -92,12 +95,15 @@ export class MessageEventBusDestinationSentry
 					logger: this.getId(),
 				},
 			};
+			if (this.anonymizeMessages) {
+				msg = msg.anonymize();
+			}
 			const sentryResult = Sentry.captureMessage(
 				msg.payload ? JSON.stringify(msg.payload) : msg.eventName,
 				context,
 			);
 			if (sentryResult) {
-				await eventBus.confirmSent(msg);
+				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 				return true;
 			}
 		} catch (error) {

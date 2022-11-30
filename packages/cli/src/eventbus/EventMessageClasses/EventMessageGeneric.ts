@@ -8,9 +8,11 @@ import {
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
-export class EventPayloadGeneric extends AbstractEventPayload {}
+export interface EventPayloadGeneric extends AbstractEventPayload {
+	msg?: string;
+}
 
-export class EventMessageGenericOptions extends AbstractEventMessageOptions {
+export interface EventMessageGenericOptions extends AbstractEventMessageOptions {
 	payload?: EventPayloadGeneric;
 }
 

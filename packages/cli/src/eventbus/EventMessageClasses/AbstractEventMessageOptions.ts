@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import { EventMessageLevel } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 
-export abstract class AbstractEventMessageOptions {
+export interface AbstractEventMessageOptions {
 	__type?: string;
 
 	id?: string;
@@ -13,7 +13,9 @@ export abstract class AbstractEventMessageOptions {
 
 	message?: string;
 
-	level?: EventMessageLevel;
+	level?: EventMessageLevel | string;
 
 	payload?: AbstractEventPayload;
+
+	anoymize?: boolean;
 }
