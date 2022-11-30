@@ -6,7 +6,7 @@ const workflowPage = new WorkflowPage();
 
 describe('NDV', () => {
 	beforeEach(() => {
-		cy.task('db:reset');
+		cy.resetAll();
 		cy.skipSetup();
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.renameWorkflow(uuid());
