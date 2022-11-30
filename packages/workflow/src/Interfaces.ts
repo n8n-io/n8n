@@ -1245,7 +1245,7 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
-export interface IWorfklowIssues {
+export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 

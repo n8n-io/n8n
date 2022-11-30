@@ -36,7 +36,6 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
-	INodeType,
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,

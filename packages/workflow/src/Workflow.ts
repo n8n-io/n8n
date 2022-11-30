@@ -33,7 +33,7 @@ import {
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResponseData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	WebhookSetupMethodNames,
@@ -249,11 +249,11 @@ export class Workflow {
 		startNode?: string;
 		destinationNode?: string;
 		pinDataNodeNames?: string[];
-	}): IWorfklowIssues | null {
+	}): IWorkflowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
-		const workflowIssues: IWorfklowIssues = {};
+		const workflowIssues: IWorkflowIssues = {};
 
 		let checkNodes: string[] = [];
 		if (inputData.destinationNode) {
