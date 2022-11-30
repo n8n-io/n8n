@@ -40,7 +40,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -63,7 +63,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -234,6 +234,7 @@ import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
+import { AddNodeCommand, RemoveNodeCommand } from '@/models/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1608,7 +1609,7 @@ export default mixins(
 				return newNodeData;
 			},
 
-			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, trackHistory = false) {
 				const nodeTypeData: INodeTypeDescription | null = this.nodeTypesStore.getNodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1694,7 +1695,7 @@ export default mixins(
 					newNodeData.webhookId = uuid();
 				}
 
-				await this.addNodes([newNodeData]);
+				await this.addNodes([newNodeData], undefined, trackHistory);
 
 				this.uiStore.stateIsDirty = true;
 
@@ -1716,11 +1717,13 @@ export default mixins(
 				}
 
 				// Automatically deselect all nodes and select the current one and also active
-				// current node
-				this.deselectAllNodes();
-				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
-				});
+				// current node. But only if it's added manually by the user (not by undo/redo mechanism)
+				if(trackHistory) {
+					this.deselectAllNodes();
+					setTimeout(() => {
+						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
+					});
+				}
 
 				return newNodeData;
 			},
@@ -1756,7 +1759,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -1765,7 +1768,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName, options);
+				const newNodeData = await this.injectNode(nodeTypeName, options, trackHistory);
 				if (!newNodeData) {
 					return;
 				}
@@ -2547,7 +2550,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string) {
+			removeNode(nodeName: string, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2644,6 +2647,9 @@ export default mixins(
 
 					// Remove node from selected index if found in it
 					this.uiStore.removeNodeFromSelection(node);
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
+					}
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {
@@ -2787,7 +2793,7 @@ export default mixins(
 					}
 				});
 			},
-			async addNodes(nodes: INodeUi[], connections?: IConnections) {
+			async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
 				if (!nodes || !nodes.length) {
 					return;
 				}
@@ -2844,6 +2850,9 @@ export default mixins(
 					}
 
 					this.workflowsStore.addNode(node);
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new AddNodeCommand(node, this));
+					}
 				});
 
 				// Wait for the node to be rendered
@@ -3243,7 +3252,7 @@ export default mixins(
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.workflowsStore.workflowId });
 			},
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
-				this.addNode(nodeTypeName, { position });
+				this.addNode(nodeTypeName, { position }, true);
 			},
 			async saveCurrentWorkflowExternal(callback: () => void) {
 				await this.saveCurrentWorkflow();
@@ -3260,11 +3269,17 @@ export default mixins(
 						endpoints.forEach(endpoint => {
 							endpoint.repaint();
 						});
-						// TODO: Figure out how NOT to repaint everything
 						this.instance.repaintEverything();
 						this.onNodeMoved(node);
 					}
 				}, 0);
+			},
+			onRevertAddNode({node}: {node: INodeUi}): void {
+				this.removeNode(node.name, false);
+
+			},
+			onRevertRemoveNode({node}: {node: INodeUi}): void {
+				this.addNode(node.type, { position: node.position });
 			},
 		},
 		async mounted() {
@@ -3369,6 +3384,8 @@ export default mixins(
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$on('nodeMove', this.onMoveNode);
+			this.$root.$on('revertAddNode', this.onRevertAddNode);
+			this.$root.$on('revertRemoveNode', this.onRevertRemoveNode);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3385,6 +3402,8 @@ export default mixins(
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$off('nodeMove', this.onMoveNode);
+			this.$root.$off('revertAddNode', this.onRevertAddNode);
+			this.$root.$off('revertRemoveNode', this.onRevertRemoveNode);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
