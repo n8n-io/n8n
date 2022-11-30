@@ -1,8 +1,9 @@
-import { WorkflowsPage, WorkflowPage } from '../pages';
+import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
 import { v4 as uuid } from 'uuid';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
+const ndv = new NDV();
 
 describe('NDV', () => {
 	beforeEach(() => {
@@ -16,17 +17,17 @@ describe('NDV', () => {
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.getters.canvasNodes().first().dblclick();
-		cy.getByTestId('ndv').should('be.visible');
-		cy.getByTestId('back-to-canvas').click()
-		cy.getByTestId('ndv').should('not.be.visible');
+		ndv.getters.container().should('be.visible');
+		ndv.getters.backToCanvas().click()
+		ndv.getters.container().should('not.be.visible');
 	});
 
 	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
-		cy.getByTestId('node-execute-button').first().click();
-		cy.getByTestId('copy-input').click();
+		ndv.getters.nodeExecuteButton().first().click();
+		ndv.getters.copyInput().click();
 
 		cy.wrap(Cypress.automation('remote:debugger:protocol', {
 			command: 'Browser.grantPermissions',
@@ -49,17 +50,17 @@ describe('NDV', () => {
 			})
 		});
 
-		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1).and('be.visible');
+		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');
 	});
 
 	it('should change input', () => {
 		cy.createFixtureWorkflow('NDV-test-select-input.json', `NDV test select input ${uuid()}`);
 		workflowPage.actions.zoomToFit();
 		workflowPage.getters.canvasNodes().last().dblclick();
-		cy.getByTestId('ndv-input-select').click();
-		cy.getByTestId('ndv-input-option').last().click();
-		cy.getByTestId('ndv-input-panel').within(() => {
-			cy.getByTestId('ndv-data-container').should('contain', 'start');
+		ndv.getters.inputSelect().click();
+		ndv.getters.inputOption().last().click();
+		ndv.getters.inputPanel().within(() => {
+			ndv.getters.dataContainer().should('contain', 'start');
 		});
 	});
 });
