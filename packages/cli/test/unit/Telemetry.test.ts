@@ -334,7 +334,7 @@ describe('Telemetry', () => {
 			execBuffer = telemetry.getCountsBuffer();
 
 			expect(pulseSpy).toBeCalledTimes(1);
-			expect(spyTrack).toHaveBeenCalledTimes(2);
+			expect(spyTrack).toHaveBeenCalledTimes(3);
 			expect(spyTrack).toHaveBeenNthCalledWith(
 				1,
 				'Workflow execution count',
@@ -375,11 +375,12 @@ describe('Telemetry', () => {
 				},
 				{ withPostHog: true },
 			);
+			expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse');
 			expect(Object.keys(execBuffer).length).toBe(0);
 
 			// Adding a second step here because we believe PostHog may use timers for sending data
 			// and adding posthog to the above metric was causing the pulseSpy timer to not be ran
-			jest.advanceTimersToNextTimer(2);
+			jest.advanceTimersToNextTimer();
 
 			execBuffer = telemetry.getCountsBuffer();
 			expect(Object.keys(execBuffer).length).toBe(0);
