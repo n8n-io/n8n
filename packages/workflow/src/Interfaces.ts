@@ -1474,7 +1474,7 @@ export interface INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType;
 }
 
-type LoadingDetails = {
+export type LoadingDetails = {
 	className: string;
 	sourcePath: string;
 };
