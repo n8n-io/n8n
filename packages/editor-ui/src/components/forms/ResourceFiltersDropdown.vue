@@ -38,7 +38,7 @@
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:value="value.ownedBy"
-					size="small"
+					size="medium"
 					@input="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
@@ -54,7 +54,7 @@
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:value="value.sharedWith"
-					size="small"
+					size="medium"
 					@input="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
@@ -163,6 +163,7 @@ export default Vue.extend({
 
 .filters-dropdown {
 	width: 280px;
+	padding-bottom: var(--spacing-s);
 }
 
 .filters-dropdown-footer {

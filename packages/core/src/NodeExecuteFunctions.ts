@@ -36,7 +36,6 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
-	INodeType,
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
@@ -1886,7 +1885,7 @@ export function getWebhookDescription(
 	workflow: Workflow,
 	node: INode,
 ): IWebhookDescription | undefined {
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
