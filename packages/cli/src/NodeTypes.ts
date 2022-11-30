@@ -21,10 +21,6 @@ class NodeTypesClass implements INodeTypes {
 		}
 	}
 
-	getAll(): Array<INodeType | IVersionedNodeType> {
-		return Object.values(this.loadedNodes).map(({ type }) => type);
-	}
-
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path, used to locate a node's translations.
 	 */
@@ -41,6 +37,10 @@ class NodeTypesClass implements INodeTypes {
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
+	}
+
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.getNode(nodeType).type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
