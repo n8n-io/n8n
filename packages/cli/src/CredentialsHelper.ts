@@ -39,6 +39,7 @@ import {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	ICredentialTypes,
 } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -47,25 +48,48 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { User } from '@db/entities/User';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { NodeTypes } from '@/NodeTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-const mockNodesData: INodeTypeData = {};
-const mockNodeTypes: INodeTypes = {
-	getAll(): Array<INodeType | IVersionedNodeType> {
-		return Object.values(mockNodesData).map((data) => data.type);
+const mockNode = {
+	name: '',
+	typeVersion: 1,
+	type: 'mock',
+	position: [0, 0],
+	parameters: {} as INodeParameters,
+} as INode;
+
+const mockNodesData: INodeTypeData = {
+	mock: {
+		sourcePath: '',
+		type: {
+			description: { properties: [] as INodeProperties[] },
+		} as INodeType,
 	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
-		if (mockNodesData[nodeType] === undefined) {
-			return undefined;
+};
+
+const mockNodeTypes: INodeTypes = {
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return mockNodesData[nodeType]?.type;
+	},
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		if (!mockNodesData[nodeType]) {
+			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${nodeType}`);
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
 
 export class CredentialsHelper extends ICredentialsHelper {
-	private credentialTypes = CredentialTypes();
+	constructor(
+		encryptionKey: string,
+		private credentialTypes: ICredentialTypes = CredentialTypes(),
+		private nodeTypes: INodeTypes = NodeTypes(),
+	) {
+		super(encryptionKey);
+	}
 
 	/**
 	 * Add the required authentication information to the request
@@ -387,16 +411,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				throw e;
 			}
 		} else {
-			const node = {
-				name: '',
-				typeVersion: 1,
-				type: 'mock',
-				position: [0, 0],
-				parameters: {} as INodeParameters,
-			} as INode;
-
 			const workflow = new Workflow({
-				nodes: [node],
+				nodes: [mockNode],
 				connections: {},
 				active: false,
 				nodeTypes: mockNodeTypes,
@@ -404,7 +420,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 			// Resolve expressions if any are set
 			decryptedData = workflow.expression.getComplexParameterValue(
-				node,
+				mockNode,
 				decryptedData as INodeParameters,
 				mode,
 				defaultTimezone,
@@ -457,28 +473,27 @@ export class CredentialsHelper extends ICredentialsHelper {
 		await Db.collections.Credentials.update(findQuery, newCredentialsData);
 	}
 
-	getCredentialTestFunction(
+	private getCredentialTestFunction(
 		credentialType: string,
-		nodeToTestWith?: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
-		const nodeTypes = NodeTypes();
-		const allNodes = nodeTypes.getAll();
+		// Check if test is defined on credentials
+		const type = this.credentialTypes.getByName(credentialType);
+		if (type.test) {
+			return {
+				testRequest: type.test,
+			};
+		}
 
-		// Check all the nodes one by one if they have a test function defined
-		for (let i = 0; i < allNodes.length; i++) {
-			const node = allNodes[i];
-
-			if (nodeToTestWith && node.description.name !== nodeToTestWith) {
-				// eslint-disable-next-line no-continue
-				continue;
-			}
+		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
+		for (const nodeName of nodeTypesToTestWith) {
+			const node = this.nodeTypes.getByName(nodeName);
 
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values((node as IVersionedNodeType).nodeVersions));
+				allNodeTypes.push(...Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -487,47 +502,33 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Check each of the node versions for credential tests
 			for (const nodeType of allNodeTypes) {
 				// Check each of teh credentials
-				for (const credential of nodeType.description.credentials ?? []) {
-					if (credential.name === credentialType && !!credential.testedBy) {
-						if (typeof credential.testedBy === 'string') {
-							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+				for (const { name, testedBy } of nodeType.description.credentials ?? []) {
+					if (name === credentialType && !!testedBy) {
+						if (typeof testedBy === 'string') {
+							if (node instanceof VersionedNodeType) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
-								const versions = Object.keys((node as IVersionedNodeType).nodeVersions)
-									.sort()
-									.reverse();
+								const versions = Object.keys(node.nodeVersions).sort().reverse();
 								for (const version of versions) {
-									const versionedNode = (node as IVersionedNodeType).nodeVersions[
-										parseInt(version, 10)
-									];
-									if (
-										versionedNode.methods?.credentialTest &&
-										versionedNode.methods?.credentialTest[credential.testedBy]
-									) {
-										return versionedNode.methods?.credentialTest[credential.testedBy];
+									const versionedNode = node.nodeVersions[parseInt(version, 10)];
+									const credentialTest = versionedNode.methods?.credentialTest;
+									if (credentialTest && testedBy in credentialTest) {
+										return credentialTest[testedBy];
 									}
 								}
 							}
 							// Test is defined as string which links to a function
-							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
+							return (node as unknown as INodeType).methods?.credentialTest![testedBy];
 						}
 
 						// Test is defined as JSON with a definition for the request to make
 						return {
 							nodeType,
-							testRequest: credential.testedBy,
+							testRequest: testedBy,
 						};
 					}
 				}
 			}
-		}
-
-		// Check if test is defined on credentials
-		const type = this.credentialTypes.getByName(credentialType);
-		if (type.test) {
-			return {
-				testRequest: type.test,
-			};
 		}
 
 		return undefined;
@@ -537,9 +538,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		user: User,
 		credentialType: string,
 		credentialsDecrypted: ICredentialsDecrypted,
-		nodeToTestWith?: string,
 	): Promise<INodeCredentialTestResult> {
-		const credentialTestFunction = this.getCredentialTestFunction(credentialType, nodeToTestWith);
+		const credentialTestFunction = this.getCredentialTestFunction(credentialType);
 		if (credentialTestFunction === undefined) {
 			return Promise.resolve({
 				status: 'Error',
@@ -570,8 +570,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialTestFunction.nodeType) {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
-			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
+			nodeType = this.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {
