@@ -6,6 +6,7 @@
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
+					testId="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
@@ -17,16 +18,14 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
-							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags">
-			<div
-				v-if="isTagsEditEnabled">
+		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
+			<div v-if="isTagsEditEnabled">
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="appliedTagIds"
@@ -45,6 +44,7 @@
 			>
 				<span
 					class="add-tag clickable"
+					data-test-id="new-tag-link"
 					@click="onTagsEditEnable"
 				>
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
@@ -69,22 +69,42 @@
 				</span>
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-button
-						type="tertiary"
+						type="secondary"
 						class="mr-2xs"
 						@click="onShareButtonClick"
 					>
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
+					<template #fallback>
+						<n8n-tooltip>
+							<n8n-button
+								type="secondary"
+								:class="['mr-2xs', $style.disabledShareButton]"
+							>
+								{{ $locale.baseText('workflowDetails.share') }}
+							</n8n-button>
+							<template #content>
+								<i18n :path="dynamicTranslations.workflows.sharing.unavailable.description" tag="span">
+									<template #action>
+										<a :href="dynamicTranslations.workflows.sharing.unavailable.linkURL" target="_blank">
+											{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.action) }}
+										</a>
+									</template>
+								</i18n>
+							</template>
+						</n8n-tooltip>
+					</template>
 				</enterprise-edition>
 				<SaveButton
-					type="secondary"
+					type="primary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
+					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
 					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
-					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
+					<n8n-action-dropdown :items="workflowMenuItems" data-test-id="workflow-menu" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
 		</PushConnectionTracker>
@@ -113,7 +133,7 @@ import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
-import {IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare} from "@/Interface";
+import {IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare, NestedRecord} from "@/Interface";
 
 import { saveAs } from 'file-saver';
 import { titleChange } from "@/mixins/titleChange";
@@ -168,6 +188,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 			useWorkflowsStore,
 			useUsersStore,
 		),
+		dynamicTranslations(): NestedRecord<string> {
+			return this.uiStore.dynamicTranslations;
+		},
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;
 		},
@@ -546,5 +569,9 @@ $--header-spacing: 20px;
 
 .deleteItem {
 	color: var(--color-danger);
+}
+
+.disabledShareButton {
+	cursor: not-allowed;
 }
 </style>

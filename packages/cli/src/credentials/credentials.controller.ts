@@ -113,10 +113,10 @@ credentialsController.get(
 credentialsController.post(
 	'/test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
-		const { credentials, nodeToTestWith } = req.body;
+		const { credentials } = req.body;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		return CredentialsService.test(req.user, encryptionKey, credentials, nodeToTestWith);
+		return CredentialsService.test(req.user, encryptionKey, credentials);
 	}),
 );
 

@@ -4,7 +4,7 @@ const path = require('path');
  * @type {import('@storybook/core-common').StorybookConfig}
  */
 module.exports = {
-	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|ts)'],
+	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.{ts,js}'],
 	addons: [
 		'@storybook/addon-links',
 		'@storybook/addon-essentials',

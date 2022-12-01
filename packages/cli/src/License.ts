@@ -47,7 +47,7 @@ export class License {
 		try {
 			this.manager = new LicenseManager({
 				server,
-				tenantId: 1,
+				tenantId: config.getEnv('license.tenantId'),
 				productIdentifier: `n8n-${version}`,
 				autoRenewEnabled,
 				autoRenewOffset,
