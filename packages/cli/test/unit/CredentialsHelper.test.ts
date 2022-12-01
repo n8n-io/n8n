@@ -2,7 +2,6 @@ import {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
-	ICredentialTypeData,
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
@@ -234,9 +233,13 @@ describe('CredentialsHelper', () => {
 					},
 				};
 
-				CredentialTypes(mockNodesAndCredentials);
+				const credentialTypes = CredentialTypes(mockNodesAndCredentials);
 
-				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
+				const credentialsHelper = new CredentialsHelper(
+					TEST_ENCRYPTION_KEY,
+					credentialTypes,
+					nodeTypes,
+				);
 
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
