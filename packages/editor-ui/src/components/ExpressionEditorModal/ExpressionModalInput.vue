@@ -33,6 +33,7 @@ export default mixins(workflowHelpers).extend({
 		return {
 			editor: null as EditorView | null,
 			errorsInSuccession: 0,
+			isReadOnly: window !== window.parent && window.parent.location.pathname.includes('/executions'),
 		};
 	},
 	mounted() {
@@ -42,6 +43,7 @@ export default mixins(workflowHelpers).extend({
 			history(),
 			braceHandler(),
 			EditorView.lineWrapping,
+			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
@@ -249,7 +251,7 @@ export default mixins(workflowHelpers).extend({
 			return result;
 		},
 		itemSelected({ variable }: IVariableItemSelected) {
-			if (!this.editor) return;
+			if (!this.editor || this.isReadOnly) return;
 
 			const OPEN_MARKER = '{{';
 			const CLOSE_MARKER = '}}';
