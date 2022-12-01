@@ -91,7 +91,6 @@ import axios, {
 import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 import {
-	// eventEmitter,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
