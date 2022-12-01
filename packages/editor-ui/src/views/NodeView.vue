@@ -234,7 +234,7 @@ import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
 import { useHistoryStore } from '@/stores/history';
-import { AddConnectionCommand, AddNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
+import { AddConnectionCommand, AddNodeCommand, MoveNodeCommand, RemoveConnectionCommand, RemoveNodeCommand } from '@/models/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -1173,12 +1173,13 @@ export default mixins(
 				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 
-			pushDownstreamNodes(sourceNodeName: string, margin: number) {
+			pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 				const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
 				const workflow = this.getCurrentWorkflow();
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+					const oldPosition = node.position;
 
 					if (node.position[0] < sourceNode.position[0]) {
 						continue;
@@ -1193,6 +1194,10 @@ export default mixins(
 
 					this.workflowsStore.updateNodeProperties(updateInformation);
 					this.onNodeMoved(node);
+
+					if (recordHistory) {
+						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this));
+					}
 				}
 			},
 
@@ -1645,7 +1650,7 @@ export default mixins(
 					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
 						if (diffX <= NodeViewUtils.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
-							this.pushDownstreamNodes(lastSelectedNode.name, NodeViewUtils.PUSH_NODES_OFFSET);
+							this.pushDownstreamNodes(lastSelectedNode.name, NodeViewUtils.PUSH_NODES_OFFSET, trackHistory);
 						}
 					}
 
@@ -1772,6 +1777,8 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
 
+				this.historyStore.startRecordingUndo();
+
 				const newNodeData = await this.injectNode(nodeTypeName, options, trackHistory);
 				if (!newNodeData) {
 					return;
@@ -1784,15 +1791,17 @@ export default mixins(
 					await Vue.nextTick();
 
 					if (lastSelectedConnection && lastSelectedConnection.__meta) {
-						this.__deleteJSPlumbConnection(lastSelectedConnection);
+						this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
 
 						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 						const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-						this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
+						this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, trackHistory);
 					}
 
 					// Connect active node to the newly created one
-					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
+					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, trackHistory);
+
+					this.historyStore.stopRecordingUndo();
 				}
 			},
 			initNodeView() {
