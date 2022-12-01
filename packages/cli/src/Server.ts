@@ -109,7 +109,7 @@ import type {
 import { userManagementRouter } from '@/UserManagement';
 import { resolveJwt } from '@/UserManagement/auth/jwt';
 
-import { executionsController } from '@/api/executions.api';
+import { executionsController } from '@/executions/executions.controller';
 import { nodeTypesController } from '@/api/nodeTypes.api';
 import { tagsController } from '@/api/tags.api';
 import { loadPublicApiVersions } from '@/PublicApi';
