@@ -11,7 +11,7 @@ export const ldapFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		typeOptions: {
-			alwaysOpenEditWindow: true,
+			alwaysOpenEditWindow: false,
 		},
 		displayOptions: {
 			show: {

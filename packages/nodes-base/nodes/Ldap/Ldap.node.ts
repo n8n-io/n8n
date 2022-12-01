@@ -196,7 +196,6 @@ export class Ldap implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				item = items[itemIndex];
 				if (operation === 'compare') {
 					const dn = this.getNodeParameter('dn', itemIndex) as string;
 					const attributeId = this.getNodeParameter('id', itemIndex) as string;
