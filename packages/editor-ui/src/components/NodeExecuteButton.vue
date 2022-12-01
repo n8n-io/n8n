@@ -5,6 +5,7 @@
 		</template>
 		<div>
 			<n8n-button
+				data-test-id="node-execute-button"
 				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"

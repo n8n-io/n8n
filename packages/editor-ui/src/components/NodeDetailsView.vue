@@ -7,6 +7,7 @@
 		class="ndv-wrapper"
 		width="auto"
 		append-to-body
+		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
