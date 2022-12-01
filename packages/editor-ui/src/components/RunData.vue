@@ -239,7 +239,6 @@
 				class="ph-no-capture"
 				:paneType="paneType"
 				:editMode="editMode"
-				:currentOutputIndex="currentOutputIndex"
 				:sessioId="sessionId"
 				:node="node"
 				:inputData="inputData"
