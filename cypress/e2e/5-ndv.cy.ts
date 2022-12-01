@@ -29,14 +29,6 @@ describe('NDV', () => {
 		ndv.getters.nodeExecuteButton().first().click();
 		ndv.getters.copyInput().click();
 
-		cy.wrap(Cypress.automation('remote:debugger:protocol', {
-			command: 'Browser.grantPermissions',
-			params: {
-				permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
-				origin: window.location.origin,
-			},
-		}));
-
 		cy.window().its('navigator.permissions')
 			.invoke('query', {name: 'clipboard-read'})
 			.its('state').should('equal', 'granted');
