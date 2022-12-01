@@ -42,7 +42,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				const commands = command.commands;
 				const reverseCommands: Command[] = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
-					commands[i].revert();
+					await commands[i].revert();
 					const reverse = commands[i].getReverseCommand();
 					if (reverse) {
 						reverseCommands.push(reverse);
@@ -71,7 +71,7 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 				const commands = command.commands;
 				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
-					commands[i].revert();
+					await commands[i].revert();
 					const reverse = commands[i].getReverseCommand();
 					if (reverse) {
 						reverseCommands.push(reverse);
