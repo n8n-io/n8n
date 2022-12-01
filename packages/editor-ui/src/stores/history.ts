@@ -76,7 +76,9 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		},
 		stopRecordingUndo() {
 			if (this.currentBulkAction) {
-				this.undoStack.push(this.currentBulkAction);
+				if (this.currentBulkAction.commands.length > 0) {
+					this.undoStack.push(this.currentBulkAction);
+				}
 				this.checkUndoStackLimit();
 				this.currentBulkAction = null;
 			}

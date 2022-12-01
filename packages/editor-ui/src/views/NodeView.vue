@@ -2034,21 +2034,27 @@ export default mixins(
 
 				this.instance.bind('connectionDetached', (info) => {
 					try {
+						const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
-						this.__removeConnectionByConnectionInfo(info, false, !this.historyStore.bulkInProgress);
+						this.__removeConnectionByConnectionInfo(info, false, false);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
+							this.historyStore.startRecordingUndo();
 							const sourceNode = this.workflowsStore.getNodeById(info.connection.sourceId);
 							const sourceNodeName = sourceNode.name;
 							const outputIndex = info.connection.getParameters().index;
-							const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 
 							if (connectionInfo) {
 								this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
 							}
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
+							this.historyStore.stopRecordingUndo()
+						} else if (!this.historyStore.bulkInProgress && connectionInfo) {
+							// if connection is just being detached, save this in history
+							// but only if it's not detached as a side effect of bulk undo/redo process
+							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
 						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
