@@ -99,7 +99,6 @@ export default mixins(
 		'path',
 		'value',
 		'eventSource',
-		'isReadOnly',
 	],
 	components: {
 		ExpressionModalInput,
