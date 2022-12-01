@@ -10,11 +10,6 @@ overrides:
   fork-ts-checker-webpack-plugin: ^6.0.4
   globby: ^11.1.0
 
-patchedDependencies:
-  element-ui@2.15.12:
-    hash: aaa3sc7bmwb4jwg35ga5npx4he
-    path: patches/element-ui@2.15.12.patch
-
 importers:
 
   .:
