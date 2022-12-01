@@ -6,6 +6,31 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+type AggregationType = 'append' | 'concatenate' | 'count' | 'countUnique' | 'max' | 'min' | 'sum';
+
+type Aggregation = {
+	aggregation: AggregationType;
+	field: string;
+	ignoreNonNumericalValues?: boolean;
+	includeEmpty?: boolean;
+	separateBy?: string;
+	customSeparator?: string;
+};
+
+type Aggregations = Aggregation[];
+
+enum AggregationDisplayNames {
+	append = 'List',
+	concatenate = 'Concatenation',
+	count = 'Count',
+	countUnique = 'Unique count',
+	max = 'Max value',
+	min = 'Min value',
+	sum = 'Sum',
+}
+
+const NUMERICAL_AGGREGATIONS = ['max', 'min', 'sum'];
+
 export const description: INodeProperties[] = [
 	{
 		displayName: 'Fields to Summarize',
@@ -68,6 +93,17 @@ export const description: INodeProperties[] = [
 							'The name of an input field that you want to summarize. The field should contain numbers or dates.',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
+					},
+					{
+						displayName: 'Ignore Non-Numerical Values',
+						name: 'ignoreNonNumericalValues',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								aggregation: NUMERICAL_AGGREGATIONS,
+							},
+						},
 					},
 					{
 						displayName: 'Include Empty Values',
@@ -175,6 +211,13 @@ export const description: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Skip row if split field is empty',
+				name: 'skipEmptySplitFields',
+				type: 'boolean',
+				default: false,
+			},
 		],
 	},
 ];
@@ -187,6 +230,12 @@ export async function execute(
 
 	const outputDataAsObject = this.getNodeParameter(
 		'options.outputDataAsObject',
+		0,
+		false,
+	) as boolean;
+
+	const skipEmptySplitFields = this.getNodeParameter(
+		'options.skipEmptySplitFields',
 		0,
 		false,
 	) as boolean;
@@ -210,7 +259,12 @@ export async function execute(
 
 	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
 
-	const aggregationResult = splitData(fieldsToSplitBy, newItems, fieldsToSummarize) as IDataObject;
+	const aggregationResult = splitData(
+		fieldsToSplitBy,
+		newItems,
+		fieldsToSummarize,
+		skipEmptySplitFields,
+	);
 
 	const result = outputDataAsObject
 		? aggregationResult
@@ -221,37 +275,16 @@ export async function execute(
 	return executionData;
 }
 
-type AggregationType = 'append' | 'concatenate' | 'count' | 'countUnique' | 'max' | 'min' | 'sum';
-
-type Aggregation = {
-	aggregation: AggregationType;
-	field: string;
-	includeEmpty?: boolean;
-	separateBy?: string;
-	customSeparator?: string;
-};
-
-type Aggregations = Aggregation[];
-
-enum AggregationDisplayNames {
-	append = 'List',
-	concatenate = 'Concatenation',
-	count = 'Count',
-	countUnique = 'Unique count',
-	max = 'Max value',
-	min = 'Min value',
-	sum = 'Sum',
-}
-
 function checkAggregationsFieldType(
 	this: IExecuteFunctions,
 	items: IDataObject[],
 	aggregations: Aggregations,
 ) {
-	const requireNumericField = ['sum', 'max', 'min'];
-
 	const numericFields = aggregations
-		.filter((entry) => requireNumericField.includes(entry.aggregation))
+		.filter(
+			(entry) =>
+				NUMERICAL_AGGREGATIONS.includes(entry.aggregation) && !entry.ignoreNonNumericalValues,
+		)
 		.map((entry) => entry.field);
 
 	for (const [index, item] of items.entries()) {
@@ -266,7 +299,12 @@ function checkAggregationsFieldType(
 	}
 }
 
-function splitData(splitKeys: string[], data: IDataObject[], fieldsToSummarize: Aggregations) {
+function splitData(
+	splitKeys: string[],
+	data: IDataObject[],
+	fieldsToSummarize: Aggregations,
+	skipEmptySplitFields = false,
+) {
 	if (!splitKeys || splitKeys.length === 0) {
 		return aggregateData(data, fieldsToSummarize);
 	}
@@ -275,6 +313,10 @@ function splitData(splitKeys: string[], data: IDataObject[], fieldsToSummarize: 
 
 	const groupedData = data.reduce((acc, item) => {
 		const keyValuee = item[firstSplitKey] as string;
+
+		if (skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
+			return acc;
+		}
 
 		if (acc[keyValuee] === undefined) {
 			acc[keyValuee] = [item];
@@ -286,13 +328,18 @@ function splitData(splitKeys: string[], data: IDataObject[], fieldsToSummarize: 
 
 	return Object.keys(groupedData).reduce((acc, key) => {
 		const value = groupedData[key] as IDataObject[];
-		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize);
+		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, skipEmptySplitFields);
 		return acc;
 	}, {} as IDataObject);
 }
 
 function aggregate(items: IDataObject[], entry: Aggregation) {
 	const { aggregation, field } = entry;
+
+	items =
+		entry.ignoreNonNumericalValues && NUMERICAL_AGGREGATIONS.includes(aggregation)
+			? items.filter((item) => typeof item[field] === 'number')
+			: items;
 
 	switch (aggregation) {
 		case 'append':
