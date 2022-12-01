@@ -21,15 +21,17 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			return undefined;
 		},
 		pushCommandToUndo(undoable: Command, clearRedo = true): void {
-			if (this.currentBulkAction) {
-				this.currentBulkAction.commands.push(undoable);
-				return;
-			} else {
-				this.undoStack.push(undoable);
-			}
-			this.checkUndoStackLimit();
-			if (clearRedo) {
-				this.clearRedoStack();
+			if (!this.bulkInProgress) {
+				if (this.currentBulkAction) {
+					this.currentBulkAction.commands.push(undoable);
+					return;
+				} else {
+					this.undoStack.push(undoable);
+				}
+				this.checkUndoStackLimit();
+				if (clearRedo) {
+					this.clearRedoStack();
+				}
 			}
 		},
 		pushBulkCommandToUndo(undoable: BulkCommand, clearRedo = true): void {
