@@ -28,12 +28,14 @@ export default mixins(workflowHelpers).extend({
 		value: {
 			type: String,
 		},
+		isReadOnly: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
 			editor: null as EditorView | null,
 			errorsInSuccession: 0,
-			isReadOnly: window !== window.parent && window.parent.location.pathname.includes('/executions'),
 		};
 	},
 	mounted() {
