@@ -1,8 +1,9 @@
 <template>
-	<div
-		:class="{ [$style.zoomMenu]: true, [$style.regularZoomMenu]: !isDemo, [$style.demoZoomMenu]: isDemo }">
+	<div :class="{ [$style.zoomMenu]: true, [$style.regularZoomMenu]: !isDemo, [$style.demoZoomMenu]: isDemo }">
 		<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
-										 icon="expand" />
+										 icon="expand"
+										 data-test-id="zoom-to-fit" />
+		/>
 		<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
 										 icon="search-plus" />
 		<n8n-icon-button @click="zoomOut" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomOut')"

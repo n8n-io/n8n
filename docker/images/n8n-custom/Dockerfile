@@ -15,8 +15,8 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
 RUN NODE_ENV=production pnpm install --prod --no-optional
-RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm
-RUN rm -rf .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
+RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
+RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
 
 
 # 2. Start with a new clean image with just the code that is needed to run n8n
