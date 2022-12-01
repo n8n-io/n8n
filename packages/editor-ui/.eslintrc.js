@@ -10,6 +10,8 @@ module.exports = {
 		extraFileExtensions: ['.vue'],
 	},
 
+	ignorePatterns: ['*.d.cts'],
+
 	rules: {
 		// TODO: Remove these
 		'id-denylist': 'off',

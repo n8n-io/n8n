@@ -27,6 +27,8 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 	};
 	actions = {
 		visit: () => {
@@ -46,6 +48,9 @@ export class WorkflowPage extends BasePage {
 		},
 		openNodeNdv: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
+		},
+		openExpressionEditor: () => {
+			cy.get('input[value="expression"]').parent('label').click();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
