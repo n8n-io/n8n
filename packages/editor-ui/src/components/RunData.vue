@@ -250,7 +250,7 @@
 			/>
 
 			<run-data-schema
-				v-else-if="hasNodeRun && displayMode === 'schema'"
+				v-else-if="hasNodeRun && displayMode === 'schema' && schema.value?.length > 0"
 				:schema="schema"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"

@@ -207,6 +207,14 @@ describe("Utils", () => {
 				{ type: 'function', value: '', path: '' },
 			],
 			[
+				{},
+				{ type: 'object', value: [], path: '' },
+			],
+			[
+				[],
+				{ type: 'array', value: [], path: '' },
+			],
+			[
 				new Date('2022-11-22T00:00:00.000Z'),
 				{ type: 'string', value: '2022-11-22T00:00:00.000Z', path: '' },
 			],
