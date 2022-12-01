@@ -100,6 +100,17 @@ export default mixins(
 				},
 			);
 
+			menuItems.push(
+				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-simple',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					activateOnRouteNames: [ VIEWS.USAGE_AND_PLAN ],
+				},
+			);
+
 			return menuItems;
 		},
 	},
@@ -118,6 +129,9 @@ export default mixins(
 		},
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
+		},
+		canAccessUsageAndPlan(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USAGE_AND_PLAN);
 		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
@@ -150,6 +164,11 @@ export default mixins(
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
 						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
+					break;
+				case 'settings-usage-and-plan':
+					if (this.$router.currentRoute.name !== VIEWS.USAGE_AND_PLAN) {
+						this.$router.push({ name: VIEWS.USAGE_AND_PLAN });
 					}
 					break;
 				default:

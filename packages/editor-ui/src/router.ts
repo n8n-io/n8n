@@ -32,6 +32,8 @@ import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 
+const settingsUsageAndPlanView = () => import('./views/SettingsUsageAndPlan.vue');
+
 Vue.use(Router);
 
 interface IRouteConfig extends RouteConfigSingleView {
@@ -550,6 +552,31 @@ const router = new Router({
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: 'usage-and-plan',
+					name: VIEWS.USAGE_AND_PLAN,
+					components: {
+						settingsView: settingsUsageAndPlanView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'usage-and-plan',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								role: [ROLE.Default],
 							},
 						},
 					},
