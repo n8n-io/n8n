@@ -14,6 +14,9 @@ patchedDependencies:
   quill@2.0.0-dev.4:
     hash: wzpqp2wkmsfkgdbvlakyt3wndy
     path: patches/quill@2.0.0-dev.4.patch
+  element-ui@2.15.12:
+    hash: aaa3sc7bmwb4jwg35ga5npx4he
+    path: patches/element-ui@2.15.12.patch
 
 importers:
 
