@@ -4,10 +4,13 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { Command } from '@/models/history';
+import { debounceHelper } from '@/mixins/debounce';
+import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 
-export const historyHelper = mixins(deviceSupportHelpers).extend({
+const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
+
+export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend({
 	computed: {
 		...mapStores(
 			useUIStore,
@@ -26,9 +29,9 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
 				event.preventDefault();
 				if (event.shiftKey) {
-					this.redo();
+					this.callDebounced('redo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
 				} else {
-					this.undo();
+					this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
 				}
 			}
 		},

@@ -2332,6 +2332,7 @@ export default mixins(
 					const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
 
 					if (!sourceNode || !targetNode) {
+						return;
 					}
 
 					// @ts-ignore
@@ -2342,7 +2343,17 @@ export default mixins(
 
 					// @ts-ignore
 					connections.forEach((connectionInstance) => {
-						this.__deleteJSPlumbConnection(connectionInstance);
+						if (connectionInstance.__meta) {
+							// Only delete connections from specific indexes (if it can be determined by meta)
+							if (
+								connectionInstance.__meta.sourceOutputIndex === connection[0].index &&
+								connectionInstance.__meta.targetOutputIndex === connection[1].index
+							) {
+								this.__deleteJSPlumbConnection(connectionInstance);
+							}
+						} else {
+							this.__deleteJSPlumbConnection(connectionInstance);
+						}
 					});
 				}
 
