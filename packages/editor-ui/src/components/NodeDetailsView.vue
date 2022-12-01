@@ -7,6 +7,7 @@
 		class="ndv-wrapper"
 		width="auto"
 		append-to-body
+		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -70,6 +71,7 @@
 				</template>
 				<template #output>
 					<OutputPanel
+						data-test-id="output-panel"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="outputRun"
 						:linkedRuns="linked"
@@ -125,9 +127,9 @@ import {
 } from 'n8n-workflow';
 import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -143,8 +145,8 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { workflowActivate } from './mixins/workflowActivate';
-import { pinData } from "@/components/mixins/pinData";
+import { workflowActivate } from '@/mixins/workflowActivate';
+import { pinData } from "@/mixins/pinData";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

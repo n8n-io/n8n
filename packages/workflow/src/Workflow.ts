@@ -33,7 +33,7 @@ import {
 	ITriggerResponse,
 	IWebhookData,
 	IWebhookResponseData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 	WebhookSetupMethodNames,
@@ -249,11 +249,11 @@ export class Workflow {
 		startNode?: string;
 		destinationNode?: string;
 		pinDataNodeNames?: string[];
-	}): IWorfklowIssues | null {
+	}): IWorkflowIssues | null {
 		let node: INode;
 		let nodeType: INodeType | undefined;
 		let nodeIssues: INodeIssues | null = null;
-		const workflowIssues: IWorfklowIssues = {};
+		const workflowIssues: IWorkflowIssues = {};
 
 		let checkNodes: string[] = [];
 		if (inputData.destinationNode) {
@@ -903,7 +903,7 @@ export class Workflow {
 				return node;
 			}
 
-			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {
 				if (node.disabled === true) {
@@ -979,7 +979,7 @@ export class Workflow {
 		isTest?: boolean,
 	): Promise<boolean | undefined> {
 		const node = this.getNode(webhookData.node) as INode;
-		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (nodeType.webhookMethods === undefined) {
 			return;

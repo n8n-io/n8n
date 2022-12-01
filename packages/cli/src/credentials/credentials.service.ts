@@ -31,7 +31,10 @@ export class CredentialsService {
 		});
 	}
 
-	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
+	static async getAll(
+		user: User,
+		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
+	): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
@@ -43,7 +46,7 @@ export class CredentialsService {
 
 		// if instance owner, return all credentials
 
-		if (user.globalRole.name === 'owner') {
+		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
 			return Db.collections.Credentials.find({
 				select: SELECT_FIELDS,
 				relations: options?.relations,
@@ -52,11 +55,21 @@ export class CredentialsService {
 
 		// if member, return credentials owned by or shared with member
 
-		const userSharings = await Db.collections.SharedCredentials.find({
+		const whereConditions: FindManyOptions = {
 			where: {
 				user,
 			},
-		});
+		};
+
+		if (options?.roles?.length) {
+			whereConditions.where = {
+				...whereConditions.where,
+				role: { name: In(options.roles) },
+			} as FindManyOptions;
+			whereConditions.relations = ['role'];
+		}
+
+		const userSharings = await Db.collections.SharedCredentials.find(whereConditions);
 
 		return Db.collections.Credentials.find({
 			select: SELECT_FIELDS,
@@ -77,7 +90,7 @@ export class CredentialsService {
 	static async getSharing(
 		user: User,
 		credentialId: number | string,
-		relations: string[] | undefined = ['credentials'],
+		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
@@ -90,8 +103,14 @@ export class CredentialsService {
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			options.where.user = { id: user.id };
+			options.where = {
+				...options.where,
+				user: { id: user.id },
+				role: { name: 'owner' },
+			} as FindOneOptions;
+			if (!relations.includes('role')) {
+				relations.push('role');
+			}
 		}
 
 		if (relations?.length) {
@@ -187,11 +206,7 @@ export class CredentialsService {
 		try {
 			return await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
+			throw new ResponseHelper.InternalServerError(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 		}
 	}
 
@@ -267,10 +282,9 @@ export class CredentialsService {
 		user: User,
 		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
-		nodeToTestWith: string | undefined,
 	): Promise<INodeCredentialTestResult> {
 		const helper = new CredentialsHelper(encryptionKey);
 
-		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
+		return helper.testCredentials(user, credentials.type, credentials);
 	}
 }

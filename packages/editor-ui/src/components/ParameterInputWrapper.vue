@@ -20,7 +20,9 @@
 				@blur="onBlur"
 				@drop="onDrop"
 				@textInput="onTextInput"
-				@valueChanged="onValueChanged" />
+				@valueChanged="onValueChanged"
+				:data-test-id="`parameter-input-${parameter.name}`"
+			/>
 		<input-hint v-if="expressionOutput" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput" />
 		<input-hint v-else-if="parameterHint" :class="$style.hint" :renderHTML="true" :hint="parameterHint" />
 	</div>
@@ -32,11 +34,11 @@ import Vue, { PropType } from 'vue';
 import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
-import { workflowHelpers } from './mixins/workflowHelpers';
-import { isValueExpression } from './helpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 
@@ -155,23 +157,14 @@ export default mixins(
 						computedValue = this.$locale.baseText('parameterInput.emptyString');
 					}
 				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
+					computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
 				}
 
 				return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
-					const inputData = this.ndvStore.ndvInputData;
-					if (!inputData || (inputData && inputData.length <= 1)) {
-						return this.expressionValueComputed;
-					}
-
-					return this.$locale.baseText(`parameterInput.expressionResult`, {
-						interpolate: {
-							result: this.expressionValueComputed,
-						},
-					});
+					return this.expressionValueComputed;
 				}
 
 				return null;

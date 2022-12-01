@@ -65,7 +65,7 @@ export function logMigrationEnd(
 	}, 100);
 }
 
-export function batchQuery(query: string, limit: number, offset = 0): string {
+function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}

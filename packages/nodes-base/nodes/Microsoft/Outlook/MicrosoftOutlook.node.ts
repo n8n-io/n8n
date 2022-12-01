@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	binaryToAttachments,
 	createMessage,
 	downloadAttachments,
 	makeRecipient,
@@ -250,31 +251,8 @@ export class MicrosoftOutlook implements INodeType {
 							const attachments = (additionalFields.attachments as IDataObject)
 								.attachments as IDataObject[];
 
-							// // Handle attachments
-							body['attachments'] = attachments.map((attachment) => {
-								const binaryPropertyName = attachment.binaryPropertyName as string;
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-								//@ts-ignore
-								if (items[i].binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-								return {
-									'@odata.type': '#microsoft.graph.fileAttachment',
-									name: binaryData.fileName,
-									contentBytes: binaryData.data,
-								};
-							});
+							// Handle attachments
+							body['attachments'] = await binaryToAttachments.call(this, attachments, items, i);
 						}
 
 						responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
@@ -367,31 +345,8 @@ export class MicrosoftOutlook implements INodeType {
 						if (additionalFields.attachments) {
 							const attachments = (additionalFields.attachments as IDataObject)
 								.attachments as IDataObject[];
-							// // Handle attachments
-							const data = attachments.map((attachment) => {
-								const binaryPropertyName = attachment.binaryPropertyName as string;
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-								//@ts-ignore
-								if (items[i].binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-								return {
-									'@odata.type': '#microsoft.graph.fileAttachment',
-									name: binaryData.fileName,
-									contentBytes: binaryData.data,
-								};
-							});
+							// Handle attachments
+							const data = await binaryToAttachments.call(this, attachments, items, i);
 
 							for (const attachment of data) {
 								await microsoftApiRequest.call(
@@ -583,31 +538,8 @@ export class MicrosoftOutlook implements INodeType {
 							const attachments = (additionalFields.attachments as IDataObject)
 								.attachments as IDataObject[];
 
-							// // Handle attachments
-							message['attachments'] = attachments.map((attachment) => {
-								const binaryPropertyName = attachment.binaryPropertyName as string;
-
-								if (items[i].binary === undefined) {
-									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-										itemIndex: i,
-									});
-								}
-								//@ts-ignore
-								if (items[i].binary[binaryPropertyName] === undefined) {
-									throw new NodeOperationError(
-										this.getNode(),
-										`No binary data property "${binaryPropertyName}" does not exists on item!`,
-										{ itemIndex: i },
-									);
-								}
-
-								const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-								return {
-									'@odata.type': '#microsoft.graph.fileAttachment',
-									name: binaryData.fileName,
-									contentBytes: binaryData.data,
-								};
-							});
+							// Handle attachments
+							message['attachments'] = await binaryToAttachments.call(this, attachments, items, i);
 						}
 
 						const body: IDataObject = {
@@ -716,7 +648,7 @@ export class MicrosoftOutlook implements INodeType {
 							const body: IDataObject = {
 								'@odata.type': '#microsoft.graph.fileAttachment',
 								name: fileName,
-								contentBytes: binaryData.data,
+								contentBytes: dataBuffer.toString('base64'),
 							};
 
 							responseData = await microsoftApiRequest.call(

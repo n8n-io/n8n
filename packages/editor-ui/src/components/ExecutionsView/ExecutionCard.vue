@@ -53,10 +53,10 @@
 <script lang="ts">
 import { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
-import { VIEWS } from '../../constants';
-import { showMessage } from '../mixins/showMessage';
-import { restApi } from '../mixins/restApi';
+import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import { VIEWS } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 
 export default mixins(

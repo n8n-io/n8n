@@ -54,7 +54,7 @@ import {
 import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
