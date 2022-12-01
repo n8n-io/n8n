@@ -89,6 +89,12 @@ oauth2CredentialController.get(
 			true,
 		);
 
+		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
+		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		if (decryptedDataOriginal?.scope) {
+			delete decryptedDataOriginal.scope;
+		}
+
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
 			(credential as unknown as ICredentialsEncrypted).type,
