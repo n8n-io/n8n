@@ -19,19 +19,43 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.expression') }}
+							<div>
+								{{ $locale.baseText('expressionEdit.expression') }}
+							</div>
+							<div class="hint">
+								<span>
+									{{ $locale.baseText('expressionEdit.anythingInside') }}
+								</span>
+								<div class="expression-syntax-example" v-text="`{{ }}`"></div>
+								<span>
+									{{ $locale.baseText('expressionEdit.isJavaScript') }}
+								</span>
+								<n8n-link size="medium" :to="expressionsDocsUrl">
+									{{ $locale.baseText('expressionEdit.learnMore') }}
+								</n8n-link>
+							</div>
 						</div>
 						<div class="expression-editor ph-no-capture">
-							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
+							<expression-modal-input
+								:value="value"
+								:isReadOnly="isReadOnly"
+								@change="valueChanged"
+								ref="inputFieldExpression"
+								data-test-id="expression-modal-input"
+							/>
 						</div>
 					</div>
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.result') }}
+							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
-							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+							<expression-modal-output
+								:segments="segments"
+								ref="expressionResult"
+								data-test-id="expression-modal-output"
+							/>
 						</div>
 					</div>
 
@@ -43,7 +67,8 @@
 </template>
 
 <script lang="ts">
-import ExpressionInput from '@/components/ExpressionInput.vue';
+import ExpressionModalInput from '@/components/ExpressionEditorModal/ExpressionModalInput.vue';
+import ExpressionModalOutput from '@/components/ExpressionEditorModal/ExpressionModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
@@ -51,12 +76,16 @@ import { IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { genericHelpers } from '@/mixins/genericHelpers';
 
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
+
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from '@/utils';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+
+import type { Resolvable, Segment } from './ExpressionEditorModal/types';
 
 export default mixins(
 	externalHooks,
@@ -70,15 +99,19 @@ export default mixins(
 		'path',
 		'value',
 		'eventSource',
+		'isReadOnly',
 	],
 	components: {
-		ExpressionInput,
+		ExpressionModalInput,
+		ExpressionModalOutput,
 		VariableSelector,
 	},
 	data () {
 		return {
 			displayValue: '',
 			latestValue: '',
+			segments: [] as Segment[],
+			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
 	computed: {
@@ -88,8 +121,9 @@ export default mixins(
 		),
 	},
 	methods: {
-		valueChanged (value: string, forceUpdate = false) {
+		valueChanged ({ value, segments }: { value: string, segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
+			this.segments = segments;
 
 			if (forceUpdate === true) {
 				this.updateDisplayValue();
@@ -180,6 +214,16 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
+				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
+				const errorResolvables = resolvables.filter(r => r.error);
+
+				const exposeErrorProperties = (error: Error) => {
+					return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
+						// @ts-ignore
+						return acc[key] = error[key], acc;
+					}, {});
+				};
+
 				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.workflowsStore.workflowId,
@@ -187,7 +231,17 @@ export default mixins(
 					session_id: this.ndvStore.sessionId,
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
+					node_type: this.ndvStore.activeNode?.type ?? '',
+					handlebar_count: resolvables.length,
+					handlebar_error_count: errorResolvables.length,
+					full_errors: errorResolvables.map(errorResolvable => {
+						return errorResolvable.fullError
+							? { ...exposeErrorProperties(errorResolvable.fullError), stack: errorResolvable.fullError.stack }
+							: null;
+					}),
+					short_errors: errorResolvables.map(r => r.resolved ?? null),
 				};
+
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
@@ -200,7 +254,32 @@ export default mixins(
 .editor-description {
 	line-height: 1.5;
 	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;;
+	padding: 0 0 0.5em 0.2em;
+	display: flex;
+  justify-content: space-between;
+
+	.hint {
+		color: var(--color-text-base);
+		font-weight: normal;
+		display: flex;
+
+		@media (max-width: $breakpoint-xs) {
+			display: none;
+		}
+
+		span {
+			margin-right: var(--spacing-4xs);
+		}
+		.expression-syntax-example {
+			display: inline-block;
+			margin-top: 3px;
+			height: 16px;
+			line-height: 1;
+			background-color: var(--color-expression-syntax-example);
+			color: var(--color-text-dark);
+			margin-right: var(--spacing-4xs);
+		}
+	}
 }
 
 .expression-result-wrapper,
