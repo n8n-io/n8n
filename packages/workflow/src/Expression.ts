@@ -157,7 +157,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		// @ts-ignore
 		data.constructor = {};
 
 		// Deprecated
@@ -278,7 +277,16 @@ export class Expression {
 					throw error;
 				}
 			}
+
+			if (
+				error instanceof Error &&
+				typeof error.message === 'string' &&
+				error.name === 'SyntaxError'
+			) {
+				throw new Error(error.message);
+			}
 		}
+
 		return null;
 	}
 

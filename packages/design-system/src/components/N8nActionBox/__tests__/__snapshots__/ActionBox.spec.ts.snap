@@ -1,7 +1,7 @@
 // Vitest Snapshot v1
 
 exports[`N8NActionBox > should render correctly 1`] = `
-"<div class=\\"n8n-action-box _container_pvdcm_1\\">
+"<div data-test-id=\\"action-box\\" class=\\"n8n-action-box _container_pvdcm_1\\">
   <div class=\\"_emoji_pvdcm_16\\"> 😿 </div>
   <div class=\\"_heading_pvdcm_20\\">
     <n8n-heading-stub tag=\\"span\\" size=\\"xlarge\\" align=\\"center\\">Headline you need to know</n8n-heading-stub>

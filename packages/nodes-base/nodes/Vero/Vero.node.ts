@@ -5,7 +5,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { validateJSON, veroApiRequest } from './GenericFunctions';
 import { userFields, userOperations } from './UserDescription';
@@ -72,8 +71,8 @@ export class Vero implements INodeType {
 					//https://developers.getvero.com/?bash#users-identify
 					if (operation === 'create') {
 						const id = this.getNodeParameter('id', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body = {
 							id,
 						};
@@ -171,7 +170,7 @@ export class Vero implements INodeType {
 						const id = this.getNodeParameter('id', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const eventName = this.getNodeParameter('eventName', i) as string;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body = {
 							identity: { id, email },
 							event_name: eventName,

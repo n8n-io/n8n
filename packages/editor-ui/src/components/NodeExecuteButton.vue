@@ -1,9 +1,12 @@
 <template>
 	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<div slot="content">{{ disabledHint }}</div>
+		<template #content>
+			<div>{{ disabledHint }}</div>
+		</template>
 		<div>
 			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents"
+				data-test-id="node-execute-button"
+				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
@@ -20,9 +23,13 @@ import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
-import { workflowRun } from './mixins/workflowRun';
-import { pinData } from './mixins/pinData';
+import { workflowRun } from '@/mixins/workflowRun';
+import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	workflowRun,
@@ -54,25 +61,30 @@ export default mixins(
 		},
 	},
 	computed: {
-		node (): INodeUi {
-			return this.$store.getters.getNodeByName(this.nodeName);
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+		),
+		node (): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
 		nodeRunning (): boolean {
-			const triggeredNode = this.$store.getters.executedNode;
-			const executingNode = this.$store.getters.executingNode;
+			const triggeredNode = this.workflowsStore.executedNode;
+			const executingNode = this.workflowsStore.executingNode;
 			return this.workflowRunning && (executingNode === this.node.name || triggeredNode === this.node.name);
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isTriggerNode (): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isManualTriggerNode (): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
@@ -87,8 +99,8 @@ export default mixins(
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
-			const executedNode = this.$store.getters.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
+			const executedNode = this.workflowsStore.executedNode;
 
 			return (
 				this.node &&
@@ -97,6 +109,9 @@ export default mixins(
 				waitingOnWebhook &&
 				(!executedNode || executedNode === this.nodeName)
 			);
+		},
+		isListeningForWorkflowEvents(): boolean {
+			return this.nodeRunning && this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode;
 		},
 		hasIssues (): boolean {
 			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
@@ -111,7 +126,8 @@ export default mixins(
 			}
 
 			if (this.isTriggerNode && this.hasIssues) {
-				if (this.$store.getters.activeNode && this.$store.getters.activeNode.name !== this.nodeName) {
+				const activeNode = this.ndvStore.activeNode;
+				if (activeNode && activeNode.name !== this.nodeName) {
 					return this.$locale.baseText('ndv.execute.fixPrevious');
 				}
 
@@ -125,7 +141,7 @@ export default mixins(
 			return '';
 		},
 		buttonLabel(): string {
-			if (this.isListeningForEvents) {
+			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
 			}
 
@@ -151,7 +167,7 @@ export default mixins(
 	methods: {
 		async stopWaitingForWebhook () {
 			try {
-				await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -164,6 +180,8 @@ export default mixins(
 		async onClick() {
 			if (this.isListeningForEvents) {
 				this.stopWaitingForWebhook();
+			} else if (this.isListeningForWorkflowEvents) {
+				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {
@@ -177,14 +195,14 @@ export default mixins(
 
 					if (shouldUnpinAndExecute) {
 						dataPinningEventBus.$emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.$store.commit('unpinData', { node: this.node });
+						this.workflowsStore.unpinData({ node: this.node });
 					}
 				}
 
 				if (!this.hasPinData || shouldUnpinAndExecute) {
 					const telemetryPayload = {
 						node_type: this.nodeType ? this.nodeType.name : null,
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);

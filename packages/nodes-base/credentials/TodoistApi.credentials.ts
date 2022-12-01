@@ -13,6 +13,7 @@ export class TodoistApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -28,7 +29,7 @@ export class TodoistApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://api.todoist.com/rest/v1',
+			baseURL: 'https://api.todoist.com/rest/v2',
 			url: '/labels',
 		},
 	};

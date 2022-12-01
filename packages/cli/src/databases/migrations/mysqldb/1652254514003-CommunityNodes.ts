@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class CommunityNodes1652254514003 implements MigrationInterface {
 	name = 'CommunityNodes1652254514003';
@@ -15,12 +15,11 @@ export class CommunityNodes1652254514003 implements MigrationInterface {
 				'`authorEmail` char(70) NULL,' +
 				'`createdAt` datetime NULL DEFAULT CURRENT_TIMESTAMP,' +
 				'`updatedAt` datetime NULL DEFAULT CURRENT_TIMESTAMP,' +
-				'PRIMARY KEY (\`packageName\`)' +
-			') ENGINE=InnoDB;'
+				'PRIMARY KEY (`packageName`)' +
+				') ENGINE=InnoDB;',
 		);
 
 		await queryRunner.query(
-
 			`CREATE TABLE \`${tablePrefix}installed_nodes\` (` +
 				'`name` char(200) NOT NULL,' +
 				'`type` char(200) NOT NULL,' +
@@ -28,7 +27,7 @@ export class CommunityNodes1652254514003 implements MigrationInterface {
 				'`package` char(214) NOT NULL,' +
 				'PRIMARY KEY (`name`),' +
 				`INDEX \`FK_${tablePrefix}73f857fc5dce682cef8a99c11dbddbc969618951\` (\`package\` ASC)` +
-			") ENGINE='InnoDB';"
+				") ENGINE='InnoDB';",
 		);
 
 		await queryRunner.query(

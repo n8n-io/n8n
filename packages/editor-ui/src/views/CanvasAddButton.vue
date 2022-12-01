@@ -1,7 +1,7 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container">
+	<div :class="$style.container" :style="containerCssVars" ref="container" data-test-id="canvas-add-button">
 		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
-			<button :class="$style.button" @click="$emit('click')">
+			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
@@ -15,6 +15,8 @@
 <script lang="ts">
 import Vue from 'vue';
 import { XYPosition } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default Vue.extend({
 	name: 'CanvasAddButton',
@@ -27,6 +29,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeCreatorStore,
+		),
 		containerCssVars(): Record<string, string> {
 			const position = this.position as XYPosition;
 			return {
@@ -35,7 +40,7 @@ export default Vue.extend({
 			};
 		},
 		isScrimActive(): boolean {
-			return this.$store.getters['nodeCreator/showScrim'];
+			return this.nodeCreatorStore.showScrim;
 		},
 	},
 });

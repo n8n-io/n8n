@@ -1,7 +1,6 @@
-/* eslint-disable import/no-cycle */
 import { INodeTypes } from 'n8n-workflow';
-import { InternalHooksClass } from './InternalHooks';
-import { Telemetry } from './telemetry';
+import { InternalHooksClass } from '@/InternalHooks';
+import { Telemetry } from '@/telemetry';
 
 export class InternalHooksManager {
 	private static internalHooksInstance: InternalHooksClass;

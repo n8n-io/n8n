@@ -277,7 +277,7 @@ export class HackerNews implements INodeType {
 
 				if (resource === 'all') {
 					if (operation === 'getAll') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const keyword = additionalFields.keyword as string;
 						const tags = additionalFields.tags as string[];
 
@@ -286,10 +286,10 @@ export class HackerNews implements INodeType {
 							tags: tags ? tags.join() : '',
 						};
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+							qs.hitsPerPage = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = 'search?';
@@ -303,7 +303,7 @@ export class HackerNews implements INodeType {
 				} else if (resource === 'article') {
 					if (operation === 'get') {
 						endpoint = `items/${this.getNodeParameter('articleId', i)}`;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						includeComments = additionalFields.includeComments as boolean;
 					} else {
 						throw new NodeOperationError(

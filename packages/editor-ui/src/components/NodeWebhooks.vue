@@ -47,9 +47,9 @@ import {
 } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 

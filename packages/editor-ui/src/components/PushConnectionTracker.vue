@@ -1,8 +1,10 @@
 <template>
 	<span>
-		<div class="push-connection-lost primary-color" v-if="!pushConnectionActive">
+		<div class="push-connection-lost primary-color" v-if="!rootStore.pushConnectionActive">
 			<n8n-tooltip placement="bottom-end" >
-				<div slot="content" v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+				<template #current>
+					<div v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+				</template>
 				<span>
 					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $locale.baseText('pushConnectionTracker.connectionLost') }}
 				</span>
@@ -13,13 +15,16 @@
 </template>
 
 <script lang="ts">
+import { useRootStore } from "@/stores/n8nRootStore";
+import { mapStores } from "pinia";
 import Vue from "vue";
-import { mapGetters } from "vuex";
 
 export default Vue.extend({
 	name: "PushConnectionTracker",
 	computed: {
-		...mapGetters(["pushConnectionActive"]),
+		...mapStores(
+			useRootStore,
+		),
 	},
 });
 </script>

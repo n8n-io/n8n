@@ -24,7 +24,6 @@ export class Cloudflare implements INodeType {
 		description: 'Consume Cloudflare API',
 		defaults: {
 			name: 'Cloudflare',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -110,7 +109,7 @@ export class Cloudflare implements INodeType {
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
 					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 
 						Object.assign(qs, filters);
@@ -125,7 +124,7 @@ export class Cloudflare implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { per_page: limit });
 							responseData = await cloudflareApiRequest.call(
 								this,

@@ -5,7 +5,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
 import { taskFields, taskOpeations } from './TaskDescription';
@@ -70,7 +69,7 @@ export class Flow implements INodeType {
 				if (operation === 'create') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};
@@ -132,7 +131,7 @@ export class Flow implements INodeType {
 				if (operation === 'update') {
 					const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: ITask = {
 						organization_id: credentials.organizationId as number,
 					};
@@ -199,7 +198,7 @@ export class Flow implements INodeType {
 				//https://developer.getflow.com/api/#tasks_get-task
 				if (operation === 'get') {
 					const taskId = this.getNodeParameter('taskId', i) as string;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
@@ -212,8 +211,8 @@ export class Flow implements INodeType {
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const filters = this.getNodeParameter('filters', i);
 					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {
 						qs.include = (filters.include as string[]).join(',');
@@ -253,7 +252,7 @@ export class Flow implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.tasks;
 						}

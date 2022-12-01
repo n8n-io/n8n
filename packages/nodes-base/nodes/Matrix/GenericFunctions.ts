@@ -7,18 +7,6 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
-interface MessageResponse {
-	chunk: Message[];
-}
-
-interface Message {
-	content: object;
-	room_id: string;
-	sender: string;
-	type: string;
-	user_id: string;
-}
-
 export async function matrixApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -169,7 +157,7 @@ export async function handleMatrixCall(
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
-				const limit = this.getNodeParameter('limit', index) as number;
+				const limit = this.getNodeParameter('limit', index);
 				const qs: IDataObject = {
 					dir: 'b', // GetfallbackText latest messages first - doesn't return anything if we use f without a previous token.
 					limit,
@@ -258,7 +246,7 @@ export async function handleMatrixCall(
 	} else if (resource === 'roomMember') {
 		if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const filters = this.getNodeParameter('filters', index) as IDataObject;
+			const filters = this.getNodeParameter('filters', index);
 			const qs: IDataObject = {
 				membership: filters.membership ? filters.membership : '',
 				not_membership: filters.notMembership ? filters.notMembership : '',

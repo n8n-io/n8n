@@ -315,7 +315,7 @@ export class CrateDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = additionalFields.mode ?? ('multiple' as string);
 
 			if (mode === 'independently') {
@@ -373,7 +373,7 @@ export class CrateDb implements INodeType {
 						pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
 					);
 				}
-				const updateItems = await db.multi(pgp.helpers.concat(queries));
+				const _updateItems = await db.multi(pgp.helpers.concat(queries));
 				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
 			}
 		} else {

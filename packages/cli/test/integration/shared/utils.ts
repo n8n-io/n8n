@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import { set } from 'lodash';
+import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
@@ -13,8 +13,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypeData,
-	INodeTypes,
+	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -22,35 +21,35 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { v4 as uuid } from 'uuid';
 
-import config from '../../../config';
-import {
-	ActiveWorkflowRunner,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	InternalHooksManager,
-	NodeTypes,
-} from '../../../src';
-import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { nodesController } from '../../../src/api/nodes.api';
-import { workflowsController } from '../../../src/workflows/workflows.controller';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
-import { credentialsController } from '../../../src/credentials/credentials.controller';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import type { User } from '../../../src/databases/entities/User';
-import { getLogger } from '../../../src/Logger';
-import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import config from '@/config';
+import * as Db from '@/Db';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialTypes } from '@/CredentialTypes';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
+import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
+import { nodesController } from '@/api/nodes.api';
+import { workflowsController } from '@/workflows/workflows.controller';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
+import { credentialsController } from '@/credentials/credentials.controller';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { User } from '@db/entities/User';
+import { getLogger } from '@/Logger';
+import { loadPublicApiVersions } from '@/PublicApi/';
+import { issueJWT } from '@/UserManagement/auth/jwt';
+import { addRoutes as authMiddleware } from '@/UserManagement/routes';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -66,8 +65,14 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
-import { v4 as uuid } from 'uuid';
+
+const loadNodesAndCredentials: INodesAndCredentials = {
+	loaded: { nodes: {}, credentials: {} },
+	known: { nodes: {}, credentials: {} },
+};
+
+const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
+CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -151,8 +156,6 @@ export async function initTestServer({
  * Pre-requisite: Mock the telemetry module before calling.
  */
 export function initTestTelemetry() {
-	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
-
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
 
@@ -219,20 +222,19 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	const credentialTypes = CredentialTypes();
-	await credentialTypes.init({
+	loadNodesAndCredentials.loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
-	});
+	};
 }
 
 /**
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	const types: INodeTypeData = {
+	loadNodesAndCredentials.loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -526,8 +528,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-
-	await NodeTypes().init(types);
 }
 
 /**
@@ -706,10 +706,7 @@ export const emptyPackage = () => {
 //           workflow
 // ----------------------------------
 
-export function makeWorkflow({
-	withPinData,
-	withCredential,
-}: {
+export function makeWorkflow(options?: {
 	withPinData: boolean;
 	withCredential?: { id: string; name: string };
 }) {
@@ -717,16 +714,16 @@ export function makeWorkflow({
 
 	const node: INode = {
 		id: uuid(),
-		name: 'Spotify',
-		type: 'n8n-nodes-base.spotify',
-		parameters: { resource: 'track', operation: 'get', id: '123' },
+		name: 'Cron',
+		type: 'n8n-nodes-base.cron',
+		parameters: {},
 		typeVersion: 1,
 		position: [740, 240],
 	};
 
-	if (withCredential) {
+	if (options?.withCredential) {
 		node.credentials = {
-			spotifyApi: withCredential,
+			spotifyApi: options.withCredential,
 		};
 	}
 
@@ -735,7 +732,7 @@ export function makeWorkflow({
 	workflow.connections = {};
 	workflow.nodes = [node];
 
-	if (withPinData) {
+	if (options?.withPinData) {
 		workflow.pinData = MOCK_PINDATA;
 	}
 

@@ -9,6 +9,7 @@ export class OrbitApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -10,7 +10,7 @@ export async function linkedInApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	binary?: boolean,
-	headers?: object,
+	_headers?: object,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUrl = {

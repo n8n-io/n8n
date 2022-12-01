@@ -19,7 +19,7 @@ export async function magentoApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	headers: IDataObject = {},
+	_headers: IDataObject = {},
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {

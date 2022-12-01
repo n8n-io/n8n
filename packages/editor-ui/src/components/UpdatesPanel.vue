@@ -4,12 +4,12 @@
 		direction="ltr"
 		width="520px"
 	>
-		<template slot="header">
+		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style['description']">
 				<p v-if="currentVersion">
 					{{ $locale.baseText(
@@ -54,12 +54,14 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 
 import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useVersionsStore } from '@/stores/versions';
+import { IVersion } from '@/Interface';
 
 export default Vue.extend({
 	name: 'UpdatesPanel',
@@ -69,7 +71,18 @@ export default Vue.extend({
 		TimeAgo,
 	},
 	computed: {
-		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
+		...mapStores(
+			useVersionsStore,
+		),
+		nextVersions(): IVersion[] {
+			return this.versionsStore.nextVersions;
+		},
+		currentVersion(): IVersion | undefined {
+			return this.versionsStore.currentVersion;
+		},
+		infoUrl(): string {
+			return this.versionsStore.infoUrl;
+		},
 	},
 	data() {
 		return {

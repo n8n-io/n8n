@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 } from 'n8n-workflow';
 
 import {
@@ -180,7 +181,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
 				const collection = this.getNodeParameter('collection', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				if (returnAll) {
@@ -191,7 +192,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 					);
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'GET',
@@ -338,7 +339,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							this,
 							'POST',
 							`/${projectId}/databases/${database}/documents:runQuery`,
-							JSON.parse(query),
+							jsonParse(query),
 						);
 
 						responseData = responseData.map(
@@ -373,7 +374,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			if (operation === 'getAll') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 
 				if (returnAll) {
 					const getAllResponse = await googleApiRequestAllItems.call(
@@ -385,7 +386,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					// @ts-ignore
 					responseData = getAllResponse.map((o) => ({ name: o }));
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'POST',

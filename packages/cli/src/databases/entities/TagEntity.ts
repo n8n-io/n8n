@@ -1,7 +1,7 @@
 import { Column, Entity, Generated, Index, ManyToMany, PrimaryColumn } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
-import { ITagDb } from '../../Interfaces';
+import { ITagDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
 import { WorkflowEntity } from './WorkflowEntity';
 import { AbstractEntity } from './AbstractEntity';

@@ -124,7 +124,7 @@ export class Raindrop implements INodeType {
 							},
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -165,7 +165,7 @@ export class Raindrop implements INodeType {
 						// ----------------------------------
 						//         bookmark: getAll
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/raindrops/${collectionId}`;
@@ -173,7 +173,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -185,7 +185,7 @@ export class Raindrop implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -233,7 +233,7 @@ export class Raindrop implements INodeType {
 							title: this.getNodeParameter('title', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -272,7 +272,7 @@ export class Raindrop implements INodeType {
 						//        collection: getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const endpoint =
 							this.getNodeParameter('type', i) === 'parent'
@@ -283,7 +283,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -295,7 +295,7 @@ export class Raindrop implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -401,7 +401,7 @@ export class Raindrop implements INodeType {
 							tags: (this.getNodeParameter('tags', i) as string).split(',') as string[],
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.collectionId) {
 							endpoint += `/${additionalFields.collectionId}`;
@@ -415,9 +415,9 @@ export class Raindrop implements INodeType {
 
 						let endpoint = `/tags`;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filter = this.getNodeParameter('filters', i) as IDataObject;
+						const filter = this.getNodeParameter('filters', i);
 
 						if (filter.collectionId) {
 							endpoint += `/${filter.collectionId}`;
@@ -427,7 +427,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					}

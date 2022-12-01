@@ -24,7 +24,7 @@ export class RaindropOAuth2Api implements ICredentialType {
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: 'https://raindrop.io/oauth/access_token',
+			default: 'https://api.raindrop.io/v1/oauth/access_token',
 		},
 		{
 			displayName: 'Auth URI Query Parameters',

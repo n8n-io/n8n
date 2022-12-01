@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
@@ -9,6 +8,7 @@ export class ExpressionError extends ExecutionBaseError {
 	constructor(
 		message: string,
 		options?: {
+			cause?: Error;
 			causeDetailed?: string;
 			description?: string;
 			descriptionTemplate?: string;
@@ -22,7 +22,7 @@ export class ExpressionError extends ExecutionBaseError {
 			type?: string;
 		},
 	) {
-		super(new Error(message));
+		super(message, { cause: options?.cause });
 
 		if (options?.description !== undefined) {
 			this.description = options.description;

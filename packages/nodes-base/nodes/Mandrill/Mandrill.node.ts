@@ -8,7 +8,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -68,7 +67,7 @@ interface Body {
 	send_at?: string;
 }
 
-interface Options {
+type Options = IDataObject & {
 	html: string;
 	fromName?: string;
 	text: string;
@@ -93,7 +92,7 @@ interface Options {
 	signingDomain: string;
 	returnPathDomain: string;
 	sendAt: string;
-}
+};
 
 export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
@@ -724,7 +723,7 @@ export class Mandrill implements INodeType {
 					const options = this.getNodeParameter('options', i) as Options;
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const toEmail = this.getNodeParameter('toEmail', i) as string;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					const toEmailArray = getToEmailArray(toEmail);
 
 					const message: Message = {

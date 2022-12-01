@@ -412,7 +412,6 @@ export class ShopifyTrigger implements INodeType {
 			headerData['x-shopify-shop-domain'] !== undefined &&
 			headerData['x-shopify-api-version'] !== undefined
 		) {
-			// @ts-ignore
 			const computedSignature = createHmac('sha256', secret).update(req.rawBody).digest('base64');
 
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {

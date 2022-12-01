@@ -301,7 +301,6 @@ export class Pushover implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -315,7 +314,7 @@ export class Pushover implements INodeType {
 
 						const priority = this.getNodeParameter('priority', i) as number;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.html !== undefined) {
 							additionalFields.html = additionalFields.html ? '1' : '';

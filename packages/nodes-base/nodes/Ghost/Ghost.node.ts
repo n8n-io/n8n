@@ -137,7 +137,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -154,9 +154,9 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -187,7 +187,7 @@ export class Ghost implements INodeType {
 
 							const content = this.getNodeParameter('content', i) as string;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const post: IDataObject = {
 								title,
@@ -243,7 +243,7 @@ export class Ghost implements INodeType {
 
 							const identifier = this.getNodeParameter('identifier', i) as string;
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -259,9 +259,9 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 
 							Object.assign(qs, options);
 
@@ -286,7 +286,7 @@ export class Ghost implements INodeType {
 
 							const contentFormat = this.getNodeParameter('contentFormat', i) as string;
 
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 
 							const post: IDataObject = {};
 

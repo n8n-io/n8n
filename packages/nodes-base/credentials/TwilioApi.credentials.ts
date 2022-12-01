@@ -1,11 +1,4 @@
-import {
-	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
-	ICredentialTestRequest,
-	ICredentialType,
-	IHttpRequestOptions,
-	INodeProperties,
-} from 'n8n-workflow';
+import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwilioApi implements ICredentialType {
 	name = 'twilioApi';

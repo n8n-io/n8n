@@ -1,4 +1,4 @@
-import { IDataObject, INodeProperties } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeProperties } from 'n8n-workflow';
 
 import { groups } from './Json/Groups';
 
@@ -81,7 +81,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 					tool: [tool.k],
 				},
 			},
-			description: JSON.parse(JSON.stringify(description)),
+			description: deepCopy(description),
 		};
 
 		let modifiedParam = null;
@@ -109,6 +109,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 					newParameters.push(currentParam);
 				}
 			}
+			// eslint-disable-next-line n8n-local-rules/no-json-parse-json-stringify
 			parameters = JSON.parse(JSON.stringify(newParameters));
 		} else {
 			parameters.push(parameter);

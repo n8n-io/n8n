@@ -50,7 +50,7 @@ import { capitalCase } from 'change-case';
 
 import { isEmpty } from 'lodash';
 
-import { DateFieldsUi, QuickBooksOAuth2Credentials, TransactionFields } from './types';
+import { QuickBooksOAuth2Credentials, TransactionFields } from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {
@@ -268,7 +268,7 @@ export class QuickBooks implements INodeType {
 
 						body.Line = processLines.call(this, body, lines, resource);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -331,7 +331,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -363,7 +363,7 @@ export class QuickBooks implements INodeType {
 							DisplayName: this.getNodeParameter('displayName', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -397,7 +397,7 @@ export class QuickBooks implements INodeType {
 							sparse: true,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -428,7 +428,7 @@ export class QuickBooks implements INodeType {
 							GivenName: this.getNodeParameter('GivenName', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -462,7 +462,7 @@ export class QuickBooks implements INodeType {
 							sparse: true,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -532,7 +532,7 @@ export class QuickBooks implements INodeType {
 						} as IDataObject;
 
 						body.Line = processLines.call(this, body, lines, resource);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -562,7 +562,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const estimateId = this.getNodeParameter('estimateId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -622,7 +622,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -693,7 +693,7 @@ export class QuickBooks implements INodeType {
 
 						body.Line = processLines.call(this, body, lines, resource);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -723,7 +723,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -783,7 +783,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -856,7 +856,7 @@ export class QuickBooks implements INodeType {
 							TotalAmt: this.getNodeParameter('TotalAmt', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -886,7 +886,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -946,7 +946,7 @@ export class QuickBooks implements INodeType {
 							},
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -1070,7 +1070,7 @@ export class QuickBooks implements INodeType {
 							DisplayName: this.getNodeParameter('displayName', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body = populateFields.call(this, body, additionalFields, resource);
 
@@ -1104,7 +1104,7 @@ export class QuickBooks implements INodeType {
 							sparse: true,
 						} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -1123,7 +1123,7 @@ export class QuickBooks implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const download = this.getNodeParameter('download', 0, false) as boolean;
+					const download = this.getNodeParameter('download', 0, false);
 					if (
 						['invoice', 'estimate', 'payment'].includes(resource) &&
 						['get'].includes(operation) &&
@@ -1155,7 +1155,7 @@ export class QuickBooks implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		const download = this.getNodeParameter('download', 0, false) as boolean;
+		const download = this.getNodeParameter('download', 0, false);
 
 		if (
 			['invoice', 'estimate', 'payment'].includes(resource) &&

@@ -27,7 +27,6 @@ export class KoBoToolboxTrigger implements INodeType {
 		description: 'Process KoBoToolbox submissions',
 		defaults: {
 			name: 'KoBoToolbox Trigger',
-			color: '#64C0FF',
 		},
 		inputs: [],
 		outputs: ['main'],

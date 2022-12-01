@@ -2,8 +2,8 @@
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
-import config from '../../../config';
-import { getLogger } from '../../Logger';
+import config from '@/config';
+import { getLogger } from '@/Logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -65,7 +65,7 @@ export function logMigrationEnd(
 	}, 100);
 }
 
-export function batchQuery(query: string, limit: number, offset = 0): string {
+function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}

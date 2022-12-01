@@ -30,7 +30,6 @@ export class AwsElb implements INodeType {
 		description: 'Sends data to AWS ELB API',
 		defaults: {
 			name: 'AWS ELB',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -252,7 +251,7 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const listenerId = this.getNodeParameter('listenerId', i) as string;
 
@@ -267,7 +266,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeListenerCertificates&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + this.getNodeParameter('limit', 0));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -317,7 +316,7 @@ export class AwsElb implements INodeType {
 
 						const subnets = this.getNodeParameter('subnets', i) as string[];
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = ['Version=2015-12-01'];
 
@@ -386,10 +385,10 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 
 							if (filters.names) {
 								const names = (filters.names as string).split(',');
@@ -407,7 +406,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeLoadBalancers&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + this.getNodeParameter('limit', 0));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,

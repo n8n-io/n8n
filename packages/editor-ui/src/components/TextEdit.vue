@@ -5,7 +5,7 @@
 			<div class="ignore-key-press">
 				<n8n-input-label :label="$locale.nodeText().inputLabelDisplayName(parameter, path)">
 					<div @keydown.stop @keydown.esc="onKeyDownEsc()">
-						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter, path)" @change="valueChanged" @keydown.stop="noOp" :rows="15" />
+						<n8n-input v-model="tempValue" type="textarea" ref="inputField" :value="value" :placeholder="$locale.nodeText().placeholder(parameter, path)" :readOnly="isReadOnly" @change="valueChanged" :rows="15" />
 					</div>
 				</n8n-input-label>
 			</div>
@@ -24,6 +24,7 @@ export default Vue.extend({
 		'parameter',
 		'path',
 		'value',
+		'isReadOnly',
 	],
 	data () {
 		return {
