@@ -22,7 +22,7 @@ describe('NDV', () => {
 		ndv.getters.container().should('not.be.visible');
 	});
 
-	it.only('should test webhook node', () => {
+	it('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
@@ -31,7 +31,7 @@ describe('NDV', () => {
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
-		cy.window().its('navigator.clipboard').invoke('readText').then(url => {
+		cy.readClipboard().then(url => {
 			cy.request({
 				method: 'GET',
 				url,

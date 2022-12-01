@@ -140,3 +140,5 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 		}));
 	}
 });
+
+Cypress.Commands.add('readClipboard', () => cy.window().its('navigator.clipboard').invoke('readText'));

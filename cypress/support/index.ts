@@ -25,6 +25,7 @@ declare global {
 			skipSetup(): void;
 			resetAll(): void;
 			grantBrowserPermissions(...permissions: string[]): void;
+			readClipboard(): Chainable<string>;
 		}
 	}
 }
