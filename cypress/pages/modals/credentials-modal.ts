@@ -22,7 +22,11 @@ export class CredentialsModal extends BasePage {
 			this.getters.nameInput().clear().type(name);
 		},
 		save: () => {
+			cy.intercept('POST', '/rest/credentials').as('saveCredential');
+			cy.intercept('POST', '/rest/credentials/test').as('testCredential');
+
 			this.getters.saveButton().click();
+			cy.wait('@saveCredential').wait('@testCredential');
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {

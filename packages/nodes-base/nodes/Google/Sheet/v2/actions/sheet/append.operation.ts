@@ -154,6 +154,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const dataMode = this.getNodeParameter('dataMode', 0) as string;
@@ -174,6 +175,12 @@ export async function execute(
 		setData = await autoMapInputData.call(this, sheetName, sheet, items, options);
 	} else {
 		setData = mapFields.call(this, items.length);
+	}
+
+	if (setData.length === 0) {
+		return [];
+	} else {
+		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 	}
 
 	await sheet.appendSheetData(
