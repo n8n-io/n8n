@@ -13,13 +13,10 @@ export async function postmarkApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('postmarkApi');
-
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
-			'X-Postmark-Server-Token': credentials.serverToken,
 		},
 		method,
 		body,
@@ -32,7 +29,7 @@ export async function postmarkApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
