@@ -31,7 +31,7 @@ export const userFields: INodeProperties[] = [
 		displayName: 'User',
 		name: 'user',
 		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
+		default: { mode: 'username', value: '' },
 		required: true,
 		description: 'The user you want to search',
 		displayOptions: {
@@ -42,19 +42,19 @@ export const userFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [],
-				placeholder: '1068479892537384960',
-				url: '',
-			},
-			{
 				displayName: 'By Username',
 				name: 'username',
 				type: 'string',
 				validation: [],
 				placeholder: 'n8n',
+				url: '',
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '1068479892537384960',
 				url: '',
 			},
 		],
