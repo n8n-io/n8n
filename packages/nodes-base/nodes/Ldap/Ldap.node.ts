@@ -293,7 +293,9 @@ export class Ldap implements INodeType {
 					}
 
 					// Set attributes to retreive
-					options.attributes = options.attributes ? (options.attributes as string).split(',') : [];
+					options.attributes = options.attributes
+						? (options.attributes as string).split(',').map((attribute) => attribute.trim())
+						: [];
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
 					if (filter === 'custom') {
