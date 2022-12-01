@@ -38,6 +38,7 @@
 						<div class="expression-editor ph-no-capture">
 							<expression-modal-input
 								:value="value"
+								:isReadOnly="isReadOnly"
 								@change="valueChanged"
 								ref="inputFieldExpression"
 								data-test-id="expression-modal-input"
@@ -98,6 +99,7 @@ export default mixins(
 		'path',
 		'value',
 		'eventSource',
+		'isReadOnly',
 	],
 	components: {
 		ExpressionModalInput,
