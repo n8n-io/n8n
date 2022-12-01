@@ -233,14 +233,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 		}
 
 		if (this.credentialType) {
-			for (const property of this.credentialType.properties) {
-				if (
-					!this.credentialData.hasOwnProperty(property.name) &&
-					!this.credentialType.__overwrittenProperties?.includes(property.name)
-				) {
-					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				for (const property of this.credentialType.properties) {
+					if (
+						!this.credentialData.hasOwnProperty(property.name) &&
+						!this.credentialType.__overwrittenProperties?.includes(property.name)
+					) {
+						Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+					}
 				}
-			}
 		}
 
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
@@ -956,9 +956,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 				if (event.data === 'success') {
 					window.removeEventListener('message', receiveMessage, false);
 
-					Vue.set(this.credentialData, 'oauthTokenData', null);
-					// Load the credentials again as there is a new access token
 					await this.loadCurrentCredential();
+
+					this.addHiddenPropertiesToCredentialData();
 
 					this.retestCredential();
 
@@ -974,8 +974,20 @@ export default mixins(showMessage, nodeHelpers).extend({
 			window.addEventListener('message', receiveMessage, false);
 
 		},
-	},
 
+		addHiddenPropertiesToCredentialData() {
+			if (this.credentialType) {
+				for (const property of this.credentialType.properties) {
+					if (
+						!this.credentialData.hasOwnProperty(property.name) &&
+						!this.credentialType.__overwrittenProperties?.includes(property.name)
+					) {
+						Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+					}
+				}
+			}
+		},
+	},
 });
 </script>
 

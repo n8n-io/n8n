@@ -1,8 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	ICredentialTestFunctions,
 	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
@@ -2043,9 +2043,6 @@ export class GoogleDrive implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as { oauthTokenData: { access_token: string } };
 
-				console.log('este es el token papa');
-				console.log(JSON.stringify(credentials.oauthTokenData, undefined, 2));
-
 				const options: OptionsWithUri = {
 					method: 'GET',
 					uri: 'https://www.googleapis.com/drive/v3/files',
@@ -2058,10 +2055,9 @@ export class GoogleDrive implements INodeType {
 				try {
 					await this.helpers.request(options);
 				} catch (error) {
-					console.log(JSON.stringify(error.response.body, undefined, 2));
 					return {
 						status: 'Error',
-						message: error.response.body.error.message,
+						message: error.response.body?.error?.message || 'Error testing credentials',
 					};
 				}
 				return {
