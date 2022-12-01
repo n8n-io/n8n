@@ -247,23 +247,22 @@ export async function execute(
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
-			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
-				(acc, entry) => {
-					if (entry.column === 'newColumn') {
-						const columnName = entry.columnName as string;
+			const fields = (
+				(this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]) || []
+			).reduce((acc, entry) => {
+				if (entry.column === 'newColumn') {
+					const columnName = entry.columnName as string;
 
-						if (columnNames.includes(columnName) === false) {
-							newColumns.add(columnName);
-						}
-
-						acc[columnName] = entry.fieldValue as string;
-					} else {
-						acc[entry.column as string] = entry.fieldValue as string;
+					if (columnNames.includes(columnName) === false) {
+						newColumns.add(columnName);
 					}
-					return acc;
-				},
-				{} as IDataObject,
-			);
+
+					acc[columnName] = entry.fieldValue as string;
+				} else {
+					acc[entry.column as string] = entry.fieldValue as string;
+				}
+				return acc;
+			}, {} as IDataObject);
 
 			fields[columnToMatchOn] = valueToMatchOn;
 
