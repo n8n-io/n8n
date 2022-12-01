@@ -106,9 +106,9 @@ describe('Default owner', () => {
 		describe('can click back to main menu and have migrated credential after setup', () => {
 			mainSidebar.actions.goToCredentials();
 
-			cy.url().should('include', workflowsPage.url);
+			cy.url().should('include', credentialsPage.url);
 
-			workflowsPage.getters.workflowCards().should('have.length', 1);
+			credentialsPage.getters.credentialCards().should('have.length', 1);
 		});
 	});
 });

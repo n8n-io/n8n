@@ -13,7 +13,7 @@ export class CredentialsModal extends BasePage {
 			.find('.n8n-input input'),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
-		saveButton: () => cy.getByTestId('credential-save-button'),
+		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 5000 }),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 	};
 	actions = {
@@ -23,10 +23,9 @@ export class CredentialsModal extends BasePage {
 		},
 		save: () => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
-			cy.intercept('POST', '/rest/credentials/test').as('testCredential');
 
 			this.getters.saveButton().click();
-			cy.wait('@saveCredential').wait('@testCredential');
+			cy.wait('@saveCredential');
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {
