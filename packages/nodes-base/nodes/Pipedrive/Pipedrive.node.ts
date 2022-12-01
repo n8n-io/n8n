@@ -4900,7 +4900,7 @@ export class Pipedrive implements INodeType {
 
 		if (customProperties !== undefined) {
 			for (const item of returnData) {
-				await pipedriveResolveCustomProperties(customProperties, item);
+				pipedriveResolveCustomProperties(customProperties, item);
 			}
 		}
 

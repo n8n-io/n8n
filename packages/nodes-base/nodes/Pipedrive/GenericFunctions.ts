@@ -233,16 +233,18 @@ export function pipedriveResolveCustomProperties(
 ): void {
 	let customPropertyData;
 
+	const json = item.json as IDataObject;
+
 	// Itterate over all keys and replace the custom ones
-	for (const key of Object.keys(item)) {
+	for (const key of Object.keys(json)) {
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
 
 			// value is not set, so nothing to resolve
-			if (item[key] === null) {
-				item[customPropertyData.name] = item[key];
-				delete item[key];
+			if (json[key] === null) {
+				json[customPropertyData.name] = json[key];
+				delete json[key];
 				continue;
 			}
 
@@ -265,31 +267,32 @@ export function pipedriveResolveCustomProperties(
 					'timerange',
 				].includes(customPropertyData.field_type)
 			) {
-				item[customPropertyData.name as string] = item[key];
-				delete item[key];
+				json[customPropertyData.name as string] = json[key];
+				delete json[key];
 				// type options
 			} else if (
 				['enum', 'visible_to'].includes(customPropertyData.field_type) &&
 				customPropertyData.options
 			) {
 				const propertyOption = customPropertyData.options.find(
-					(option) => option.id.toString() === item[key]!.toString(),
+					(option) => option.id.toString() === json[key]!.toString(),
 				);
 				if (propertyOption !== undefined) {
-					item[customPropertyData.name as string] = propertyOption.label;
-					delete item[key];
+					json[customPropertyData.name as string] = propertyOption.label;
+					delete json[key];
 				}
 				// type multioptions
 			} else if (['set'].includes(customPropertyData.field_type) && customPropertyData.options) {
-				const selectedIds = (item[key] as string).split(',');
+				const selectedIds = (json[key] as string).split(',');
 				const selectedLabels = customPropertyData.options
 					.filter((option) => selectedIds.includes(option.id.toString()))
 					.map((option) => option.label);
-				item[customPropertyData.name] = selectedLabels;
-				delete item[key];
+				json[customPropertyData.name] = selectedLabels;
+				delete json[key];
 			}
 		}
 	}
+	item.json = json;
 }
 
 export function sortOptionParameters(
