@@ -152,15 +152,74 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.isNumeric should work correctly on a string', () => {
-			console.log(1);
 			expect(evaluate('={{ "".isNumeric() }}')).toEqual(false);
-			console.log(2);
 			expect(evaluate('={{ "asdf".isNumeric() }}')).toEqual(false);
-			console.log(3);
 			expect(evaluate('={{ "1234".isNumeric() }}')).toEqual(true);
-			console.log(4);
 			expect(evaluate('={{ "4e4".isNumeric() }}')).toEqual(true);
 			expect(evaluate('={{ "4.4".isNumeric() }}')).toEqual(true);
+		});
+
+		test('.isUrl should work on a string', () => {
+			expect(evaluate('={{ "https://example.com/".isUrl() }}')).toEqual(true);
+			expect(evaluate('={{ "example.com".isUrl() }}')).toEqual(false);
+		});
+
+		test('.isDomain should work on a string', () => {
+			expect(evaluate('={{ "example.com".isDomain() }}')).toEqual(true);
+			expect(evaluate('={{ "asdf".isDomain() }}')).toEqual(false);
+			expect(evaluate('={{ "https://example.com/".isDomain() }}')).toEqual(false);
+		});
+
+		test('.toSnakeCase should work on a string', () => {
+			expect(evaluate('={{ "I am a test!".toSnakeCase() }}')).toEqual('i_am_a_test');
+			expect(evaluate('={{ "i_am_a_test".toSnakeCase() }}')).toEqual('i_am_a_test');
+		});
+
+		test('.toSentenceCase should work on a string', () => {
+			expect(
+				evaluate(
+					'={{ "i am a test! i have multiple types of Punctuation. or do i?".toSentenceCase() }}',
+				),
+			).toEqual('I am a test! I have multiple types of punctuation. Or do i?');
+			expect(evaluate('={{ "i am a test!".toSentenceCase() }}')).toEqual('I am a test!');
+			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
+		});
+
+		test('.toTitleCase should work on a string', () => {
+			expect(
+				evaluate(
+					'={{ "i am a test! i have multiple types of Punctuation. or do i?".toTitleCase() }}',
+				),
+			).toEqual('I Am A Test! I Have Multiple Types Of Punctuation. Or Do I?');
+			expect(evaluate('={{ "i am a test!".toTitleCase() }}')).toEqual('I Am A Test!');
+			expect(evaluate('={{ "i am a test".toTitleCase() }}')).toEqual('I Am A Test');
+		});
+
+		test('.extractUrl should work on a string', () => {
+			expect(
+				evaluate(
+					'={{ "I am a test with a url: https://example.net/ and I am a test with an email: test@example.org".extractUrl() }}',
+				),
+			).toEqual('https://example.net/');
+		});
+
+		test('.extractDomain should work on a string', () => {
+			expect(evaluate('={{ "test@example.org".extractDomain() }}')).toEqual('example.org');
+			expect(evaluate('={{ "https://example.org/".extractDomain() }}')).toEqual('example.org');
+		});
+
+		test('.extractEmail should work on a string', () => {
+			expect(
+				evaluate(
+					'={{ "I am a test with a url: https://example.net/ and I am a test with an email: test@example.org".extractEmail() }}',
+				),
+			).toEqual('test@example.org');
+		});
+
+		test('.isEmail should work on a string', () => {
+			expect(evaluate('={{ "test@example.com".isEmail() }}')).toEqual(true);
+			expect(evaluate('={{ "aaaaaaaa".isEmail() }}')).toEqual(false);
+			expect(evaluate('={{ "test @ n8n".isEmail() }}')).toEqual(false);
 		});
 	});
 });

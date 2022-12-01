@@ -43,7 +43,7 @@ function removeFieldsContaining(value: object, extraArgs: string[]): object {
 		throw new ExpressionExtensionError('argument of removeFieldsContaining must be an string');
 	}
 	const newObject = { ...value };
-	for (const [key, val] of Object.keys(value)) {
+	for (const [key, val] of Object.entries(value)) {
 		if (typeof val === 'string' && val.includes(match)) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
@@ -58,7 +58,7 @@ function keepFieldsContaining(value: object, extraArgs: string[]): object {
 		throw new ExpressionExtensionError('argument of keepFieldsContaining must be an string');
 	}
 	const newObject = { ...value };
-	for (const [key, val] of Object.keys(value)) {
+	for (const [key, val] of Object.entries(value)) {
 		if (typeof val === 'string' && !val.includes(match)) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
 			delete (newObject as any)[key];
@@ -71,7 +71,7 @@ export function compact(value: object): object {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const newObj: any = {};
 	for (const [key, val] of Object.entries(value)) {
-		if (val !== null) {
+		if (val !== null && val !== undefined) {
 			if (typeof val === 'object') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				newObj[key] = compact(val);

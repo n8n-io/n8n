@@ -45,5 +45,9 @@ describe('Data Transformation Functions', () => {
 				dateExtensions.functions.format(new Date(), ["HH 'hours and' mm 'minutes'"]),
 			);
 		});
+
+		test('.toDate() should work on a string', () => {
+			expect(evaluate('={{ "2022-01-03".toDate() }}')).toEqual(new Date(2022, 0, 3));
+		});
 	});
 });

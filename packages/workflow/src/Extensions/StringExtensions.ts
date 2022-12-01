@@ -31,6 +31,9 @@ const EMAIL_REGEXP =
 const URL_REGEXP =
 	/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{2,}\b([-a-zA-Z0-9()\[\]@:%_\+.~#?&//=]*)/;
 
+const CHAR_TEST_REGEXP = /\p{L}/u;
+const PUNC_TEST_REGEXP = /[!?.]/;
+
 const TRUE_VALUES = ['true', '1', 't', 'yes', 'y'];
 const FALSE_VALUES = ['false', '0', 'f', 'no', 'n'];
 
@@ -202,9 +205,27 @@ function toTitleCase(value: string) {
 }
 
 function toSentenceCase(value: string) {
-	return value
-		.split('. ')
-		.map((v) => v.charAt(0).toLocaleUpperCase() + v.slice(1).toLocaleLowerCase());
+	let current = value.slice();
+	let buffer = '';
+
+	while (CHAR_TEST_REGEXP.test(current)) {
+		const charIndex = current.search(CHAR_TEST_REGEXP);
+		current =
+			current.slice(0, charIndex) +
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			current.at(charIndex)!.toLocaleUpperCase() +
+			current.slice(charIndex + 1).toLocaleLowerCase();
+		const puncIndex = current.search(PUNC_TEST_REGEXP);
+		if (puncIndex === -1) {
+			buffer += current;
+			current = '';
+			break;
+		}
+		buffer += current.slice(0, puncIndex + 1);
+		current = current.slice(puncIndex + 1);
+	}
+
+	return buffer;
 }
 
 function toSnakeCase(value: string) {

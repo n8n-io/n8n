@@ -1,5 +1,5 @@
 import { ExpressionExtensionError } from '..';
-import { average } from './ArrayExtensions';
+import { average as aAverage } from './ArrayExtensions';
 
 const min = Math.min;
 const max = Math.max;
@@ -29,6 +29,10 @@ const zip = (keys: unknown[], values: unknown[]): unknown => {
 		(p as any)[c as any] = values[i];
 		return p;
 	}, {});
+};
+
+const average = (...args: number[]) => {
+	return aAverage(args);
 };
 
 export const extendedFunctions = {

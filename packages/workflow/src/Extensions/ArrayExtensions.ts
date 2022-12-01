@@ -195,7 +195,7 @@ export function average(value: unknown[]) {
 
 function compact(value: unknown[]): unknown[] {
 	return value
-		.filter((v) => v !== null)
+		.filter((v) => v !== null && v !== undefined)
 		.map((v) => {
 			if (typeof v === 'object' && v !== null) {
 				return oCompact(v);
@@ -347,19 +347,11 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	}
 	const newArr: unknown[] = [];
 	for (const v of value) {
-		console.log(
-			'value',
-			others.findIndex((w) => deepCompare(w, v)),
-		);
 		if (others.findIndex((w) => deepCompare(w, v)) !== -1) {
 			newArr.push(v);
 		}
 	}
 	for (const v of others) {
-		console.log(
-			'others',
-			value.findIndex((w) => deepCompare(w, v)),
-		);
 		if (value.findIndex((w) => deepCompare(w, v)) !== -1) {
 			newArr.push(v);
 		}

@@ -4,6 +4,7 @@
 
 import { extendTransform } from '@/Extensions';
 import { joinExpression, splitExpression } from '@/Extensions/ExpressionParser';
+import { evaluate } from './Helpers';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
@@ -94,6 +95,38 @@ describe('tmpl Expression Parser', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
+		});
+	});
+
+	describe('Non dot extensions', () => {
+		test('min', () => {
+			expect(evaluate('={{ min(1, 2, 3, 4, 5, 6) }}')).toEqual(1);
+			expect(evaluate('={{ min(1, NaN, 3, 4, 5, 6) }}')).toBeNaN();
+		});
+
+		test('max', () => {
+			expect(evaluate('={{ max(1, 2, 3, 4, 5, 6) }}')).toEqual(6);
+			expect(evaluate('={{ max(1, NaN, 3, 4, 5, 6) }}')).toBeNaN();
+		});
+
+		test('average', () => {
+			expect(evaluate('={{ average(1, 2, 3, 4, 5, 6) }}')).toEqual(3.5);
+			expect(evaluate('={{ average(1, NaN, 3, 4, 5, 6) }}')).toBeNaN();
+		});
+
+		test('numberList', () => {
+			expect(evaluate('={{ numberList(1, 10) }}')).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+			expect(evaluate('={{ numberList(1, -10) }}')).toEqual([
+				1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10,
+			]);
+		});
+
+		test('zip', () => {
+			expect(evaluate('={{ zip(["test1", "test2", "test3"], [1, 2, 3]) }}')).toEqual({
+				test1: 1,
+				test2: 2,
+				test3: 3,
+			});
 		});
 	});
 });
