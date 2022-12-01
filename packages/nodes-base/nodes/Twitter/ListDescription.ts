@@ -13,7 +13,7 @@ export const listOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Add Member to List',
+				name: 'Add Member',
 				value: 'add',
 				description: 'Add a member to a list',
 				action: 'Add a member to a list',
@@ -31,7 +31,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'List',
 		name: 'list',
 		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
+		default: { mode: 'name', value: '' },
 		required: true,
 		description: 'The list you want to add the user to',
 		displayOptions: {
@@ -42,11 +42,19 @@ export const listFields: INodeProperties[] = [
 		},
 		modes: [
 			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				validation: [],
+				placeholder: 'Automation Tools',
+				url: '',
+			},
+			{
 				displayName: 'By ID',
 				name: 'id',
 				type: 'string',
 				validation: [],
-				placeholder: '',
+				placeholder: '99923132',
 				url: '',
 			},
 			{
@@ -54,15 +62,7 @@ export const listFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				validation: [],
-				placeholder: 'e.g. https://twitter.com/i/lists/7452025970',
-				url: '',
-			},
-			{
-				displayName: 'By Name',
-				name: 'name',
-				type: 'string',
-				validation: [],
-				placeholder: 'e.g. Automation Tools',
+				placeholder: 'https://twitter.com/i/lists/99923132',
 				url: '',
 			},
 		],
@@ -71,7 +71,7 @@ export const listFields: INodeProperties[] = [
 		displayName: 'User',
 		name: 'user',
 		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
+		default: { mode: 'username', value: '' },
 		required: true,
 		description: 'The user you want to add to the list',
 		displayOptions: {
@@ -82,19 +82,19 @@ export const listFields: INodeProperties[] = [
 		},
 		modes: [
 			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [],
-				placeholder: '',
-				url: '',
-			},
-			{
 				displayName: 'By Username',
 				name: 'username',
 				type: 'string',
 				validation: [],
-				placeholder: 'e.g. @n8n',
+				placeholder: 'n8n',
+				url: '',
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '1068479892537384960',
 				url: '',
 			},
 		],
