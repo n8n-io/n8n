@@ -214,43 +214,11 @@ export async function execute(
 
 	const result = outputDataAsObject
 		? aggregationResult
-		: processAggregation(aggregationResult, fieldsToSplitBy, {});
+		: aggregationToArray(aggregationResult, fieldsToSplitBy);
 
 	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
 
 	return executionData;
-}
-
-function processAggregation(
-	aggregationResult: IDataObject,
-	fieldsToSplitBy: string[],
-	previousStage: IDataObject,
-) {
-	const result: IDataObject[] = [];
-
-	const curentColumnName = fieldsToSplitBy[0];
-	const nextColumnName = fieldsToSplitBy[1];
-
-	if (nextColumnName === undefined) {
-		for (const key of Object.keys(aggregationResult)) {
-			result.push({
-				...previousStage,
-				[curentColumnName]: key,
-				...(aggregationResult[key] as IDataObject),
-			});
-		}
-		return result;
-	} else {
-		for (const key of Object.keys(aggregationResult)) {
-			result.push(
-				...processAggregation(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
-					...previousStage,
-					[curentColumnName]: key,
-				}),
-			);
-		}
-		return result;
-	}
 }
 
 type AggregationType = 'append' | 'concatenate' | 'count' | 'countUnique' | 'max' | 'min' | 'sum';
@@ -369,8 +337,43 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 
 function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
 	return fieldsToSummarize.reduce((acc, entry) => {
-		acc[`${AggregationDisplayNames[entry.aggregation as AggregationType]} of ${entry.field}`] =
-			aggregate(data, entry);
+		acc[
+			`${AggregationDisplayNames[entry.aggregation as AggregationType]} of ${entry.field}${
+				['append', 'concatenate'].includes(entry.aggregation) ? ' fields' : ''
+			}`
+		] = aggregate(data, entry);
 		return acc;
 	}, {} as IDataObject);
+}
+
+function aggregationToArray(
+	aggregationResult: IDataObject,
+	fieldsToSplitBy: string[],
+	previousStage: IDataObject = {},
+) {
+	const returnData: IDataObject[] = [];
+
+	const splitFieldName = fieldsToSplitBy[0];
+	const isNext = fieldsToSplitBy[1];
+
+	if (isNext === undefined) {
+		for (const fieldName of Object.keys(aggregationResult)) {
+			returnData.push({
+				...previousStage,
+				[splitFieldName]: fieldName,
+				...(aggregationResult[fieldName] as IDataObject),
+			});
+		}
+		return returnData;
+	} else {
+		for (const key of Object.keys(aggregationResult)) {
+			returnData.push(
+				...aggregationToArray(aggregationResult[key] as IDataObject, fieldsToSplitBy.slice(1), {
+					...previousStage,
+					[splitFieldName]: key,
+				}),
+			);
+		}
+		return returnData;
+	}
 }
