@@ -3367,6 +3367,7 @@ export default mixins(
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3375,6 +3376,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 	});
 </script>
