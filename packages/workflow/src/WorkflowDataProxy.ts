@@ -289,15 +289,12 @@ export class WorkflowDataProxy {
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new ExpressionError(
-						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
-				throw new ExpressionError(`No node called "${nodeName}" in this workflow`, {
+				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -335,13 +332,10 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(
-						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`connect ${that.activeNodeName} to ${nodeName}`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
 				outputIndex = nodeConnection.sourceIndex;
 			}
@@ -383,15 +377,15 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!node) {
-			return undefined;
-		}
-
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
+
+					if (!node) {
+						throw new ExpressionError(`"${nodeName}" node doesn't exist`);
+					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
@@ -463,8 +457,11 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
-						throw new ExpressionError('Environment variable access got disabled', {
+					if (
+						typeof process === 'undefined' || // env vars are inaccessible to frontend
+						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
+					) {
+						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
 							runIndex: that.runIndex,
@@ -544,7 +541,7 @@ export class WorkflowDataProxy {
 						const value = that.workflow[name as keyof typeof target];
 
 						if (value === undefined && name === 'id') {
-							throw new ExpressionError('Workflow is not saved', {
+							throw new ExpressionError('save workflow to view', {
 								description: `Please save the workflow first to use $workflow`,
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
@@ -906,7 +903,7 @@ export class WorkflowDataProxy {
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError(`No node called ‘${nodeName}‘`);
+					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
 				return new Proxy(
