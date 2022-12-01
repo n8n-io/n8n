@@ -21,7 +21,7 @@ enum COMMANDS {
 // canvas out of sync with store state, so we are adding
 // this timeout in between canvas actions
 // (0 is usually enough but leaving 10ms just in case)
-const CANVAS_ACTiON_TIMEOUT = 10;
+const CANVAS_ACTION_TIMEOUT = 10;
 
 export abstract class Undoable { }
 
@@ -90,10 +90,8 @@ export class AddNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
-			setTimeout(() => {
-				this.eventBus.$root.$emit('revertAddNode', { node: this.node });
-				resolve();
-			}, CANVAS_ACTiON_TIMEOUT);
+			this.eventBus.$root.$emit('revertAddNode', { node: this.node });
+			resolve();
 		});
 	}
 }
@@ -112,10 +110,8 @@ export class RemoveNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
-			setTimeout(() => {
-				this.eventBus.$root.$emit('revertRemoveNode', { node: this.node });
-				resolve();
-			}, CANVAS_ACTiON_TIMEOUT);
+			this.eventBus.$root.$emit('revertRemoveNode', { node: this.node });
+			resolve();
 		});
 	}
 }
@@ -134,10 +130,8 @@ export class AddConnectionCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
-			setTimeout(() => {
-				this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
-				resolve();
-			}, CANVAS_ACTiON_TIMEOUT);
+			this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
+			resolve();
 		});
 	}
 }
@@ -159,7 +153,7 @@ export class RemoveConnectionCommand extends Command {
 			setTimeout(() => {
 				this.eventBus.$root.$emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
-			}, CANVAS_ACTiON_TIMEOUT);
+			}, CANVAS_ACTION_TIMEOUT);
 		});
 	}
 }

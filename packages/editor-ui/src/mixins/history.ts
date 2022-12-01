@@ -7,6 +7,7 @@ import mixins from 'vue-typed-mixins';
 import { Command } from '@/models/history';
 import { debounceHelper } from '@/mixins/debounce';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
+import Vue from 'vue';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
@@ -46,21 +47,16 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				const reverseCommands: Command[] = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
 					await commands[i].revert();
-					const reverse = commands[i].getReverseCommand();
-					if (reverse) {
-						reverseCommands.push(reverse);
-					}
+					reverseCommands.push(commands[i].getReverseCommand());
 				}
 				this.historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
+				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
 				return;
 			}
 			if (command instanceof Command) {
-				command.revert();
-				const reverse = command.getReverseCommand();
-				if (reverse) {
-					this.historyStore.pushUndoableToRedo(reverse);
-				}
+				await command.revert();
+				this.historyStore.pushUndoableToRedo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
 			}
 		},
@@ -75,21 +71,16 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
 					await commands[i].revert();
-					const reverse = commands[i].getReverseCommand();
-					if (reverse) {
-						reverseCommands.push(reverse);
-					}
+					reverseCommands.push(commands[i].getReverseCommand());
 				}
-				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
+				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands));
+				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
 				return;
 			}
 			if (command instanceof Command) {
-				command.revert();
-				const reverse = command.getReverseCommand();
-				if (reverse) {
-					this.historyStore.pushCommandToUndo(reverse, false);
-				}
+				await command.revert();
+				this.historyStore.pushCommandToUndo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
 			}
 		},
