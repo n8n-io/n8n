@@ -11,7 +11,6 @@
 			:firstLevelItems="firstLevelItems"
 			:flatten="isAppEventSubcategory"
 			:filterByType="false"
-			:enableItemsTransition="true"
 		>
 			<template #header>
 				<slot name="header" />
@@ -33,7 +32,7 @@ export interface Props {
 	searchItems: INodeCreateElement[];
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 const instance = getCurrentInstance();
 const { getMergedNodesActions } = useNodeActions();
 const state = reactive({

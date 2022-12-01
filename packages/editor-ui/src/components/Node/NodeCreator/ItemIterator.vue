@@ -1,6 +1,5 @@
 <template>
 	<div
-		:is="transitionsEnabled ? 'transition-group' : 'div'"
 		class="item-iterator"
 		name="accordion"
 		@before-enter="beforeEnter"
@@ -41,7 +40,6 @@ export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
-	transitionsEnabled?: boolean;
 	withActionsGetter?: Function;
 }
 
@@ -60,9 +58,9 @@ const state = reactive({
 	renderAnimationRequest: 0,
 });
 
-watch(() => props.elements, () => {
-	window.cancelAnimationFrame(state.renderAnimationRequest);
+watch(() => props.elements, async () => {
 	state.renderedItems = [];
+	window.cancelAnimationFrame(state.renderAnimationRequest);
 	renderItems();
 });
 
@@ -75,7 +73,7 @@ function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INode
 // when loading many items.
 function renderItems() {
 	if (state.renderedItems.length < props.elements.length) {
-		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 3));
+		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 1));
 		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
 	}
 }
@@ -111,32 +109,6 @@ const { renderedItems } = toRefs(state);
 .item-iterator > *:last-child {
 	margin-bottom: var(--spacing-2xl);
 }
-.accordion-enter {
-	opacity: 0;
-}
-
-.accordion-leave-active {
-	opacity: 1;
-}
-
-.accordion-leave-active {
-	transition: all 0.25s ease, opacity 0.1s ease;
-	margin-top: 0;
-}
-
-.accordion-enter-active {
-	transition: all 0.25s ease, opacity 0.25s ease;
-	margin-top: 0;
-}
-
-.accordion-leave-to {
-	opacity: 0;
-}
-
-.accordion-enter-to {
-	opacity: 1;
-}
-
 .node + .category {
 	margin-top: 15px;
 }
