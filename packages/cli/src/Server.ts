@@ -157,6 +157,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
+import { licenseController } from './license/LicenseController';
 
 require('body-parser-xml')(bodyParser);
 
@@ -805,6 +806,11 @@ class App {
 		// Workflow
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
+
+		// ----------------------------------------
+		// License
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
 
 		// ----------------------------------------
 		// Tags
