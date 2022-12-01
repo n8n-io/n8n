@@ -128,3 +128,15 @@ Cypress.Commands.add('resetAll', () => {
 Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });
+
+Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
+	if(Cypress.isBrowser('chrome')) {
+		cy.wrap(Cypress.automation('remote:debugger:protocol', {
+			command: 'Browser.grantPermissions',
+			params: {
+				permissions,
+				origin: window.location.origin,
+			},
+		}));
+	}
+});

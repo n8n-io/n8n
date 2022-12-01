@@ -22,16 +22,14 @@ describe('NDV', () => {
 		ndv.getters.container().should('not.be.visible');
 	});
 
-	it('should test webhook node', () => {
+	it.only('should test webhook node', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
 		ndv.getters.nodeExecuteButton().first().click();
 		ndv.getters.copyInput().click();
 
-		cy.window().its('navigator.permissions')
-			.invoke('query', {name: 'clipboard-read'})
-			.its('state').should('equal', 'granted');
+		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
 		cy.window().its('navigator.clipboard').invoke('readText').then(url => {
 			cy.request({
