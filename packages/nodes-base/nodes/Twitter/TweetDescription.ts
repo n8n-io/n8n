@@ -396,7 +396,8 @@ export const tweetFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'The fields to add to each returned Tweet object',
+				description:
+					'The fields to add to each returned Tweet object. Default fields are: ID, text, edit_history_tweet_ids.',
 			},
 		],
 	},
