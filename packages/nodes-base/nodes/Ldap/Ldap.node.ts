@@ -9,12 +9,13 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	LoggerProxy as Logger,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { Attribute, Change, Client, ClientOptions } from 'ldapts';
 import { ldapFields } from './LdapDescription';
-import { resolveBinaryAttributes } from './Helpers';
+import { BINARY_AD_ATTRIBUTES, resolveBinaryAttributes } from './Helpers';
 
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +73,14 @@ export class Ldap implements INodeType {
 				],
 				default: 'search',
 			},
+			{
+				displayName: 'Debug',
+				name: 'nodeDebug',
+				type: 'boolean',
+				isNodeSetting: true,
+				default: false,
+				noDataExpression: true,
+			},
 			...ldapFields,
 		],
 	};
@@ -84,24 +93,24 @@ export class Ldap implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const protocol = !credentials.secure || credentials.starttls ? 'ldap' : 'ldaps';
+					const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 					const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 					const ldapOptions: ClientOptions = { url };
 					const tlsOptions: IDataObject = {};
 
-					if (credentials.secure) {
+					if (credentials.connectionSecurity !== 'none') {
 						tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
 						if (credentials.caCertificate) {
 							tlsOptions.ca = [credentials.caCertificate as string];
 						}
-						if (!credentials.starttls) {
+						if (credentials.connectionSecurity !== 'startTls') {
 							ldapOptions.tlsOptions = tlsOptions;
 						}
 					}
 
 					const client = new Client(ldapOptions);
-					if (credentials.starttls) {
+					if (credentials.connectionSecurity === 'startTls') {
 						await client.startTLS(tlsOptions);
 					}
 					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
@@ -120,39 +129,55 @@ export class Ldap implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const nodeDebug = this.getNodeParameter('nodeDebug', 0) as boolean;
+
 		const items = this.getInputData();
 		const returnItems: INodeExecutionData[] = [];
+
+		if (nodeDebug) {
+			Logger.info(
+				`[${this.getNode().type} | ${this.getNode().name}] - Starting with ${
+					items.length
+				} input items`,
+			);
+		}
 
 		let item: INodeExecutionData;
 
 		const credentials = await this.getCredentials('ldap');
-		const protocol = !credentials.secure || credentials.starttls ? 'ldap' : 'ldaps';
-		let port = !credentials.secure || credentials.starttls ? 389 : 686;
-		port = credentials.port ? (credentials.port as number) : port;
-		const url = `${protocol}://${credentials.hostname}:${port}`;
-		const bindDN = credentials.bindDN as string;
-		const bindPassword = credentials.bindPassword as string;
+		const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+		const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
 
 		const ldapOptions: ClientOptions = { url };
 		const tlsOptions: IDataObject = {};
 
-		if (credentials.secure) {
+		if (credentials.connectionSecurity !== 'none') {
 			tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
 			if (credentials.caCertificate) {
 				tlsOptions.ca = [credentials.caCertificate as string];
 			}
-			if (!credentials.starttls) {
+			if (credentials.connectionSecurity !== 'startTls') {
 				ldapOptions.tlsOptions = tlsOptions;
 			}
 		}
 
 		const client = new Client(ldapOptions);
 
+		if (nodeDebug) {
+			Logger.info(
+				`[${this.getNode().type} | ${this.getNode().name}] - LDAP Options: ${JSON.stringify(
+					ldapOptions,
+					null,
+					2,
+				)}`,
+			);
+		}
+
 		try {
-			if (credentials.starttls) {
+			if (credentials.connectionSecurity === 'startTls') {
 				await client.startTLS(tlsOptions);
 			}
-			await client.bind(bindDN, bindPassword);
+			await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
 		} catch (error) {
 			delete error.cert;
 			if (this.continueOnFail()) {
@@ -269,6 +294,7 @@ export class Ldap implements INodeType {
 
 					// Set attributes to retreive
 					options.attributes = options.attributes ? (options.attributes as string).split(',') : [];
+					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
 					if (filter === 'custom') {
 						filter = this.getNodeParameter('customFilter', itemIndex) as string;
@@ -286,6 +312,16 @@ export class Ldap implements INodeType {
 					filter = filter.replace(/\\\(/g, '\\28');
 					filter = filter.replace(/\\\)/g, '\\29');
 					options.filter = filter;
+
+					if (nodeDebug) {
+						Logger.info(
+							`[${this.getNode().type} | ${this.getNode().name}] - Search Options ${JSON.stringify(
+								options,
+								null,
+								2,
+							)}`,
+						);
+					}
 
 					const results = await client.search(baseDN, options);
 
@@ -317,7 +353,9 @@ export class Ldap implements INodeType {
 				}
 			}
 		}
-
+		if (nodeDebug) {
+			Logger.info(`[${this.getNode().type} | ${this.getNode().name}] - Finished`);
+		}
 		return this.prepareOutputData(returnItems);
 	}
 }

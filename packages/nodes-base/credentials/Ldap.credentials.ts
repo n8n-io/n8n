@@ -6,54 +6,58 @@ export class Ldap implements ICredentialType {
 	displayName = 'LDAP';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Hostname',
+			displayName: 'LDAP Server Address',
 			name: 'hostname',
 			type: 'string',
 			default: '',
 			required: true,
+			description: 'IP or domain of the LDAP server',
 		},
 		{
-			displayName: 'Port',
+			displayName: 'LDAP Server Port',
 			name: 'port',
 			type: 'string',
 			default: '389',
-			description:
-				'The port to connect to. If not specified, the default port will be used (389 or 636).',
+			description: 'Port used to connect to the LDAP server',
 		},
 		{
-			displayName: 'Bind DN',
+			displayName: 'Binding DN',
 			name: 'bindDN',
 			type: 'string',
 			default: '',
+			description: 'Distinguished Name of the user to connect as',
+			required: true,
 		},
 		{
-			displayName: 'Bind Password',
+			displayName: 'Binding Password',
 			name: 'bindPassword',
 			type: 'string',
 			typeOptions: {
 				password: true,
 			},
 			default: '',
-		},
-		{
-			displayName: 'SSL / TLS',
-			name: 'secure',
-			type: 'boolean',
-			default: false,
+			description: 'Password of the user provided in the Binding DN field above',
 			required: true,
-			description: 'Enable to use SSL / TLS',
 		},
 		{
-			displayName: 'StartTLS',
-			name: 'starttls',
-			type: 'boolean',
-			default: false,
-			required: false,
-			displayOptions: {
-				show: {
-					secure: [true],
+			displayName: 'Connection Security',
+			name: 'connectionSecurity',
+			type: 'options',
+			default: 'none',
+			options: [
+				{
+					name: 'None',
+					value: 'none',
 				},
-			},
+				{
+					name: 'TLS',
+					value: 'tls',
+				},
+				{
+					name: 'STARTTLS',
+					value: 'startTls',
+				},
+			],
 		},
 		{
 			displayName: 'Ignore SSL/TLS Issues',
@@ -62,8 +66,8 @@ export class Ldap implements ICredentialType {
 			description: 'Whether to connect even if SSL/TLS certificate validation is not possible',
 			default: false,
 			displayOptions: {
-				show: {
-					secure: [true],
+				hide: {
+					connectionSecurity: ['none'],
 				},
 			},
 		},
@@ -74,8 +78,8 @@ export class Ldap implements ICredentialType {
 				alwaysOpenEditWindow: true,
 			},
 			displayOptions: {
-				show: {
-					secure: [true],
+				hide: {
+					connectionSecurity: ['none'],
 				},
 			},
 			type: 'string',
