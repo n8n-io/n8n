@@ -160,6 +160,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	sheet: GoogleSheet,
 	sheetName: string,
+	sheetId: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
@@ -248,23 +249,22 @@ export async function execute(
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
-			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
-				(acc, entry) => {
-					if (entry.column === 'newColumn') {
-						const columnName = entry.columnName as string;
+			const fields = (
+				(this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]) || []
+			).reduce((acc, entry) => {
+				if (entry.column === 'newColumn') {
+					const columnName = entry.columnName as string;
 
-						if (columnNames.includes(columnName) === false) {
-							newColumns.add(columnName);
-						}
-
-						acc[columnName] = entry.fieldValue as string;
-					} else {
-						acc[entry.column as string] = entry.fieldValue as string;
+					if (columnNames.includes(columnName) === false) {
+						newColumns.add(columnName);
 					}
-					return acc;
-				},
-				{} as IDataObject,
-			);
+
+					acc[columnName] = entry.fieldValue as string;
+				} else {
+					acc[entry.column as string] = entry.fieldValue as string;
+				}
+				return acc;
+			}, {} as IDataObject);
 
 			fields[columnToMatchOn] = valueToMatchOn;
 
@@ -300,6 +300,7 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
+		await sheet.appendEmptyRowsOrColumns(sheetId, 1, 0);
 		const lastRow = sheetData.length + 1;
 		await sheet.appendSheetData(
 			appendData,
