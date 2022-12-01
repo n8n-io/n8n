@@ -2,3 +2,4 @@ coverage
 dist
 packages/editor-ui
 package.json
+.pnpm-lock.yml
