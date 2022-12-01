@@ -1138,17 +1138,14 @@ export class WorkflowDataProxy {
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-				let executionData: INodeExecutionData[];
-
 				if (nodeName === undefined) {
-					executionData = that.connectionInputData;
-				} else {
-					outputIndex = outputIndex || 0;
-					runIndex = runIndex === undefined ? -1 : runIndex;
-					executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
+					nodeName = (that.prevNodeGetter() as { name: string }).name;
 				}
 
-				return executionData;
+				outputIndex = outputIndex || 0;
+				runIndex = runIndex === undefined ? -1 : runIndex;
+
+				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),

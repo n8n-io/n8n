@@ -380,7 +380,7 @@ describe('Telemetry', () => {
 
 			// Adding a second step here because we believe PostHog may use timers for sending data
 			// and adding posthog to the above metric was causing the pulseSpy timer to not be ran
-			jest.advanceTimersToNextTimer(2);
+			jest.advanceTimersToNextTimer();
 
 			execBuffer = telemetry.getCountsBuffer();
 			expect(Object.keys(execBuffer).length).toBe(0);

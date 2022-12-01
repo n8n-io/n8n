@@ -16,7 +16,7 @@
 		data-test-id="personalization-form"
 		@enter="onSave"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div v-if="submitted" :class="$style.submittedContainer">
 				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
@@ -25,7 +25,7 @@
 				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div>
 				<n8n-button
 					v-if="submitted"
@@ -113,12 +113,12 @@ import {
 	USAGE_MODE_BUILD_BE_SERVICES,
 	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
 import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
 import Vue from 'vue';
-import { getAccountAge } from '@/stores/userHelpers';
+import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

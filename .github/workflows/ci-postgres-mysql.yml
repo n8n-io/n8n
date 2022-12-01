@@ -47,3 +47,11 @@ jobs:
       - name: Test Postgres (alternate schema)
         working-directory: packages/cli
         run: pnpm test:postgres:alt-schema
+
+      - name: Notify Slack on failure
+        uses: act10ns/slack@v2.0.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#updates-build-alerts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -16,7 +16,7 @@
 					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
 				</div>
 				<div v-else :class="$style['node-icon-placeholder']">
-					{{ nodeTypeName? nodeTypeName.charAt(0) : '?' }}
+					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
 					?
 				</div>
 			</n8n-tooltip>
@@ -39,8 +39,7 @@ export default Vue.extend({
 		type: {
 			type: String,
 			required: true,
-			validator: (value: string): boolean =>
-				['file', 'icon', 'unknown'].includes(value),
+			validator: (value: string): boolean => ['file', 'icon', 'unknown'].includes(value),
 		},
 		src: {
 			type: String,
@@ -68,8 +67,8 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		iconStyleData (): object {
-			if(!this.size) {
+		iconStyleData(): object {
+			if (!this.size) {
 				return {
 					color: this.color || '',
 				};
@@ -82,7 +81,7 @@ export default Vue.extend({
 				'line-height': `${this.size}px`,
 			};
 		},
-		fontStyleData (): object {
+		fontStyleData(): object {
 			return {
 				'max-width': `${this.size}px`,
 			};
@@ -130,6 +129,6 @@ export default Vue.extend({
 .disabled {
 	color: '#ccc';
 	-webkit-filter: contrast(40%) brightness(1.5) grayscale(100%);
-			filter: contrast(40%) brightness(1.5) grayscale(100%);
+	filter: contrast(40%) brightness(1.5) grayscale(100%);
 }
 </style>

@@ -343,7 +343,8 @@ export const certificateDescription: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
+		description:
+			'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
 	},
 	{
 		displayName: 'Private Key File Name',
@@ -357,7 +358,8 @@ export const certificateDescription: INodeProperties[] = [
 				operation: ['install'],
 			},
 		},
-		description: 'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
+		description:
+			'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
 	},
 	{
 		displayName: 'Certificate Format',

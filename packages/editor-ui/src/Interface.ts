@@ -37,6 +37,7 @@ import {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -214,6 +215,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
+	getBinaryUrl(dataPath: string): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -223,14 +225,6 @@ export interface INodeTranslationHeaders {
 			description: string;
 		},
 	};
-}
-
-export interface IBinaryDisplayData {
-	index: number;
-	key: string;
-	node: string;
-	outputIndex: number;
-	runIndex: number;
 }
 
 export interface IStartRunData {
@@ -320,6 +314,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	hash: string;
+	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -330,6 +325,14 @@ export interface IWorkflowShortResponse {
 	createdAt: number | string;
 	updatedAt: number | string;
 	tags: ITag[];
+}
+
+export interface IWorkflowsShareResponse {
+	id: string;
+	createdAt: number | string;
+	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 
@@ -346,12 +349,17 @@ export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
 
+export interface IShareWorkflowsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
+	currentUserHasAccess?: boolean;
 }
 
 export interface ICredentialsBase {
@@ -872,6 +880,7 @@ export interface IVersionNode {
 	name: string;
 	displayName: string;
 	icon: string;
+	iconUrl?: string;
 	defaults: INodeParameters;
 	iconData: {
 		type: string;
@@ -889,6 +898,13 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
+export interface IUsedCredential {
+	id: string;
+	name: string;
+	credentialType: string;
+	currentUserHasAccess: boolean;
+}
+
 export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -900,6 +916,7 @@ export interface WorkflowsState {
 	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
+	usedCredentials: Record<string, IUsedCredential>;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
@@ -987,7 +1004,6 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {
@@ -1004,6 +1020,10 @@ export interface IModalState {
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
+}
+
+export interface NestedRecord<T> {
+	[key: string]: T | NestedRecord<T>;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
@@ -1079,6 +1099,7 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
+	dynamicTranslations: NestedRecord<string>;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -1112,7 +1133,7 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[],
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
 
 export type INodeFilterType = "Regular" | "Trigger" | "All";
 

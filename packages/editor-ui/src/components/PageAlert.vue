@@ -5,7 +5,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import type { ElMessageComponent } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
 

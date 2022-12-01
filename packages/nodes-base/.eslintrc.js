@@ -2,9 +2,10 @@
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/base'],
+	extends: ['@n8n_io/eslint-config/node'],
 	parserOptions: {
 		project: ['./tsconfig.json'],
+		tsconfigRootDir: __dirname,
 	},
 
 	rules: {
@@ -15,7 +16,6 @@ module.exports = {
 		'import/order': 'off',
 		'prefer-const': 'off',
 		'prefer-spread': 'off',
-		'prettier/prettier': 'off',
 		'import/no-extraneous-dependencies': 'off',
 
 		'@typescript-eslint/array-type': 'off',
@@ -65,6 +65,7 @@ module.exports = {
 			rules: {
 				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
+				'n8n-nodes-base/cred-class-field-display-name-miscased': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',

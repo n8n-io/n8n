@@ -36,7 +36,7 @@
 <script lang="ts">
 import {IUser} from "@/Interface";
 import mixins from "vue-typed-mixins";
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useCredentialsStore } from "@/stores/credentials";
@@ -73,7 +73,7 @@ export default mixins(
 	},
 	methods: {
 		async onAddSharee(userId: string) {
-			const sharee =  this.usersStore.getUserById(userId);
+			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
 			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {

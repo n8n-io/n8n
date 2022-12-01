@@ -1,5 +1,5 @@
 import { IOnboardingCallPrompt, IOnboardingCallPromptResponse, IUser } from "@/Interface";
-import { get, post } from "./helpers";
+import { get, post } from "@/utils";
 
 const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 const ONBOARDING_PROMPTS_ENDPOINT = '/prompts/onboarding';

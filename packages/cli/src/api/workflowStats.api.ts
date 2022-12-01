@@ -1,4 +1,5 @@
 import { User } from '@/databases/entities/User';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import {
@@ -7,7 +8,6 @@ import {
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
 	ResponseHelper,
-	whereClause,
 } from '..';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
@@ -32,33 +32,18 @@ workflowStatsController.use((req, res, next) => {
 async function checkWorkflowId(workflowId: string, user: User): Promise<WorkflowEntity> {
 	const workflow = await Db.collections.Workflow.findOne(workflowId);
 	if (!workflow) {
-		throw new ResponseHelper.ResponseError(
-			`Workflow with ID "${workflowId}" could not be found..`,
-			404,
-			404,
-		);
+		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
 
 	// Check permissions
-	const shared = await Db.collections.SharedWorkflow.findOne({
-		relations: ['workflow'],
-		where: whereClause({
-			user,
-			entityType: 'workflow',
-			entityId: workflowId,
-		}),
-	});
+	const sharedWorkflowIds = await getSharedWorkflowIds(user);
 
-	if (!shared) {
+	if (sharedWorkflowIds.length === 0 || !sharedWorkflowIds.includes(parseInt(workflowId, 10))) {
 		LoggerProxy.info('User attempted to read a workflow without permissions', {
 			workflowId,
 			userId: user.id,
 		});
-		throw new ResponseHelper.ResponseError(
-			`Workflow with ID "${workflowId}" could not be found.`,
-			undefined,
-			400,
-		);
+		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
 	return workflow;
 }

@@ -4,11 +4,7 @@
 	--color-primary-h: 7;
 	--color-primary-s: 90%;
 	--color-primary-l: 68%;
-	--color-primary: hsl(
-		var(--color-primary-h),
-		var(--color-primary-s),
-		var(--color-primary-l)
-	);
+	--color-primary: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
 
 	--color-primary-tint-1-l: 18%;
 	--color-primary-tint-1: hsl(
@@ -50,11 +46,7 @@
 	--color-success-h: 150;
 	--color-success-s: 74%;
 	--color-success-l: 60%;
-	--color-success: hsl(
-		var(--color-success-h),
-		var(--color-success-s),
-		var(--color-success-l)
-	);
+	--color-success: hsl(var(--color-success-h), var(--color-success-s), var(--color-success-l));
 
 	--color-success-tint-1-l: 12%;
 	--color-success-tint-1: hsl(
@@ -73,11 +65,7 @@
 	--color-warning-h: 36;
 	--color-warning-s: 77%;
 	--color-warning-l: 43%;
-	--color-warning: hsl(
-		var(--color-warning-h),
-		var(--color-warning-s),
-		var(--color-warning-l)
-	);
+	--color-warning: hsl(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l));
 
 	--color-warning-tint-1-l: 12%;
 	--color-warning-tint-1: hsl(
@@ -96,11 +84,7 @@
 	--color-danger-h: 0;
 	--color-danger-s: 88%;
 	--color-danger-l: 35%;
-	--color-danger: hsl(
-		var(--color-danger-h),
-		var(--color-danger-s),
-		var(--color-danger-l)
-	);
+	--color-danger: hsl(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l));
 
 	--color-danger-tint-1-l: 8%;
 	--color-danger-tint-1: hsl(
@@ -119,25 +103,13 @@
 	--color-info-h: 220;
 	--color-info-s: 4%;
 	--color-info-l: 82%;
-	--color-info: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-l)
-	);
+	--color-info: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-l));
 
 	--color-info-tint-1-l: 12%;
-	--color-info-tint-1: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-tint-1-l)
-	);
+	--color-info-tint-1: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-1-l));
 
 	--color-info-tint-2-l: 4%;
-	--color-info-tint-2: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-tint-2-l)
-	);
+	--color-info-tint-2: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-2-l));
 
 	--color-text-dark-h: 0;
 	--color-text-dark-s: 0%;
@@ -292,8 +264,8 @@
 		var(--color-sticky-default-border-l)
 	);
 
-	--color-json-default: #5045A1;
-	--color-json-null:  var(--color-danger);
+	--color-json-default: #5045a1;
+	--color-json-null: var(--color-danger);
 	--color-json-boolean: #1d8ce0;
 	--color-json-number: #1d8ce0;
 	--color-json-string: #726b9f;
@@ -318,12 +290,38 @@
 	--color-code-tags-variable: #ea6465;
 	--color-code-tags-definition: #368da5;
 
-  // Generated Color Shades from 50 to 950
-  // Not yet used in design system
-  @each $color in ('neutral', 'success', 'warning', 'danger') {
-		@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
+	// Generated Color Shades from 50 to 950
+	// Not yet used in design system
+	@each $color in ('neutral', 'success', 'warning', 'danger') {
+		@each $shade
+			in (
+				50,
+				100,
+				150,
+				200,
+				250,
+				300,
+				350,
+				400,
+				450,
+				500,
+				550,
+				600,
+				650,
+				700,
+				750,
+				800,
+				850,
+				900,
+				950
+			)
+		{
 			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
-			--color-#{$color}-#{$shade}: hsl(var(--color-#{$color}-h), var(--color-#{$color}-s), var(--color-#{$color}-#{$shade}-l));
+			--color-#{$color}-#{$shade}: hsl(
+				var(--color-#{$color}-h),
+				var(--color-#{$color}-s),
+				var(--color-#{$color}-#{$shade}-l)
+			);
 		}
 	}
 }

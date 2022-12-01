@@ -191,7 +191,7 @@ export class Twake implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'message') {
 				if (operation === 'send') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const message: IDataObject = {
 						channel_id: this.getNodeParameter('channelId', i),
