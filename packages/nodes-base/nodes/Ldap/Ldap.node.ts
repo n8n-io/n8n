@@ -142,8 +142,6 @@ export class Ldap implements INodeType {
 			);
 		}
 
-		let item: INodeExecutionData;
-
 		const credentials = await this.getCredentials('ldap');
 		const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
 		const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
