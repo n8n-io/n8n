@@ -13,20 +13,9 @@ const lastName = randLastName();
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
-	before(() => {
-		cy.resetAll();
-		cy.setup({ email, firstName, lastName, password });
-	});
-
 	beforeEach(() => {
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		})
-
-		cy.signin({ email, password });
-
+		cy.resetAll();
+		cy.skipSetup();
 		WorkflowPage.actions.visit();
 	});
 
