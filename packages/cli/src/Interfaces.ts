@@ -30,7 +30,6 @@ import { ChildProcess } from 'child_process';
 import { Url } from 'url';
 import type { FeatureConfig } from './databases/entities/FeatureConfig';
 import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
-import type { LdapConfig } from './Ldap/types';
 
 import type { Request } from 'express';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
