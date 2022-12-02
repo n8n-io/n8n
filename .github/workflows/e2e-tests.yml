@@ -1,5 +1,5 @@
 name: End-to-End tests
-run-name: Test ${GITHUB_REF#refs/heads/} - ${{ inputs.user }}
+run-name: E2E Tests ${{ GITHUB_REF }} - ${{ inputs.user }}
 
 on:
   schedule:
