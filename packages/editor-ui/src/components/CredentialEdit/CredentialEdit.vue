@@ -747,6 +747,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			this.isSaving = false;
 			if (credential) {
+				this.activeId = credential.id;
 				this.credentialId = credential.id as string;
 
 				if (this.isCredentialTestable) {
