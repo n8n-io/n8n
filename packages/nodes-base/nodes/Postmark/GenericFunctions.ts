@@ -8,10 +8,9 @@ export async function postmarkApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -35,7 +34,6 @@ export async function postmarkApiRequest(
 	}
 }
 
-// tslint:disable-next-line: no-any
 export function convertTriggerObjectToStringArray(webhookObject: any): string[] {
 	const triggers = webhookObject.Triggers;
 	const webhookEvents: string[] = [];

@@ -14,12 +14,11 @@ export async function salesforceApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
@@ -75,10 +74,9 @@ export async function salesforceApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -114,12 +112,11 @@ function getOptions(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any,
 	qs: IDataObject,
 	instanceUrl: string,
 ): OptionsWithUri {
-	// tslint:disable-line:no-any
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -237,7 +234,6 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 	return query;
 }
 
-// tslint:disable-next-line:no-any
 export function getValue(value: any) {
 	if (moment(value).isValid()) {
 		return value;

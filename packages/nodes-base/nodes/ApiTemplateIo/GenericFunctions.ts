@@ -60,7 +60,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: 'image
 	}));
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | object | undefined): any {
 	let result;
 	if (typeof json === 'object') {
