@@ -430,6 +430,7 @@ export default mixins(showMessage).extend({
 						name: 'port',
 						initialValue: this.adConfig.connectionPort,
 						properties: {
+							type: 'number',
 							label: this.$locale.baseText('settings.ldap.form.port.label'),
 							capitalize: true,
 							infoText: this.$locale.baseText('settings.ldap.form.port.infoText'),
@@ -663,8 +664,8 @@ export default mixins(showMessage).extend({
 						name: 'synchronizationInterval',
 						initialValue: this.adConfig.synchronizationInterval,
 						properties: {
+							type: 'number',
 							label: this.$locale.baseText('settings.ldap.form.synchronizationInterval.label'),
-							type: 'text',
 							infoText: this.$locale.baseText('settings.ldap.form.synchronizationInterval.infoText'),
 						},
 						shouldDisplay(values): boolean {
@@ -677,8 +678,8 @@ export default mixins(showMessage).extend({
 						name: 'pageSize',
 						initialValue: this.adConfig.searchPageSize,
 						properties: {
+							type: 'number',
 							label: this.$locale.baseText('settings.ldap.form.pageSize.label'),
-							type: 'text',
 							infoText: this.$locale.baseText('settings.ldap.form.pageSize.infoText'),
 						},
 						shouldDisplay(values): boolean {
@@ -691,8 +692,8 @@ export default mixins(showMessage).extend({
 						name: 'searchTimeout',
 						initialValue: this.adConfig.searchTimeout,
 						properties: {
+							type: 'number',
 							label: this.$locale.baseText('settings.ldap.form.searchTimeout.label'),
-							type: 'text',
 							infoText: this.$locale.baseText('settings.ldap.form.searchTimeout.infoText'),
 						},
 						shouldDisplay(values): boolean {
