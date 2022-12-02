@@ -427,8 +427,8 @@ export const processUsers = async (
  * @param  {LdapSyncHistory} sync
  * @returns Promise
  */
-export const saveLdapSynchronization = async (sync: LdapSyncHistory): Promise<void> => {
-	await Db.collections.LdapSyncHistory.save<LdapSyncHistory>(sync);
+export const saveLdapSynchronization = async (data: Omit<LdapSyncHistory, 'id'>): Promise<void> => {
+	await Db.collections.LdapSyncHistory.save(data);
 };
 
 /**

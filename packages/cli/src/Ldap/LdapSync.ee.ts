@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import { Entry } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
@@ -15,7 +14,6 @@ import {
 } from './helpers';
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
-import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
 import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 import { InternalHooksManager } from '@/InternalHooksManager';
 
@@ -142,8 +140,7 @@ export class LdapSync {
 			}
 		}
 
-		const synchronization = new ADSync();
-		Object.assign(synchronization, {
+		await saveLdapSynchronization({
 			startedAt,
 			endedAt,
 			created: usersToCreate.length,
@@ -154,8 +151,6 @@ export class LdapSync {
 			status,
 			error: errorMessage,
 		});
-
-		await saveLdapSynchronization(synchronization);
 
 		void InternalHooksManager.getInstance().onLdapSyncFinished({
 			type: !this.intervalId ? 'scheduled' : `manual_${mode}`,
