@@ -242,9 +242,9 @@ export class Coda implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
 		let qs: IDataObject = {};
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'table') {
 			// https://coda.io/developers/apis/v1beta1#operation/upsertRows

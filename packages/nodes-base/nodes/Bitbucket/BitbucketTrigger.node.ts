@@ -252,7 +252,7 @@ export class BitbucketTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
@@ -278,7 +278,7 @@ export class BitbucketTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 
 				if (resource === 'workspace') {
@@ -302,7 +302,7 @@ export class BitbucketTrigger implements INodeType {
 				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
 				const workspace = this.getNodeParameter('workspace', 0) as string;
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				if (resource === 'workspace') {
 					endpoint = `/workspaces/${workspace}/hooks/${webhookData.webhookId}`;
 				}

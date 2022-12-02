@@ -791,8 +791,8 @@ export class Spotify implements INodeType {
 		let propertyName = '';
 		let responseData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// Set initial values
 		requestMethod = 'GET';
