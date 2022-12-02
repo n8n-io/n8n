@@ -316,7 +316,7 @@ export const dtableSchemaColumns = (columns: TDtableMetadataColumns): TDtableMet
 export const updateAble = (columns: TDtableMetadataColumns): TDtableMetadataColumns =>
 	columns.filter(dtableSchemaIsUpdateAbleColumn);
 
-function endpointCtxExpr(this: void, ctx: ICtx, endpoint: string): string {
+function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	const endpointVariables: IEndpointVariables = {};
 	endpointVariables.access_token = ctx?.base?.access_token;
 	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;

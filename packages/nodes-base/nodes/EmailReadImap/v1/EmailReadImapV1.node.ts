@@ -469,7 +469,7 @@ export class EmailReadImapV1 implements INodeType {
 			return newEmails;
 		};
 
-		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise();
 
 		const establishConnection = (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
