@@ -24,7 +24,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 
@@ -60,7 +59,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 	const returnData: IDataObject[] = [];

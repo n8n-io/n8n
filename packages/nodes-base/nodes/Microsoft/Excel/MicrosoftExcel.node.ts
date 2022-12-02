@@ -197,7 +197,7 @@ export class MicrosoftExcel implements INodeType {
 					);
 					const columns = responseData.value.map((column: IDataObject) => column.name);
 
-					const rows: any[][] = []; // tslint:disable-line:no-any
+					const rows: any[][] = [];
 
 					// Bring the items into the correct format
 					for (const item of items) {

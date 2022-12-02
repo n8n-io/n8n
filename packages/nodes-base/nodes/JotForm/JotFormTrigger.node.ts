@@ -167,7 +167,6 @@ export class JotFormTrigger implements INodeType {
 
 		return new Promise((resolve, _reject) => {
 			form.parse(req, async (err, data, _files) => {
-				// tslint:disable-next-line:no-any
 				const rawRequest = jsonParse<any>(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 

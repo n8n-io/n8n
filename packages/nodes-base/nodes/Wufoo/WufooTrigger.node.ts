@@ -154,7 +154,6 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		// tslint:disable-next-line:no-any
 		const fieldsObject = jsonParse<any>(req.body.FieldStructure, {
 			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 		});

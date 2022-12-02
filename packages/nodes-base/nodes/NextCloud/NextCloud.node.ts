@@ -876,7 +876,7 @@ export class NextCloud implements INodeType {
 
 		let endpoint = '';
 		let requestMethod = '';
-		let responseData: any; // tslint:disable-line:no-any
+		let responseData: any;
 
 		let body: string | Buffer | IDataObject = '';
 		const headers: IDataObject = {};

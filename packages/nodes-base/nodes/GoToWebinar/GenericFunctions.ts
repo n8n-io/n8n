@@ -276,7 +276,6 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 	return returnData;
 }
 
-// tslint:disable-next-line: no-any
 function convertLosslessNumber(key: any, value: any) {
 	if (value && value.isLosslessNumber) {
 		return value.toString();

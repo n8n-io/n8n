@@ -30,7 +30,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
@@ -75,7 +74,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const version = this.getNode().typeVersion as number;
 

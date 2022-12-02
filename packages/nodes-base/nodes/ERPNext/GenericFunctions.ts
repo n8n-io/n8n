@@ -62,7 +62,6 @@ export async function erpNextApiRequestAllItems(
 	body: IDataObject,
 	query: IDataObject = {},
 ) {
-	// tslint:disable-next-line: no-any
 	const returnData: any[] = [];
 
 	let responseData;

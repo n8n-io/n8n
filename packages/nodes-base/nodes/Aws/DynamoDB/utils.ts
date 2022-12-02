@@ -86,7 +86,6 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 	}
 }
 
-// tslint:disable-next-line: no-any
 export function validateJSON(input: any): object {
 	try {
 		return JSON.parse(input);

@@ -10,10 +10,9 @@ export async function mandrillApiRequest(
 	resource: string,
 	method: string,
 	action: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('mandrillApi');
 
@@ -36,7 +35,6 @@ export async function mandrillApiRequest(
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function getToEmailArray(toEmail: string): any {
 	let toEmailArray;
 	if (toEmail.split(',').length > 0) {
@@ -68,7 +66,6 @@ export function getGoogleAnalyticsDomainsArray(s: string): string[] {
 	return array;
 }
 
-// tslint:disable-next-line:no-any
 export function getTags(s: string): any[] {
 	let array = [];
 	if (s.split(',').length > 0) {
@@ -79,7 +76,6 @@ export function getTags(s: string): any[] {
 	return array;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

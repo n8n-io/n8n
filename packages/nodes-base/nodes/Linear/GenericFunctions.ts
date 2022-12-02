@@ -18,10 +18,9 @@ import { query } from './Queries';
 
 export async function linearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('linearApi');
 
@@ -52,9 +51,8 @@ export function capitalizeFirstLetter(data: string) {
 export async function linearApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,7 +71,6 @@ export async function linearApiRequestAllItems(
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 

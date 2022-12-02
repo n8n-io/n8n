@@ -156,7 +156,7 @@ export class RenameKeys implements INodeType {
 		let item: INodeExecutionData;
 		let newItem: INodeExecutionData;
 		let renameKeys: IRenameKey[];
-		let value: any; // tslint:disable-line:no-any
+		let value: any;
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];

@@ -16,7 +16,6 @@ export async function venafiApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);
 
@@ -65,10 +64,9 @@ export async function venafiApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -116,7 +114,6 @@ export async function encryptPassphrase(
 
 	const promise = () => {
 		return new Promise((resolve, reject) => {
-			// tslint:disable-next-line:no-any
 			nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
