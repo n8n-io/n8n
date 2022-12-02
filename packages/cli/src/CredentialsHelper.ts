@@ -358,9 +358,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Applies credential default data and overwrites
-	 *
-	 * @param {ICredentialDataDecryptedObject} decryptedDataOriginal The credential data to overwrite data on
-	 * @param {string} type  Type of the credentials to overwrite data of
 	 */
 	applyDefaultsAndOverwrites(
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
@@ -371,10 +368,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
+		// Load and apply the credentials overwrites if any exist
+		const dataWithOverwrites = CredentialsOverwrites().applyOverwrite(type, decryptedDataOriginal);
+
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
 			credentialsProperties,
-			decryptedDataOriginal as INodeParameters,
+			dataWithOverwrites as INodeParameters,
 			true,
 			false,
 			null,
@@ -431,10 +431,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			) as ICredentialDataDecryptedObject;
 		}
 
-		// Load and apply the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return credentialsOverwrites.applyOverwrite(type, decryptedData);
+		return decryptedData;
 	}
 
 	/**
