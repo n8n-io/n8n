@@ -8,8 +8,11 @@ import {
 
 export class CalendlyApi implements ICredentialType {
 	name = 'calendlyApi';
+
 	displayName = 'Calendly API';
+
 	documentationUrl = 'calendly';
+
 	properties: INodeProperties[] = [
 		// Change name to Personal Access Token once API Keys
 		// are deprecated
@@ -21,6 +24,7 @@ export class CalendlyApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

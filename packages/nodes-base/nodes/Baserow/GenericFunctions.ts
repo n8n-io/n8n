@@ -131,7 +131,9 @@ export const toOptions = (items: LoadedResource[]) =>
  */
 export class TableFieldMapper {
 	nameToIdMapping: Record<string, string> = {};
+
 	idToNameMapping: Record<string, string> = {};
+
 	mapIds = true;
 
 	async getTableFields(

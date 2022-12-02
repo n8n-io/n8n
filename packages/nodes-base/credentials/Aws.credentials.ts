@@ -126,9 +126,13 @@ export type AWSRegion = typeof regions[number]['name'];
 
 export class Aws implements ICredentialType {
 	name = 'aws';
+
 	displayName = 'AWS';
+
 	documentationUrl = 'aws';
+
 	icon = 'file:AWS.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Region',

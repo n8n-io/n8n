@@ -13,6 +13,7 @@ export class GoogleSheetsV2 implements INodeType {
 			...versionDescription,
 		};
 	}
+
 	methods = {
 		loadOptions,
 		credentialTest,

@@ -14,8 +14,11 @@ const timezones: INodePropertyOptions[] = moment.tz
 
 export class SeaTableApi implements ICredentialType {
 	name = 'seaTableApi';
+
 	displayName = 'SeaTable API';
+
 	documentationUrl = 'seaTable';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment',

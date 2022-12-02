@@ -247,6 +247,7 @@ export class BitbucketTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

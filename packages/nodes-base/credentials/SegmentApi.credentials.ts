@@ -7,8 +7,11 @@ import {
 
 export class SegmentApi implements ICredentialType {
 	name = 'segmentApi';
+
 	displayName = 'Segment API';
+
 	documentationUrl = 'segment';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Write Key',
@@ -17,6 +20,7 @@ export class SegmentApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

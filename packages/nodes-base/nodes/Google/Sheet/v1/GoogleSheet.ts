@@ -45,6 +45,7 @@ export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VAL
 
 export class GoogleSheet {
 	id: string;
+
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
 	constructor(

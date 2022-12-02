@@ -277,6 +277,7 @@ export class Postgres implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		credentialTest: {
 			async postgresConnectionTest(

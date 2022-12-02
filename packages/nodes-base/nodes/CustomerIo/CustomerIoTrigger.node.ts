@@ -213,6 +213,7 @@ export class CustomerIoTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {

@@ -9,6 +9,7 @@ export interface RundeckCredentials {
 
 export class RundeckApi {
 	private credentials?: RundeckCredentials;
+
 	private executeFunctions: IExecuteFunctions;
 
 	constructor(executeFunctions: IExecuteFunctions) {

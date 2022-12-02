@@ -116,6 +116,7 @@ export class GoogleDocs implements INodeType {
 			...documentFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the drives to display them to user so that he can
@@ -195,6 +196,7 @@ export class GoogleDocs implements INodeType {
 			},
 		},
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];

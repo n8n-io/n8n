@@ -224,6 +224,7 @@ export class EventbriteTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

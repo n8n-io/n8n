@@ -325,6 +325,7 @@ export class ShopifyTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {

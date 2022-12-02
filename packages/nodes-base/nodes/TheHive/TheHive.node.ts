@@ -106,6 +106,7 @@ export class TheHive implements INodeType {
 			...logFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			async loadResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {

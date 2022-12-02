@@ -8,8 +8,11 @@ import {
 
 export class LemlistApi implements ICredentialType {
 	name = 'lemlistApi';
+
 	displayName = 'Lemlist API';
+
 	documentationUrl = 'lemlist';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -19,6 +22,7 @@ export class LemlistApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -28,6 +32,7 @@ export class LemlistApi implements ICredentialType {
 		requestOptions.headers!['user-agent'] = 'n8n';
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.lemlist.com/api',

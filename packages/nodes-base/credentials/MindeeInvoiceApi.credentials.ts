@@ -7,8 +7,11 @@ import {
 
 export class MindeeInvoiceApi implements ICredentialType {
 	name = 'mindeeInvoiceApi';
+
 	displayName = 'Mindee Invoice API';
+
 	documentationUrl = 'mindee';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -18,6 +21,7 @@ export class MindeeInvoiceApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

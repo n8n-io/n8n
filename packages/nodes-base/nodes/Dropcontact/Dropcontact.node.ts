@@ -239,6 +239,7 @@ export class Dropcontact implements INodeType {
 			},
 		],
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const entryData = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0);

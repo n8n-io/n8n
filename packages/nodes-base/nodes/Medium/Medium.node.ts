@@ -354,6 +354,7 @@ export class Medium implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the available publications to display them to user so that he can

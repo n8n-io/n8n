@@ -153,6 +153,7 @@ export class AwsSnsTrigger implements INodeType {
 			},
 		},
 	};
+
 	//@ts-expect-error because of webhook
 	webhookMethods = {
 		default: {
