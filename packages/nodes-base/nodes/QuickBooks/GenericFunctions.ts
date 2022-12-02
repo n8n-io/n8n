@@ -84,7 +84,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		return this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -168,7 +168,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;

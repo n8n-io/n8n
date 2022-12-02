@@ -217,7 +217,7 @@ export const adjustEventPayload = adjustLocation;
 // ----------------------------------------
 
 async function loadResource(this: ILoadOptionsFunctions, resource: string) {
-	return await handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
+	return handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
 }
 
 export const resourceLoaders = {

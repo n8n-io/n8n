@@ -39,7 +39,6 @@ module.exports = {
 		'@typescript-eslint/promise-function-async': 'off',
 		'@typescript-eslint/restrict-plus-operands': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',
-		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},

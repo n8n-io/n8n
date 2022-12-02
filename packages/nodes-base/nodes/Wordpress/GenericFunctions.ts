@@ -34,7 +34,7 @@ export async function wordpressApiRequest(
 	}
 	try {
 		const credentialType = 'wordpressApi';
-		return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -500,7 +500,7 @@ export async function pgUpdate(
 				})
 				.join(' AND ') +
 			returning;
-		return await db.any(query);
+		return db.any(query);
 	} else {
 		const where =
 			' WHERE ' +

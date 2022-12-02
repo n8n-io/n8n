@@ -384,6 +384,6 @@ export namespace SendInBlueWebhookApi {
 			body,
 		};
 
-		return await ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
+		return ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
 	};
 }

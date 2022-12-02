@@ -175,7 +175,7 @@ export async function validateCredentials(
 
 	const response = await this.helpers.request!(options);
 
-	return await new Promise((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		parseString(response, { explicitArray: false }, (err, data) => {
 			if (err) {
 				return reject(err);

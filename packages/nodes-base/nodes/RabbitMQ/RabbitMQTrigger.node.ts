@@ -277,7 +277,7 @@ export class RabbitMQTrigger implements INodeType {
 		async function closeFunction() {
 			closeGotCalled = true;
 			try {
-				return messageTracker.closeChannel(channel, consumerTag);
+				return await messageTracker.closeChannel(channel, consumerTag);
 			} catch (error) {
 				const workflow = self.getWorkflow();
 				const node = self.getNode();

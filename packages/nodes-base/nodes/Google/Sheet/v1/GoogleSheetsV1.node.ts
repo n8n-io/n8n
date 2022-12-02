@@ -148,7 +148,7 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return this.prepareOutputData(items);
+					return await this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return this.prepareOutputData([{ json: { error: error.message } }]);
@@ -163,7 +163,7 @@ export class GoogleSheetsV1 implements INodeType {
 					await sheet.clearData(sheet.encodeRange(range));
 
 					const items = this.getInputData();
-					return this.prepareOutputData(items);
+					return await this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return this.prepareOutputData([{ json: { error: error.message } }]);
@@ -252,7 +252,7 @@ export class GoogleSheetsV1 implements INodeType {
 					const _data = await sheet.spreadsheetBatchUpdate(requests);
 
 					const items = this.getInputData();
-					return this.prepareOutputData(items);
+					return await this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return this.prepareOutputData([{ json: { error: error.message } }]);
@@ -427,7 +427,7 @@ export class GoogleSheetsV1 implements INodeType {
 					// TODO: Should add this data somewhere
 					// TODO: Should have something like add metadata which does not get passed through
 
-					return this.prepareOutputData(items);
+					return await this.prepareOutputData(items);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return this.prepareOutputData([{ json: { error: error.message } }]);

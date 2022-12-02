@@ -671,7 +671,7 @@ export async function replayToEmail(
 		threadId,
 	};
 
-	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
+	return googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(

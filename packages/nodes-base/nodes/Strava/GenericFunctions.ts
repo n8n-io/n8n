@@ -50,7 +50,7 @@ export async function stravaApiRequest(
 				body.client_secret = credentials.clientSecret;
 			}
 			//@ts-ignore
-			return this.helpers?.request(options);
+			return await this.helpers?.request(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {

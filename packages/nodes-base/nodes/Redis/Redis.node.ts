@@ -592,16 +592,16 @@ export class Redis implements INodeType {
 
 			if (type === 'string') {
 				const clientGet = util.promisify(client.get).bind(client);
-				return await clientGet(keyName);
+				return clientGet(keyName);
 			} else if (type === 'hash') {
 				const clientHGetAll = util.promisify(client.hgetall).bind(client);
-				return await clientHGetAll(keyName);
+				return clientHGetAll(keyName);
 			} else if (type === 'list') {
 				const clientLRange = util.promisify(client.lrange).bind(client);
-				return await clientLRange(keyName, 0, -1);
+				return clientLRange(keyName, 0, -1);
 			} else if (type === 'sets') {
 				const clientSMembers = util.promisify(client.smembers).bind(client);
-				return await clientSMembers(keyName);
+				return clientSMembers(keyName);
 			}
 		}
 

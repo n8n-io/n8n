@@ -470,7 +470,7 @@ export class RabbitMQ implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
 			}
 
-			return this.prepareOutputData(returnItems);
+			return await this.prepareOutputData(returnItems);
 		} catch (error) {
 			if (channel) {
 				await channel.close();
