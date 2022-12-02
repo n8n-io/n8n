@@ -402,18 +402,18 @@ export class DateTime implements INodeType {
 							const fromTimezone = options.fromTimezone || workflowTimezone;
 							if (options.fromFormat) {
 								newDate = moment.tz(
-									currentDate as string,
+									currentDate,
 									options.fromFormat as string,
 									fromTimezone as string,
 								);
 							} else {
-								newDate = moment.tz(currentDate as string, fromTimezone as string);
+								newDate = moment.tz(currentDate, fromTimezone as string);
 							}
 						} else {
 							if (options.fromFormat) {
-								newDate = moment(currentDate as string, options.fromFormat as string);
+								newDate = moment(currentDate, options.fromFormat as string);
 							} else {
-								newDate = moment(currentDate as string);
+								newDate = moment(currentDate);
 							}
 						}
 					}

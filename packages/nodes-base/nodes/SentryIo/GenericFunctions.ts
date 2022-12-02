@@ -70,7 +70,7 @@ export async function sentryIoApiRequest(
 			};
 
 			//@ts-ignore
-			return this.helpers.request(options);
+			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
 		}

@@ -447,7 +447,7 @@ export class GoogleCalendar implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
-						const timezone = updateFields.timezone as string;
+						const updateTimezone = updateFields.timezone as string;
 
 						if (updateFields.maxAttendees) {
 							qs.maxAttendees = updateFields.maxAttendees as number;
@@ -461,14 +461,14 @@ export class GoogleCalendar implements INodeType {
 						const body: IEvent = {};
 						if (updateFields.start) {
 							body.start = {
-								dateTime: moment.tz(updateFields.start, timezone).utc().format(),
-								timeZone: timezone,
+								dateTime: moment.tz(updateFields.start, updateTimezone).utc().format(),
+								timeZone: updateTimezone,
 							};
 						}
 						if (updateFields.end) {
 							body.end = {
-								dateTime: moment.tz(updateFields.end, timezone).utc().format(),
-								timeZone: timezone,
+								dateTime: moment.tz(updateFields.end, updateTimezone).utc().format(),
+								timeZone: updateTimezone,
 							};
 						}
 						if (updateFields.attendees) {
@@ -525,13 +525,13 @@ export class GoogleCalendar implements INodeType {
 						}
 						if (updateFields.allday && updateFields.start && updateFields.end) {
 							body.start = {
-								date: timezone
-									? moment.tz(updateFields.start, timezone).utc(true).format('YYYY-MM-DD')
+								date: updateTimezone
+									? moment.tz(updateFields.start, updateTimezone).utc(true).format('YYYY-MM-DD')
 									: moment.tz(updateFields.start, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 							body.end = {
-								date: timezone
-									? moment.tz(updateFields.end, timezone).utc(true).format('YYYY-MM-DD')
+								date: updateTimezone
+									? moment.tz(updateFields.end, updateTimezone).utc(true).format('YYYY-MM-DD')
 									: moment.tz(updateFields.end, moment.tz.guess()).utc(true).format('YYYY-MM-DD'),
 							};
 						}
@@ -585,7 +585,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					const executionErrorData = this.helpers.constructExecutionMetaData(

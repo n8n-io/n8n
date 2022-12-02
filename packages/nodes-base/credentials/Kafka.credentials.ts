@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Kafka implements ICredentialType {
 	name = 'kafka';
+
 	displayName = 'Kafka';
+
 	documentationUrl = 'kafka';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',

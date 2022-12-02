@@ -2,8 +2,11 @@ import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-work
 
 export class TwilioApi implements ICredentialType {
 	name = 'twilioApi';
+
 	displayName = 'Twilio API';
+
 	documentationUrl = 'twilio';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Auth Type',

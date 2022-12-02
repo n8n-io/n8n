@@ -40,8 +40,8 @@ export async function paddleApiRequest(
 		json: true,
 	};
 
-	body['vendor_id'] = credentials.vendorId;
-	body['vendor_auth_code'] = credentials.vendorAuthCode;
+	body.vendor_id = credentials.vendorId;
+	body.vendor_auth_code = credentials.vendorAuthCode;
 	try {
 		const response = await this.helpers.request!(options);
 

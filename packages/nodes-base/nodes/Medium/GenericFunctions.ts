@@ -37,7 +37,7 @@ export async function mediumApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('mediumApi');
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {

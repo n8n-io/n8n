@@ -243,7 +243,7 @@ export class FacebookTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();

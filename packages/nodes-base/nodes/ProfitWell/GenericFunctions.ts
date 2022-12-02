@@ -65,7 +65,7 @@ export function simplifyMontlyMetrics(responseData: {
 	for (const key of Object.keys(responseData)) {
 		for (const [index] of responseData[key].entries()) {
 			data[key] = responseData[key][index].value;
-			data['date'] = responseData[key][index].date;
+			data.date = responseData[key][index].date;
 		}
 	}
 	return data;

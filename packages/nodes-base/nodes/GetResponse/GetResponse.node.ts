@@ -162,9 +162,9 @@ export class GetResponse implements INodeType {
 								.customFieldValues as IDataObject[];
 							if (customFieldValues) {
 								body.customFieldValues = customFieldValues;
-								for (let i = 0; i < customFieldValues.length; i++) {
-									if (!Array.isArray(customFieldValues[i].value)) {
-										customFieldValues[i].value = [customFieldValues[i].value];
+								for (let index = 0; index < customFieldValues.length; index++) {
+									if (!Array.isArray(customFieldValues[index].value)) {
+										customFieldValues[index].value = [customFieldValues[index].value];
 									}
 								}
 								delete body.customFieldsUi;
@@ -248,7 +248,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.exactMatch === true) {
-							qs['additionalFlags'] = 'exactMatch';
+							qs.additionalFlags = 'exactMatch';
 							delete qs.exactMatch;
 						}
 

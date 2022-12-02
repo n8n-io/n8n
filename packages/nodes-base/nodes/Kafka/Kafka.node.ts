@@ -221,7 +221,7 @@ export class Kafka implements INodeType {
 				try {
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
-						.map((item) => item.trim()) as string[];
+						.map((item) => item.trim());
 
 					const clientId = credentials.clientId as string;
 
@@ -271,7 +271,7 @@ export class Kafka implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
@@ -288,9 +288,7 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '')
-				.split(',')
-				.map((item) => item.trim()) as string[];
+			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 			const clientId = credentials.clientId as string;
 
@@ -325,7 +323,7 @@ export class Kafka implements INodeType {
 			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
-				if (sendInputData === true) {
+				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
@@ -358,7 +356,7 @@ export class Kafka implements INodeType {
 
 				let headers;
 
-				if (jsonParameters === true) {
+				if (jsonParameters) {
 					headers = this.getNodeParameter('headerParametersJson', i) as string;
 					try {
 						headers = JSON.parse(headers);

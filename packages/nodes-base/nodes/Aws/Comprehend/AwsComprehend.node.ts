@@ -214,7 +214,7 @@ export class AwsComprehend implements INodeType {
 							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 						);
 
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.Languages.reduce(
 								(accumulator: { [key: string]: number }, currentValue: IDataObject) => {
 									accumulator[currentValue.LanguageCode as string] = currentValue.Score as number;

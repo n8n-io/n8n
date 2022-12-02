@@ -110,7 +110,7 @@ export class Cloudflare implements INodeType {
 					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+						const filters = this.getNodeParameter('filters', i, {});
 
 						Object.assign(qs, filters);
 

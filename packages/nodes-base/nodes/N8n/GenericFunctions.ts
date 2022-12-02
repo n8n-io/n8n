@@ -44,7 +44,7 @@ export async function apiRequest(
 	};
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
+		return this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
 	} catch (error) {
 		if (error instanceof NodeApiError) {
 			throw error;
@@ -104,6 +104,14 @@ export const getCursorPaginator = () => {
 		let nextCursor: string | undefined = undefined;
 		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
 
+		const extractItems = (page: INodeExecutionData) => {
+			const items = page.json.data as IDataObject[];
+			if (items) {
+				// Extract the items themselves
+				executions = executions.concat(items.map((item) => ({ json: item })));
+			}
+		};
+
 		do {
 			requestOptions.options.qs.cursor = nextCursor;
 			responseData = await this.makeRoutingRequest(requestOptions);
@@ -112,13 +120,7 @@ export const getCursorPaginator = () => {
 			const lastItem = responseData[responseData.length - 1].json;
 			nextCursor = lastItem.nextCursor as string | undefined;
 
-			responseData.forEach((page) => {
-				const items = page.json.data as IDataObject[];
-				if (items) {
-					// Extract the items themselves
-					executions = executions.concat(items.map((item) => ({ json: item })));
-				}
-			});
+			responseData.forEach(extractItems);
 
 			// If we don't return all, just return the first page
 		} while (returnAll && nextCursor);

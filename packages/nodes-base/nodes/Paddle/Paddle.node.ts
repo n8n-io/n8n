@@ -223,9 +223,7 @@ export class Paddle implements INodeType {
 								body.coupon_prefix = additionalFields.couponPrefix as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format(
-									'YYYY-MM-DD',
-								) as string;
+								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.group) {
 								body.group = additionalFields.group as string;
@@ -256,7 +254,7 @@ export class Paddle implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/list_coupons';
 
-						body.product_id = productId as string;
+						body.product_id = productId;
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 
@@ -309,9 +307,7 @@ export class Paddle implements INodeType {
 								body.new_coupon_code = additionalFields.newCouponCode as string;
 							}
 							if (additionalFields.expires) {
-								body.expires = moment(additionalFields.expires as Date).format(
-									'YYYY-MM-DD',
-								) as string;
+								body.expires = moment(additionalFields.expires as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.newGroup) {
 								body.new_group = additionalFields.newGroup as string;
@@ -389,10 +385,10 @@ export class Paddle implements INodeType {
 								body.is_paid = 0;
 							}
 							if (additionalFields.from) {
-								body.from = moment(additionalFields.from as Date).format('YYYY-MM-DD') as string;
+								body.from = moment(additionalFields.from as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.to) {
-								body.to = moment(additionalFields.to as Date).format('YYYY-MM-DD') as string;
+								body.to = moment(additionalFields.to as Date).format('YYYY-MM-DD');
 							}
 							if (additionalFields.isOneOffCharge) {
 								body.is_one_off_charge = additionalFields.isOneOffCharge as boolean;
@@ -414,7 +410,7 @@ export class Paddle implements INodeType {
 						const date = this.getNodeParameter('date', i) as Date;
 
 						body.payment_id = paymentId;
-						body.date = body.to = moment(date as Date).format('YYYY-MM-DD') as string;
+						body.date = body.to = moment(date).format('YYYY-MM-DD');
 
 						const endpoint = '/2.0/subscription/payments_reschedule';
 

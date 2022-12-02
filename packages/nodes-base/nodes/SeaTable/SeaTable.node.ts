@@ -343,7 +343,7 @@ export class SeaTable implements INodeType {
 					try {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const body: IDataObject = {
+						const requestBody: IDataObject = {
 							table_name: tableName,
 							row_id: rowId,
 						};
@@ -352,7 +352,7 @@ export class SeaTable implements INodeType {
 							ctx,
 							'DELETE',
 							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
-							body,
+							requestBody,
 							qs,
 						)) as IDataObject;
 

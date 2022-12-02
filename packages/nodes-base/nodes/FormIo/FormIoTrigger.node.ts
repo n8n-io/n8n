@@ -201,7 +201,7 @@ export class FormIoTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const simple = this.getNodeParameter('simple') as boolean;
 		let response = req.body.request;
-		if (simple === true) {
+		if (simple) {
 			response = response.data;
 		}
 		return {

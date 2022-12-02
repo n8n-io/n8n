@@ -536,11 +536,11 @@ export class Zendesk implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (body.userFieldsUi) {
-							const userFields = (body.userFieldsUi as IDataObject)
+							const userFieldsUI = (body.userFieldsUi as IDataObject)
 								.userFieldValues as IDataObject[];
-							if (userFields) {
+							if (userFieldsUI) {
 								body.user_fields = {};
-								for (const userField of userFields) {
+								for (const userField of userFieldsUI) {
 									//@ts-ignore
 									body.user_fields[userField.field] = userField.value;
 								}
@@ -560,11 +560,11 @@ export class Zendesk implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (body.userFieldsUi) {
-							const userFields = (body.userFieldsUi as IDataObject)
+							const userFieldsUI = (body.userFieldsUi as IDataObject)
 								.userFieldValues as IDataObject[];
-							if (userFields) {
+							if (userFieldsUI) {
 								body.user_fields = {};
-								for (const userField of userFields) {
+								for (const userField of userFieldsUI) {
 									//@ts-ignore
 									body.user_fields[userField.field] = userField.value;
 								}
@@ -683,10 +683,10 @@ export class Zendesk implements INodeType {
 						Object.assign(body, rest);
 
 						if (organizationFieldsUi?.organizationFieldValues.length) {
-							const organizationFields = organizationFieldsUi.organizationFieldValues;
-							if (organizationFields.length) {
+							const organizationFieldsUI = organizationFieldsUi.organizationFieldValues;
+							if (organizationFieldsUI.length) {
 								body.organization_fields = {};
-								for (const organizationField of organizationFields) {
+								for (const organizationField of organizationFieldsUI) {
 									body.organization_fields[organizationField.field] = organizationField.value;
 								}
 							}
@@ -769,10 +769,10 @@ export class Zendesk implements INodeType {
 						Object.assign(body, rest);
 
 						if (organizationFieldsUi?.organizationFieldValues.length) {
-							const organizationFields = organizationFieldsUi.organizationFieldValues;
-							if (organizationFields.length) {
+							const organizationFieldsUI = organizationFieldsUi.organizationFieldValues;
+							if (organizationFieldsUI.length) {
 								body.organization_fields = {};
-								for (const organizationField of organizationFields) {
+								for (const organizationField of organizationFieldsUI) {
 									body.organization_fields[organizationField.field] = organizationField.value;
 								}
 							}

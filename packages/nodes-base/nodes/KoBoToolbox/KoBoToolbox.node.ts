@@ -126,7 +126,7 @@ export class KoBoToolbox implements INodeType {
 									formQueryOptions?.sort?.value?.ordering,
 							}),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 			}
@@ -154,7 +154,7 @@ export class KoBoToolbox implements INodeType {
 								fields: JSON.stringify(parseStringList(submissionQueryOptions.fields as string)),
 							}),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 
 					if (submissionQueryOptions.reformat) {
@@ -278,7 +278,7 @@ export class KoBoToolbox implements INodeType {
 						qs: {
 							limit: this.getNodeParameter('limit', i, 1000),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
+						scroll: this.getNodeParameter('returnAll', i),
 					});
 				}
 

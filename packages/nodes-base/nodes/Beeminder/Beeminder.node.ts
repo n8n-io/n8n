@@ -330,7 +330,7 @@ export class Beeminder implements INodeType {
 						};
 						Object.assign(data, options);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							data.count = this.getNodeParameter('limit', 0);
 						}
 

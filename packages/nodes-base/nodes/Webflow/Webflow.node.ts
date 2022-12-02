@@ -219,7 +219,7 @@ export class Webflow implements INodeType {
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const qs: IDataObject = {};
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await webflowApiRequestAllItems.call(
 								this,
 								'GET',

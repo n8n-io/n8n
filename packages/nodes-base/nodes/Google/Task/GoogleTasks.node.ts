@@ -52,6 +52,7 @@ export class GoogleTasks implements INodeType {
 			...taskFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the tasklists to display them to user so that he can select them easily

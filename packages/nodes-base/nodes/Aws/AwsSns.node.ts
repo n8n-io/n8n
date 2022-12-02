@@ -229,7 +229,7 @@ export class AwsSns implements INodeType {
 					const topicName = arnParsed[5];
 					const awsRegion = arnParsed[3];
 
-					if (filter && topicName.includes(filter) === false) {
+					if (filter && !topicName.includes(filter)) {
 						continue;
 					}
 
@@ -287,7 +287,7 @@ export class AwsSns implements INodeType {
 					const topic = this.getNodeParameter('topic', i, undefined, {
 						extractValue: true,
 					}) as string;
-					const params = [('TopicArn=' + topic) as string];
+					const params = ['TopicArn=' + topic];
 
 					await awsApiRequestSOAP.call(
 						this,
@@ -304,9 +304,9 @@ export class AwsSns implements INodeType {
 					}) as string;
 
 					const params = [
-						('TopicArn=' + topic) as string,
-						('Subject=' + this.getNodeParameter('subject', i)) as string,
-						('Message=' + this.getNodeParameter('message', i)) as string,
+						'TopicArn=' + topic,
+						'Subject=' + this.getNodeParameter('subject', i),
+						'Message=' + this.getNodeParameter('message', i),
 					];
 
 					const responseData = await awsApiRequestSOAP.call(

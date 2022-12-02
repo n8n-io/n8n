@@ -399,53 +399,53 @@ export class Rocketchat implements INodeType {
 							const optionsAttachments = this.getNodeParameter('attachments', i) as IDataObject[];
 							if (optionsAttachments.length > 0) {
 								const attachments: IAttachment[] = [];
-								for (let i = 0; i < optionsAttachments.length; i++) {
+								for (let index = 0; index < optionsAttachments.length; index++) {
 									const attachment: IAttachment = {};
-									for (const option of Object.keys(optionsAttachments[i])) {
+									for (const option of Object.keys(optionsAttachments[index])) {
 										if (option === 'color') {
-											attachment.color = optionsAttachments[i][option] as string;
+											attachment.color = optionsAttachments[index][option] as string;
 										} else if (option === 'text') {
-											attachment.text = optionsAttachments[i][option] as string;
+											attachment.text = optionsAttachments[index][option] as string;
 										} else if (option === 'ts') {
-											attachment.ts = optionsAttachments[i][option] as string;
+											attachment.ts = optionsAttachments[index][option] as string;
 										} else if (option === 'messageLinks') {
-											attachment.message_link = optionsAttachments[i][option] as string;
+											attachment.message_link = optionsAttachments[index][option] as string;
 										} else if (option === 'thumbUrl') {
-											attachment.thumb_url = optionsAttachments[i][option] as string;
+											attachment.thumb_url = optionsAttachments[index][option] as string;
 										} else if (option === 'collapsed') {
-											attachment.collapsed = optionsAttachments[i][option] as boolean;
+											attachment.collapsed = optionsAttachments[index][option] as boolean;
 										} else if (option === 'authorName') {
-											attachment.author_name = optionsAttachments[i][option] as string;
+											attachment.author_name = optionsAttachments[index][option] as string;
 										} else if (option === 'authorLink') {
-											attachment.author_link = optionsAttachments[i][option] as string;
+											attachment.author_link = optionsAttachments[index][option] as string;
 										} else if (option === 'authorIcon') {
-											attachment.author_icon = optionsAttachments[i][option] as string;
+											attachment.author_icon = optionsAttachments[index][option] as string;
 										} else if (option === 'title') {
-											attachment.title = optionsAttachments[i][option] as string;
+											attachment.title = optionsAttachments[index][option] as string;
 										} else if (option === 'titleLink') {
-											attachment.title_link = optionsAttachments[i][option] as string;
+											attachment.title_link = optionsAttachments[index][option] as string;
 										} else if (option === 'titleLinkDownload') {
-											attachment.title_link_download = optionsAttachments[i][option] as boolean;
+											attachment.title_link_download = optionsAttachments[index][option] as boolean;
 										} else if (option === 'imageUrl') {
-											attachment.image_url = optionsAttachments[i][option] as string;
+											attachment.image_url = optionsAttachments[index][option] as string;
 										} else if (option === 'audioUrl') {
-											attachment.audio_url = optionsAttachments[i][option] as string;
+											attachment.audio_url = optionsAttachments[index][option] as string;
 										} else if (option === 'videoUrl') {
-											attachment.video_url = optionsAttachments[i][option] as string;
+											attachment.video_url = optionsAttachments[index][option] as string;
 										} else if (option === 'fields') {
-											const fieldsValues = (optionsAttachments[i][option] as IDataObject)
+											const fieldsValues = (optionsAttachments[index][option] as IDataObject)
 												.fieldsValues as IDataObject[];
 											if (fieldsValues.length > 0) {
 												const fields: IField[] = [];
-												for (let i = 0; i < fieldsValues.length; i++) {
+												for (let j = 0; j < fieldsValues.length; j++) {
 													const field: IField = {};
-													for (const key of Object.keys(fieldsValues[i])) {
+													for (const key of Object.keys(fieldsValues[j])) {
 														if (key === 'short') {
-															field.short = fieldsValues[i][key] as boolean;
+															field.short = fieldsValues[j][key] as boolean;
 														} else if (key === 'title') {
-															field.title = fieldsValues[i][key] as string;
+															field.title = fieldsValues[j][key] as string;
 														} else if (key === 'value') {
-															field.value = fieldsValues[i][key] as string;
+															field.value = fieldsValues[j][key] as string;
 														}
 													}
 													fields.push(field);

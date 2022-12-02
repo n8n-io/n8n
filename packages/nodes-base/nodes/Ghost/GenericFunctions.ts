@@ -20,7 +20,6 @@ export async function ghostApiRequest(
 ): Promise<any> {
 	const source = this.getNodeParameter('source', 0) as string;
 
-	let credentials;
 	let version;
 	let credentialType;
 
@@ -33,7 +32,7 @@ export async function ghostApiRequest(
 		credentialType = 'ghostAdminApi';
 	}
 
-	credentials = await this.getCredentials(credentialType);
+	const credentials = await this.getCredentials(credentialType);
 
 	const options: OptionsWithUri = {
 		method,

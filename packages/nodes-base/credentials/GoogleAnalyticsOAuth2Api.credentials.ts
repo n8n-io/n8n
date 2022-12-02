@@ -7,9 +7,13 @@ const scopes = [
 
 export class GoogleAnalyticsOAuth2Api implements ICredentialType {
 	name = 'googleAnalyticsOAuth2';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Analytics OAuth2 API';
+
 	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

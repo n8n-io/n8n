@@ -271,9 +271,9 @@ export class Stackby implements INodeType {
 					records[key].push({ field: record });
 				}
 
-				for (const key of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, {
-						records: records[key],
+				for (const recordKey of Object.keys(records)) {
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${recordKey}`, {
+						records: records[recordKey],
 					});
 				}
 
@@ -302,13 +302,13 @@ export class Stackby implements INodeType {
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
 					const returnAll = this.getNodeParameter('returnAll', 0);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields.view) {
 						qs.view = additionalFields.view;
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await apiRequestAllItems.call(
 							this,
 							'GET',

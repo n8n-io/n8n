@@ -195,12 +195,12 @@ export class HelpScout implements INodeType {
 							);
 						}
 						if (threads) {
-							for (let i = 0; i < threads.length; i++) {
-								if (threads[i].type === '' || threads[i].text === '') {
+							for (let index = 0; index < threads.length; index++) {
+								if (threads[index].type === '' || threads[index].text === '') {
 									throw new NodeOperationError(this.getNode(), 'Chat Threads cannot be empty');
 								}
-								if (threads[i].type !== 'note') {
-									threads[i].customer = body.customer;
+								if (threads[index].type !== 'note') {
+									threads[index].customer = body.customer;
 								}
 							}
 							body.threads = threads;
@@ -518,9 +518,7 @@ export class HelpScout implements INodeType {
 								};
 								body.attachments?.push.apply(
 									body.attachments,
-									(attachments.attachmentsBinary as IDataObject[]).map(
-										mapFunction,
-									) as IAttachment[],
+									(attachments.attachmentsBinary as IDataObject[]).map(mapFunction),
 								);
 							}
 						}

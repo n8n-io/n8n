@@ -82,6 +82,7 @@ export class ActiveCampaignTrigger implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the events to display them to user so that he can
@@ -108,6 +109,7 @@ export class ActiveCampaignTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

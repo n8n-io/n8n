@@ -165,7 +165,7 @@ export class GetResponseTrigger implements INodeType {
 					const data = await getresponseApiRequest.call(this, 'GET', '/accounts/callbacks', {});
 
 					if (data.url !== webhookUrl) {
-						if (deleteCurrentSubscription === false) {
+						if (!deleteCurrentSubscription) {
 							throw new NodeApiError(this.getNode(), data, {
 								message: `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`,
 							});
@@ -216,7 +216,7 @@ export class GetResponseTrigger implements INodeType {
 		const query = this.getQueryData() as IDataObject;
 		const listIds = this.getNodeParameter('listIds') as string[];
 
-		if (!listIds.includes('*') && !listIds.includes(query['CAMPAIGN_ID'] as string)) {
+		if (!listIds.includes('*') && !listIds.includes(query.CAMPAIGN_ID as string)) {
 			return {};
 		}
 

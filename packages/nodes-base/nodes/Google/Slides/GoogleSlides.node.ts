@@ -432,7 +432,7 @@ export class GoogleSlides implements INodeType {
 						);
 
 						const download = this.getNodeParameter('download', 0);
-						if (download === true) {
+						if (download) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							const data = await this.helpers.request({
@@ -520,7 +520,7 @@ export class GoogleSlides implements INodeType {
 							{ fields: 'slides' },
 						);
 						responseData = responseData.slides;
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
@@ -556,7 +556,7 @@ export class GoogleSlides implements INodeType {
 						};
 
 						if (options.revisionId) {
-							body['writeControl'] = {
+							body.writeControl = {
 								requiredRevisionId: options.revisionId as string,
 							};
 						}

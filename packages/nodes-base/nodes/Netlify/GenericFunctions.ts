@@ -41,7 +41,7 @@ export async function netlifyApiRequest(
 	try {
 		const credentials = await this.getCredentials('netlifyApi');
 
-		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 		return await this.helpers.request!(options);
 	} catch (error) {
