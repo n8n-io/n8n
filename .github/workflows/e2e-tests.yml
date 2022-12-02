@@ -12,7 +12,7 @@ on:
         default: 'master'
       user:
         description: 'User who kicked this off.'
-        required: true
+        required: false
         default: 'schedule'
       start-url:
         description: 'URL to call after workflow is kicked off.'
