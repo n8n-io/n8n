@@ -1800,9 +1800,8 @@ export default mixins(
 
 					// Connect active node to the newly created one
 					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, trackHistory);
-
-					this.historyStore.stopRecordingUndo();
 				}
+				this.historyStore.stopRecordingUndo();
 			},
 			initNodeView() {
 				this.instance.importDefaults({
@@ -2196,6 +2195,8 @@ export default mixins(
 				this.stopLoading();
 			}),
 			async initView(): Promise<void> {
+				this.historyStore.reset();
+
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -3316,18 +3317,16 @@ export default mixins(
 			},
 			onRevertAddNode({node}: {node: INodeUi}): void {
 				this.removeNode(node.name, false);
-
 			},
-			onRevertRemoveNode({node}: {node: INodeUi}): void {
-				this.addNode(node.type, { position: node.position });
+			async onRevertRemoveNode({node}: {node: INodeUi}): void {
+				// await this.addNodes([node]);
+				await this.addNode(node.type, { position: node.position });
 			},
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__removeConnection(connection, true);
 			},
 			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
-				setTimeout(() => {
-					this.__addConnection(connection, true);
-				}, 0);
+				this.__addConnection(connection, true);
 			},
 		},
 		async mounted() {

@@ -20,8 +20,8 @@ enum COMMANDS {
 // Triggering multiple canvas actions in sequence leaves
 // canvas out of sync with store state, so we are adding
 // this timeout in between canvas actions
-// (0 is usually enough but leaving 10ms just in case)
-const CANVAS_ACTION_TIMEOUT = 10;
+// (0 is usually enough but leaving this just in case)
+const CANVAS_ACTION_TIMEOUT = 50;
 
 export abstract class Undoable { }
 
