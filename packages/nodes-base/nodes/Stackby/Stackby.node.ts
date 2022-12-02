@@ -177,7 +177,7 @@ export class Stackby implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {

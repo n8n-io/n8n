@@ -66,7 +66,7 @@ export class Elasticsearch implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 

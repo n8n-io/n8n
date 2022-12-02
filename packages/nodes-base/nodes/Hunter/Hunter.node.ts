@@ -274,7 +274,7 @@ export class Hunter implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				//https://hunter.io/api-documentation/v2#domain-search
 				if (operation === 'domainSearch') {
 					const returnAll = this.getNodeParameter('returnAll', i);

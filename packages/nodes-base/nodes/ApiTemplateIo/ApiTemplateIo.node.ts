@@ -346,8 +346,8 @@ export class ApiTemplateIo implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'account') {
 			// *********************************************************************
@@ -436,7 +436,7 @@ export class ApiTemplateIo implements INodeType {
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, body);
 
 						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
@@ -520,7 +520,7 @@ export class ApiTemplateIo implements INodeType {
 						responseData = await apiTemplateIoApiRequest.call(this, 'POST', '/create', qs, data);
 
 						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 							const data = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(

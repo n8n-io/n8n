@@ -93,8 +93,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'document') {
 			if (operation === 'get') {

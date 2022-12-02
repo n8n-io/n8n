@@ -214,7 +214,7 @@ export class QuestDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------

@@ -68,7 +68,7 @@ export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, 
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index) as string;
+	const operation = this.getNodeParameter('operation', index);
 
 	// Add the reply markup
 	let replyMarkupOption = '';

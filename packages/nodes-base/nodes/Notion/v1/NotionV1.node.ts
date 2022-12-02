@@ -232,8 +232,8 @@ export class NotionV1 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'block') {
 			if (operation === 'append') {
