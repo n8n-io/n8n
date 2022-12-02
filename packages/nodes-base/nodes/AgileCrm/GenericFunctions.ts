@@ -200,6 +200,7 @@ export function validateJSON(json: string | undefined): any {
 export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject {
 	const rules = [];
 
+	// eslint-disable-next-line @typescript-eslint/no-for-in-array
 	for (const key in conditions) {
 		if (conditions.hasOwnProperty(key)) {
 			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
