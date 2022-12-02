@@ -1,11 +1,15 @@
 name: End-to-End tests
-run-name: E2E Tests ${{ GITHUB_REF }} - ${{ inputs.user }}
+run-name: E2E Tests ${{ inputs.branch }} - ${{ inputs.user }}
 
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
       user:
         description: 'User who kicked this off.'
         required: true
@@ -36,6 +40,9 @@ jobs:
         shell: bash
 
       - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          ref: ${{ github.event.inputs.branch || 'master' }}
 
       - uses: pnpm/action-setup@v2.2.4
 
