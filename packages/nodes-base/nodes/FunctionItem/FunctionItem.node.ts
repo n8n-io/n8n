@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-loop-func */
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,

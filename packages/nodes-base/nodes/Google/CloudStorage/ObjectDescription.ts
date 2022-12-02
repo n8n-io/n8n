@@ -306,6 +306,13 @@ export const objectOperations: INodeProperties[] = [
 							let nextPageToken: string | undefined = undefined;
 							const returnAll = this.getNodeParameter('returnAll') as boolean;
 
+							const extractBucketsList = (page: INodeExecutionData) => {
+								const objects = page.json.items as IDataObject[];
+								if (objects) {
+									executions = executions.concat(objects.map((object) => ({ json: object })));
+								}
+							};
+
 							do {
 								requestOptions.options.qs.pageToken = nextPageToken;
 								responseData = await this.makeRoutingRequest(requestOptions);
@@ -315,12 +322,7 @@ export const objectOperations: INodeProperties[] = [
 								nextPageToken = lastItem.nextPageToken as string | undefined;
 
 								// Extract just the list of buckets from the page data
-								responseData.forEach((page) => {
-									const objects = page.json.items as IDataObject[];
-									if (objects) {
-										executions = executions.concat(objects.map((object) => ({ json: object })));
-									}
-								});
+								responseData.forEach(extractBucketsList);
 							} while (returnAll && nextPageToken);
 
 							// Return all execution responses as an array

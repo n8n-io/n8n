@@ -1478,6 +1478,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					if (Array.isArray(response)) {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

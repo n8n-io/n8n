@@ -754,27 +754,29 @@ async function callRecursiveList(
 	const directoryItems: sftpClient.FileInfo[] = [];
 	let index = 0;
 
+	const prepareAndNormalize = (item: sftpClient.FileInfo) => {
+		if ((pathArray[index] as string).endsWith('/')) {
+			currentPath = `${pathArray[index]}${item.name}`;
+		} else {
+			currentPath = `${pathArray[index]}/${item.name}`;
+		}
+
+		// Is directory
+		if (item.type === 'd') {
+			pathArray.push(currentPath);
+		}
+
+		normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath, true);
+		directoryItems.push(item);
+	};
+
 	do {
 		// tslint:disable-next-line: array-type
 		const returnData: sftpClient.FileInfo[] | Array<string | ftpClient.ListingElement> =
 			await client.list(pathArray[index]);
 
 		// @ts-ignore
-		returnData.map((item: sftpClient.FileInfo) => {
-			if ((pathArray[index] as string).endsWith('/')) {
-				currentPath = `${pathArray[index]}${item.name}`;
-			} else {
-				currentPath = `${pathArray[index]}/${item.name}`;
-			}
-
-			// Is directory
-			if (item.type === 'd') {
-				pathArray.push(currentPath);
-			}
-
-			normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath, true);
-			directoryItems.push(item);
-		});
+		returnData.map(prepareAndNormalize);
 		index++;
 	} while (index <= pathArray.length - 1);
 

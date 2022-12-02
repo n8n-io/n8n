@@ -625,6 +625,15 @@ export async function replayToEmail(
 	const replyToSenderOnly =
 		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
 
+	const prepareEmailString = (email: string) => {
+		if (email.includes(emailAddress)) return;
+		if (email.includes('<') && email.includes('>')) {
+			to += `${email}, `;
+		} else {
+			to += `<${email}>, `;
+		}
+	};
+
 	for (const header of payload.headers as IDataObject[]) {
 		if (((header.name as string) || '').toLowerCase() === 'from') {
 			const from = header.value as string;
@@ -637,14 +646,7 @@ export async function replayToEmail(
 
 		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
 			const toEmails = header.value as string;
-			toEmails.split(',').forEach((email: string) => {
-				if (email.includes(emailAddress)) return;
-				if (email.includes('<') && email.includes('>')) {
-					to += `${email}, `;
-				} else {
-					to += `<${email}>, `;
-				}
-			});
+			toEmails.split(',').forEach(prepareEmailString);
 		}
 	}
 

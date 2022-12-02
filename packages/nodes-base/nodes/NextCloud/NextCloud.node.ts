@@ -1153,6 +1153,7 @@ export class NextCloud implements INodeType {
 						endpoint,
 					);
 				} else if (['file', 'folder'].includes(resource) && operation === 'share') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
 							if (err) {
@@ -1172,6 +1173,7 @@ export class NextCloud implements INodeType {
 					returnData.push(jsonResponseData as IDataObject);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 							parseString(responseData, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1194,6 +1196,7 @@ export class NextCloud implements INodeType {
 
 						returnData.push(jsonResponseData as IDataObject);
 					} else {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
 							parseString(responseData, { explicitArray: false }, (err, data) => {
 								if (err) {
@@ -1217,6 +1220,7 @@ export class NextCloud implements INodeType {
 						});
 					}
 				} else if (resource === 'folder' && operation === 'list') {
+					// eslint-disable-next-line @typescript-eslint/no-loop-func
 					const jsonResponseData: IDataObject = await new Promise((resolve, reject) => {
 						parseString(responseData, { explicitArray: false }, (err, data) => {
 							if (err) {
