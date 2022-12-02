@@ -1323,8 +1323,8 @@ export class Hubspot implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.properties) {
 								qs.property = additionalFields.properties as string[];
@@ -1342,8 +1342,8 @@ export class Hubspot implements INodeType {
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (additionalFields.listMerberships) {
-								qs.showListMemberships = additionalFields.listMerberships as boolean;
+							if (additionalFields.listMemberships) {
+								qs.showListMemberships = additionalFields.listMemberships as boolean;
 							}
 							if (additionalFields.properties) {
 								qs.property = additionalFields.properties as string[];
@@ -1369,14 +1369,13 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/get_recently_created_contacts
 						if (operation === 'getRecentlyCreatedUpdated') {
-							let endpoint;
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.formSubmissionMode) {
 								qs.formSubmissionMode = filters.formSubmissionMode as string;
 							}
-							if (filters.listMerberships) {
-								qs.showListMemberships = filters.listMerberships as boolean;
+							if (filters.listMemberships) {
+								qs.showListMemberships = filters.listMemberships as boolean;
 							}
 							if (filters.properties) {
 								qs.property = filters.properties as string[];
@@ -1385,7 +1384,7 @@ export class Hubspot implements INodeType {
 								qs.propertyMode = snakeCase(filters.propertyMode as string);
 							}
 
-							endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
+							const endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
 
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(

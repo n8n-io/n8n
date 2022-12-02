@@ -361,8 +361,7 @@ export class Ftp implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					let ftp: ftpClient;
-					ftp = new ftpClient();
+					const ftp = new ftpClient();
 					await ftp.connect({
 						host: credentials.host as string,
 						port: credentials.port as number,
@@ -386,8 +385,7 @@ export class Ftp implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					let sftp: sftpClient;
-					sftp = new sftpClient();
+					const sftp = new sftpClient();
 					await sftp.connect({
 						host: credentials.host as string,
 						port: credentials.port as number,

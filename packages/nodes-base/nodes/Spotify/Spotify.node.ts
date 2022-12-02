@@ -781,7 +781,7 @@ export class Spotify implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		// For Post
-		let body: IDataObject;
+		const body: IDataObject = {};
 		// For Query string
 		let qs: IDataObject;
 
@@ -797,7 +797,6 @@ export class Spotify implements INodeType {
 		// Set initial values
 		requestMethod = 'GET';
 		endpoint = '';
-		body = {};
 		qs = {};
 		returnAll = false;
 

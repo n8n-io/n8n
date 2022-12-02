@@ -357,9 +357,7 @@ export class ShopifyTrigger implements INodeType {
 					},
 				};
 
-				let responseData;
-
-				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful

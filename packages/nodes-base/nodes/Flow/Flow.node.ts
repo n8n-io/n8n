@@ -7,7 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
-import { taskFields, taskOpeations } from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 import { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
@@ -47,7 +47,7 @@ export class Flow implements INodeType {
 				],
 				default: 'task',
 			},
-			...taskOpeations,
+			...taskOperations,
 			...taskFields,
 		],
 	};

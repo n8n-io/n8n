@@ -274,7 +274,6 @@ export class BitbucketTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let responseData;
 				let endpoint = '';
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
@@ -295,7 +294,7 @@ export class BitbucketTrigger implements INodeType {
 					active: true,
 					events,
 				};
-				responseData = await bitbucketApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await bitbucketApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = responseData.uuid.replace('{', '').replace('}', '');
 				return true;
 			},

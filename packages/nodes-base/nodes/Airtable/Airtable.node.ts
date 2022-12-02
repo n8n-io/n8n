@@ -586,9 +586,7 @@ export class Airtable implements INodeType {
 
 			for (let i = 0; i < items.length; i++) {
 				try {
-					let id: string;
-
-					id = this.getNodeParameter('id', i) as string;
+					const id = this.getNodeParameter('id', i) as string;
 
 					rows.push(id);
 

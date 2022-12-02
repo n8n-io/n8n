@@ -14,7 +14,6 @@ module.exports = {
 		'id-denylist': 'off',
 		'import/extensions': 'off',
 		'import/order': 'off',
-		'prefer-const': 'off',
 		'prefer-spread': 'off',
 		'import/no-extraneous-dependencies': 'off',
 

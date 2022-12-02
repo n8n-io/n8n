@@ -34,8 +34,6 @@ export async function matrixApiRequest(
 		delete options.qs;
 	}
 	try {
-		let response: any;
-
 		const credentials = await this.getCredentials('matrixApi');
 
 		options.uri = `${credentials.homeserverUrl}/_matrix/${
@@ -43,8 +41,7 @@ export async function matrixApiRequest(
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		//@ts-ignore
-		response = await this.helpers.request(options);
+		const response = await this.helpers.request!(options);
 
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
@@ -192,7 +189,6 @@ export async function handleMatrixCall(
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
-			let filename;
 
 			if (
 				item.binary === undefined ||
@@ -208,7 +204,7 @@ export async function handleMatrixCall(
 			// @ts-ignore
 			qs.filename = item.binary[binaryPropertyName].fileName;
 			//@ts-ignore
-			filename = item.binary[binaryPropertyName].fileName;
+			const filename = item.binary[binaryPropertyName].fileName;
 
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 			//@ts-ignore

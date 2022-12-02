@@ -143,14 +143,8 @@ export class Onfleet {
 					additionalFields as IDataObject,
 				);
 			} else {
-				let unparsed,
-					address,
-					addressNumber,
-					addressStreet,
-					addressCity,
-					addressCountry,
-					additionalFields;
-				unparsed = this.getNodeParameter('unparsed', item) as boolean;
+				let address, addressNumber, addressStreet, addressCity, addressCountry;
+				const unparsed = this.getNodeParameter('unparsed', item) as boolean;
 				if (unparsed) {
 					address = this.getNodeParameter('address', item) as string;
 				} else {
@@ -159,7 +153,7 @@ export class Onfleet {
 					addressCity = this.getNodeParameter('addressCity', item) as string;
 					addressCountry = this.getNodeParameter('addressCountry', item) as string;
 				}
-				additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
 				return formatAddress(
 					unparsed,

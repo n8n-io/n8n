@@ -9,10 +9,10 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { leadFields, leadOpeations } from './LeadDescription';
+import { leadFields, leadOperations } from './LeadDescription';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { IAvatar, ILead, ILeadCompany } from './LeadInterface';
-import { userFields, userOpeations } from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 import { IUser, IUserCompany } from './UserInterface';
 import { companyFields, companyOperations } from './CompanyDescription';
 import { ICompany } from './CompanyInteface';
@@ -64,8 +64,8 @@ export class Intercom implements INodeType {
 				],
 				default: 'user',
 			},
-			...leadOpeations,
-			...userOpeations,
+			...leadOperations,
+			...userOperations,
 			...companyOperations,
 			...userFields,
 			...leadFields,
@@ -79,13 +79,13 @@ export class Intercom implements INodeType {
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let companies, response;
+				let response;
 				try {
 					response = await intercomApiRequest.call(this, '/companies', 'GET');
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
-				companies = response.companies;
+				const companies = response.companies;
 				for (const company of companies) {
 					const companyName = company.name;
 					const companyId = company.company_id;

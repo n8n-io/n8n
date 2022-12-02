@@ -28,9 +28,7 @@ export async function s3ApiRequest(
 	option: IDataObject = {},
 	region?: string,
 ): Promise<any> {
-	let credentials;
-
-	credentials = await this.getCredentials('s3');
+	const credentials = await this.getCredentials('s3');
 
 	if (!(credentials.endpoint as string).startsWith('http')) {
 		throw new NodeOperationError(

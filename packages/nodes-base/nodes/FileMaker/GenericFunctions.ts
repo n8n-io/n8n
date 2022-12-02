@@ -193,9 +193,8 @@ export async function getToken(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -243,9 +242,8 @@ export async function logout(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',

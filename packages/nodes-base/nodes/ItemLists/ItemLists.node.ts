@@ -912,8 +912,7 @@ return 0;`,
 						}
 					}
 
-					let newItem: INodeExecutionData;
-					newItem = {
+					const newItem: INodeExecutionData = {
 						json: {},
 						pairedItem: Array.from({ length }, (_, i) => i).map((index) => {
 							return {

@@ -190,7 +190,7 @@ export class JotFormTrigger implements INodeType {
 
 				// Create a dictionary to resolve the keys
 				const questionNames: IDataObject = {};
-				for (const question of Object.values(responseData.content) as IQuestionData[]) {
+				for (const question of Object.values<IQuestionData>(responseData.content)) {
 					questionNames[question.name] = question.text;
 				}
 

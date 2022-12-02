@@ -50,8 +50,7 @@ export async function updateCustomer(
 		referred_by: referredBy,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (!responseData.customer) {
 		throw new NodeApiError(this.getNode(), responseData, {
 			httpCode: '404',

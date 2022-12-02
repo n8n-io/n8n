@@ -224,8 +224,6 @@ export async function parseRawEmail(
 
 export async function encodeEmail(email: IEmail) {
 	// https://nodemailer.com/extras/mailcomposer/#e-mail-message-fields
-	let mailBody: Buffer;
-
 	const mailOptions = {
 		from: email.from,
 		to: email.to,
@@ -265,7 +263,7 @@ export async function encodeEmail(email: IEmail) {
 	//https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
-	mailBody = await mail.build();
+	const mailBody = await mail.build();
 
 	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
 }

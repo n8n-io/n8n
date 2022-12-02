@@ -311,14 +311,14 @@ export class GoogleSheet {
 		upsert = false,
 	): Promise<string[][]> {
 		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string, rangeFull: string;
+		let rangeFull: string;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, rangeFull] = range.split('!');
 		} else {
 			rangeFull = range;
 		}
-		[rangeStart, rangeEnd] = rangeFull.split(':');
+		const [rangeStart, rangeEnd] = rangeFull.split(':');
 
 		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
@@ -548,12 +548,11 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 	): Promise<string[][]> {
-		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, range] = range.split('!');
 		}
-		[startColumn, endColumn] = range.split(':');
+		const [startColumn, endColumn] = range.split(':');
 
 		let getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
 

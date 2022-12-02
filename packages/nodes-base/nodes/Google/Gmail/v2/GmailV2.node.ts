@@ -578,12 +578,10 @@ export class GmailV2 implements INodeType {
 
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-						let nodeExecutionData: INodeExecutionData;
-
 						const dataPropertyNameDownload =
 							(options.dataPropertyAttachmentsPrefixName as string) || 'attachment_';
 
-						nodeExecutionData = await parseRawEmail.call(
+						const nodeExecutionData = await parseRawEmail.call(
 							this,
 							responseData.message,
 							dataPropertyNameDownload,

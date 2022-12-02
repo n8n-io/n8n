@@ -47,11 +47,15 @@ export async function slackApiRequest(
 	};
 
 	try {
-		let response: any;
 		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-			oauth2: oAuth2Options,
-		});
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+			{
+				oauth2: oAuth2Options,
+			},
+		);
 
 		if (response.ok === false) {
 			if (response.error === 'paid_teams_only') {
