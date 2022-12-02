@@ -9,10 +9,10 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { leadFields, leadOpeations } from './LeadDescription';
+import { leadFields, leadOperations } from './LeadDescription';
 import { intercomApiRequest, intercomApiRequestAllItems, validateJSON } from './GenericFunctions';
 import { IAvatar, ILead, ILeadCompany } from './LeadInterface';
-import { userFields, userOpeations } from './UserDescription';
+import { userFields, userOperations } from './UserDescription';
 import { IUser, IUserCompany } from './UserInterface';
 import { companyFields, companyOperations } from './CompanyDescription';
 import { ICompany } from './CompanyInteface';
@@ -64,8 +64,8 @@ export class Intercom implements INodeType {
 				],
 				default: 'user',
 			},
-			...leadOpeations,
-			...userOpeations,
+			...leadOperations,
+			...userOperations,
 			...companyOperations,
 			...userFields,
 			...leadFields,
@@ -79,13 +79,13 @@ export class Intercom implements INodeType {
 			// select them easily
 			async getCompanies(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let companies, response;
+				let response;
 				try {
 					response = await intercomApiRequest.call(this, '/companies', 'GET');
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}
-				companies = response.companies;
+				const companies = response.companies;
 				for (const company of companies) {
 					const companyName = company.name;
 					const companyId = company.company_id;
@@ -172,10 +172,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}
@@ -234,7 +234,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'contacts',
@@ -345,10 +345,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}
@@ -409,7 +409,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'users',
@@ -473,10 +473,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}
@@ -533,7 +533,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'companies',
@@ -566,7 +566,7 @@ export class Intercom implements INodeType {
 
 						try {
 							if (listBy === 'id') {
-								if (returnAll === true) {
+								if (returnAll) {
 									responseData = await intercomApiRequestAllItems.call(
 										this,
 										'users',
@@ -589,7 +589,7 @@ export class Intercom implements INodeType {
 							} else {
 								qs.type = 'users';
 
-								if (returnAll === true) {
+								if (returnAll) {
 									responseData = await intercomApiRequestAllItems.call(
 										this,
 										'users',

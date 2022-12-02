@@ -110,8 +110,8 @@ export class Emelia implements INodeType {
 
 						if (additionalFields.customFieldsUi) {
 							const customFields =
-								(((additionalFields.customFieldsUi as IDataObject) || {})
-									.customFieldsValues as IDataObject[]) || [];
+								((additionalFields.customFieldsUi as IDataObject)
+									?.customFieldsValues as IDataObject[]) || [];
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }),
 								{},
@@ -366,8 +366,8 @@ export class Emelia implements INodeType {
 
 						if (additionalFields.customFieldsUi) {
 							const customFields =
-								(((additionalFields.customFieldsUi as IDataObject) || {})
-									.customFieldsValues as IDataObject[]) || [];
+								((additionalFields.customFieldsUi as IDataObject)
+									?.customFieldsValues as IDataObject[]) || [];
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldName}`]: value.value }),
 								{},

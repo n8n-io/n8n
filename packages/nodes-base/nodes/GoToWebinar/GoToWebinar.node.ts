@@ -112,13 +112,13 @@ export class GoToWebinar implements INodeType {
 	methods = {
 		loadOptions: {
 			async getWebinars(this: ILoadOptionsFunctions) {
-				return await loadWebinars.call(this);
+				return loadWebinars.call(this);
 			},
 			async getAnswers(this: ILoadOptionsFunctions) {
-				return await loadAnswers.call(this);
+				return loadAnswers.call(this);
 			},
 			async getWebinarSessions(this: ILoadOptionsFunctions) {
-				return await loadWebinarSessions.call(this);
+				return loadWebinarSessions.call(this);
 			},
 			// Get all the timezones to display them to user so that he can
 			// select them easily
@@ -137,12 +137,12 @@ export class GoToWebinar implements INodeType {
 			async getRegistranSimpleQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return await loadRegistranSimpleQuestions.call(this);
+				return loadRegistranSimpleQuestions.call(this);
 			},
 			async getRegistranMultiChoiceQuestions(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return await loadRegistranMultiChoiceQuestions.call(this);
+				return loadRegistranMultiChoiceQuestions.call(this);
 			},
 		},
 	};
@@ -533,10 +533,7 @@ export class GoToWebinar implements INodeType {
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-						const { sendCancellationEmails } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i);
 
 						const qs = {} as IDataObject;
 

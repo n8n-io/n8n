@@ -49,7 +49,7 @@ export class ReadBinaryFiles implements INodeType {
 		let item: INodeExecutionData;
 		let data: Buffer;
 		for (const filePath of files) {
-			data = (await fsReadFile(filePath)) as Buffer;
+			data = await fsReadFile(filePath);
 
 			item = {
 				binary: {

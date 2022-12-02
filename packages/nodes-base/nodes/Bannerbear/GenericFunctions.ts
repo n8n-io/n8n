@@ -37,7 +37,7 @@ export async function bannerbearApiRequest(
 	}
 	options.headers = Object.assign({}, options.headers, headers);
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

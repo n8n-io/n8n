@@ -232,8 +232,8 @@ export class GitlabTrigger implements INodeType {
 
 				// gitlab set the push_events to true when the field it's not sent.
 				// set it to false when it's not picked by the user.
-				if (events['push_events'] === undefined) {
-					events['push_events'] = false;
+				if (events.push_events === undefined) {
+					events.push_events = false;
 				}
 
 				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
@@ -262,7 +262,7 @@ export class GitlabTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
-				webhookData.webhookEvents = eventsArray as string[];
+				webhookData.webhookEvents = eventsArray;
 
 				return true;
 			},

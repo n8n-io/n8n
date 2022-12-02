@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GithubOAuth2Api implements ICredentialType {
 	name = 'githubOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'GitHub OAuth2 API';
+
 	documentationUrl = 'github';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

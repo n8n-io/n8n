@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -331,7 +330,7 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							const data = await readFile(path as string);
+							const data = await readFile(path);
 
 							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 								data,
@@ -353,7 +352,7 @@ export class Ssh implements INodeType {
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
-							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
+							const binaryData = item.binary[propertyNameUpload];
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(

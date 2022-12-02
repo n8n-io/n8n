@@ -631,7 +631,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							const data = (await simplify.call(this, [responseData], listId))[0];
 
 							responseData = {
@@ -674,7 +674,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							responseData = await simplify.call(this, responseData, listId);
 						}
 					}
@@ -735,7 +735,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					// Return the actual reason as error

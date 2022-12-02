@@ -166,7 +166,7 @@ export async function awsApiRequestSOAPAllItems(
 export function keysTPascalCase(object: IDataObject) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(object)) {
-		data[pascalCase(key as string)] = object[key];
+		data[pascalCase(key)] = object[key];
 	}
 	return data;
 }

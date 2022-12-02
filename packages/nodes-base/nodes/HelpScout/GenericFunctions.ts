@@ -66,11 +66,7 @@ export async function helpscoutApiRequestAllItems(
 		if (query.limit && query.limit <= returnData.length) {
 			return returnData;
 		}
-	} while (
-		responseData['_links'] !== undefined &&
-		responseData['_links'].next !== undefined &&
-		responseData['_links'].next.href !== undefined
-	);
+	} while (responseData._links?.next?.href !== undefined);
 
 	return returnData;
 }

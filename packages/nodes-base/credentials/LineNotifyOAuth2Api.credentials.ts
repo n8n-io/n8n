@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class LineNotifyOAuth2Api implements ICredentialType {
 	name = 'lineNotifyOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Line Notify OAuth2 API';
+
 	documentationUrl = 'line';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

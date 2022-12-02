@@ -75,7 +75,7 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 ): Promise<any> {
-	const version = this.getNode().typeVersion as number;
+	const version = this.getNode().typeVersion;
 
 	if (query === undefined) {
 		query = {};
@@ -108,8 +108,8 @@ export async function downloadRecordAttachments(
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
-				for (const [index, attachment] of (
-					jsonParse(record[fieldName] as string) as IAttachment[]
+				for (const [index, attachment] of jsonParse<IAttachment[]>(
+					record[fieldName] as string,
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

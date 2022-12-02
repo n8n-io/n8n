@@ -211,14 +211,14 @@ export function qsSetStatus(status: string) {
 	if (!status) return {};
 	const qs: IDataObject = {};
 	if (status === 'all') {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = true;
+		qs.includeinactive = true;
+		qs.includeactive = true;
 	} else if (status === 'active') {
-		qs['includeinactive'] = false;
-		qs['includeactive'] = true;
+		qs.includeinactive = false;
+		qs.includeactive = true;
 	} else {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = false;
+		qs.includeinactive = true;
+		qs.includeactive = false;
 	}
 	return qs;
 }

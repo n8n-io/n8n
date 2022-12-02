@@ -10,9 +10,9 @@ export async function zoomApiRequest(
 	resource: string,
 	body: object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
-): Promise<any> {
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
+) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
 	let options: OptionsWithUri = {
@@ -52,7 +52,7 @@ export async function zoomApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page_number = 0;
@@ -67,7 +67,7 @@ export async function zoomApiRequestAllItems(
 
 	return returnData;
 }
-function wait() {
+async function wait() {
 	return new Promise((resolve, _reject) => {
 		setTimeout(() => {
 			resolve(true);

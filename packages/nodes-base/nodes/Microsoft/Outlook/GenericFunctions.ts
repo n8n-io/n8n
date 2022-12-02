@@ -7,13 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -75,7 +69,7 @@ export async function microsoftApiRequestAllItems(
 
 	let responseData;
 	let uri: string | undefined;
-	query['$top'] = 100;
+	query.$top = 100;
 
 	do {
 		responseData = await microsoftApiRequest.call(
@@ -107,8 +101,8 @@ export async function microsoftApiRequestAllItemsSkip(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query['$top'] = 100;
-	query['$skip'] = 0;
+	query.$top = 100;
+	query.$skip = 0;
 
 	do {
 		responseData = await microsoftApiRequest.call(
@@ -120,9 +114,9 @@ export async function microsoftApiRequestAllItemsSkip(
 			undefined,
 			headers,
 		);
-		query['$skip'] += query['$top'];
+		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['value'].length !== 0);
+	} while (responseData.value.length !== 0);
 
 	return returnData;
 }
@@ -145,9 +139,9 @@ export function createMessage(fields: IDataObject) {
 			contentType: fields.bodyContentType,
 		};
 
-		message['body'] = bodyObject;
-		delete fields['bodyContent'];
-		delete fields['bodyContentType'];
+		message.body = bodyObject;
+		delete fields.bodyContent;
+		delete fields.bodyContentType;
 	}
 
 	// Handle custom headers
@@ -255,7 +249,7 @@ export async function binaryToAttachments(
 				);
 			}
 
-			const binaryData = (binary as IBinaryKeyData)[binaryPropertyName];
+			const binaryData = binary[binaryPropertyName];
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',

@@ -134,7 +134,7 @@ export class Lemlist implements INodeType {
 
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}

@@ -193,9 +193,8 @@ export async function getToken(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -203,15 +202,15 @@ export async function getToken(
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 	requestOptions.auth = {
-		user: login as string,
-		pass: password as string,
+		user: login,
+		pass: password,
 	};
 	requestOptions.body = {
 		fmDataSource: [
 			{
 				database: host,
-				username: login as string,
-				password: password as string,
+				username: login,
+				password,
 			},
 		],
 	};
@@ -243,9 +242,8 @@ export async function logout(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',
@@ -285,11 +283,11 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 		const sortParametersUi = this.getNodeParameter('sortParametersUi', i, {}) as IDataObject;
 		if (sortParametersUi.rules !== undefined) {
 			// @ts-ignore
-			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
+			for (const parameterData of sortParametersUi.rules as IDataObject[]) {
 				// @ts-ignore
 				sort.push({
-					fieldName: parameterData!.name as string,
-					sortOrder: parameterData!.value,
+					fieldName: parameterData.name as string,
+					sortOrder: parameterData.value,
 				});
 			}
 		}
@@ -308,7 +306,7 @@ export function parseScripts(this: IExecuteFunctions, i: number): object | null 
 		const scripts = {} as ScriptsOptions;
 		if (setScriptAfter) {
 			scripts.script = this.getNodeParameter('scriptAfter', i);
-			scripts!['script.param'] = this.getNodeParameter('scriptAfter', i);
+			scripts['script.param'] = this.getNodeParameter('scriptAfter', i);
 		}
 		if (setScriptBefore) {
 			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', i);
@@ -324,8 +322,8 @@ export function parseScripts(this: IExecuteFunctions, i: number): object | null 
 
 export function parsePortals(this: IExecuteFunctions, i: number): object | null {
 	let portals;
-	const getPortals = this.getNodeParameter('getPortals', i);
-	if (!getPortals) {
+	const getPortalsData = this.getNodeParameter('getPortals', i);
+	if (!getPortalsData) {
 		portals = [];
 	} else {
 		portals = this.getNodeParameter('portals', i);
@@ -340,14 +338,14 @@ export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 	if (queriesParamUi.query !== undefined) {
 		// @ts-ignore
 		queries = [];
-		for (const queryParam of queriesParamUi!.query as IDataObject[]) {
+		for (const queryParam of queriesParamUi.query as IDataObject[]) {
 			const query = {
 				omit: queryParam.omit ? 'true' : 'false',
 			};
 			// @ts-ignore
-			for (const field of queryParam!.fields!.field as IDataObject[]) {
+			for (const field of queryParam.fields!.field as IDataObject[]) {
 				// @ts-ignore
-				query[field.name] = field!.value;
+				query[field.name] = field.value;
 			}
 			queries.push(query);
 		}
@@ -364,9 +362,9 @@ export function parseFields(this: IExecuteFunctions, i: number): object | null {
 	if (fieldsParametersUi.fields !== undefined) {
 		// @ts-ignore
 		fieldData = {};
-		for (const field of fieldsParametersUi!.fields as IDataObject[]) {
+		for (const field of fieldsParametersUi.fields as IDataObject[]) {
 			// @ts-ignore
-			fieldData[field.name] = field!.value;
+			fieldData[field.name] = field.value;
 		}
 	} else {
 		fieldData = null;

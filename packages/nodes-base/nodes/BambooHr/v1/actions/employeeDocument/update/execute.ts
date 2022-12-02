@@ -19,7 +19,7 @@ export async function update(
 	const endpoint = `employees/${id}/files/${fileId}`;
 
 	//body parameters
-	body = this.getNodeParameter('updateFields', index) as IDataObject;
+	body = this.getNodeParameter('updateFields', index);
 	body.shareWithEmployee ? (body.shareWithEmployee = 'yes') : (body.shareWithEmployee = 'no');
 
 	//response

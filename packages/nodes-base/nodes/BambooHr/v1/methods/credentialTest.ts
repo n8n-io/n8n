@@ -39,11 +39,11 @@ async function validateCredentials(
 	const options: IHttpRequestOptions = {
 		method: 'GET',
 		auth: {
-			username: apiKey as string,
+			username: apiKey,
 			password: 'x',
 		},
 		url: `https://api.bamboohr.com/api/gateway.php/${subdomain}/v1/employees/directory`,
 	};
 
-	return await this.helpers.request(options);
+	return this.helpers.request(options);
 }

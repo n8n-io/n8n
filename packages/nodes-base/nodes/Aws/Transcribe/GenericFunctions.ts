@@ -107,7 +107,7 @@ export async function awsApiRequestRESTAllItems(
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, query);
 
 		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
-			query['NextToken'] = get(
+			query.NextToken = get(
 				responseData,
 				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`,
 			);

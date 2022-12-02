@@ -41,11 +41,11 @@ export async function surveyMonkeyApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('surveyMonkeyApi');
 			// @ts-ignore
-			options.headers['Authorization'] = `bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `bearer ${credentials.accessToken}`;
 
-			return await this.helpers.request!(options);
+			return this.helpers.request!(options);
 		} else {
-			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
+			return this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

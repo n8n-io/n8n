@@ -58,7 +58,7 @@ export async function microsoftApiRequestAllItems(
 
 	let responseData;
 	let uri: string | undefined;
-	query['$top'] = 100;
+	query.$top = 100;
 
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);

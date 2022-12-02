@@ -161,11 +161,11 @@ export async function execute(
 
 	if (!items.length || dataMode === 'nothing') return [];
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 1;
-	if (locationDefine && locationDefine.headerRow) {
+	if (locationDefine?.headerRow) {
 		headerRow = locationDefine.headerRow as number;
 	}
 

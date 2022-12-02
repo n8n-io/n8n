@@ -133,6 +133,7 @@ export class Zoom implements INodeType {
 			// 	...webinarFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the timezones to display them to user so that he can select them easily

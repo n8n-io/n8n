@@ -139,7 +139,7 @@ export class AwsSnsTrigger implements INodeType {
 					const topicName = arnParsed[5];
 					const awsRegion = arnParsed[3];
 
-					if (filter && topicName.includes(filter) === false) {
+					if (filter && !topicName.includes(filter)) {
 						continue;
 					}
 
@@ -153,6 +153,7 @@ export class AwsSnsTrigger implements INodeType {
 			},
 		},
 	};
+
 	//@ts-expect-error because of webhook
 	webhookMethods = {
 		default: {

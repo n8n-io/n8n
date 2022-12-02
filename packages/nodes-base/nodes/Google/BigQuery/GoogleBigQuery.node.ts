@@ -220,7 +220,7 @@ export class GoogleBigQuery implements INodeType {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				let fields;
 
-				if (simple === true) {
+				if (simple) {
 					const { schema } = await googleApiRequest.call(
 						this,
 						'GET',

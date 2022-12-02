@@ -129,7 +129,7 @@ export class Bannerbear implements INodeType {
 						body.metadata = additionalFields.metadata as string;
 					}
 					if (modifications) {
-						body.modifications = keysToSnakeCase(modifications) as IDataObject[];
+						body.modifications = keysToSnakeCase(modifications);
 						// delete all fields set to empty
 						for (const modification of body.modifications as IDataObject[]) {
 							for (const key of Object.keys(modification)) {
@@ -143,7 +143,7 @@ export class Bannerbear implements INodeType {
 					if (additionalFields.waitForImage && responseData.status !== 'completed') {
 						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
 
-						const promise = (uid: string) => {
+						const promise = async (uid: string) => {
 							let data: IDataObject = {};
 							return new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {

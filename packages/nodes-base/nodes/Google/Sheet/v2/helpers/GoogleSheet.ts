@@ -16,6 +16,7 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
+
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
 	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
