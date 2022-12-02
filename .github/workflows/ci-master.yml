@@ -38,7 +38,7 @@ jobs:
       - name: Lint
         env:
           CI_LINT_MASTER: true
-        run: pnpm lint
+        run: pnpm lint --quiet
 
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
