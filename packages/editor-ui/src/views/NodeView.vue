@@ -3300,16 +3300,10 @@ export default mixins(
 				callback?.();
 			},
 			onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
-				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: {
-					position,
-				}});
+				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
 				setTimeout(() => {
 					const node = this.workflowsStore.getNodeByName(nodeName);
 					if (node) {
-						const endpoints = this.getJSPlumbEndpoints(nodeName);
-						endpoints.forEach(endpoint => {
-							endpoint.repaint();
-						});
 						this.instance.repaintEverything();
 						this.onNodeMoved(node);
 					}
@@ -3318,9 +3312,11 @@ export default mixins(
 			onRevertAddNode({node}: {node: INodeUi}): void {
 				this.removeNode(node.name, false);
 			},
-			async onRevertRemoveNode({node}: {node: INodeUi}): void {
+			async onRevertRemoveNode({node}: {node: INodeUi}): Promise<void> {
+				// For some reason, returning node to canvas with old id
+				// makes it's endpoint to render at wrong position
+				node.id = uuid();
 				await this.addNodes([node]);
-				// await this.addNode(node.type, { position: node.position });
 			},
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__removeConnection(connection, true);
