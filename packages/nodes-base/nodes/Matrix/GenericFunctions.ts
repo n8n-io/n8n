@@ -13,10 +13,9 @@ export async function matrixApiRequest(
 	resource: string,
 	body: string | object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
+) {
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {

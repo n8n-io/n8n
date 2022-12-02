@@ -18,8 +18,8 @@ export async function slackApiRequest(
 	resource: string,
 	body: object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;

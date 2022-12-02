@@ -454,7 +454,7 @@ export class Zulip implements INodeType {
 						}
 						if (additionalFields.profileData) {
 							//@ts-ignore
-							body.profile_data = additionalFields.profileData.properties as [{}];
+							body.profile_data = additionalFields.profileData.properties as [IDataObject];
 						}
 
 						responseData = await zulipApiRequest.call(this, 'PATCH', `/users/${userId}`, body);

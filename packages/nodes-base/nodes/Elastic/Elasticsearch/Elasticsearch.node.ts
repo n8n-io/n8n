@@ -184,7 +184,7 @@ export class Elasticsearch implements INodeType {
 						responseData = responseData.map((item: IDataObject) => {
 							return {
 								_id: item._id,
-								...(item._source as {}),
+								...(item._source as IDataObject),
 							};
 						});
 					}

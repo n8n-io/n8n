@@ -328,7 +328,7 @@ export interface CreateTaskRequest {
 
 export interface SyncRequest {
 	commands: Command[];
-	temp_id_mapping?: {};
+	temp_id_mapping?: IDataObject;
 }
 
 export interface Command {

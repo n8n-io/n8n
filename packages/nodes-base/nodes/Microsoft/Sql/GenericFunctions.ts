@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { ITables } from './TableInterface';
 

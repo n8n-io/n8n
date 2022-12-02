@@ -80,6 +80,7 @@ export function generateReturning(pgp: pgPromise.IMain<{}, pg.IClient>, returnin
  * @param {input[]} input The Node's input data
  */
 export async function pgQuery(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -249,6 +250,7 @@ export async function pgQueryV2(
  * @param {INodeExecutionData[]} items The items to be inserted
  */
 export async function pgInsert(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,
@@ -443,6 +445,7 @@ export async function pgInsertV2(
  * @param {INodeExecutionData[]} items The items to be updated
  */
 export async function pgUpdate(
+	// eslint-disable-next-line @typescript-eslint/ban-types
 	getNodeParam: Function,
 	pgp: pgPromise.IMain<{}, pg.IClient>,
 	db: pgPromise.IDatabase<{}, pg.IClient>,

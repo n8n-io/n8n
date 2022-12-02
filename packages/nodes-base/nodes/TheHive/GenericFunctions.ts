@@ -182,7 +182,7 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { query: Array<{}> }) {
+export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
 	if (range && range !== 'all') {
 		body['query'].push({
 			_name: 'page',

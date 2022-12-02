@@ -1384,10 +1384,10 @@ const compareItems = (
 	return result;
 };
 
-const flattenKeys = (obj: {}, path: string[] = []): {} => {
+const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
 	return !isObject(obj)
 		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next, [...path, key])), {});
+		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
 };
 
 // tslint:disable-next-line: no-any
