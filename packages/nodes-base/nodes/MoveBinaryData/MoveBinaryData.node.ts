@@ -21,7 +21,7 @@ iconv.encodingExists('utf8');
 // Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
-const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
+const encodings = (iconv as any).encodings;
 Object.keys(encodings).forEach((encoding) => {
 	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
 		// only encodings without direct alias or internals

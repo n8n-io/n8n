@@ -16,7 +16,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -41,7 +40,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -58,7 +56,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {

@@ -139,7 +139,6 @@ export class FormIoTrigger implements INodeType {
 						if (
 							action.settings.url === webhookUrl &&
 							action.method.length === method.length &&
-							// tslint:disable-next-line:no-any
 							action.method.every((value: any) => method.includes(value))
 						) {
 							webhookData.webhookId = action._id;

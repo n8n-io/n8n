@@ -569,7 +569,7 @@ export class SentryIo implements INodeType {
 						if (additionalFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							additionalFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 
@@ -623,7 +623,7 @@ export class SentryIo implements INodeType {
 						if (updateFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							updateFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 

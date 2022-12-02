@@ -63,7 +63,7 @@ export async function elasticSecurityApiRequestAllItems(
 ) {
 	let _page = 1;
 	const returnData: IDataObject[] = [];
-	let responseData: any; // tslint:disable-line
+	let responseData: any;
 
 	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
 

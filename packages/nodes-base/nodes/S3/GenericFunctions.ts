@@ -27,7 +27,6 @@ export async function s3ApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let credentials;
 
@@ -101,7 +100,6 @@ export async function s3ApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
 		this,
@@ -131,7 +129,6 @@ export async function s3ApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await s3ApiRequest.call(
 		this,
@@ -169,7 +166,6 @@ export async function s3ApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

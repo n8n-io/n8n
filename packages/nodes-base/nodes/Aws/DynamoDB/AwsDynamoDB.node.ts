@@ -175,7 +175,6 @@ export class AwsDynamoDB implements INodeType {
 
 						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_DeleteItem.html
 
-						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
 							TableName: this.getNodeParameter('tableName', i) as string,
 							Key: {},
@@ -252,7 +251,6 @@ export class AwsDynamoDB implements INodeType {
 							[],
 						) as IAttributeNameUi[];
 
-						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
 							TableName: tableName,
 							Key: {},

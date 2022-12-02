@@ -19,11 +19,10 @@ export async function paddleApiRequest(
 		| IWebhookFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	_query?: IDataObject,
 	_uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('paddleApi');
 	const productionUrl = 'https://vendors.paddle.com/api';
@@ -61,10 +60,9 @@ export async function paddleApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -85,7 +83,6 @@ export async function paddleApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

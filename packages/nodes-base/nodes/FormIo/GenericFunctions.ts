@@ -52,7 +52,6 @@ export async function formIoApiRequest(
 	endpoint: string,
 	body = {},
 	qs = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('formIoApi')) as unknown as IFormIoCredentials;
 
