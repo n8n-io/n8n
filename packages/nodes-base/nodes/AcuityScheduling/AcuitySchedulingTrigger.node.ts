@@ -160,7 +160,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
 
-		if (resolveData === false) {
+		if (!resolveData) {
 			// Return the data as it got received
 			return {
 				workflowData: [this.helpers.returnJsonArray(req.body)],

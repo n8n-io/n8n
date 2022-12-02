@@ -357,7 +357,7 @@ export class MoveBinaryData implements INodeType {
 
 				let convertedValue: string;
 
-				if (setAllData === true) {
+				if (setAllData) {
 					// Set the full data
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
@@ -397,7 +397,7 @@ export class MoveBinaryData implements INodeType {
 
 				const encoding = (options.encoding as string) || 'utf8';
 				let value: IDataObject | string = item.json;
-				if (convertAllData === false) {
+				if (!convertAllData) {
 					const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 					value = get(item.json, sourceKey) as IDataObject;
 				}
@@ -442,7 +442,7 @@ export class MoveBinaryData implements INodeType {
 				} else {
 					// JSON data will change so copy it
 
-					if (convertAllData === true) {
+					if (convertAllData) {
 						// Data should not be kept and all data got converted. So simply set new as empty
 						newItem.json = {};
 					} else {

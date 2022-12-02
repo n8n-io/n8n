@@ -164,7 +164,7 @@ export class Affinity implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -203,7 +203,7 @@ export class Affinity implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const listId = this.getNodeParameter('listId', i) as string;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'list_entries',
@@ -298,7 +298,7 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'persons',
@@ -386,7 +386,7 @@ export class Affinity implements INodeType {
 						if (options.withInteractionDates) {
 							qs.with_interaction_dates = options.withInteractionDates as boolean;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await affinityApiRequestAllItems.call(
 								this,
 								'organizations',

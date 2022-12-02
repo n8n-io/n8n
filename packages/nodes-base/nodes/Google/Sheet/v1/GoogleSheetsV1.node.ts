@@ -201,7 +201,7 @@ export class GoogleSheetsV1 implements INodeType {
 							{ requests },
 						);
 
-						if (simple === true) {
+						if (simple) {
 							Object.assign(responseData, responseData.replies[0].addSheet.properties);
 							delete responseData.replies;
 						}
@@ -321,7 +321,7 @@ export class GoogleSheetsV1 implements INodeType {
 					let returnData: IDataObject[];
 					if (!sheetData) {
 						returnData = [];
-					} else if (rawData === true) {
+					} else if (rawData) {
 						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 						returnData = [
 							{
@@ -391,7 +391,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 					const items = this.getInputData();
 
-					if (rawData === true) {
+					if (rawData) {
 						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
 
 						const updateData: ISheetUpdateData[] = [];

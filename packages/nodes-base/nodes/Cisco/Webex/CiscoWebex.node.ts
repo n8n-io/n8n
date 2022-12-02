@@ -260,7 +260,7 @@ export class CiscoWebex implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await webexApiRequestAllItems.call(
 								this,
 								'items',
@@ -295,7 +295,7 @@ export class CiscoWebex implements INodeType {
 							roomId: responseData.roomId,
 						} as IDataObject;
 
-						if (markdown === true) {
+						if (markdown) {
 							body.markdown = this.getNodeParameter('markdownText', i);
 						} else {
 							body.text = this.getNodeParameter('text', i);
@@ -419,7 +419,7 @@ export class CiscoWebex implements INodeType {
 								.format();
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await webexApiRequestAllItems.call(
 								this,
 								'items',

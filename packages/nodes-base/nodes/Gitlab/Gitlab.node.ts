@@ -1175,7 +1175,7 @@ export class Gitlab implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
@@ -1235,7 +1235,7 @@ export class Gitlab implements INodeType {
 					});
 				}
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await gitlabApiRequestAllItems.call(
 						this,
 						requestMethod,

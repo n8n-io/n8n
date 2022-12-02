@@ -242,7 +242,7 @@ export class Flow implements INodeType {
 						qs.cleared = filters.cleared as boolean;
 					}
 					try {
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await FlowApiRequestAllItems.call(
 								this,
 								'tasks',

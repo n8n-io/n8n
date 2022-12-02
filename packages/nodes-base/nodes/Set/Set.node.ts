@@ -154,7 +154,7 @@ export class Set implements INodeType {
 				pairedItem: item.pairedItem,
 			};
 
-			if (keepOnlySet !== true) {
+			if (!keepOnlySet) {
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind

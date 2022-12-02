@@ -234,7 +234,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'contacts',
@@ -409,7 +409,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'users',
@@ -533,7 +533,7 @@ export class Intercom implements INodeType {
 						Object.assign(qs, filters);
 
 						try {
-							if (returnAll === true) {
+							if (returnAll) {
 								responseData = await intercomApiRequestAllItems.call(
 									this,
 									'companies',
@@ -566,7 +566,7 @@ export class Intercom implements INodeType {
 
 						try {
 							if (listBy === 'id') {
-								if (returnAll === true) {
+								if (returnAll) {
 									responseData = await intercomApiRequestAllItems.call(
 										this,
 										'users',
@@ -589,7 +589,7 @@ export class Intercom implements INodeType {
 							} else {
 								qs.type = 'users';
 
-								if (returnAll === true) {
+								if (returnAll) {
 									responseData = await intercomApiRequestAllItems.call(
 										this,
 										'users',

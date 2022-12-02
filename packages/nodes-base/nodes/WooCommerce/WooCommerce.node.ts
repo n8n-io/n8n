@@ -354,7 +354,7 @@ export class WooCommerce implements INodeType {
 					if (options.type) {
 						qs.type = options.type as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(
 							this,
 							'GET',
@@ -559,7 +559,7 @@ export class WooCommerce implements INodeType {
 					if (options.status) {
 						qs.status = options.status as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/orders', {}, qs);
 					} else {
 						qs.per_page = this.getNodeParameter('limit', i);

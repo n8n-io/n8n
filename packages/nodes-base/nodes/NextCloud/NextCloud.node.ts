@@ -1247,7 +1247,7 @@ export class NextCloud implements INodeType {
 						if (Array.isArray(jsonResponseData['d:multistatus']['d:response'])) {
 							// @ts-ignore
 							for (const item of jsonResponseData['d:multistatus']['d:response']) {
-								if (skippedFirst === false) {
+								if (!skippedFirst) {
 									skippedFirst = true;
 									continue;
 								}

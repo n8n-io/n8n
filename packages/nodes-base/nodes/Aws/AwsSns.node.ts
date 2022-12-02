@@ -229,7 +229,7 @@ export class AwsSns implements INodeType {
 					const topicName = arnParsed[5];
 					const awsRegion = arnParsed[3];
 
-					if (filter && topicName.includes(filter) === false) {
+					if (filter && !topicName.includes(filter)) {
 						continue;
 					}
 

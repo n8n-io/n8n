@@ -1023,7 +1023,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.resolveWithFullResponse = true;
 			}
 
-			if (redirect?.redirect?.followRedirects !== false) {
+			if (redirect?.redirect?.followRedirects) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
@@ -1032,7 +1032,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
-			if (response?.response?.neverError === true) {
+			if (response?.response?.neverError) {
 				requestOptions.simple = false;
 			}
 
@@ -1298,7 +1298,7 @@ export class HttpRequestV3 implements INodeType {
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error).toString();
 					}
@@ -1380,7 +1380,7 @@ export class HttpRequestV3 implements INodeType {
 
 				const fileName = url.split('/').pop();
 
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1411,7 +1411,7 @@ export class HttpRequestV3 implements INodeType {
 					0,
 					'data',
 				) as string;
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {

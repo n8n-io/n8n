@@ -368,7 +368,7 @@ export class InvoiceNinja implements INodeType {
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',
@@ -529,7 +529,7 @@ export class InvoiceNinja implements INodeType {
 						if (options.invoiceNumber) {
 							qs.invoice_number = options.invoiceNumber as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',
@@ -622,7 +622,7 @@ export class InvoiceNinja implements INodeType {
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',
@@ -694,7 +694,7 @@ export class InvoiceNinja implements INodeType {
 						if (options.include) {
 							qs.include = options.include as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',
@@ -795,7 +795,7 @@ export class InvoiceNinja implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',
@@ -959,7 +959,7 @@ export class InvoiceNinja implements INodeType {
 						if (options.invoiceNumber) {
 							qs.invoice_number = options.invoiceNumber as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
 								'data',

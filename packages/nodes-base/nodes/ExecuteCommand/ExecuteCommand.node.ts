@@ -85,7 +85,7 @@ export class ExecuteCommand implements INodeType {
 		let command: string;
 		const executeOnce = this.getNodeParameter('executeOnce', 0) as boolean;
 
-		if (executeOnce === true) {
+		if (executeOnce) {
 			items = [items[0]];
 		}
 

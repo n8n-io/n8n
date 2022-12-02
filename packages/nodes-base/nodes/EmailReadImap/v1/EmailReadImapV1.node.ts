@@ -373,7 +373,7 @@ export class EmailReadImapV1 implements INodeType {
 				const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
 
 				let dataPropertyAttachmentsPrefixName = '';
-				if (downloadAttachments === true) {
+				if (downloadAttachments) {
 					dataPropertyAttachmentsPrefixName = this.getNodeParameter(
 						'dataPropertyAttachmentsPrefixName',
 					) as string;
@@ -418,7 +418,7 @@ export class EmailReadImapV1 implements INodeType {
 						}
 					}
 
-					if (downloadAttachments === true) {
+					if (downloadAttachments) {
 						// Get attachments and add them if any get found
 						attachments = await getAttachment(imapConnection, parts, message);
 						if (attachments.length) {

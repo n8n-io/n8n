@@ -3052,7 +3052,7 @@ export class Salesforce implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
 						responseData = responseData.actions;
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

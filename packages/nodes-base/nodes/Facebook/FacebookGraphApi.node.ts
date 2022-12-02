@@ -421,7 +421,7 @@ export class FacebookGraphApi implements INodeType {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
-				if (this.continueOnFail() === false) {
+				if (!this.continueOnFail()) {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
@@ -446,7 +446,7 @@ export class FacebookGraphApi implements INodeType {
 			}
 
 			if (typeof response === 'string') {
-				if (this.continueOnFail() === false) {
+				if (!this.continueOnFail()) {
 					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
 						itemIndex,
 					});

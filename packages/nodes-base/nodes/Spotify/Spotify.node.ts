@@ -983,7 +983,7 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -1059,7 +1059,7 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -1191,7 +1191,7 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
@@ -1233,7 +1233,7 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);

@@ -231,7 +231,7 @@ export class AwsDynamoDB implements INodeType {
 
 						if (!Object.keys(responseData).length) {
 							responseData = { success: true };
-						} else if (simple === true) {
+						} else if (simple) {
 							responseData = decodeItem(responseData.Attributes);
 						}
 					} else if (operation === 'get') {
@@ -317,7 +317,7 @@ export class AwsDynamoDB implements INodeType {
 							TableName: this.getNodeParameter('tableName', i) as string,
 						};
 
-						if (scan === true) {
+						if (scan) {
 							const filterExpression = this.getNodeParameter('filterExpression', i) as string;
 							if (filterExpression) {
 								body.FilterExpression = filterExpression;
@@ -371,7 +371,7 @@ export class AwsDynamoDB implements INodeType {
 							'X-Amz-Target': scan ? 'DynamoDB_20120810.Scan' : 'DynamoDB_20120810.Query',
 						};
 
-						if (returnAll === true && select !== 'COUNT') {
+						if (returnAll && select !== 'COUNT') {
 							responseData = await awsApiRequestAllItems.call(
 								this,
 								'dynamodb',
@@ -387,7 +387,7 @@ export class AwsDynamoDB implements INodeType {
 								responseData = responseData.Items;
 							}
 						}
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.map(simplify);
 						}
 					}

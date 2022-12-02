@@ -153,7 +153,7 @@ export class Phantombuster implements INodeType {
 							qs,
 						);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							const { resultObject } = await phantombusterApiRequest.call(
 								this,
 								'GET',
@@ -175,7 +175,7 @@ export class Phantombuster implements INodeType {
 
 						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
@@ -236,7 +236,7 @@ export class Phantombuster implements INodeType {
 
 						responseData = await phantombusterApiRequest.call(this, 'POST', '/agents/launch', body);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							responseData = await phantombusterApiRequest.call(
 								this,
 								'GET',

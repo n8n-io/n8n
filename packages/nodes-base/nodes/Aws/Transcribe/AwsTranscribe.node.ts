@@ -472,14 +472,14 @@ export class AwsTranscribe implements INodeType {
 						);
 						responseData = responseData.TranscriptionJob;
 
-						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
+						if (resolve && responseData.TranscriptionJobStatus === 'COMPLETED') {
 							responseData = await this.helpers.request({
 								method: 'GET',
 								uri: responseData.Transcript.TranscriptFileUri,
 								json: true,
 							});
 							const simple = this.getNodeParameter('simple', 0) as boolean;
-							if (simple === true) {
+							if (simple) {
 								responseData = {
 									transcript: responseData.results.transcripts
 										.map((data: IDataObject) => data.transcript)
@@ -503,7 +503,7 @@ export class AwsTranscribe implements INodeType {
 							body.JobNameContains = filters.jobNameContains;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestRESTAllItems.call(
 								this,
 								'TranscriptionJobSummaries',

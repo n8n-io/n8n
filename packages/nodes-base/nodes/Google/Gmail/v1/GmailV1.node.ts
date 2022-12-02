@@ -351,7 +351,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 
@@ -465,7 +465,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 
@@ -686,7 +686,7 @@ export class GmailV1 implements INodeType {
 							attachments: attachmentsList,
 						};
 
-						if ((this.getNodeParameter('includeHtml', i, false) as boolean) === true) {
+						if (this.getNodeParameter('includeHtml', i, false) as boolean) {
 							email.htmlBody = this.getNodeParameter('htmlMessage', i) as string;
 						}
 

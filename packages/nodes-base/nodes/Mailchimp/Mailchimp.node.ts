@@ -1690,7 +1690,7 @@ export class Mailchimp implements INodeType {
 						const categoryId = this.getNodeParameter('groupCategory', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/interest-categories/${categoryId}/interests`,
@@ -1878,7 +1878,7 @@ export class Mailchimp implements INodeType {
 						if (options.sinceLastChanged) {
 							qs.since_last_changed = options.sinceLastChanged as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/members`,
@@ -2116,7 +2116,7 @@ export class Mailchimp implements INodeType {
 						if (options.sortField) {
 							qs.sort_field = options.sortField as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/campaigns`,

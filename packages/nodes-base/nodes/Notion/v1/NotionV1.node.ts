@@ -365,7 +365,7 @@ export class NotionV1 implements INodeType {
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
@@ -432,7 +432,7 @@ export class NotionV1 implements INodeType {
 						);
 						responseData = responseData.results;
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
@@ -463,7 +463,7 @@ export class NotionV1 implements INodeType {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
@@ -526,7 +526,7 @@ export class NotionV1 implements INodeType {
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
@@ -543,7 +543,7 @@ export class NotionV1 implements INodeType {
 					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 
@@ -596,7 +596,7 @@ export class NotionV1 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
 					}
 

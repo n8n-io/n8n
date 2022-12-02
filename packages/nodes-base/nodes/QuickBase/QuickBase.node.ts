@@ -142,7 +142,7 @@ export class QuickBase implements INodeType {
 
 					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
 
 						responseData = responseData.splice(0, limit);
@@ -281,7 +281,7 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 
@@ -451,7 +451,7 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 
@@ -534,7 +534,7 @@ export class QuickBase implements INodeType {
 
 				responseData = await quickbaseApiRequest.call(this, 'POST', '/records', body);
 
-				if (simple === true) {
+				if (simple) {
 					const { data: records } = responseData;
 					responseData = [];
 

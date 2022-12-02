@@ -538,7 +538,7 @@ export class Ftp implements INodeType {
 						const remotePath = this.getNodeParameter('path', i) as string;
 						await recursivelyCreateSftpDirs(sftp!, remotePath);
 
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -653,7 +653,7 @@ export class Ftp implements INodeType {
 						const fileName = basename(remotePath);
 						const dirPath = remotePath.replace(fileName, '');
 
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 

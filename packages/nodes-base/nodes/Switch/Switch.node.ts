@@ -658,7 +658,7 @@ export class Switch implements INodeType {
 							value2,
 						);
 
-						if (compareOperationResult === true) {
+						if (compareOperationResult) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
 							returnData[ruleData.output as number].push(item);

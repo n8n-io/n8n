@@ -308,7 +308,7 @@ export class Stackby implements INodeType {
 						qs.view = additionalFields.view;
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await apiRequestAllItems.call(
 							this,
 							'GET',

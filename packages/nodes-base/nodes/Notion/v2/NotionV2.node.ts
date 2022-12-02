@@ -318,7 +318,7 @@ export class NotionV2 implements INodeType {
 						this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string,
 					);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download)[0];
 					}
 
@@ -350,7 +350,7 @@ export class NotionV2 implements INodeType {
 						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
 						responseData = responseData.results;
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -402,7 +402,7 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -464,7 +464,7 @@ export class NotionV2 implements INodeType {
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData);
 					}
 
@@ -483,7 +483,7 @@ export class NotionV2 implements INodeType {
 					);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -559,10 +559,10 @@ export class NotionV2 implements INodeType {
 						);
 						responseData = responseData.results;
 					}
-					if (download === true) {
+					if (download) {
 						responseData = await downloadFiles.call(this, responseData);
 					}
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -593,7 +593,7 @@ export class NotionV2 implements INodeType {
 						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, false);
 					}
 
@@ -649,7 +649,7 @@ export class NotionV2 implements INodeType {
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
 						archived: true,
 					});
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -677,7 +677,7 @@ export class NotionV2 implements INodeType {
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -728,7 +728,7 @@ export class NotionV2 implements INodeType {
 						responseData = responseData.splice(0, qs.limit);
 					}
 
-					if (simple === true) {
+					if (simple) {
 						responseData = simplifyObjects(responseData, download);
 					}
 
@@ -741,7 +741,7 @@ export class NotionV2 implements INodeType {
 			}
 		}
 
-		if (download === true) {
+		if (download) {
 			const rawData = returnData.map((data) => data.json);
 			return this.prepareOutputData(rawData as INodeExecutionData[]);
 		}

@@ -1727,7 +1727,7 @@ export class Github implements INodeType {
 
 						body.message = this.getNodeParameter('commitMessage', i) as string;
 
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -1933,7 +1933,7 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
@@ -1996,7 +1996,7 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
@@ -2022,7 +2022,7 @@ export class Github implements INodeType {
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
@@ -2068,7 +2068,7 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					} else if (operation === 'invite') {
@@ -2092,7 +2092,7 @@ export class Github implements INodeType {
 						endpoint = `/orgs/${owner}/repos`;
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
@@ -2103,7 +2103,7 @@ export class Github implements INodeType {
 				}
 
 				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await githubApiRequestAllItems.call(
 						this,
 						requestMethod,
@@ -2116,7 +2116,7 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'file:get') {
-					if (asBinaryProperty === true) {
+					if (asBinaryProperty) {
 						if (Array.isArray(responseData) && responseData.length > 1) {
 							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
 								itemIndex: i,

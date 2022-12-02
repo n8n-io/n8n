@@ -535,7 +535,7 @@ export class Airtable implements INodeType {
 
 					const row: IDataObject = {};
 
-					if (addAllFields === true) {
+					if (addAllFields) {
 						// Add all the fields the item has
 						row.fields = { ...items[i].json };
 						delete (row.fields! as any).id;
@@ -644,7 +644,7 @@ export class Airtable implements INodeType {
 					}
 				}
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
 					qs.maxRecords = this.getNodeParameter('limit', 0);
@@ -737,7 +737,7 @@ export class Airtable implements INodeType {
 					const row: IDataObject = {};
 					row.fields = {} as IDataObject;
 
-					if (updateAllFields === true) {
+					if (updateAllFields) {
 						// Update all the fields the item has
 						row.fields = { ...items[i].json };
 						// remove id field

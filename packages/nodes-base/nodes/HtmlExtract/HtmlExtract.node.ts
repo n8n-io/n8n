@@ -275,7 +275,7 @@ export class HtmlExtract implements INodeType {
 					for (const valueData of extractionValues.values as IValueData[]) {
 						htmlElement = $(valueData.cssSelector);
 
-						if (valueData.returnArray === true) {
+						if (valueData.returnArray) {
 							// An array should be returned so itterate over one
 							// value at a time
 							newItem.json[valueData.key as string] = [];

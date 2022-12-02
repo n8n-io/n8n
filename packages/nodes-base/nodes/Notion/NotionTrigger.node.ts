@@ -202,7 +202,7 @@ export class NotionTrigger implements INodeType {
 		);
 
 		if (this.getMode() === 'manual') {
-			if (simple === true) {
+			if (simple) {
 				data = simplifyObjects(data, false, 1);
 			}
 			if (Array.isArray(data) && data.length) {
@@ -231,7 +231,7 @@ export class NotionTrigger implements INodeType {
 				// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
 			} while (
 				!moment(records[records.length - 1][sortProperty] as string).isBefore(lastTimeChecked) &&
-				hasMore === true
+				hasMore
 			);
 
 			// Filter out already processed left over records:
@@ -255,7 +255,7 @@ export class NotionTrigger implements INodeType {
 				webhookData.possibleDuplicates = undefined;
 			}
 
-			if (simple === true) {
+			if (simple) {
 				records = simplifyObjects(records, false, 1);
 			}
 

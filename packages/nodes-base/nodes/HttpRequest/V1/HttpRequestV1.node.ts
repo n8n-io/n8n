@@ -686,7 +686,7 @@ export class HttpRequestV1 implements INodeType {
 				) as boolean,
 			};
 
-			if (fullResponse === true) {
+			if (fullResponse) {
 				// @ts-ignore
 				requestOptions.resolveWithFullResponse = true;
 			}
@@ -716,7 +716,7 @@ export class HttpRequestV1 implements INodeType {
 				requestOptions.useQuerystring = true;
 			}
 
-			if (parametersAreJson === true) {
+			if (parametersAreJson) {
 				// Parameters are defined as JSON
 				let optionData: OptionData;
 				for (const parameterName of Object.keys(jsonParameters)) {
@@ -728,8 +728,8 @@ export class HttpRequestV1 implements INodeType {
 						false,
 					) as boolean;
 
-					if (optionData.name === 'body' && parametersAreJson === true) {
-						if (sendBinaryData === true) {
+					if (optionData.name === 'body' && parametersAreJson) {
+						if (sendBinaryData) {
 							const contentTypesAllowed = ['raw', 'multipart-form-data'];
 
 							if (!contentTypesAllowed.includes(options.bodyContentType as string)) {
@@ -994,7 +994,7 @@ export class HttpRequestV1 implements INodeType {
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					// throw error;
 					throw new NodeApiError(this.getNode(), response);
 				} else {
@@ -1039,7 +1039,7 @@ export class HttpRequestV1 implements INodeType {
 
 				const fileName = url.split('/').pop();
 
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1067,7 +1067,7 @@ export class HttpRequestV1 implements INodeType {
 			} else if (responseFormat === 'string') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1095,7 +1095,7 @@ export class HttpRequestV1 implements INodeType {
 				}
 			} else {
 				// responseFormat: 'json'
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						returnItem[property] = response![property];

@@ -382,7 +382,7 @@ export class Coda implements INodeType {
 					qs.query = options.query as string;
 				}
 				try {
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(
 							this,
 							'items',
@@ -728,7 +728,7 @@ export class Coda implements INodeType {
 					qs.query = options.query as string;
 				}
 				try {
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(
 							this,
 							'items',

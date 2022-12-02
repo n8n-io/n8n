@@ -24,7 +24,6 @@ module.exports = {
 		'@typescript-eslint/no-this-alias': 'off',
 		'@typescript-eslint/no-throw-literal': 'off',
 		'@typescript-eslint/no-unnecessary-type-assertion': 'off',
-		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
 		'@typescript-eslint/no-unnecessary-qualifier': 'off',
 		'@typescript-eslint/no-unsafe-argument': 'off',
 		'@typescript-eslint/no-unsafe-assignment': 'off',

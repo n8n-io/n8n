@@ -572,7 +572,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1011,7 +1011,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1105,7 +1105,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1379,7 +1379,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1614,7 +1614,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1696,7 +1696,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 
@@ -1931,7 +1931,7 @@ export class TheHive implements INodeType {
 
 						let limit = undefined;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 						}
 

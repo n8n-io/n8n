@@ -172,8 +172,8 @@ export class JotFormTrigger implements INodeType {
 				data.rawRequest = rawRequest;
 
 				let returnData: IDataObject;
-				if (resolveData === false) {
-					if (onlyAnswers === true) {
+				if (!resolveData) {
+					if (onlyAnswers) {
 						returnData = data.rawRequest as unknown as IDataObject;
 					} else {
 						returnData = data;
@@ -210,7 +210,7 @@ export class JotFormTrigger implements INodeType {
 					questionsData[questionNames[questionKey] as string] = rawRequest[key];
 				}
 
-				if (onlyAnswers === true) {
+				if (onlyAnswers) {
 					returnData = questionsData as unknown as IDataObject;
 				} else {
 					// @ts-ignore

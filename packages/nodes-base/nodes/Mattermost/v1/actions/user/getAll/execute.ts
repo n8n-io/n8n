@@ -97,7 +97,7 @@ export async function getAll(
 		qs.sort = '';
 	}
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 

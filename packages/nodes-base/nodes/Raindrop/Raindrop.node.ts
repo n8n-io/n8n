@@ -172,7 +172,7 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
@@ -282,7 +282,7 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
@@ -426,7 +426,7 @@ export class Raindrop implements INodeType {
 						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}

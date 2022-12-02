@@ -325,7 +325,7 @@ export class Kafka implements INodeType {
 			let message: string | Buffer;
 
 			for (let i = 0; i < length; i++) {
-				if (sendInputData === true) {
+				if (sendInputData) {
 					message = JSON.stringify(items[i].json);
 				} else {
 					message = this.getNodeParameter('message', i) as string;
@@ -358,7 +358,7 @@ export class Kafka implements INodeType {
 
 				let headers;
 
-				if (jsonParameters === true) {
+				if (jsonParameters) {
 					headers = this.getNodeParameter('headerParametersJson', i) as string;
 					try {
 						headers = JSON.parse(headers);

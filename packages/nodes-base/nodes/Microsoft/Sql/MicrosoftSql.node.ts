@@ -424,7 +424,7 @@ export class MicrosoftSql implements INodeType {
 				);
 			}
 		} catch (error) {
-			if (this.continueOnFail() === true) {
+			if (this.continueOnFail()) {
 				responseData = items;
 			} else {
 				await pool.close();

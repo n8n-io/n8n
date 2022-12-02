@@ -1126,7 +1126,7 @@ export class Onfleet {
 
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
 					let hubs = await onfleetApiRequest.call(this, 'GET', resource);
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						hubs = hubs.slice(0, limit);
 					}

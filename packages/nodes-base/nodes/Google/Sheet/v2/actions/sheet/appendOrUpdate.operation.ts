@@ -234,7 +234,7 @@ export async function execute(
 			}
 			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
+					if (!columnNames.includes(key)) {
 						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
 							itemIndex: i,
 							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
@@ -245,7 +245,7 @@ export async function execute(
 			}
 			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach((key) => {
-					if (columnNames.includes(key) === false) {
+					if (!columnNames.includes(key)) {
 						newColumns.add(key);
 					}
 				});
@@ -260,7 +260,7 @@ export async function execute(
 				if (entry.column === 'newColumn') {
 					const columnName = entry.columnName as string;
 
-					if (columnNames.includes(columnName) === false) {
+					if (!columnNames.includes(columnName)) {
 						newColumns.add(columnName);
 					}
 

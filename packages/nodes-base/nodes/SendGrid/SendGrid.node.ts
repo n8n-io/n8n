@@ -163,7 +163,7 @@ export class SendGrid implements INodeType {
 							body,
 							qs,
 						);
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -317,7 +317,7 @@ export class SendGrid implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const deleteAll = this.getNodeParameter('deleteAll', i) as boolean;
-						if (deleteAll === true) {
+						if (deleteAll) {
 							qs.delete_all_contacts = 'true';
 						}
 						qs.ids = (this.getNodeParameter('ids', i) as string).replace(/\s/g, '');
@@ -361,7 +361,7 @@ export class SendGrid implements INodeType {
 							{},
 							qs,
 						);
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

@@ -228,7 +228,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 
 	let query = `SELECT ${fields.join(',')} FROM ${sobject} ${conditions ? conditions : ''}`;
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		query = `SELECT ${fields.join(',')} FROM ${sobject} ${
 			conditions ? conditions : ''
 		} LIMIT ${limit}`;

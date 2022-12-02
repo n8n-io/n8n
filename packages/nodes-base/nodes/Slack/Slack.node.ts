@@ -371,7 +371,7 @@ export class Slack implements INodeType {
 						if (filters.excludeArchived) {
 							qs.exclude_archived = filters.excludeArchived as boolean;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'channels',
@@ -401,7 +401,7 @@ export class Slack implements INodeType {
 						if (filters.oldest) {
 							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'messages',
@@ -551,7 +551,7 @@ export class Slack implements INodeType {
 						if (filters.oldest) {
 							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'messages',
@@ -1054,7 +1054,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/stars.list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'items',
@@ -1165,7 +1165,7 @@ export class Slack implements INodeType {
 						if (filters.userId) {
 							qs.user = filters.userId as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'files',
@@ -1198,7 +1198,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/users.list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
 								'members',
@@ -1291,7 +1291,7 @@ export class Slack implements INodeType {
 
 						responseData = responseData.usergroups;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);

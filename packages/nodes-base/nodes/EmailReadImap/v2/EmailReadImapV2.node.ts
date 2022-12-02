@@ -202,7 +202,7 @@ export class EmailReadImapV2 implements INodeType {
 						};
 						const tlsOptions: IDataObject = {};
 
-						if (credentials.allowUnauthorizedCerts === true) {
+						if (credentials.allowUnauthorizedCerts) {
 							tlsOptions.rejectUnauthorized = false;
 						}
 
@@ -381,7 +381,7 @@ export class EmailReadImapV2 implements INodeType {
 				const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
 
 				let dataPropertyAttachmentsPrefixName = '';
-				if (downloadAttachments === true) {
+				if (downloadAttachments) {
 					dataPropertyAttachmentsPrefixName = this.getNodeParameter(
 						'dataPropertyAttachmentsPrefixName',
 					) as string;
@@ -426,7 +426,7 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 
-					if (downloadAttachments === true) {
+					if (downloadAttachments) {
 						// Get attachments and add them if any get found
 						attachments = await getAttachment(imapConnection, parts, message);
 						if (attachments.length) {
@@ -543,7 +543,7 @@ export class EmailReadImapV2 implements INodeType {
 
 			const tlsOptions: IDataObject = {};
 
-			if (credentials.allowUnauthorizedCerts === true) {
+			if (credentials.allowUnauthorizedCerts) {
 				tlsOptions.rejectUnauthorized = false;
 			}
 
@@ -559,9 +559,9 @@ export class EmailReadImapV2 implements INodeType {
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
-					if (isCurrentlyReconnecting === true) {
+					if (isCurrentlyReconnecting) {
 						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
-					} else if (closeFunctionWasCalled === true) {
+					} else if (closeFunctionWasCalled) {
 						Logger.debug(`Email Read Imap: Shutting down workflow - connected closed`);
 					} else {
 						Logger.error(`Email Read Imap: Connected closed unexpectedly`);

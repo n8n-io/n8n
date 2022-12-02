@@ -1091,7 +1091,7 @@ export class YouTube implements INodeType {
 						);
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

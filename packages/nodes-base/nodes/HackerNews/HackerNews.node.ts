@@ -329,7 +329,7 @@ export class HackerNews implements INodeType {
 				}
 
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await hackerNewsApiRequestAllItems.call(this, 'GET', endpoint, qs);
 				} else {
 					responseData = await hackerNewsApiRequest.call(this, 'GET', endpoint, qs);

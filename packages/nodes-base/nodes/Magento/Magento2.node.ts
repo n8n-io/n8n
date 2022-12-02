@@ -279,7 +279,7 @@ export class Magento2 implements INodeType {
 			async getFilterableCustomerAttributes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.is_filterable === true);
+				return getProductAttributes.call(this, (attribute) => attribute.is_filterable);
 			},
 			async getProductAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getProductAttributes.call(this);
@@ -295,7 +295,7 @@ export class Magento2 implements INodeType {
 			async getSortableProductAttributes(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by === true);
+				return getProductAttributes.call(this, (attribute) => attribute.used_for_sort_by);
 			},
 			async getOrderAttributes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				return getOrderFields()
@@ -433,7 +433,7 @@ export class Magento2 implements INodeType {
 							}
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							qs.search_criteria!.page_size = 100;
 							responseData = await magentoApiRequestAllItems.call(
 								this,
@@ -611,7 +611,7 @@ export class Magento2 implements INodeType {
 							}
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							qs.search_criteria!.page_size = 100;
 							responseData = await magentoApiRequestAllItems.call(
 								this,
@@ -733,7 +733,7 @@ export class Magento2 implements INodeType {
 							}
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							qs.search_criteria!.page_size = 100;
 							responseData = await magentoApiRequestAllItems.call(
 								this,

@@ -94,7 +94,7 @@ export async function prepareCustomFields(
 	jsonParameters = false,
 ): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
-	if (jsonParameters === true) {
+	if (jsonParameters) {
 		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields

@@ -424,7 +424,7 @@ export class Mautic implements INodeType {
 						Object.assign(body, rest);
 						responseData = await mauticApiRequest.call(this, 'POST', '/companies/new', body);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -536,7 +536,7 @@ export class Mautic implements INodeType {
 							body,
 						);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -546,7 +546,7 @@ export class Mautic implements INodeType {
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						responseData = await mauticApiRequest.call(this, 'GET', `/companies/${companyId}`);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -556,7 +556,7 @@ export class Mautic implements INodeType {
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs = Object.assign(qs, additionalFields);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mauticApiRequestAllItems.call(
 								this,
 								'companies',
@@ -575,7 +575,7 @@ export class Mautic implements INodeType {
 							responseData = responseData.companies;
 							responseData = Object.values(responseData);
 						}
-						if (simple === true) {
+						if (simple) {
 							//@ts-ignore
 							responseData = responseData.map((item) => item.fields.all);
 						}
@@ -590,7 +590,7 @@ export class Mautic implements INodeType {
 							`/companies/${companyId}/delete`,
 						);
 						responseData = responseData.company;
-						if (simple === true) {
+						if (simple) {
 							responseData = responseData.fields.all;
 						}
 					}
@@ -843,7 +843,7 @@ export class Mautic implements INodeType {
 							qs.orderBy = snakeCase(qs.orderBy as string);
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mauticApiRequestAllItems.call(
 								this,
 								'contacts',

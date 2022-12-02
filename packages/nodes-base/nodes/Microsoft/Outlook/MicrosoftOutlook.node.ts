@@ -359,7 +359,7 @@ export class MicrosoftOutlook implements INodeType {
 							}
 						}
 
-						if (send === true) {
+						if (send) {
 							await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
 						}
 
@@ -446,7 +446,7 @@ export class MicrosoftOutlook implements INodeType {
 
 						const endpoint = '/messages';
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -784,7 +784,7 @@ export class MicrosoftOutlook implements INodeType {
 						}
 
 						const endpoint = `/messages/${messageId}/attachments`;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -912,7 +912,7 @@ export class MicrosoftOutlook implements INodeType {
 							qs.$filter = additionalFields.filter;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',

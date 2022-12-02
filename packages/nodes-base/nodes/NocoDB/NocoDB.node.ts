@@ -411,7 +411,7 @@ export class NocoDB implements INodeType {
 							qs.fields = (qs.fields as IDataObject[]).join(',');
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -427,7 +427,7 @@ export class NocoDB implements INodeType {
 						);
 						returnData.push(...executionData);
 
-						if (downloadAttachments === true) {
+						if (downloadAttachments) {
 							const downloadFieldNames = (
 								this.getNodeParameter('downloadFieldNames', 0) as string
 							).split(',');
@@ -488,7 +488,7 @@ export class NocoDB implements INodeType {
 
 						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
-						if (downloadAttachments === true) {
+						if (downloadAttachments) {
 							const downloadFieldNames = (
 								this.getNodeParameter('downloadFieldNames', i) as string
 							).split(',');

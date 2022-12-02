@@ -323,7 +323,7 @@ export class MondayCom implements INodeType {
 							},
 						};
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i);

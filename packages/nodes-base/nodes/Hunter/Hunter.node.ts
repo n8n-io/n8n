@@ -304,7 +304,7 @@ export class Hunter implements INodeType {
 
 						// Make sure that the company information is there only once and
 						// the emails are combined underneath it.
-						if (onlyEmails === false) {
+						if (!onlyEmails) {
 							let tempReturnData: IDataObject = {};
 
 							for (let index = 0; index < responseData.length; index++) {
@@ -327,7 +327,7 @@ export class Hunter implements INodeType {
 						responseData = responseData.data;
 					}
 
-					if (onlyEmails === true) {
+					if (onlyEmails) {
 						let tempReturnData: IDataObject[] = [];
 
 						if (Array.isArray(responseData)) {

@@ -345,7 +345,7 @@ export class RabbitMQ implements INodeType {
 
 				const queuePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
@@ -375,7 +375,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
-						if (this.continueOnFail() !== true) {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error
@@ -412,7 +412,7 @@ export class RabbitMQ implements INodeType {
 
 				const exchangePromises = [];
 				for (let i = 0; i < items.length; i++) {
-					if (sendInputData === true) {
+					if (sendInputData) {
 						message = JSON.stringify(items[i].json);
 					} else {
 						message = this.getNodeParameter('message', i) as string;
@@ -444,7 +444,7 @@ export class RabbitMQ implements INodeType {
 				// @ts-ignore
 				promisesResponses.forEach((response: JsonObject) => {
 					if (response!.status !== 'fulfilled') {
-						if (this.continueOnFail() !== true) {
+						if (!this.continueOnFail()) {
 							throw new NodeApiError(this.getNode(), response);
 						} else {
 							// Return the actual reason as error

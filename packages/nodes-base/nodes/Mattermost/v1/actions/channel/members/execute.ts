@@ -18,7 +18,7 @@ export async function members(
 	const requestMethod = 'GET';
 	const endpoint = `channels/${channelId}/members`;
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 

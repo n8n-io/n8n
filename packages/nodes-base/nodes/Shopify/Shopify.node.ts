@@ -306,7 +306,7 @@ export class Shopify implements INodeType {
 							qs.fulfillment_status = options.fulfillmentStatus as string;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await shopifyApiRequestAllItems.call(
 								this,
 								'orders',
@@ -423,7 +423,7 @@ export class Shopify implements INodeType {
 
 						Object.assign(qs, additionalFields);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await shopifyApiRequestAllItems.call(
 								this,
 								'products',

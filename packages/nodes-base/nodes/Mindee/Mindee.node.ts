@@ -220,7 +220,7 @@ export class Mindee implements INodeType {
 								},
 							);
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {
@@ -294,7 +294,7 @@ export class Mindee implements INodeType {
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {

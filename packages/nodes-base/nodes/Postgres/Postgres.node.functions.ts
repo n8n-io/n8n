@@ -119,7 +119,7 @@ export async function pgQuery(
 						await t.any(allQueries[i].query, allQueries[i].values),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...items[i].json,
 						code: (err as JsonObject).code,
@@ -140,7 +140,7 @@ export async function pgQuery(
 						await t.any(allQueries[i].query, allQueries[i].values),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...items[i].json,
 						code: (err as JsonObject).code,
@@ -202,7 +202,7 @@ export async function pgQueryV2(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...items[i].json },
 						code: (err as JsonObject).code,
@@ -226,7 +226,7 @@ export async function pgQueryV2(
 					);
 					result.push(...executionData);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...items[i].json },
 						code: (err as JsonObject).code,
@@ -291,7 +291,7 @@ export async function pgInsert(
 				try {
 					result.push(await t.one(pgp.helpers.insert(itemCopy, cs) + returning));
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						...itemCopy,
 						code: (err as JsonObject).code,
@@ -313,7 +313,7 @@ export async function pgInsert(
 						result.push(insertResult);
 					}
 				} catch (err) {
-					if (continueOnFail === false) {
+					if (!continueOnFail) {
 						throw err;
 					}
 					result.push({
@@ -391,7 +391,7 @@ export async function pgInsertV2(
 						}),
 					);
 				} catch (err) {
-					if (continueOnFail === false) throw err;
+					if (!continueOnFail) throw err;
 					result.push({
 						json: { ...itemCopy },
 						code: (err as JsonObject).code,
@@ -418,7 +418,7 @@ export async function pgInsertV2(
 						result.push(...executionData);
 					}
 				} catch (err) {
-					if (continueOnFail === false) {
+					if (!continueOnFail) {
 						throw err;
 					}
 					result.push({
@@ -518,7 +518,7 @@ export async function pgUpdate(
 							),
 						);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -542,7 +542,7 @@ export async function pgUpdate(
 							),
 						);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -641,7 +641,7 @@ export async function pgUpdateV2(
 						);
 						result.push(...executionData);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							...itemCopy,
 							code: (err as JsonObject).code,
@@ -667,7 +667,7 @@ export async function pgUpdateV2(
 						);
 						result.push(...executionData);
 					} catch (err) {
-						if (continueOnFail === false) throw err;
+						if (!continueOnFail) throw err;
 						result.push({
 							json: { ...items[i].json },
 							code: (err as JsonObject).code,

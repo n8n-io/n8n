@@ -645,7 +645,7 @@ export class Redis implements INodeType {
 				}
 			}
 
-			if (expire === true) {
+			if (expire) {
 				const clientExpire = util.promisify(client.expire).bind(client);
 				await clientExpire(keyName, ttl);
 			}
@@ -763,7 +763,7 @@ export class Redis implements INodeType {
 								const clientIncr = util.promisify(client.incr).bind(client);
 								// @ts-ignore
 								const incrementVal = await clientIncr(keyIncr);
-								if (expire === true && ttl > 0) {
+								if (expire && ttl > 0) {
 									const clientExpire = util.promisify(client.expire).bind(client);
 									await clientExpire(keyIncr, ttl);
 								}

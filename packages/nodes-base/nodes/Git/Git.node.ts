@@ -341,7 +341,7 @@ export class Git implements INodeType {
 					const logOptions: LogOptions = {};
 
 					const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
-					if (returnAll === false) {
+					if (!returnAll) {
 						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100);
 					}
 					if (options.file) {

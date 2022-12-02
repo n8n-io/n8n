@@ -2206,7 +2206,7 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(qs, options);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							response = await googleApiRequestAllItems.call(
 								this,
 								'drives',
@@ -2435,7 +2435,7 @@ export class GoogleDrive implements INodeType {
 
 						let queryString = '';
 						const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
-						if (useQueryString === true) {
+						if (useQueryString) {
 							// Use the user defined query string
 							queryString = this.getNodeParameter('queryString', i) as string;
 						} else {
@@ -2514,7 +2514,7 @@ export class GoogleDrive implements INodeType {
 						let mimeType = 'text/plain';
 						let body;
 						let originalFilename: string | undefined;
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -2625,7 +2625,7 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							response = await googleApiRequest.call(
 								this,
 								'GET',

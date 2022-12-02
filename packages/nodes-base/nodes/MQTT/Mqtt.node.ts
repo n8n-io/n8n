@@ -126,7 +126,7 @@ export class Mqtt implements INodeType {
 
 					let client: mqtt.MqttClient;
 
-					if (ssl === false) {
+					if (!ssl) {
 						const clientOptions: mqtt.IClientOptions = {
 							port,
 							clean,
@@ -200,7 +200,7 @@ export class Mqtt implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
+		if (!ssl) {
 			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
@@ -241,7 +241,7 @@ export class Mqtt implements INodeType {
 					const options = this.getNodeParameter('options', i);
 
 					try {
-						if (sendInputData === true) {
+						if (sendInputData) {
 							message = JSON.stringify(items[i].json);
 						} else {
 							message = this.getNodeParameter('message', i) as string;

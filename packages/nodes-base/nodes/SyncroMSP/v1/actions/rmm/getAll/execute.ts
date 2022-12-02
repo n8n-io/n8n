@@ -24,7 +24,7 @@ export async function getAll(
 		qs.status = 'all';
 	}
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 

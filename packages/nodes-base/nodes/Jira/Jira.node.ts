@@ -1106,7 +1106,7 @@ export class Jira implements INodeType {
 						qs,
 					);
 					responseData = attachment;
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
@@ -1163,7 +1163,7 @@ export class Jira implements INodeType {
 					}
 
 					Object.assign(body, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });
@@ -1309,7 +1309,7 @@ export class Jira implements INodeType {
 						delete options.expand;
 					}
 					Object.assign(qs, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });

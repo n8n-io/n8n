@@ -519,7 +519,7 @@ export class Webhook implements INodeType {
 							if (binaryPropertyName.endsWith('[]')) {
 								binaryPropertyName = binaryPropertyName.slice(0, -2);
 							}
-							if (multiFile === true) {
+							if (multiFile) {
 								binaryPropertyName += fileCount++;
 							}
 							if (options.binaryPropertyName) {

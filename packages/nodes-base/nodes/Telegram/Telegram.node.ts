@@ -1981,7 +1981,7 @@ export class Telegram implements INodeType {
 
 				let responseData;
 
-				if (binaryData === true) {
+				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 					const itemBinaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
@@ -2018,7 +2018,7 @@ export class Telegram implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'get') {
-					if (this.getNodeParameter('download', i, false) === true) {
+					if (this.getNodeParameter('download', i, false)) {
 						const filePath = responseData.result.file_path;
 
 						const credentials = await this.getCredentials('telegramApi');

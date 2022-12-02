@@ -163,7 +163,7 @@ export function formatText(content: string) {
 }
 
 function getLink(text: { textLink: string; isLink: boolean }) {
-	if (text.isLink === true && text.textLink !== '') {
+	if (text.isLink && text.textLink !== '') {
 		return {
 			link: {
 				url: text.textLink,
@@ -207,10 +207,9 @@ function getTexts(
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						[text.mentionType]:
-							text.range === true
-								? { start: text.dateStart, end: text.dateEnd }
-								: { start: text.date, end: null },
+						[text.mentionType]: text.range
+							? { start: text.dateStart, end: text.dateEnd }
+							: { start: text.date, end: null },
 					},
 					annotations: text.annotationUi,
 				});
@@ -380,7 +379,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 }
 
 function getDateFormat(includeTime: boolean) {
-	if (includeTime === false) {
+	if (!includeTime) {
 		return 'yyyy-MM-DD';
 	}
 	return '';

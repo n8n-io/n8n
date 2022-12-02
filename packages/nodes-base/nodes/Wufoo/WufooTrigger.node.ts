@@ -203,7 +203,7 @@ export class WufooTrigger implements INodeType {
 			}
 		});
 
-		if (onlyAnswers === false) {
+		if (!onlyAnswers) {
 			returnObject = {
 				createdBy: req.body.CreatedBy as string,
 				entryId: req.body.EntryId as number,

@@ -585,7 +585,7 @@ export class GoogleCalendar implements INodeType {
 				);
 				returnData.push(...executionData);
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					const executionErrorData = this.helpers.constructExecutionMetaData(

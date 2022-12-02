@@ -241,7 +241,7 @@ export class Twilio implements INodeType {
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
 
-						if (toWhatsapp === true) {
+						if (toWhatsapp) {
 							body.From = `whatsapp:${body.From}`;
 							body.To = `whatsapp:${body.To}`;
 						}

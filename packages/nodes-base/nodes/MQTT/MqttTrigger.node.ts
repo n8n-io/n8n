@@ -97,7 +97,7 @@ export class MqttTrigger implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
+		if (!ssl) {
 			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,

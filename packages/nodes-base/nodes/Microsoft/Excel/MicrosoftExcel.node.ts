@@ -268,7 +268,7 @@ export class MicrosoftExcel implements INodeType {
 								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -330,7 +330,7 @@ export class MicrosoftExcel implements INodeType {
 								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -524,7 +524,7 @@ export class MicrosoftExcel implements INodeType {
 						if (filters.fields) {
 							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -586,7 +586,7 @@ export class MicrosoftExcel implements INodeType {
 						if (filters.fields) {
 							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',

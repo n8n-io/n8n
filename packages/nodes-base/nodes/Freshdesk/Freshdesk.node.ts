@@ -1310,7 +1310,7 @@ export class Freshdesk implements INodeType {
 								qs.include = (options.include as string[]).join(',');
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await freshdeskApiRequestAllItems.call(
 								this,
 								'GET',

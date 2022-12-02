@@ -286,7 +286,7 @@ export class Dropcontact implements INodeType {
 					}
 				}
 
-				if (simplify === false) {
+				if (!simplify) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 
 					const delay = async (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
