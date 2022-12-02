@@ -34,6 +34,7 @@ export class WorkflowPage extends BasePage {
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
+		canvasNodes: () => cy.getByTestId('canvas-node'),
 	};
 	actions = {
 		visit: () => {
