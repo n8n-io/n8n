@@ -22,12 +22,14 @@
 						{{ $locale.baseText('settings.ldap') }}
 					</n8n-heading>
 				</div>
-				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-					</template>
-				</n8n-info-tip>
-				<div>
+				<div :class="$style.docsInfoTip">
+					<n8n-info-tip theme="info" type="note">
+						<template>
+							<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+						</template>
+					</n8n-info-tip>
+				</div>
+				<div :class="$style.settingsForm">
 					<n8n-form-inputs
 						v-if="formInputs"
 						ref="ldapConfigForm"
@@ -62,69 +64,72 @@
 					/>
 				</div>
 			</div>
-			<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">User synchronization</n8n-heading>
-			<div :class="$style.syncTable">
-				<el-table
-					v-loading="loadingTable"
-					:border="true"
-					:stripe="true"
-					:data="dataTable"
-					:cell-style="cellClassStyle"
-					style="width: 100%"
-					height="250"
-					:key="tableKey"
-				>
-					<el-table-column
-						prop="status"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
+			<div v-show="loginEnabled">
+				<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{ $locale.baseText('settings.ldap.section.synchronization.title') }}</n8n-heading>
+				<div :class="$style.syncTable">
+					<el-table
+						v-loading="loadingTable"
+						:border="true"
+						:stripe="true"
+						:data="dataTable"
+						:cell-style="cellClassStyle"
+						style="width: 100%"
+						height="250"
+						:key="tableKey"
 					>
-					</el-table-column>
-					<el-table-column
-						prop="endedAt"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="runMode"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="runTime"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="details"
-						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
-					>
-					</el-table-column>
-					<template #append>
-					<infinite-loading
-						@infinite="getLdapSynchronizations"
-						force-use-infinite-wrapper=".el-table__body-wrapper"
-					>
-					</infinite-loading>
-				</template>
-				</el-table>
-			</div>
-			<div class="pb-3xl">
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.dryRun')"
-					type="secondary"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingDryRun"
-					@click="onDryRunClick"
-				/>
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.synchronizeNow')"
-					size="large"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingLiveRun"
-					@click="onLiveRunClick"
-				/>
+						<el-table-column
+							prop="status"
+							:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="endedAt"
+							:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="runMode"
+							:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="runTime"
+							:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="details"
+							:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
+						>
+						</el-table-column>
+						<template #empty>{{ $locale.baseText('settings.ldap.synchronizationTable.empty.message') }}</template>
+						<template #append>
+						<infinite-loading
+							@infinite="getLdapSynchronizations"
+							force-use-infinite-wrapper=".el-table__body-wrapper"
+						>
+						</infinite-loading>
+					</template>
+					</el-table>
+				</div>
+				<div class="pb-3xl">
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.dryRun')"
+						type="secondary"
+						size="large"
+						class="mr-s"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingDryRun"
+						@click="onDryRunClick"
+					/>
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.synchronizeNow')"
+						size="large"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingLiveRun"
+						@click="onLiveRunClick"
+					/>
+				</div>
 			</div>
 		</div>
 </template>
@@ -199,6 +204,7 @@ export default mixins(showMessage).extend({
 			readyToSubmit: false,
 			page: 0,
 			loginEnabled: false,
+			syncEnabled: false,
 		};
 	},
 	async mounted() {
@@ -237,6 +243,9 @@ export default mixins(showMessage).extend({
 		onInput(input: { name: string, value: string | number | boolean }) {
 			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 				this.loginEnabled = input.value;
+			}
+			if (input.name === 'synchronizationEnabled' && typeof input.value === 'boolean') {
+				this.syncEnabled = input.value;
 			}
 			this.hasAnyChanges = true;
 		},
@@ -329,7 +338,7 @@ export default mixins(showMessage).extend({
 				await this.settingsStore.testLdapConnection();
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTest'),
-					message: 'Connection succeeded',
+					message: this.$locale.baseText('settings.ldap.toast.connection.success'),
 					type: 'success',
 				});
 			} catch (error) {
@@ -348,7 +357,7 @@ export default mixins(showMessage).extend({
 				await this.settingsStore.runLdapSync({ type: 'dry' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
-					message: 'Synchronization succeded',
+					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
@@ -364,7 +373,7 @@ export default mixins(showMessage).extend({
 				await this.settingsStore.runLdapSync({ type: 'live' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
-					message: 'Synchronization succeded',
+					message: this.$locale.baseText('settings.ldap.toast.sync.success'),
 					type: 'success',
 				});
 			} catch (error) {
@@ -378,14 +387,15 @@ export default mixins(showMessage).extend({
 			try {
 				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.loginEnabled = this.adConfig.loginEnabled;
+				this.syncEnabled = this.adConfig.synchronizationEnabled;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
 						initialValue: this.adConfig.loginEnabled,
 						properties: {
 							type: 'toggle',
-							label: 'Enable LDAP Login',
-							tooltipText: 'Whether to allow n8n users to sign-in using LDAP.',
+							label: this.$locale.baseText('settings.ldap.form.loginEnabled.label'),
+							tooltipText: this.$locale.baseText('settings.ldap.form.loginEnabled.tooltip'),
 							required: true,
 						},
 					},
@@ -393,10 +403,10 @@ export default mixins(showMessage).extend({
 						name: 'loginLabel',
 						initialValue: this.adConfig.loginLabel,
 						properties: {
-							label: 'Login Label',
-							required: false,
-							placeholder: 'E.g.: LDAP Username or Email',
-							infoText: 'The placeholder text that appears in the login field on the login page.',
+							label: this.$locale.baseText('settings.ldap.form.loginLabel.label'),
+							required: true,
+							placeholder: this.$locale.baseText('settings.ldap.form.loginLabel.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.loginLabel.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -406,10 +416,11 @@ export default mixins(showMessage).extend({
 						name: 'serverAddress',
 						initialValue: this.adConfig.connectionUrl,
 						properties: {
-							label: 'LDAP Server Address',
+							label: this.$locale.baseText('settings.ldap.form.serverAddress.label'),
 							required: true,
 							capitalize: true,
-							infoText: 'IP or domain of the LDAP server.',
+							placeholder: this.$locale.baseText('settings.ldap.form.serverAddress.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.serverAddress.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -419,9 +430,9 @@ export default mixins(showMessage).extend({
 						name: 'port',
 						initialValue: this.adConfig.connectionPort,
 						properties: {
-							label: 'LDAP Server Port',
+							label: this.$locale.baseText('settings.ldap.form.port.label'),
 							capitalize: true,
-							infoText: 'The port used to connect to the LDAP server. Default 389.',
+							infoText: this.$locale.baseText('settings.ldap.form.port.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -432,7 +443,8 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.connectionSecurity,
 						properties: {
 							type: 'select',
-							label: 'Connection Security',
+							label: this.$locale.baseText('settings.ldap.form.connectionSecurity.label'),
+							infoText: this.$locale.baseText('settings.ldap.form.connectionSecurity.infoText'),
 							options: [
 								{
 									label: 'None',
@@ -459,7 +471,7 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.allowUnauthorizedCerts,
 						properties: {
 							type: 'toggle',
-							label: 'Ignore SSL/TLS Issues',
+							label: this.$locale.baseText('settings.ldap.form.allowUnauthorizedCerts.label'),
 							required: false,
 						},
 						shouldDisplay(values): boolean {
@@ -470,11 +482,11 @@ export default mixins(showMessage).extend({
 						name: 'baseDn',
 						initialValue: this.adConfig.baseDn,
 						properties: {
-							label: 'Base DN',
+							label: this.$locale.baseText('settings.ldap.form.baseDn.label'),
 							required: true,
 							capitalize: true,
-							infoText:
-								'Distinguished Name of the location where n8n should start its search for user in the AD/LDAP tree.',
+							placeholder: this.$locale.baseText('settings.ldap.form.baseDn.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.baseDn.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -485,7 +497,8 @@ export default mixins(showMessage).extend({
 						initialValue: 'admin',
 						properties: {
 							type: 'select',
-							label: 'Binding as',
+							label: this.$locale.baseText('settings.ldap.form.bindingType.label'),
+							infoText: this.$locale.baseText('settings.ldap.form.bindingType.infoText'),
 							options: [
 								{
 									value: 'admin',
@@ -505,9 +518,10 @@ export default mixins(showMessage).extend({
 						name: 'adminDn',
 						initialValue: this.adConfig.bindingAdminDn,
 						properties: {
-							label: 'Binding DN',
+							label: this.$locale.baseText('settings.ldap.form.adminDn.label'),
+							placeholder: this.$locale.baseText('settings.ldap.form.adminDn.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.adminDn.infoText'),
 							capitalize: true,
-							infoText: 'Distinguished Name of user used to perform the search.',
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
@@ -517,37 +531,25 @@ export default mixins(showMessage).extend({
 						name: 'adminPassword',
 						initialValue: this.adConfig.bindingAdminPassword,
 						properties: {
-							label: 'Binding Password',
+							label: this.$locale.baseText('settings.ldap.form.adminPassword.label'),
 							type: 'password',
 							capitalize: true,
-							infoText: 'Password of the user provided in the Binding DN field.',
+							infoText: this.$locale.baseText('settings.ldap.form.adminPassword.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 						},
 					},
 					{
-						name: 'filters',
-						properties: {
-							label: 'Filters',
-							type: 'info',
-							labelSize: 'large',
-							labelAlignment: 'left',
-						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
-					},
-					{
 						name: 'userFilter',
 						initialValue: this.adConfig.userFilter,
 						properties: {
-							label: 'User Filter',
+							label: this.$locale.baseText('settings.ldap.form.userFilter.label'),
 							type: 'text',
 							required: false,
 							capitalize: true,
-							infoText:
-								'LDAP query to use when searching for user. Only users returned by this filter will be allowed to sign-in in n8n.',
+							placeholder: this.$locale.baseText('settings.ldap.form.userFilter.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.userFilter.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -556,7 +558,7 @@ export default mixins(showMessage).extend({
 					{
 						name: 'attributeMappingInfo',
 						properties: {
-							label: 'Attribute Mapping',
+							label: this.$locale.baseText('settings.ldap.form.attributeMappingInfo.label'),
 							type: 'info',
 							labelSize: 'large',
 							labelAlignment: 'left',
@@ -569,12 +571,12 @@ export default mixins(showMessage).extend({
 						name: 'ldapId',
 						initialValue: this.adConfig.ldapIdAttribute,
 						properties: {
-							label: 'ID',
+							label: this.$locale.baseText('settings.ldap.form.ldapId.label'),
 							type: 'text',
 							required: true,
 							capitalize: true,
-							infoText:
-								'The atribute in the LDAP server used as a unique identifier in n8n. It shoud be an unique LDAP attribute like uid.',
+							placeholder: this.$locale.baseText('settings.ldap.form.ldapId.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.ldapId.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -584,12 +586,13 @@ export default mixins(showMessage).extend({
 						name: 'loginId',
 						initialValue: this.adConfig.loginIdAttribute,
 						properties: {
-							label: 'Login ID',
+							label: this.$locale.baseText('settings.ldap.form.loginId.label'),
 							type: 'text',
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
-							infoText: 'The attribute in the LDAP server used to log-in in n8n.',
+							placeholder: this.$locale.baseText('settings.ldap.form.loginId.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.loginId.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -599,12 +602,13 @@ export default mixins(showMessage).extend({
 						name: 'email',
 						initialValue: this.adConfig.emailAttribute,
 						properties: {
-							label: 'Email',
+							label: this.$locale.baseText('settings.ldap.form.email.label'),
 							type: 'text',
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
-							infoText: 'The attribute in the LDAP server used to populate the email in n8n.',
+							placeholder: this.$locale.baseText('settings.ldap.form.email.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.email.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -614,13 +618,13 @@ export default mixins(showMessage).extend({
 						name: 'firstName',
 						initialValue: this.adConfig.firstNameAttribute,
 						properties: {
-							label: 'First Name',
+							label: this.$locale.baseText('settings.ldap.form.firstName.label'),
 							type: 'text',
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
-							placeholder: 'givenName',
-							infoText: 'The attribute in the LDAP server used to populate the first name in n8n.',
+							placeholder: this.$locale.baseText('settings.ldap.form.firstName.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.firstName.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -630,25 +634,13 @@ export default mixins(showMessage).extend({
 						name: 'lastName',
 						initialValue: this.adConfig.lastNameAttribute,
 						properties: {
-							label: 'Last Name',
+							label: this.$locale.baseText('settings.ldap.form.lastName.label'),
 							type: 'text',
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
-							placeholder: 'sn',
-							infoText: 'The attribute in the LDAP server used to populate the last name in n8n.',
-						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
-					},
-					{
-						name: 'synchronizationInfo',
-						properties: {
-							label: 'Synchronization Info',
-							type: 'info',
-							labelSize: 'large',
-							labelAlignment: 'left',
+							placeholder: this.$locale.baseText('settings.ldap.form.lastName.placeholder'),
+							infoText: this.$locale.baseText('settings.ldap.form.lastName.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -659,8 +651,8 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.synchronizationEnabled,
 						properties: {
 							type: 'toggle',
-							label: 'Enable LDAP Synchronization',
-							tooltipText: 'Whether to enable background synchronizations.',
+							label: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.label'),
+							tooltipText: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.tooltip'),
 							required: true,
 						},
 						shouldDisplay(values): boolean {
@@ -671,9 +663,9 @@ export default mixins(showMessage).extend({
 						name: 'synchronizationInterval',
 						initialValue: this.adConfig.synchronizationInterval,
 						properties: {
-							label: 'Synchronization Interval (Minutes)',
+							label: this.$locale.baseText('settings.ldap.form.synchronizationInterval.label'),
 							type: 'text',
-							infoText: 'How often the synchronization should run.',
+							infoText: this.$locale.baseText('settings.ldap.form.synchronizationInterval.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return (
@@ -685,9 +677,9 @@ export default mixins(showMessage).extend({
 						name: 'pageSize',
 						initialValue: this.adConfig.searchPageSize,
 						properties: {
-							label: 'Page Size',
+							label: this.$locale.baseText('settings.ldap.form.pageSize.label'),
 							type: 'text',
-							infoText: 'Max number of records to return per page during synchronization. 0 for unlimited.',
+							infoText: this.$locale.baseText('settings.ldap.form.pageSize.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return (
@@ -699,9 +691,9 @@ export default mixins(showMessage).extend({
 						name: 'searchTimeout',
 						initialValue: this.adConfig.searchTimeout,
 						properties: {
-							label: 'Search Timeout (Seconds)',
+							label: this.$locale.baseText('settings.ldap.form.searchTimeout.label'),
 							type: 'text',
-							infoText: 'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
+							infoText: this.$locale.baseText('settings.ldap.form.searchTimeout.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return (
@@ -785,5 +777,17 @@ export default mixins(showMessage).extend({
 
 .sectionHeader {
 	margin-bottom: var(--spacing-s);
+}
+
+.settingsForm {
+	:global(.form-text) {
+		margin-top: var(--spacing-xl);
+	}
+}
+
+.docsInfoTip {
+	&, & > div {
+		margin-bottom: var(--spacing-xl);
+	}
 }
 </style>
