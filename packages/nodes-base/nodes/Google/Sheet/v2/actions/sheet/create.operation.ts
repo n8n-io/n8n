@@ -91,7 +91,7 @@ export async function execute(
 			continue;
 		}
 
-		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+		const options = this.getNodeParameter('options', i, {});
 		const properties = { ...options };
 		properties.title = sheetTitle;
 

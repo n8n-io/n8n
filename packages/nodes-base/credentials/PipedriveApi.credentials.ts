@@ -2,8 +2,11 @@ import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-work
 
 export class PipedriveApi implements ICredentialType {
 	name = 'pipedriveApi';
+
 	displayName = 'Pipedrive API';
+
 	documentationUrl = 'pipedrive';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',

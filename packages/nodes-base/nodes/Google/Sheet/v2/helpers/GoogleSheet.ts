@@ -16,6 +16,7 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
+
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
 	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
@@ -182,6 +183,43 @@ export class GoogleSheet {
 			'POST',
 			`/v4/spreadsheets/${this.id}/values:batchUpdate`,
 			body,
+		);
+
+		return response;
+	}
+
+	async appendEmptyRowsOrColumns(sheetId: string, rowsToAdd = 1, columnsToAdd = 1) {
+		const requests: IDataObject[] = [];
+
+		if (rowsToAdd > 0) {
+			requests.push({
+				appendDimension: {
+					sheetId,
+					dimension: 'ROWS',
+					length: rowsToAdd,
+				},
+			});
+		}
+
+		if (columnsToAdd > 0) {
+			requests.push({
+				appendDimension: {
+					sheetId,
+					dimension: 'COLUMNS',
+					length: columnsToAdd,
+				},
+			});
+		}
+
+		if (requests.length === 0) {
+			throw new Error('Must specify at least one column or row to add');
+		}
+
+		const response = await apiRequest.call(
+			this.executeFunctions,
+			'POST',
+			`/v4/spreadsheets/${this.id}:batchUpdate`,
+			{ requests },
 		);
 
 		return response;

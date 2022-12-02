@@ -141,7 +141,7 @@ export async function awsApiRequestSOAPAllItems(
 		);
 
 		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextMarker`)) {
-			query['Marker'] = get(
+			query.Marker = get(
 				responseData,
 				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextMarker`,
 			);

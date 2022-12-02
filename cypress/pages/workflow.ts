@@ -11,17 +11,11 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
-
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodeBox: (nodeDisplayName: string) => {
-			return cy
-				.getByTestId('canvas-node-box-title')
-				.contains(nodeDisplayName)
-				.parents('[data-test-id="canvas-node-box"]');
-		},
-
+		canvasNodes: () => cy.getByTestId('canvas-node'),
+		canvasNodeByName: (nodeName: string) => this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
@@ -33,6 +27,8 @@ export class WorkflowPage extends BasePage {
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
+		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
+		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
 	};
 	actions = {
 		visit: () => {
@@ -51,7 +47,10 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
 		},
 		openNodeNdv: (nodeTypeName: string) => {
-			this.getters.canvasNodeBox(nodeTypeName).dblclick();
+			this.getters.canvasNodeByName(nodeTypeName).dblclick();
+		},
+		openExpressionEditor: () => {
+			cy.get('input[value="expression"]').parent('label').click();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
@@ -93,6 +92,9 @@ export class WorkflowPage extends BasePage {
 				cy.get('body').type('{enter}');
 			});
 			cy.get('body').type('{enter}');
+		},
+		zoomToFit: () => {
+			cy.getByTestId('zoom-to-fit').click();
 		},
 	};
 }

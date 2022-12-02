@@ -19,12 +19,11 @@ export async function eventbriteApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {},
@@ -45,7 +44,7 @@ export async function eventbriteApiRequest(
 		if (authenticationMethod === 'privateKey') {
 			const credentials = await this.getCredentials('eventbriteApi');
 
-			options.headers!['Authorization'] = `Bearer ${credentials.apiKey}`;
+			options.headers!.Authorization = `Bearer ${credentials.apiKey}`;
 			return await this.helpers.request!(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
@@ -64,10 +63,9 @@ export async function eventbriteApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -78,8 +76,7 @@ export async function eventbriteApiRequestAllItems(
 		query.continuation = responseData.pagination.continuation;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.pagination !== undefined &&
-		responseData.pagination.has_more_items !== undefined &&
+		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false
 	);
 

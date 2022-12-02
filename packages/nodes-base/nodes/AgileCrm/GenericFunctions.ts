@@ -17,12 +17,10 @@ export async function agileCrmApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	sendAsForm?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const options: OptionsWithUri = {
@@ -60,12 +58,10 @@ export async function agileCrmApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	sendAsForm?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	// https://github.com/agilecrm/rest-api#11-listing-contacts-
 
@@ -101,11 +97,9 @@ export async function agileCrmApiRequestUpdate(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method = 'PUT',
 	endpoint?: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	_query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('agileCrmApi');
 	const baseUri = `https://${credentials.subdomain}.agilecrm.com/dev/`;
@@ -124,7 +118,7 @@ export async function agileCrmApiRequestUpdate(
 	};
 
 	const successfulUpdates = [];
-	let lastSuccesfulUpdateReturn: any; // tslint:disable-line:no-any
+	let lastSuccesfulUpdateReturn: any;
 	const payload: IContactUpdate = body;
 
 	try {
@@ -135,7 +129,6 @@ export async function agileCrmApiRequestUpdate(
 			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
-			// tslint:disable-next-line:no-any
 			payload.properties?.map((property: any) => {
 				successfulUpdates.push(`${property.name}`);
 			});
@@ -186,7 +179,6 @@ export async function agileCrmApiRequestUpdate(
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -200,9 +192,10 @@ export function validateJSON(json: string | undefined): any {
 export function getFilterRules(conditions: ISearchConditions[], matchType: string): IDataObject {
 	const rules = [];
 
+	// eslint-disable-next-line @typescript-eslint/no-for-in-array
 	for (const key in conditions) {
 		if (conditions.hasOwnProperty(key)) {
-			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
+			const searchConditions: ISearchConditions = conditions[key];
 			const rule: IFilterRules = {
 				LHS: searchConditions.field,
 				CONDITION: searchConditions.condition_type,

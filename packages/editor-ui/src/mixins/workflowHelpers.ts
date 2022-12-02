@@ -24,7 +24,7 @@ import {
 	IPinData,
 	IRunData,
 	IRunExecutionData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
@@ -271,7 +271,7 @@ export const workflowHelpers = mixins(
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
-				const workflowIssues: IWorfklowIssues = {};
+				const workflowIssues: IWorkflowIssues = {};
 
 				let checkNodes = Object.keys(workflow.nodes);
 				if (lastNodeName) {
@@ -335,10 +335,6 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | IVersionedNodeType> => {
-						// Does not get used in Workflow so no need to return it
-						return [];
-					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 						const nodeTypeDescription = this.nodeTypesStore.getNodeType(nodeType, version);
 
@@ -849,6 +845,7 @@ export const workflowHelpers = mixins(
 					this.uiStore.stateIsDirty = false;
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
+					this.getCurrentWorkflow(true); // refresh cache
 					return true;
 				} catch (e) {
 					this.uiStore.removeActiveAction('workflowSaving');

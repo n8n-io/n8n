@@ -1,6 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	eventID,
@@ -126,12 +126,12 @@ export class InvoiceNinjaTrigger implements INodeType {
 				}
 
 				if (apiVersion === 'v5') {
-					const registeredWebhooks = (await invoiceNinjaApiRequestAllItems.call(
+					const registeredWebhooks = await invoiceNinjaApiRequestAllItems.call(
 						this,
 						'data',
 						'GET',
 						'/webhooks',
-					)) as IDataObject[];
+					);
 
 					for (const webhook of registeredWebhooks) {
 						if (

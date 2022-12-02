@@ -13,13 +13,12 @@ export async function mailCheckApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('mailcheckApi');
 
@@ -42,10 +41,9 @@ export async function mailCheckApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.request!.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response?.body?.message) {
 			// Try to return the error prettier
 			throw new Error(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,

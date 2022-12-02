@@ -19,12 +19,11 @@ export async function sentryIoApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0);
 
@@ -71,7 +70,7 @@ export async function sentryIoApiRequest(
 			};
 
 			//@ts-ignore
-			return this.helpers.request(options);
+			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
 		}
@@ -84,10 +83,9 @@ export async function sentryApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

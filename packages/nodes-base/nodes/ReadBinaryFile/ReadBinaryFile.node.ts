@@ -58,7 +58,7 @@ export class ReadBinaryFile implements INodeType {
 
 				let data;
 				try {
-					data = (await fsReadFile(filePath)) as Buffer;
+					data = await fsReadFile(filePath);
 				} catch (error) {
 					if (error.code === 'ENOENT') {
 						throw new NodeOperationError(
