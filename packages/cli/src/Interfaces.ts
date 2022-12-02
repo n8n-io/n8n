@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
+import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -15,6 +15,7 @@ import {
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	LoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -22,13 +23,12 @@ import {
 
 import { WorkflowExecute } from 'n8n-core';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
-import { FeatureConfig } from './databases/entities/FeatureConfig';
+import type { FeatureConfig } from './databases/entities/FeatureConfig';
 import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
 import type { LdapConfig } from './Ldap/types';
 
@@ -62,10 +62,7 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: {
-		className: string;
-		sourcePath: string;
-	};
+	[key: string]: LoadingDetails;
 }
 
 export interface ICredentialsOverwrite {
@@ -96,15 +93,6 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
-}
-
-// ----------------------------------
-//            feature config
-// ----------------------------------
-
-export interface IFeatureConfigDb {
-	name: string;
-	data: string | LdapConfig;
 }
 
 // ----------------------------------
@@ -466,19 +454,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IN8nNodePackageJson {
-	name: string;
-	version: string;
-	n8n?: {
-		credentials?: string[];
-		nodes?: string[];
-	};
-	author?: {
-		name?: string;
-		email?: string;
-	};
-}
-
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -672,7 +647,7 @@ export interface IResponseCallbackData {
 	responseCode?: number;
 }
 
-export interface ITransferNodeTypes {
+export interface INodesTypeData {
 	[key: string]: {
 		className: string;
 		sourcePath: string;
@@ -720,10 +695,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
-	credentialsOverwrite: ICredentialsOverwrite;
-	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
-	nodeTypeData: ITransferNodeTypes;
 	userId: string;
 }
 

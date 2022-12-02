@@ -135,8 +135,8 @@
 </template>
 
 <script lang="ts">
-import { convertToDisplayDate } from '@/components/helpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { convertToDisplayDate } from '@/utils';
+import { showMessage } from '@/mixins/showMessage';
 import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -162,9 +162,9 @@ type FormValues = {
 	lastName: string;
 	firstName: string;
 	ldapId: string;
-	syncronizationEnabled: boolean;
+	synchronizationEnabled: boolean;
 	allowUnauthorizedCerts: boolean;
-	syncronizationInterval: number;
+	synchronizationInterval: number;
 	userFilter: string;
 	pageSize: number;
 	searchTimeout: number;
@@ -292,8 +292,8 @@ export default mixins(showMessage).extend({
 				loginIdAttribute: formInputs.values.loginId,
 				ldapIdAttribute: formInputs.values.ldapId,
 				userFilter: formInputs.values.userFilter,
-				syncronizationEnabled: formInputs.values.syncronizationEnabled,
-				syncronizationInterval: formInputs.values.syncronizationInterval,
+				synchronizationEnabled: formInputs.values.synchronizationEnabled,
+				synchronizationInterval: formInputs.values.synchronizationInterval,
 				searchPageSize: +formInputs.values.pageSize,
 				searchTimeout: formInputs.values.searchTimeout,
 			};
@@ -364,7 +364,7 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingDryRun = false;
-				await this.reloadLdapSyncronizations();
+				await this.reloadLdapSynchronizations();
 			}
 		},
 		async onLiveRunClick() {
@@ -380,7 +380,7 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
-				await this.reloadLdapSyncronizations();
+				await this.reloadLdapSynchronizations();
 			}
 		},
 		async getLdapConfig() {
@@ -647,8 +647,8 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'syncronizationEnabled',
-						initialValue: this.adConfig.syncronizationEnabled,
+						name: 'synchronizationEnabled',
+						initialValue: this.adConfig.synchronizationEnabled,
 						properties: {
 							type: 'toggle',
 							label: this.$locale.baseText('settings.ldap.form.syncronizationEnabled.label'),
@@ -660,8 +660,8 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'syncronizationInterval',
-						initialValue: this.adConfig.syncronizationInterval,
+						name: 'synchronizationInterval',
+						initialValue: this.adConfig.synchronizationInterval,
 						properties: {
 							label: this.$locale.baseText('settings.ldap.form.syncronizationInterval.label'),
 							type: 'text',
@@ -669,7 +669,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -683,7 +683,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -697,7 +697,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
+								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -725,7 +725,7 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.synchronizationError'));
 			}
 		},
-		async reloadLdapSyncronizations() {
+		async reloadLdapSynchronizations() {
 			try {
 				this.page = 0;
 				this.tableKey += 1;
@@ -791,4 +791,3 @@ export default mixins(showMessage).extend({
 	}
 }
 </style>
-

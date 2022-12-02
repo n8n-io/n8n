@@ -3,7 +3,7 @@ import {
 	IShareWorkflowsPayload,
 	IWorkflowsShareResponse,
 } from '@/Interface';
-import { makeRestApiRequest } from './helpers';
+import { makeRestApiRequest } from '@/utils';
 import {
 	IDataObject,
 } from 'n8n-workflow';

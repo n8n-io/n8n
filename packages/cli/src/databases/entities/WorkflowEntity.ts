@@ -101,6 +101,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	setHash(): void {
 		const { name, active, nodes, connections, settings, staticData, pinData } = this;
 
+		// Workflow listing page does not request the `connections` column, so we can use this for `undefined` to avoid generating hashes for all the workflows.
+		if (!connections) return;
+
 		const state = JSON.stringify({
 			name,
 			active,

@@ -1,5 +1,5 @@
 import {ILdapConfig, ILdapSyncData, IRestApiContext} from "@/Interface";
-import {makeRestApiRequest} from "@/api/helpers";
+import { makeRestApiRequest } from '@/utils';
 import { IDataObject } from "n8n-workflow";
 
 export function getLdapConfig(context: IRestApiContext): Promise<ILdapConfig> {
@@ -18,6 +18,6 @@ export function runLdapSync(context: IRestApiContext, data: IDataObject): Promis
 	return makeRestApiRequest(context, 'POST', '/ldap/sync', data as unknown as IDataObject);
 }
 
-export function getLdapSyncronizations(context: IRestApiContext, pagination: { page: number }): Promise<ILdapSyncData[]> {
+export function getLdapSynchronizations(context: IRestApiContext, pagination: { page: number }): Promise<ILdapSyncData[]> {
 	return makeRestApiRequest(context, 'GET', '/ldap/sync', pagination);
 }

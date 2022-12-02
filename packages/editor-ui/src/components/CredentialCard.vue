@@ -2,7 +2,6 @@
 	<n8n-card
 		:class="$style['card-link']"
 		@click="onClick"
-		data-test-id="credential-card"
 	>
 			<template #prepend>
 				<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
@@ -44,7 +43,7 @@ import mixins from 'vue-typed-mixins';
 import {ICredentialsResponse, IUser} from "@/Interface";
 import {ICredentialType} from "n8n-workflow";
 import {EnterpriseEditionFeature} from '@/constants';
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import CredentialIcon from '@/components/CredentialIcon.vue';
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import dateformat from "dateformat";

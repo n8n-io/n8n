@@ -1,5 +1,6 @@
 import { BasePage } from "./base";
 
+// todo rename to setup
 export class SignupPage extends BasePage {
 	url = '/setup';
 	getters = {
@@ -9,5 +10,6 @@ export class SignupPage extends BasePage {
 		lastName: () => cy.getByTestId('lastName'),
 		password: () => cy.getByTestId('password'),
 		submit: () => cy.get('button'),
+		skip: () => cy.get('a'),
 	}
 }

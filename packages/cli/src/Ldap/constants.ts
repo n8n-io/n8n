@@ -51,8 +51,8 @@ export const LDAP_DEFAULT_CONFIGURATION = {
 	loginIdAttribute: '',
 	ldapIdAttribute: '',
 	userFilter: '',
-	syncronizationEnabled: false,
-	syncronizationInterval: 60,
+	synchronizationEnabled: false,
+	synchronizationInterval: 60,
 	searchPageSize: 0,
 	searchTimeout: 60,
 };
@@ -106,10 +106,10 @@ export const LDAP_CONFIG_SCHEMA = {
 		loginLabel: {
 			type: 'string',
 		},
-		syncronizationEnabled: {
+		synchronizationEnabled: {
 			type: 'boolean',
 		},
-		syncronizationInterval: {
+		synchronizationInterval: {
 			type: 'number',
 		},
 		searchPageSize: {
@@ -135,8 +135,8 @@ export const LDAP_CONFIG_SCHEMA = {
 		'loginIdAttribute',
 		'ldapIdAttribute',
 		'userFilter',
-		'syncronizationEnabled',
-		'syncronizationInterval',
+		'synchronizationEnabled',
+		'synchronizationInterval',
 		'searchPageSize',
 		'searchTimeout',
 	],
@@ -150,8 +150,8 @@ export const NON_SENSIBLE_LDAP_CONFIG_PROPERTIES: Array<keyof LdapConfig> = [
 	'lastNameAttribute',
 	'loginIdAttribute',
 	'ldapIdAttribute',
-	'syncronizationEnabled',
-	'syncronizationInterval',
+	'synchronizationEnabled',
+	'synchronizationInterval',
 	'searchPageSize',
 	'searchTimeout',
 	'loginLabel',

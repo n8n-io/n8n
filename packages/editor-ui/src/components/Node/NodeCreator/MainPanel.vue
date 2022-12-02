@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import { PropType } from 'vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';

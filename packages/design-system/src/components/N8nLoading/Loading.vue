@@ -36,16 +36,15 @@
 </template>
 
 <script lang="ts">
-import ElSkeleton from 'element-ui/lib/skeleton';
-import ElSkeletonItem from 'element-ui/lib/skeleton-item';
+import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
 
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-loading',
 	components: {
-		ElSkeleton, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElSkeletonItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSkeleton,
+		ElSkeletonItem,
 	},
 	props: {
 		animated: {

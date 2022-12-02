@@ -100,8 +100,8 @@
 <script lang="ts">
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
@@ -114,7 +114,6 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';

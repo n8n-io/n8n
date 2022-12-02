@@ -48,7 +48,7 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 			.digest('hex');
 	}
 
-	// currently only LDAP users during syncronization
+	// currently only LDAP users during synchronization
 	// can be set to disabled
 	if (user?.disabled) {
 		throw new ResponseHelper.AuthError('Unauthorized');

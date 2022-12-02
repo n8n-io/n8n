@@ -64,6 +64,7 @@
 								<n8n-select
 									v-model="sortBy"
 									size="medium"
+									data-test-id="resources-list-sort"
 								>
 									<n8n-option value="lastUpdated" :label="$locale.baseText(`${resourceKey}.sort.lastUpdated`)"/>
 									<n8n-option value="lastCreated" :label="$locale.baseText(`${resourceKey}.sort.lastCreated`)"/>
@@ -97,12 +98,12 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0">
-						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs">
+					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0" data-test-id="resources-list">
+						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs" data-test-id="resources-list-item">
 							<slot :data="resource" />
 						</li>
 					</ul>
-					<n8n-text color="text-base" size="medium" v-else>
+					<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 						{{ $locale.baseText(`${resourceKey}.noResults`) }}
 						<template v-if="shouldSwitchToAllSubview">
 							<span v-if="!filters.search">
@@ -122,7 +123,7 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
+import {showMessage} from '@/mixins/showMessage';
 import {IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
@@ -131,7 +132,7 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue, {PropType} from "vue";
-import {debounceHelper} from '@/components/mixins/debounce';
+import {debounceHelper} from '@/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import { mapStores } from 'pinia';

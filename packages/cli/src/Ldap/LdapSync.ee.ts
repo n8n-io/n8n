@@ -8,7 +8,7 @@ import {
 	getLdapUserRole,
 	mapLdapUserToDbUser,
 	processUsers,
-	saveLdapSyncronization,
+	saveLdapSynchronization,
 	createFilter,
 	resolveBinaryAttributes,
 	getLdapIds,
@@ -32,17 +32,17 @@ export class LdapSync {
 	 */
 	set config(config: LdapConfig) {
 		this._config = config;
-		// If user disabled syncronization in the UI and there a job schedule,
+		// If user disabled synchronization in the UI and there a job schedule,
 		// stop it
-		if (this.intervalId && !this._config.syncronizationEnabled) {
+		if (this.intervalId && !this._config.synchronizationEnabled) {
 			this.stop();
 			// If instance crashed with a job scheduled, once the server starts
 			// again, reschedule it.
-		} else if (!this.intervalId && this._config.syncronizationEnabled) {
+		} else if (!this.intervalId && this._config.synchronizationEnabled) {
 			this.scheduleRun();
 			// If job scheduled and the run interval got updated in the UI
 			// stop the current one and schedule a new one with the new internal
-		} else if (this.intervalId && this._config.syncronizationEnabled) {
+		} else if (this.intervalId && this._config.synchronizationEnabled) {
 			this.stop();
 			this.scheduleRun();
 		}
@@ -57,21 +57,21 @@ export class LdapSync {
 	}
 
 	/**
-	 * Schedule a syncronization job based
+	 * Schedule a synchronization job based
 	 * on the interval set in the LDAP config
 	 * @returns void
 	 */
 	scheduleRun(): void {
-		if (!this._config.syncronizationInterval) {
+		if (!this._config.synchronizationInterval) {
 			throw new Error('Interval variable has to be defined');
 		}
 		this.intervalId = setInterval(async () => {
 			await this.run(RunningMode.LIVE);
-		}, this._config.syncronizationInterval * 60000);
+		}, this._config.synchronizationInterval * 60000);
 	}
 
 	/**
-	 * Run the syncronization job.
+	 * Run the synchronization job.
 	 * If the job runs in "live" mode,
 	 * changes to LDAP users are persisted
 	 * in the database, else the users are
@@ -80,7 +80,7 @@ export class LdapSync {
 	 * @returns Promise
 	 */
 	async run(mode: RunningMode): Promise<void> {
-		Logger.debug(`LDAP - Starting a syncronization run in ${mode} mode`);
+		Logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
 		let adUsers: Entry[] = [];
 
@@ -142,8 +142,8 @@ export class LdapSync {
 			}
 		}
 
-		const syncronization = new ADSync();
-		Object.assign(syncronization, {
+		const synchronization = new ADSync();
+		Object.assign(synchronization, {
 			startedAt,
 			endedAt,
 			created: usersToCreate.length,
@@ -155,7 +155,7 @@ export class LdapSync {
 			error: errorMessage,
 		});
 
-		await saveLdapSyncronization(syncronization);
+		await saveLdapSynchronization(synchronization);
 
 		void InternalHooksManager.getInstance().onLdapSyncFinished({
 			type: !this.intervalId ? 'scheduled' : `manual_${mode}`,
@@ -164,7 +164,7 @@ export class LdapSync {
 			error: errorMessage,
 		});
 
-		Logger.debug(`LDAP - Syncronization finished successfully`);
+		Logger.debug(`LDAP - Synchronization finished successfully`);
 	}
 
 	/**

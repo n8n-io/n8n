@@ -1,6 +1,6 @@
 import express from 'express';
 import { LdapManager } from '../LdapManager.ee';
-import { getLdapConfig, getLdapSyncronizations, updateLdapConfig } from '../helpers';
+import { getLdapConfig, getLdapSynchronizations, updateLdapConfig } from '../helpers';
 import type { LdapConfiguration } from '../types';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import pick from 'lodash.pick';
@@ -73,6 +73,6 @@ ldapController.post('/sync', async (req: LdapConfiguration.Sync, res: express.Re
  */
 ldapController.get('/sync', async (req: LdapConfiguration.GetSync, res: express.Response) => {
 	const { page = '0', perPage = '20' } = req.query;
-	const data = await getLdapSyncronizations(parseInt(page, 10), parseInt(perPage, 10));
+	const data = await getLdapSynchronizations(parseInt(page, 10), parseInt(perPage, 10));
 	return res.status(200).json({ data });
 });

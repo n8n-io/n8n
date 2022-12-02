@@ -4,7 +4,7 @@ import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { v4 as uuid } from 'uuid';
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -12,16 +12,19 @@ const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
-	beforeEach(() => {
-		cy.signup(username, firstName, lastName, password);
+	before(() => {
+		cy.resetAll();
+		cy.setup({ email, firstName, lastName, password });
+	});
 
+	beforeEach(() => {
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 
 			return false;
 		})
 
-		cy.signin(username, password);
+		cy.signin({ email, password });
 		cy.visit(WorkflowsPage.url);
 	});
 

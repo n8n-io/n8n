@@ -1,7 +1,7 @@
 // Vitest Snapshot v1
 
-exports[`components > N8nBadge > props > should render default theme correctly 1`] = `"<span class=\\"n8n-badge _default_1xljn_9 _badge_1xljn_1\\"><n8n-text-stub bold=\\"true\\" size=\\"large\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">Default badge</n8n-text-stub></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render default theme correctly 1`] = `"<span class=\\"n8n-badge _default_1j57f_9 _badge_1j57f_1\\"><n8n-text-stub bold=\\"true\\" size=\\"large\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">Default badge</n8n-text-stub></n8n-text-stub></span>"`;
 
-exports[`components > N8nBadge > props > should render secondary theme correctly 1`] = `"<span class=\\"n8n-badge _secondary_1xljn_25 _badge_1xljn_1\\"><n8n-text-stub size=\\"medium\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">Secondary badge</n8n-text-stub></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render secondary theme correctly 1`] = `"<span class=\\"n8n-badge _secondary_1j57f_25 _badge_1j57f_1\\"><n8n-text-stub size=\\"medium\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">Secondary badge</n8n-text-stub></n8n-text-stub></span>"`;
 
-exports[`components > N8nBadge > props > should render with default values correctly 1`] = `"<span class=\\"n8n-badge _default_1xljn_9 _badge_1xljn_1\\"><n8n-text-stub size=\\"small\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">A Badge</n8n-text-stub></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render with default values correctly 1`] = `"<span class=\\"n8n-badge _default_1j57f_9 _badge_1j57f_1\\"><n8n-text-stub size=\\"small\\" compact=\\"true\\" tag=\\"span\\"><n8n-text-stub size=\\"medium\\" tag=\\"span\\">A Badge</n8n-text-stub></n8n-text-stub></span>"`;

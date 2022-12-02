@@ -48,7 +48,7 @@ export async function mailjetApiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function mailjetApiRequestAllItems(

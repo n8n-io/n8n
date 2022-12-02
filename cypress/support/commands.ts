@@ -27,6 +27,7 @@
 import { WorkflowsPage, SigninPage, SignupPage } from "../pages";
 import { N8N_AUTH_COOKIE } from "../constants";
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
@@ -51,7 +52,7 @@ Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypre
 
 Cypress.Commands.add(
 	'signin',
-	(email, password) => {
+	({ email, password }) => {
 		const signinPage = new SigninPage();
 		const workflowsPage = new WorkflowsPage();
 
@@ -74,7 +75,7 @@ Cypress.Commands.add(
 		});
 });
 
-Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
 	cy.visit(signupPage.url);
@@ -93,3 +94,37 @@ Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
 		});
 	});
 })
+
+Cypress.Commands.add('skipSetup', () => {
+	const signupPage = new SignupPage();
+	const workflowsPage = new WorkflowsPage();
+	const Confirmation = new MessageBox();
+
+	cy.visit(signupPage.url);
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			if (url.endsWith(signupPage.url)) {
+				signupPage.getters.skip().click();
+
+
+				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
+				Confirmation.actions.confirm();
+
+				// we should be redirected to /workflows
+				cy.url().should('include', workflowsPage.url);
+			} else {
+				cy.log('User already signed up');
+			}
+		});
+	});
+})
+
+Cypress.Commands.add('resetAll', () => {
+	cy.task('reset');
+	Cypress.session.clearAllSavedSessions();
+});
+
+Cypress.Commands.add('setupOwner', (payload) => {
+	cy.task('setup-owner', payload);
+});

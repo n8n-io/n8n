@@ -9,6 +9,7 @@
 				size="medium"
 				:active="hasFilters"
 				:class="[$style['filter-button'], 'ml-2xs']"
+				data-test-id="resources-list-filters-trigger"
 			>
 				<n8n-badge
 					v-show="filtersLength > 0"
@@ -20,7 +21,10 @@
 				{{ $locale.baseText('forms.resourceFiltersDropdown.filters') }}
 			</n8n-button>
 		</template>
-		<div :class="$style['filters-dropdown']">
+		<div
+			:class="$style['filters-dropdown']"
+			data-test-id="resources-list-filters-dropdown"
+		>
 			<slot :filters="value" :setKeyValue="setKeyValue" />
 			<enterprise-edition class="mb-s" :features="[EnterpriseEditionFeature.Sharing]" v-if="shareable">
 				<n8n-input-label
@@ -34,7 +38,7 @@
 					:users="ownedByUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:value="value.ownedBy"
-					size="small"
+					size="medium"
 					@input="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
@@ -50,7 +54,7 @@
 					:users="sharedWithUsers"
 					:currentUserId="usersStore.currentUser.id"
 					:value="value.sharedWith"
-					size="small"
+					size="medium"
 					@input="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
@@ -159,6 +163,7 @@ export default Vue.extend({
 
 .filters-dropdown {
 	width: 280px;
+	padding-bottom: var(--spacing-s);
 }
 
 .filters-dropdown-footer {

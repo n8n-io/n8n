@@ -9,7 +9,10 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { RoleService } from '@/role/role.service';
 import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
-import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
+import type {
+	CredentialUsedByWorkflow,
+	WorkflowWithSharingsAndCredentials,
+} from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
@@ -82,9 +85,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerAndSharings(
-		workflow: WorkflowWithSharingsAndCredentials,
-	): WorkflowWithSharingsAndCredentials {
+	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
 		workflow.usedCredentials = [];
@@ -101,16 +102,14 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 
 		delete workflow.shared;
-
-		return workflow;
 	}
 
 	static async addCredentialsToWorkflow(
 		workflow: WorkflowWithSharingsAndCredentials,
 		currentUser: User,
-	): Promise<WorkflowWithSharingsAndCredentials> {
+	): Promise<void> {
 		workflow.usedCredentials = [];
-		const userCredentials = await EECredentials.getAll(currentUser);
+		const userCredentials = await EECredentials.getAll(currentUser, { disableGlobalRole: true });
 		const credentialIdsUsedByWorkflow = new Set<number>();
 		workflow.nodes.forEach((node) => {
 			if (!node.credentials) {
@@ -129,19 +128,29 @@ export class EEWorkflowsService extends WorkflowsService {
 			where: {
 				id: In(Array.from(credentialIdsUsedByWorkflow)),
 			},
+			relations: ['shared', 'shared.user', 'shared.role'],
 		});
 		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id.toString();
-			workflow.usedCredentials?.push({
+			const workflowCredential: CredentialUsedByWorkflow = {
 				id: credential.id.toString(),
 				name: credential.name,
 				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
+				sharedWith: [],
+				ownedBy: null,
+			};
+			credential.shared?.forEach(({ user, role }) => {
+				const { id, email, firstName, lastName } = user;
+				if (role.name === 'owner') {
+					workflowCredential.ownedBy = { id, email, firstName, lastName };
+				} else {
+					workflowCredential.sharedWith?.push({ id, email, firstName, lastName });
+				}
 			});
+			workflow.usedCredentials?.push(workflowCredential);
 		});
-
-		return workflow;
 	}
 
 	static validateCredentialPermissionsToUser(

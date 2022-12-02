@@ -1,5 +1,5 @@
 import { createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
-import { getLdapConfig, getLdapSyncronizations, runLdapSync, testLdapConnection, updateLdapConfig } from "@/api/ldap";
+import { getLdapConfig, getLdapSynchronizations, runLdapSync, testLdapConnection, updateLdapConfig } from "@/api/ldap";
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from "@/api/settings";
 import { testHealthEndpoint } from "@/api/templates";
 import { CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, STORES, VALUE_SURVEY_MODAL_KEY } from "@/constants";
@@ -239,9 +239,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const rootStore = useRootStore();
 			return await getLdapConfig(rootStore.getRestApiContext);
 		},
-		async getLdapSyncronizations(pagination: { page: number }) {
+		async getLdapSynchronizations(pagination: { page: number }) {
 			const rootStore = useRootStore();
-			return await getLdapSyncronizations(rootStore.getRestApiContext, pagination);
+			return await getLdapSynchronizations(rootStore.getRestApiContext, pagination);
 		},
 		async testLdapConnection() {
 			const rootStore = useRootStore();

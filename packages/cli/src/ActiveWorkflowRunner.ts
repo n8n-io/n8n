@@ -86,7 +86,7 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -401,7 +401,6 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Adds all the webhooks of the workflow
-	 *
 	 */
 	async addWorkflowWebhooks(
 		workflow: Workflow,
@@ -462,7 +461,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhooksDeregistrationOnShutdown is enabled,
@@ -487,7 +486,10 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
+					error = new Error(
+						`The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`,
+						{ cause: error },
+					);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;

@@ -91,7 +91,7 @@ import {
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '../constants';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 
