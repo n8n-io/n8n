@@ -270,8 +270,8 @@ export class Zendesk implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developer.zendesk.com/api-reference/ticketing/introduction/
 				if (resource === 'ticket') {
 					//https://developer.zendesk.com/rest_api/docs/support/tickets

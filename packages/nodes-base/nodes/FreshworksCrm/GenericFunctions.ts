@@ -49,7 +49,7 @@ export async function getAllItemsViewId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ fromLoadOptions } = { fromLoadOptions: false },
 ) {
-	let resource = this.getNodeParameter('resource', 0) as string;
+	let resource = this.getNodeParameter('resource', 0);
 	let keyword = 'All';
 
 	if (resource === 'account' || fromLoadOptions) {

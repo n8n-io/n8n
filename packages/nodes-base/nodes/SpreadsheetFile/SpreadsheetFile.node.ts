@@ -296,7 +296,7 @@ export class SpreadsheetFile implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		const newItems: INodeExecutionData[] = [];
 

@@ -235,8 +235,8 @@ export class Mocean implements INodeType {
 			body = {};
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', itemIndex, '') as string;
-				operation = this.getNodeParameter('operation', itemIndex, '') as string;
+				resource = this.getNodeParameter('resource', itemIndex, '');
+				operation = this.getNodeParameter('operation', itemIndex, '');
 				text = this.getNodeParameter('message', itemIndex, '') as string;
 				requestMethod = 'POST';
 				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
