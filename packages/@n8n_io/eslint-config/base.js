@@ -132,7 +132,7 @@ const config = (module.exports = {
 		/**
 		 * https://eslint.org/docs/latest/rules/sort-imports
 		 */
-		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided
+		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
 
 		// ----------------------------------
 		//        @typescript-eslint
@@ -305,7 +305,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
 		 */
-		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases
+		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
 
 		// ----------------------------------
 		//       eslint-plugin-import
