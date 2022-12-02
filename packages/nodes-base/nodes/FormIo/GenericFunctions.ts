@@ -72,7 +72,7 @@ export async function formIoApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!.call(this, options);
+		return this.helpers.request!.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

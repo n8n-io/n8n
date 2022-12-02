@@ -108,7 +108,7 @@ export class Marketstack implements INodeType {
 						) as EndOfDayDataFilters;
 
 						validateTimeOptions.call(this, [
-							latest !== undefined && latest !== false,
+							latest !== undefined && latest,
 							specificDate !== undefined,
 							dateFrom !== undefined && dateTo !== undefined,
 						]);

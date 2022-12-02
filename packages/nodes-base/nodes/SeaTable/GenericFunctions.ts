@@ -4,12 +4,7 @@ import { OptionsWithUri } from 'request';
 
 import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	TDtableMetadataColumns,
-	TDtableViewColumns,
-	TEndpointResolvedExpr,
-	TEndpointVariableName,
-} from './types';
+import { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
 
@@ -63,7 +58,7 @@ export async function seaTableApiRequest(
 
 	try {
 		//@ts-ignore
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -197,7 +192,7 @@ const uniquePredicate = (current: string, index: number, all: string[]) =>
 	all.indexOf(current) === index;
 const nonInternalPredicate = (name: string) => !Object.keys(schema.internalNames).includes(name);
 const namePredicate = (name: string) => (named: IName) => named.name === name;
-export const nameOfPredicate = (names: ReadonlyArray<IName>) => (name: string) =>
+export const nameOfPredicate = (names: readonly IName[]) => (name: string) =>
 	names.find(namePredicate(name));
 
 export function columnNamesToArray(columnNames: string): string[] {
@@ -227,7 +222,7 @@ export function rowsSequence(rows: IRow[]) {
 	const l = rows.length;
 	if (l) {
 		const [first] = rows;
-		if (first && first._seq !== undefined) {
+		if (first?._seq !== undefined) {
 			return;
 		}
 	}
@@ -314,7 +309,7 @@ export const dtableSchemaColumns = (columns: TDtableMetadataColumns): TDtableMet
 export const updateAble = (columns: TDtableMetadataColumns): TDtableMetadataColumns =>
 	columns.filter(dtableSchemaIsUpdateAbleColumn);
 
-function endpointCtxExpr(this: void, ctx: ICtx, endpoint: string): string {
+function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	const endpointVariables: IEndpointVariables = {};
 	endpointVariables.access_token = ctx?.base?.access_token;
 	endpointVariables.dtable_uuid = ctx?.base?.dtable_uuid;
@@ -324,7 +319,7 @@ function endpointCtxExpr(this: void, ctx: ICtx, endpoint: string): string {
 		(match: string, expr: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
-	) as TEndpointResolvedExpr;
+	);
 }
 
 const normalize = (subject: string): string => (subject ? subject.normalize() : '');

@@ -180,7 +180,7 @@ export class Iterable implements INodeType {
 
 					responseData = await iterableApiRequest.call(this, 'POST', '/users/update', body);
 
-					if (this.continueOnFail() === false) {
+					if (!this.continueOnFail()) {
 						if (responseData.code !== 'Success') {
 							throw new NodeOperationError(
 								this.getNode(),
@@ -212,7 +212,7 @@ export class Iterable implements INodeType {
 
 					responseData = await iterableApiRequest.call(this, 'DELETE', endpoint);
 
-					if (this.continueOnFail() === false) {
+					if (!this.continueOnFail()) {
 						if (responseData.code !== 'Success') {
 							throw new NodeApiError(this.getNode(), responseData);
 						}
@@ -241,7 +241,7 @@ export class Iterable implements INodeType {
 
 					responseData = await iterableApiRequest.call(this, 'GET', endpoint, {}, qs);
 
-					if (this.continueOnFail() === false) {
+					if (!this.continueOnFail()) {
 						if (Object.keys(responseData).length === 0) {
 							throw new NodeApiError(this.getNode(), responseData, {
 								message: `User not found`,

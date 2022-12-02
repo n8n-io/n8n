@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -73,7 +72,7 @@ export class WriteBinaryFile implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
-				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				const options = this.getNodeParameter('options', 0, {});
 
 				const flag = options.append ? 'a' : 'w';
 
@@ -121,7 +120,7 @@ export class WriteBinaryFile implements INodeType {
 
 				// Add the file name to data
 
-				(newItem.json as IDataObject).fileName = fileName;
+				newItem.json.fileName = fileName;
 
 				returnData.push(newItem);
 			} catch (error) {

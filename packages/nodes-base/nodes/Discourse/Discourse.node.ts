@@ -143,7 +143,7 @@ export class Discourse implements INodeType {
 
 						responseData = responseData.category_list.categories;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -203,7 +203,7 @@ export class Discourse implements INodeType {
 
 						responseData = responseData.groups;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -273,7 +273,7 @@ export class Discourse implements INodeType {
 						}
 						responseData.push(lastPost);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -381,7 +381,7 @@ export class Discourse implements INodeType {
 							qs,
 						);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

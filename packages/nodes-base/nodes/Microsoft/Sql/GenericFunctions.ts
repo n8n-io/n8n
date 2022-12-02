@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { ITables } from './TableInterface';
 
@@ -60,10 +61,13 @@ export function createTableStruct(
  * @param {function} buildQueryQueue function that builds the queue of promises
  */
 
-export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): Promise<any[]> {
+export async function executeQueryQueue(
+	tables: ITables,
+	buildQueryQueue: Function,
+): Promise<any[]> {
 	return Promise.all(
-		Object.keys(tables).map((table) => {
-			const columnsResults = Object.keys(tables[table]).map((columnString) => {
+		Object.keys(tables).map(async (table) => {
+			const columnsResults = Object.keys(tables[table]).map(async (columnString) => {
 				return Promise.all(
 					buildQueryQueue({
 						table,

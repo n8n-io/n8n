@@ -73,14 +73,14 @@ export async function microsoftApiRequestAllItemsSkip(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query['$top'] = 100;
-	query['$skip'] = 0;
+	query.$top = 100;
+	query.$skip = 0;
 
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
-		query['$skip'] += query['$top'];
+		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['value'].length !== 0);
+	} while (responseData.value.length !== 0);
 
 	return returnData;
 }

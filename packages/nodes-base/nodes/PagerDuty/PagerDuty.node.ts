@@ -278,12 +278,12 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options', 0);
 						if (options.userIds) {
-							options.userIds = (options.userIds as string).split(',') as string[];
+							options.userIds = (options.userIds as string).split(',');
 						}
 						if (options.teamIds) {
-							options.teamIds = (options.teamIds as string).split(',') as string[];
+							options.teamIds = (options.teamIds as string).split(',');
 						}
 						if (options.include) {
 							options.include = (options.include as string[]).map((e) => snakeCase(e));

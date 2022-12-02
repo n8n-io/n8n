@@ -116,6 +116,7 @@ export class GoogleDocs implements INodeType {
 			...documentFields,
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the drives to display them to user so that he can
@@ -195,6 +196,7 @@ export class GoogleDocs implements INodeType {
 			},
 		},
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
@@ -241,11 +243,11 @@ export class GoogleDocs implements INodeType {
 						if (simple) {
 							const content = (responseData.body.content as IDataObject[])
 								.reduce((arr: string[], contentItem) => {
-									if (contentItem && contentItem.paragraph) {
+									if (contentItem?.paragraph) {
 										const texts = (
 											(contentItem.paragraph as IDataObject).elements as IDataObject[]
 										).map((element) => {
-											if (element && element.textRun) {
+											if (element?.textRun) {
 												return (element.textRun as IDataObject).content as string;
 											}
 										}) as string[];
@@ -491,7 +493,7 @@ export class GoogleDocs implements INodeType {
 							body,
 						);
 
-						if (simple === true) {
+						if (simple) {
 							if (Object.keys(responseData.replies[0]).length !== 0) {
 								const key = Object.keys(responseData.replies[0])[0];
 								responseData = responseData.replies[0][key];

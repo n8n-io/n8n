@@ -239,6 +239,7 @@ export class Dropcontact implements INodeType {
 			},
 		],
 	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const entryData = this.getInputData();
 		const resource = this.getNodeParameter('resource', 0);
@@ -249,7 +250,7 @@ export class Dropcontact implements INodeType {
 
 		if (resource === 'contact') {
 			if (operation === 'enrich') {
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const data = [];
 				const simplify = this.getNodeParameter('simplify', 0) as boolean;
 
@@ -285,10 +286,10 @@ export class Dropcontact implements INodeType {
 					}
 				}
 
-				if (simplify === false) {
+				if (!simplify) {
 					const waitTime = this.getNodeParameter('options.waitTime', 0, 45) as number;
 
-					const delay = (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
+					const delay = async (ms: any) => new Promise((res) => setTimeout(res, ms * 1000));
 					await delay(waitTime);
 					responseData = await dropcontactApiRequest.call(
 						this,

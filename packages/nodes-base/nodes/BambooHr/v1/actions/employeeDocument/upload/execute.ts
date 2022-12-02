@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IBinaryData, IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
+import { IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -31,7 +31,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 
 	const item = items[index].binary as IBinaryKeyData;
 
-	const binaryData = item[propertyNameUpload] as IBinaryData;
+	const binaryData = item[propertyNameUpload];
 
 	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, propertyNameUpload);
 

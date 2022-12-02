@@ -1023,7 +1023,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.resolveWithFullResponse = true;
 			}
 
-			if (redirect?.redirect?.followRedirects !== false) {
+			if (redirect?.redirect?.followRedirects) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
@@ -1032,7 +1032,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
-			if (response?.response?.neverError === true) {
+			if (response?.response?.neverError) {
 				requestOptions.simple = false;
 			}
 
@@ -1222,7 +1222,7 @@ export class HttpRequestV3 implements INodeType {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
-				requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -1232,14 +1232,14 @@ export class HttpRequestV3 implements INodeType {
 				};
 			}
 
-			if (requestOptions.headers!['accept'] === undefined) {
+			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
-					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+					requestOptions.headers!.accept = 'application/json,text/*;q=0.99';
 				} else if (responseFormat === 'text') {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
 				} else {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
@@ -1298,7 +1298,7 @@ export class HttpRequestV3 implements INodeType {
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error).toString();
 					}
@@ -1327,7 +1327,7 @@ export class HttpRequestV3 implements INodeType {
 				'autodetect',
 			) as string;
 
-			const fullResponse = this.getNodeParameter(
+			fullResponse = this.getNodeParameter(
 				'options.response.response.fullResponse',
 				0,
 				false,
@@ -1380,7 +1380,7 @@ export class HttpRequestV3 implements INodeType {
 
 				const fileName = url.split('/').pop();
 
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1411,7 +1411,7 @@ export class HttpRequestV3 implements INodeType {
 					0,
 					'data',
 				) as string;
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1477,6 +1477,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					if (Array.isArray(response)) {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

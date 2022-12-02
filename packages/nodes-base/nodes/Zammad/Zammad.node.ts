@@ -352,7 +352,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -383,7 +383,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -438,10 +438,10 @@ export class Zammad implements INodeType {
 
 						responseData = await zammadApiRequestAllItems
 							.call(this, 'GET', '/users/search', {}, qs, limit)
-							.then((responseData) => {
-								return responseData.map((user) => {
-									const { _preferences, ...rest } = user;
-									return rest;
+							.then((response) => {
+								return response.map((user) => {
+									const { _preferences, ...data } = user;
+									return data;
 								});
 							});
 					} else if (operation === 'getSelf') {
@@ -475,7 +475,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -504,7 +504,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -575,7 +575,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -604,7 +604,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);

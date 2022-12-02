@@ -105,7 +105,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -235,7 +235,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -370,7 +370,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -502,7 +502,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}

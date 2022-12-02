@@ -9,7 +9,9 @@ import {
 
 export class VenafiTlsProtectDatacenterApi implements ICredentialType {
 	name = 'venafiTlsProtectDatacenterApi';
+
 	displayName = 'Venafi TLS Protect Datacenter API';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Domain',

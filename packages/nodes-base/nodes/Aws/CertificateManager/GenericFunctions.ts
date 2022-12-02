@@ -77,7 +77,7 @@ export async function awsApiRequestAllItems(
 			const data = jsonParse<any>(body as string, {
 				errorMessage: 'Response body is not valid JSON',
 			});
-			data['NextToken'] = responseData.NextToken;
+			data.NextToken = responseData.NextToken;
 		}
 		returnData.push.apply(returnData, get(responseData, propertyName));
 	} while (responseData.NextToken !== undefined);

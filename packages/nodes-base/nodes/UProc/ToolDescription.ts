@@ -60,7 +60,7 @@ let parameters = [];
 //all tools
 for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
-	for (const param of (tool as IDataObject).p as IDataObject[]) {
+	for (const param of tool.p as IDataObject[]) {
 		const displayName = param.n as string;
 		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, ' '));
 		const description = `The "${capitalizedDisplayName}" value to use as a parameter for this Operation`;

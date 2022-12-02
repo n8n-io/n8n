@@ -501,9 +501,9 @@ export class Jenkins implements INodeType {
 					if (operation === 'triggerParams') {
 						const job = this.getNodeParameter('job', i) as string;
 						const params = this.getNodeParameter('param.params', i, []) as [];
-						let body = {};
+						let form = {};
 						if (params.length) {
-							body = params.reduce((body: IDataObject, param: { name: string; value: string }) => {
+							form = params.reduce((body: IDataObject, param: { name: string; value: string }) => {
 								body[param.name] = param.value;
 								return body;
 							}, {});
@@ -516,7 +516,7 @@ export class Jenkins implements INodeType {
 							{},
 							{},
 							{
-								form: body,
+								form,
 								headers: {
 									'content-type': 'application/x-www-form-urlencoded',
 								},

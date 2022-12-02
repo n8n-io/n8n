@@ -170,9 +170,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 							const subjectAltNamesByType: ISubjectAltNamesByType = {};
 
 							body.isVaaSGenerated = true;
-							body.applicationServerTypeId = applicationServerTypeId as string;
+							body.applicationServerTypeId = applicationServerTypeId;
 
-							csrAttributes.commonName = commonName as string;
+							csrAttributes.commonName = commonName;
 
 							// Csr Generation
 							if (additionalFields.organization) {

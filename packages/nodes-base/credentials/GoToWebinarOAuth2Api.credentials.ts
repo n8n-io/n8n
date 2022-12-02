@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GoToWebinarOAuth2Api implements ICredentialType {
 	name = 'goToWebinarOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'GoToWebinar OAuth2 API';
+
 	documentationUrl = 'goToWebinar';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

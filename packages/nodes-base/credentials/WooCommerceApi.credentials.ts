@@ -8,8 +8,11 @@ import {
 
 export class WooCommerceApi implements ICredentialType {
 	name = 'wooCommerceApi';
+
 	displayName = 'WooCommerce API';
+
 	documentationUrl = 'wooCommerce';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Consumer Key',
@@ -39,6 +42,7 @@ export class WooCommerceApi implements ICredentialType {
 				'Whether credentials should be included in the query. Occasionally, some servers may not parse the Authorization header correctly (if you see a “Consumer key is missing” error when authenticating over SSL, you have a server issue). In this case, you may provide the consumer key/secret as query string parameters instead.',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -57,6 +61,7 @@ export class WooCommerceApi implements ICredentialType {
 		}
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}/wp-json/wc/v3',

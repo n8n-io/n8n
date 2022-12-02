@@ -39,7 +39,7 @@ export async function addTemplateComponents(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, 'template.components', components);
+	set(requestOptions.body as IDataObject, 'template.components', components);
 	return requestOptions;
 }
 
@@ -100,9 +100,13 @@ export async function mediaUploadFromItem(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, `${operation}.id`, result.id);
+	set(requestOptions.body as IDataObject, `${operation}.id`, result.id);
 	if (operation === 'document') {
-		set(requestOptions.body as {}, `${operation}.filename`, mediaFileName || binaryFileName);
+		set(
+			requestOptions.body as IDataObject,
+			`${operation}.filename`,
+			mediaFileName || binaryFileName,
+		);
 	}
 
 	return requestOptions;
@@ -117,8 +121,8 @@ export async function templateInfo(
 	if (!requestOptions.body) {
 		requestOptions.body = {};
 	}
-	set(requestOptions.body as {}, 'template.name', name);
-	set(requestOptions.body as {}, 'template.language.code', language);
+	set(requestOptions.body as IDataObject, 'template.name', name);
+	set(requestOptions.body as IDataObject, 'template.language.code', language);
 	return requestOptions;
 }
 
@@ -187,7 +191,7 @@ export async function componentsRequest(
 		requestOptions.body = {};
 	}
 
-	set(requestOptions.body as {}, 'template.components', componentsRet);
+	set(requestOptions.body as IDataObject, 'template.components', componentsRet);
 
 	return requestOptions;
 }
@@ -203,7 +207,7 @@ export async function cleanPhoneNumber(
 		requestOptions.body = {};
 	}
 
-	set(requestOptions.body as {}, 'to', phoneNumber);
+	set(requestOptions.body as IDataObject, 'to', phoneNumber);
 
 	return requestOptions;
 }

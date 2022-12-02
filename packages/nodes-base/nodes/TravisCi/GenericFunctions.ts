@@ -71,6 +71,6 @@ export async function travisciApiRequestAllItems(
 			query = Object.fromEntries(parsedPath);
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['@pagination']['is_last'] !== true);
+	} while (responseData['@pagination'].is_last !== true);
 	return returnData;
 }

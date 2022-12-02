@@ -96,8 +96,7 @@ export function validateJSON(input: any): object {
 
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	newItem = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;

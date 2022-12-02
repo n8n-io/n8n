@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -273,7 +272,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -291,7 +290,6 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 
 								let postUrl = '';
 								if (version === 1) {
@@ -300,9 +298,17 @@ export class NocoDB implements INodeType {
 									postUrl = '/api/v1/db/storage/upload';
 								}
 
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}
@@ -387,8 +393,8 @@ export class NocoDB implements INodeType {
 							endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
 						}
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						qs = this.getNodeParameter('options', i, {}) as IDataObject;
+						returnAll = this.getNodeParameter('returnAll', 0);
+						qs = this.getNodeParameter('options', i, {});
 
 						if (qs.sort) {
 							const properties = (qs.sort as IDataObject).property as Array<{
@@ -404,7 +410,7 @@ export class NocoDB implements INodeType {
 							qs.fields = (qs.fields as IDataObject[]).join(',');
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -420,7 +426,7 @@ export class NocoDB implements INodeType {
 						);
 						returnData.push(...executionData);
 
-						if (downloadAttachments === true) {
+						if (downloadAttachments) {
 							const downloadFieldNames = (
 								this.getNodeParameter('downloadFieldNames', 0) as string
 							).split(',');
@@ -481,7 +487,7 @@ export class NocoDB implements INodeType {
 
 						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
-						if (downloadAttachments === true) {
+						if (downloadAttachments) {
 							const downloadFieldNames = (
 								this.getNodeParameter('downloadFieldNames', i) as string
 							).split(',');
@@ -526,7 +532,7 @@ export class NocoDB implements INodeType {
 			}
 
 			if (operation === 'update') {
-				let requestMethod = 'PATCH';
+				requestMethod = 'PATCH';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
@@ -576,7 +582,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -594,16 +600,23 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 								let postUrl = '';
 								if (version === 1) {
 									postUrl = '/dashboard';
 								} else if (version === 2) {
 									postUrl = '/api/v1/db/storage/upload';
 								}
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}

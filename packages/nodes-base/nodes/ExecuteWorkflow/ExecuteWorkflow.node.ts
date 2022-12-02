@@ -156,7 +156,7 @@ export class ExecuteWorkflow implements INodeType {
 
 				let workflowJson;
 				try {
-					workflowJson = (await fsReadFile(workflowPath, { encoding: 'utf8' })) as string;
+					workflowJson = await fsReadFile(workflowPath, { encoding: 'utf8' });
 				} catch (error) {
 					if (error.code === 'ENOENT') {
 						throw new NodeOperationError(

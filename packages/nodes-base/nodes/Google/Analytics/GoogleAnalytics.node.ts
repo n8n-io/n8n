@@ -215,7 +215,7 @@ export class GoogleAnalytics implements INodeType {
 							Object.assign(body, { hideTotals: additionalFields.hideTotals });
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'reports',
@@ -235,9 +235,9 @@ export class GoogleAnalytics implements INodeType {
 							responseData = responseData.reports;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							responseData = simplify(responseData);
-						} else if (returnAll === true && responseData.length > 1) {
+						} else if (returnAll && responseData.length > 1) {
 							responseData = merge(responseData);
 						}
 					}

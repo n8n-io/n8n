@@ -44,7 +44,7 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
@@ -89,7 +89,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await elasticSecurityApiRequestAllItems.call(

@@ -39,7 +39,7 @@ export async function autopilotApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -64,7 +64,7 @@ export async function autopilotApiRequestAllItems(
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && returnData.length >= query.limit && returnAll === false) {
+		if (query.limit && returnData.length >= query.limit && !returnAll) {
 			return returnData;
 		}
 	} while (responseData.bookmark !== undefined);

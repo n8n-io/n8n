@@ -43,7 +43,7 @@ export async function gitlabApiRequest(
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
 
-			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'gitlabOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -71,6 +71,6 @@ export async function gitlabApiRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }
