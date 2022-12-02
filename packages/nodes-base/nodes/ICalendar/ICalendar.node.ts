@@ -300,7 +300,7 @@ export class ICalendar implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		if (operation === 'createEventFile') {
 			for (let i = 0; i < length; i++) {
 				const title = this.getNodeParameter('title', i) as string;

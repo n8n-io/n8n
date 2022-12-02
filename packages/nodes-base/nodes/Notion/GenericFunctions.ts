@@ -82,7 +82,7 @@ export async function notionApiRequestAllItems(
 	query: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
 
 	const returnData: IDataObject[] = [];
 

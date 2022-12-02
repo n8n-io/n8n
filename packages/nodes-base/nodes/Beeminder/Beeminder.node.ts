@@ -296,8 +296,8 @@ export class Beeminder implements INodeType {
 		const length = items.length;
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let results;
 
 		for (let i = 0; i < length; i++) {
