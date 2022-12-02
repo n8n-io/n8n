@@ -134,7 +134,7 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
 		name: LDAP_FEATURE_NAME,
 	});
-	const configurationData = configuration.data as LdapConfig;
+	const configurationData = configuration.data;
 	configurationData.bindingAdminPassword = await decryptPassword(
 		configurationData.bindingAdminPassword,
 	);

@@ -151,7 +151,6 @@
     "lodash.set": "^4.3.2",
     "lodash.split": "^4.4.2",
     "lodash.unset": "^4.5.2",
-    "mustache": "^4.2.0",
     "mysql2": "~2.3.0",
     "n8n-core": "~0.144.0",
     "n8n-editor-ui": "~0.170.0",

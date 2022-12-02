@@ -28,7 +28,7 @@ import type { FindOperator, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
-import { FeatureConfig } from './databases/entities/FeatureConfig';
+import type { FeatureConfig } from './databases/entities/FeatureConfig';
 import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
 import type { LdapConfig } from './Ldap/types';
 
@@ -93,15 +93,6 @@ export interface IWebhookDb {
 	node: string;
 	webhookId?: string;
 	pathLength?: number;
-}
-
-// ----------------------------------
-//            feature config
-// ----------------------------------
-
-export interface IFeatureConfigDb {
-	name: string;
-	data: string | LdapConfig;
 }
 
 // ----------------------------------
