@@ -446,8 +446,8 @@ export class Jira implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 		if (resource === 'issue') {
@@ -1066,7 +1066,7 @@ export class Jira implements INodeType {
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
 						returnData[index]['binary'] = {};
 
@@ -1120,7 +1120,7 @@ export class Jira implements INodeType {
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
 						returnData[index]['binary'] = {};
 						//@ts-ignore

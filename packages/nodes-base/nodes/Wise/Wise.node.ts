@@ -167,8 +167,8 @@ export class Wise implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const timezone = this.getTimezone();
 
@@ -252,7 +252,7 @@ export class Wise implements INodeType {
 							const data = await wiseApiRequest.call(this, 'GET', endpoint, {}, qs, {
 								encoding: 'arraybuffer',
 							});
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
@@ -476,7 +476,7 @@ export class Wise implements INodeType {
 								{},
 								{ encoding: 'arraybuffer' },
 							);
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							items[i].binary = items[i].binary ?? {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(

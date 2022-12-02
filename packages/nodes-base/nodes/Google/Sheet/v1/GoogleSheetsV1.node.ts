@@ -102,8 +102,8 @@ export class GoogleSheetsV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		if (resource === 'sheet') {
 			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;

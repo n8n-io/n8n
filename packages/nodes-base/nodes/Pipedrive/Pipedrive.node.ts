@@ -4034,8 +4034,8 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let customProperties: ICustomProperties | undefined;
 		if (
