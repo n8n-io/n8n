@@ -1,36 +1,35 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 export class CreateLdapEntities1666304975928 implements MigrationInterface {
 	name = 'CreateLdapEntities1666304975928';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query('PRAGMA foreign_keys=OFF');
 
 		await queryRunner.query(
 			`CREATE TABLE "temporary_user" (
-				"id" varchar PRIMARY KEY NOT NULL,
-				"email" varchar(255),
-				"firstName" varchar(32),
-				"lastName" varchar(32),
-				"password" varchar,
-				"resetPasswordToken" varchar,
-				"resetPasswordTokenExpiration" integer DEFAULT NULL,
-				"ldapId" varchar DEFAULT NULL,
-				"signInType" varchar DEFAULT email,
-				"personalizationAnswers" text,
-				"createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"globalRoleId" integer NOT NULL,
-				"settings" text,
-				"apiKey" varchar DEFAULT NULL,
+				"id" VARCHAR PRIMARY KEY NOT NULL,
+				"email" VARCHAR(255) UNIQUE,
+				"firstName" VARCHAR(32),
+				"lastName" VARCHAR(32),
+				"password" VARCHAR,
+				"resetPasswordToken" VARCHAR,
+				"resetPasswordTokenExpiration" INTEGER DEFAULT NULL,
+				"ldapId" VARCHAR(60) UNIQUE DEFAULT NULL,
+				"signInType" VARCHAR(20) DEFAULT email,
+				"personalizationAnswers" TEXT,
+				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+				"globalRoleId" INTEGER NOT NULL,
+				"settings" TEXT,
+				"apiKey" VARCHAR DEFAULT NULL,
 				"disabled" boolean DEFAULT false,
-				CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+				FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
 		);
 
 		await queryRunner.query(
@@ -69,11 +68,12 @@ export class CreateLdapEntities1666304975928 implements MigrationInterface {
 
 		await queryRunner.query(`ALTER TABLE "temporary_user" RENAME TO "${tablePrefix}user"`);
 
+		await queryRunner.query('PRAGMA foreign_keys=ON');
+
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}feature_config" (
-				"name"	TEXT,
-				"data"	TEXT NOT NULL DEFAULT '{}',
-				PRIMARY KEY("name")
+				"name" VARCHAR(30) PRIMARY KEY,
+				"data" TEXT NOT NULL DEFAULT '{}'
 			);`,
 		);
 
@@ -86,32 +86,83 @@ export class CreateLdapEntities1666304975928 implements MigrationInterface {
 
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ldap_sync_history" (
-				"id"	INTEGER,
-				"startedAt"	datetime NOT NULL,
-				"endedAt"	datetime NOT NULL,
-				"created"	INTEGER NOT NULL,
-				"updated"	INTEGER NOT NULL,
-				"disabled"	INTEGER NOT NULL,
-				"scanned"	INTEGER NOT NULL,
-				"status"	TEXT NOT NULL,
+				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
+				"startedAt" DATETIME NOT NULL,
+				"endedAt" DATETIME NOT NULL,
+				"created" INTEGER NOT NULL,
+				"updated" INTEGER NOT NULL,
+				"disabled" INTEGER NOT NULL,
+				"scanned" INTEGER NOT NULL,
+				"status" TEXT NOT NULL,
 				"runMode" TEXT NOT NULL,
-				"error" TEXT,
-				PRIMARY KEY("id" AUTOINCREMENT)
+				"error" TEXT
 			);`,
-		);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
-
-		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}fe663198593311ed9b6a0242ac120002" ON "${tablePrefix}user" ("ldapId")`,
-		);
-
-		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}26aa9f72593411ed9b6a0242ac120002" ON "${tablePrefix}user" ("email")`,
 		);
 
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {}
+	async down(queryRunner: QueryRunner): Promise<void> {
+		const tablePrefix = getTablePrefix();
+		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
+		await queryRunner.query(`DROP TABLE ${tablePrefix}feature_config`);
+
+		await queryRunner.query('PRAGMA foreign_keys=OFF');
+
+		await queryRunner.query(
+			`CREATE TABLE "temporary_user" (
+				"id" VARCHAR PRIMARY KEY NOT NULL,
+				"email" VARCHAR(255) UNIQUE,
+				"firstName" VARCHAR(32),
+				"lastName" VARCHAR(32),
+				"password" VARCHAR,
+				"resetPasswordToken" VARCHAR,
+				"resetPasswordTokenExpiration" INTEGER DEFAULT NULL,
+				"personalizationAnswers" TEXT,
+				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
+				"globalRoleId" INTEGER NOT NULL,
+				"settings" TEXT,
+				"apiKey" VARCHAR DEFAULT NULL,
+				FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+		);
+
+		await queryRunner.query(
+			`INSERT INTO "temporary_user"(
+				"id",
+				"email",
+				"firstName",
+				"lastName",
+				"password",
+				"resetPasswordToken",
+				"resetPasswordTokenExpiration",
+				"personalizationAnswers",
+				"createdAt",
+				"updatedAt",
+				"globalRoleId",
+				"settings",
+				"apiKey"
+				) SELECT
+				"id",
+				"email",
+				"firstName",
+				"lastName",
+				"password",
+				"resetPasswordToken",
+				"resetPasswordTokenExpiration",
+				"personalizationAnswers",
+				"createdAt",
+				"updatedAt",
+				"globalRoleId",
+				"settings",
+				"apiKey"
+				FROM "${tablePrefix}user"`,
+		);
+
+		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);
+
+		await queryRunner.query(`ALTER TABLE "temporary_user" RENAME TO "${tablePrefix}user"`);
+
+		await queryRunner.query('PRAGMA foreign_keys=ON');
+	}
 }
