@@ -68,7 +68,7 @@ export class Strapi implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = (await credential.data) as IDataObject;
+				const credentials = credential.data as IDataObject;
 				let options = {} as OptionsWithUri;
 
 				options = {

@@ -575,7 +575,7 @@ export class EmailReadImapV1 implements INodeType {
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(async () => {
 				Logger.verbose('Forcing reconnection of IMAP node.');
-				await connection.end();
+				connection.end();
 				connection = await establishConnection();
 				await connection.openBox(mailbox);
 			}, (options.forceReconnect as number) * 1000 * 60);
@@ -586,7 +586,7 @@ export class EmailReadImapV1 implements INodeType {
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			await connection.end();
+			connection.end();
 		}
 
 		// Resolve returned-promise so that waiting errors can be emitted

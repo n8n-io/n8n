@@ -511,7 +511,7 @@ export class Redis implements INodeType {
 					redisOptions.password = credentials.password as string;
 				}
 				try {
-					const client = await redis.createClient(redisOptions);
+					const client = redis.createClient(redisOptions);
 					// tslint:disable-next-line: no-any
 					const _data = await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
@@ -742,6 +742,7 @@ export class Redis implements INodeType {
 								}
 
 								for (const keyName of keys) {
+									// eslint-disable-next-line @typescript-eslint/await-thenable
 									item.json[keyName] = await promises[keyName];
 								}
 								returnItems.push(item);

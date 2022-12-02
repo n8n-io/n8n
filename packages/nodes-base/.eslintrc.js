@@ -19,7 +19,7 @@ module.exports = {
 		'import/no-extraneous-dependencies': 'off',
 
 		// '@typescript-eslint/array-type': 'off',
-		'@typescript-eslint/await-thenable': 'off',
+		// '@typescript-eslint/await-thenable': 'off',
 		'@typescript-eslint/ban-types': 'off',
 		'@typescript-eslint/default-param-last': 'off',
 		'@typescript-eslint/dot-notation': 'off',

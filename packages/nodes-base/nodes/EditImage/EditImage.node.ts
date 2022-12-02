@@ -1305,7 +1305,7 @@ export class EditImage implements INodeType {
 				returnData.push(
 					await new Promise<INodeExecutionData>((resolve, reject) => {
 						gmInstance.toBuffer(async (error: Error | null, buffer: Buffer) => {
-							cleanupFunctions.forEach(async (cleanup) => await cleanup());
+							cleanupFunctions.forEach(async (cleanup) => cleanup());
 
 							if (error) {
 								return reject(error);
