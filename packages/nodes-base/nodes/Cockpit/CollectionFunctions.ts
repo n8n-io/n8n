@@ -8,7 +8,6 @@ export async function createCollectionEntry(
 	resourceName: string,
 	data: IDataObject,
 	id?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {
 		data,
@@ -28,7 +27,6 @@ export async function getAllCollectionEntries(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	options: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {};
 

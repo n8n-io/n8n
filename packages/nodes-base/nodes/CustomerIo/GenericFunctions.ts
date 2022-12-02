@@ -46,7 +46,6 @@ export function eventExists(currentEvents: string[], webhookEvents: IDataObject)
 	return true;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

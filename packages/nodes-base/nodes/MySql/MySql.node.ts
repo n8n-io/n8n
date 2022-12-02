@@ -278,7 +278,7 @@ export class MySql implements INodeType {
 		const credentials = await this.getCredentials('mySql');
 		const connection = await createConnection(credentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
@@ -337,7 +337,7 @@ export class MySql implements INodeType {
 					.map((_item) => insertPlaceholder)
 					.join(',')};`;
 				const queryItems = insertItems.reduce(
-					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+					(collection, item) => collection.concat(Object.values(item as any)),
 					[],
 				);
 

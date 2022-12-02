@@ -102,7 +102,7 @@ export function throwOnMissingSharingGroup(this: IExecuteFunctions, fields: IDat
 
 const isValidUrl = (str: string) => {
 	try {
-		new URL(str); // tslint:disable-line: no-unused-expression
+		new URL(str);
 		return true;
 	} catch (error) {
 		return false;

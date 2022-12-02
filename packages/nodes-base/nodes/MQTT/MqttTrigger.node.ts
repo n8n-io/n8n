@@ -140,7 +140,6 @@ export class MqttTrigger implements INodeType {
 							reject(err);
 						}
 						client.on('message', (topic: string, message: Buffer | string) => {
-							// tslint:disable-line:no-any
 							let result: IDataObject = {};
 
 							message = message.toString() as string;

@@ -72,8 +72,8 @@ export class Box implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -226,7 +226,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
@@ -460,7 +460,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {

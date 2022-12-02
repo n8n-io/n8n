@@ -82,7 +82,7 @@ export class UProc implements INodeType {
 		const dataWebhook = additionalOptions.dataWebhook as string;
 
 		interface LooseObject {
-			[key: string]: any; // tslint:disable-line:no-any
+			[key: string]: any;
 		}
 
 		const fields = toolParameters

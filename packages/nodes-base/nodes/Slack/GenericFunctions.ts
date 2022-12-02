@@ -20,7 +20,6 @@ export async function slackApiRequest(
 	query: object = {},
 	headers: {} | undefined = undefined,
 	option: {} = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 	let options: OptionsWithUri = {
@@ -47,7 +46,7 @@ export async function slackApiRequest(
 	};
 
 	try {
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
 		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 			oauth2: oAuth2Options,
@@ -57,9 +56,10 @@ export async function slackApiRequest(
 			if (response.error === 'paid_teams_only') {
 				throw new NodeOperationError(
 					this.getNode(),
-					`Your current Slack plan does not include the resource '${
-						this.getNodeParameter('resource', 0) as string
-					}'`,
+					`Your current Slack plan does not include the resource '${this.getNodeParameter(
+						'resource',
+						0,
+					)}'`,
 					{
 						description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
 					},
@@ -83,10 +83,9 @@ export async function slackApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -117,7 +116,6 @@ export async function slackApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

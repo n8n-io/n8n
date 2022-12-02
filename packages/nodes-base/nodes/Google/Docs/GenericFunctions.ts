@@ -71,7 +71,6 @@ export async function googleApiRequestAllItems(
 	body: IDataObject = {},
 	qs?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

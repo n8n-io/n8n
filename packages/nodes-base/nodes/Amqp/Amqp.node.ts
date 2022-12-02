@@ -107,7 +107,7 @@ export class Amqp implements INodeType {
 			const containerReconnect = (options.reconnect as boolean) || true;
 			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
-			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
+			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 				headerProperties = JSON.parse(applicationProperties);
 			} else {

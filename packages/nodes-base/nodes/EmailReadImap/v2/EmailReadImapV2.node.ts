@@ -253,7 +253,7 @@ export class EmailReadImapV2 implements INodeType {
 		let isCurrentlyReconnecting = false;
 
 		// Returns the email text
-		// tslint:disable-next-line:no-any
+
 		const getText = async (parts: any[], message: Message, subtype: string) => {
 			if (!message.attributes.struct) {
 				return '';
@@ -279,7 +279,7 @@ export class EmailReadImapV2 implements INodeType {
 		// Returns the email attachments
 		const getAttachment = async (
 			connection: ImapSimple,
-			// tslint:disable-next-line:no-any
+
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {

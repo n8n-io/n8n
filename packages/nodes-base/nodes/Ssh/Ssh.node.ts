@@ -247,8 +247,8 @@ export class Ssh implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
 		const temporaryFiles: string[] = [];
@@ -277,7 +277,7 @@ export class Ssh implements INodeType {
 					username: credentials.username as string,
 					port: credentials.port as number,
 					privateKey: path,
-				} as any; // tslint:disable-line: no-any
+				} as any;
 
 				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;

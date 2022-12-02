@@ -21,7 +21,6 @@ export async function activeCampaignApiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('activeCampaignApi');
 
@@ -75,7 +74,6 @@ export async function activeCampaignApiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 	dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};

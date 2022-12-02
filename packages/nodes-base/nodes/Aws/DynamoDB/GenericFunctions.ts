@@ -16,7 +16,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: object | IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 	const requestOptions = {
@@ -63,7 +62,6 @@ export async function awsApiRequestAllItems(
 	path: string,
 	body?: IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

@@ -124,8 +124,8 @@ export class Supabase implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'row') {
 			if (operation === 'create') {

@@ -7,11 +7,10 @@ export async function linkedInApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	binary?: boolean,
 	_headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUrl = {
 		headers: {
@@ -43,7 +42,6 @@ export async function linkedInApiRequest(
 	}
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

@@ -415,7 +415,7 @@ export class Ftp implements INodeType {
 		// const returnData: IDataObject[] = [];
 		const returnItems: INodeExecutionData[] = [];
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
@@ -755,7 +755,6 @@ async function callRecursiveList(
 	let index = 0;
 
 	do {
-		// tslint:disable-next-line: array-type
 		const returnData: sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] =
 			await client.list(pathArray[index]);
 

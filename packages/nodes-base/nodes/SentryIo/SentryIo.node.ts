@@ -287,8 +287,8 @@ export class SentryIo implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -569,7 +569,7 @@ export class SentryIo implements INodeType {
 						if (additionalFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							additionalFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 
@@ -623,7 +623,7 @@ export class SentryIo implements INodeType {
 						if (updateFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							updateFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 

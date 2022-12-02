@@ -736,8 +736,8 @@ return 0;`,
 		const items = this.getInputData();
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
 				for (let i = 0; i < length; i++) {
@@ -922,7 +922,6 @@ return 0;`,
 						}),
 					};
 
-					// tslint:disable-next-line: no-any
 					const values: { [key: string]: any } = {};
 					const outputFields: string[] = [];
 
@@ -1131,7 +1130,6 @@ return 0;`,
 				});
 
 				for (const key of keys) {
-					// tslint:disable-next-line: no-any
 					let type: any = undefined;
 					for (const item of newItems) {
 						if (key === '') {
@@ -1390,7 +1388,6 @@ const flattenKeys = (obj: {}, path: string[] = []): {} => {
 		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next, [...path, key])), {});
 };
 
-// tslint:disable-next-line: no-any
 const shuffleArray = (array: any[]) => {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
