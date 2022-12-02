@@ -1744,12 +1744,12 @@ export class Mailchimp implements INodeType {
 						if (options.timestampOpt) {
 							body.timestamp_opt = moment(options.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.timestampSignup) {
 							body.timestamp_signup = moment(options.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.tags) {
 							// @ts-ignore
@@ -1762,9 +1762,9 @@ export class Mailchimp implements INodeType {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
 									if (key === 'latitude') {
-										location.latitude = parseFloat(locationValues[key] as string) as number;
+										location.latitude = parseFloat(locationValues[key] as string);
 									} else if (key === 'longitude') {
-										location.longitude = parseFloat(locationValues[key] as string) as number;
+										location.longitude = parseFloat(locationValues[key] as string);
 									}
 								}
 								body.location = location;
@@ -1933,12 +1933,12 @@ export class Mailchimp implements INodeType {
 						if (updateFields.timestampOpt) {
 							body.timestamp_opt = moment(updateFields.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (updateFields.timestampSignup) {
 							body.timestamp_signup = moment(updateFields.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (!jsonActive) {
 							if (updateFields.locationFieldsUi) {
@@ -1948,9 +1948,9 @@ export class Mailchimp implements INodeType {
 									const location: ILocation = {};
 									for (const key of Object.keys(locationValues)) {
 										if (key === 'latitude') {
-											location.latitude = parseFloat(locationValues[key] as string) as number;
+											location.latitude = parseFloat(locationValues[key] as string);
 										} else if (key === 'longitude') {
-											location.longitude = parseFloat(locationValues[key] as string) as number;
+											location.longitude = parseFloat(locationValues[key] as string);
 										}
 									}
 									body.location = location;

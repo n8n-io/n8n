@@ -24,7 +24,7 @@ export async function theHiveApiRequest(
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 

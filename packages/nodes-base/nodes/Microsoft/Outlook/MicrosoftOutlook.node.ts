@@ -272,16 +272,12 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i);
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						if (additionalFields && additionalFields.recipients) {
-							const recipients = (
-								(additionalFields.recipients as string).split(',') as string[]
-							).filter((email) => !!email);
+							const recipients = (additionalFields.recipients as string)
+								.split(',')
+								.filter((email) => !!email);
 							if (recipients.length !== 0) {
 								await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, {
 									toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),
@@ -315,11 +311,7 @@ export class MicrosoftOutlook implements INodeType {
 						const replyType = this.getNodeParameter('replyType', i) as string;
 						const comment = this.getNodeParameter('comment', i) as string;
 						const send = this.getNodeParameter('send', i, false) as boolean;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const body: IDataObject = {};
 

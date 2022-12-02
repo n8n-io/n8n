@@ -412,7 +412,7 @@ export class GoogleSheet {
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
+			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey);
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
@@ -581,7 +581,7 @@ export class GoogleSheet {
 				const value = get(item, key) as string;
 				if (usePathForKeyRow && value !== undefined && value !== null) {
 					//match by key path
-					rowData.push(value!.toString());
+					rowData.push(value.toString());
 				} else if (
 					!usePathForKeyRow &&
 					item.hasOwnProperty(key) &&

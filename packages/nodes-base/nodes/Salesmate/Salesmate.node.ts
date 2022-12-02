@@ -305,7 +305,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'name',
@@ -325,8 +325,7 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
 						if (filtersUi && filtersUi.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
@@ -498,7 +497,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'title',
@@ -519,8 +518,7 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
 						if (filtersUi && filtersUi.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
@@ -709,7 +707,7 @@ export class Salesmate implements INodeType {
 								itemIndex: i,
 							});
 						}
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					} else {
 						body.fields = [
 							'title',
@@ -728,8 +726,7 @@ export class Salesmate implements INodeType {
 					}
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
-						const filtersUi = (this.getNodeParameter('filters', i) as IDataObject)
-							.filtersUi as IDataObject;
+						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
 						if (filtersUi && filtersUi.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {

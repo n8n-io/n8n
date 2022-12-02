@@ -262,7 +262,7 @@ export class GitlabTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
-				webhookData.webhookEvents = eventsArray as string[];
+				webhookData.webhookEvents = eventsArray;
 
 				return true;
 			},

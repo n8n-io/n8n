@@ -199,7 +199,7 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.received(message);
 						}
 
-						let content: IDataObject | string = message!.content!.toString();
+						let content: IDataObject | string = message.content.toString();
 
 						const item: INodeExecutionData = {
 							json: {},
@@ -214,7 +214,7 @@ export class RabbitMQTrigger implements INodeType {
 							message.content = undefined as unknown as Buffer;
 						} else {
 							if (options.jsonParseBody === true) {
-								content = JSON.parse(content as string);
+								content = JSON.parse(content);
 							}
 							if (options.onlyContent === true) {
 								item.json = content as IDataObject;

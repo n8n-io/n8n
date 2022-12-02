@@ -114,10 +114,10 @@ export class WufooTrigger implements INodeType {
 				const endpoint = `forms/${formHash}/webhooks.json`;
 
 				// Handshake key for webhook endpoint protection
-				webhookData.handshakeKey = randomBytes(20).toString('hex') as string;
+				webhookData.handshakeKey = randomBytes(20).toString('hex');
 				const body: IWebhook = {
 					url: webhookUrl as string,
-					handshakeKey: webhookData.handshakeKey as string,
+					handshakeKey: webhookData.handshakeKey,
 					metadata: true,
 				};
 

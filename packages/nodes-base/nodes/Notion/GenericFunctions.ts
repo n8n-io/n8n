@@ -496,7 +496,7 @@ function simplifyProperty(property: any) {
 			'date',
 		].includes(property.type)
 	) {
-		result = property[type] as any;
+		result = property[type];
 	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
 		result = property[type] ? property[type].name : null;
 	} else if (['people'].includes(property.type)) {
@@ -690,7 +690,7 @@ export function getConditions() {
 					type: [type],
 				},
 			} as IDisplayOptions,
-			options: (typeConditions[types[type]] as string[]).map((entry: string) => ({
+			options: typeConditions[types[type]].map((entry: string) => ({
 				name: capitalCase(entry),
 				value: entry,
 			})),

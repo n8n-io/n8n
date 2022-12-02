@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -177,7 +176,7 @@ export class CiscoWebex implements INodeType {
 
 								const binaryPropertyName = file.binaryPropertyName as string;
 
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 									i,
 									binaryPropertyName,

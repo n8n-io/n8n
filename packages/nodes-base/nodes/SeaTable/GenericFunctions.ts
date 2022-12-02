@@ -4,12 +4,7 @@ import { OptionsWithUri } from 'request';
 
 import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	TDtableMetadataColumns,
-	TDtableViewColumns,
-	TEndpointResolvedExpr,
-	TEndpointVariableName,
-} from './types';
+import { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
 
@@ -324,7 +319,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 		(match: string, expr: string, name: TEndpointVariableName) => {
 			return endpointVariables[name] || match;
 		},
-	) as TEndpointResolvedExpr;
+	);
 }
 
 const normalize = (subject: string): string => (subject ? subject.normalize() : '');

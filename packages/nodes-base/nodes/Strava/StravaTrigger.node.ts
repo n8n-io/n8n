@@ -143,7 +143,7 @@ export class StravaTrigger implements INodeType {
 
 				const body = {
 					callback_url: webhookUrl,
-					verify_token: randomBytes(20).toString('hex') as string,
+					verify_token: randomBytes(20).toString('hex'),
 				};
 
 				let responseData;
@@ -176,7 +176,7 @@ export class StravaTrigger implements INodeType {
 									// now there is room create a subscription with the n8n data
 									const requestBody = {
 										callback_url: webhookUrl,
-										verify_token: randomBytes(20).toString('hex') as string,
+										verify_token: randomBytes(20).toString('hex'),
 									};
 
 									responseData = await stravaApiRequest.call(
@@ -227,7 +227,7 @@ export class StravaTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const object = this.getNodeParameter('object');
 		const event = this.getNodeParameter('event');

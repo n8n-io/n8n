@@ -359,11 +359,7 @@ export class Shopify implements INodeType {
 					if (operation === 'create') {
 						const title = this.getNodeParameter('title', i) as string;
 
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						if (additionalFields.productOptions) {
 							const metadata = (additionalFields.productOptions as IDataObject)
@@ -396,11 +392,7 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'get') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#show-2020-04
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 						Object.assign(qs, additionalFields);
 						responseData = await shopifyApiRequest.call(
 							this,
@@ -413,11 +405,7 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product#index-2020-04
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -440,7 +428,7 @@ export class Shopify implements INodeType {
 					}
 					if (operation === 'update') {
 						//https://shopify.dev/docs/admin-api/rest/reference/products/product?api[version]=2020-07#update-2020-07
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						if (updateFields.productOptions) {
 							const metadata = (updateFields.productOptions as IDataObject).option as IDataObject[];

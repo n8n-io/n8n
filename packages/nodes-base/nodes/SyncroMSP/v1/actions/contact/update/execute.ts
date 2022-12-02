@@ -12,7 +12,7 @@ export async function updateContact(
 	const { address, customerId, email, name, notes, phone } = this.getNodeParameter(
 		'updateFields',
 		index,
-	) as IDataObject;
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';

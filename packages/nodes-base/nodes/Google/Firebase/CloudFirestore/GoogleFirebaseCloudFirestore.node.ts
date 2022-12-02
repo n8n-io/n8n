@@ -116,7 +116,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				responseData = responseData.map((element: { found: { id: string; name: string } }) => {
 					if (element.found) {
-						element.found.id = (element.found.name as string).split('/').pop() as string;
+						element.found.id = element.found.name.split('/').pop() as string;
 					}
 					return element;
 				});
@@ -209,9 +209,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				});
 
 				if (simple) {
-					responseData = responseData.map((element: IDataObject) =>
-						fullDocumentToJson(element as IDataObject),
-					);
+					responseData = responseData.map((element: IDataObject) => fullDocumentToJson(element));
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -252,7 +250,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					// @ts-ignore
 					const documentId = item.json[updateKey] as string;
 					const columns = this.getNodeParameter('columns', i) as string;
-					const columnList = columns.split(',').map((column) => column.trim()) as string[];
+					const columnList = columns.split(',').map((column) => column.trim());
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
@@ -345,9 +343,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						responseData = responseData.map(
 							(element: { document: { id: string; name: string } }) => {
 								if (element.document) {
-									element.document.id = (element.document.name as string)
-										.split('/')
-										.pop() as string;
+									element.document.id = element.document.name.split('/').pop() as string;
 								}
 								return element;
 							},

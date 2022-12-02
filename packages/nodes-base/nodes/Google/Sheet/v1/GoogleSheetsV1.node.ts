@@ -115,7 +115,7 @@ export class GoogleSheetsV1 implements INodeType {
 				range = this.getNodeParameter('range', 0) as string;
 			}
 
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 
 			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
 			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
@@ -177,7 +177,7 @@ export class GoogleSheetsV1 implements INodeType {
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
 						const sheetId = this.getNodeParameter('sheetId', i) as string;
-						const iterationOptions = this.getNodeParameter('options', i, {}) as IDataObject;
+						const iterationOptions = this.getNodeParameter('options', i, {});
 						const simple = this.getNodeParameter('simple', 0) as boolean;
 						const properties = { ...iterationOptions };
 
@@ -314,7 +314,7 @@ export class GoogleSheetsV1 implements INodeType {
 				//         read
 				// ----------------------------------
 				try {
-					const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const rawData = this.getNodeParameter('rawData', 0);
 
 					const sheetData = await sheet.getData(sheet.encodeRange(range), valueRenderMode);
 
@@ -387,7 +387,7 @@ export class GoogleSheetsV1 implements INodeType {
 				// ----------------------------------
 				const upsert = operation === 'upsert' ? true : false;
 				try {
-					const rawData = this.getNodeParameter('rawData', 0) as boolean;
+					const rawData = this.getNodeParameter('rawData', 0);
 
 					const items = this.getInputData();
 
@@ -462,7 +462,7 @@ export class GoogleSheetsV1 implements INodeType {
 							sheets: [] as IDataObject[],
 						};
 
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 
 						if (Object.keys(sheetsUi).length) {
 							const data = [];
@@ -476,10 +476,10 @@ export class GoogleSheetsV1 implements INodeType {
 							body.sheets = data;
 						}
 
-						body.properties!.autoRecalc = options.autoRecalc
+						body.properties.autoRecalc = options.autoRecalc
 							? (options.autoRecalc as string)
 							: undefined;
-						body.properties!.locale = options.locale ? (options.locale as string) : undefined;
+						body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
 						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
 

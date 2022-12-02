@@ -758,7 +758,7 @@ return 0;`,
 					if (!disableDotNotation) {
 						arrayToSplit = get(items[i].json, fieldToSplitOut);
 					} else {
-						arrayToSplit = items[i].json[fieldToSplitOut as string];
+						arrayToSplit = items[i].json[fieldToSplitOut];
 					}
 
 					if (arrayToSplit === undefined) {
@@ -809,9 +809,9 @@ return 0;`,
 										if (!disableDotNotation) {
 											value = get(items[i].json, field);
 										} else {
-											value = items[i].json[field as string];
+											value = items[i].json[field];
 										}
-										prev = { ...prev, [field as string]: value };
+										prev = { ...prev, [field]: value };
 										return prev;
 									}, {}),
 								};
@@ -824,9 +824,9 @@ return 0;`,
 										if (!disableDotNotation) {
 											value = get(items[i].json, field);
 										} else {
-											value = items[i].json[field as string];
+											value = items[i].json[field];
 										}
-										prev = { ...prev, [field as string]: value };
+										prev = { ...prev, [field]: value };
 										return prev;
 									}, {}),
 								};
@@ -843,7 +843,7 @@ return 0;`,
 							} else {
 								newItem = {
 									...newItem,
-									[(destinationFieldName as string) || (fieldToSplitOut as string)]: element,
+									[destinationFieldName || fieldToSplitOut]: element,
 								};
 							}
 
@@ -1258,13 +1258,13 @@ return 0;`,
 								equal = isEqual(_a, _b);
 							} else {
 								const _a =
-									typeof a.json[field.name as string] === 'string'
-										? (a.json[field.name as string] as string).toLowerCase()
-										: a.json[field.name as string];
+									typeof a.json[field.name] === 'string'
+										? (a.json[field.name] as string).toLowerCase()
+										: a.json[field.name];
 								const _b =
-									typeof b.json[field.name as string] === 'string'
-										? (b.json[field.name as string] as string).toLowerCase()
-										: b.json[field.name as string];
+									typeof b.json[field.name] === 'string'
+										? (b.json[field.name] as string).toLowerCase()
+										: b.json[field.name];
 								equal = isEqual(_a, _b);
 							}
 
@@ -1282,13 +1282,13 @@ return 0;`,
 									lessThan = lt(_a, _b);
 								} else {
 									const _a =
-										typeof a.json[field.name as string] === 'string'
-											? (a.json[field.name as string] as string).toLowerCase()
-											: a.json[field.name as string];
+										typeof a.json[field.name] === 'string'
+											? (a.json[field.name] as string).toLowerCase()
+											: a.json[field.name];
 									const _b =
-										typeof b.json[field.name as string] === 'string'
-											? (b.json[field.name as string] as string).toLowerCase()
-											: b.json[field.name as string];
+										typeof b.json[field.name] === 'string'
+											? (b.json[field.name] as string).toLowerCase()
+											: b.json[field.name];
 									lessThan = lt(_a, _b);
 								}
 								if (lessThan) {
@@ -1373,7 +1373,7 @@ const compareItems = (
 				break;
 			}
 		} else {
-			if (!isEqual(obj.json[key as string], obj2.json[key as string])) {
+			if (!isEqual(obj.json[key], obj2.json[key])) {
 				result = false;
 				break;
 			}

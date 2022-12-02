@@ -349,7 +349,7 @@ export class GmailV2 implements INodeType {
 						const endpoint = `/gmail/v1/users/me/messages/${id}`;
 						const qs: IDataObject = {};
 
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						if (simple) {
@@ -380,8 +380,8 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
+						const filters = this.getNodeParameter('filters', i, {});
 						const qs: IDataObject = {};
 						Object.assign(qs, prepareQuery.call(this, filters), options);
 

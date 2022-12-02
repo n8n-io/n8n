@@ -660,9 +660,9 @@ export class ClickUp implements INodeType {
 							body.color = additionalFields.color as string;
 						}
 						if (additionalFields.owners) {
-							body.owners = ((additionalFields.owners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							);
+							body.owners = (additionalFields.owners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(this, 'POST', `/team/${teamId}/goal`, body);
 						responseData = responseData.goal;
@@ -707,14 +707,14 @@ export class ClickUp implements INodeType {
 							body.color = updateFields.color as string;
 						}
 						if (updateFields.addOwners) {
-							body.add_owners = ((updateFields.addOwners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							) as number[];
+							body.add_owners = (updateFields.addOwners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.removeOwners) {
-							body.rem_owners = ((updateFields.removeOwners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							) as number[];
+							body.rem_owners = (updateFields.removeOwners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(this, 'PUT', `/goal/${goalId}`, body);
 						responseData = responseData.goal;
@@ -770,9 +770,9 @@ export class ClickUp implements INodeType {
 							body.list_ids = (additionalFields.listIds as string).split(',');
 						}
 						if (additionalFields.owners) {
-							body.owners = ((additionalFields.owners as string).split(',') as string[]).map(
-								(e: string) => parseInt(e, 10),
-							);
+							body.owners = (additionalFields.owners as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						responseData = await clickupApiRequest.call(
 							this,
@@ -993,15 +993,15 @@ export class ClickUp implements INodeType {
 						}
 						if (updateFields.addAssignees) {
 							//@ts-ignore
-							body.assignees.add = (
-								(updateFields.addAssignees as string).split(',') as string[]
-							).map((e: string) => parseInt(e, 10));
+							body.assignees.add = (updateFields.addAssignees as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.removeAssignees) {
 							//@ts-ignore
-							body.assignees.rem = (
-								(updateFields.removeAssignees as string).split(',') as string[]
-							).map((e: string) => parseInt(e, 10));
+							body.assignees.rem = (updateFields.removeAssignees as string)
+								.split(',')
+								.map((e: string) => parseInt(e, 10));
 						}
 						if (updateFields.status) {
 							body.status = updateFields.status as string;
@@ -1388,7 +1388,7 @@ export class ClickUp implements INodeType {
 						const body: IDataObject = {};
 						body.time_entry_ids = timeEntryIds.split(',');
 						if (tagsUi) {
-							const tags = (tagsUi as IDataObject).tagsValues as IDataObject[];
+							const tags = tagsUi.tagsValues as IDataObject[];
 							if (tags === undefined) {
 								throw new NodeOperationError(this.getNode(), 'At least one tag must be set', {
 									itemIndex: i,

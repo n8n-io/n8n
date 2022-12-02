@@ -467,7 +467,7 @@ export class SentryIo implements INodeType {
 
 						const body = {
 							name,
-							...(this.getNodeParameter('additionalFields', i) as IDataObject),
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);

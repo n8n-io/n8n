@@ -222,8 +222,8 @@ export class Twilio implements INodeType {
 				body = {};
 				qs = {};
 
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					if (operation === 'send') {

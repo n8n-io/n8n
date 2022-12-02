@@ -85,7 +85,7 @@ export class MongoDb implements INodeType {
 
 		const client: MongoClient = await MongoClient.connect(connectionString);
 
-		const mdb = client.db(database as string);
+		const mdb = client.db(database);
 
 		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
@@ -151,7 +151,7 @@ export class MongoDb implements INodeType {
 					.collection(this.getNodeParameter('collection', 0) as string)
 					.find(queryParameter);
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const limit = options.limit as number;
 				const skip = options.skip as number;
 				const sort = options.sort && JSON.parse(options.sort as string);

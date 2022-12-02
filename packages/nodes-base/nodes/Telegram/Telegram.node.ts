@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -1829,10 +1828,7 @@ export class Telegram implements INodeType {
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
 
-						const { disable_notification } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { disable_notification } = this.getNodeParameter('additionalFields', i);
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
@@ -1983,7 +1979,7 @@ export class Telegram implements INodeType {
 
 				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-					const itemBinaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+					const itemBinaryData = items[i].binary![binaryPropertyName];
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;

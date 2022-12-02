@@ -271,9 +271,9 @@ export class SendGrid implements INodeType {
 							Object.assign(contact, { state_province_region: stateProvinceRegion });
 						}
 						if (additionalFields.alternateEmails) {
-							const alternateEmails = (
-								(additionalFields.alternateEmails as string).split(',') as string[]
-							).filter((mail) => !!mail);
+							const alternateEmails = (additionalFields.alternateEmails as string)
+								.split(',')
+								.filter((mail) => !!mail);
 							if (alternateEmails.length !== 0) {
 								Object.assign(contact, { alternate_emails: alternateEmails });
 							}
@@ -630,11 +630,11 @@ export class SendGrid implements INodeType {
 						}
 
 						if (categories) {
-							body.categories = categories.split(',') as string[];
+							body.categories = categories.split(',');
 						}
 
 						if (ipPoolName) {
-							body.ip_pool_name = ipPoolName as string;
+							body.ip_pool_name = ipPoolName;
 						}
 
 						if (sendAt) {
@@ -646,7 +646,7 @@ export class SendGrid implements INodeType {
 						});
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ messageId: data!.headers['x-message-id'] }),
+							this.helpers.returnJsonArray({ messageId: data.headers['x-message-id'] }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

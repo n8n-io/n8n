@@ -161,7 +161,7 @@ export async function execute(
 
 	if (!items.length || dataMode === 'nothing') return [];
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
 	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 
 	let headerRow = 1;

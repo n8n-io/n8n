@@ -152,11 +152,7 @@ export class CitrixAdc implements INodeType {
 							'certificateRequestFileName',
 							i,
 						) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						let body: IDataObject = {
 							reqfile: certificateRequestFileName,

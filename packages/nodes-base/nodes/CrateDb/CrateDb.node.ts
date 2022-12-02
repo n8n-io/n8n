@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -374,7 +373,7 @@ export class CrateDb implements INodeType {
 					);
 				}
 				const _updateItems = await db.multi(pgp.helpers.concat(queries));
-				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
+				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
 			pgp.end();

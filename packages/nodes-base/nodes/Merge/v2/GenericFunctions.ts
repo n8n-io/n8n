@@ -129,7 +129,7 @@ export function findMatches(
 		[data1, data2] = [data2, data1];
 	}
 
-	const disableDotNotation = (options.disableDotNotation as boolean) || false;
+	const disableDotNotation = options.disableDotNotation || false;
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
 	const filteredData = {
@@ -147,11 +147,11 @@ export function findMatches(
 		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
-				valueToCompare = entry1.json[matchCase.field1 as string];
+				valueToCompare = entry1.json[matchCase.field1];
 			} else {
-				valueToCompare = get(entry1.json, matchCase.field1 as string);
+				valueToCompare = get(entry1.json, matchCase.field1);
 			}
-			lookup[matchCase.field2 as string] = valueToCompare;
+			lookup[matchCase.field2] = valueToCompare;
 		});
 
 		for (const fieldValue of Object.values(lookup)) {

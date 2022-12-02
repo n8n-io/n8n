@@ -1290,7 +1290,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Lead', returnAll) as string;
+								qs.q = getQuery(options, 'Lead', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1301,7 +1301,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Lead', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1636,7 +1636,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Contact', returnAll) as string;
+								qs.q = getQuery(options, 'Contact', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1647,7 +1647,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Contact', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1726,8 +1726,7 @@ export class Salesforce implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (customFieldsUi) {
-							const customFields = (customFieldsUi as IDataObject)
-								.customFieldsValues as IDataObject[];
+							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
@@ -1761,8 +1760,7 @@ export class Salesforce implements INodeType {
 							body.RecordTypeId = updateFields.recordTypeId as string;
 						}
 						if (customFieldsUi) {
-							const customFields = (customFieldsUi as IDataObject)
-								.customFieldsValues as IDataObject[];
+							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
@@ -1792,7 +1790,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, customObject, returnAll) as string;
+								qs.q = getQuery(options, customObject, returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1803,7 +1801,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, customObject, returnAll, limit) as string;
+								qs.q = getQuery(options, customObject, returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2037,7 +2035,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Opportunity', returnAll) as string;
+								qs.q = getQuery(options, 'Opportunity', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2048,7 +2046,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Opportunity', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2327,7 +2325,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Account', returnAll) as string;
+								qs.q = getQuery(options, 'Account', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2338,7 +2336,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Account', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Account', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2542,7 +2540,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Case', returnAll) as string;
+								qs.q = getQuery(options, 'Case', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2553,7 +2551,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Case', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Case', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2805,7 +2803,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Task', returnAll) as string;
+								qs.q = getQuery(options, 'Task', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2816,7 +2814,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Task', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Task', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2937,7 +2935,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Attachment', returnAll) as string;
+								qs.q = getQuery(options, 'Attachment', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2948,7 +2946,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
+								qs.q = getQuery(options, 'Attachment', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2992,7 +2990,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'User', returnAll) as string;
+								qs.q = getQuery(options, 'User', returnAll);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -3003,7 +3001,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'User', returnAll, limit) as string;
+								qs.q = getQuery(options, 'User', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -3029,11 +3027,10 @@ export class Salesforce implements INodeType {
 						} else {
 							// Input variables are defined in UI
 							const setInputVariable = this.getNodeParameter('variablesUi', i, {}) as IDataObject;
-							if (setInputVariable!.variablesValues !== undefined) {
-								for (const inputVariableData of setInputVariable!
-									.variablesValues as IDataObject[]) {
+							if (setInputVariable.variablesValues !== undefined) {
+								for (const inputVariableData of setInputVariable.variablesValues as IDataObject[]) {
 									// @ts-ignore
-									variables[inputVariableData!.name as string] = inputVariableData!.value;
+									variables[inputVariableData.name as string] = inputVariableData.value;
 								}
 							}
 						}

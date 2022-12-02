@@ -177,7 +177,7 @@ export function prepareSheetData(
 
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
 	if (options.rangeDefinition === 'specifyRangeA1') {
-		return options.range ? `${sheetName}!${options.range as string}` : sheetName;
+		return options.range ? `${sheetName}!${options.range}` : sheetName;
 	}
 	return sheetName;
 }
@@ -285,8 +285,8 @@ export async function autoMapInputData(
 export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
 	const returnData = [...data];
 	returnData.sort((a, b) => {
-		const aName = (a.name as string).toLowerCase();
-		const bName = (b.name as string).toLowerCase();
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
 		if (aName < bName) {
 			return -1;
 		}

@@ -330,7 +330,7 @@ export class MoveBinaryData implements INodeType {
 		let options: IDataObject;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
-			options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			options = this.getNodeParameter('options', itemIndex, {});
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
@@ -434,7 +434,7 @@ export class MoveBinaryData implements INodeType {
 					convertedValue.fileName = options.fileName as string;
 				}
 
-				set(newItem.binary!, destinationKey, convertedValue);
+				set(newItem.binary, destinationKey, convertedValue);
 
 				if (options.keepSource === true) {
 					// JSON data does not get touched so simply reference it

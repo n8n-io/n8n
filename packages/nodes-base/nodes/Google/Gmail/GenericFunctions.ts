@@ -323,8 +323,8 @@ async function getAccessToken(
 
 	const signature = jwt.sign(
 		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
+			iss: credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: `https://oauth2.googleapis.com/token`,
 			iat: now,
@@ -503,7 +503,7 @@ export async function prepareEmailAttachments(
 	itemIndex: number,
 ) {
 	const attachmentsList: IDataObject[] = [];
-	const attachments = (options as IDataObject).attachmentsBinary as IDataObject[];
+	const attachments = options.attachmentsBinary as IDataObject[];
 
 	if (attachments && !isEmpty(attachments)) {
 		for (const { property } of attachments) {
@@ -540,27 +540,24 @@ export async function prepareEmailAttachments(
 
 export function unescapeSnippets(items: INodeExecutionData[]) {
 	const result = items.map((item) => {
-		const snippet = (item.json as IDataObject).snippet as string;
+		const snippet = item.json.snippet as string;
 		if (snippet) {
-			(item.json as IDataObject).snippet = snippet.replace(
-				/&amp;|&lt;|&gt;|&#39;|&quot;/g,
-				(match) => {
-					switch (match) {
-						case '&amp;':
-							return '&';
-						case '&lt;':
-							return '<';
-						case '&gt;':
-							return '>';
-						case '&#39;':
-							return "'";
-						case '&quot;':
-							return '"';
-						default:
-							return match;
-					}
-				},
-			);
+			item.json.snippet = snippet.replace(/&amp;|&lt;|&gt;|&#39;|&quot;/g, (match) => {
+				switch (match) {
+					case '&amp;':
+						return '&';
+					case '&lt;':
+						return '<';
+					case '&gt;':
+						return '>';
+					case '&#39;':
+						return "'";
+					case '&quot;':
+						return '"';
+					default:
+						return match;
+				}
+			});
 		}
 		return item;
 	});
@@ -683,7 +680,7 @@ export async function simplifyOutput(
 		id,
 		name,
 	}));
-	return ((data as IDataObject[]) || []).map((item) => {
+	return (data || []).map((item) => {
 		if (item.labelIds) {
 			item.labels = labels.filter((label) =>
 				(item.labelIds as string[]).includes(label.id as string),

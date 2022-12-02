@@ -249,7 +249,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						responseData = await googleApiRequest.call(this, 'GET', `/people/${contactId}`, {}, qs);
@@ -265,7 +265,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 						const rawData = this.getNodeParameter('rawData', i);
 						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
 
@@ -282,7 +282,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						if (useQuery) {
@@ -350,7 +350,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						const body: IDataObject = {

@@ -273,7 +273,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -394,8 +394,8 @@ export class NocoDB implements INodeType {
 							endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
 						}
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						qs = this.getNodeParameter('options', i, {}) as IDataObject;
+						returnAll = this.getNodeParameter('returnAll', 0);
+						qs = this.getNodeParameter('options', i, {});
 
 						if (qs.sort) {
 							const properties = (qs.sort as IDataObject).property as Array<{
@@ -583,7 +583,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {

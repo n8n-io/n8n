@@ -292,7 +292,7 @@ export class SyncHandler implements OperationHandler {
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
 		if (this.requiresTempId(command)) {
-			command.temp_id = uuid() as string;
+			command.temp_id = uuid();
 			tempIdMapping.set(command.temp_id, projectId as unknown as string);
 		}
 	}

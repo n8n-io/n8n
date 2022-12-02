@@ -1012,8 +1012,8 @@ export async function getProductAttributes(
 	const returnData: INodePropertyOptions[] = [];
 	for (const attribute of attributes) {
 		returnData.push({
-			name: attribute.default_frontend_label as string,
-			value: attribute.attribute_code as string,
+			name: attribute.default_frontend_label,
+			value: attribute.attribute_code,
 		});
 	}
 	if (extraValue) {

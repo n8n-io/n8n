@@ -1077,9 +1077,7 @@ export class NextCloud implements INodeType {
 						const userid = this.getNodeParameter('userId', i) as string;
 						endpoint = `ocs/v1.php/cloud/users/${userid}`;
 
-						body = Object.entries(
-							(this.getNodeParameter('updateFields', i) as IDataObject).field as IDataObject,
-						)
+						body = Object.entries(this.getNodeParameter('updateFields', i).field as IDataObject)
 							.map((entry) => {
 								const [key, value] = entry;
 								return `${key}=${value}`;
@@ -1170,7 +1168,7 @@ export class NextCloud implements INodeType {
 						});
 					});
 
-					returnData.push(jsonResponseData as IDataObject);
+					returnData.push(jsonResponseData);
 				} else if (resource === 'user') {
 					if (operation !== 'getAll') {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
@@ -1194,7 +1192,7 @@ export class NextCloud implements INodeType {
 							});
 						});
 
-						returnData.push(jsonResponseData as IDataObject);
+						returnData.push(jsonResponseData);
 					} else {
 						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						const jsonResponseData: IDataObject[] = await new Promise((resolve, reject) => {
@@ -1277,7 +1275,7 @@ export class NextCloud implements INodeType {
 								// @ts-ignore
 								newItem.eTag = props['d:getetag'].slice(1, -1);
 
-								returnData.push(newItem as IDataObject);
+								returnData.push(newItem);
 							}
 						}
 					}

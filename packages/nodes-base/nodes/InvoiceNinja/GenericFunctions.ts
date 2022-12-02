@@ -36,7 +36,7 @@ export async function invoiceNinjaApiRequest(
 	const version = this.getNodeParameter('apiVersion', 0) as string;
 
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
-	const baseUrl = credentials!.url || defaultUrl;
+	const baseUrl = credentials.url || defaultUrl;
 
 	const options: OptionsWithUri = {
 		method,

@@ -145,7 +145,7 @@ export class Vero implements INodeType {
 					//https://developers.getvero.com/?bash#tags-remove
 					if (operation === 'addTags' || operation === 'removeTags') {
 						const id = this.getNodeParameter('id', i) as string;
-						const tags = (this.getNodeParameter('tags', i) as string).split(',') as string[];
+						const tags = (this.getNodeParameter('tags', i) as string).split(',');
 						const body = {
 							id,
 						};

@@ -1426,8 +1426,7 @@ export class Hubspot implements INodeType {
 							};
 
 							if (filtersGroupsUi) {
-								const filterGroupValues = (filtersGroupsUi as IDataObject)
-									.filterGroupsValues as IDataObject[];
+								const filterGroupValues = filtersGroupsUi.filterGroupsValues as IDataObject[];
 								if (filterGroupValues) {
 									body.filterGroups = [];
 									for (const filterGroupValue of filterGroupValues) {
@@ -2247,8 +2246,7 @@ export class Hubspot implements INodeType {
 							};
 
 							if (filtersGroupsUi) {
-								const filterGroupValues = (filtersGroupsUi as IDataObject)
-									.filterGroupsValues as IDataObject[];
+								const filterGroupValues = filtersGroupsUi.filterGroupsValues as IDataObject[];
 								if (filterGroupValues) {
 									body.filterGroups = [];
 									for (const filterGroupValue of filterGroupValues) {
@@ -2411,10 +2409,10 @@ export class Hubspot implements INodeType {
 							const consent: IDataObject = {};
 							if (legalConsent) {
 								if (legalConsent.consentToProcess) {
-									consent!.consentToProcess = legalConsent.consentToProcess as boolean;
+									consent.consentToProcess = legalConsent.consentToProcess as boolean;
 								}
 								if (legalConsent.text) {
-									consent!.text = legalConsent.text as string;
+									consent.text = legalConsent.text as string;
 								}
 								if (legalConsent.communicationsUi) {
 									consent.communications = (legalConsent.communicationsUi as IDataObject)

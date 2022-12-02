@@ -518,9 +518,7 @@ export class HelpScout implements INodeType {
 								};
 								body.attachments?.push.apply(
 									body.attachments,
-									(attachments.attachmentsBinary as IDataObject[]).map(
-										mapFunction,
-									) as IAttachment[],
+									(attachments.attachmentsBinary as IDataObject[]).map(mapFunction),
 								);
 							}
 						}

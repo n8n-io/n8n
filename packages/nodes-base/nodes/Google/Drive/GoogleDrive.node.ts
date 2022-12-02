@@ -2044,7 +2044,7 @@ export class GoogleDrive implements INodeType {
 				query.push(`mimeType != 'application/vnd.google-apps.folder'`);
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 					orderBy: 'name_natural',
 				});
@@ -2069,7 +2069,7 @@ export class GoogleDrive implements INodeType {
 				query.push(`mimeType = 'application/vnd.google-apps.folder'`);
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 					orderBy: 'name_natural',
 				});
@@ -2089,7 +2089,7 @@ export class GoogleDrive implements INodeType {
 			): Promise<INodeListSearchResult> {
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 				});
 				return {
 					results: res.drives.map((i: GoogleDriveDriveItem) => ({
@@ -2111,7 +2111,7 @@ export class GoogleDrive implements INodeType {
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 
 				let queryFields = 'id, name';
 				if (options && options.fields) {
@@ -2491,7 +2491,7 @@ export class GoogleDrive implements INodeType {
 
 						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
 
-						const files = response!.files;
+						const files = response.files;
 
 						const version = this.getNode().typeVersion;
 
@@ -2648,7 +2648,7 @@ export class GoogleDrive implements INodeType {
 						const id = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const qs: IDataObject = {
 							supportsAllDrives: true,

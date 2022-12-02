@@ -3763,7 +3763,7 @@ export class Pipedrive implements INodeType {
 					'GET',
 					'/filters',
 					{},
-					{ type: type[resource] as string },
+					{ type: type[resource] },
 				);
 				for (const filter of data) {
 					returnData.push({
@@ -4820,7 +4820,7 @@ export class Pipedrive implements INodeType {
 					);
 				} else {
 					if (customProperties !== undefined) {
-						pipedriveEncodeCustomProperties(customProperties!, body);
+						pipedriveEncodeCustomProperties(customProperties, body);
 					}
 
 					responseData = await pipedriveApiRequest.call(

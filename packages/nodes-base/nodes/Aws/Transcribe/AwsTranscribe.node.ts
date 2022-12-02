@@ -366,7 +366,7 @@ export class AwsTranscribe implements INodeType {
 						const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
 						const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
 
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 
 						const body: IDataObject = {
 							TranscriptionJobName: transcriptionJobName,

@@ -114,12 +114,12 @@ export async function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
+			iss: credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: `https://oauth2.googleapis.com/token`,
 			iat: now,

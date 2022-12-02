@@ -221,7 +221,7 @@ export class Kafka implements INodeType {
 				try {
 					const brokers = ((credentials.brokers as string) || '')
 						.split(',')
-						.map((item) => item.trim()) as string[];
+						.map((item) => item.trim());
 
 					const clientId = credentials.clientId as string;
 
@@ -271,7 +271,7 @@ export class Kafka implements INodeType {
 		let responseData: IDataObject[];
 
 		try {
-			const options = this.getNodeParameter('options', 0) as IDataObject;
+			const options = this.getNodeParameter('options', 0);
 			const sendInputData = this.getNodeParameter('sendInputData', 0) as boolean;
 
 			const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
@@ -288,9 +288,7 @@ export class Kafka implements INodeType {
 
 			const credentials = await this.getCredentials('kafka');
 
-			const brokers = ((credentials.brokers as string) || '')
-				.split(',')
-				.map((item) => item.trim()) as string[];
+			const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 			const clientId = credentials.clientId as string;
 

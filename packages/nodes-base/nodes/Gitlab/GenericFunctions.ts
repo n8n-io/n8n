@@ -43,7 +43,7 @@ export async function gitlabApiRequest(
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
 
-			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'gitlabOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

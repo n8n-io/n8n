@@ -312,7 +312,7 @@ export class Hunter implements INodeType {
 									tempReturnData = responseData[index];
 									continue;
 								}
-								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(
+								(tempReturnData.emails as IDataObject[]).push.apply(
 									tempReturnData.emails,
 									responseData[index].emails,
 								);

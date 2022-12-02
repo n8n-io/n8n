@@ -7,13 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IBinaryKeyData,
-	IDataObject,
-	INodeExecutionData,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -255,7 +249,7 @@ export async function binaryToAttachments(
 				);
 			}
 
-			const binaryData = (binary as IBinaryKeyData)[binaryPropertyName];
+			const binaryData = binary[binaryPropertyName];
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 			return {
 				'@odata.type': '#microsoft.graph.fileAttachment',

@@ -64,8 +64,8 @@ async function getAccessToken(
 		| IWebhookFunctions,
 ): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials!.env as string);
-	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(
+	const env = getEnvironment(credentials.env as string);
+	const data = Buffer.from(`${credentials.clientId}:${credentials.secret}`).toString(
 		BINARY_ENCODING,
 	);
 	const headerWithAuthentication = Object.assign(

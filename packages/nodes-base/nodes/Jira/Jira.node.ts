@@ -3,7 +3,6 @@ import { mergeWith } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -738,7 +737,7 @@ export class Jira implements INodeType {
 					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
 					if (options.fields) {
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					}
 					if (options.jql) {
 						body.jql = options.jql as string;
@@ -815,7 +814,7 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
-					const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', 0);
 					const body: INotify = {};
 					if (additionalFields.textBody) {
 						body.textBody = additionalFields.textBody as string;
@@ -987,7 +986,7 @@ export class Jira implements INodeType {
 
 					const item = items[i].binary as IBinaryKeyData;
 
-					const binaryData = item[binaryPropertyName] as IBinaryData;
+					const binaryData = item[binaryPropertyName];
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 					if (binaryData === undefined) {
@@ -1077,7 +1076,7 @@ export class Jira implements INodeType {
 							{},
 							{},
 							// @ts-ignore
-							attachment?.json!.content,
+							attachment?.json.content,
 							{ json: false, encoding: null },
 						);
 						//@ts-ignore
@@ -1153,7 +1152,7 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
@@ -1302,7 +1301,7 @@ export class Jira implements INodeType {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
 					const options = this.getNodeParameter('options', i);
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const body: IDataObject = {};
 					if (options.expand) {
 						qs.expand = options.expand as string;

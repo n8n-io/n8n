@@ -530,7 +530,7 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					addAllFields = this.getNodeParameter('addAllFields', i) as boolean;
-					options = this.getNodeParameter('options', i, {}) as IDataObject;
+					options = this.getNodeParameter('options', i, {});
 					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};
@@ -581,7 +581,7 @@ export class Airtable implements INodeType {
 			requestMethod = 'DELETE';
 
 			const rows: string[] = [];
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 			const bulkSize = (options.bulkSize as number) || 10;
 
 			for (let i = 0; i < items.length; i++) {
@@ -731,7 +731,7 @@ export class Airtable implements INodeType {
 			for (let i = 0; i < items.length; i++) {
 				try {
 					updateAllFields = this.getNodeParameter('updateAllFields', i) as boolean;
-					options = this.getNodeParameter('options', i, {}) as IDataObject;
+					options = this.getNodeParameter('options', i, {});
 					bulkSize = (options.bulkSize as number) || bulkSize;
 
 					const row: IDataObject = {};

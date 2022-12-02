@@ -478,7 +478,7 @@ export class Ftp implements INodeType {
 							);
 						} else {
 							responseData = await sftp!.list(path);
-							responseData.forEach((item) => normalizeSFtpItem(item as sftpClient.FileInfo, path));
+							responseData.forEach((item) => normalizeSFtpItem(item, path));
 							returnItems.push.apply(
 								returnItems,
 								this.helpers.returnJsonArray(responseData as unknown as IDataObject[]),
@@ -562,10 +562,7 @@ export class Ftp implements INodeType {
 							await sftp!.put(buffer, remotePath);
 						} else {
 							// Is text file
-							const buffer = Buffer.from(
-								this.getNodeParameter('fileContent', i) as string,
-								'utf8',
-							) as Buffer;
+							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
 							await sftp!.put(buffer, remotePath);
 						}
 
@@ -688,10 +685,7 @@ export class Ftp implements INodeType {
 							}
 						} else {
 							// Is text file
-							const buffer = Buffer.from(
-								this.getNodeParameter('fileContent', i) as string,
-								'utf8',
-							) as Buffer;
+							const buffer = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
 							try {
 								await ftp!.put(buffer, remotePath);
 							} catch (error) {
@@ -755,7 +749,7 @@ async function callRecursiveList(
 	let index = 0;
 
 	const prepareAndNormalize = (item: sftpClient.FileInfo) => {
-		if ((pathArray[index] as string).endsWith('/')) {
+		if (pathArray[index].endsWith('/')) {
 			currentPath = `${pathArray[index]}${item.name}`;
 		} else {
 			currentPath = `${pathArray[index]}/${item.name}`;
@@ -785,9 +779,9 @@ async function callRecursiveList(
 
 async function recursivelyCreateSftpDirs(sftp: sftpClient, path: string) {
 	const dirPath = dirname(path);
-	const dirExists = await sftp!.exists(dirPath);
+	const dirExists = await sftp.exists(dirPath);
 
 	if (!dirExists) {
-		await sftp!.mkdir(dirPath, true);
+		await sftp.mkdir(dirPath, true);
 	}
 }

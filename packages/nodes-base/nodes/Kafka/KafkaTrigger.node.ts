@@ -171,9 +171,7 @@ export class KafkaTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = ((credentials.brokers as string) || '')
-			.split(',')
-			.map((item) => item.trim()) as string[];
+		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 		const clientId = credentials.clientId as string;
 

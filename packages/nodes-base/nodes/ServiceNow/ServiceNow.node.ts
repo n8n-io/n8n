@@ -630,7 +630,7 @@ export class ServiceNow implements INodeType {
 							...options,
 						};
 
-						const body = (await this.helpers.getBinaryDataBuffer(i, inputDataFieldName)) as Buffer;
+						const body = await this.helpers.getBinaryDataBuffer(i, inputDataFieldName);
 
 						const response = await serviceNowApiRequest.call(
 							this,
@@ -1171,7 +1171,7 @@ export class ServiceNow implements INodeType {
 
 		if (resource === 'attachment') {
 			if (operation === 'get' || operation === 'getAll') {
-				return this.prepareOutputData(returnData as INodeExecutionData[]);
+				return this.prepareOutputData(returnData);
 			}
 		}
 		return this.prepareOutputData(returnData);

@@ -10,7 +10,7 @@ export async function updateTicket(
 ): Promise<INodeExecutionData[]> {
 	const id = this.getNodeParameter('ticketId', index) as IDataObject;
 	const { assetId, customerId, dueDate, issueType, status, subject, ticketType, contactId } =
-		this.getNodeParameter('updateFields', index) as IDataObject;
+		this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';

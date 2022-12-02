@@ -380,9 +380,9 @@ export class ConvertKit implements INodeType {
 
 				if (resource === 'tag') {
 					if (operation === 'create') {
-						const names = ((this.getNodeParameter('name', i) as string).split(',') as string[]).map(
-							(e) => ({ name: e }),
-						);
+						const names = (this.getNodeParameter('name', i) as string)
+							.split(',')
+							.map((e) => ({ name: e }));
 
 						const body: IDataObject = {
 							tag: names,

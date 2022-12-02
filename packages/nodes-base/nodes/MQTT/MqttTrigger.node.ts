@@ -140,7 +140,7 @@ export class MqttTrigger implements INodeType {
 						client.on('message', (topic: string, message: Buffer | string) => {
 							let result: IDataObject = {};
 
-							message = message.toString() as string;
+							message = message.toString();
 
 							if (options.jsonParseBody) {
 								try {

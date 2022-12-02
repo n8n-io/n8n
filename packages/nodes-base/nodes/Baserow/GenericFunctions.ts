@@ -62,7 +62,7 @@ export async function baserowApiRequestAllItems(
 	qs.page = 1;
 	qs.size = 100;
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {

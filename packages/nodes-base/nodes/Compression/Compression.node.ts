@@ -294,7 +294,7 @@ export class Compression implements INodeType {
 						} else if (outputFormat === 'gzip') {
 							const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
-							const data = (await gzip(binaryDataBuffer)) as Uint8Array;
+							const data = await gzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
 

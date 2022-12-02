@@ -685,9 +685,7 @@ export class Redis implements INodeType {
 						const clientInfo = util.promisify(client.info).bind(client);
 						const result = await clientInfo();
 
-						resolve(
-							this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]),
-						);
+						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as string) }]));
 						client.quit();
 					} else if (
 						['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
@@ -713,7 +711,7 @@ export class Redis implements INodeType {
 
 								const value = (await getValue(client, keyGet, keyType)) || null;
 
-								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								const options = this.getNodeParameter('options', itemIndex, {});
 
 								if (options.dotNotation === false) {
 									item.json[propertyName] = value;
@@ -802,7 +800,7 @@ export class Redis implements INodeType {
 								} catch {
 									outputValue = value;
 								}
-								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								const options = this.getNodeParameter('options', itemIndex, {});
 								if (options.dotNotation === false) {
 									item.json[propertyName] = outputValue;
 								} else {

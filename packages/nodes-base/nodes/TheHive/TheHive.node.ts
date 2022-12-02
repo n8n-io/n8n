@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -115,7 +114,7 @@ export class TheHive implements INodeType {
 				const resourceId = this.getNodeParameter('id');
 				const endpoint = `/connector/cortex/responder/${resource}/${resourceId}`;
 
-				const responders = await theHiveApiRequest.call(this, 'GET', endpoint as string);
+				const responders = await theHiveApiRequest.call(this, 'GET', endpoint);
 
 				const returnData: INodePropertyOptions[] = [];
 
@@ -133,7 +132,7 @@ export class TheHive implements INodeType {
 				// request the analyzers from instance
 				const dataType = this.getNodeParameter('dataType') as string;
 				const endpoint = `/connector/cortex/analyzer/type/${dataType}`;
-				const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
+				const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint);
 				const returnData: INodePropertyOptions[] = [];
 
 				for (const analyzer of requestResult) {
@@ -410,7 +409,7 @@ export class TheHive implements INodeType {
 						const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
 
 						if (artifactUi) {
-							const artifactValues = (artifactUi as IDataObject).artifactValues as IDataObject[];
+							const artifactValues = artifactUi.artifactValues as IDataObject[];
 
 							if (artifactValues) {
 								const artifactData = [];
@@ -420,7 +419,7 @@ export class TheHive implements INodeType {
 
 									element.message = artifactvalue.message as string;
 
-									element.tags = (artifactvalue.tags as string).split(',') as string[];
+									element.tags = (artifactvalue.tags as string).split(',');
 
 									element.dataType = artifactvalue.dataType as string;
 
@@ -447,7 +446,7 @@ export class TheHive implements INodeType {
 											);
 										}
 
-										const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+										const binaryData = item.binary[binaryPropertyName];
 
 										element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 									}
@@ -616,7 +615,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'markAsRead') {
@@ -687,7 +686,7 @@ export class TheHive implements INodeType {
 						Object.assign(body, updateFields);
 
 						if (artifactUi) {
-							const artifactValues = (artifactUi as IDataObject).artifactValues as IDataObject[];
+							const artifactValues = artifactUi.artifactValues as IDataObject[];
 
 							if (artifactValues) {
 								const artifactData = [];
@@ -697,7 +696,7 @@ export class TheHive implements INodeType {
 
 									element.message = artifactvalue.message as string;
 
-									element.tags = (artifactvalue.tags as string).split(',') as string[];
+									element.tags = (artifactvalue.tags as string).split(',');
 
 									element.dataType = artifactvalue.dataType as string;
 
@@ -724,7 +723,7 @@ export class TheHive implements INodeType {
 											);
 										}
 
-										const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+										const binaryData = item.binary[binaryPropertyName];
 
 										element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 									}
@@ -735,12 +734,7 @@ export class TheHive implements INodeType {
 							}
 						}
 
-						responseData = await theHiveApiRequest.call(
-							this,
-							'PATCH',
-							`/alert/${alertId}` as string,
-							body,
-						);
+						responseData = await theHiveApiRequest.call(this, 'PATCH', `/alert/${alertId}`, body);
 					}
 				}
 
@@ -924,7 +918,7 @@ export class TheHive implements INodeType {
 								);
 							}
 
-							const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+							const binaryData = item.binary[binaryPropertyName];
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							options = {
@@ -947,7 +941,7 @@ export class TheHive implements INodeType {
 						responseData = await theHiveApiRequest.call(
 							this,
 							'POST',
-							`/case/${caseId}/artifact` as string,
+							`/case/${caseId}/artifact`,
 							body,
 							qs,
 							'',
@@ -989,7 +983,7 @@ export class TheHive implements INodeType {
 							endpoint = `/case/artifact/${observableId}`;
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'getAll') {
@@ -1055,7 +1049,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'search') {
@@ -1149,7 +1143,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'update') {
@@ -1162,7 +1156,7 @@ export class TheHive implements INodeType {
 						responseData = await theHiveApiRequest.call(
 							this,
 							'PATCH',
-							`/case/artifact/${id}` as string,
+							`/case/artifact/${id}`,
 							body,
 							qs,
 						);
@@ -1332,7 +1326,7 @@ export class TheHive implements INodeType {
 							endpoint = `/case/${caseId}`;
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'getAll') {
@@ -1423,7 +1417,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'update') {
@@ -1438,12 +1432,7 @@ export class TheHive implements INodeType {
 							...prepareOptional(updateFields),
 						};
 
-						responseData = await theHiveApiRequest.call(
-							this,
-							'PATCH',
-							`/case/${id}` as string,
-							body,
-						);
+						responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/${id}`, body);
 					}
 				}
 
@@ -1500,12 +1489,7 @@ export class TheHive implements INodeType {
 							...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
 						};
 
-						responseData = await theHiveApiRequest.call(
-							this,
-							'POST',
-							`/case/${caseId}/task` as string,
-							body,
-						);
+						responseData = await theHiveApiRequest.call(this, 'POST', `/case/${caseId}/task`, body);
 					}
 
 					if (operation === 'executeResponder') {
@@ -1591,7 +1575,7 @@ export class TheHive implements INodeType {
 							endpoint = `/case/task/${taskId}`;
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'getAll') {
@@ -1658,7 +1642,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'search') {
@@ -1740,7 +1724,7 @@ export class TheHive implements INodeType {
 							Object.assign(qs, prepareOptional(options));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'update') {
@@ -1750,12 +1734,7 @@ export class TheHive implements INodeType {
 							...prepareOptional(this.getNodeParameter('updateFields', i, {}) as INodeParameters),
 						};
 
-						responseData = await theHiveApiRequest.call(
-							this,
-							'PATCH',
-							`/case/task/${id}` as string,
-							body,
-						);
+						responseData = await theHiveApiRequest.call(this, 'PATCH', `/case/task/${id}`, body);
 					}
 				}
 
@@ -1795,7 +1774,7 @@ export class TheHive implements INodeType {
 									);
 								}
 
-								const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+								const binaryData = item.binary[binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								options = {
@@ -1818,7 +1797,7 @@ export class TheHive implements INodeType {
 						responseData = await theHiveApiRequest.call(
 							this,
 							'POST',
-							`/case/task/${taskId}/log` as string,
+							`/case/task/${taskId}/log`,
 							body,
 							qs,
 							'',
@@ -1911,7 +1890,7 @@ export class TheHive implements INodeType {
 							body.query = { _id: logId };
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 
 					if (operation === 'getAll') {
@@ -1970,7 +1949,7 @@ export class TheHive implements INodeType {
 							body.query = And(Parent('task', Id(taskId)));
 						}
 
-						responseData = await theHiveApiRequest.call(this, method, endpoint as string, body, qs);
+						responseData = await theHiveApiRequest.call(this, method, endpoint, body, qs);
 					}
 				}
 

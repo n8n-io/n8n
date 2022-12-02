@@ -22,7 +22,7 @@ export async function updateCustomer(
 		notificationEmail,
 		phone,
 		referredBy,
-	} = this.getNodeParameter('updateFields', index) as IDataObject;
+	} = this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';

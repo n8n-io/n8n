@@ -195,7 +195,7 @@ export function getFilterRules(conditions: ISearchConditions[], matchType: strin
 	// eslint-disable-next-line @typescript-eslint/no-for-in-array
 	for (const key in conditions) {
 		if (conditions.hasOwnProperty(key)) {
-			const searchConditions: ISearchConditions = conditions[key] as ISearchConditions;
+			const searchConditions: ISearchConditions = conditions[key];
 			const rule: IFilterRules = {
 				LHS: searchConditions.field,
 				CONDITION: searchConditions.condition_type,

@@ -310,7 +310,7 @@ export class MonicaCrm implements INodeType {
 						body.happened_at = (body.happened_at as string).split('T')[0];
 
 						if (typeof body.contacts === 'string') {
-							body.contacts = (body.contacts as string).split(',');
+							body.contacts = body.contacts.split(',');
 						}
 
 						const endpoint = `/activities/${activityId}`;
@@ -738,7 +738,7 @@ export class MonicaCrm implements INodeType {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const endpoint = `/conversations/${conversationId}/messages/${messageId}`;
 
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const { data } = await monicaCrmApiRequest.call(
 							this,

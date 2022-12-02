@@ -163,13 +163,13 @@ export class RenameKeys implements INodeType {
 				// Ignore all which do not have all the values set or if the new key is equal to the current key
 				return;
 			}
-			value = get(item.json, key.currentKey as string);
+			value = get(item.json, key.currentKey);
 			if (value === undefined) {
 				return;
 			}
 			set(newItem.json, key.newKey, value);
 
-			unset(newItem.json, key.currentKey as string);
+			unset(newItem.json, key.currentKey);
 		};
 
 		const regexReplaceKey = (replacement: IDataObject) => {

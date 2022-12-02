@@ -581,15 +581,15 @@ export class InvoiceNinja implements INodeType {
 								let from = 0,
 									to;
 								if (logValue.startDate) {
-									from = (new Date(logValue.startDate as string).getTime() / 1000) as number;
+									from = new Date(logValue.startDate as string).getTime() / 1000;
 								}
 								if (logValue.endDate) {
-									to = (new Date(logValue.endDate as string).getTime() / 1000) as number;
+									to = new Date(logValue.endDate as string).getTime() / 1000;
 								}
 								if (logValue.duration) {
 									to = from + (logValue.duration as number) * 3600;
 								}
-								logs.push([from as number, to as number]);
+								logs.push([from, to as number]);
 							}
 							body.time_log = JSON.stringify(logs);
 						}

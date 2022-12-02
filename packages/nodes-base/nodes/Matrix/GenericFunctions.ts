@@ -127,7 +127,7 @@ export async function handleMatrixCall(
 			);
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const returnAll = this.getNodeParameter('returnAll', index);
 			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 			const returnData: IDataObject[] = [];
 

@@ -169,7 +169,7 @@ export async function execute(
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
 	const range = `${sheetName}!A:Z`;
 
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 

@@ -750,7 +750,7 @@ export class Slack implements INodeType {
 														};
 													}
 													if (style !== 'default') {
-														confirm.style = style as string;
+														confirm.style = style;
 													}
 													element.confirm = confirm;
 												}
@@ -860,7 +860,7 @@ export class Slack implements INodeType {
 														};
 													}
 													if (style !== 'default') {
-														confirm.style = style as string;
+														confirm.style = style;
 													}
 													accessory.confirm = confirm;
 												}
@@ -931,7 +931,7 @@ export class Slack implements INodeType {
 						}
 						body.attachments = attachments;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i, false);
 						if (jsonParameters) {
 							const blocksJson = this.getNodeParameter('blocksJson', i, []) as string;
 
@@ -1160,7 +1160,7 @@ export class Slack implements INodeType {
 							qs.ts_to = filters.tsTo as string;
 						}
 						if (filters.types) {
-							qs.types = (filters.types as string[]).join(',') as string;
+							qs.types = (filters.types as string[]).join(',');
 						}
 						if (filters.userId) {
 							qs.user = filters.userId as string;

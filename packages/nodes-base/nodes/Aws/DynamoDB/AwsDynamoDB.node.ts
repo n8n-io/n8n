@@ -203,7 +203,7 @@ export class AwsDynamoDB implements INodeType {
 							// All data has to get send as string even numbers
 							// @ts-ignore
 							value = ![null, undefined].includes(value) ? value?.toString() : '';
-							body.Key[item.key as string] = { [item.type as string]: value };
+							body.Key[item.key] = { [item.type]: value };
 						}
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);

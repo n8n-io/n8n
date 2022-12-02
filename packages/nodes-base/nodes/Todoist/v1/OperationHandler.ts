@@ -260,7 +260,7 @@ export class SyncHandler implements OperationHandler {
 
 	private convertToObject(map: Map<string, string>) {
 		return Array.from(map.entries()).reduce((o, [key, value]) => {
-			o[key as string] = value;
+			o[key] = value;
 			return o;
 		}, {} as IDataObject);
 	}
@@ -292,7 +292,7 @@ export class SyncHandler implements OperationHandler {
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
 		if (this.requiresTempId(command)) {
-			command.temp_id = uuid() as string;
+			command.temp_id = uuid();
 			tempIdMapping.set(command.temp_id, projectId as unknown as string);
 		}
 	}

@@ -129,7 +129,7 @@ export class Bannerbear implements INodeType {
 						body.metadata = additionalFields.metadata as string;
 					}
 					if (modifications) {
-						body.modifications = keysToSnakeCase(modifications) as IDataObject[];
+						body.modifications = keysToSnakeCase(modifications);
 						// delete all fields set to empty
 						for (const modification of body.modifications as IDataObject[]) {
 							for (const key of Object.keys(modification)) {

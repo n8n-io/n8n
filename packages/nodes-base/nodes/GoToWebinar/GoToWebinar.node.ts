@@ -533,10 +533,7 @@ export class GoToWebinar implements INodeType {
 
 						const webinarKey = this.getNodeParameter('webinarKey', i) as string;
 
-						const { sendCancellationEmails } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { sendCancellationEmails } = this.getNodeParameter('additionalFields', i);
 
 						const qs = {} as IDataObject;
 

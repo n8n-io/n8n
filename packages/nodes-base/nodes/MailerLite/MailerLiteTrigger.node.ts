@@ -164,7 +164,7 @@ export class MailerLiteTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 
 		const events = body.events as IDataObject[];
 

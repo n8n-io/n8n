@@ -777,20 +777,14 @@ export class EditImage implements INodeType {
 					},
 					...nodeOperations,
 				].sort((a, b) => {
-					if (
-						(a as INodePropertyOptions).name.toLowerCase() <
-						(b as INodePropertyOptions).name.toLowerCase()
-					) {
+					if (a.name.toLowerCase() < b.name.toLowerCase()) {
 						return -1;
 					}
-					if (
-						(a as INodePropertyOptions).name.toLowerCase() >
-						(b as INodePropertyOptions).name.toLowerCase()
-					) {
+					if (a.name.toLowerCase() > b.name.toLowerCase()) {
 						return 1;
 					}
 					return 0;
-				}) as INodePropertyOptions[],
+				}),
 				default: 'border',
 			},
 			{
@@ -991,10 +985,10 @@ export class EditImage implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
+				const operation = this.getNodeParameter('operation', itemIndex);
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				const cleanupFunctions: Array<() => void> = [];
 
@@ -1056,7 +1050,7 @@ export class EditImage implements INodeType {
 						});
 					}
 
-					if (item.binary[dataPropertyName as string] === undefined) {
+					if (item.binary[dataPropertyName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`Item does not contain any binary data with the name "${dataPropertyName}".`,
@@ -1269,15 +1263,13 @@ export class EditImage implements INodeType {
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
-					if (newItem.binary![dataPropertyName as string]) {
-						newItem.binary![dataPropertyName as string] = deepCopy(
-							newItem.binary![dataPropertyName as string],
-						);
+					if (newItem.binary[dataPropertyName]) {
+						newItem.binary[dataPropertyName] = deepCopy(newItem.binary[dataPropertyName]);
 					}
 				}
 
-				if (newItem.binary![dataPropertyName as string] === undefined) {
-					newItem.binary![dataPropertyName as string] = {
+				if (newItem.binary![dataPropertyName] === undefined) {
+					newItem.binary![dataPropertyName] = {
 						data: '',
 						mimeType: '',
 					};
@@ -1289,17 +1281,17 @@ export class EditImage implements INodeType {
 
 				if (options.format !== undefined) {
 					gmInstance = gmInstance!.setFormat(options.format as string);
-					newItem.binary![dataPropertyName as string].fileExtension = options.format as string;
-					newItem.binary![dataPropertyName as string].mimeType = `image/${options.format}`;
-					const fileName = newItem.binary![dataPropertyName as string].fileName;
+					newItem.binary![dataPropertyName].fileExtension = options.format as string;
+					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
+					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName && fileName.includes('.')) {
-						newItem.binary![dataPropertyName as string].fileName =
+						newItem.binary![dataPropertyName].fileName =
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}
 
 				if (options.fileName !== undefined) {
-					newItem.binary![dataPropertyName as string].fileName = options.fileName as string;
+					newItem.binary![dataPropertyName].fileName = options.fileName as string;
 				}
 
 				returnData.push(
@@ -1312,8 +1304,8 @@ export class EditImage implements INodeType {
 							}
 
 							const binaryData = await this.helpers.prepareBinaryData(Buffer.from(buffer));
-							newItem.binary![dataPropertyName as string] = {
-								...newItem.binary![dataPropertyName as string],
+							newItem.binary![dataPropertyName] = {
+								...newItem.binary![dataPropertyName],
 								...binaryData,
 							};
 

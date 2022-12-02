@@ -127,7 +127,7 @@ export class Discord implements INodeType {
 		if (!webhookUri) throw new NodeOperationError(this.getNode(), 'Webhook uri is required.');
 
 		const items = this.getInputData();
-		const length = items.length as number;
+		const length = items.length;
 		for (let i = 0; i < length; i++) {
 			const body: DiscordWebhook = {};
 

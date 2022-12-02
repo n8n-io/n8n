@@ -548,7 +548,7 @@ export class EmailReadImapV2 implements INodeType {
 			}
 
 			if (credentials.secure) {
-				tlsOptions.servername = credentials.host as string;
+				tlsOptions.servername = credentials.host;
 			}
 
 			if (!_.isEmpty(tlsOptions)) {

@@ -26,7 +26,7 @@ export async function erpNextApiRequest(
 		qs: query,
 		uri: uri || `${baseUrl}${resource}`,
 		json: true,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
 
 	options = Object.assign({}, options, option);
@@ -65,13 +65,13 @@ export async function erpNextApiRequestAllItems(
 	const returnData: any[] = [];
 
 	let responseData;
-	query!.limit_start = 0;
-	query!.limit_page_length = 1000;
+	query.limit_start = 0;
+	query.limit_page_length = 1000;
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query!.limit_start += query!.limit_page_length - 1;
+		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 
 	return returnData;

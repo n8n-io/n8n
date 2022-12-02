@@ -13,7 +13,7 @@ export async function createTicket(
 	const { assetId, issueType, status, contactId } = this.getNodeParameter(
 		'additionalFields',
 		index,
-	) as IDataObject;
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';

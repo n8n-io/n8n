@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -688,9 +687,9 @@ export class HttpRequestV2 implements INodeType {
 		const requestPromises = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const requestMethod = this.getNodeParameter('requestMethod', itemIndex) as string;
-			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex) as boolean;
+			const parametersAreJson = this.getNodeParameter('jsonParameters', itemIndex);
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
 			if (
@@ -706,18 +705,14 @@ export class HttpRequestV2 implements INodeType {
 				}
 			}
 
-			const fullResponse = !!options.fullResponse as boolean;
+			const fullResponse = !!options.fullResponse;
 
 			requestOptions = {
 				headers: {},
 				method: requestMethod,
 				uri: url,
 				gzip: true,
-				rejectUnauthorized: !this.getNodeParameter(
-					'allowUnauthorizedCerts',
-					itemIndex,
-					false,
-				) as boolean,
+				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 			};
 
 			if (fullResponse) {
@@ -754,7 +749,7 @@ export class HttpRequestV2 implements INodeType {
 				// Parameters are defined as JSON
 				let optionData: OptionData;
 				for (const parameterName of Object.keys(jsonParameters)) {
-					optionData = jsonParameters[parameterName] as OptionData;
+					optionData = jsonParameters[parameterName];
 					const tempValue = this.getNodeParameter(parameterName, itemIndex, '') as string | object;
 					const sendBinaryData = this.getNodeParameter(
 						'sendBinaryData',
@@ -834,7 +829,7 @@ export class HttpRequestV2 implements INodeType {
 										);
 									}
 
-									const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+									const binaryProperty = item.binary[binaryPropertyName];
 									const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 										itemIndex,
 										binaryPropertyName,
@@ -889,8 +884,8 @@ export class HttpRequestV2 implements INodeType {
 						// @ts-ignore
 						requestOptions[optionName] = {};
 						for (const parameterData of setUiParameter!.parameter as IDataObject[]) {
-							const parameterDataName = parameterData!.name as string;
-							const newValue = parameterData!.value;
+							const parameterDataName = parameterData.name as string;
+							const newValue = parameterData.value;
 							if (optionName === 'qs') {
 								const computeNewValue = (oldValue: unknown) => {
 									if (typeof oldValue === 'string') {
@@ -967,7 +962,7 @@ export class HttpRequestV2 implements INodeType {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
-				requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -1061,10 +1056,10 @@ export class HttpRequestV2 implements INodeType {
 
 			response = response.value;
 
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
 
-			const fullResponse = !!options.fullResponse as boolean;
+			const fullResponse = !!options.fullResponse;
 
 			if (responseFormat === 'file') {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;

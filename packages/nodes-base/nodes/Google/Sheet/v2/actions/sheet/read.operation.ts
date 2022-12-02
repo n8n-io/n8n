@@ -111,7 +111,7 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+	const options = this.getNodeParameter('options', 0, {});
 	const outputFormattingOption =
 		(((options.outputFormatting as IDataObject) || {}).values as IDataObject) || {};
 

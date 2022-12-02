@@ -35,19 +35,19 @@ export namespace SendInBlueNode {
 		[
 			OVERRIDE_MAP_TYPE.CATEGORY,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.CATEGORY;
+				body.type = OVERRIDE_MAP_VALUES.CATEGORY;
 			},
 		],
 		[
 			OVERRIDE_MAP_TYPE.NORMAL,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.NORMAL;
+				body.type = OVERRIDE_MAP_VALUES.NORMAL;
 			},
 		],
 		[
 			OVERRIDE_MAP_TYPE.TRANSACTIONAL,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.TRANSACTIONAL;
+				body.type = OVERRIDE_MAP_VALUES.TRANSACTIONAL;
 			},
 		],
 	]);
@@ -71,7 +71,7 @@ export namespace SendInBlueNode {
 
 					const item = this.getInputData();
 
-					if (item.binary![binaryPropertyAttachmentName as string] === undefined) {
+					if (item.binary![binaryPropertyAttachmentName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
@@ -338,7 +338,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		)) as string;
 
-		return jsonParse(webhooks) as Webhooks;
+		return jsonParse(webhooks);
 	};
 
 	export const createWebHook = async (
@@ -368,7 +368,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return jsonParse(webhookId) as WebhookId;
+		return jsonParse(webhookId);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

@@ -209,12 +209,12 @@ export function pipedriveEncodeCustomProperties(
 				);
 
 				if (propertyOption !== undefined) {
-					item[customPropertyData.key as string] = propertyOption.id;
+					item[customPropertyData.key] = propertyOption.id;
 					delete item[key];
 				}
 			} else {
 				// Does already represent the actual value or is null
-				item[customPropertyData.key as string] = item[key];
+				item[customPropertyData.key] = item[key];
 				delete item[key];
 			}
 		}
@@ -265,7 +265,7 @@ export function pipedriveResolveCustomProperties(
 					'timerange',
 				].includes(customPropertyData.field_type)
 			) {
-				json[customPropertyData.name as string] = json[key];
+				json[customPropertyData.name] = json[key];
 				delete json[key];
 				// type options
 			} else if (
@@ -276,7 +276,7 @@ export function pipedriveResolveCustomProperties(
 					(option) => option.id.toString() === json[key]!.toString(),
 				);
 				if (propertyOption !== undefined) {
-					json[customPropertyData.name as string] = propertyOption.label;
+					json[customPropertyData.name] = propertyOption.label;
 					delete json[key];
 				}
 				// type multioptions
