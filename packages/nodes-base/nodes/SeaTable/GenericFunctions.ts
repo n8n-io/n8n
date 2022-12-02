@@ -199,7 +199,7 @@ const uniquePredicate = (current: string, index: number, all: string[]) =>
 	all.indexOf(current) === index;
 const nonInternalPredicate = (name: string) => !Object.keys(schema.internalNames).includes(name);
 const namePredicate = (name: string) => (named: IName) => named.name === name;
-export const nameOfPredicate = (names: ReadonlyArray<IName>) => (name: string) =>
+export const nameOfPredicate = (names: readonly IName[]) => (name: string) =>
 	names.find(namePredicate(name));
 
 export function columnNamesToArray(columnNames: string): string[] {
