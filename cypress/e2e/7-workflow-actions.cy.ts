@@ -1,15 +1,9 @@
-import { randFirstName, randLastName } from "@ngneat/falso";
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
-const email = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
