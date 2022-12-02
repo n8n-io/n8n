@@ -12,8 +12,7 @@ export async function zoomApiRequest(
 	query: object = {},
 	headers: IDataObject | undefined = undefined,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 
 	let options: OptionsWithUri = {
@@ -53,8 +52,7 @@ export async function zoomApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 	let responseData;
 	query.page_number = 0;

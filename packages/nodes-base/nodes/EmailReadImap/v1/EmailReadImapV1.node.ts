@@ -463,7 +463,7 @@ export class EmailReadImapV1 implements INodeType {
 			if (postProcessAction === 'read') {
 				const uidList = results.map((e) => e.attributes.uid);
 				if (uidList.length > 0) {
-					connection.addFlags(uidList, '\\SEEN');
+					await connection.addFlags(uidList, '\\SEEN');
 				}
 			}
 			return newEmails;
@@ -520,7 +520,7 @@ export class EmailReadImapV1 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							returnedPromise.promise().then(() => {
+							await returnedPromise.promise().then(() => {
 								this.emitError(error as Error);
 							});
 						}

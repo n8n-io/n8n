@@ -183,7 +183,7 @@ export class RabbitMQTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			if (parallelMessages !== -1) {
-				channel.prefetch(parallelMessages);
+				await channel.prefetch(parallelMessages);
 			}
 
 			channel.on('close', () => {
@@ -270,7 +270,7 @@ export class RabbitMQTrigger implements INodeType {
 			consumerTag = consumerInfo.consumerTag;
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.

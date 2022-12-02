@@ -62,7 +62,7 @@ export class MongoDb implements INodeType {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new Error(`Database "${database}" does not exist`);
 					}
-					client.close();
+					await client.close();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -338,7 +338,7 @@ export class MongoDb implements INodeType {
 			}
 		}
 
-		client.close();
+		await client.close();
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),

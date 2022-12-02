@@ -256,7 +256,7 @@ export class MySql implements INodeType {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
 					const connection = await createConnection(credentials);
-					connection.end();
+					await connection.end();
 				} catch (error) {
 					return {
 						status: 'Error',

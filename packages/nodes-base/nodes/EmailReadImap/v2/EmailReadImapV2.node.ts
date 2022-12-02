@@ -470,7 +470,7 @@ export class EmailReadImapV2 implements INodeType {
 			if (postProcessAction === 'read') {
 				const uidList = results.map((e) => e.attributes.uid);
 				if (uidList.length > 0) {
-					connection.addFlags(uidList, '\\SEEN');
+					await connection.addFlags(uidList, '\\SEEN');
 				}
 			}
 			return newEmails;
@@ -527,7 +527,7 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							returnedPromise.promise().then(() => {
+							await returnedPromise.promise().then(() => {
 								this.emitError(error as Error);
 							});
 						}
@@ -586,7 +586,7 @@ export class EmailReadImapV2 implements INodeType {
 				Logger.verbose(`Forcing reconnect to IMAP server`);
 				try {
 					isCurrentlyReconnecting = true;
-					if (connection.closeBox) connection.closeBox(false);
+					if (connection.closeBox) await connection.closeBox(false);
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);
@@ -604,7 +604,7 @@ export class EmailReadImapV2 implements INodeType {
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			if (connection.closeBox) connection.closeBox(false);
+			if (connection.closeBox) await connection.closeBox(false);
 			connection.end();
 		}
 

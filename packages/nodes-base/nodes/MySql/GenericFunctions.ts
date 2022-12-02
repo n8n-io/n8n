@@ -70,6 +70,6 @@ export async function searchTables(
 		name: r.TABLE_NAME as string,
 		value: r.TABLE_NAME as string,
 	}));
-	connection.end();
+	await connection.end();
 	return { results };
 }
