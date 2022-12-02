@@ -174,7 +174,7 @@ export class Box implements INodeType {
 						const query = this.getNodeParameter('query', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const timezone = this.getTimezone();
+						const tz = this.getTimezone();
 						qs.type = 'file';
 						qs.query = query;
 						Object.assign(qs, additionalFields);
@@ -187,9 +187,9 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment
-									.tz(createdRangeValues.from, timezone)
-									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
+									.tz(createdRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.createdRangeUi;
 						}
@@ -198,9 +198,9 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment
-									.tz(updateRangeValues.from, timezone)
-									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
+									.tz(updateRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}
@@ -408,7 +408,7 @@ export class Box implements INodeType {
 						const query = this.getNodeParameter('query', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const timezone = this.getTimezone();
+						const tz = this.getTimezone();
 						qs.type = 'folder';
 						qs.query = query;
 						Object.assign(qs, additionalFields);
@@ -421,9 +421,9 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment
-									.tz(createdRangeValues.from, timezone)
-									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
+									.tz(createdRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.createdRangeUi;
 						}
@@ -432,9 +432,9 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment
-									.tz(updateRangeValues.from, timezone)
-									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
+									.tz(updateRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}

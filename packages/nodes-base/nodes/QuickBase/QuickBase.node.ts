@@ -133,11 +133,12 @@ export class QuickBase implements INodeType {
 
 					const options = this.getNodeParameter('options', i);
 
-					const qs: IDataObject = {
-						tableId,
-					};
-
-					Object.assign(qs, options);
+					Object.assign(
+						{
+							tableId,
+						},
+						options,
+					);
 
 					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
 
@@ -285,11 +286,11 @@ export class QuickBase implements INodeType {
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
+						const recordData: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
-							data[key] = (value as IDataObject).value;
+							recordData[key] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 
@@ -455,11 +456,11 @@ export class QuickBase implements INodeType {
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
+						const recordData: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
-							data[fieldsIdKey[key]] = (value as IDataObject).value;
+							recordData[fieldsIdKey[key]] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 
@@ -538,11 +539,11 @@ export class QuickBase implements INodeType {
 					responseData = [];
 
 					for (const record of records) {
-						const data: IDataObject = {};
+						const recordData: IDataObject = {};
 						for (const [key, value] of Object.entries(record)) {
-							data[key] = (value as IDataObject).value;
+							recordData[key] = (value as IDataObject).value;
 						}
-						responseData.push(data);
+						responseData.push(recordData);
 					}
 				}
 

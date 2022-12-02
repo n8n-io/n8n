@@ -130,23 +130,23 @@ export async function uploadAttachments(
 		}
 
 		if (isImage) {
-			const attachmentBody = {
+			const form = {
 				media_data: binaryData[binaryPropertyName].data,
 			};
 
 			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
-				form: attachmentBody,
+				form,
 			});
 
 			media.push(response);
 		} else {
 			// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
 
-			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+			const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 			attachmentBody = {
 				command: 'INIT',
-				total_bytes: dataBuffer.byteLength,
+				total_bytes: binaryDataBuffer.byteLength,
 				media_type: binaryData[binaryPropertyName].mimeType,
 			};
 
@@ -158,7 +158,7 @@ export async function uploadAttachments(
 
 			// break the data on 5mb chunks (max size that can be uploaded at once)
 
-			const binaryParts = chunks(dataBuffer, 5242880);
+			const binaryParts = chunks(binaryDataBuffer, 5242880);
 
 			let index = 0;
 

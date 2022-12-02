@@ -336,8 +336,8 @@ export function parseScripts(this: IExecuteFunctions, i: number): object | null 
 
 export function parsePortals(this: IExecuteFunctions, i: number): object | null {
 	let portals;
-	const getPortals = this.getNodeParameter('getPortals', i);
-	if (!getPortals) {
+	const getPortalsData = this.getNodeParameter('getPortals', i);
+	if (!getPortalsData) {
 		portals = [];
 	} else {
 		portals = this.getNodeParameter('portals', i);

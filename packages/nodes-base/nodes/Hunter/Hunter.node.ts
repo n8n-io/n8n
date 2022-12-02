@@ -307,14 +307,14 @@ export class Hunter implements INodeType {
 						if (onlyEmails === false) {
 							let tempReturnData: IDataObject = {};
 
-							for (let i = 0; i < responseData.length; i++) {
-								if (i === 0) {
-									tempReturnData = responseData[i];
+							for (let index = 0; index < responseData.length; index++) {
+								if (index === 0) {
+									tempReturnData = responseData[index];
 									continue;
 								}
 								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(
 									tempReturnData.emails,
-									responseData[i].emails,
+									responseData[index].emails,
 								);
 							}
 

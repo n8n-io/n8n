@@ -2303,7 +2303,7 @@ export class GoogleDrive implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const options = this.getNodeParameter('options', i);
+						const downloadOptions = this.getNodeParameter('options', i);
 
 						const requestOptions = {
 							resolveWithFullResponse: true,
@@ -2376,8 +2376,8 @@ export class GoogleDrive implements INodeType {
 							mimeType = response.headers['content-type'];
 						}
 
-						if (options.fileName) {
-							fileName = options.fileName as string;
+						if (downloadOptions.fileName) {
+							fileName = downloadOptions.fileName as string;
 						}
 
 						const newItem: INodeExecutionData = {
@@ -2445,13 +2445,13 @@ export class GoogleDrive implements INodeType {
 							const queryFilterFields: string[] = [];
 							if (queryFilters.name) {
 								(queryFilters.name as IDataObject[]).forEach((nameFilter) => {
-									let operation = nameFilter.operation;
-									if (operation === 'is') {
-										operation = '=';
-									} else if (operation === 'isNot') {
-										operation = '!=';
+									let filterOperation = nameFilter.operation;
+									if (filterOperation === 'is') {
+										filterOperation = '=';
+									} else if (filterOperation === 'isNot') {
+										filterOperation = '!=';
 									}
-									queryFilterFields.push(`name ${operation} '${nameFilter.value}'`);
+									queryFilterFields.push(`name ${filterOperation} '${nameFilter.value}'`);
 								});
 
 								queryString += queryFilterFields.join(' or ');
@@ -2751,7 +2751,7 @@ export class GoogleDrive implements INodeType {
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i);
+						const shareOption = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 
@@ -2763,7 +2763,7 @@ export class GoogleDrive implements INodeType {
 							Object.assign(body, permissions.permissionsValues);
 						}
 
-						Object.assign(qs, options);
+						Object.assign(qs, shareOption);
 
 						const response = await googleApiRequest.call(
 							this,

@@ -67,19 +67,19 @@ export namespace SendInBlueNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryPropertyName = attachmentDataName;
+					const binaryPropertyAttachmentName = attachmentDataName;
 
 					const item = this.getInputData();
 
-					if (item.binary![binaryPropertyName as string] === undefined) {
+					if (item.binary![binaryPropertyAttachmentName as string] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property “${binaryPropertyName}” exists on item!`,
+							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
 						);
 					}
 
 					const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
-						binaryPropertyName,
+						binaryPropertyAttachmentName,
 					)) as Buffer;
 
 					const {
@@ -115,9 +115,9 @@ export namespace SendInBlueNode {
 			const { tag } = this.getNodeParameter('additionalFields.emailTags.tags') as JsonObject;
 			const tags = (tag as string)
 				.split(',')
-				.map((tag) => tag.trim())
-				.filter((tag) => {
-					return tag !== '';
+				.map((entry) => entry.trim())
+				.filter((entry) => {
+					return entry !== '';
 				});
 			const { body } = requestOptions;
 			Object.assign(body!, { tags });

@@ -328,15 +328,15 @@ export class AwsElb implements INodeType {
 
 						params.push(`Type=${type}`);
 
-						for (let i = 1; i <= subnets.length; i++) {
-							params.push(`Subnets.member.${i}=${subnets[i - 1]}`);
+						for (let index = 1; index <= subnets.length; index++) {
+							params.push(`Subnets.member.${index}=${subnets[index - 1]}`);
 						}
 
 						if (additionalFields.securityGroups) {
 							const securityGroups = additionalFields.securityGroups as string[];
 
-							for (let i = 1; i <= securityGroups.length; i++) {
-								params.push(`SecurityGroups.member.${i}=${securityGroups[i - 1]}`);
+							for (let index = 1; index <= securityGroups.length; index++) {
+								params.push(`SecurityGroups.member.${index}=${securityGroups[index - 1]}`);
 							}
 						}
 
@@ -344,10 +344,10 @@ export class AwsElb implements INodeType {
 							const tags = (additionalFields.tagsUi as IDataObject).tagValues as IDataObject[];
 
 							if (tags) {
-								for (let i = 1; i <= tags.length; i++) {
-									params.push(`Tags.member.${i}.Key=${tags[i - 1].key}`);
+								for (let index = 1; index <= tags.length; index++) {
+									params.push(`Tags.member.${index}.Key=${tags[index - 1].key}`);
 
-									params.push(`Tags.member.${i}.Value=${tags[i - 1].value}`);
+									params.push(`Tags.member.${index}.Value=${tags[index - 1].value}`);
 								}
 							}
 						}
@@ -393,8 +393,8 @@ export class AwsElb implements INodeType {
 							if (filters.names) {
 								const names = (filters.names as string).split(',');
 
-								for (let i = 1; i <= names.length; i++) {
-									params.push(`Names.member.${i}=${names[i - 1]}`);
+								for (let index = 1; index <= names.length; index++) {
+									params.push(`Names.member.${index}=${names[index - 1]}`);
 								}
 							}
 

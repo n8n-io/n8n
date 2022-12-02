@@ -272,9 +272,9 @@ export class Stackby implements INodeType {
 					records[key].push({ field: record });
 				}
 
-				for (const key of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, {
-						records: records[key],
+				for (const recordKey of Object.keys(records)) {
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${recordKey}`, {
+						records: records[recordKey],
 					});
 				}
 

@@ -189,8 +189,6 @@ export class LinkedIn implements INodeType {
 								},
 							};
 						} else if (shareMediaCategory === 'ARTICLE') {
-							const additionalFields = this.getNodeParameter('additionalFields', i);
-
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
 							}

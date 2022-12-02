@@ -214,8 +214,8 @@ export class EmailReadImapV1 implements INodeType {
 					if (!_.isEmpty(tlsOptions)) {
 						config.imap.tlsOptions = tlsOptions;
 					}
-					const conn = imapConnect(config).then(async (conn) => {
-						return conn;
+					const conn = imapConnect(config).then(async (entry) => {
+						return entry;
 					});
 					(await conn).getBoxes((_err, _boxes) => {});
 				} catch (error) {
@@ -271,7 +271,7 @@ export class EmailReadImapV1 implements INodeType {
 
 		// Returns the email attachments
 		const getAttachment = async (
-			connection: ImapSimple,
+			imapConnection: ImapSimple,
 			// tslint:disable-next-line:no-any
 			parts: any[],
 			message: Message,
@@ -288,7 +288,7 @@ export class EmailReadImapV1 implements INodeType {
 			const attachmentPromises = [];
 			let attachmentPromise;
 			for (const attachmentPart of attachmentParts) {
-				attachmentPromise = connection.getPartData(message, attachmentPart).then((partData) => {
+				attachmentPromise = imapConnection.getPartData(message, attachmentPart).then((partData) => {
 					// Return it in the format n8n expects
 					return this.helpers.prepareBinaryData(
 						partData,
@@ -304,7 +304,7 @@ export class EmailReadImapV1 implements INodeType {
 
 		// Returns all the new unseen messages
 		const getNewEmails = async (
-			connection: ImapSimple,
+			imapConnection: ImapSimple,
 			searchCriteria: Array<string | string[]>,
 		): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
@@ -325,7 +325,7 @@ export class EmailReadImapV1 implements INodeType {
 				};
 			}
 
-			const results = await connection.search(searchCriteria, fetchOptions);
+			const results = await imapConnection.search(searchCriteria, fetchOptions);
 
 			const newEmails: INodeExecutionData[] = [];
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
@@ -418,7 +418,7 @@ export class EmailReadImapV1 implements INodeType {
 
 					if (downloadAttachments === true) {
 						// Get attachments and add them if any get found
-						attachments = await getAttachment(connection, parts, message);
+						attachments = await getAttachment(imapConnection, parts, message);
 						if (attachments.length) {
 							newEmail.binary = {};
 							for (let i = 0; i < attachments.length; i++) {
@@ -463,7 +463,7 @@ export class EmailReadImapV1 implements INodeType {
 			if (postProcessAction === 'read') {
 				const uidList = results.map((e) => e.attributes.uid);
 				if (uidList.length > 0) {
-					await connection.addFlags(uidList, '\\SEEN');
+					await imapConnection.addFlags(uidList, '\\SEEN');
 				}
 			}
 			return newEmails;

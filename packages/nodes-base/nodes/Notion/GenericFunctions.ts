@@ -302,7 +302,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
 					// tslint:disable-next-line: no-any
-					.filter((value: any) => value !== null)
+					.filter((entry: any) => entry !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
 			break;
@@ -433,9 +433,9 @@ export function mapSorting(
 	});
 }
 
-export function mapFilters(filters: IDataObject[], timezone: string) {
+export function mapFilters(filtersList: IDataObject[], timezone: string) {
 	// tslint:disable-next-line: no-any
-	return filters.reduce((obj, value: { [key: string]: any }) => {
+	return filtersList.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
 		let valuePropertyName =
@@ -464,11 +464,11 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		}
 
 		if (value.type === 'formula') {
-			const valuePropertyName = value[`${camelCase(value.returnType)}Value`];
+			const vpropertyName = value[`${camelCase(value.returnType)}Value`];
 
 			return Object.assign(obj, {
 				['property']: getNameAndType(value.key).name,
-				[key]: { [value.returnType]: { [`${value.condition}`]: valuePropertyName } },
+				[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
 			});
 		}
 
@@ -705,9 +705,9 @@ export function getConditions() {
 					type: [type],
 				},
 			} as IDisplayOptions,
-			options: (typeConditions[types[type]] as string[]).map((type: string) => ({
-				name: capitalCase(type),
-				value: type,
+			options: (typeConditions[types[type]] as string[]).map((entry: string) => ({
+				name: capitalCase(entry),
+				value: entry,
 			})),
 			default: '',
 			description: 'The value of the property to filter by',
@@ -739,7 +739,7 @@ export function getConditions() {
 					returnType: [key],
 				},
 			} as IDisplayOptions,
-			options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
+			options: formula[key].map((entry: string) => ({ name: capitalCase(entry), value: entry })),
 			default: '',
 			description: 'The value of the property to filter by',
 		} as INodeProperties);

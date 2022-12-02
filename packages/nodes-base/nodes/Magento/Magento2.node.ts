@@ -404,7 +404,7 @@ export class Magento2 implements INodeType {
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as {
+						const sortOption = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
 						const returnAll = this.getNodeParameter('returnAll', 0);
@@ -413,7 +413,7 @@ export class Magento2 implements INodeType {
 						if (filterType === 'manual') {
 							const filters = this.getNodeParameter('filters', i) as { conditions: Filter[] };
 							const matchType = this.getNodeParameter('matchType', i) as string;
-							qs = getFilterQuery(Object.assign(filters, { matchType }, sort));
+							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
@@ -428,9 +428,9 @@ export class Magento2 implements INodeType {
 								search_criteria: {},
 							};
 
-							if (Object.keys(sort).length !== 0) {
+							if (Object.keys(sortOption).length !== 0) {
 								qs.search_criteria = {
-									sort_orders: sort.sort,
+									sort_orders: sortOption.sort,
 								};
 							}
 						}
@@ -585,7 +585,7 @@ export class Magento2 implements INodeType {
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/orders#operation/salesOrderRepositoryV1GetListGet
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as {
+						const sortOption = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
 						const returnAll = this.getNodeParameter('returnAll', 0);
@@ -594,7 +594,7 @@ export class Magento2 implements INodeType {
 						if (filterType === 'manual') {
 							const filters = this.getNodeParameter('filters', i) as { conditions: Filter[] };
 							const matchType = this.getNodeParameter('matchType', i) as string;
-							qs = getFilterQuery(Object.assign(filters, { matchType }, sort));
+							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
@@ -608,9 +608,9 @@ export class Magento2 implements INodeType {
 							qs = {
 								search_criteria: {},
 							};
-							if (Object.keys(sort).length !== 0) {
+							if (Object.keys(sortOption).length !== 0) {
 								qs.search_criteria = {
-									sort_orders: sort.sort,
+									sort_orders: sortOption.sort,
 								};
 							}
 						}
@@ -707,7 +707,7 @@ export class Magento2 implements INodeType {
 					if (operation === 'getAll') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerssearch
 						const filterType = this.getNodeParameter('filterType', i) as string;
-						const sort = this.getNodeParameter('options.sort', i, {}) as {
+						const sortOption = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
 						const returnAll = this.getNodeParameter('returnAll', 0);
@@ -716,7 +716,7 @@ export class Magento2 implements INodeType {
 						if (filterType === 'manual') {
 							const filters = this.getNodeParameter('filters', i) as { conditions: Filter[] };
 							const matchType = this.getNodeParameter('matchType', i) as string;
-							qs = getFilterQuery(Object.assign(filters, { matchType }, sort));
+							qs = getFilterQuery(Object.assign(filters, { matchType }, sortOption));
 						} else if (filterType === 'json') {
 							const filterJson = this.getNodeParameter('filterJson', i) as string;
 							if (validateJSON(filterJson) !== undefined) {
@@ -730,9 +730,9 @@ export class Magento2 implements INodeType {
 							qs = {
 								search_criteria: {},
 							};
-							if (Object.keys(sort).length !== 0) {
+							if (Object.keys(sortOption).length !== 0) {
 								qs.search_criteria = {
-									sort_orders: sort.sort,
+									sort_orders: sortOption.sort,
 								};
 							}
 						}

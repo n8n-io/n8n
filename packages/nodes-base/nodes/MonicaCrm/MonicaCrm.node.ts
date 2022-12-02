@@ -747,7 +747,7 @@ export class MonicaCrm implements INodeType {
 						);
 
 						const message = data.messages.filter(
-							(message: IDataObject) => message.id === parseInt(messageId, 10),
+							(entry: IDataObject) => entry.id === parseInt(messageId, 10),
 						)[0];
 
 						const body = {

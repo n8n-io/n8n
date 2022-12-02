@@ -1303,7 +1303,6 @@ export class Hubspot implements INodeType {
 
 							if (resolveData) {
 								const isNew = responseData.isNew;
-								const qs: IDataObject = {};
 								if (additionalFields.properties) {
 									qs.property = additionalFields.properties as string[];
 								}

@@ -86,9 +86,10 @@ export class Vero implements INodeType {
 							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
 								const dataAttributes = {};
-								for (let i = 0; i < dataAttributesValues.length; i++) {
+								for (let index = 0; index < dataAttributesValues.length; index++) {
 									// @ts-ignore
-									dataAttributes[dataAttributesValues[i].key] = dataAttributesValues[i].value;
+									dataAttributes[dataAttributesValues[index].key] =
+										dataAttributesValues[index].value;
 									// @ts-ignore
 									body.data = dataAttributes;
 								}
@@ -182,9 +183,10 @@ export class Vero implements INodeType {
 							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
 								const dataAttributes = {};
-								for (let i = 0; i < dataAttributesValues.length; i++) {
+								for (let index = 0; index < dataAttributesValues.length; index++) {
 									// @ts-ignore
-									dataAttributes[dataAttributesValues[i].key] = dataAttributesValues[i].value;
+									dataAttributes[dataAttributesValues[index].key] =
+										dataAttributesValues[index].value;
 									// @ts-ignore
 									body.data = JSON.stringify(dataAttributes);
 								}
@@ -194,9 +196,10 @@ export class Vero implements INodeType {
 							).extraAttributesValues as IDataObject[];
 							if (extraAttributesValues) {
 								const extraAttributes = {};
-								for (let i = 0; i < extraAttributesValues.length; i++) {
+								for (let index = 0; index < extraAttributesValues.length; index++) {
 									// @ts-ignore
-									extraAttributes[extraAttributesValues[i].key] = extraAttributesValues[i].value;
+									extraAttributes[extraAttributesValues[index].key] =
+										extraAttributesValues[index].value;
 									// @ts-ignore
 									body.extras = JSON.stringify(extraAttributes);
 								}

@@ -231,7 +231,7 @@ export class KafkaTrigger implements INodeType {
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic, message }) => {
+				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
 
@@ -259,7 +259,7 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					data.message = value;
-					data.topic = topic;
+					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
 						//@ts-ignore

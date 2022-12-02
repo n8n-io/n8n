@@ -259,8 +259,8 @@ export class Baserow implements INodeType {
 							mapper.namesToIds(body);
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
+						const fieldsUi = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+						for (const field of fieldsUi) {
 							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
 					}
@@ -300,8 +300,8 @@ export class Baserow implements INodeType {
 							mapper.namesToIds(body);
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
+						const fieldsUi = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
+						for (const field of fieldsUi) {
 							body[`field_${field.fieldId}`] = field.fieldValue;
 						}
 					}

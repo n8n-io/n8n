@@ -621,7 +621,7 @@ export class ServiceNow implements INodeType {
 							'Content-Type': binaryData.mimeType,
 						};
 
-						const qs: IDataObject = {
+						const query: IDataObject = {
 							table_name: tableName,
 							table_sys_id: recordId,
 							file_name: binaryData.fileName
@@ -637,7 +637,7 @@ export class ServiceNow implements INodeType {
 							'POST',
 							'/now/attachment/file',
 							body,
-							qs,
+							query,
 							'',
 							{ headers },
 						);

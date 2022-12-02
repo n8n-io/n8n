@@ -273,7 +273,7 @@ export class SendGrid implements INodeType {
 						if (additionalFields.alternateEmails) {
 							const alternateEmails = (
 								(additionalFields.alternateEmails as string).split(',') as string[]
-							).filter((email) => !!email);
+							).filter((mail) => !!mail);
 							if (alternateEmails.length !== 0) {
 								Object.assign(contact, { alternate_emails: alternateEmails });
 							}
@@ -514,7 +514,7 @@ export class SendGrid implements INodeType {
 						const toEmail = this.getNodeParameter('toEmail', i) as string;
 
 						const parsedToEmail = toEmail.includes(',')
-							? toEmail.split(',').map((i) => ({ email: i.trim() }))
+							? toEmail.split(',').map((entry) => ({ email: entry.trim() }))
 							: [{ email: toEmail.trim() }];
 
 						const {
@@ -612,11 +612,15 @@ export class SendGrid implements INodeType {
 						}
 
 						if (bccEmail) {
-							body.personalizations[0].bcc = bccEmail.split(',').map((i) => ({ email: i.trim() }));
+							body.personalizations[0].bcc = bccEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						if (ccEmail) {
-							body.personalizations[0].cc = ccEmail.split(',').map((i) => ({ email: i.trim() }));
+							body.personalizations[0].cc = ccEmail
+								.split(',')
+								.map((entry) => ({ email: entry.trim() }));
 						}
 
 						if (headers?.details.length) {

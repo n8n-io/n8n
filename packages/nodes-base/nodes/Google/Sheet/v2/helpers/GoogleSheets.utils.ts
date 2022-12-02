@@ -185,7 +185,7 @@ export function getRangeString(sheetName: string, options: RangeDetectionOptions
 export async function getExistingSheetNames(sheet: GoogleSheet) {
 	const { sheets } = await sheet.spreadsheetGetSheets();
 	return ((sheets as IDataObject[]) || []).map(
-		(sheet) => ((sheet.properties as IDataObject) || {}).title,
+		(entry) => ((entry.properties as IDataObject) || {}).title,
 	);
 }
 

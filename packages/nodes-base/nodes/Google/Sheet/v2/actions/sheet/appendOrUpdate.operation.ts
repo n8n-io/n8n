@@ -174,17 +174,18 @@ export async function execute(
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const locationDefineOption = ((options.locationDefine as IDataObject) || {})
+		.values as IDataObject;
 
 	let headerRow = 0;
 	let firstDataRow = 1;
 
-	if (locationDefine) {
-		if (locationDefine.headerRow) {
-			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+	if (locationDefineOption) {
+		if (locationDefineOption.headerRow) {
+			headerRow = parseInt(locationDefineOption.headerRow as string, 10) - 1;
 		}
-		if (locationDefine.firstDataRow) {
-			firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+		if (locationDefineOption.firstDataRow) {
+			firstDataRow = parseInt(locationDefineOption.firstDataRow as string, 10) - 1;
 		}
 	}
 
@@ -227,11 +228,11 @@ export async function execute(
 		const data: IDataObject[] = [];
 
 		if (dataMode === 'autoMapInputData') {
-			const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
-			if (handlingExtraData === 'ignoreIt') {
+			const handlingExtraDataOption = (options.handlingExtraData as string) || 'insertInNewColumn';
+			if (handlingExtraDataOption === 'ignoreIt') {
 				data.push(items[i].json);
 			}
-			if (handlingExtraData === 'error') {
+			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (columnNames.includes(key) === false) {
 						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
@@ -242,7 +243,7 @@ export async function execute(
 				});
 				data.push(items[i].json);
 			}
-			if (handlingExtraData === 'insertInNewColumn') {
+			if (handlingExtraDataOption === 'insertInNewColumn') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (columnNames.includes(key) === false) {
 						newColumns.add(key);

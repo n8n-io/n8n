@@ -449,15 +449,15 @@ export class NotionV2 implements INodeType {
 					body.parent.database_id = this.getNodeParameter('databaseId', i, '', {
 						extractValue: true,
 					}) as string;
-					const properties = this.getNodeParameter(
+					const propertiesValues = this.getNodeParameter(
 						'propertiesUi.propertyValues',
 						i,
 						[],
 					) as IDataObject[];
-					if (properties.length !== 0) {
+					if (propertiesValues.length !== 0) {
 						body.properties = Object.assign(
 							body.properties,
-							mapProperties(properties, timezone, 2) as IDataObject,
+							mapProperties(propertiesValues, timezone, 2) as IDataObject,
 						);
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];

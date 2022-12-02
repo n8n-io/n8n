@@ -158,22 +158,18 @@ export class RenameKeys implements INodeType {
 		let renameKeys: IRenameKey[];
 		let value: any; // tslint:disable-line:no-any
 
-		const renameKey = (renameKey: IRenameKey) => {
-			if (
-				renameKey.currentKey === '' ||
-				renameKey.newKey === '' ||
-				renameKey.currentKey === renameKey.newKey
-			) {
+		const renameKey = (key: IRenameKey) => {
+			if (key.currentKey === '' || key.newKey === '' || key.currentKey === key.newKey) {
 				// Ignore all which do not have all the values set or if the new key is equal to the current key
 				return;
 			}
-			value = get(item.json, renameKey.currentKey as string);
+			value = get(item.json, key.currentKey as string);
 			if (value === undefined) {
 				return;
 			}
-			set(newItem.json, renameKey.newKey, value);
+			set(newItem.json, key.newKey, value);
 
-			unset(newItem.json, renameKey.currentKey as string);
+			unset(newItem.json, key.currentKey as string);
 		};
 
 		const regexReplaceKey = (replacement: IDataObject) => {
@@ -184,16 +180,16 @@ export class RenameKeys implements INodeType {
 
 			const regex = new RegExp(searchRegex as string, flags);
 
-			const renameObjectKeys = (obj: IDataObject, depth: number) => {
+			const renameObjectKeys = (obj: IDataObject, objDepth: number) => {
 				for (const key in obj) {
 					if (Array.isArray(obj)) {
 						// Don't rename array object references
-						if (depth !== 0) {
-							renameObjectKeys(obj[key] as IDataObject, depth - 1);
+						if (objDepth !== 0) {
+							renameObjectKeys(obj[key] as IDataObject, objDepth - 1);
 						}
 					} else if (obj.hasOwnProperty(key)) {
-						if (typeof obj[key] === 'object' && depth !== 0) {
-							renameObjectKeys(obj[key] as IDataObject, depth - 1);
+						if (typeof obj[key] === 'object' && objDepth !== 0) {
+							renameObjectKeys(obj[key] as IDataObject, objDepth - 1);
 						}
 						if (key.match(regex)) {
 							const newKey = key.replace(regex, replaceRegex as string);

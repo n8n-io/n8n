@@ -365,14 +365,14 @@ export class MicrosoftExcel implements INodeType {
 							);
 							//@ts-ignore
 							columns = columns.map((column) => column.name);
-							for (let i = 0; i < responseData.length; i++) {
+							for (let index = 0; index < responseData.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < columns.length; y++) {
-									object[columns[y]] = responseData[i].values[0][y];
+									object[columns[y]] = responseData[index].values[0][y];
 								}
 								const executionData = this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ ...object }),
-									{ itemData: { item: i } },
+									{ itemData: { item: index } },
 								);
 
 								returnData.push(...executionData);
@@ -438,10 +438,10 @@ export class MicrosoftExcel implements INodeType {
 						}
 
 						result.length = 0;
-						for (let i = 0; i < responseData.length; i++) {
+						for (let index = 0; index < responseData.length; index++) {
 							const object: IDataObject = {};
 							for (let y = 0; y < columns.length; y++) {
-								object[columns[y]] = responseData[i].values[0][y];
+								object[columns[y]] = responseData[index].values[0][y];
 							}
 							result.push({ ...object });
 						}
@@ -637,14 +637,14 @@ export class MicrosoftExcel implements INodeType {
 								});
 							}
 							const keyValues = responseData.values[keyRow];
-							for (let i = dataStartRow; i < responseData.values.length; i++) {
+							for (let index = dataStartRow; index < responseData.values.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < keyValues.length; y++) {
-									object[keyValues[y]] = responseData.values[i][y];
+									object[keyValues[y]] = responseData.values[index][y];
 								}
 								const executionData = this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ ...object }),
-									{ itemData: { item: i } },
+									{ itemData: { item: index } },
 								);
 
 								returnData.push(...executionData);

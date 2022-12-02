@@ -533,7 +533,7 @@ export class ClickUp implements INodeType {
 				}
 				if (resource === 'comment') {
 					if (operation === 'create') {
-						const resource = this.getNodeParameter('commentOn', i) as string;
+						const commentOn = this.getNodeParameter('commentOn', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
 						const commentText = this.getNodeParameter('commentText', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -549,7 +549,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
-							`/${resource}/${id}/comment`,
+							`/${commentOn}/${id}/comment`,
 							body,
 						);
 					}
@@ -559,13 +559,13 @@ export class ClickUp implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const resource = this.getNodeParameter('commentsOn', i) as string;
+						const commentsOn = this.getNodeParameter('commentsOn', i) as string;
 						const id = this.getNodeParameter('id', i) as string;
 						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
-							`/${resource}/${id}/comment`,
+							`/${commentsOn}/${id}/comment`,
 							{},
 							qs,
 						);
@@ -1163,14 +1163,12 @@ export class ClickUp implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const name = this.getNodeParameter('tagName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const qs: IDataObject = {};
-						Object.assign(qs, additionalFields);
 						responseData = await clickupApiRequest.call(
 							this,
 							'POST',
 							`/task/${taskId}/tag/${name}`,
 							{},
-							qs,
+							additionalFields,
 						);
 						responseData = { success: true };
 					}
@@ -1178,14 +1176,12 @@ export class ClickUp implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const name = this.getNodeParameter('tagName', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const qs: IDataObject = {};
-						Object.assign(qs, additionalFields);
 						responseData = await clickupApiRequest.call(
 							this,
 							'DELETE',
 							`/task/${taskId}/tag/${name}`,
 							{},
-							qs,
+							additionalFields,
 						);
 						responseData = { success: true };
 					}

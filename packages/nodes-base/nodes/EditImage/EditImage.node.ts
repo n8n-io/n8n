@@ -948,15 +948,15 @@ export class EditImage implements INodeType {
 				const files = await getSystemFonts();
 				const returnData: INodePropertyOptions[] = [];
 
-				files.forEach((file: string) => {
-					const pathParts = pathParse(file);
+				files.forEach((entry: string) => {
+					const pathParts = pathParse(entry);
 					if (!pathParts.ext) {
 						return;
 					}
 
 					returnData.push({
 						name: pathParts.name,
-						value: file,
+						value: entry,
 					});
 				});
 
@@ -1083,12 +1083,12 @@ export class EditImage implements INodeType {
 				if (operation === 'information') {
 					// Just return the information
 					const imageData = await new Promise<IDataObject>((resolve, reject) => {
-						gmInstance = gmInstance.identify((error, imageData) => {
+						gmInstance = gmInstance.identify((error, data) => {
 							if (error) {
 								reject(error);
 								return;
 							}
-							resolve(imageData as unknown as IDataObject);
+							resolve(data as unknown as IDataObject);
 						});
 					});
 

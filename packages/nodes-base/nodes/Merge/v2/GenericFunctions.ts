@@ -230,10 +230,10 @@ export function mergeMatched(
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
 
-			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 			binary = mergeIntoSingleObject(
 				{ ...entry.binary },
-				...matches.map((match) => match.binary as IDataObject),
+				...matches.map((item) => item.binary as IDataObject),
 			);
 		} else {
 			let preferInput1 = 'preferInput1';
@@ -251,21 +251,21 @@ export function mergeMatched(
 				const [firstMatch, ...restMatches] = matches;
 				json = mergeIntoSingleObject(
 					{ ...firstMatch.json },
-					...restMatches.map((match) => match.json),
+					...restMatches.map((item) => item.json),
 					entry.json,
 				);
 				binary = mergeIntoSingleObject(
 					{ ...firstMatch.binary },
-					...restMatches.map((match) => match.binary as IDataObject),
+					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
 				);
 			}
 
 			if (resolveClash === preferInput2) {
-				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 				binary = mergeIntoSingleObject(
 					{ ...entry.binary },
-					...matches.map((match) => match.binary as IDataObject),
+					...matches.map((item) => item.binary as IDataObject),
 				);
 			}
 		}

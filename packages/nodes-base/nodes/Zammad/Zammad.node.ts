@@ -438,10 +438,10 @@ export class Zammad implements INodeType {
 
 						responseData = await zammadApiRequestAllItems
 							.call(this, 'GET', '/users/search', {}, qs, limit)
-							.then((responseData) => {
-								return responseData.map((user) => {
-									const { _preferences, ...rest } = user;
-									return rest;
+							.then((response) => {
+								return response.map((user) => {
+									const { _preferences, ...data } = user;
+									return data;
 								});
 							});
 					} else if (operation === 'getSelf') {

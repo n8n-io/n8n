@@ -348,11 +348,11 @@ export class Raindrop implements INodeType {
 								},
 							};
 
-							const endpoint = `/collection/${collectionId}/cover`;
+							const requestEndpoint = `/collection/${collectionId}/cover`;
 							responseData = await raindropApiRequest.call(
 								this,
 								'PUT',
-								endpoint,
+								requestEndpoint,
 								{},
 								{},
 								{ 'Content-Type': 'multipart/form-data', formData },

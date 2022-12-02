@@ -174,7 +174,7 @@ export class StravaTrigger implements INodeType {
 										`/push_subscriptions/${webhooks[0].id}`,
 									);
 									// now there is room create a subscription with the n8n data
-									const body = {
+									const requestBody = {
 										callback_url: webhookUrl,
 										verify_token: randomBytes(20).toString('hex') as string,
 									};
@@ -183,7 +183,7 @@ export class StravaTrigger implements INodeType {
 										this,
 										'POST',
 										`/push_subscriptions`,
-										body,
+										requestBody,
 									);
 								} else {
 									error.message = `A subscription already exists [${webhooks[0].callback_url}]. If you want to delete this subcription and create a new one with the current parameters please go to options and set delete if exist to true`;

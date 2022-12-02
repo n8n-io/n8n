@@ -1773,9 +1773,9 @@ export class Mailchimp implements INodeType {
 								.mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
-								for (let i = 0; i < mergeFieldsValues.length; i++) {
+								for (let index = 0; index < mergeFieldsValues.length; index++) {
 									// @ts-ignore
-									mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+									mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 								}
 								body.merge_fields = mergeFields;
 							}
@@ -1784,9 +1784,9 @@ export class Mailchimp implements INodeType {
 								.groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
-								for (let i = 0; i < groupsValues.length; i++) {
+								for (let index = 0; index < groupsValues.length; index++) {
 									// @ts-ignore
-									groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+									groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 								}
 								body.interests = groups;
 							}
@@ -1961,9 +1961,9 @@ export class Mailchimp implements INodeType {
 									.mergeFieldsValues as IDataObject[];
 								if (mergeFieldsValues) {
 									const mergeFields = {};
-									for (let i = 0; i < mergeFieldsValues.length; i++) {
+									for (let index = 0; index < mergeFieldsValues.length; index++) {
 										// @ts-ignore
-										mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+										mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 									}
 									body.merge_fields = mergeFields;
 								}
@@ -1973,9 +1973,9 @@ export class Mailchimp implements INodeType {
 									.groupsValues as IDataObject[];
 								if (groupsValues) {
 									const groups = {};
-									for (let i = 0; i < groupsValues.length; i++) {
+									for (let index = 0; index < groupsValues.length; index++) {
 										// @ts-ignore
-										groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+										groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 									}
 									body.interests = groups;
 								}

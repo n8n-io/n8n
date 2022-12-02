@@ -956,7 +956,7 @@ return 0;`,
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter((value) => value !== null);
+											value = value.filter((entry) => entry !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}
@@ -972,7 +972,7 @@ return 0;`,
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter((value) => value !== null);
+											value = value.filter((entry) => entry !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}

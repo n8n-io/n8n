@@ -80,8 +80,8 @@ export function Child(tpe: string, criterion: IQueryObject): IQueryObject {
 export function Type(tpe: string): IQueryObject {
 	return { _type: tpe };
 }
-export function queryString(queryString: string): IQueryObject {
-	return { _string: queryString };
+export function queryString(query: string): IQueryObject {
+	return { _string: query };
 }
 export function Like(field: string, value: string): IQueryObject {
 	return { _like: { _field: field, _value: value } };

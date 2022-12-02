@@ -294,7 +294,6 @@ export class Zulip implements INodeType {
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
-							const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 							body.subscriptions = JSON.stringify(subscriptions.properties);
 
 							if (additionalFields.inviteOnly) {

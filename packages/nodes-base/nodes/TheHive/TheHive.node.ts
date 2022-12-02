@@ -521,7 +521,6 @@ export class TheHive implements INodeType {
 							i,
 							false,
 						) as boolean;
-						const qs: IDataObject = {};
 
 						if (includeSimilar) {
 							qs.similarity = true;

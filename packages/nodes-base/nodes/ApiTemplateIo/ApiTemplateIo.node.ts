@@ -521,10 +521,10 @@ export class ApiTemplateIo implements INodeType {
 
 						if (download === true) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
-							const data = await downloadImage.call(this, responseData.download_url);
+							const imageData = await downloadImage.call(this, responseData.download_url);
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
-								data,
+								imageData,
 								options.fileName || fileName,
 							);
 							responseData = {

@@ -401,8 +401,8 @@ export class AwsRekognition implements INodeType {
 
 							if (box.length !== 0) {
 								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(box) };
+								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+									return { BoundingBox: keysTPascalCase(entry) };
 								});
 							}
 

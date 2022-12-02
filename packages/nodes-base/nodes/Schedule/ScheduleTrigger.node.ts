@@ -542,8 +542,8 @@ export class ScheduleTrigger implements INodeType {
 			for (const cronJob of cronJobs) {
 				cronJob.stop();
 			}
-			for (const interval of intervalArr) {
-				clearInterval(interval);
+			for (const entry of intervalArr) {
+				clearInterval(entry);
 			}
 		}
 

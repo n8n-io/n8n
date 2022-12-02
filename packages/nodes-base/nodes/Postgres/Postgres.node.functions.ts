@@ -494,8 +494,8 @@ export async function pgUpdate(
 			pgp.helpers.update(updateItems, cs) +
 			' WHERE ' +
 			updateKeys
-				.map((updateKey) => {
-					const key = pgp.as.name(updateKey.name);
+				.map((entry) => {
+					const key = pgp.as.name(entry.name);
 					return 'v.' + key + ' = t.' + key;
 				})
 				.join(' AND ') +
@@ -504,9 +504,7 @@ export async function pgUpdate(
 	} else {
 		const where =
 			' WHERE ' +
-			updateKeys
-				.map((updateKey) => pgp.as.name(updateKey.name) + ' = ${' + updateKey.prop + '}')
-				.join(' AND ');
+			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {
 				const result: IDataObject[] = [];
@@ -616,8 +614,8 @@ export async function pgUpdateV2(
 			pgp.helpers.update(updateItems, cs) +
 			' WHERE ' +
 			updateKeys
-				.map((updateKey) => {
-					const key = pgp.as.name(updateKey.name);
+				.map((entry) => {
+					const key = pgp.as.name(entry.name);
 					return 'v.' + key + ' = t.' + key;
 				})
 				.join(' AND ') +
@@ -627,9 +625,7 @@ export async function pgUpdateV2(
 	} else {
 		const where =
 			' WHERE ' +
-			updateKeys
-				.map((updateKey) => pgp.as.name(updateKey.name) + ' = ${' + updateKey.prop + '}')
-				.join(' AND ');
+			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {
 				const result: IDataObject[] = [];

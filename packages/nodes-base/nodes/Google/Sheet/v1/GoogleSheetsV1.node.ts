@@ -56,14 +56,14 @@ export class GoogleSheetsV1 implements INodeType {
 				}
 
 				const returnData: INodePropertyOptions[] = [];
-				for (const sheet of responseData.sheets!) {
-					if (sheet.properties!.sheetType !== 'GRID') {
+				for (const entry of responseData.sheets!) {
+					if (entry.properties!.sheetType !== 'GRID') {
 						continue;
 					}
 
 					returnData.push({
-						name: sheet.properties!.title as string,
-						value: sheet.properties!.sheetId as unknown as string,
+						name: entry.properties!.title as string,
+						value: entry.properties!.sheetId as unknown as string,
 					});
 				}
 
@@ -176,13 +176,13 @@ export class GoogleSheetsV1 implements INodeType {
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const sheetId = this.getNodeParameter('sheetId', i) as string;
+						const iterationOptions = this.getNodeParameter('options', i, {}) as IDataObject;
 						const simple = this.getNodeParameter('simple', 0) as boolean;
-						const properties = { ...options };
+						const properties = { ...iterationOptions };
 
-						if (options.tabColor) {
-							const { red, green, blue } = hexToRgb(options.tabColor as string)!;
+						if (iterationOptions.tabColor) {
+							const { red, green, blue } = hexToRgb(iterationOptions.tabColor as string)!;
 							properties.tabColor = { red: red / 255, green: green / 255, blue: blue / 255 };
 						}
 
@@ -197,7 +197,7 @@ export class GoogleSheetsV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							`/v4/spreadsheets/${sheetId}:batchUpdate`,
 							{ requests },
 						);
 
@@ -232,16 +232,16 @@ export class GoogleSheetsV1 implements INodeType {
 
 					for (const propertyName of Object.keys(deletePropertyToDimensions)) {
 						if (toDelete[propertyName] !== undefined) {
-							toDelete[propertyName]!.forEach((range) => {
+							toDelete[propertyName]!.forEach((entry) => {
 								requests.push({
 									deleteDimension: {
 										range: {
-											sheetId: range.sheetId,
+											sheetId: entry.sheetId,
 											dimension: deletePropertyToDimensions[propertyName] as string,
-											startIndex: range.startIndex,
+											startIndex: entry.startIndex,
 											endIndex:
-												parseInt(range.startIndex.toString(), 10) +
-												parseInt(range.amount.toString(), 10),
+												parseInt(entry.startIndex.toString(), 10) +
+												parseInt(entry.amount.toString(), 10),
 										},
 									},
 								});
@@ -352,13 +352,13 @@ export class GoogleSheetsV1 implements INodeType {
 				let responseData;
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const sheetId = this.getNodeParameter('id', i) as string;
-						const spreadsheetId = this.getNodeParameter('sheetId', i) as string;
+						const id = this.getNodeParameter('id', i) as string;
+						const sheetId = this.getNodeParameter('sheetId', i) as string;
 
 						const requests = [
 							{
 								deleteSheet: {
-									sheetId,
+									sheetId: id,
 								},
 							},
 						];
@@ -366,7 +366,7 @@ export class GoogleSheetsV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+							`/v4/spreadsheets/${sheetId}:batchUpdate`,
 							{ requests },
 						);
 						delete responseData.replies;

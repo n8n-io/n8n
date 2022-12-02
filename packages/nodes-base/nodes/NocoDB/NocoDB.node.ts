@@ -291,7 +291,6 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 
 								let postUrl = '';
 								if (version === 1) {
@@ -300,9 +299,17 @@ export class NocoDB implements INodeType {
 									postUrl = '/api/v1/db/storage/upload';
 								}
 
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}
@@ -526,7 +533,7 @@ export class NocoDB implements INodeType {
 			}
 
 			if (operation === 'update') {
-				let requestMethod = 'PATCH';
+				requestMethod = 'PATCH';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
@@ -594,16 +601,23 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 								let postUrl = '';
 								if (version === 1) {
 									postUrl = '/dashboard';
 								} else if (version === 2) {
 									postUrl = '/api/v1/db/storage/upload';
 								}
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}

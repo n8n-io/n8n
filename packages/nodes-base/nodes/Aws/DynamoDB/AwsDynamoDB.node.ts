@@ -195,11 +195,11 @@ export class AwsDynamoDB implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 
-						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [
+						const keyValues = this.getNodeParameter('keysUi.keyValues', i, []) as [
 							{ key: string; type: string; value: string },
 						];
 
-						for (const item of items) {
+						for (const item of keyValues) {
 							let value = item.value as NodeParameterValue;
 							// All data has to get send as string even numbers
 							// @ts-ignore
@@ -275,9 +275,9 @@ export class AwsDynamoDB implements INodeType {
 							body.ProjectionExpression = additionalFields.projectionExpression as string;
 						}
 
-						const items = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
+						const keyValues = this.getNodeParameter('keysUi.keyValues', i, []) as IDataObject[];
 
-						for (const item of items) {
+						for (const item of keyValues) {
 							let value = item.value as NodeParameterValue;
 							// All data has to get send as string even numbers
 							// @ts-ignore

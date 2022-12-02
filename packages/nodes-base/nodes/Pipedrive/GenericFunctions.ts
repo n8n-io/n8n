@@ -192,7 +192,7 @@ export function pipedriveEncodeCustomProperties(
 
 	for (const key of Object.keys(item)) {
 		customPropertyData = Object.values(customProperties).find(
-			(customPropertyData) => customPropertyData.name === key,
+			(propertyData) => propertyData.name === key,
 		);
 
 		if (customPropertyData !== undefined) {

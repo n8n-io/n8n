@@ -311,6 +311,7 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
@@ -346,6 +347,7 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
@@ -369,17 +371,17 @@ export class MicrosoftSql implements INodeType {
 				//         delete
 				// ----------------------------------
 
-				const tables = items.reduce((tables, item, index) => {
+				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (tables[table] === undefined) {
-						tables[table] = {};
+					if (acc[table] === undefined) {
+						acc[table] = {};
 					}
-					if (tables[table][deleteKey] === undefined) {
-						tables[table][deleteKey] = [];
+					if (acc[table][deleteKey] === undefined) {
+						acc[table][deleteKey] = [];
 					}
-					tables[table][deleteKey].push(item);
-					return tables;
+					acc[table][deleteKey].push(item);
+					return acc;
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(

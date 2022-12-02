@@ -172,10 +172,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}
@@ -345,10 +345,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}
@@ -473,10 +473,10 @@ export class Intercom implements INodeType {
 							).customAttributesValues as IDataObject[];
 							if (customAttributesValues) {
 								const customAttributes = {};
-								for (let i = 0; i < customAttributesValues.length; i++) {
+								for (let index = 0; index < customAttributesValues.length; index++) {
 									// @ts-ignore
-									customAttributes[customAttributesValues[i].name] =
-										customAttributesValues[i].value;
+									customAttributes[customAttributesValues[index].name] =
+										customAttributesValues[index].value;
 								}
 								body.custom_attributes = customAttributes;
 							}

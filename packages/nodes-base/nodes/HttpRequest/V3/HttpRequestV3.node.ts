@@ -1328,7 +1328,7 @@ export class HttpRequestV3 implements INodeType {
 				'autodetect',
 			) as string;
 
-			const fullResponse = this.getNodeParameter(
+			fullResponse = this.getNodeParameter(
 				'options.response.response.fullResponse',
 				0,
 				false,

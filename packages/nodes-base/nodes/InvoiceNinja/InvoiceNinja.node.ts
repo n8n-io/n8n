@@ -466,7 +466,7 @@ export class InvoiceNinja implements INodeType {
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
 						if (invoceItemsValues) {
-							const items: IItem[] = [];
+							const invoiceItems: IItem[] = [];
 							for (const itemValue of invoceItemsValues) {
 								const item: IItem = {
 									cost: itemValue.cost as number,
@@ -478,9 +478,9 @@ export class InvoiceNinja implements INodeType {
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
-								items.push(item);
+								invoiceItems.push(item);
 							}
-							body.invoice_items = items;
+							body.invoice_items = invoiceItems;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -896,7 +896,7 @@ export class InvoiceNinja implements INodeType {
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
 						if (invoceItemsValues) {
-							const items: IItem[] = [];
+							const invoiceItems: IItem[] = [];
 							for (const itemValue of invoceItemsValues) {
 								const item: IItem = {
 									cost: itemValue.cost as number,
@@ -908,9 +908,9 @@ export class InvoiceNinja implements INodeType {
 									tax_name1: itemValue.taxName1 as string,
 									tax_name2: itemValue.taxName2 as string,
 								};
-								items.push(item);
+								invoiceItems.push(item);
 							}
-							body.invoice_items = items;
+							body.invoice_items = invoiceItems;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,

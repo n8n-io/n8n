@@ -100,13 +100,13 @@ export async function googleApiRequest(
 		if (error.httpCode === '400') {
 			if (error.cause && ((error.cause.message as string) || '').includes('Invalid id value')) {
 				const resource = this.getNodeParameter('resource', 0) as string;
-				const options = {
+				const errorOptions = {
 					message: `Invalid ${resource} ID`,
 					description: `${
 						resource.charAt(0).toUpperCase() + resource.slice(1)
 					} IDs should look something like this: 182b676d244938bd`,
 				};
-				throw new NodeApiError(this.getNode(), error, options);
+				throw new NodeApiError(this.getNode(), error, errorOptions);
 			}
 		}
 
@@ -115,41 +115,41 @@ export async function googleApiRequest(
 			if (resource === 'label') {
 				resource = 'label ID';
 			}
-			const options = {
+			const errorOptions = {
 				message: `${resource.charAt(0).toUpperCase() + resource.slice(1)} not found`,
 				description: '',
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error, errorOptions);
 		}
 
 		if (error.httpCode === '409') {
 			const resource = this.getNodeParameter('resource', 0) as string;
 			if (resource === 'label') {
-				const options = {
+				const errorOptions = {
 					message: `Label name exists already`,
 					description: '',
 				};
-				throw new NodeApiError(this.getNode(), error, options);
+				throw new NodeApiError(this.getNode(), error, errorOptions);
 			}
 		}
 
 		if (error.code === 'EAUTH') {
-			const options = {
+			const errorOptions = {
 				message: error?.body?.error_description || 'Authorization error',
 				description: (error as Error).message,
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error, errorOptions);
 		}
 
 		if (
 			((error.message as string) || '').includes('Bad request - please check your parameters') &&
 			error.description
 		) {
-			const options = {
+			const errorOptions = {
 				message: error.description,
 				description: ``,
 			};
-			throw new NodeApiError(this.getNode(), error, options);
+			throw new NodeApiError(this.getNode(), error, errorOptions);
 		}
 
 		throw new NodeApiError(this.getNode(), error, {

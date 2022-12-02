@@ -761,16 +761,16 @@ export class Slack implements INodeType {
 									} else if (block.type === 'section') {
 										const textUi = (blockUi.textUi as IDataObject).textValue as IDataObject;
 										if (textUi) {
-											const text: Text = {};
+											const textData: Text = {};
 											if (textUi.type === 'plainText') {
-												text.type = 'plain_text';
-												text.emoji = textUi.emoji as boolean;
+												textData.type = 'plain_text';
+												textData.emoji = textUi.emoji as boolean;
 											} else {
-												text.type = 'mrkdwn';
-												text.verbatim = textUi.verbatim as boolean;
+												textData.type = 'mrkdwn';
+												textData.verbatim = textUi.verbatim as boolean;
 											}
-											text.text = textUi.text as string;
-											block.text = text;
+											textData.text = textUi.text as string;
+											block.text = textData;
 										} else {
 											throw new NodeOperationError(
 												this.getNode(),
@@ -825,7 +825,8 @@ export class Slack implements INodeType {
 													const confirm: Confirm = {};
 													const titleUi = (confirmUi.titleUi as IDataObject)
 														.titleValue as IDataObject;
-													const textUi = (confirmUi.textUi as IDataObject).textValue as IDataObject;
+													const textUiFromConfirm = (confirmUi.textUi as IDataObject)
+														.textValue as IDataObject;
 													const confirmTextUi = (confirmUi.confirmTextUi as IDataObject)
 														.confirmValue as IDataObject;
 													const denyUi = (confirmUi.denyUi as IDataObject).denyValue as IDataObject;
@@ -837,11 +838,11 @@ export class Slack implements INodeType {
 															emoji: titleUi.emoji as boolean,
 														};
 													}
-													if (textUi) {
+													if (textUiFromConfirm) {
 														confirm.text = {
 															type: 'plain_text',
-															text: textUi.text as string,
-															emoji: textUi.emoji as boolean,
+															text: textUiFromConfirm.text as string,
+															emoji: textUiFromConfirm.emoji as boolean,
 														};
 													}
 													if (confirmTextUi) {
@@ -976,11 +977,11 @@ export class Slack implements INodeType {
 					if (operation === 'getPermalink') {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
-						const qs = {
+						const query = {
 							channel,
 							message_ts: timestamp,
 						};
-						responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
+						responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, query);
 					}
 				}
 				if (resource === 'reaction') {
@@ -1280,11 +1281,13 @@ export class Slack implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const qs: IDataObject = {};
-
-						Object.assign(qs, additionalFields);
-
-						responseData = await slackApiRequest.call(this, 'GET', '/usergroups.list', {}, qs);
+						responseData = await slackApiRequest.call(
+							this,
+							'GET',
+							'/usergroups.list',
+							{},
+							additionalFields,
+						);
 
 						responseData = responseData.usergroups;
 
@@ -1358,16 +1361,12 @@ export class Slack implements INodeType {
 					if (operation === 'get') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						const qs: IDataObject = {};
-
-						Object.assign(qs, additionalFields);
-
 						responseData = await slackApiRequest.call(
 							this,
 							'POST',
 							'/users.profile.get',
 							undefined,
-							qs,
+							additionalFields,
 						);
 
 						responseData = responseData.profile;
