@@ -187,9 +187,9 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
-									.tz(createdRangeValues.to, tz)
-									.format()}`;
+								const from = moment.tz(createdRangeValues.from, tz).format();
+								const to = moment.tz(createdRangeValues.to, tz).format();
+								qs.created_at_range = `${from},${to}`;
 							}
 							delete qs.createdRangeUi;
 						}
