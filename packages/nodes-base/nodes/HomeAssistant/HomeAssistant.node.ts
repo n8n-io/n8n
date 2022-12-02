@@ -159,18 +159,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this);
+				return getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this, 'camera');
+				return getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantServices.call(this);
+				return getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return await getHomeAssistantServices.call(this, currentDomain);
+					return getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}

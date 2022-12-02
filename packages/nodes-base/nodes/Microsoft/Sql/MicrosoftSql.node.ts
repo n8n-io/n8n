@@ -311,13 +311,14 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map((insertValues) => {
+						return chunk(items, 1000).map(async (insertValues) => {
 							const values = insertValues.map((item: IDataObject) => extractValues(item)).join(',');
 							return pool
 								.request()
@@ -346,13 +347,14 @@ export class MicrosoftSql implements INodeType {
 					({
 						table,
 						columnString,
+						// eslint-disable-next-line @typescript-eslint/no-shadow
 						items,
 					}: {
 						table: string;
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return items.map((item) => {
+						return items.map(async (item) => {
 							const columns = columnString.split(',').map((column) => column.trim());
 
 							const setValues = extractUpdateSet(item, columns);
@@ -369,29 +371,29 @@ export class MicrosoftSql implements INodeType {
 				//         delete
 				// ----------------------------------
 
-				const tables = items.reduce((tables, item, index) => {
+				const tables = items.reduce((acc, item, index) => {
 					const table = this.getNodeParameter('table', index) as string;
 					const deleteKey = this.getNodeParameter('deleteKey', index) as string;
-					if (tables[table] === undefined) {
-						tables[table] = {};
+					if (acc[table] === undefined) {
+						acc[table] = {};
 					}
-					if (tables[table][deleteKey] === undefined) {
-						tables[table][deleteKey] = [];
+					if (acc[table][deleteKey] === undefined) {
+						acc[table][deleteKey] = [];
 					}
-					tables[table][deleteKey].push(item);
-					return tables;
+					acc[table][deleteKey].push(item);
+					return acc;
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
-					Object.keys(tables).map((table) => {
-						const deleteKeyResults = Object.keys(tables[table]).map((deleteKey) => {
+					Object.keys(tables).map(async (table) => {
+						const deleteKeyResults = Object.keys(tables[table]).map(async (deleteKey) => {
 							const deleteItemsList = chunk(
 								tables[table][deleteKey].map((item) =>
 									copyInputItem(item as INodeExecutionData, [deleteKey]),
 								),
 								1000,
 							);
-							const queryQueue = deleteItemsList.map((deleteValues) => {
+							const queryQueue = deleteItemsList.map(async (deleteValues) => {
 								return pool
 									.request()
 									.query(
@@ -422,7 +424,7 @@ export class MicrosoftSql implements INodeType {
 				);
 			}
 		} catch (error) {
-			if (this.continueOnFail() === true) {
+			if (this.continueOnFail()) {
 				responseData = items;
 			} else {
 				await pool.close();

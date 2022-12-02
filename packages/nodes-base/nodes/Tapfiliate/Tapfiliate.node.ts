@@ -177,8 +177,8 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#affiliates-meta-data-key-put
 						const affiliateId = this.getNodeParameter('affiliateId', i) as string;
 						const metadata =
-							(((this.getNodeParameter('metadataUi', i) as IDataObject) || {})
-								.metadataValues as IDataObject[]) || [];
+							((this.getNodeParameter('metadataUi', i) as IDataObject)
+								?.metadataValues as IDataObject[]) || [];
 						if (metadata.length === 0) {
 							throw new NodeOperationError(this.getNode(), 'Metadata cannot be empty.', {
 								itemIndex: i,

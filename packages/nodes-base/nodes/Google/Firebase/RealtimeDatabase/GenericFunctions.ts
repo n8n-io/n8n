@@ -75,9 +75,9 @@ export async function googleApiRequestAllItems(
 			{},
 			uri,
 		);
-		qs.pageToken = responseData['nextPageToken'];
+		qs.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[resource]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }

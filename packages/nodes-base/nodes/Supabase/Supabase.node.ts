@@ -272,7 +272,7 @@ export class Supabase implements INodeType {
 						endpoint = `${endpoint}?${encodeURI(filterString)}`;
 					}
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						qs.limit = this.getNodeParameter('limit', 0);
 					}
 

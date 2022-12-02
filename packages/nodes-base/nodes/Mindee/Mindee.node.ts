@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -173,7 +172,7 @@ export class Mindee implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
@@ -220,7 +219,7 @@ export class Mindee implements INodeType {
 								},
 							);
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {
@@ -244,7 +243,7 @@ export class Mindee implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
@@ -294,7 +293,7 @@ export class Mindee implements INodeType {
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {

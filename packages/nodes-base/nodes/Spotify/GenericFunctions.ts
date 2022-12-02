@@ -65,7 +65,7 @@ export async function spotifyApiRequestAllItems(
 			return returnData;
 		}
 	} while (
-		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		(responseData.next !== null && responseData.next !== undefined) ||
 		(responseData[propertyName.split('.')[0]].next !== null &&
 			responseData[propertyName.split('.')[0]].next !== undefined)
 	);

@@ -81,10 +81,10 @@ export async function redditApiRequestAllItems(
 		} else {
 			responseData.data.children.forEach((child: any) => returnData.push(child.data));
 		}
-		if (qs.limit && returnData.length >= qs.limit && returnAll === false) {
+		if (qs.limit && returnData.length >= qs.limit && !returnAll) {
 			return returnData;
 		}
-	} while (responseData.data && responseData.data.after);
+	} while (responseData.data?.after);
 
 	return returnData;
 }

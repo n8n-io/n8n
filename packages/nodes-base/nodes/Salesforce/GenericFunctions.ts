@@ -2,13 +2,16 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodePropertyOptions,
+	LoggerProxy as Logger,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -136,7 +139,7 @@ function getOptions(
 	return options;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {
@@ -175,12 +178,11 @@ function getAccessToken(
 		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }
 
 export function getConditions(options: IDataObject) {
-	const conditions = ((options.conditionsUi as IDataObject) || {}).conditionValues as IDataObject[];
+	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
 		data = conditions.map(
@@ -225,7 +227,7 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 
 	let query = `SELECT ${fields.join(',')} FROM ${sobject} ${conditions ? conditions : ''}`;
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		query = `SELECT ${fields.join(',')} FROM ${sobject} ${
 			conditions ? conditions : ''
 		} LIMIT ${limit}`;

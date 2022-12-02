@@ -86,7 +86,7 @@ export class TravisCi implements INodeType {
 							qs.include = additionalFields.include;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await travisciApiRequestAllItems.call(
 								this,
 								'builds',

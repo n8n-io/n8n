@@ -53,8 +53,8 @@ export async function asanaApiRequestAllItems(
 	do {
 		responseData = await asanaApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = get(responseData, 'next_page.uri');
-		returnData.push.apply(returnData, responseData['data']);
-	} while (responseData['next_page'] !== null);
+		returnData.push.apply(returnData, responseData.data);
+	} while (responseData.next_page !== null);
 
 	return returnData;
 }

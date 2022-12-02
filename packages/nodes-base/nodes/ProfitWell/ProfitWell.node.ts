@@ -123,7 +123,7 @@ export class ProfitWell implements INodeType {
 						responseData = await profitWellApiRequest.call(this, 'GET', `/metrics/${type}`, {}, qs);
 						responseData = responseData.data;
 
-						if (simple === true) {
+						if (simple) {
 							if (type === 'daily') {
 								responseData = simplifyDailyMetrics(responseData);
 							} else {

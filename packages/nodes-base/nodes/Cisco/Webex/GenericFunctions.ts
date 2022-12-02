@@ -42,7 +42,7 @@ export async function webexApiRequest(
 			delete options.qs;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
+		return this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
 	} catch (error) {
@@ -71,13 +71,10 @@ export async function webexApiRequestAllItems(
 			...options,
 		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 

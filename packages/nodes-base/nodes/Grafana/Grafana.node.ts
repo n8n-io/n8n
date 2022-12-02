@@ -240,7 +240,7 @@ export class Grafana implements INodeType {
 							const dashboards = (await grafanaApiRequest.call(this, 'GET', '/search')) as Array<{
 								title: string;
 							}>;
-							const titles = dashboards.map(({ title }) => title);
+							const titles = dashboards.map(({ title: entry }) => entry);
 
 							if (titles.includes(title)) {
 								throw new NodeApiError(this.getNode(), {

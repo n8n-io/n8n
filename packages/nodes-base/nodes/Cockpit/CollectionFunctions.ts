@@ -69,7 +69,7 @@ export async function getAllCollectionEntries(
 
 	body.simple = true;
 	if (options.rawData) {
-		body.simple = !options.rawData as boolean;
+		body.simple = !options.rawData;
 	}
 
 	if (options.language) {

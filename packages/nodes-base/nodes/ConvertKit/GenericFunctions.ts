@@ -35,7 +35,7 @@ export async function convertKitApiRequest(
 
 	// it's a webhook so include the api secret on the body
 	if ((options.uri as string).includes('/automations/hooks')) {
-		options.body['api_secret'] = credentials.apiSecret;
+		options.body.api_secret = credentials.apiSecret;
 	} else {
 		qs.api_secret = credentials.apiSecret;
 	}
@@ -45,7 +45,7 @@ export async function convertKitApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

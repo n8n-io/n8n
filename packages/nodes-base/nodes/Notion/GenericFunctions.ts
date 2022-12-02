@@ -17,15 +17,13 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { camelCase, capitalCase } from 'change-case';
+import { camelCase, capitalCase, snakeCase } from 'change-case';
 
 import { filters } from './Filters';
 
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
-
-import { snakeCase } from 'change-case';
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
@@ -90,9 +88,9 @@ export async function notionApiRequestAllItems(
 		responseData = await notionApiRequest.call(this, method, endpoint, body, query);
 		const { next_cursor } = responseData;
 		if (resource === 'block' || resource === 'user') {
-			query['start_cursor'] = next_cursor;
+			query.start_cursor = next_cursor;
 		} else {
-			body['start_cursor'] = next_cursor;
+			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 		if (query.limit && query.limit <= returnData.length) {
@@ -165,7 +163,7 @@ export function formatText(content: string) {
 }
 
 function getLink(text: { textLink: string; isLink: boolean }) {
-	if (text.isLink === true && text.textLink !== '') {
+	if (text.isLink && text.textLink !== '') {
 		return {
 			link: {
 				url: text.textLink,
@@ -209,10 +207,9 @@ function getTexts(
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						[text.mentionType]:
-							text.range === true
-								? { start: text.dateStart, end: text.dateEnd }
-								: { start: text.date, end: null },
+						[text.mentionType]: text.range
+							? { start: text.dateStart, end: text.dateEnd }
+							: { start: text.date, end: null },
 					},
 					annotations: text.annotationUi,
 				});
@@ -299,8 +296,8 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					? multiSelectValue
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
-
-					.filter((value: any) => value !== null)
+					// tslint:disable-next-line: no-any
+					.filter((entry: any) => entry !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
 			break;
@@ -382,7 +379,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 }
 
 function getDateFormat(includeTime: boolean) {
-	if (includeTime === false) {
+	if (!includeTime) {
 		return 'yyyy-MM-DD';
 	}
 	return '';
@@ -430,8 +427,9 @@ export function mapSorting(
 	});
 }
 
-export function mapFilters(filters: IDataObject[], timezone: string) {
-	return filters.reduce((obj, value: { [key: string]: any }) => {
+export function mapFilters(filtersList: IDataObject[], timezone: string) {
+	// tslint:disable-next-line: no-any
+	return filtersList.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
 		let valuePropertyName =
@@ -460,11 +458,11 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 		}
 
 		if (value.type === 'formula') {
-			const valuePropertyName = value[`${camelCase(value.returnType)}Value`];
+			const vpropertyName = value[`${camelCase(value.returnType)}Value`];
 
 			return Object.assign(obj, {
 				['property']: getNameAndType(value.key).name,
-				[key]: { [value.returnType]: { [`${value.condition}`]: valuePropertyName } },
+				[key]: { [value.returnType]: { [`${value.condition}`]: vpropertyName } },
 			});
 		}
 
@@ -498,7 +496,7 @@ function simplifyProperty(property: any) {
 			'date',
 		].includes(property.type)
 	) {
-		result = property[type] as any;
+		result = property[type];
 	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
 		result = property[type] ? property[type].name : null;
 	} else if (['people'].includes(property.type)) {
@@ -692,9 +690,9 @@ export function getConditions() {
 					type: [type],
 				},
 			} as IDisplayOptions,
-			options: (typeConditions[types[type]] as string[]).map((type: string) => ({
-				name: capitalCase(type),
-				value: type,
+			options: typeConditions[types[type]].map((entry: string) => ({
+				name: capitalCase(entry),
+				value: entry,
 			})),
 			default: '',
 			description: 'The value of the property to filter by',
@@ -726,7 +724,7 @@ export function getConditions() {
 					returnType: [key],
 				},
 			} as IDisplayOptions,
-			options: formula[key].map((key: string) => ({ name: capitalCase(key), value: key })),
+			options: formula[key].map((entry: string) => ({ name: capitalCase(entry), value: entry })),
 			default: '',
 			description: 'The value of the property to filter by',
 		} as INodeProperties);
@@ -736,7 +734,8 @@ export function getConditions() {
 }
 
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { 
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
+
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };

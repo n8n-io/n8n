@@ -186,7 +186,7 @@ export class Keap implements INodeType {
 					const countryId = key;
 					returnData.push({
 						name: countryName as string,
-						value: countryId as string,
+						value: countryId,
 					});
 				}
 				return returnData;
@@ -206,7 +206,7 @@ export class Keap implements INodeType {
 					const provinceId = key;
 					returnData.push({
 						name: provinceName as string,
-						value: provinceId as string,
+						value: provinceId,
 					});
 				}
 				return returnData;
@@ -590,9 +590,7 @@ export class Keap implements INodeType {
 						order_type: pascalCase(orderType),
 					};
 					if (additionalFields.promoCodes) {
-						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(
-							',',
-						) as string[];
+						additionalFields.promoCodes = (additionalFields.promoCodes as string).split(',');
 					}
 					keysToSnakeCase(additionalFields);
 					Object.assign(body, additionalFields);
@@ -691,7 +689,7 @@ export class Keap implements INodeType {
 						sent_from_address: sentFromAddress,
 					};
 					Object.assign(body, additionalFields);
-					keysToSnakeCase(body as IDataObject);
+					keysToSnakeCase(body);
 					responseData = await keapApiRequest.call(this, 'POST', '/emails', body);
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
@@ -724,9 +722,9 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/deleteEmailUsingDELETE
 				if (operation === 'send') {
 					const userId = this.getNodeParameter('userId', i) as number;
-					const contactIds = (
-						(this.getNodeParameter('contactIds', i) as string).split(',') as string[]
-					).map((e) => parseInt(e, 10));
+					const contactIds = (this.getNodeParameter('contactIds', i) as string)
+						.split(',')
+						.map((e) => parseInt(e, 10));
 					const subject = this.getNodeParameter('subject', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEmail = {
@@ -839,7 +837,7 @@ export class Keap implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						if (item[binaryPropertyName as string] === undefined) {
+						if (item[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`No binary data property "${binaryPropertyName}" does not exists on item!`,
@@ -847,8 +845,8 @@ export class Keap implements INodeType {
 							);
 						}
 
-						body.file_data = item[binaryPropertyName as string].data;
-						body.file_name = item[binaryPropertyName as string].fileName;
+						body.file_data = item[binaryPropertyName].data;
+						body.file_name = item[binaryPropertyName].fileName;
 					} else {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileData = this.getNodeParameter('fileData', i) as string;

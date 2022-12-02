@@ -56,7 +56,7 @@ export class OnfleetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				// Webhook got created before so check if it still exists
@@ -75,7 +75,7 @@ export class OnfleetTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const { name = '' } = this.getNodeParameter('additionalFields') as IDataObject;
 				const triggerOn = this.getNodeParameter('triggerOn') as string;
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('//localhost')) {
@@ -121,7 +121,7 @@ export class OnfleetTrigger implements INodeType {
 				return true;
 			},
 			async delete(this: IHookFunctions): Promise<boolean> {
-				const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+				const webhookData = this.getWorkflowStaticData('node');
 				// Get the data of the already registered webhook
 				const endpoint = `/webhooks/${webhookData.id}`;
 				await onfleetApiRequest.call(this, 'DELETE', endpoint);

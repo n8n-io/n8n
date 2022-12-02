@@ -572,7 +572,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
@@ -683,7 +683,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
@@ -812,7 +812,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',

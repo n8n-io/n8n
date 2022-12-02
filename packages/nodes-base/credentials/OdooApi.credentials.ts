@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties, NodePropertyTypes } from 'n8n-workflo
 
 export class OdooApi implements ICredentialType {
 	name = 'odooApi';
+
 	displayName = 'Odoo API';
+
 	documentationUrl = 'odoo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Site URL',

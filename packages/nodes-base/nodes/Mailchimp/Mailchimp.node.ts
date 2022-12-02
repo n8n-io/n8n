@@ -1690,7 +1690,7 @@ export class Mailchimp implements INodeType {
 						const categoryId = this.getNodeParameter('groupCategory', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/interest-categories/${categoryId}/interests`,
@@ -1744,12 +1744,12 @@ export class Mailchimp implements INodeType {
 						if (options.timestampOpt) {
 							body.timestamp_opt = moment(options.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.timestampSignup) {
 							body.timestamp_signup = moment(options.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (options.tags) {
 							// @ts-ignore
@@ -1762,9 +1762,9 @@ export class Mailchimp implements INodeType {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
 									if (key === 'latitude') {
-										location.latitude = parseFloat(locationValues[key] as string) as number;
+										location.latitude = parseFloat(locationValues[key] as string);
 									} else if (key === 'longitude') {
-										location.longitude = parseFloat(locationValues[key] as string) as number;
+										location.longitude = parseFloat(locationValues[key] as string);
 									}
 								}
 								body.location = location;
@@ -1773,9 +1773,9 @@ export class Mailchimp implements INodeType {
 								.mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
-								for (let i = 0; i < mergeFieldsValues.length; i++) {
+								for (let index = 0; index < mergeFieldsValues.length; index++) {
 									// @ts-ignore
-									mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+									mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 								}
 								body.merge_fields = mergeFields;
 							}
@@ -1784,9 +1784,9 @@ export class Mailchimp implements INodeType {
 								.groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
-								for (let i = 0; i < groupsValues.length; i++) {
+								for (let index = 0; index < groupsValues.length; index++) {
 									// @ts-ignore
-									groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+									groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 								}
 								body.interests = groups;
 							}
@@ -1878,7 +1878,7 @@ export class Mailchimp implements INodeType {
 						if (options.sinceLastChanged) {
 							qs.since_last_changed = options.sinceLastChanged as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/lists/${listId}/members`,
@@ -1933,12 +1933,12 @@ export class Mailchimp implements INodeType {
 						if (updateFields.timestampOpt) {
 							body.timestamp_opt = moment(updateFields.timestampOpt as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (updateFields.timestampSignup) {
 							body.timestamp_signup = moment(updateFields.timestampSignup as string).format(
 								'YYYY-MM-DD HH:MM:SS',
-							) as string;
+							);
 						}
 						if (!jsonActive) {
 							if (updateFields.locationFieldsUi) {
@@ -1948,9 +1948,9 @@ export class Mailchimp implements INodeType {
 									const location: ILocation = {};
 									for (const key of Object.keys(locationValues)) {
 										if (key === 'latitude') {
-											location.latitude = parseFloat(locationValues[key] as string) as number;
+											location.latitude = parseFloat(locationValues[key] as string);
 										} else if (key === 'longitude') {
-											location.longitude = parseFloat(locationValues[key] as string) as number;
+											location.longitude = parseFloat(locationValues[key] as string);
 										}
 									}
 									body.location = location;
@@ -1961,9 +1961,9 @@ export class Mailchimp implements INodeType {
 									.mergeFieldsValues as IDataObject[];
 								if (mergeFieldsValues) {
 									const mergeFields = {};
-									for (let i = 0; i < mergeFieldsValues.length; i++) {
+									for (let index = 0; index < mergeFieldsValues.length; index++) {
 										// @ts-ignore
-										mergeFields[mergeFieldsValues[i].name] = mergeFieldsValues[i].value;
+										mergeFields[mergeFieldsValues[index].name] = mergeFieldsValues[index].value;
 									}
 									body.merge_fields = mergeFields;
 								}
@@ -1973,9 +1973,9 @@ export class Mailchimp implements INodeType {
 									.groupsValues as IDataObject[];
 								if (groupsValues) {
 									const groups = {};
-									for (let i = 0; i < groupsValues.length; i++) {
+									for (let index = 0; index < groupsValues.length; index++) {
 										// @ts-ignore
-										groups[groupsValues[i].categoryFieldId] = groupsValues[i].value;
+										groups[groupsValues[index].categoryFieldId] = groupsValues[index].value;
 									}
 									body.interests = groups;
 								}
@@ -2116,7 +2116,7 @@ export class Mailchimp implements INodeType {
 						if (options.sortField) {
 							qs.sort_field = options.sortField as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mailchimpApiRequestAllItems.call(
 								this,
 								`/campaigns`,

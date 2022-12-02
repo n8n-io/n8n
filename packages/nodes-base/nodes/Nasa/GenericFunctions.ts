@@ -14,7 +14,7 @@ export async function nasaApiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('nasaApi');
 
-	qs.api_key = credentials['api_key'] as string;
+	qs.api_key = credentials.api_key as string;
 
 	const options: OptionsWithUri = {
 		method,

@@ -8,8 +8,11 @@ import {
 
 export class GhostContentApi implements ICredentialType {
 	name = 'ghostContentApi';
+
 	displayName = 'Ghost Content API';
+
 	documentationUrl = 'ghost';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',
@@ -26,6 +29,7 @@ export class GhostContentApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -36,6 +40,7 @@ export class GhostContentApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.url}}',
