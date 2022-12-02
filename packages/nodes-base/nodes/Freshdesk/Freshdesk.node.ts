@@ -1096,8 +1096,8 @@ export class Freshdesk implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'ticket') {
@@ -1107,7 +1107,7 @@ export class Freshdesk implements INodeType {
 						const value = this.getNodeParameter('requesterIdentificationValue', i) as string;
 						const status = this.getNodeParameter('status', i) as string;
 						const priority = this.getNodeParameter('priority', i) as string;
-						const source = this.getNodeParameter('source', i) as string;
+						const source = this.getNodeParameter('source', i);
 						const options = this.getNodeParameter('options', i);
 						//const jsonActive = this.getNodeParameter('jsonParameters') as boolean;
 						const body: ICreateTicketBody = {

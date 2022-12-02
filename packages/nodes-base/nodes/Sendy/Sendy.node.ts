@@ -66,18 +66,18 @@ export class Sendy implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'campaign') {
 				if (operation === 'create') {
-					const fromName = this.getNodeParameter('fromName', i) as string;
+					const fromName = this.getNodeParameter('fromName', i);
 
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 
 					const replyTo = this.getNodeParameter('replyTo', i) as string;
 
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 
 					const subject = this.getNodeParameter('subject', i) as string;
 

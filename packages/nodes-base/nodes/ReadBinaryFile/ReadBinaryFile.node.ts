@@ -53,8 +53,8 @@ export class ReadBinaryFile implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-				const filePath = this.getNodeParameter('filePath', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				const filePath = this.getNodeParameter('filePath', itemIndex);
 
 				let data;
 				try {

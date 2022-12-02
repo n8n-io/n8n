@@ -247,7 +247,7 @@ export class AwsSns implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -306,7 +306,7 @@ export class AwsSns implements INodeType {
 					const params = [
 						('TopicArn=' + topic) as string,
 						('Subject=' + this.getNodeParameter('subject', i)) as string,
-						('Message=' + this.getNodeParameter('message', i)) as string,
+						'Message=' + this.getNodeParameter('message', i),
 					];
 
 					const responseData = await awsApiRequestSOAP.call(

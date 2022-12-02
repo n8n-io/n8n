@@ -130,8 +130,8 @@ export class Zulip implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
@@ -429,9 +429,9 @@ export class Zulip implements INodeType {
 
 					if (operation === 'create') {
 						body.email = this.getNodeParameter('email', i) as string;
-						body.password = this.getNodeParameter('password', i) as string;
-						body.full_name = this.getNodeParameter('fullName', i) as string;
-						body.short_name = this.getNodeParameter('shortName', i) as string;
+						body.password = this.getNodeParameter('password', i);
+						body.full_name = this.getNodeParameter('fullName', i);
+						body.short_name = this.getNodeParameter('shortName', i);
 
 						responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
 					}

@@ -130,7 +130,7 @@ export class AcuitySchedulingTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const endpoint = '/webhooks';
 				const body: IDataObject = {
 					target: webhookUrl,

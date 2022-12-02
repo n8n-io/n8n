@@ -72,8 +72,8 @@ export class Box implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -171,7 +171,7 @@ export class Box implements INodeType {
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
@@ -268,7 +268,7 @@ export class Box implements INodeType {
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const isBinaryData = this.getNodeParameter('binaryData', i);
-						const fileName = this.getNodeParameter('fileName', i) as string;
+						const fileName = this.getNodeParameter('fileName', i);
 
 						const attributes: IDataObject = {};
 
@@ -280,7 +280,7 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -405,7 +405,7 @@ export class Box implements INodeType {
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();

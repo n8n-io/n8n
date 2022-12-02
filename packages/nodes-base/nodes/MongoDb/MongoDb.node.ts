@@ -88,7 +88,7 @@ export class MongoDb implements INodeType {
 		let responseData: IDataObject | IDataObject[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'aggregate') {
 			// ----------------------------------
@@ -96,7 +96,7 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0));
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
 					queryParameter._id = new ObjectId(queryParameter._id);
@@ -122,7 +122,7 @@ export class MongoDb implements INodeType {
 			try {
 				const { deletedCount } = await mdb
 					.collection(this.getNodeParameter('collection', 0) as string)
-					.deleteMany(JSON.parse(this.getNodeParameter('query', 0) as string));
+					.deleteMany(JSON.parse(this.getNodeParameter('query', 0)));
 
 				responseData = [{ deletedCount }];
 			} catch (error) {
@@ -138,7 +138,7 @@ export class MongoDb implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryParameter = JSON.parse(this.getNodeParameter('query', 0) as string);
+				const queryParameter = JSON.parse(this.getNodeParameter('query', 0));
 
 				if (queryParameter._id && typeof queryParameter._id === 'string') {
 					queryParameter._id = new ObjectId(queryParameter._id);

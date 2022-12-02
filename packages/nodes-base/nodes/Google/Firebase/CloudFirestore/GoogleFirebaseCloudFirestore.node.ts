@@ -93,8 +93,8 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'document') {
 			if (operation === 'get') {
@@ -334,7 +334,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 
 				await Promise.all(
 					items.map(async (item: IDataObject, i: number) => {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',

@@ -437,7 +437,7 @@ export class Crypto implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				item = items[i];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 

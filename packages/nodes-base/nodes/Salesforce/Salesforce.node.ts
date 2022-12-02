@@ -383,7 +383,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
 				const { fields } = await salesforceApiRequest.call(
 					this,
@@ -407,7 +407,7 @@ export class Salesforce implements INodeType {
 			// select them easily
 			async getRecordTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let resource = this.getNodeParameter('resource', 0) as string;
+				let resource = this.getNodeParameter('resource', 0);
 				if (resource === 'customObject') {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
@@ -1065,8 +1065,8 @@ export class Salesforce implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		Logger.debug(
 			`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
@@ -1077,7 +1077,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'lead') {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/post-lead
 					if (operation === 'create' || operation === 'upsert') {
-						const company = this.getNodeParameter('company', i) as string;
+						const company = this.getNodeParameter('company', i);
 						const lastname = this.getNodeParameter('lastname', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ILead = {
@@ -1355,7 +1355,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
 					if (operation === 'addNote') {
 						const leadId = this.getNodeParameter('leadId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const options = this.getNodeParameter('options', i);
 						const body: INote = {
 							Title: title,
@@ -1701,7 +1701,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
 					if (operation === 'addNote') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const options = this.getNodeParameter('options', i);
 						const body: INote = {
 							Title: title,
@@ -1835,9 +1835,9 @@ export class Salesforce implements INodeType {
 				if (resource === 'document') {
 					//https://developer.salesforce.com/docs/atlas.en-us.206.0.api_rest.meta/api_rest/dome_sobject_insert_update_blob.htm
 					if (operation === 'upload') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						let data;
 						const body: { entity_content: { [key: string]: string } } = {
 							entity_content: {
@@ -1895,8 +1895,8 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/post-opportunity
 					if (operation === 'create' || operation === 'upsert') {
 						const name = this.getNodeParameter('name', i) as string;
-						const closeDate = this.getNodeParameter('closeDate', i) as string;
-						const stageName = this.getNodeParameter('stageName', i) as string;
+						const closeDate = this.getNodeParameter('closeDate', i);
+						const stageName = this.getNodeParameter('stageName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IOpportunity = {
 							Name: name,
@@ -2083,7 +2083,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
 					if (operation === 'addNote') {
 						const opportunityId = this.getNodeParameter('opportunityId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const options = this.getNodeParameter('options', i);
 						const body: INote = {
 							Title: title,
@@ -2373,7 +2373,7 @@ export class Salesforce implements INodeType {
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Note/post-note
 					if (operation === 'addNote') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const options = this.getNodeParameter('options', i);
 						const body: INote = {
 							Title: title,
@@ -2855,7 +2855,7 @@ export class Salesforce implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const body: IAttachment = {
 							Name: name,
 							ParentId: parentId,
@@ -3022,7 +3022,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'flow') {
 					//https://developer.salesforce.com/docs/atlas.en-us.api_action.meta/api_action/actions_obj_flow.htm
 					if (operation === 'invoke') {
-						const apiName = this.getNodeParameter('apiName', i) as string;
+						const apiName = this.getNodeParameter('apiName', i);
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						let variables = {};
 						if (jsonParameters) {
@@ -3062,7 +3062,7 @@ export class Salesforce implements INodeType {
 				if (resource === 'search') {
 					//https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/resources_query.htm
 					if (operation === 'query') {
-						qs.q = this.getNodeParameter('query', i) as string;
+						qs.q = this.getNodeParameter('query', i);
 						responseData = await salesforceApiRequestAllItems.call(
 							this,
 							'records',

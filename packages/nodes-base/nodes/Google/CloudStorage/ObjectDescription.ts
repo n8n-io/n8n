@@ -121,7 +121,7 @@ export const objectOperations: INodeProperties[] = [
 							// Handle body creation
 							async function (this, requestOptions) {
 								// Populate metadata JSON
-								let metadata: IDataObject = { name: this.getNodeParameter('objectName') as string };
+								let metadata: IDataObject = { name: this.getNodeParameter('objectName') };
 								const bodyData = this.getNodeParameter('createData') as IDataObject;
 								const useBinary = this.getNodeParameter('createFromBinary') as boolean;
 

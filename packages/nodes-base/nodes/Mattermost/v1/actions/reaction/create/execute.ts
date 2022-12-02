@@ -14,7 +14,7 @@ export async function create(
 	const body = {
 		user_id: this.getNodeParameter('userId', index),
 		post_id: this.getNodeParameter('postId', index),
-		emoji_name: (this.getNodeParameter('emojiName', index) as string).replace(/:/g, ''),
+		emoji_name: this.getNodeParameter('emojiName', index).replace(/:/g, ''),
 		create_at: Date.now(),
 	} as { user_id: string; post_id: string; emoji_name: string; create_at: number };
 

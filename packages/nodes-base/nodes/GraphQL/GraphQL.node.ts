@@ -382,7 +382,7 @@ export class GraphQL implements INodeType {
 					};
 				}
 
-				const gqlQuery = this.getNodeParameter('query', itemIndex, '') as string;
+				const gqlQuery = this.getNodeParameter('query', itemIndex, '');
 				if (requestMethod === 'GET') {
 					if (!requestOptions.qs) {
 						requestOptions.qs = {};
@@ -393,7 +393,7 @@ export class GraphQL implements INodeType {
 						requestOptions.body = {
 							query: gqlQuery,
 							variables: this.getNodeParameter('variables', itemIndex, {}) as object,
-							operationName: this.getNodeParameter('operationName', itemIndex) as string,
+							operationName: this.getNodeParameter('operationName', itemIndex),
 						};
 						if (typeof requestOptions.body.variables === 'string') {
 							try {
@@ -430,7 +430,7 @@ export class GraphQL implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 				if (responseFormat === 'string') {
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,

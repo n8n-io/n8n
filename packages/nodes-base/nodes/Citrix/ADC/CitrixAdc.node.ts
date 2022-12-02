@@ -61,8 +61,8 @@ export class CitrixAdc implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData: IDataObject | IDataObject[] = {};
 
 		for (let i = 0; i < items.length; i++) {
@@ -70,7 +70,7 @@ export class CitrixAdc implements INodeType {
 				if (resource === 'file') {
 					if (operation === 'upload') {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 						const options = this.getNodeParameter('options', i);
 						const endpoint = `/config/systemfile`;
 
@@ -119,7 +119,7 @@ export class CitrixAdc implements INodeType {
 					if (operation === 'download') {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
 							fileLocation,
@@ -145,7 +145,7 @@ export class CitrixAdc implements INodeType {
 
 				if (resource === 'certificate') {
 					if (operation === 'create') {
-						const certificateFileName = this.getNodeParameter('certificateFileName', i) as string;
+						const certificateFileName = this.getNodeParameter('certificateFileName', i);
 						const certificateFormat = this.getNodeParameter('certificateFormat', i) as string;
 						const certificateType = this.getNodeParameter('certificateType', i) as string;
 						const certificateRequestFileName = this.getNodeParameter(
@@ -167,7 +167,7 @@ export class CitrixAdc implements INodeType {
 						};
 
 						if (certificateType === 'ROOT_CERT') {
-							const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i) as string;
+							const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i);
 							body = {
 								...body,
 								keyfile: privateKeyFileName,
@@ -213,8 +213,8 @@ export class CitrixAdc implements INodeType {
 							'certificateKeyPairName',
 							i,
 						) as string;
-						const certificateFileName = this.getNodeParameter('certificateFileName', i) as string;
-						const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i) as string;
+						const certificateFileName = this.getNodeParameter('certificateFileName', i);
+						const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i);
 						const certificateFormat = this.getNodeParameter('certificateFormat', i) as string;
 						const notifyExpiration = this.getNodeParameter('notifyExpiration', i) as boolean;
 						const body: IDataObject = {
@@ -225,7 +225,7 @@ export class CitrixAdc implements INodeType {
 						};
 
 						if (certificateFormat === 'PEM') {
-							const password = this.getNodeParameter('password', i) as string;
+							const password = this.getNodeParameter('password', i);
 							const certificateBundle = this.getNodeParameter('certificateBundle', i) as boolean;
 							Object.assign(body, {
 								passplain: password,

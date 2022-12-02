@@ -12,7 +12,6 @@ import {
 	LinksFieldContainer,
 	PersonResponse,
 	PetitionResponse,
-	Resource,
 	Response,
 } from './types';
 
@@ -258,7 +257,7 @@ export const resourceLoaders = {
 //          response simplifiers
 // ----------------------------------------
 
-export const simplifyResponse = (response: Response, resource: Resource) => {
+export const simplifyResponse = (response: Response, resource: string) => {
 	if (resource === 'person') {
 		return simplifyPersonResponse(response as PersonResponse);
 	} else if (resource === 'petition') {

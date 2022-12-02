@@ -202,8 +202,8 @@ export class GoogleDocs implements INodeType {
 
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -214,7 +214,7 @@ export class GoogleDocs implements INodeType {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 
 						const body: IDataObject = {
-							name: this.getNodeParameter('title', i) as string,
+							name: this.getNodeParameter('title', i),
 							mimeType: 'application/vnd.google-apps.document',
 							...(folderId && folderId !== 'default' ? { parents: [folderId] } : {}),
 						};

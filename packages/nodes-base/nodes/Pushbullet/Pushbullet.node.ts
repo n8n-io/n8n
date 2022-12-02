@@ -376,8 +376,8 @@ export class Pushbullet implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'push') {
@@ -399,15 +399,15 @@ export class Pushbullet implements INodeType {
 						}
 
 						if (['note', 'link'].includes(type)) {
-							body.title = this.getNodeParameter('title', i) as string;
+							body.title = this.getNodeParameter('title', i);
 
 							if (type === 'link') {
-								body.url = this.getNodeParameter('url', i) as string;
+								body.url = this.getNodeParameter('url', i);
 							}
 						}
 
 						if (type === 'file') {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');

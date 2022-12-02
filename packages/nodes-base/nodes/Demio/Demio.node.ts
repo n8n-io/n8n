@@ -109,8 +109,8 @@ export class Demio implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -145,7 +145,7 @@ export class Demio implements INodeType {
 					}
 					if (operation === 'register') {
 						const eventId = this.getNodeParameter('eventId', i) as string;
-						const firstName = this.getNodeParameter('firstName', i) as string;
+						const firstName = this.getNodeParameter('firstName', i);
 						const email = this.getNodeParameter('email', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

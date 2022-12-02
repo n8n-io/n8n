@@ -85,7 +85,7 @@ export async function execute(
 	const existingSheetNames = await getExistingSheetNames(sheet);
 
 	for (let i = 0; i < items.length; i++) {
-		const sheetTitle = this.getNodeParameter('title', i, {}) as string;
+		const sheetTitle = this.getNodeParameter('title', i, {});
 
 		if (existingSheetNames.includes(sheetTitle)) {
 			continue;

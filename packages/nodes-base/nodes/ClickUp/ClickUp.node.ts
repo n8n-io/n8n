@@ -428,8 +428,8 @@ export class ClickUp implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -1161,7 +1161,7 @@ export class ClickUp implements INodeType {
 				if (resource === 'taskTag') {
 					if (operation === 'add') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const name = this.getNodeParameter('tagName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, additionalFields);
@@ -1176,7 +1176,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'remove') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const name = this.getNodeParameter('tagName', i) as string;
+						const name = this.getNodeParameter('tagName', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, additionalFields);
@@ -1444,8 +1444,8 @@ export class ClickUp implements INodeType {
 					if (operation === 'create') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
-						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
-						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+						const foregroundColor = this.getNodeParameter('foregroundColor', i);
+						const backgroundColor = this.getNodeParameter('backgroundColor', i);
 						const body: IDataObject = {
 							tag: {
 								name,
@@ -1484,9 +1484,9 @@ export class ClickUp implements INodeType {
 					if (operation === 'update') {
 						const spaceId = this.getNodeParameter('space', i) as string;
 						const tagName = this.getNodeParameter('name', i) as string;
-						const newTagName = this.getNodeParameter('newName', i) as string;
-						const foregroundColor = this.getNodeParameter('foregroundColor', i) as string;
-						const backgroundColor = this.getNodeParameter('backgroundColor', i) as string;
+						const newTagName = this.getNodeParameter('newName', i);
+						const foregroundColor = this.getNodeParameter('foregroundColor', i);
+						const backgroundColor = this.getNodeParameter('backgroundColor', i);
 						const body: IDataObject = {
 							tag: {
 								name: newTagName,

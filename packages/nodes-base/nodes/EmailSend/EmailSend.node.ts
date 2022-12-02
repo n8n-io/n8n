@@ -132,7 +132,7 @@ export class EmailSend implements INodeType {
 				const ccEmail = this.getNodeParameter('ccEmail', itemIndex) as string;
 				const bccEmail = this.getNodeParameter('bccEmail', itemIndex) as string;
 				const subject = this.getNodeParameter('subject', itemIndex) as string;
-				const text = this.getNodeParameter('text', itemIndex) as string;
+				const text = this.getNodeParameter('text', itemIndex);
 				const html = this.getNodeParameter('html', itemIndex) as string;
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;

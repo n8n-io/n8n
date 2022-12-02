@@ -101,7 +101,7 @@ export class WooCommerceTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const currentEvent = this.getNodeParameter('event') as string;
+				const currentEvent = this.getNodeParameter('event');
 				const endpoint = `/webhooks`;
 
 				const webhooks = await woocommerceApiRequest.call(
@@ -128,7 +128,7 @@ export class WooCommerceTrigger implements INodeType {
 				const credentials = await this.getCredentials('wooCommerceApi');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const secret = getAutomaticSecret(credentials);
 				const endpoint = '/webhooks';
 				const body: IDataObject = {

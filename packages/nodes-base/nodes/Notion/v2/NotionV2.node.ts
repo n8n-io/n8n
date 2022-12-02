@@ -238,8 +238,8 @@ export class NotionV2 implements INodeType {
 		const qs: IDataObject = {};
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let download = false;
 
 		if (resource === 'block') {
@@ -364,7 +364,7 @@ export class NotionV2 implements INodeType {
 
 			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const options = this.getNodeParameter('options', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
@@ -428,7 +428,7 @@ export class NotionV2 implements INodeType {
 					}
 				}
 				for (let i = 0; i < length; i++) {
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					// tslint:disable-next-line: no-any
 					const body: { [key: string]: any } = {
@@ -672,7 +672,7 @@ export class NotionV2 implements INodeType {
 					body.parent['page_id'] = extractPageId(
 						this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
 					);
-					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
+					body.properties = formatTitle(this.getNodeParameter('title', i));
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					body.children = formatBlocks(blockValues);
@@ -691,7 +691,7 @@ export class NotionV2 implements INodeType {
 
 			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
-					const text = this.getNodeParameter('text', i) as string;
+					const text = this.getNodeParameter('text', i);
 					const options = this.getNodeParameter('options', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;

@@ -96,8 +96,8 @@ export class MicrosoftToDo implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'linkedResource') {
@@ -107,7 +107,7 @@ export class MicrosoftToDo implements INodeType {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const body: IDataObject = {
 							applicationName: this.getNodeParameter('applicationName', i) as string,
-							displayName: this.getNodeParameter('displayName', i) as string,
+							displayName: this.getNodeParameter('displayName', i),
 							...this.getNodeParameter('additionalFields', i),
 						};
 
@@ -204,7 +204,7 @@ export class MicrosoftToDo implements INodeType {
 					if (operation === 'create') {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const body: IDataObject = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							...this.getNodeParameter('additionalFields', i),
 						};
 
@@ -323,7 +323,7 @@ export class MicrosoftToDo implements INodeType {
 					// https://docs.microsoft.com/en-us/graph/api/todo-post-lists?view=graph-rest-1.0&tabs=http
 					if (operation === 'create') {
 						const body = {
-							displayName: this.getNodeParameter('displayName', i) as string,
+							displayName: this.getNodeParameter('displayName', i),
 						};
 
 						responseData = await microsoftApiRequest.call(this, 'POST', '/todo/lists/', body, qs);
@@ -379,7 +379,7 @@ export class MicrosoftToDo implements INodeType {
 					} else if (operation === 'update') {
 						const listId = this.getNodeParameter('listId', i) as string;
 						const body = {
-							displayName: this.getNodeParameter('displayName', i) as string,
+							displayName: this.getNodeParameter('displayName', i),
 						};
 
 						responseData = await microsoftApiRequest.call(

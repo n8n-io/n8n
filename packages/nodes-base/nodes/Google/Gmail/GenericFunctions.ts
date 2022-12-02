@@ -123,7 +123,7 @@ export async function googleApiRequest(
 		}
 
 		if (error.httpCode === '409') {
-			const resource = this.getNodeParameter('resource', 0) as string;
+			const resource = this.getNodeParameter('resource', 0);
 			if (resource === 'label') {
 				const options = {
 					message: `Label name exists already`,

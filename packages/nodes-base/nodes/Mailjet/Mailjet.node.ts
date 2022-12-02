@@ -97,8 +97,8 @@ export class Mailjet implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -107,7 +107,7 @@ export class Mailjet implements INodeType {
 					if (operation === 'send') {
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 						const htmlBody = this.getNodeParameter('html', i) as string;
-						const textBody = this.getNodeParameter('text', i) as string;
+						const textBody = this.getNodeParameter('text', i);
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
@@ -291,9 +291,9 @@ export class Mailjet implements INodeType {
 				if (resource === 'sms') {
 					//https://dev.mailjet.com/sms/reference/send-message#v4_post_sms-send
 					if (operation === 'send') {
-						const from = this.getNodeParameter('from', i) as string;
+						const from = this.getNodeParameter('from', i);
 						const to = this.getNodeParameter('to', i) as boolean;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const body: IDataObject = {
 							From: from,
 							To: to,

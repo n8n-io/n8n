@@ -1025,8 +1025,8 @@ export class Gitlab implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
@@ -1058,7 +1058,7 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'POST';
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						body.description = this.getNodeParameter('body', i) as string;
 						body.due_date = this.getNodeParameter('due_date', i) as string;
 						const labels = this.getNodeParameter('labels', i) as IDataObject[];

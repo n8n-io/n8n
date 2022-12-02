@@ -174,7 +174,7 @@ export async function pgQueryV2(
 	type QueryWithValues = { query: string; values?: string[] };
 	const allQueries = new Array<QueryWithValues>();
 	for (let i = 0; i < items.length; i++) {
-		const query = this.getNodeParameter('query', i) as string;
+		const query = this.getNodeParameter('query', i);
 		const values = valuesArray[i];
 		const queryFormat = { query, values };
 		allQueries.push(queryFormat);

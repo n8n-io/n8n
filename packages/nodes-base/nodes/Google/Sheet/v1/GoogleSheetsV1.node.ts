@@ -102,8 +102,8 @@ export class GoogleSheetsV1 implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		if (resource === 'sheet') {
 			const spreadsheetId = this.getNodeParameter('sheetId', 0) as string;
@@ -112,7 +112,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 			let range = '';
 			if (!['create', 'delete', 'remove'].includes(operation)) {
-				range = this.getNodeParameter('range', 0) as string;
+				range = this.getNodeParameter('range', 0);
 			}
 
 			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
@@ -450,7 +450,7 @@ export class GoogleSheetsV1 implements INodeType {
 
 				for (let i = 0; i < this.getInputData().length; i++) {
 					try {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
 						const body = {

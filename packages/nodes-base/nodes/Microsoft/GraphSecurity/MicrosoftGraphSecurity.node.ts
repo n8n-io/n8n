@@ -64,10 +64,8 @@ export class MicrosoftGraphSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as
-			| 'secureScore'
-			| 'secureScoreControlProfile';
-		const operation = this.getNodeParameter('operation', 0) as 'get' | 'getAll' | 'update';
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 

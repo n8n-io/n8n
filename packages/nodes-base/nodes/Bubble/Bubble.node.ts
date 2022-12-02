@@ -54,8 +54,8 @@ export class Bubble implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -74,7 +74,7 @@ export class Bubble implements INodeType {
 					//         object: create
 					// ----------------------------------
 
-					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeNameInput = this.getNodeParameter('typeName', i);
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const { property } = this.getNodeParameter('properties', i) as {
@@ -91,7 +91,7 @@ export class Bubble implements INodeType {
 					//         object: delete
 					// ----------------------------------
 
-					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeNameInput = this.getNodeParameter('typeName', i);
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
 
@@ -103,7 +103,7 @@ export class Bubble implements INodeType {
 					//         object: get
 					// ----------------------------------
 
-					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeNameInput = this.getNodeParameter('typeName', i);
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
 
@@ -116,7 +116,7 @@ export class Bubble implements INodeType {
 					// ----------------------------------
 
 					const returnAll = this.getNodeParameter('returnAll', 0);
-					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeNameInput = this.getNodeParameter('typeName', i);
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 
 					const endpoint = `/obj/${typeName}`;
@@ -157,7 +157,7 @@ export class Bubble implements INodeType {
 					//         object: update
 					// ----------------------------------
 
-					const typeNameInput = this.getNodeParameter('typeName', i) as string;
+					const typeNameInput = this.getNodeParameter('typeName', i);
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 					const objectId = this.getNodeParameter('objectId', i) as string;
 					const endpoint = `/obj/${typeName}/${objectId}`;

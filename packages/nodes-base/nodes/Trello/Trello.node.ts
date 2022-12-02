@@ -194,8 +194,8 @@ export class Trello implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;
@@ -409,7 +409,7 @@ export class Trello implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						qs.text = this.getNodeParameter('text', i) as string;
+						qs.text = this.getNodeParameter('text', i);
 
 						requestMethod = 'POST';
 
@@ -441,7 +441,7 @@ export class Trello implements INodeType {
 
 						const commentId = this.getNodeParameter('commentId', i) as string;
 
-						qs.text = this.getNodeParameter('text', i) as string;
+						qs.text = this.getNodeParameter('text', i);
 
 						endpoint = `cards/${cardId}/actions/${commentId}/comments`;
 					} else {
@@ -560,7 +560,7 @@ export class Trello implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 
 						Object.assign(qs, {
 							url,
@@ -782,7 +782,7 @@ export class Trello implements INodeType {
 						}) as string;
 
 						const name = this.getNodeParameter('name', i) as string;
-						const color = this.getNodeParameter('color', i) as string;
+						const color = this.getNodeParameter('color', i);
 
 						Object.assign(qs, {
 							idBoard,

@@ -230,8 +230,8 @@ export class MondayCom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'board') {
@@ -335,7 +335,7 @@ export class MondayCom implements INodeType {
 				if (resource === 'boardColumn') {
 					if (operation === 'create') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const columnType = this.getNodeParameter('columnType', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

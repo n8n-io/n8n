@@ -1683,8 +1683,8 @@ export class Telegram implements INodeType {
 		let requestMethod: string;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		for (let i = 0; i < items.length; i++) {
@@ -1773,7 +1773,7 @@ export class Telegram implements INodeType {
 						endpoint = 'setChatTitle';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 					}
 					// } else if (resource === 'bot') {
 					// 	if (operation === 'info') {
@@ -1806,7 +1806,7 @@ export class Telegram implements INodeType {
 							body.message_id = this.getNodeParameter('messageId', i) as string;
 						}
 
-						body.text = this.getNodeParameter('text', i) as string;
+						body.text = this.getNodeParameter('text', i);
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
@@ -1911,7 +1911,7 @@ export class Telegram implements INodeType {
 						endpoint = 'sendMessage';
 
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
-						body.text = this.getNodeParameter('text', i) as string;
+						body.text = this.getNodeParameter('text', i);
 
 						// Add additional fields and replyMarkup
 						addAdditionalFields.call(this, body, i);
@@ -1982,11 +1982,11 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData === true) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
-					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
+					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '');
 
 					const filename = fileName || binaryData.fileName?.toString();
 

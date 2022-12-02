@@ -166,8 +166,8 @@ export class ElasticSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -538,7 +538,7 @@ export class ElasticSecurity implements INodeType {
 
 						if (connectorType === '.jira') {
 							body.config = {
-								apiUrl: this.getNodeParameter('apiUrl', i) as string,
+								apiUrl: this.getNodeParameter('apiUrl', i),
 								projectKey: this.getNodeParameter('projectKey', i) as string,
 							};
 							body.secrets = {
@@ -547,7 +547,7 @@ export class ElasticSecurity implements INodeType {
 							};
 						} else if (connectorType === '.resilient') {
 							body.config = {
-								apiUrl: this.getNodeParameter('apiUrl', i) as string,
+								apiUrl: this.getNodeParameter('apiUrl', i),
 								orgId: this.getNodeParameter('orgId', i) as string,
 							};
 							body.secrets = {
@@ -556,11 +556,11 @@ export class ElasticSecurity implements INodeType {
 							};
 						} else if (connectorType === '.servicenow') {
 							body.config = {
-								apiUrl: this.getNodeParameter('apiUrl', i) as string,
+								apiUrl: this.getNodeParameter('apiUrl', i),
 							};
 							body.secrets = {
 								username: this.getNodeParameter('username', i) as string,
-								password: this.getNodeParameter('password', i) as string,
+								password: this.getNodeParameter('password', i),
 							};
 						}
 

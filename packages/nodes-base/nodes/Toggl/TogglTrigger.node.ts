@@ -51,7 +51,7 @@ export class TogglTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		const event = this.getNodeParameter('event') as string;
+		const event = this.getNodeParameter('event');
 		let endpoint: string;
 
 		if (event === 'newTimeEntry') {

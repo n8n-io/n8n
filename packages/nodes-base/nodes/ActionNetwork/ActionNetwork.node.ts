@@ -36,14 +36,7 @@ import {
 	tagOperations,
 } from './descriptions';
 
-import {
-	AllFieldsUi,
-	EmailAddressUi,
-	Operation,
-	PersonResponse,
-	Resource,
-	Response,
-} from './types';
+import { AllFieldsUi, EmailAddressUi, PersonResponse, Response } from './types';
 
 export class ActionNetwork implements INodeType {
 	description: INodeTypeDescription = {
@@ -128,8 +121,8 @@ export class ActionNetwork implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as Resource;
-		const operation = this.getNodeParameter('operation', 0) as Operation;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let response;
 

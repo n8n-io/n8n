@@ -850,8 +850,8 @@ export class Nasa implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const qs: IDataObject = {};
@@ -1050,7 +1050,7 @@ export class Nasa implements INodeType {
 				}
 
 				if (resource === 'earthImagery') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 					const data = await nasaApiRequest.call(this, 'GET', endpoint, qs, { encoding: null });
 
@@ -1072,7 +1072,7 @@ export class Nasa implements INodeType {
 					download = this.getNodeParameter('download', 0);
 
 					if (download === true) {
-						const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = await nasaApiRequest.call(
 							this,

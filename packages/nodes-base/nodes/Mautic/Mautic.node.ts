@@ -319,8 +319,8 @@ export class Mautic implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			qs = {};
@@ -605,11 +605,11 @@ export class Mautic implements INodeType {
 						let body: IDataObject = {};
 						if (!jsonActive) {
 							body.email = this.getNodeParameter('email', i) as string;
-							body.firstname = this.getNodeParameter('firstName', i) as string;
-							body.lastname = this.getNodeParameter('lastName', i) as string;
-							body.company = this.getNodeParameter('company', i) as string;
+							body.firstname = this.getNodeParameter('firstName', i);
+							body.lastname = this.getNodeParameter('lastName', i);
+							body.company = this.getNodeParameter('company', i);
 							body.position = this.getNodeParameter('position', i) as string;
-							body.title = this.getNodeParameter('title', i) as string;
+							body.title = this.getNodeParameter('title', i);
 						} else {
 							const json = validateJSON(this.getNodeParameter('bodyJson', i) as string);
 							if (json !== undefined) {

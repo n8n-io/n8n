@@ -147,7 +147,7 @@ export class NotionTrigger implements INodeType {
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
 		const databaseId = this.getNodeParameter('databaseId', '', { extractValue: true }) as string;
-		const event = this.getNodeParameter('event') as string;
+		const event = this.getNodeParameter('event');
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const lastTimeChecked = webhookData.lastTimeChecked

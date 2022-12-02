@@ -132,7 +132,7 @@ export class Discord implements INodeType {
 			const body: DiscordWebhook = {};
 
 			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
-			body.content = this.getNodeParameter('text', i) as string;
+			body.content = this.getNodeParameter('text', i);
 			const options = this.getNodeParameter('options', i);
 
 			if (!body.content && !options.embeds) {

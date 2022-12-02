@@ -120,8 +120,8 @@ export class ERPNext implements INodeType {
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
@@ -140,7 +140,7 @@ export class ERPNext implements INodeType {
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/get_api_resource__DocType___DocumentName_
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(
 						this,
@@ -241,7 +241,7 @@ export class ERPNext implements INodeType {
 					// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/General/delete_api_resource__DocType___DocumentName_
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(
 						this,
@@ -270,7 +270,7 @@ export class ERPNext implements INodeType {
 					});
 
 					const docType = this.getNodeParameter('docType', i) as string;
-					const documentName = this.getNodeParameter('documentName', i) as string;
+					const documentName = this.getNodeParameter('documentName', i);
 
 					responseData = await erpNextApiRequest.call(
 						this,

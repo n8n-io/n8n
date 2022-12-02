@@ -657,8 +657,8 @@ export class OneSimpleApi implements INodeType {
 		let download;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				if (resource === 'website') {
 					if (operation === 'pdf') {
@@ -763,7 +763,7 @@ export class OneSimpleApi implements INodeType {
 
 				if (resource === 'socialProfile') {
 					if (operation === 'instagramProfile') {
-						const profileName = this.getNodeParameter('profileName', i) as string;
+						const profileName = this.getNodeParameter('profileName', i);
 						qs.profile = profileName;
 						responseData = await oneSimpleApiRequest.call(
 							this,
@@ -775,7 +775,7 @@ export class OneSimpleApi implements INodeType {
 					}
 
 					if (operation === 'spotifyArtistProfile') {
-						const artistName = this.getNodeParameter('artistName', i) as string;
+						const artistName = this.getNodeParameter('artistName', i);
 						qs.profile = artistName;
 						responseData = await oneSimpleApiRequest.call(this, 'GET', '/spotify_profile', {}, qs);
 					}
@@ -815,7 +815,7 @@ export class OneSimpleApi implements INodeType {
 					}
 
 					if (operation === 'qrCode') {
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const options = this.getNodeParameter('options', i);
 						download = this.getNodeParameter('download', i);
 

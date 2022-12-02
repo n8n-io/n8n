@@ -76,7 +76,7 @@ export class MailjetTrigger implements INodeType {
 				const endpoint = `/v3/rest/eventcallbackurl`;
 				const responseData = await mailjetApiRequest.call(this, 'GET', endpoint);
 
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 
 				for (const webhook of responseData.Data) {
@@ -93,7 +93,7 @@ export class MailjetTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const endpoint = '/v3/rest/eventcallbackurl';
 				const body: IDataObject = {
 					Url: webhookUrl,

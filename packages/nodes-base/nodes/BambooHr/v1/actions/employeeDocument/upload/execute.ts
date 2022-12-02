@@ -19,7 +19,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		});
 	}
 
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index);
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(

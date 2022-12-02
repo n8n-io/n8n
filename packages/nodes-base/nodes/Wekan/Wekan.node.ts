@@ -239,8 +239,8 @@ export class Wekan implements INodeType {
 		let returnAll;
 		let limit;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;
@@ -266,7 +266,7 @@ export class Wekan implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'boards';
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						body.owner = this.getNodeParameter('owner', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -323,7 +323,7 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/lists/${listId}/cards`;
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 						body.swimlaneId = this.getNodeParameter('swimlaneId', i) as string;
 						body.authorId = this.getNodeParameter('authorId', i) as string;
 
@@ -466,7 +466,7 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/lists`;
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -520,7 +520,7 @@ export class Wekan implements INodeType {
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 
 						body.items = this.getNodeParameter('items', i) as string[];
 					} else if (operation === 'delete') {

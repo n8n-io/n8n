@@ -159,8 +159,8 @@ export class Twist implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -627,7 +627,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#add-thread
 					if (operation === 'create') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const content = this.getNodeParameter('content', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {

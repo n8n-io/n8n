@@ -239,8 +239,8 @@ export class FreshworksCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const defaultTimezone = this.getTimezone();
 
 		let responseData;
@@ -353,8 +353,8 @@ export class FreshworksCrm implements INodeType {
 							is_allday: boolean;
 						};
 
-						const startDate = this.getNodeParameter('fromDate', i) as string;
-						const endDate = this.getNodeParameter('endDate', i) as string;
+						const startDate = this.getNodeParameter('fromDate', i);
+						const endDate = this.getNodeParameter('endDate', i);
 						const attendees = this.getNodeParameter('attendees.attendee', i, []) as [
 							{ type: string; contactId: string; userId: string },
 						];
@@ -818,7 +818,7 @@ export class FreshworksCrm implements INodeType {
 
 					if (operation === 'query') {
 						// https://developers.freshworks.com/crm/api/#search
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						let entities = this.getNodeParameter('entities', i);
 						const returnAll = this.getNodeParameter('returnAll', 0, false);
 

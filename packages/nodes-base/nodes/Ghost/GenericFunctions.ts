@@ -19,7 +19,7 @@ export async function ghostApiRequest(
 	uri?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const source = this.getNodeParameter('source', 0) as string;
+	const source = this.getNodeParameter('source', 0);
 
 	let credentials;
 	let version;

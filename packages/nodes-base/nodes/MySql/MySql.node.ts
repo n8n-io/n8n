@@ -278,7 +278,7 @@ export class MySql implements INodeType {
 		const credentials = await this.getCredentials('mySql');
 		const connection = await createConnection(credentials);
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
@@ -288,7 +288,7 @@ export class MySql implements INodeType {
 
 			try {
 				const queryQueue = items.map((item, index) => {
-					const rawQuery = this.getNodeParameter('query', index) as string;
+					const rawQuery = this.getNodeParameter('query', index);
 
 					return connection.query(rawQuery);
 				});

@@ -871,8 +871,8 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -891,14 +891,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = this.getNodeParameter('path', i);
 					} else if (operation === 'upload') {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = this.getNodeParameter('path', i);
 
 						if (this.getNodeParameter('binaryDataUpload', i) === true) {
 							// Is binary file to upload
@@ -910,7 +910,7 @@ export class NextCloud implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -933,14 +933,14 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'MKCOL';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = this.getNodeParameter('path', i);
 					} else if (operation === 'list') {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
 
 						requestMethod = 'PROPFIND';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = this.getNodeParameter('path', i);
 					}
 				}
 
@@ -951,8 +951,8 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'COPY';
-						endpoint = this.getNodeParameter('path', i) as string;
-						const toPath = this.getNodeParameter('toPath', i) as string;
+						endpoint = this.getNodeParameter('path', i);
+						const toPath = this.getNodeParameter('toPath', i);
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
@@ -960,15 +960,15 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'DELETE';
-						endpoint = this.getNodeParameter('path', i) as string;
+						endpoint = this.getNodeParameter('path', i);
 					} else if (operation === 'move') {
 						// ----------------------------------
 						//         move
 						// ----------------------------------
 
 						requestMethod = 'MOVE';
-						endpoint = this.getNodeParameter('path', i) as string;
-						const toPath = this.getNodeParameter('toPath', i) as string;
+						endpoint = this.getNodeParameter('path', i);
+						const toPath = this.getNodeParameter('toPath', i);
 						headers.Destination = `${credentials.webDavUrl}/${encodeURI(toPath)}`;
 					} else if (operation === 'share') {
 						// ----------------------------------
@@ -984,7 +984,7 @@ export class NextCloud implements INodeType {
 
 						const bodyParameters = this.getNodeParameter('options', i);
 
-						bodyParameters.path = this.getNodeParameter('path', i) as string;
+						bodyParameters.path = this.getNodeParameter('path', i);
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
 
 						if (bodyParameters.shareType === 0) {
@@ -1145,7 +1145,7 @@ export class NextCloud implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData,

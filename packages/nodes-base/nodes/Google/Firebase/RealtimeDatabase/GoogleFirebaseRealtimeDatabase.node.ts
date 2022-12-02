@@ -166,7 +166,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		//https://firebase.google.com/docs/reference/rest/database
 
 		if (
@@ -212,7 +212,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 					this,
 					projectId,
 					method,
-					this.getNodeParameter('path', i) as string,
+					this.getNodeParameter('path', i),
 					document,
 				);
 
@@ -239,7 +239,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 
 			if (typeof responseData === 'string' || typeof responseData === 'number') {
 				responseData = {
-					[this.getNodeParameter('path', i) as string]: responseData,
+					[this.getNodeParameter('path', i)]: responseData,
 				};
 			}
 

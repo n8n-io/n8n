@@ -266,8 +266,8 @@ export class Slack implements INodeType {
 		let qs: IDataObject;
 		let responseData;
 		const authentication = this.getNodeParameter('authentication', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -626,7 +626,7 @@ export class Slack implements INodeType {
 					if (['post', 'postEphemeral'].includes(operation)) {
 						const channel = this.getNodeParameter('channel', i) as string;
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const body: IDataObject = {
 							channel,
 							text,
@@ -900,7 +900,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/chat.update
 					if (operation === 'update') {
 						const channel = this.getNodeParameter('channelId', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const ts = this.getNodeParameter('ts', i) as string;
 						const attachments = this.getNodeParameter(
 							'attachments',
@@ -1091,7 +1091,7 @@ export class Slack implements INodeType {
 							body.title = options.title as string;
 						}
 						if (binaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							if (
 								items[i].binary === undefined ||
 								//@ts-ignore

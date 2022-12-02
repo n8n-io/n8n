@@ -19,7 +19,7 @@ export async function storyblokApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const authenticationMethod = this.getNodeParameter('source', 0) as string;
+	const authenticationMethod = this.getNodeParameter('source', 0);
 
 	let options: OptionsWithUri = {
 		headers: {

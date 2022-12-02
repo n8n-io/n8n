@@ -199,7 +199,7 @@ export class NetlifyTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const simple = this.getNodeParameter('simple', false) as boolean;
-		const event = this.getNodeParameter('event') as string;
+		const event = this.getNodeParameter('event');
 		let response = req.body;
 
 		if (simple === true && event === 'submissionCreated') {

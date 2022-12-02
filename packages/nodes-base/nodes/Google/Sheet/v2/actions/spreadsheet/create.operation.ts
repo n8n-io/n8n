@@ -119,7 +119,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const returnData: IDataObject[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const title = this.getNodeParameter('title', i) as string;
+		const title = this.getNodeParameter('title', i);
 		const sheetsUi = this.getNodeParameter('sheetsUi', i, {}) as IDataObject;
 
 		const body = {

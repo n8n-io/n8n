@@ -107,7 +107,7 @@ export async function handleMatrixCall(
 	} else if (resource === 'message') {
 		if (operation === 'create') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const text = this.getNodeParameter('text', index, '') as string;
+			const text = this.getNodeParameter('text', index, '');
 			const messageType = this.getNodeParameter('messageType', index) as string;
 			const messageFormat = this.getNodeParameter('messageFormat', index) as string;
 			const body: IDataObject = {
@@ -189,7 +189,7 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 
 			let body;
 			const qs: IDataObject = {};

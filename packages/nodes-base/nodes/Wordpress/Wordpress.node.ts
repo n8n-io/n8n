@@ -123,15 +123,15 @@ export class Wordpress implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'post') {
 					//https://developer.wordpress.org/rest-api/reference/posts/#create-a-post
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPost = {
 							title,
@@ -310,10 +310,10 @@ export class Wordpress implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const username = this.getNodeParameter('username', i) as string;
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
 						const email = this.getNodeParameter('email', i) as string;
-						const password = this.getNodeParameter('password', i) as string;
+						const password = this.getNodeParameter('password', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IUser = {
 							name,

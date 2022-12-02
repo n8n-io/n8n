@@ -222,7 +222,7 @@ export class SentryIo implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const projects = await sentryApiRequestAllItems.call(this, 'GET', `/api/0/projects/`, {});
 
-				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
+				const organizationSlug = this.getNodeParameter('organizationSlug');
 
 				for (const project of projects) {
 					if (organizationSlug !== project.organization.slug) {
@@ -251,7 +251,7 @@ export class SentryIo implements INodeType {
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const organizationSlug = this.getNodeParameter('organizationSlug') as string;
+				const organizationSlug = this.getNodeParameter('organizationSlug');
 				const teams = await sentryApiRequestAllItems.call(
 					this,
 					'GET',
@@ -287,15 +287,15 @@ export class SentryIo implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'event') {
 					if (operation === 'getAll') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const full = this.getNodeParameter('full', i) as boolean;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -316,8 +316,8 @@ export class SentryIo implements INodeType {
 						}
 					}
 					if (operation === 'get') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/${eventId}/`;
@@ -327,8 +327,8 @@ export class SentryIo implements INodeType {
 				}
 				if (resource === 'issue') {
 					if (operation === 'getAll') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
@@ -400,7 +400,7 @@ export class SentryIo implements INodeType {
 				}
 				if (resource === 'organization') {
 					if (operation === 'get') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
@@ -459,8 +459,8 @@ export class SentryIo implements INodeType {
 				}
 				if (resource === 'project') {
 					if (operation === 'create') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const teamSlug = this.getNodeParameter('teamSlug', i);
 						const name = this.getNodeParameter('name', i) as string;
 
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/projects/`;
@@ -473,8 +473,8 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);
 					}
 					if (operation === 'get') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
@@ -496,16 +496,16 @@ export class SentryIo implements INodeType {
 						}
 					}
 					if (operation === 'update') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 						const body = this.getNodeParameter('updateFields', i);
 
 						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}
 					if (operation === 'delete') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const projectSlug = this.getNodeParameter('projectSlug', i);
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
@@ -514,14 +514,14 @@ export class SentryIo implements INodeType {
 				}
 				if (resource === 'release') {
 					if (operation === 'get') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const version = this.getNodeParameter('version', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
 					if (operation === 'getAll') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -543,17 +543,17 @@ export class SentryIo implements INodeType {
 						}
 					}
 					if (operation === 'delete') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const version = this.getNodeParameter('version', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);
 						responseData = { success: true };
 					}
 					if (operation === 'create') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
 						const version = this.getNodeParameter('version', i) as string;
-						const url = this.getNodeParameter('url', i) as string;
+						const url = this.getNodeParameter('url', i);
 						const projects = this.getNodeParameter('projects', i) as string[];
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -612,7 +612,7 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 					}
 					if (operation === 'update') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const version = this.getNodeParameter('version', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 
@@ -668,14 +668,14 @@ export class SentryIo implements INodeType {
 				}
 				if (resource === 'team') {
 					if (operation === 'get') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const teamSlug = this.getNodeParameter('teamSlug', i);
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
 					if (operation === 'getAll') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -693,7 +693,7 @@ export class SentryIo implements INodeType {
 					}
 
 					if (operation === 'create') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
 						const name = this.getNodeParameter('name', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 
@@ -708,8 +708,8 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, qs);
 					}
 					if (operation === 'update') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const teamSlug = this.getNodeParameter('teamSlug', i);
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
 						const body = this.getNodeParameter('updateFields', i);
@@ -717,8 +717,8 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}
 					if (operation === 'delete') {
-						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
-						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
+						const organizationSlug = this.getNodeParameter('organizationSlug', i);
+						const teamSlug = this.getNodeParameter('teamSlug', i);
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
 						responseData = await sentryIoApiRequest.call(this, 'DELETE', endpoint, qs);

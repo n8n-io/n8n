@@ -234,15 +234,15 @@ export class Signl4 implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'alert') {
 					//https://connect.signl4.com/webhook/docs/index.html
 					// Send alert
 					if (operation === 'send') {
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const data: IDataObject = {

@@ -227,7 +227,7 @@ export class RespondToWebhook implements INodeType {
 			const responseDataSource = this.getNodeParameter('responseDataSource', 0) as string;
 
 			if (responseDataSource === 'set') {
-				responseBinaryPropertyName = this.getNodeParameter('inputFieldName', 0) as string;
+				responseBinaryPropertyName = this.getNodeParameter('inputFieldName', 0);
 			} else {
 				const binaryKeys = Object.keys(item.binary);
 				if (binaryKeys.length === 0) {

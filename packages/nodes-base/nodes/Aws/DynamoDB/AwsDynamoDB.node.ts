@@ -120,7 +120,7 @@ export class AwsDynamoDB implements INodeType {
 						) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 						};
 
 						const expressionAttributeValues = adjustExpressionAttributeValues(eavUi);
@@ -177,7 +177,7 @@ export class AwsDynamoDB implements INodeType {
 
 						// tslint:disable-next-line: no-any
 						const body: { [key: string]: any } = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 							Key: {},
 							ReturnValues: this.getNodeParameter('returnValues', 0) as string,
 						};
@@ -242,7 +242,7 @@ export class AwsDynamoDB implements INodeType {
 
 						// https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_GetItem.html
 
-						const tableName = this.getNodeParameter('tableName', 0) as string;
+						const tableName = this.getNodeParameter('tableName', 0);
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -316,7 +316,7 @@ export class AwsDynamoDB implements INodeType {
 						) as IAttributeNameUi[];
 
 						const body: IRequestBody = {
-							TableName: this.getNodeParameter('tableName', i) as string,
+							TableName: this.getNodeParameter('tableName', i),
 						};
 
 						if (scan === true) {

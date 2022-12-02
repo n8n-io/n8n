@@ -150,8 +150,8 @@ export class Affinity implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'list') {
@@ -240,8 +240,8 @@ export class Affinity implements INodeType {
 				if (resource === 'person') {
 					//https://api-docs.affinity.co/#create-a-new-person
 					if (operation === 'create') {
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
 						const emails = this.getNodeParameter('emails', i) as string[];
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IPerson = {

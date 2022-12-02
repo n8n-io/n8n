@@ -290,7 +290,7 @@ export class AwsSqs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -304,7 +304,7 @@ export class AwsSqs implements INodeType {
 
 				const message = sendInputData
 					? JSON.stringify(items[i].json)
-					: (this.getNodeParameter('message', i) as string);
+					: this.getNodeParameter('message', i);
 				params.push(`MessageBody=${message}`);
 
 				if (options.delaySeconds) {

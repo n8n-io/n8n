@@ -16,7 +16,7 @@ export async function create(
 	const type = this.getNodeParameter('type', index) as string;
 
 	body.team_id = this.getNodeParameter('teamId', index) as string;
-	body.display_name = this.getNodeParameter('displayName', index) as string;
+	body.display_name = this.getNodeParameter('displayName', index);
 	body.name = this.getNodeParameter('channel', index) as string;
 	body.type = type === 'public' ? 'O' : 'P';
 

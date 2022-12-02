@@ -362,7 +362,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const objectType = this.getNodeParameter('objectType') as string;
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
@@ -410,7 +410,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const objectType = this.getNodeParameter('objectType') as string;
 				const endpoint = '/webhooks';
 				const ids: string[] = [];
@@ -472,7 +472,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const event = this.getNodeParameter('event') as string;
+		const event = this.getNodeParameter('event');
 		const objectType = this.getNodeParameter('objectType') as string;
 		const authenticationMethod = this.getNodeParameter('authentication') as string;
 		let credentials: IDataObject;

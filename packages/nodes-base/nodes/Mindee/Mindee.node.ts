@@ -154,14 +154,14 @@ export class Mindee implements INodeType {
 		const length = items.length;
 		let responseData;
 		const version = this.getNodeParameter('apiVersion', 0) as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let endpoint;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'receipt') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const rawData = this.getNodeParameter('rawData', i);
 
@@ -232,7 +232,7 @@ export class Mindee implements INodeType {
 
 				if (resource === 'invoice') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const rawData = this.getNodeParameter('rawData', i);
 

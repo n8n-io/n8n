@@ -297,8 +297,8 @@ export class MessageBird implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					//https://developers.messagebird.com/api/sms-messaging/#sms-api
@@ -310,7 +310,7 @@ export class MessageBird implements INodeType {
 						requestMethod = 'POST';
 						requestPath = '/messages';
 						const originator = this.getNodeParameter('originator', i) as string;
-						const body = this.getNodeParameter('message', i) as string;
+						const body = this.getNodeParameter('message', i);
 
 						bodyRequest = {
 							recipients: [],

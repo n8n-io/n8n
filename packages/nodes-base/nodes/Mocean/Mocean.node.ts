@@ -235,11 +235,11 @@ export class Mocean implements INodeType {
 			body = {};
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', itemIndex, '') as string;
-				operation = this.getNodeParameter('operation', itemIndex, '') as string;
-				text = this.getNodeParameter('message', itemIndex, '') as string;
+				resource = this.getNodeParameter('resource', itemIndex, '');
+				operation = this.getNodeParameter('operation', itemIndex, '');
+				text = this.getNodeParameter('message', itemIndex, '');
 				requestMethod = 'POST';
-				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
+				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '');
 				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
 				if (resource === 'voice') {
@@ -256,7 +256,7 @@ export class Mocean implements INodeType {
 					body['mocean-command'] = JSON.stringify(command);
 					endpoint = '/rest/2/voice/dial';
 				} else if (resource === 'sms') {
-					dlrUrl = this.getNodeParameter('options.dlrUrl', itemIndex, '') as string;
+					dlrUrl = this.getNodeParameter('options.dlrUrl', itemIndex, '');
 					dataKey = 'messages';
 					body['mocean-text'] = text;
 					if (dlrUrl !== '') {

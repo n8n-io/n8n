@@ -166,7 +166,7 @@ export class Snowflake implements INodeType {
 		await connect(connection);
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -174,7 +174,7 @@ export class Snowflake implements INodeType {
 			// ----------------------------------
 
 			for (let i = 0; i < items.length; i++) {
-				const query = this.getNodeParameter('query', i) as string;
+				const query = this.getNodeParameter('query', i);
 				responseData = await execute(connection, query, []);
 				returnData.push.apply(returnData, responseData as IDataObject[]);
 			}

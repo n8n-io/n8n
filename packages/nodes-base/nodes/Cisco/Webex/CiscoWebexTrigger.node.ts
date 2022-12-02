@@ -492,7 +492,7 @@ export class CiscoWebexTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
@@ -513,7 +513,7 @@ export class CiscoWebexTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const resource = this.getNodeParameter('resource') as string;
 				const filters = this.getNodeParameter('filters', {}) as IDataObject;
 				const credentials = await this.getCredentials('ciscoWebexOAuth2Api');

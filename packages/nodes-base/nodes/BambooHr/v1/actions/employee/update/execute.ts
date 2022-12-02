@@ -34,21 +34,21 @@ export async function update(
 		Object.assign(body, {
 			payRate: this.getNodeParameter('payRate.value', index, {}) as IDataObject,
 		});
-		body.firstName = this.getNodeParameter('firstName', index) as string;
-		body.lastName = this.getNodeParameter('lastName', index) as string;
+		body.firstName = this.getNodeParameter('firstName', index);
+		body.lastName = this.getNodeParameter('lastName', index);
 		body.department = this.getNodeParameter('department', index) as string;
 		body.dateOfBirth = this.getNodeParameter('dateOfBirth', index) as string;
 		body.division = this.getNodeParameter('division', index) as string;
 		body.employeeNumber = this.getNodeParameter('employeeNumber', index) as string;
 		body.exempt = this.getNodeParameter('exempt', index) as string;
 		body.gender = this.getNodeParameter('gender', index) as string;
-		body.hireDate = this.getNodeParameter('hireDate', index) as string;
+		body.hireDate = this.getNodeParameter('hireDate', index);
 		body.location = this.getNodeParameter('location', index) as string;
 		body.maritalStatus = this.getNodeParameter('maritalStatus', index) as string;
 		body.mobilePhone = this.getNodeParameter('mobilePhone', index) as string;
 		body.paidPer = this.getNodeParameter('paidPer', index) as string;
 		body.payType = this.getNodeParameter('payType', index) as string;
-		body.preferredName = this.getNodeParameter('preferredName', index) as string;
+		body.preferredName = this.getNodeParameter('preferredName', index);
 		body.ssn = this.getNodeParameter('ssn', index) as string;
 	} else {
 		if (!Object.keys(updateFields).length) {

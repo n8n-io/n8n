@@ -189,8 +189,8 @@ export class YouTube implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -383,7 +383,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/channelBanners/insert
 					if (operation === 'uploadBanner') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						let mimeType;
 
@@ -518,7 +518,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/insert
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const options = this.getNodeParameter('options', i);
 
 						qs.part = 'snippet';
@@ -563,7 +563,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/playlists/update
 					if (operation === 'update') {
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						qs.part = 'snippet, status';
@@ -846,10 +846,10 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/guides/uploading_a_video?hl=en
 					if (operation === 'upload') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						let mimeType;
 
@@ -967,7 +967,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/playlists/update
 					if (operation === 'update') {
 						const id = this.getNodeParameter('videoId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 

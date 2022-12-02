@@ -315,8 +315,8 @@ export class TheHive implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -894,8 +894,8 @@ export class TheHive implements INodeType {
 
 						let body: IDataObject = {
 							dataType: this.getNodeParameter('dataType', i) as string,
-							message: this.getNodeParameter('message', i) as string,
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							message: this.getNodeParameter('message', i),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							tlp: this.getNodeParameter('tlp', i) as number,
 							ioc: this.getNodeParameter('ioc', i) as boolean,
 							sighted: this.getNodeParameter('sighted', i) as boolean,
@@ -914,7 +914,7 @@ export class TheHive implements INodeType {
 								});
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryProperty', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryProperty', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
@@ -1282,7 +1282,7 @@ export class TheHive implements INodeType {
 							title: this.getNodeParameter('title', i),
 							description: this.getNodeParameter('description', i),
 							severity: this.getNodeParameter('severity', i),
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							owner: this.getNodeParameter('owner', i),
 							flag: this.getNodeParameter('flag', i),
 							tlp: this.getNodeParameter('tlp', i),
@@ -1496,7 +1496,7 @@ export class TheHive implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i) as string;
 
 						const body: IDataObject = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							status: this.getNodeParameter('status', i) as string,
 							flag: this.getNodeParameter('flag', i),
 							...prepareOptional(this.getNodeParameter('options', i, {}) as INodeParameters),
@@ -1768,7 +1768,7 @@ export class TheHive implements INodeType {
 
 						let body: IDataObject = {
 							message: this.getNodeParameter('message', i),
-							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
+							startDate: Date.parse(this.getNodeParameter('startDate', i)),
 							status: this.getNodeParameter('status', i),
 						};
 						const optionals = this.getNodeParameter('options', i);

@@ -199,8 +199,8 @@ export class GoogleChat implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'media') {
@@ -243,7 +243,7 @@ export class GoogleChat implements INodeType {
 
 						items[i] = newItem;
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							responseData,
@@ -477,7 +477,7 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/reference/rest/v1/spaces.messages.attachments/get
 
-						const attachmentName = this.getNodeParameter('attachmentName', i) as string;
+						const attachmentName = this.getNodeParameter('attachmentName', i);
 
 						responseData = await googleApiRequest.call(this, 'GET', `/v1/${attachmentName}`);
 					}
@@ -489,7 +489,7 @@ export class GoogleChat implements INodeType {
 
 						// https://developers.google.com/chat/how-tos/webhooks
 
-						const uri = this.getNodeParameter('incomingWebhookUrl', i) as string;
+						const uri = this.getNodeParameter('incomingWebhookUrl', i);
 
 						// get additional fields for threadKey
 						const additionalFields = this.getNodeParameter('additionalFields', i);

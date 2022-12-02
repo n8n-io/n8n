@@ -91,8 +91,8 @@ export class GoogleContacts implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -272,7 +272,7 @@ export class GoogleContacts implements INodeType {
 						const endpoint = useQuery ? ':searchContacts' : '/me/connections';
 
 						if (useQuery) {
-							qs.query = this.getNodeParameter('query', i) as string;
+							qs.query = this.getNodeParameter('query', i);
 						}
 
 						if (options.sortOrder) {

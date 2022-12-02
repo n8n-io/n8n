@@ -70,9 +70,9 @@ export class WriteBinaryFile implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
-				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+				const fileName = this.getNodeParameter('fileName', itemIndex);
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 				const flag = options.append ? 'a' : 'w';

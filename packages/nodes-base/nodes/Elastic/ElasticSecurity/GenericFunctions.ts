@@ -65,7 +65,7 @@ export async function elasticSecurityApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 	let responseData: any; // tslint:disable-line
 
-	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
+	const resource = this.getNodeParameter('resource', 0);
 
 	do {
 		responseData = await elasticSecurityApiRequest.call(this, method, endpoint, body, qs);

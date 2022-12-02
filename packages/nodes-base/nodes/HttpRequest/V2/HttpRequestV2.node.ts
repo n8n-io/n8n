@@ -1067,7 +1067,7 @@ export class HttpRequestV2 implements INodeType {
 			const fullResponse = !!options.fullResponse as boolean;
 
 			if (responseFormat === 'file') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -1113,7 +1113,7 @@ export class HttpRequestV2 implements INodeType {
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				if (fullResponse === true) {
 					const returnItem: IDataObject = {};

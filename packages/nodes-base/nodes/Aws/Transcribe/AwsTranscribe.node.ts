@@ -355,14 +355,14 @@ export class AwsTranscribe implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'transcriptionJob') {
 					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
 					if (operation === 'create') {
-						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i);
 						const mediaFileUri = this.getNodeParameter('mediaFileUri', i) as string;
 						const detectLang = this.getNodeParameter('detectLanguage', i) as boolean;
 
@@ -435,7 +435,7 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_DeleteTranscriptionJob.html
 					if (operation === 'delete') {
-						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i);
 
 						const body: IDataObject = {
 							TranscriptionJobName: transcriptionJobName,
@@ -454,7 +454,7 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_GetTranscriptionJob.html
 					if (operation === 'get') {
-						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i) as string;
+						const transcriptionJobName = this.getNodeParameter('transcriptionJobName', i);
 						const resolve = this.getNodeParameter('returnTranscript', 0) as boolean;
 
 						const body: IDataObject = {

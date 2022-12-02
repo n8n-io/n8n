@@ -301,8 +301,8 @@ export class Odoo implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const credentials = await this.getCredentials('odooApi');
 		const url = (credentials.url as string).replace(/\/$/, '');
@@ -332,7 +332,7 @@ export class Odoo implements INodeType {
 							delete additionalFields.address;
 						}
 
-						const name = this.getNodeParameter('contactName', i) as string;
+						const name = this.getNodeParameter('contactName', i);
 						const fields: IDataObject = {
 							name,
 							...additionalFields,
@@ -647,7 +647,7 @@ export class Odoo implements INodeType {
 				if (resource === 'opportunity') {
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const name = this.getNodeParameter('opportunityName', i) as string;
+						const name = this.getNodeParameter('opportunityName', i);
 						const fields: IDataObject = {
 							name,
 							...additionalFields,

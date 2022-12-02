@@ -319,8 +319,8 @@ export class Zammad implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as ZammadTypes.Resource;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -666,7 +666,7 @@ export class Zammad implements INodeType {
 
 						const body = {
 							article: {},
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							group: this.getNodeParameter('group', i) as string,
 							customer: this.getNodeParameter('customer', i) as string,
 						};

@@ -112,8 +112,8 @@ export class CiscoWebex implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -311,7 +311,7 @@ export class CiscoWebex implements INodeType {
 
 				if (resource === 'meeting') {
 					if (operation === 'create') {
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
 						const invitees = this.getNodeParameter(
@@ -514,7 +514,7 @@ export class CiscoWebex implements INodeType {
 		// 	if (operation === 'download') {
 		// 		for (let i = 0; i < items.length; i++) {
 		// 			const transcriptId = this.getNodeParameter('transcriptId', i) as string;
-		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 		// 			const meetingId = this.getNodeParameter('meetingId', i) as string;
 		// 			const options = this.getNodeParameter('options', i);
 

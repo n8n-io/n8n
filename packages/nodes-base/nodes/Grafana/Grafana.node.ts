@@ -123,8 +123,8 @@ export class Grafana implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -165,7 +165,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/dashboard/#delete-dashboard-by-uid
 
-						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i) as string;
+						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i);
 						const uid = deriveUid.call(this, uidOrUrl);
 						const endpoint = `/dashboards/uid/${uid}`;
 						responseData = await grafanaApiRequest.call(this, 'DELETE', endpoint);
@@ -176,7 +176,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/dashboard/#get-dashboard-by-uid
 
-						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i) as string;
+						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i);
 						const uid = deriveUid.call(this, uidOrUrl);
 						const endpoint = `/dashboards/uid/${uid}`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
@@ -212,7 +212,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/dashboard/#create--update-dashboard
 
-						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i) as string;
+						const uidOrUrl = this.getNodeParameter('dashboardUidOrUrl', i);
 						const uid = deriveUid.call(this, uidOrUrl);
 
 						// ensure dashboard to update exists

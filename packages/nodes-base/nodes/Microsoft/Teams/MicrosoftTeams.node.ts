@@ -140,7 +140,7 @@ export class MicrosoftTeams implements INodeType {
 			async getPlans(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				let groupId = this.getCurrentNodeParameter('groupId') as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				if (operation === 'update' && (groupId === undefined || groupId === null)) {
 					// groupId not found at base, check updateFields for the groupId
 					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
@@ -163,7 +163,7 @@ export class MicrosoftTeams implements INodeType {
 			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				let planId = this.getCurrentNodeParameter('planId') as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				if (operation === 'update' && (planId === undefined || planId === null)) {
 					// planId not found at base, check updateFields for the planId
 					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
@@ -186,7 +186,7 @@ export class MicrosoftTeams implements INodeType {
 			async getMembers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				let groupId = this.getCurrentNodeParameter('groupId') as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				if (operation === 'update' && (groupId === undefined || groupId === null)) {
 					// groupId not found at base, check updateFields for the groupId
 					groupId = this.getCurrentNodeParameter('updateFields.groupId') as string;
@@ -210,7 +210,7 @@ export class MicrosoftTeams implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 
 				let planId = this.getCurrentNodeParameter('planId') as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				if (operation === 'update' && (planId === undefined || planId === null)) {
 					// planId not found at base, check updateFields for the planId
 					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
@@ -263,8 +263,8 @@ export class MicrosoftTeams implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -361,7 +361,7 @@ export class MicrosoftTeams implements INodeType {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
@@ -418,7 +418,7 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'create') {
 						const chatId = this.getNodeParameter('chatId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const body: IDataObject = {
 							body: {
 								contentType: messageType,
@@ -471,7 +471,7 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'create') {
 						const planId = this.getNodeParameter('planId', i) as string;
 						const bucketId = this.getNodeParameter('bucketId', i) as string;
-						const title = this.getNodeParameter('title', i) as string;
+						const title = this.getNodeParameter('title', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							planId,

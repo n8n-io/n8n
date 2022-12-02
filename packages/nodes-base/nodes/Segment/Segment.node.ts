@@ -75,8 +75,8 @@ export class Segment implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -351,7 +351,7 @@ export class Segment implements INodeType {
 					//https://segment.com/docs/connections/sources/catalog/libraries/server/http-api/#track
 					if (operation === 'event') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const event = this.getNodeParameter('event', i) as string;
+						const event = this.getNodeParameter('event', i);
 						const context = (this.getNodeParameter('context', i) as IDataObject)
 							.contextUi as IDataObject;
 						const integrations = (this.getNodeParameter('integrations', i) as IDataObject)

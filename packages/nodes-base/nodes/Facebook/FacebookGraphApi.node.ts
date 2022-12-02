@@ -299,7 +299,7 @@ export class FacebookGraphApi implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 
-			const hostUrl = this.getNodeParameter('hostUrl', itemIndex) as string;
+			const hostUrl = this.getNodeParameter('hostUrl', itemIndex);
 			const httpRequestMethod = this.getNodeParameter('httpRequestMethod', itemIndex) as string;
 			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;

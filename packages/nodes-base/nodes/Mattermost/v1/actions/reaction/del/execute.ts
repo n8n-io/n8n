@@ -7,7 +7,7 @@ import { apiRequest } from '../../../transport';
 export async function del(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
 	const userId = this.getNodeParameter('userId', index) as string;
 	const postId = this.getNodeParameter('postId', index) as string;
-	const emojiName = (this.getNodeParameter('emojiName', index) as string).replace(/:/g, '');
+	const emojiName = this.getNodeParameter('emojiName', index).replace(/:/g, '');
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'DELETE';

@@ -95,15 +95,15 @@ export class Twitter implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'directMessage') {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/direct-messages/sending-and-receiving/api-reference/new-event
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'message_create',
@@ -150,7 +150,7 @@ export class Twitter implements INodeType {
 				if (resource === 'tweet') {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: ITweet = {
 							status: text,

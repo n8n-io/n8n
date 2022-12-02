@@ -121,8 +121,8 @@ export class UptimeRobot implements INodeType {
 		const timezone = this.getTimezone();
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				let body: IDataObject = {};
 				//https://uptimerobot.com/#methods
 				if (resource === 'account') {
@@ -135,8 +135,8 @@ export class UptimeRobot implements INodeType {
 				if (resource === 'monitor') {
 					if (operation === 'create') {
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
-							url: this.getNodeParameter('url', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
+							url: this.getNodeParameter('url', i),
 							type: this.getNodeParameter('type', i) as number,
 						};
 
@@ -220,7 +220,7 @@ export class UptimeRobot implements INodeType {
 				if (resource === 'alertContact') {
 					if (operation === 'create') {
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							value: this.getNodeParameter('value', i) as string,
 							type: this.getNodeParameter('type', i) as number,
 						};
@@ -295,7 +295,7 @@ export class UptimeRobot implements INodeType {
 
 						body = {
 							duration: this.getNodeParameter('duration', i) as number,
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							start_time: parsedStartTime,
 							type,
 						};
@@ -368,7 +368,7 @@ export class UptimeRobot implements INodeType {
 				if (resource === 'publicStatusPage') {
 					if (operation === 'create') {
 						body = {
-							friendly_name: this.getNodeParameter('friendlyName', i) as string,
+							friendly_name: this.getNodeParameter('friendlyName', i),
 							monitors: this.getNodeParameter('monitors', i) as string,
 							...(this.getNodeParameter('additionalFields', i) as IDataObject),
 						};

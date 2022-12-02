@@ -251,8 +251,8 @@ export class ServiceNow implements INodeType {
 			},
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 
 				const qs = {
 					sysparm_fields: 'sys_id,user_name',
@@ -509,8 +509,8 @@ export class ServiceNow implements INodeType {
 		const length = items.length;
 		let responseData = {};
 		let qs: IDataObject;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -544,7 +544,7 @@ export class ServiceNow implements INodeType {
 						}
 					} else if (operation === 'getAll') {
 						const download = this.getNodeParameter('download', i);
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
 
@@ -600,9 +600,9 @@ export class ServiceNow implements INodeType {
 							responseData = (responseData as IDataObject[]).map((data) => ({ json: data }));
 						}
 					} else if (operation === 'upload') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const recordId = this.getNodeParameter('id', i) as string;
-						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i) as string;
+						const inputDataFieldName = this.getNodeParameter('inputDataFieldName', i);
 						const options = this.getNodeParameter('options', i);
 
 						let binaryData: IBinaryData;
@@ -855,7 +855,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'tableRecord') {
 					if (operation === 'create') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};
 
@@ -884,7 +884,7 @@ export class ServiceNow implements INodeType {
 						);
 						responseData = response.result;
 					} else if (operation === 'delete') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						responseData = await serviceNowApiRequest.call(
 							this,
@@ -893,7 +893,7 @@ export class ServiceNow implements INodeType {
 						);
 						responseData = { success: true };
 					} else if (operation === 'get') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						qs = this.getNodeParameter('options', i);
 
@@ -910,7 +910,7 @@ export class ServiceNow implements INodeType {
 						);
 						responseData = response.result;
 					} else if (operation === 'getAll') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i);
 
@@ -939,7 +939,7 @@ export class ServiceNow implements INodeType {
 							);
 						}
 					} else if (operation === 'update') {
-						const tableName = this.getNodeParameter('tableName', i) as string;
+						const tableName = this.getNodeParameter('tableName', i);
 						const id = this.getNodeParameter('id', i) as string;
 						const dataToSend = this.getNodeParameter('dataToSend', i) as string;
 						let body = {};

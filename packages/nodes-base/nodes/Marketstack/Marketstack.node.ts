@@ -24,7 +24,7 @@ import {
 	validateTimeOptions,
 } from './GenericFunctions';
 
-import { EndOfDayDataFilters, Operation, Resource } from './types';
+import { EndOfDayDataFilters, Resource } from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {
@@ -85,7 +85,7 @@ export class Marketstack implements INodeType {
 		const items = this.getInputData();
 
 		const resource = this.getNodeParameter('resource', 0) as Resource;
-		const operation = this.getNodeParameter('operation', 0) as Operation;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData: any; // tslint:disable-line: no-any
 		const returnData: INodeExecutionData[] = [];

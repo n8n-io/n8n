@@ -791,8 +791,8 @@ export class Spotify implements INodeType {
 		let propertyName = '';
 		let responseData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// Set initial values
 		requestMethod = 'GET';
@@ -974,7 +974,7 @@ export class Spotify implements INodeType {
 						propertyName = 'albums.items';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						const q = this.getNodeParameter('query', i) as string;
+						const q = this.getNodeParameter('query', i);
 						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
@@ -1049,7 +1049,7 @@ export class Spotify implements INodeType {
 						propertyName = 'artists.items';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						const q = this.getNodeParameter('query', i) as string;
+						const q = this.getNodeParameter('query', i);
 						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
@@ -1181,7 +1181,7 @@ export class Spotify implements INodeType {
 						propertyName = 'playlists.items';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						const q = this.getNodeParameter('query', i) as string;
+						const q = this.getNodeParameter('query', i);
 						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
@@ -1223,7 +1223,7 @@ export class Spotify implements INodeType {
 						propertyName = 'tracks.items';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						const q = this.getNodeParameter('query', i) as string;
+						const q = this.getNodeParameter('query', i);
 						const filters = this.getNodeParameter('filters', i);
 
 						qs = {

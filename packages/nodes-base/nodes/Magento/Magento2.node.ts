@@ -310,8 +310,8 @@ export class Magento2 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -462,8 +462,8 @@ export class Magento2 implements INodeType {
 					if (operation === 'update') {
 						//https://magento.redoc.ly/2.3.7-admin/tag/customerscustomerId#operation/customerCustomerRepositoryV1SavePut
 						const customerId = this.getNodeParameter('customerId', i) as string;
-						const firstName = this.getNodeParameter('firstName', i) as string;
-						const lastName = this.getNodeParameter('lastName', i) as string;
+						const firstName = this.getNodeParameter('firstName', i);
+						const lastName = this.getNodeParameter('lastName', i);
 						const email = this.getNodeParameter('email', i) as string;
 
 						const { addresses, customAttributes, password, ...rest } = this.getNodeParameter(

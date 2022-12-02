@@ -156,8 +156,8 @@ export class Zoom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -429,7 +429,7 @@ export class Zoom implements INodeType {
 				// 		const meetingId = this.getNodeParameter('meetingId', i) as string;
 				// 		const emailId = this.getNodeParameter('email', i) as string;
 				// 		body.email = emailId;
-				// 		const firstName = this.getNodeParameter('firstName', i) as string;
+				// 		const firstName = this.getNodeParameter('firstName', i);
 				// 		body.first_name = firstName;
 				// 		const additionalFields = this.getNodeParameter(
 				// 			'additionalFields',

@@ -670,7 +670,7 @@ export class Redis implements INodeType {
 
 			const client = redis.createClient(redisOptions);
 
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const operation = this.getNodeParameter('operation', 0);
 
 			client.on('error', (err: Error) => {
 				client.quit();
@@ -706,7 +706,7 @@ export class Redis implements INodeType {
 								await clientDel(keyDelete);
 								returnItems.push(items[itemIndex]);
 							} else if (operation === 'get') {
-								const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
+								const propertyName = this.getNodeParameter('propertyName', itemIndex);
 								const keyGet = this.getNodeParameter('key', itemIndex) as string;
 								const keyType = this.getNodeParameter('keyType', itemIndex) as string;
 

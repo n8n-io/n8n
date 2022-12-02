@@ -133,8 +133,8 @@ export class Stripe implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -207,7 +207,7 @@ export class Stripe implements INodeType {
 
 						const body = {
 							customer: this.getNodeParameter('customerId', i),
-							currency: (this.getNodeParameter('currency', i) as string).toLowerCase(),
+							currency: this.getNodeParameter('currency', i).toLowerCase(),
 							amount: this.getNodeParameter('amount', i),
 							source: this.getNodeParameter('source', i),
 						} as IDataObject;

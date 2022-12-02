@@ -137,8 +137,8 @@ export class Salesmate implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
 				if (operation === 'create') {
@@ -387,7 +387,7 @@ export class Salesmate implements INodeType {
 			if (resource === 'activity') {
 				if (operation === 'create') {
 					const owner = this.getNodeParameter('owner', i) as number;
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const type = this.getNodeParameter('type', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -580,13 +580,13 @@ export class Salesmate implements INodeType {
 			}
 			if (resource === 'deal') {
 				if (operation === 'create') {
-					const title = this.getNodeParameter('title', i) as string;
+					const title = this.getNodeParameter('title', i);
 					const owner = this.getNodeParameter('owner', i) as number;
 					const primaryContact = this.getNodeParameter('primaryContact', i) as number;
 					const pipeline = this.getNodeParameter('pipeline', i) as string;
 					const status = this.getNodeParameter('status', i) as string;
 					const stage = this.getNodeParameter('stage', i) as string;
-					const currency = this.getNodeParameter('currency', i) as string;
+					const currency = this.getNodeParameter('currency', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDeal = {

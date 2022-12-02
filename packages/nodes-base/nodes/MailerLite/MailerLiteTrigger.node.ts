@@ -107,7 +107,7 @@ export class MailerLiteTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/webhooks';
@@ -124,7 +124,7 @@ export class MailerLiteTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 
 				const endpoint = '/webhooks';
 

@@ -187,7 +187,7 @@ export async function execute(
 		}
 
 		if (clearType === 'specificRange') {
-			const rangeField = this.getNodeParameter('range', i) as string;
+			const rangeField = this.getNodeParameter('range', i);
 			const region = rangeField.includes('!') ? rangeField.split('!')[1] || '' : rangeField;
 
 			range = `${sheetName}!${region}`;

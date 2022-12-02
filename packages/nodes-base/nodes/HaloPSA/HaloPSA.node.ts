@@ -222,8 +222,8 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		//====================================================================
 		//                        Main Loop
@@ -236,7 +236,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'create') {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const name = this.getNodeParameter('clientName', i) as string;
+						const name = this.getNodeParameter('clientName', i);
 						const body: IDataObject = {
 							name,
 							...additionalFields,
@@ -347,7 +347,7 @@ export class HaloPSA implements INodeType {
 					];
 
 					if (operation === 'create') {
-						const name = this.getNodeParameter('siteName', i) as string;
+						const name = this.getNodeParameter('siteName', i);
 						const clientId = this.getNodeParameter('clientId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
@@ -566,7 +566,7 @@ export class HaloPSA implements INodeType {
 					];
 
 					if (operation === 'create') {
-						const name = this.getNodeParameter('userName', i) as string;
+						const name = this.getNodeParameter('userName', i);
 						const siteId = this.getNodeParameter('siteId', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {

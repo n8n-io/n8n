@@ -52,15 +52,15 @@ export class CircleCi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'pipeline') {
 					if (operation === 'get') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						let slug = this.getNodeParameter('projectSlug', i);
 						const pipelineNumber = this.getNodeParameter('pipelineNumber', i) as number;
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
@@ -77,7 +77,7 @@ export class CircleCi implements INodeType {
 						const vcs = this.getNodeParameter('vcs', i) as string;
 						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						let slug = this.getNodeParameter('projectSlug', i);
 
 						slug = slug.replace(new RegExp(/\//g), '%2F');
 
@@ -110,7 +110,7 @@ export class CircleCi implements INodeType {
 
 					if (operation === 'trigger') {
 						const vcs = this.getNodeParameter('vcs', i) as string;
-						let slug = this.getNodeParameter('projectSlug', i) as string;
+						let slug = this.getNodeParameter('projectSlug', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

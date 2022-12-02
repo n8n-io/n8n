@@ -259,7 +259,7 @@ export class EventbriteTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const organisation = this.getNodeParameter('organization') as string;
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const actions = this.getNodeParameter('actions') as string[];
 				const endpoint = `/organizations/${organisation}/webhooks/`;
 				const body: IDataObject = {

@@ -191,14 +191,14 @@ export class AwsComprehend implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'text') {
 					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectDominantLanguage.html
 					if (operation === 'detectDominantLanguage') {
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const body: IDataObject = {
@@ -228,7 +228,7 @@ export class AwsComprehend implements INodeType {
 					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectSentiment.html
 					if (operation === 'detectSentiment') {
 						const action = 'Comprehend_20171127.DetectSentiment';
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const languageCode = this.getNodeParameter('languageCode', i) as string;
 						const body: IDataObject = {
 							Text: text,
@@ -247,7 +247,7 @@ export class AwsComprehend implements INodeType {
 					//https://docs.aws.amazon.com/comprehend/latest/dg/API_DetectEntities.html
 					if (operation === 'detectEntities') {
 						const action = 'Comprehend_20171127.DetectEntities';
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const languageCode = this.getNodeParameter('languageCode', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 

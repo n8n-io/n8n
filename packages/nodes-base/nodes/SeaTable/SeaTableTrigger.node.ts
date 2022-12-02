@@ -102,9 +102,9 @@ export class SeaTableTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
-		const tableName = this.getNodeParameter('tableName') as string;
+		const tableName = this.getNodeParameter('tableName');
 		const simple = this.getNodeParameter('simple') as boolean;
-		const event = this.getNodeParameter('event') as string;
+		const event = this.getNodeParameter('event');
 		const ctx: ICtx = {};
 		const credentials = await this.getCredentials('seaTableApi');
 

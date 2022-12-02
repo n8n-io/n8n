@@ -327,8 +327,8 @@ export class ActiveCampaign implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				dataKey = undefined;
-				resource = this.getNodeParameter('resource', 0) as string;
-				operation = this.getNodeParameter('operation', 0) as string;
+				resource = this.getNodeParameter('resource', 0);
+				operation = this.getNodeParameter('operation', 0);
 
 				requestMethod = 'GET';
 				endpoint = '';
@@ -739,10 +739,10 @@ export class ActiveCampaign implements INodeType {
 						endpoint = '/api/3/deals';
 
 						body.deal = {
-							title: this.getNodeParameter('title', i) as string,
+							title: this.getNodeParameter('title', i),
 							contact: this.getNodeParameter('contact', i) as string,
 							value: this.getNodeParameter('value', i) as number,
-							currency: this.getNodeParameter('currency', i) as string,
+							currency: this.getNodeParameter('currency', i),
 						} as IDataObject;
 
 						const group = this.getNodeParameter('group', i) as string;
@@ -858,8 +858,8 @@ export class ActiveCampaign implements INodeType {
 							service: this.getNodeParameter('service', i) as string,
 							externalid: this.getNodeParameter('externalid', i) as string,
 							name: this.getNodeParameter('name', i) as string,
-							logoUrl: this.getNodeParameter('logoUrl', i) as string,
-							linkUrl: this.getNodeParameter('linkUrl', i) as string,
+							logoUrl: this.getNodeParameter('logoUrl', i),
+							linkUrl: this.getNodeParameter('linkUrl', i),
 						} as IDataObject;
 					} else if (operation === 'update') {
 						// ----------------------------------
@@ -929,11 +929,11 @@ export class ActiveCampaign implements INodeType {
 						endpoint = '/api/3/ecomOrders';
 
 						body.ecomOrder = {
-							source: this.getNodeParameter('source', i) as string,
+							source: this.getNodeParameter('source', i),
 							email: this.getNodeParameter('email', i) as string,
 							totalPrice: this.getNodeParameter('totalPrice', i) as number,
-							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,
-							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
+							currency: this.getNodeParameter('currency', i).toUpperCase(),
+							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i),
 							connectionid: this.getNodeParameter('connectionid', i) as number,
 							customerid: this.getNodeParameter('customerid', i) as number,
 						} as IDataObject;
@@ -948,7 +948,7 @@ export class ActiveCampaign implements INodeType {
 							addAdditionalFields(body.ecomOrder as IDataObject, { externalcheckoutid });
 						}
 
-						const abandonedDate = this.getNodeParameter('abandonedDate', i) as string;
+						const abandonedDate = this.getNodeParameter('abandonedDate', i);
 						if (abandonedDate !== '') {
 							addAdditionalFields(body.ecomOrder as IDataObject, { abandonedDate });
 						}

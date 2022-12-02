@@ -222,8 +222,8 @@ export class Twilio implements INodeType {
 				body = {};
 				qs = {};
 
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					if (operation === 'send') {
@@ -234,9 +234,9 @@ export class Twilio implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/Messages.json';
 
-						body.From = this.getNodeParameter('from', i) as string;
+						body.From = this.getNodeParameter('from', i);
 						body.To = this.getNodeParameter('to', i) as string;
-						body.Body = this.getNodeParameter('message', i) as string;
+						body.Body = this.getNodeParameter('message', i);
 						body.StatusCallback = this.getNodeParameter('options.statusCallback', i, '') as string;
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
@@ -261,9 +261,9 @@ export class Twilio implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/Calls.json';
 
-						const message = this.getNodeParameter('message', i) as string;
+						const message = this.getNodeParameter('message', i);
 						const useTwiml = this.getNodeParameter('twiml', i) as boolean;
-						body.From = this.getNodeParameter('from', i) as string;
+						body.From = this.getNodeParameter('from', i);
 						body.To = this.getNodeParameter('to', i) as string;
 
 						if (useTwiml) {

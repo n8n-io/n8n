@@ -16,7 +16,7 @@ export async function contentfulApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('contentfulApi');
-	const source = this.getNodeParameter('source', 0) as string;
+	const source = this.getNodeParameter('source', 0);
 	const isPreview = source === 'previewApi';
 
 	const options: OptionsWithUri = {

@@ -103,8 +103,8 @@ export class SecurityScorecard implements INodeType {
 		let responseData;
 		const length = items.length;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'portfolio') {
@@ -216,7 +216,7 @@ export class SecurityScorecard implements INodeType {
 
 			if (resource === 'report') {
 				if (operation === 'download') {
-					const reportUrl = this.getNodeParameter('url', i) as string;
+					const reportUrl = this.getNodeParameter('url', i);
 
 					const response = await scorecardApiRequest.call(this, 'GET', '', {}, {}, reportUrl, {
 						encoding: null,
@@ -242,7 +242,7 @@ export class SecurityScorecard implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const fileName = reportUrl.split('/').pop();
 

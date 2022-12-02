@@ -33,7 +33,6 @@ import {
 } from './GenericFunctions';
 
 import {
-	CamelCaseResource,
 	GetAllFilterOptions,
 	LoadedAccounts,
 	LoadedContacts,
@@ -332,8 +331,8 @@ export class ZohoCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 

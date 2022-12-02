@@ -328,13 +328,13 @@ export class Kafka implements INodeType {
 				if (sendInputData === true) {
 					message = JSON.stringify(items[i].json);
 				} else {
-					message = this.getNodeParameter('message', i) as string;
+					message = this.getNodeParameter('message', i);
 				}
 
 				if (useSchemaRegistry) {
 					try {
-						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
-						const eventName = this.getNodeParameter('eventName', 0) as string;
+						const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0);
+						const eventName = this.getNodeParameter('eventName', 0);
 
 						const registry = new SchemaRegistry({ host: schemaRegistryUrl });
 						const id = await registry.getLatestSchemaId(eventName);

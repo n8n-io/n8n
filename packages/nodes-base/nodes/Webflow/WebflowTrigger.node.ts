@@ -203,7 +203,7 @@ export class WebflowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const siteId = this.getNodeParameter('site') as string;
 
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const registeredWebhooks = (await webflowApiRequest.call(
 					this,
 					'GET',
@@ -224,7 +224,7 @@ export class WebflowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const siteId = this.getNodeParameter('site') as string;
-				const event = this.getNodeParameter('event') as string;
+				const event = this.getNodeParameter('event');
 				const endpoint = `/sites/${siteId}/webhooks`;
 				const body: IDataObject = {
 					site_id: siteId,

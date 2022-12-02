@@ -232,8 +232,8 @@ export async function handleBinaryData(
 	resource: string,
 	resourceId: string,
 ) {
-	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-	const fileName = this.getNodeParameter('fileName', i) as string;
+	const binaryProperty = this.getNodeParameter('binaryProperty', i);
+	const fileName = this.getNodeParameter('fileName', i);
 	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 

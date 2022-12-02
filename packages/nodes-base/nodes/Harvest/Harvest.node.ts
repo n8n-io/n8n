@@ -204,8 +204,8 @@ export class Harvest implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -256,7 +256,7 @@ export class Harvest implements INodeType {
 
 						body.project_id = this.getNodeParameter('projectId', i) as string;
 						body.task_id = this.getNodeParameter('taskId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -284,7 +284,7 @@ export class Harvest implements INodeType {
 
 						body.project_id = this.getNodeParameter('projectId', i) as string;
 						body.task_id = this.getNodeParameter('taskId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -683,8 +683,8 @@ export class Harvest implements INodeType {
 						requestMethod = 'POST';
 						endpoint = 'users';
 
-						body.first_name = this.getNodeParameter('firstName', i) as string;
-						body.last_name = this.getNodeParameter('lastName', i) as string;
+						body.first_name = this.getNodeParameter('firstName', i);
+						body.last_name = this.getNodeParameter('lastName', i);
 						body.email = this.getNodeParameter('email', i) as string;
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -795,7 +795,7 @@ export class Harvest implements INodeType {
 						endpoint = 'contacts';
 
 						body.client_id = this.getNodeParameter('clientId', i) as string;
-						body.first_name = this.getNodeParameter('firstName', i) as string;
+						body.first_name = this.getNodeParameter('firstName', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
@@ -1148,7 +1148,7 @@ export class Harvest implements INodeType {
 
 						body.project_id = this.getNodeParameter('projectId', i) as string;
 						body.expense_category_id = this.getNodeParameter('expenseCategoryId', i) as string;
-						body.spent_date = this.getNodeParameter('spentDate', i) as string;
+						body.spent_date = this.getNodeParameter('spentDate', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);

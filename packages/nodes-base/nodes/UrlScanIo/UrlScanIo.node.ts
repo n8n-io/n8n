@@ -57,7 +57,7 @@ export class UrlScanIo implements INodeType {
 		const returnData: IDataObject[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'scan';
-		const operation = this.getNodeParameter('operation', 0) as 'perform' | 'get' | 'getAll';
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -108,7 +108,7 @@ export class UrlScanIo implements INodeType {
 						};
 
 						const body: IDataObject = {
-							url: this.getNodeParameter('url', i) as string,
+							url: this.getNodeParameter('url', i),
 							...rest,
 						};
 

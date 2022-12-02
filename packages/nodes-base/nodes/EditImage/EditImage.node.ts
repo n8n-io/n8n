@@ -991,8 +991,8 @@ export class EditImage implements INodeType {
 			try {
 				item = items[itemIndex];
 
-				const operation = this.getNodeParameter('operation', itemIndex) as string;
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const operation = this.getNodeParameter('operation', itemIndex);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
 

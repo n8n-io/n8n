@@ -384,7 +384,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			/*                        Get fields for create webhook                       */
 			/* -------------------------------------------------------------------------- */
-			const url = this.getNodeParameter('url', item) as string;
+			const url = this.getNodeParameter('url', item);
 			const name = this.getNodeParameter('name', item) as string;
 			const trigger = this.getNodeParameter('trigger', item) as number;
 			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;

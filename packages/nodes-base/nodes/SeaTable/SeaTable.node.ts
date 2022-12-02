@@ -136,8 +136,8 @@ export class SeaTable implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -149,7 +149,7 @@ export class SeaTable implements INodeType {
 				//         row:create
 				// ----------------------------------
 
-				const tableName = this.getNodeParameter('tableName', 0) as string;
+				const tableName = this.getNodeParameter('tableName', 0);
 				const tableColumns = await getTableColumns.call(this, tableName);
 
 				body.table_name = tableName;
@@ -281,7 +281,7 @@ export class SeaTable implements INodeType {
 				//         row:getAll
 				// ----------------------------------
 
-				const tableName = this.getNodeParameter('tableName', 0) as string;
+				const tableName = this.getNodeParameter('tableName', 0);
 				const tableColumns = await getTableColumns.call(this, tableName);
 
 				for (let i = 0; i < items.length; i++) {
@@ -341,7 +341,7 @@ export class SeaTable implements INodeType {
 			} else if (operation === 'delete') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const tableName = this.getNodeParameter('tableName', 0) as string;
+						const tableName = this.getNodeParameter('tableName', 0);
 						const rowId = this.getNodeParameter('rowId', i) as string;
 						const body: IDataObject = {
 							table_name: tableName,
@@ -379,7 +379,7 @@ export class SeaTable implements INodeType {
 				//         row:update
 				// ----------------------------------
 
-				const tableName = this.getNodeParameter('tableName', 0) as string;
+				const tableName = this.getNodeParameter('tableName', 0);
 				const tableColumns = await getTableColumns.call(this, tableName);
 
 				body.table_name = tableName;

@@ -168,8 +168,8 @@ export class MicrosoftExcel implements INodeType {
 		let qs: IDataObject = {};
 		const result: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'table') {
 			//https://docs.microsoft.com/en-us/graph/api/table-post-rows?view=graph-rest-1.0&tabs=http
@@ -611,7 +611,7 @@ export class MicrosoftExcel implements INodeType {
 					if (operation === 'getContent') {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
-						const range = this.getNodeParameter('range', i) as string;
+						const range = this.getNodeParameter('range', i);
 						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);

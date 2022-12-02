@@ -828,8 +828,8 @@ export class AwsSes implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -849,7 +849,7 @@ export class AwsSes implements INodeType {
 
 						const templateContent = this.getNodeParameter('templateContent', i) as string;
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
@@ -875,7 +875,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [
 							`Action=DeleteCustomVerificationEmailTemplate`,
@@ -894,7 +894,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [`TemplateName=${templateName}`];
 
@@ -939,7 +939,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'send') {
 						const email = this.getNodeParameter('email', i) as string[];
 
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
@@ -965,7 +965,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 
@@ -1092,7 +1092,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'sendTemplate') {
 						const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
 
-						const template = this.getNodeParameter('templateName', i) as string;
+						const template = this.getNodeParameter('templateName', i);
 
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 
@@ -1178,7 +1178,7 @@ export class AwsSes implements INodeType {
 
 				if (resource === 'template') {
 					if (operation === 'create') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const subjectPart = this.getNodeParameter('subjectPart', i) as string;
 
@@ -1207,7 +1207,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'delete') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [`TemplateName=${templateName}`];
 
@@ -1222,7 +1222,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'get') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const params = [`TemplateName=${templateName}`];
 
@@ -1263,7 +1263,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const templateName = this.getNodeParameter('templateName', i) as string;
+						const templateName = this.getNodeParameter('templateName', i);
 
 						const updateFields = this.getNodeParameter('updateFields', i);
 

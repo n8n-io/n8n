@@ -66,8 +66,8 @@ export class MicrosoftOneDrive implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -167,7 +167,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
@@ -196,10 +196,10 @@ export class MicrosoftOneDrive implements INodeType {
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
 						const isBinaryData = this.getNodeParameter('binaryData', i);
-						const fileName = this.getNodeParameter('fileName', i) as string;
+						const fileName = this.getNodeParameter('fileName', i);
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -305,7 +305,7 @@ export class MicrosoftOneDrive implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_search?view=odsp-graph-online
 					if (operation === 'search') {
-						const query = this.getNodeParameter('query', i) as string;
+						const query = this.getNodeParameter('query', i);
 						responseData = await microsoftApiRequestAllItems.call(
 							this,
 							'value',
@@ -334,7 +334,7 @@ export class MicrosoftOneDrive implements INodeType {
 				if (resource === 'file' || resource === 'folder') {
 					if (operation === 'rename') {
 						const itemId = this.getNodeParameter('itemId', i) as string;
-						const newName = this.getNodeParameter('newName', i) as string;
+						const newName = this.getNodeParameter('newName', i);
 						const body = { name: newName };
 						responseData = await microsoftApiRequest.call(
 							this,

@@ -4034,8 +4034,8 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let customProperties: ICustomProperties | undefined;
 		if (
@@ -4145,7 +4145,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'POST';
 						endpoint = '/deals';
 
-						body.title = this.getNodeParameter('title', i) as string;
+						body.title = this.getNodeParameter('title', i);
 
 						const associateWith = this.getNodeParameter('associateWith', i) as
 							| 'organization'
@@ -4347,7 +4347,7 @@ export class Pipedrive implements INodeType {
 							});
 						}
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
@@ -4849,7 +4849,7 @@ export class Pipedrive implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData.data,

@@ -93,8 +93,8 @@ export class AgileCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'contact' || resource === 'company') {
@@ -546,7 +546,7 @@ export class AgileCrm implements INodeType {
 					} else {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						body.close_date = new Date(this.getNodeParameter('closeDate', i) as string).getTime();
+						body.close_date = new Date(this.getNodeParameter('closeDate', i)).getTime();
 						body.expected_value = this.getNodeParameter('expectedValue', i) as number;
 						body.milestone = this.getNodeParameter('milestone', i) as string;
 						body.probability = this.getNodeParameter('probability', i) as number;

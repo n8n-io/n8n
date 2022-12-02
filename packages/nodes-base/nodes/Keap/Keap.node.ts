@@ -249,8 +249,8 @@ export class Keap implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'company') {
 				//https://developer.keap.com/docs/rest/#!/Company/createCompanyUsingPOST
@@ -261,7 +261,7 @@ export class Keap implements INodeType {
 						.faxesValues as IDataObject[];
 					const phones = (this.getNodeParameter('phonesUi', i) as IDataObject)
 						.phonesValues as IDataObject[];
-					const companyName = this.getNodeParameter('companyName', i) as string;
+					const companyName = this.getNodeParameter('companyName', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ICompany = {
 						company_name: companyName,
@@ -575,7 +575,7 @@ export class Keap implements INodeType {
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/createOrderUsingPOST
 				if (operation === 'create') {
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
-					const orderDate = this.getNodeParameter('orderDate', i) as string;
+					const orderDate = this.getNodeParameter('orderDate', i);
 					const orderTitle = this.getNodeParameter('orderTitle', i) as string;
 					const orderType = this.getNodeParameter('orderType', i) as string;
 					const orderItems = (this.getNodeParameter('orderItemsUi', i) as IDataObject)
@@ -638,7 +638,7 @@ export class Keap implements INodeType {
 			if (resource === 'ecommerceProduct') {
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/createProductUsingPOST
 				if (operation === 'create') {
-					const productName = this.getNodeParameter('productName', i) as string;
+					const productName = this.getNodeParameter('productName', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IEcommerceProduct = {
 						product_name: productName,
@@ -829,7 +829,7 @@ export class Keap implements INodeType {
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {

@@ -368,15 +368,15 @@ export class Rocketchat implements INodeType {
 		const length = items.length;
 		let responseData;
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'chat') {
 					//https://rocket.chat/docs/developer-guides/rest-api/chat/postmessage
 					if (operation === 'postMessage') {
 						const channel = this.getNodeParameter('channel', i) as string;
-						const text = this.getNodeParameter('text', i) as string;
+						const text = this.getNodeParameter('text', i);
 						const options = this.getNodeParameter('options', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 

@@ -28,7 +28,7 @@ export async function create(
 
 	if (authService === 'email') {
 		body.email = this.getNodeParameter('email', index) as string;
-		body.password = this.getNodeParameter('password', index) as string;
+		body.password = this.getNodeParameter('password', index);
 	} else {
 		body.auth_data = this.getNodeParameter('authData', index) as string;
 	}
