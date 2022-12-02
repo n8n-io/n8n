@@ -1,4 +1,5 @@
 import express from 'express';
+import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -111,6 +112,8 @@ EEWorkflowController.post(
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
+
+		newWorkflow.hash = uuid();
 
 		await validateEntity(newWorkflow);
 
