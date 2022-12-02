@@ -18,8 +18,7 @@ module.exports = {
 		'prefer-spread': 'off',
 		'import/no-extraneous-dependencies': 'off',
 
-		'@typescript-eslint/lines-between-class-members': 'off',
-		'@typescript-eslint/member-delimiter-style': 'off',
+		'@typescript-eslint/lines-between-class-members': 'off', //1155 errors, better to fix in separate PR
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
