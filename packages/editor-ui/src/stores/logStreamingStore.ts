@@ -1,27 +1,31 @@
 import { MessageEventBusDestinationOptions } from "n8n-workflow";
 import { defineStore } from "pinia";
 
-export class EventNamesTreeCollection {
-	label = '';
-	_selected? = false;
-	_indeterminate? = false;
-	_name = '';
-	children: EventNamesTreeCollection[] = [];
+export interface EventSelectionItem {
+	selected: boolean;
+	indeterminate: boolean;
+	name: string;
+	label: string;
 }
+
+export interface EventSelectionGroup extends EventSelectionItem {
+	children: EventSelectionItem[];
+}
+
 
 export interface TreeAndSelectionStoreItem {
 		destination: MessageEventBusDestinationOptions,
-		tree: EventNamesTreeCollection,
 		selectedEvents: Set<string>,
+		eventGroups: EventSelectionGroup[],
 }
 
-export interface TreeAndSelectionStore {
+export interface DestinationSettingsStore {
 	[key:string]: TreeAndSelectionStoreItem
 }
 
 export const useLogStreamingStore = defineStore('logStreaming', {
   state: () => ({
-		items: {} as TreeAndSelectionStore,
+		items: {} as DestinationSettingsStore,
 		eventNames: new Set<string>(),
 	}),
   getters: {
@@ -41,12 +45,20 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 				return;
 			}
 		},
+		getAllDestinations(): MessageEventBusDestinationOptions[] {
+			const destinations: MessageEventBusDestinationOptions[] = [];
+			for (const key of Object.keys(this.items)) {
+				destinations.push(this.items[key].destination);
+			}
+			return destinations;
+		},
 		updateDestination(destination: MessageEventBusDestinationOptions) {
 			if (destination.id && destination.id in this.items) {
 				this.items[destination.id].destination = destination;
 			}
 		},
 		removeDestination(destinationId: string) {
+			if (!destinationId) return;
 			delete this.items[destinationId];
 			if (destinationId in this.items) {
 				this.$patch({items: {
@@ -68,65 +80,70 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		},
 		addSelectedEvent(id:string, name: string) {
 			this.items[id]?.selectedEvents?.add(name);
-			this.setSelectedInTree(id, name, true);
+			this.setSelectedInGroup(id, name, true);
 		},
 		removeSelectedEvent(id:string, name: string) {
 			this.items[id]?.selectedEvents?.delete(name);
-			this.setSelectedInTree(id, name, false);
+			this.setSelectedInGroup(id, name, false);
 		},
-		setSelectedInTree(id: string, name: string, isSelected: boolean) {
-			const parts = name.split('.');
-			let part: string | undefined;
-			let children = this.items[id].tree.children;
-			while ((part = parts.shift())) {
-				if (part) {
-					const foundChild = children.find((e) => e.label === part);
-					if (foundChild) {
-						if (parts.length === 0) {
-							foundChild._selected = isSelected;
+		getSelectedEvents(destinationId: string): string[] {
+			const selectedEvents: string[] = [];
+			if (destinationId in this.items) {
+				for (const group of this.items[destinationId].eventGroups) {
+					if (group.selected) {
+						selectedEvents.push(group.name);
+					}
+					for (const event of group.children) {
+						if (event.selected) {
+							selectedEvents.push(event.name);
 						}
-						children = foundChild.children;
-					} else {
-						break;
 					}
 				}
 			}
+			return selectedEvents;
 		},
-		setIndeterminateInTree(id: string, name: string, isIndeterminate: boolean) {
-			const parts = name.split('.');
-			let part: string | undefined;
-			let children = this.items[id].tree.children;
-			while ((part = parts.shift())) {
-				if (part) {
-					const foundChild = children.find((e) => e.label === part);
-					if (foundChild) {
-						if (parts.length === 0) {
-							foundChild._indeterminate = isIndeterminate;
-						}
-						children = foundChild.children;
+		setSelectedInGroup(destinationId: string, name: string, isSelected: boolean) {
+			if (destinationId in this.items) {
+				const groupName = eventGroupFromEventName(name);
+				const groupIndex = this.items[destinationId].eventGroups.findIndex(e=>e.name === groupName);
+				if (groupIndex > -1) {
+					if (groupName === name) {
+						this.$patch((state)=>{
+							state.items[destinationId].eventGroups[groupIndex].selected = isSelected;
+						});
 					} else {
-						break;
+						const eventIndex = this.items[destinationId].eventGroups[groupIndex].children.findIndex(e=>e.name === name);
+						if (eventIndex > -1) {
+							this.$patch((state)=>{
+								state.items[destinationId].eventGroups[groupIndex].children[eventIndex].selected = isSelected;
+								if (isSelected) {
+									state.items[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
+								} else {
+									let anySelected = false;
+									for (let i=0; i < state.items[destinationId].eventGroups[groupIndex].children.length; i++) {
+										anySelected = anySelected || state.items[destinationId].eventGroups[groupIndex].children[i].selected;
+									}
+									state.items[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
+								}
+							});
+						}
 					}
 				}
 			}
-		},
-		getEventTree(id:string): EventNamesTreeCollection {
-			return this.items[id]?.tree ?? {};
 		},
 		removeDestinationItemTree(id: string) {
 			delete this.items[id];
 		},
 		clearDestinationItemTrees() {
-			this.items = {} as TreeAndSelectionStore;
+			this.items = {} as DestinationSettingsStore;
 		},
 		setSelectionAndBuildItems(destination: MessageEventBusDestinationOptions) {
 			if (destination.id) {
 				if (!(destination.id in this.items)) {
 					this.items[destination.id] = {
 						destination,
-						tree: new EventNamesTreeCollection(),
 						selectedEvents: new Set<string>(),
-						selectedLevels: new Set<string>(),
+						eventGroups: [],
 					} as TreeAndSelectionStoreItem;
 				}
 				this.items[destination.id]?.selectedEvents?.clear();
@@ -135,43 +152,53 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 						this.items[destination.id]?.selectedEvents?.add(eventName);
 					}
 				}
-				this.items[destination.id].tree = treeCollectionFromStringList(this.eventNames, this.items[destination.id]?.selectedEvents);
-				// this.items[destination.id].elTree = elTreeFromStringList(this.eventNames);
+				this.items[destination.id].eventGroups = eventGroupsFromStringList(this.eventNames, this.items[destination.id]?.selectedEvents);
 			}
 		},
 	},
 });
 
-export function treeCollectionFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
-	const conversionResult = new EventNamesTreeCollection();
-	dottedList.forEach((dottedString: string) => {
-		const parts = dottedString.split('.');
+export function eventGroupFromEventName(eventName:string): string | undefined {
+	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
+	if (matches && matches?.length > 0) {
+		return matches[0];
+	}
+}
 
-		let part: string | undefined;
-		let children = conversionResult.children;
-		let partialName = '';
-		while ((part = parts.shift())) {
-			if (part) {
-				const foundChild = children.find((e) => e.label === part);
-				partialName += part;
-				if (foundChild) {
-					children = foundChild.children;
-				} else {
-					let _indeterminate = false;
-					selectionList.forEach((e)=>{if (e.startsWith(partialName)) _indeterminate = true;});
-					const newChild: EventNamesTreeCollection = {
-						label: part,
-						_name: partialName,
-						_indeterminate,
-						_selected: selectionList.has(partialName),
-						children: [],
-					};
-					children.push(newChild);
-					children = newChild.children;
-				}
-			}
-			partialName += '.';
+export function eventGroupsFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
+	const result = [] as EventSelectionGroup[];
+	const eventNameArray = Array.from(dottedList.values());
+
+	const groups: Set<string> = new Set<string>();
+	for (const eventName of eventNameArray) {
+		const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
+		if (matches && matches?.length > 0) {
+			groups.add(matches[0]);
 		}
-	});
-	return conversionResult;
-};
+	}
+
+	for (const group of groups) {
+		const collection: EventSelectionGroup = {
+			children: [],
+			label: group,
+			name: group,
+			selected: selectionList.has(group),
+			indeterminate: false,
+		};
+		const eventsOfGroup = eventNameArray.filter(e=>e.startsWith(group));
+		for (const event of eventsOfGroup) {
+			if (!collection.selected && selectionList.has(event)) {
+				collection.indeterminate = true;
+			}
+			const subCollection: EventSelectionItem = {
+				label: event.replace(group + '.', ''),
+				name: event,
+				selected: selectionList.has(event),
+				indeterminate: false,
+			};
+			collection.children.push(subCollection);
+		}
+		result.push(collection);
+	}
+	return result;
+}

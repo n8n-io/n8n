@@ -16,6 +16,7 @@ import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -510,34 +511,34 @@ const router = new Router({
 						},
 					},
 				},
-				{
-					path: 'logstreaming',
-					name: VIEWS.LOGSTREAMING_SETTINGS,
-					components: {
-						settingsView: SettingsLogStreamingView,
-					},
-					meta: {
-						telemetry: {
-							pageCategory: 'settings',
-							getProperties(route: Route) {
-								return {
-									feature: 'logstreaming',
-								};
-							},
-						},
-						permissions: {
-							allow: {
-								loginStatus: [LOGIN_STATUS.LoggedIn],
-							},
-							deny: {
-								shouldDeny: () => {
-									const settingsStore =  useSettingsStore();
-									return settingsStore.isPublicApiEnabled === false;
-								},
-							},
-						},
-					},
-				},
+				// {
+				// 	path: 'logstreaming',
+				// 	name: VIEWS.LOGSTREAMING_SETTINGS,
+				// 	components: {
+				// 		settingsView: SettingsLogStreamingView,
+				// 	},
+				// 	meta: {
+				// 		telemetry: {
+				// 			pageCategory: 'settings',
+				// 			getProperties(route: Route) {
+				// 				return {
+				// 					feature: 'logstreaming',
+				// 				};
+				// 			},
+				// 		},
+				// 		permissions: {
+				// 			allow: {
+				// 				loginStatus: [LOGIN_STATUS.LoggedIn],
+				// 			},
+				// 			deny: {
+				// 				shouldDeny: () => {
+				// 					const settingsStore =  useSettingsStore();
+				// 					return settingsStore.isPublicApiEnabled === false;
+				// 				},
+				// 			},
+				// 		},
+				// 	},
+				// },
 				{
 					path: 'community-nodes',
 					name: VIEWS.COMMUNITY_NODES,
@@ -584,6 +585,52 @@ const router = new Router({
 					},
 				},
 			],
+		},
+		{
+			path: '/change-password',
+			name: VIEWS.CHANGE_PASSWORD,
+			components: {
+				default: ChangePasswordView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'auth',
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/logstreaming',
+			name: VIEWS.LOGSTREAMING_SETTINGS,
+			components: {
+				default: SettingsLogStreamingView,
+				sidebar: SettingsSidebar,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+					getProperties(route: Route) {
+						return {
+							feature: 'logstreaming',
+						};
+					},
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+					deny: {
+						shouldDeny: () => {
+							const settingsStore =  useSettingsStore();
+							return settingsStore.isPublicApiEnabled === false;
+						},
+					},
+				},
+			},
 		},
 		{
 			path: '*',

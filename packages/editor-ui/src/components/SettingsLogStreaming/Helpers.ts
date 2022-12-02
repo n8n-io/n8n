@@ -23,7 +23,7 @@ export async function saveDestinationToDb(restApi: IRestApi, destination: Messag
 	if (destination.id) {
 		const data: MessageEventBusDestinationOptions = {
 			...destination,
-			subscribedEvents: Array.from(logStreamingStore.items[destination.id].selectedEvents.values()),
+			subscribedEvents: logStreamingStore.getSelectedEvents(destination.id),
 		};
 		await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
 		logStreamingStore.updateDestination(destination);

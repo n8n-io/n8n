@@ -16,7 +16,7 @@ export enum MessageEventBusDestinationTypeNames {
 	abstract = '$$AbstractMessageEventBusDestination',
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
-	redis = '$$MessageEventBusDestinationRedis',
+	// redis = '$$MessageEventBusDestinationRedis',
 	syslog = '$$MessageEventBusDestinationSyslog',
 }
 
@@ -112,9 +112,9 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 export const defaultMessageEventBusDestinationOptions: MessageEventBusDestinationOptions = {
 	__type: MessageEventBusDestinationTypeNames.abstract,
 	id: '',
-	label: 'Event Destination',
-	enabled: false,
-	subscribedEvents: [],
+	label: 'New Event Destination',
+	enabled: true,
+	subscribedEvents: ['n8n.audit', 'n8n.workflow'],
 	credentials: {},
 	anonymizeMessages: false,
 };

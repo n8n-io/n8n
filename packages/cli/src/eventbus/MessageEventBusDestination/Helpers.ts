@@ -2,7 +2,7 @@
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
 import { MessageEventBusDestination } from './MessageEventBusDestination';
-import { MessageEventBusDestinationRedis } from './MessageEventBusDestinationRedis';
+// import { MessageEventBusDestinationRedis } from './MessageEventBusDestinationRedis';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook';
@@ -18,8 +18,8 @@ export function messageEventBusDestinationFromDb(
 				return MessageEventBusDestinationSentry.deserialize(destinationData);
 			case MessageEventBusDestinationTypeNames.syslog:
 				return MessageEventBusDestinationSyslog.deserialize(destinationData);
-			case MessageEventBusDestinationTypeNames.redis:
-				return MessageEventBusDestinationRedis.deserialize(destinationData);
+			// case MessageEventBusDestinationTypeNames.redis:
+			// 	return MessageEventBusDestinationRedis.deserialize(destinationData);
 			case MessageEventBusDestinationTypeNames.webhook:
 				return MessageEventBusDestinationWebhook.deserialize(destinationData);
 			default:

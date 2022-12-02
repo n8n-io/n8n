@@ -42,9 +42,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
-export const WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamWebhook';
-export const SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamSyslog';
-export const SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamSentry';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',

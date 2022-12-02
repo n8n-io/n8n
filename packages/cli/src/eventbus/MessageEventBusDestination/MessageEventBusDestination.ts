@@ -35,7 +35,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		this.enabled = options.enabled ?? false;
 		this.subscribedEvents = options.subscribedEvents ?? [];
 		if (options.credentials) this.credentials = options.credentials;
-		LoggerProxy.debug(`${this.__type}(${this.id}) event destination initialized`);
+		LoggerProxy.debug(`${this.__type}(${this.id}) event destination constructed`);
 	}
 
 	startListening() {

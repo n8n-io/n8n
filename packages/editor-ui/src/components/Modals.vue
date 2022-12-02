@@ -114,31 +114,9 @@
 			</template>
 		</ModalRoot>
 
-		<ModalRoot :name="WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY">
+		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
 			<template #default="{ modalName, data }">
-				<EventDestinationSettingsWebhookModal
-				:modalName="modalName"
-				:destination="data.destination"
-				:isNew="data.isNew"
-				:eventBus="data.eventBus"
-				/>
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<EventDestinationSettingsSyslogModal
-				:modalName="modalName"
-				:destination="data.destination"
-				:isNew="data.isNew"
-				:eventBus="data.eventBus"
-				/>
-			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY">
-			<template #default="{ modalName, data }">
-				<EventDestinationSettingsSentryModal
+				<EventDestinationSettingsModal
 				:modalName="modalName"
 				:destination="data.destination"
 				:isNew="data.isNew"
@@ -173,9 +151,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
-	SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
-	SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -199,9 +175,7 @@ import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import EventDestinationSettingsWebhookModal from '@/components/SettingsLogStreaming/EventDestinationSettingsWebhookModal.vue';
-import EventDestinationSettingsSyslogModal from '@/components/SettingsLogStreaming/EventDestinationSettingsSyslogModal.vue';
-import EventDestinationSettingsSentryModal from '@/components/SettingsLogStreaming/EventDestinationSettingsSentryModal.vue';
+import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -227,9 +201,7 @@ export default Vue.extend({
 		WorkflowSettings,
 		WorkflowShareModal,
 		ImportCurlModal,
-		EventDestinationSettingsWebhookModal,
-		EventDestinationSettingsSyslogModal,
-		EventDestinationSettingsSentryModal,
+		EventDestinationSettingsModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -252,9 +224,7 @@ export default Vue.extend({
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
-		WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
-		SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
-		SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
+		LOG_STREAM_MODAL_KEY,
 	}),
 });
 </script>

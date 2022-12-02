@@ -17,7 +17,13 @@ import {
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '../../CredentialsHelper';
-import { UserSettings, requestOAuth1, requestOAuth2, requestWithAuthentication } from 'n8n-core';
+import {
+	UserSettings,
+	requestOAuth1,
+	requestOAuth2,
+	requestWithAuthentication,
+	NodeExecuteFunctions,
+} from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
 import config from '../../config';
 
@@ -137,45 +143,6 @@ export class MessageEventBusDestinationWebhook
 			}
 		}
 
-		let httpBasicAuth;
-		let httpDigestAuth;
-		let httpHeaderAuth;
-		let httpQueryAuth;
-		let oAuth1Api;
-		let oAuth2Api;
-
-		if (this.authentication === 'genericCredentialType') {
-			if (this.genericAuthType === 'httpBasicAuth') {
-				try {
-					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
-				} catch (_) {}
-			} else if (this.genericAuthType === 'httpDigestAuth') {
-				try {
-					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
-				} catch (_) {}
-			} else if (this.genericAuthType === 'httpHeaderAuth') {
-				try {
-					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
-				} catch (_) {}
-			} else if (this.genericAuthType === 'httpQueryAuth') {
-				try {
-					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
-				} catch (_) {}
-			} else if (this.genericAuthType === 'oAuth1Api') {
-				try {
-					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
-				} catch (_) {}
-			} else if (this.genericAuthType === 'oAuth2Api') {
-				try {
-					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
-				} catch (_) {}
-			}
-			// } else if (this.authentication === 'predefinedCredentialType') {
-			// 	try {
-			// 		nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			// 	} catch (_) {}
-		}
-
 		const sendQuery = this.sendQuery;
 		const specifyQuery = this.specifyQuery;
 		const sendPayload = this.sendPayload;
@@ -266,45 +233,7 @@ export class MessageEventBusDestinationWebhook
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.axiosRequestOptions.headers['Content-Type'] = 'application/json';
-
-		// Add credentials if any are set
-		if (httpBasicAuth) {
-			this.axiosRequestOptions.auth = {
-				username: httpBasicAuth.user as string,
-				password: httpBasicAuth.password as string,
-			};
-		} else if (httpHeaderAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
-		} else if (httpQueryAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
-		} else if (httpDigestAuth) {
-			this.axiosRequestOptions.auth = {
-				username: httpDigestAuth.user as string,
-				password: httpDigestAuth.password as string,
-			};
-		}
 	}
-
-	// async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
-	// 	console.log('URL', this.url);
-	// 	try {
-	// 		if (this.responseCodeMustMatch) {
-	// 			const postResult = await axios.post(this.url, msg);
-	// 			if (postResult.status === this.expectedStatusCode) {
-	// 				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-	// 			}
-	// 		} else {
-	// 			await axios.post(this.url, msg);
-	// 			await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-	// 		}
-	// 		return true;
-	// 	} catch (error) {
-	// 		console.log(error.message);
-	// 	}
-	// 	return false;
-	// }
 
 	serialize(): MessageEventBusDestinationWebhookOptions {
 		const abstractSerialized = super.serialize();
@@ -365,37 +294,102 @@ export class MessageEventBusDestinationWebhook
 		}
 
 		// TODO: implement extra auth requests
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+
+		if (this.authentication === 'genericCredentialType') {
+			if (this.genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
+				} catch (_) {}
+			}
+			// } else if (this.authentication === 'predefinedCredentialType') {
+			// 	try {
+			// 		nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+			// 	} catch (_) {}
+		}
 
 		// if (this.authentication === 'genericCredentialType' || this.authentication === 'none') {
-		// if (oAuth1Api) {
-		// const requestOAuth1Request = requestOAuth1.call(this, 'oAuth1Api', requestOptions);
-		// requestOAuth1Request.catch(() => {});
-		// requestPromise = requestOAuth1Request;
-		// } else if (oAuth2Api) {
-		// const requestOAuth2Request = requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-		// 	tokenType: 'Bearer',
-		// });
-		// requestOAuth2Request.catch(() => {});
-		// requestPromise = requestOAuth2Request;
-		// } else {
-		// bearerAuth, queryAuth, headerAuth, digestAuth, none
-		// const request = this.helpers.request(requestOptions);
-		// requestPromise = axios.request(requestOptions);
-		// requestPromise.catch(() => {});
-		// }
-		// } else if (this.authentication === 'predefinedCredentialType' && this.nodeCredentialType) {
-		// const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
-		// // service-specific cred: OAuth1, OAuth2, plain
-		// const requestWithAuthenticationRequest = requestWithAuthentication.call(
-		// 	this,
-		// 	nodeCredentialType,
-		// 	requestOptions,
-		// 	additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-		// );
-		// requestWithAuthenticationRequest.catch(() => {});
-		// requestPromise = requestWithAuthenticationRequest;
-		// }
-		// }
+
+		if (oAuth1Api || oAuth2Api) {
+			let authRequestPromise;
+			const authRequestOptions = {
+				headers: this.axiosRequestOptions.headers,
+				method: this.axiosRequestOptions.method,
+				uri: this.axiosRequestOptions.url,
+				gzip: true,
+				rejectUnauthorized: !this.options.allowUnauthorizedCerts || false,
+				followRedirect: this.options.redirect?.followRedirects ?? false,
+			};
+			if (oAuth1Api) {
+				const requestOAuth1Request = requestOAuth1.call(
+					NodeExecuteFunctions,
+					'oAuth1Api',
+					authRequestOptions,
+				);
+				requestOAuth1Request.catch(() => {});
+				authRequestPromise = requestOAuth1Request;
+			} else if (oAuth2Api) {
+				const requestOAuth2Request = requestOAuth2.call(
+					NodeExecuteFunctions,
+					'oAuth2Api',
+					authRequestOptions,
+					{
+						tokenType: 'Bearer',
+					},
+				);
+				requestOAuth2Request.catch(() => {});
+				authRequestPromise = requestOAuth2Request;
+			} else {
+				// bearerAuth, queryAuth, headerAuth, digestAuth, none
+				// const request = this.helpers.request(requestOptions);
+				// authRequestPromise = axios.request(requestOptions);
+				// authRequestPromise.catch(() => {});
+			}
+		}
+
+		// Add credentials if any are set
+		if (httpBasicAuth) {
+			this.axiosRequestOptions.auth = {
+				username: httpBasicAuth.user as string,
+				password: httpBasicAuth.password as string,
+			};
+		} else if (httpHeaderAuth) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+		} else if (httpQueryAuth) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+		} else if (httpDigestAuth) {
+			this.axiosRequestOptions.auth = {
+				username: httpDigestAuth.user as string,
+				password: httpDigestAuth.password as string,
+			};
+		}
 
 		const requestPromise: Promise<AxiosResponse> = axios.request(this.axiosRequestOptions);
 		requestPromise.catch(() => {});
