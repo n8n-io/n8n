@@ -389,9 +389,9 @@ export class Jira implements INodeType {
 				);
 
 				const fields = res.projects
-					// tslint:disable-next-line:no-any
+
 					.find((o: any) => o.id === projectId)
-					// tslint:disable-next-line:no-any
+
 					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
 					const field = fields[key];

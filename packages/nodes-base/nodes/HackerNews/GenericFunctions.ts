@@ -13,7 +13,6 @@ export async function hackerNewsApiRequest(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -40,7 +39,6 @@ export async function hackerNewsApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	qs.hitsPerPage = 100;
 

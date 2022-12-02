@@ -160,7 +160,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as {
-							// tslint:disable-next-line: no-any
 							addresses: { address: [{ [key: string]: any }] };
 						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };
@@ -245,7 +244,6 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'update') {
 						const accountId = this.getNodeParameter('accountId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as {
-							// tslint:disable-next-line: no-any
 							addresses: { address: [{ [key: string]: any }] };
 						};
 						const options = this.getNodeParameter('options', i) as { returnFields: string[] };

@@ -17,7 +17,6 @@ export async function harvestApiRequest(
 	body: IDataObject = {},
 	option: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -66,7 +65,6 @@ export async function harvestApiRequestAllItems(
 	resource: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

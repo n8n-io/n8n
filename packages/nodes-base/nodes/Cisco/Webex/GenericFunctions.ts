@@ -18,12 +18,11 @@ export async function webexApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		method,
@@ -56,11 +55,10 @@ export async function webexApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	options: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -140,7 +138,6 @@ export function getAttachemnts(attachements: IDataObject[]) {
 		const actions: IDataObject[] = [];
 		for (const element of ((attachment?.elementsUi as IDataObject)
 			.elementValues as IDataObject[]) || []) {
-			// tslint:disable-next-line: no-any
 			const { type, ...rest } = element as { type: string; [key: string]: any };
 			if (type.startsWith('input')) {
 				body.push({
@@ -153,7 +150,6 @@ export function getAttachemnts(attachements: IDataObject[]) {
 		}
 		for (const action of ((attachment?.actionsUi as IDataObject).actionValues as IDataObject[]) ||
 			[]) {
-			// tslint:disable-next-line: no-any
 			const { type, ...rest } = action as { type: string; [key: string]: any };
 			actions.push({ type: `Action.${upperFirst(type)}`, ...removeEmptyProperties(rest) });
 		}
@@ -628,7 +624,6 @@ export function getInputTextProperties(): INodeProperties[] {
 	];
 }
 
-// tslint:disable-next-line: no-any
 function removeEmptyProperties(rest: { [key: string]: any }) {
 	return Object.keys(rest)
 		.filter((k) => rest[k] !== '')

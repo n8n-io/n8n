@@ -25,23 +25,23 @@ export type IQueryObject = {
 };
 
 // Query Functions
-// tslint:disable-next-line:no-any
+
 export function Eq(field: string, value: any): IQueryObject {
 	return { _field: field, _value: value };
 }
-// tslint:disable-next-line:no-any
+
 export function Gt(field: string, value: any): IQueryObject {
 	return { _gt: { field: value } };
 }
-// tslint:disable-next-line:no-any
+
 export function Gte(field: string, value: any): IQueryObject {
 	return { _gte: { field: value } };
 }
-// tslint:disable-next-line:no-any
+
 export function Lt(field: string, value: any): IQueryObject {
 	return { _lt: { field: value } };
 }
-// tslint:disable-next-line:no-any
+
 export function Lte(field: string, value: any): IQueryObject {
 	return { _lte: { field: value } };
 }
@@ -54,7 +54,7 @@ export function Or(...criteria: IQueryObject[]): IQueryObject {
 export function Not(criteria: IQueryObject[]): IQueryObject {
 	return { _not: criteria };
 }
-// tslint:disable-next-line:no-any
+
 export function In(field: string, values: any[]): IQueryObject {
 	return { _in: { _field: field, _values: values } };
 }
@@ -64,7 +64,7 @@ export function Contains(field: string): IQueryObject {
 export function Id(id: string | number): IQueryObject {
 	return { _id: id };
 }
-// tslint:disable-next-line:no-any
+
 export function Between(field: string, fromValue: any, toValue: any): IQueryObject {
 	return { _between: { _field: field, _from: fromValue, _to: toValue } };
 }

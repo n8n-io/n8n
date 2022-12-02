@@ -13,11 +13,10 @@ export async function quickbaseApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('quickbaseApi');
 
@@ -64,7 +63,7 @@ export async function quickbaseApiRequest(
 
 //@ts-ignore
 // prettier-ignore
-export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any { // tslint:disable-line:no-any
+export async function getFieldsObject(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, tableId: string): any { 
 	const fieldsLabelKey: { [key: string]: number } = {};
 	const fieldsIdKey: { [key: number]: string } = {};
 	const data = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, { tableId });
@@ -79,10 +78,9 @@ export async function quickbaseApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

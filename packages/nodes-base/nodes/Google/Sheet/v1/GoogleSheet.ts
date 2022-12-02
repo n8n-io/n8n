@@ -138,8 +138,6 @@ export class GoogleSheet {
 	 * Sets values in one or more ranges of a spreadsheet.
 	 */
 	async spreadsheetBatchUpdate(requests: IDataObject[]) {
-		// tslint:disable-line:no-any
-
 		const body = {
 			requests,
 		};

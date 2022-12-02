@@ -154,7 +154,6 @@ export class PostmarkTrigger implements INodeType {
 
 				const endpoint = `/webhooks`;
 
-				// tslint:disable-next-line: no-any
 				const body: any = {
 					Url: webhookUrl,
 					Triggers: {

@@ -323,7 +323,7 @@ export class TheHive implements INodeType {
 				if (resource === 'alert') {
 					if (operation === 'count') {
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const countQueryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+						const countQueryAttributs: any = prepareOptional(filters);
 
 						const _countSearchQuery: IQueryObject = And();
 
@@ -536,7 +536,7 @@ export class TheHive implements INodeType {
 						const version = credentials.apiVersion;
 
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const queryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+						const queryAttributs: any = prepareOptional(filters);
 						const options = this.getNodeParameter('options', i);
 
 						const _searchQuery: IQueryObject = And();
@@ -745,7 +745,6 @@ export class TheHive implements INodeType {
 
 				if (resource === 'observable') {
 					if (operation === 'count') {
-						// tslint:disable-next-line:no-any
 						const countQueryAttributs: any = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
@@ -809,7 +808,7 @@ export class TheHive implements INodeType {
 								};
 							},
 						);
-						let response: any; // tslint:disable-line:no-any
+						let response: any;
 						let body: IDataObject;
 						responseData = [];
 						for (const analyzer of analyzers) {
@@ -1065,7 +1064,6 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						// tslint:disable-next-line:no-any
 						const queryAttributs: any = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
@@ -1175,7 +1173,7 @@ export class TheHive implements INodeType {
 				if (resource === 'case') {
 					if (operation === 'count') {
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const countQueryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+						const countQueryAttributs: any = prepareOptional(filters);
 
 						const _countSearchQuery: IQueryObject = And();
 
@@ -1344,7 +1342,7 @@ export class TheHive implements INodeType {
 						const version = credentials.apiVersion;
 
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
-						const queryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
+						const queryAttributs: any = prepareOptional(filters);
 
 						const _searchQuery: IQueryObject = And();
 
@@ -1450,7 +1448,6 @@ export class TheHive implements INodeType {
 
 				if (resource === 'task') {
 					if (operation === 'count') {
-						// tslint:disable-next-line:no-any
 						const countQueryAttributs: any = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
@@ -1670,7 +1667,6 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						// tslint:disable-next-line:no-any
 						const queryAttributs: any = prepareOptional(
 							this.getNodeParameter('filters', i, {}) as INodeParameters,
 						);
