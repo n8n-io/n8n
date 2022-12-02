@@ -19,7 +19,6 @@ export async function bitwardenApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const baseUrl = await getBaseUrl.call(this);
 	const options: OptionsWithUri = {
@@ -55,7 +54,6 @@ export async function bitwardenApiRequest(
  */
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('bitwardenApi');
 

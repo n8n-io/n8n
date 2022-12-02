@@ -538,7 +538,6 @@ export class Airtable implements INodeType {
 					if (addAllFields === true) {
 						// Add all the fields the item has
 						row.fields = { ...items[i].json };
-						// tslint:disable-next-line: no-any
 						delete (row.fields! as any).id;
 					} else {
 						// Add only the specified fields
@@ -742,7 +741,6 @@ export class Airtable implements INodeType {
 						// Update all the fields the item has
 						row.fields = { ...items[i].json };
 						// remove id field
-						// tslint:disable-next-line: no-any
 						delete (row.fields! as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {

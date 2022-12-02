@@ -17,7 +17,6 @@ export async function SIGNL4ApiRequest(
 	body: string,
 	query: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('signl4Api');
 

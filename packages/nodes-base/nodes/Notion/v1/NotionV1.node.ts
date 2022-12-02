@@ -345,7 +345,7 @@ export class NotionV1 implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},
@@ -455,7 +455,7 @@ export class NotionV1 implements INodeType {
 						i,
 						[],
 					) as IDataObject[];
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						properties: {},
 					};
@@ -513,7 +513,7 @@ export class NotionV1 implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', i) as boolean;
-					// tslint:disable-next-line: no-any
+
 					const body: { [key: string]: any } = {
 						parent: {},
 						properties: {},

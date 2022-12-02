@@ -34,7 +34,7 @@ export async function matrixApiRequest(
 		delete options.qs;
 	}
 	try {
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 
 		const credentials = await this.getCredentials('matrixApi');
 
@@ -61,7 +61,6 @@ export async function handleMatrixCall(
 	index: number,
 	resource: string,
 	operation: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (resource === 'account') {
 		if (operation === 'me') {

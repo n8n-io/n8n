@@ -14,7 +14,6 @@ export async function gitlabApiRequest(
 	body: object,
 	query?: object,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -55,10 +54,9 @@ export async function gitlabApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

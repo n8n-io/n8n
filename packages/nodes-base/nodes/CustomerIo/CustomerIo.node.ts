@@ -171,7 +171,7 @@ export class CustomerIo implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.customProperties) {
-								const data: any = {}; // tslint:disable-line:no-any
+								const data: any = {};
 								//@ts-ignore
 								additionalFields.customProperties.customProperty.map((property) => {
 									data[property.key] = property.value;
@@ -238,7 +238,7 @@ export class CustomerIo implements INodeType {
 							}
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const data: any = {}; // tslint:disable-line:no-any
+							const data: any = {};
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore
@@ -287,7 +287,7 @@ export class CustomerIo implements INodeType {
 							}
 						} else {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
-							const data: any = {}; // tslint:disable-line:no-any
+							const data: any = {};
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore

@@ -990,7 +990,7 @@ export class HttpRequestV2 implements INodeType {
 			}
 
 			try {
-				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
+				let sendRequest: any = requestOptions;
 				// Protect browser from sending large binary data
 				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 					sendRequest = {
@@ -1036,7 +1036,7 @@ export class HttpRequestV2 implements INodeType {
 		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			// @ts-ignore
 			response = promisesResponses.shift();

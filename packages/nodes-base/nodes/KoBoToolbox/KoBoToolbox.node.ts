@@ -75,9 +75,8 @@ export class KoBoToolbox implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		// tslint:disable-next-line:no-any
 		let responseData: any;
-		// tslint:disable-next-line:no-any
+
 		let returnData: any[] = [];
 		const binaryItems: INodeExecutionData[] = [];
 		const items = this.getInputData();

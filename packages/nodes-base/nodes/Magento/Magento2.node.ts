@@ -356,17 +356,15 @@ export class Magento2 implements INodeType {
 							'is_subscribed',
 							'vertex_customer_code',
 							'vertex_customer_country',
-						]
-							// tslint:disable-next-line: no-any
-							.reduce((obj, value: string): any => {
-								if ((rest as IDataObject).hasOwnProperty(value)) {
-									const data = Object.assign(obj, { [value]: (rest as IDataObject)[value] });
-									delete (rest as IDataObject)[value];
-									return data;
-								} else {
-									return obj;
-								}
-							}, {});
+						].reduce((obj, value: string): any => {
+							if ((rest as IDataObject).hasOwnProperty(value)) {
+								const data = Object.assign(obj, { [value]: (rest as IDataObject)[value] });
+								delete (rest as IDataObject)[value];
+								return data;
+							} else {
+								return obj;
+							}
+						}, {});
 
 						if (password) {
 							body.password = password;
@@ -502,17 +500,15 @@ export class Magento2 implements INodeType {
 							'is_subscribed',
 							'vertex_customer_code',
 							'vertex_customer_country',
-						]
-							// tslint:disable-next-line: no-any
-							.reduce((obj, value: string): any => {
-								if ((rest as IDataObject).hasOwnProperty(value)) {
-									const data = Object.assign(obj, { [value]: (rest as IDataObject)[value] });
-									delete (rest as IDataObject)[value];
-									return data;
-								} else {
-									return obj;
-								}
-							}, {});
+						].reduce((obj, value: string): any => {
+							if ((rest as IDataObject).hasOwnProperty(value)) {
+								const data = Object.assign(obj, { [value]: (rest as IDataObject)[value] });
+								delete (rest as IDataObject)[value];
+								return data;
+							} else {
+								return obj;
+							}
+						}, {});
 
 						if (password) {
 							body.password = password;

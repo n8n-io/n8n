@@ -246,7 +246,7 @@ export class EmailReadImapV1 implements INodeType {
 		let connection: ImapSimple;
 
 		// Returns the email text
-		// tslint:disable-next-line:no-any
+
 		const getText = async (parts: any[], message: Message, subtype: string) => {
 			if (!message.attributes.struct) {
 				return '';

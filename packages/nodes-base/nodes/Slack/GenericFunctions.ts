@@ -47,7 +47,7 @@ export async function slackApiRequest(
 	};
 
 	try {
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
 		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
 			oauth2: oAuth2Options,
@@ -84,10 +84,9 @@ export async function slackApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -118,7 +117,6 @@ export async function slackApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

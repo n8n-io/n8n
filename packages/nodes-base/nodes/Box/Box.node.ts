@@ -226,7 +226,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
@@ -460,7 +460,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {

@@ -188,7 +188,7 @@ export class Stackby implements INodeType {
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {
@@ -251,7 +251,6 @@ export class Stackby implements INodeType {
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map((column) => column.trim());
 
-					// tslint:disable-next-line: no-any
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
@@ -280,7 +279,7 @@ export class Stackby implements INodeType {
 
 				returnData.push.apply(
 					returnData,
-					// tslint:disable-next-line:no-any
+
 					responseData.map((data: any) => data.field),
 				);
 			} catch (error) {
@@ -330,7 +329,7 @@ export class Stackby implements INodeType {
 
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {

@@ -28,7 +28,6 @@ export async function quickBooksApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -101,7 +100,6 @@ export async function quickBooksApiRequestAllItems(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 	let startPosition = 1;
@@ -141,7 +139,6 @@ async function getCount(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
 
@@ -156,7 +153,6 @@ export async function handleListing(
 	i: number,
 	endpoint: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 

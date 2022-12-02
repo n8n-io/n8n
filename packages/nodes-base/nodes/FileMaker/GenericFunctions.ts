@@ -31,7 +31,6 @@ interface ScriptObject {
 export async function layoutsApiRequest(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
 ): Promise<INodePropertyOptions[]> {
-	// tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -77,10 +76,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  * Make an API request to ActiveCampaign
  *
  */
-export async function getFields(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -111,10 +107,7 @@ export async function getFields(
  * Make an API request to ActiveCampaign
  *
  */
-export async function getPortals(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -145,10 +138,7 @@ export async function getPortals(
  * Make an API request to ActiveCampaign
  *
  */
-export async function getScripts(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -193,7 +183,6 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 
 export async function getToken(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -246,7 +235,6 @@ export async function getToken(
 export async function logout(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
 	token: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 

@@ -15,13 +15,12 @@ export async function magentoApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('magento2Api');
 
@@ -50,10 +49,9 @@ export async function magentoApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -193,7 +191,6 @@ export function getAddressesUi(): INodeProperties {
 	};
 }
 
-// tslint:disable-next-line: no-any
 export function adjustAddresses(addresses: [{ street: string; [key: string]: string }]): Address[] {
 	const _addresses: Address[] = [];
 	for (let i = 0; i < addresses.length; i++) {
@@ -515,7 +512,6 @@ export function getFilterQuery(data: {
 	};
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -987,7 +983,7 @@ export const sort = (a: { name: string }, b: { name: string }) => {
 
 export async function getProductAttributes(
 	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	filter?: (attribute: ProductAttribute) => any,
 	extraValue?: { name: string; value: string },
 ): Promise<INodePropertyOptions[]> {

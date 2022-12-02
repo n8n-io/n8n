@@ -8,12 +8,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -47,11 +46,10 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -75,7 +73,6 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function simplify(responseData: any | [any]) {
 	const response = [];
 	for (const {
@@ -102,7 +99,6 @@ export function simplify(responseData: any | [any]) {
 	return response;
 }
 
-// tslint:disable-next-line:no-any
 export function merge(responseData: [any]) {
 	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,

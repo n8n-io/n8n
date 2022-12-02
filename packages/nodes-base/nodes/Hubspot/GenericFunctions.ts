@@ -21,11 +21,10 @@ export async function hubspotApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -78,10 +77,9 @@ export async function hubspotApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -108,7 +106,6 @@ export async function hubspotApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -119,7 +116,6 @@ export function validateJSON(json: string | undefined): any {
 	return result;
 }
 
-// tslint:disable-next-line: no-any
 export function clean(obj: any) {
 	for (const propName in obj) {
 		if (obj[propName] === null || obj[propName] === undefined || obj[propName] === '') {
@@ -1990,7 +1986,6 @@ export const getAssociations = (associations: {
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 

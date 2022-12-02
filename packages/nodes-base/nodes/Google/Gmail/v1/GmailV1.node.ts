@@ -525,7 +525,6 @@ export class GmailV1 implements INodeType {
 						Object.assign(qs, additionalFields);
 
 						if (qs.labelIds) {
-							// tslint:disable-next-line: triple-equals
 							if (qs.labelIds == '') {
 								delete qs.labelIds;
 							} else {
