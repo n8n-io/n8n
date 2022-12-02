@@ -12,7 +12,7 @@ import { IDataObject, NodeApiError } from 'n8n-workflow';
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	path: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
@@ -61,7 +61,7 @@ export async function harvestApiRequest(
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	uri: string,
 	resource: string,
 	body: IDataObject = {},

@@ -13,9 +13,9 @@ export async function baserowApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
+	jwtToken: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-	jwtToken: string,
 ) {
 	const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 
@@ -52,9 +52,9 @@ export async function baserowApiRequestAllItems(
 	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
+	jwtToken: string,
 	body: IDataObject,
 	qs: IDataObject = {},
-	jwtToken: string,
 ): Promise<IDataObject[]> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -66,7 +66,7 @@ export async function baserowApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
-		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs, jwtToken);
+		responseData = await baserowApiRequest.call(this, method, endpoint, jwtToken, body, qs);
 		returnData.push(...responseData.results);
 
 		if (!returnAll && returnData.length > limit) {
@@ -114,8 +114,6 @@ export async function getFieldNamesAndIds(
 		this,
 		'GET',
 		endpoint,
-		{},
-		{},
 		jwtToken,
 	)) as LoadedResource[];
 
@@ -142,7 +140,7 @@ export class TableFieldMapper {
 		jwtToken: string,
 	): Promise<LoadedResource[]> {
 		const endpoint = `/api/database/fields/table/${table}/`;
-		return await baserowApiRequest.call(this, 'GET', endpoint, {}, {}, jwtToken);
+		return await baserowApiRequest.call(this, 'GET', endpoint, jwtToken);
 	}
 
 	createMappings(tableFields: LoadedResource[]) {

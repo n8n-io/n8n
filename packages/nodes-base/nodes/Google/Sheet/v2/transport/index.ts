@@ -80,7 +80,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri: string,
+	uri?: string,
 ) {
 	const returnData: IDataObject[] = [];
 

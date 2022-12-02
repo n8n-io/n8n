@@ -139,8 +139,8 @@ export async function handleListing(
 	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
+	body: IDataObject,
+	qs: IDataObject,
 	i: number,
 ) {
 	let responseData;
