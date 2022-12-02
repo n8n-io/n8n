@@ -14,7 +14,12 @@ import {
 
 import { nodeDescription } from './MongoDbDescription';
 
-import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
+import {
+	buildParameterizedConnString,
+	prepareFields,
+	prepareItems,
+	validateAndResolveMongoCredentials,
+} from './GenericFunctions';
 
 import {
 	FindOneAndReplaceOptions,
@@ -23,8 +28,6 @@ import {
 	ObjectId,
 	UpdateOptions,
 } from 'mongodb';
-
-import { validateAndResolveMongoCredentials } from './GenericFunctions';
 
 import { IMongoParametricCredentials } from './mongoDb.types';
 

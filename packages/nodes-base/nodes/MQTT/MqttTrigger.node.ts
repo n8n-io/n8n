@@ -10,8 +10,6 @@ import {
 
 import mqtt from 'mqtt';
 
-import { IClientOptions, ISubscriptionMap } from 'mqtt';
-
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MQTT Trigger',
@@ -100,7 +98,7 @@ export class MqttTrigger implements INodeType {
 		let client: mqtt.MqttClient;
 
 		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -113,7 +111,7 @@ export class MqttTrigger implements INodeType {
 
 			client = mqtt.connect(brokerUrl, clientOptions);
 		} else {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -135,7 +133,7 @@ export class MqttTrigger implements INodeType {
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as ISubscriptionMap, (err, _granted) => {
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
 						if (err) {
 							reject(err);
 						}

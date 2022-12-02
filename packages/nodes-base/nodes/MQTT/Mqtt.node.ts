@@ -12,8 +12,6 @@ import {
 
 import mqtt from 'mqtt';
 
-import { IClientOptions } from 'mqtt';
-
 export class Mqtt implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MQTT',
@@ -129,7 +127,7 @@ export class Mqtt implements INodeType {
 					let client: mqtt.MqttClient;
 
 					if (ssl === false) {
-						const clientOptions: IClientOptions = {
+						const clientOptions: mqtt.IClientOptions = {
 							port,
 							clean,
 							clientId,
@@ -141,7 +139,7 @@ export class Mqtt implements INodeType {
 						}
 						client = mqtt.connect(brokerUrl, clientOptions);
 					} else {
-						const clientOptions: IClientOptions = {
+						const clientOptions: mqtt.IClientOptions = {
 							port,
 							clean,
 							clientId,
@@ -203,7 +201,7 @@ export class Mqtt implements INodeType {
 		let client: mqtt.MqttClient;
 
 		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -216,7 +214,7 @@ export class Mqtt implements INodeType {
 
 			client = mqtt.connect(brokerUrl, clientOptions);
 		} else {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,

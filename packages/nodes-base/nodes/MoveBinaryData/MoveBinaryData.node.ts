@@ -1,8 +1,7 @@
 import { get, set, unset } from 'lodash';
 
-import { BINARY_ENCODING } from 'n8n-core';
+import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
-import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
 	IBinaryData,

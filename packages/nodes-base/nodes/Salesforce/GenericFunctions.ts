@@ -2,13 +2,16 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodePropertyOptions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodePropertyOptions,
+	LoggerProxy as Logger,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
 import jwt from 'jsonwebtoken';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,

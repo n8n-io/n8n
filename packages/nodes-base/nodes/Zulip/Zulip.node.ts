@@ -8,14 +8,13 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { zulipApiRequest } from './GenericFunctions';
+import { validateJSON, zulipApiRequest } from './GenericFunctions';
 import { messageFields, messageOperations } from './MessageDescription';
 import { IMessage } from './MessageInterface';
 import { snakeCase } from 'change-case';
 import { streamFields, streamOperations } from './StreamDescription';
 import { userFields, userOperations } from './UserDescription';
 import { IPrincipal, IStream } from './StreamInterface';
-import { validateJSON } from './GenericFunctions';
 import { IUser } from './UserInterface';
 
 export class Zulip implements INodeType {

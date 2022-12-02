@@ -6,10 +6,11 @@ import {
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { ILookupValues, SheetProperties } from '../../helpers/GoogleSheets.types';
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import {
+	ILookupValues,
 	RangeDetectionOptions,
+	SheetProperties,
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';

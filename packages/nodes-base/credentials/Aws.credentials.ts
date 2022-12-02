@@ -1,7 +1,8 @@
 import { Request, sign } from 'aws4';
-import { ICredentialTestRequest } from 'n8n-workflow';
+
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IDataObject,
 	IHttpRequestOptions,

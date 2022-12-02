@@ -1,5 +1,5 @@
-import { IDataObject } from 'n8n-workflow';
 import {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,

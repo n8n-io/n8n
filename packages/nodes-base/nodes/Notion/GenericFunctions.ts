@@ -17,15 +17,13 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import { camelCase, capitalCase } from 'change-case';
+import { camelCase, capitalCase, snakeCase } from 'change-case';
 
 import { filters } from './Filters';
 
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
-
-import { snakeCase } from 'change-case';
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',

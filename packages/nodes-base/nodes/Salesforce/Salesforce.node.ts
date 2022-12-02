@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -59,8 +60,6 @@ import { ITask } from './TaskInterface';
 import { userFields, userOperations } from './UserDescription';
 
 import { documentFields, documentOperations } from './DocumentDescription';
-
-import { LoggerProxy as Logger } from 'n8n-workflow';
 
 export class Salesforce implements INodeType {
 	description: INodeTypeDescription = {

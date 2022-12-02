@@ -1,8 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { ISheetUpdateData, SheetProperties } from '../../helpers/GoogleSheets.types';
+import {
+	ISheetUpdateData,
+	SheetProperties,
+	ValueInputOption,
+	ValueRenderOption,
+} from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
-import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
