@@ -9,66 +9,20 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 
 		const tablePrefix = getTablePrefix();
 
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
 		await queryRunner.query(
-			`CREATE TABLE "temporary_user" (
-				"id" VARCHAR PRIMARY KEY NOT NULL,
-				"email" VARCHAR(255) UNIQUE,
-				"firstName" VARCHAR(32),
-				"lastName" VARCHAR(32),
-				"password" VARCHAR,
-				"resetPasswordToken" VARCHAR,
-				"resetPasswordTokenExpiration" INTEGER DEFAULT NULL,
-				"ldapId" VARCHAR(60) UNIQUE DEFAULT NULL,
-				"signInType" VARCHAR(20) DEFAULT email,
-				"personalizationAnswers" TEXT,
-				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"globalRoleId" INTEGER NOT NULL,
-				"settings" TEXT,
-				"apiKey" VARCHAR DEFAULT NULL,
-				"disabled" boolean DEFAULT false,
-				FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
+			`ALTER TABLE ${tablePrefix}user ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
 		);
 
 		await queryRunner.query(
-			`INSERT INTO "temporary_user"(
-				"id",
-				"email",
-				"firstName",
-				"lastName",
-				"password",
-				"resetPasswordToken",
-				"resetPasswordTokenExpiration",
-				"personalizationAnswers",
-				"createdAt",
-				"updatedAt",
-				"globalRoleId",
-				"settings",
-				"apiKey"
-				) SELECT
-				"id",
-				"email",
-				"firstName",
-				"lastName",
-				"password",
-				"resetPasswordToken",
-				"resetPasswordTokenExpiration",
-				"personalizationAnswers",
-				"createdAt",
-				"updatedAt",
-				"globalRoleId",
-				"settings",
-				"apiKey"
-				FROM "${tablePrefix}user"`,
+			`CREATE TABLE IF NOT EXISTS "${tablePrefix}auth_identity" (
+				"userId" VARCHAR(36) REFERENCES ${tablePrefix}user (id),
+				"providerId" VARCHAR(60) NOT NULL,
+				"providerType" VARCHAR(20) NOT NULL,
+				"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"updatedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY("providerId", "providerType")
+			);`,
 		);
-
-		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);
-
-		await queryRunner.query(`ALTER TABLE "temporary_user" RENAME TO "${tablePrefix}user"`);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}feature_config" (
@@ -106,63 +60,7 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}feature_config`);
-
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
-		await queryRunner.query(
-			`CREATE TABLE "temporary_user" (
-				"id" VARCHAR PRIMARY KEY NOT NULL,
-				"email" VARCHAR(255) UNIQUE,
-				"firstName" VARCHAR(32),
-				"lastName" VARCHAR(32),
-				"password" VARCHAR,
-				"resetPasswordToken" VARCHAR,
-				"resetPasswordTokenExpiration" INTEGER DEFAULT NULL,
-				"personalizationAnswers" TEXT,
-				"createdAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"updatedAt" DATETIME(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')),
-				"globalRoleId" INTEGER NOT NULL,
-				"settings" TEXT,
-				"apiKey" VARCHAR DEFAULT NULL,
-				FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
-		);
-
-		await queryRunner.query(
-			`INSERT INTO "temporary_user"(
-				"id",
-				"email",
-				"firstName",
-				"lastName",
-				"password",
-				"resetPasswordToken",
-				"resetPasswordTokenExpiration",
-				"personalizationAnswers",
-				"createdAt",
-				"updatedAt",
-				"globalRoleId",
-				"settings",
-				"apiKey"
-				) SELECT
-				"id",
-				"email",
-				"firstName",
-				"lastName",
-				"password",
-				"resetPasswordToken",
-				"resetPasswordTokenExpiration",
-				"personalizationAnswers",
-				"createdAt",
-				"updatedAt",
-				"globalRoleId",
-				"settings",
-				"apiKey"
-				FROM "${tablePrefix}user"`,
-		);
-
-		await queryRunner.query(`DROP TABLE "${tablePrefix}user"`);
-
-		await queryRunner.query(`ALTER TABLE "temporary_user" RENAME TO "${tablePrefix}user"`);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
+		await queryRunner.query(`DROP TABLE ${tablePrefix}auth_identity`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN disabled`);
 	}
 }

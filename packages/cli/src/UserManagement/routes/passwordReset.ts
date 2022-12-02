@@ -16,7 +16,6 @@ import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import config from '@/config';
-import { SignInType } from '@/Ldap/constants';
 import { isLdapEnabled } from '@/Ldap/helpers';
 
 export function passwordResetNamespace(this: N8nApp): void {
@@ -54,9 +53,16 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOne({
+				where: {
+					email,
+					password: Not(IsNull()),
+				},
+				relations: ['authIdentities'],
+			});
+			const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 
-			if (!user?.password) {
+			if (!user?.password || (ldapIdentity && user.disabled)) {
 				Logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
@@ -66,7 +72,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			user.resetPasswordToken = uuid();
 
-			const { id, firstName, lastName, resetPasswordToken, signInType } = user;
+			const { id, firstName, lastName, resetPasswordToken } = user;
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
@@ -85,7 +91,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 					lastName,
 					passwordResetUrl: url.toString(),
 					domain: baseUrl,
-					isLdapUser: isLdapEnabled() && signInType === SignInType.LDAP,
+					isLdapUser: isLdapEnabled() && !!ldapIdentity,
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
@@ -188,9 +194,12 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
 			const user = await Db.collections.User.findOne({
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+				where: {
+					id: userId,
+					resetPasswordToken,
+					resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+				},
+				relations: ['authIdentities'],
 			});
 
 			if (!user) {
@@ -220,10 +229,11 @@ export function passwordResetNamespace(this: N8nApp): void {
 			});
 
 			// if this user used to be an LDAP users
-			if (user.ldapId) {
+			const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+			if (ldapIdentity) {
 				void InternalHooksManager.getInstance().onUserSignup({
 					user_id: userId,
-					user_type: SignInType.EMAIL,
+					user_type: 'email',
 					was_disabled_ldap_user: true,
 				});
 			}

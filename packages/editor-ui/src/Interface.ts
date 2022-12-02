@@ -613,7 +613,7 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
-	signInType: SignInType;
+	signInType?: SignInType;
 }
 
 export interface IUser extends IUserResponse {

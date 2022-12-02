@@ -115,7 +115,7 @@ export default mixins(
 			return this.usersStore.currentUser;
 		},
 		signInWithLdap(): boolean {
-			return this.currentUser?.signInType === SignInType.LDAP;
+			return this.currentUser?.signInType === 'ldap';
 		},
 		isLDAPFeatureEnabled(): boolean {
 			return this.settingsStore.settings.enterprise.ldap === true;

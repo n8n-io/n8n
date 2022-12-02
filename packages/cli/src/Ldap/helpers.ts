@@ -22,12 +22,12 @@ import {
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
-	SignInType,
 } from './constants';
-import type { LdapConfig, LdapDbColumns } from './types';
+import type { LdapConfig } from './types';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { getLicense } from '@/License';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 
 /**
  *  Check whether the LDAP feature
@@ -185,7 +185,7 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 		config.synchronizationEnabled = false;
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
-			await transformAllLdapUsersToEmailUsers();
+			await deleteAllLdapIdentities();
 			void InternalHooksManager.getInstance().onLdapUsersDisabled({
 				reason: 'ldap_update',
 				users: ldapUsers.length,
@@ -285,9 +285,9 @@ export const findAndAuthenticateLdapUser = async (
 		return undefined;
 	}
 
-	// In the unlikey scenario that more than one user is found (
+	// In the unlikely scenario that more than one user is found (
 	// can happen depending on how the LDAP database is structured
-	// and the LADP configuration), return the last one found as it
+	// and the LDAP configuration), return the last one found as it
 	// should be the less important in the hierarchy.
 	let user = searchResult.pop();
 
@@ -302,7 +302,7 @@ export const findAndAuthenticateLdapUser = async (
 		await ldapService.validUser(user.dn, password);
 	} catch (e) {
 		if (e instanceof Error) {
-			Logger.error(`LDAP - Error validating user agains LDAP server`, { message: e.message });
+			Logger.error(`LDAP - Error validating user against LDAP server`, { message: e.message });
 		}
 		return undefined;
 	}
@@ -311,50 +311,50 @@ export const findAndAuthenticateLdapUser = async (
 
 	return user;
 };
+
 /**
- * Retrieve user by LDAP ID
+ * Retrieve auth identity by LDAP ID
  * from database
  * @param  {string} idAttributeValue
  * @returns Promise
  */
-export const getUserByLdapId = async (idAttributeValue: string): Promise<User | undefined> => {
-	return Db.collections.User.findOne(
+export const getAuthIdentityByLdapId = async (
+	idAttributeValue: string,
+): Promise<AuthIdentity | undefined> => {
+	return Db.collections.AuthIdentity.findOne(
 		{
-			ldapId: idAttributeValue,
-			signInType: SignInType.LDAP,
+			providerId: idAttributeValue,
+			providerType: 'ldap',
 		},
 		{
-			relations: ['globalRole'],
+			relations: ['user', 'user.globalRole'],
 		},
 	);
 };
 
 export const getUserByEmail = async (email: string): Promise<User | undefined> => {
-	return Db.collections.User.findOne(
-		{
-			email,
-		},
-		{
-			relations: ['globalRole'],
-		},
-	);
+	return Db.collections.User.findOne({ email }, { relations: ['globalRole'] });
 };
 
 /**
  * Map attributes from the LDAP server
  * to the proper columns in the database
  * e.g. mail => email | uid => ldapId
- * @param  {Entry} user
+ * @param  {Entry} ldapUser
  * @param  {LdapConfig['attributeMapping']} attributes
- * @returns user
  */
-export const mapLdapAttributesToDb = (user: Entry, config: LdapConfig): Partial<LdapDbColumns> => {
-	return {
-		email: user[config.emailAttribute] as string,
-		firstName: user[config.firstNameAttribute] as string,
-		lastName: user[config.lastNameAttribute] as string,
-		ldapId: user[config.ldapIdAttribute] as string,
-	};
+export const mapLdapAttributesToUser = (
+	ldapUser: Entry,
+	config: LdapConfig,
+): [AuthIdentity['providerId'], Pick<User, 'email' | 'firstName' | 'lastName'>] => {
+	return [
+		ldapUser[config.ldapIdAttribute] as string,
+		{
+			email: ldapUser[config.emailAttribute] as string,
+			firstName: ldapUser[config.firstNameAttribute] as string,
+			lastName: ldapUser[config.lastNameAttribute] as string,
+		},
+	];
 };
 
 /**
@@ -362,17 +362,23 @@ export const mapLdapAttributesToDb = (user: Entry, config: LdapConfig): Partial<
  * @returns Promise
  */
 export const getLdapIds = async (): Promise<string[]> => {
-	const users = await Db.collections.User.find({
-		where: { signInType: SignInType.LDAP },
-		select: ['ldapId'],
+	const identities = await Db.collections.AuthIdentity.find({
+		select: ['providerId'],
+		where: {
+			providerType: 'ldap',
+		},
 	});
-	return users.map((user) => user.ldapId) as string[];
+	return identities.map((i) => i.providerId);
 };
 
 export const getLdapUsers = async (): Promise<User[]> => {
-	return Db.collections.User.find({
-		where: { signInType: SignInType.LDAP },
+	const identities = await Db.collections.AuthIdentity.find({
+		relations: ['user'],
+		where: {
+			providerType: 'ldap',
+		},
 	});
+	return identities.map((i) => i.user);
 };
 
 /**
@@ -380,43 +386,57 @@ export const getLdapUsers = async (): Promise<User[]> => {
  * @param  {Entry} adUser
  * @param  {LdapConfig['attributeMapping']} attributes
  * @param  {Role} role?
- * @returns User
  */
-export const mapLdapUserToDbUser = (adUser: Entry, config: LdapConfig, role?: Role): User => {
-	return Object.assign(new User(), {
-		...(role && { password: randomPassword() }),
-		...(role && { signInType: SignInType.LDAP }),
-		...(role && { globalRole: role }),
-		...mapLdapAttributesToDb(adUser, config),
-	});
+export const mapLdapUserToDbUser = (
+	adUser: Entry,
+	config: LdapConfig,
+	role?: Role,
+): [string, User] => {
+	const user = new User();
+	const [ldapId, data] = mapLdapAttributesToUser(adUser, config);
+	Object.assign(user, data);
+	if (role) {
+		user.globalRole = role;
+		user.password = randomPassword();
+		user.disabled = false;
+	} else {
+		user.disabled = true;
+	}
+	return [ldapId, user];
 };
 /**
  * Save "toCreateUsers" in the database
  * Update "toUpdateUsers" in the database
  * Update "ToDisableUsers" in the database
- * @param  {User[]} toCreateUsers
- * @param  {User[]} toUpdateUsers
- * @param  {string[]} toDisableUsers
- * @returns string
  */
 export const processUsers = async (
-	toCreateUsers: User[],
-	toUpdateUsers: User[],
+	toCreateUsers: Array<[string, User]>,
+	toUpdateUsers: Array<[string, User]>,
 	toDisableUsers: string[],
 ): Promise<void> => {
 	await Db.transaction(async (transactionManager) => {
 		return Promise.all([
-			...toCreateUsers.map(async (user) => transactionManager.save<User>(user)),
-			...toUpdateUsers.map(async (user) =>
-				transactionManager.update<User>(
-					'User',
-					{ ldapId: user.ldapId as string },
-					{ email: user.email, firstName: user.firstName, lastName: user.lastName },
-				),
-			),
-			...toDisableUsers.map(async (ldapId) =>
-				transactionManager.update<User>('User', { ldapId }, { disabled: true }),
-			),
+			...toCreateUsers.map(async ([ldapId, user]) => {
+				const authIdentity = AuthIdentity.create(await transactionManager.save(user), ldapId);
+				return transactionManager.save(authIdentity);
+			}),
+			...toUpdateUsers.map(async ([ldapId, user]) => {
+				const authIdentity = await transactionManager.findOne(AuthIdentity, { providerId: ldapId });
+				if (authIdentity?.userId) {
+					await transactionManager.update(
+						User,
+						{ id: authIdentity.userId },
+						{ email: user.email, firstName: user.firstName, lastName: user.lastName },
+					);
+				}
+			}),
+			...toDisableUsers.map(async (ldapId) => {
+				const authIdentity = await transactionManager.findOne(AuthIdentity, { providerId: ldapId });
+				if (authIdentity?.userId) {
+					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
+					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });
+				}
+			}),
 		]);
 	});
 };
@@ -470,30 +490,27 @@ export const getMappingAttributes = (config: LdapConfig): string[] => {
 	];
 };
 
-export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>) => {
-	return Db.collections.User.save({
+export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>, ldapId: string) => {
+	const user = await Db.collections.User.save({
 		password: randomPassword(),
-		signInType: SignInType.LDAP,
 		globalRole: role,
 		...data,
 	});
+	await createLdapAuthIdentity(user, ldapId);
+	return user;
 };
 
-export const updateLdapUserOnLocalDb = async (ldapUserId: string, data: Partial<User>) => {
-	await Db.collections.User.update({ ldapId: ldapUserId }, data);
+export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Partial<User>) => {
+	const userId = identity?.user?.id;
+	if (userId) {
+		await Db.collections.User.update({ id: userId }, data);
+	}
 };
 
-export const transformEmailUserToLdapUser = async (email: string, data: Partial<User>) => {
-	await Db.collections.User.update({ email }, { signInType: SignInType.LDAP, ...data });
+export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
+	return Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId));
 };
 
-export const transformAllLdapUsersToEmailUsers = async () => {
-	return Db.collections.User.update(
-		{ signInType: SignInType.LDAP },
-		{ signInType: SignInType.EMAIL },
-	);
-};
-
-export const disableAllLdapUsers = async () => {
-	return Db.collections.User.update({ signInType: SignInType.LDAP }, { disabled: true });
+const deleteAllLdapIdentities = async () => {
+	return Db.collections.AuthIdentity.delete({ providerType: 'ldap' });
 };

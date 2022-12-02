@@ -1,12 +1,18 @@
 import * as Db from '@/Db';
-import { LDAP_FEATURE_NAME, SignInType } from '@/Ldap/constants';
+import { LDAP_FEATURE_NAME } from '@/Ldap/constants';
+import { In } from 'typeorm';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {
 	static description = '\nResets the database to the default ldap state';
 
 	async run(): Promise<void> {
-		await Db.collections.User.delete({ signInType: SignInType.LDAP });
+		const ldapIdentities = await Db.collections.AuthIdentity.find({
+			where: { providerType: 'ldap' },
+			select: ['userId'],
+		});
+		await Db.collections.AuthIdentity.delete({ providerType: 'ldap' });
+		await Db.collections.User.delete({ id: In(ldapIdentities.map((i) => i.userId)) });
 
 		await Db.collections.LdapSyncHistory.delete({});
 

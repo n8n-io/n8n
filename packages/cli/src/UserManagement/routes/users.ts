@@ -25,7 +25,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { SignInType } from '@/Ldap/constants';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -349,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			void InternalHooksManager.getInstance().onUserSignup({
 				user_id: invitee.id,
-				user_type: SignInType.EMAIL,
+				user_type: 'email',
 				was_disabled_ldap_user: false,
 			});
 
@@ -363,7 +363,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User.find({ relations: ['globalRole'] });
+			const users = await Db.collections.User.find({ relations: ['globalRole', 'authIdentities'] });
 
 			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
 		}),
@@ -419,6 +419,7 @@ export function usersNamespace(this: N8nApp): void {
 						{ user: userToDelete },
 						{ user: transferee },
 					);
+					await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
 
@@ -450,6 +451,7 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.remove(
 					ownedSharedCredentials.map(({ credentials }) => credentials),
 				);
+				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 

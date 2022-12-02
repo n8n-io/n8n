@@ -37,10 +37,6 @@ UsersList.args = {
 			isDefaultUser: false,
 			isPendingUser: false,
 			isOwner: true,
-			globalRole: {
-				name: 'owner',
-				id: 1,
-			},
 			signInType: 'email',
 			disabled: false,
 		},
@@ -53,10 +49,6 @@ UsersList.args = {
 			isDefaultUser: false,
 			isPendingUser: false,
 			isOwner: false,
-			globalRole: {
-				name: 'member',
-				id: '2',
-			},
 			signInType: 'ldap',
 			disabled: true,
 		},
@@ -66,10 +58,6 @@ UsersList.args = {
 			isDefaultUser: false,
 			isPendingUser: true,
 			isOwner: false,
-			globalRole: {
-				name: 'member',
-				id: '2',
-			},
 		},
 	],
 	currentUserId: '1',

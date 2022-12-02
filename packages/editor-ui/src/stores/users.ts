@@ -1,6 +1,6 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, skipOwnerSetup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from "@/api/users";
 import { PERSONALIZATION_MODAL_KEY, STORES } from "@/constants";
-import { IInviteResponse, IPersonalizationLatestVersion, IUser, IUserResponse, IUsersState } from "@/Interface";
+import { IInviteResponse, IPersonalizationLatestVersion, IRole, IUser, IUserResponse, IUsersState } from "@/Interface";
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from "@/utils";
 import { defineStore } from "pinia";
 import Vue from "vue";
@@ -8,7 +8,7 @@ import { useRootStore } from "./n8nRootStore";
 import { useSettingsStore } from "./settings";
 import { useUIStore } from "./ui";
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
+const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole?.name === ROLE.Owner);
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
 export const useUsersStore = defineStore(STORES.USERS, {
@@ -26,8 +26,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},
-		globalRoleName(): string {
-			return this.currentUser?.globalRole?.name || '';
+		globalRoleName(): IRole {
+			return this.currentUser?.globalRole?.name ?? 'default';
 		},
 		canUserDeleteTags(): boolean {
 			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
@@ -72,7 +72,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 					fullName: userResponse.firstName? `${updatedUser.firstName} ${updatedUser.lastName || ''}`: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
-					isOwner: Boolean(updatedUser.globalRole && updatedUser.globalRole.name === ROLE.Owner),
+					isOwner: updatedUser.globalRole?.name === ROLE.Owner,
 				};
 				Vue.set(this.users, user.id, user);
 			});

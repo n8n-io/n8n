@@ -48,10 +48,3 @@ export interface SynchronizationList {
 	startedAt: string;
 	errorMessage: string;
 }
-
-export interface LdapDbColumns {
-	email: string;
-	firstName: string;
-	lastName: string;
-	ldapId: string;
-}

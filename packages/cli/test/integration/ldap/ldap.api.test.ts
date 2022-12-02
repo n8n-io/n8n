@@ -9,14 +9,8 @@ import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 
-import {
-	LDAP_DEFAULT_CONFIGURATION,
-	LDAP_ENABLED,
-	RunningMode,
-	SignInType,
-} from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED, RunningMode } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
-import { LdapConfig } from '@/Ldap/types';
 import { LdapService } from '@/Ldap/LdapService.ee';
 
 jest.mock('@/telemetry');
@@ -52,6 +46,7 @@ beforeEach(async () => {
 	await testDb.truncate(
 		[
 			'User',
+			'AuthIdentity',
 			'SharedCredentials',
 			'SharedWorkflow',
 			'Workflow',
@@ -236,7 +231,7 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 test('POST /ldap/sync?type=dry should detect updated user but not persist change in model', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({ ldapIdAttribute: 'uid' });
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -244,12 +239,13 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 
 	const ldapUserId = uniqueId();
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: ldapUserId,
-		email: ldapUserEmail,
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+			email: ldapUserEmail,
+		},
+		ldapUserId,
+	);
 
 	jest.spyOn(LdapService.prototype, 'searchWithAdminBinding').mockImplementation(() =>
 		Promise.resolve([
@@ -284,7 +280,8 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 	expect(synchronization.updated).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were not persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].id).toBe(member.id);
 	expect(localLdapUsers[0].lastName).toBe(member.lastName);
@@ -293,7 +290,7 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 test('POST /ldap/sync?type=dry should detect disabled user but not persist change in model', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({ ldapIdAttribute: 'uid' });
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -301,12 +298,13 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 
 	const ldapUserId = uniqueId();
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: ldapUserId,
-		email: ldapUserEmail,
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+			email: ldapUserEmail,
+		},
+		ldapUserId,
+	);
 
 	jest
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
@@ -333,7 +331,8 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 	expect(synchronization.disabled).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were not persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].id).toBe(member.id);
 	expect(localLdapUsers[0].disabled).toBe(false);
@@ -347,7 +346,7 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 		emailAttribute: 'mail',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -384,12 +383,17 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 	expect(synchronization.created).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
-	expect(localLdapUsers.length).toBe(1);
-	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
-	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
-	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	const allUsers = await getAllUsers();
+	expect(allUsers.length).toBe(2);
+	expect(allUsers[0].email).toBe(owner.email);
+	expect(allUsers[1].email).toBe(ldapUser.mail);
+	expect(allUsers[1].lastName).toBe(ldapUser.sn);
+	expect(allUsers[1].firstName).toBe(ldapUser.givenName);
+
+	const authIdentities = await getLdapIdentities();
+	expect(authIdentities.length).toBe(1);
+	expect(authIdentities[0].providerId).toBe(ldapUser.uid);
+	expect(authIdentities[0].providerType).toBe('ldap');
 });
 
 test('POST /ldap/sync?type=live should detect updated user and persist change in model', async () => {
@@ -400,7 +404,7 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 		emailAttribute: 'mail',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -412,14 +416,15 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 		uid: uniqueId(),
 	};
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		email: ldapUser.mail,
-		firstName: ldapUser.givenName,
-		lastName: randomName(),
-		ldapId: ldapUser.uid,
-		signInType: SignInType.LDAP,
-	});
+	await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+			email: ldapUser.mail,
+			firstName: ldapUser.givenName,
+			lastName: randomName(),
+		},
+		ldapUser.uid,
+	);
 
 	jest
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
@@ -446,13 +451,14 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 	expect(synchronization.updated).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
 	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
 	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 });
 
 test('POST /ldap/sync?type=live should detect disabled user and persist change in model', async () => {
@@ -463,7 +469,7 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 		emailAttribute: 'mail',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -475,14 +481,15 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 		uid: uniqueId(),
 	};
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		email: ldapUser.mail,
-		firstName: ldapUser.givenName,
-		lastName: ldapUser.sn,
-		ldapId: ldapUser.uid,
-		signInType: SignInType.LDAP,
-	});
+	await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+			email: ldapUser.mail,
+			firstName: ldapUser.givenName,
+			lastName: ldapUser.sn,
+		},
+		ldapUser.uid,
+	);
 
 	jest
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
@@ -509,14 +516,16 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 	expect(synchronization.disabled).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const allUsers = await getAllUsers();
+	expect(allUsers.length).toBe(2);
+	expect(allUsers[0].email).toBe(owner.email);
+	expect(allUsers[1].email).toBe(ldapUser.mail);
+	expect(allUsers[1].lastName).toBe(ldapUser.sn);
+	expect(allUsers[1].firstName).toBe(ldapUser.givenName);
+	expect(allUsers[1].disabled).toBe(true);
 
-	expect(localLdapUsers.length).toBe(1);
-	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
-	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
-	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
-	expect(localLdapUsers[0].disabled).toBe(true);
+	const authIdentities = await getLdapIdentities();
+	expect(authIdentities.length).toBe(0);
 });
 
 test('GET /ldap/sync should return paginated synchronizations', async () => {
@@ -560,10 +569,9 @@ test('POST /login should allow new LDAP user to login and synchronize data', asy
 		bindingAdminDn: 'adminDn',
 		bindingAdminPassword: 'adminPassword',
 	});
+	LdapManager.updateConfig(ldapConfig);
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
-
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -591,13 +599,14 @@ test('POST /login should allow new LDAP user to login and synchronize data', asy
 	expect(response.statusCode).toBe(200);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
 	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
 	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 	expect(localLdapUsers[0].disabled).toBe(false);
 });
 
@@ -615,9 +624,9 @@ test('POST /login should allow existing LDAP user to login and synchronize data'
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -629,14 +638,15 @@ test('POST /login should allow existing LDAP user to login and synchronize data'
 		uid: uniqueId(),
 	};
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		email: ldapUser.mail,
-		firstName: 'firstname',
-		lastName: 'lastname',
-		ldapId: ldapUser.uid,
-		signInType: SignInType.LDAP,
-	});
+	await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+			email: ldapUser.mail,
+			firstName: 'firstname',
+			lastName: 'lastname',
+		},
+		ldapUser.uid,
+	);
 
 	jest
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
@@ -654,13 +664,14 @@ test('POST /login should allow existing LDAP user to login and synchronize data'
 	expect(response.statusCode).toBe(200);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
 	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
 	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 	expect(localLdapUsers[0].disabled).toBe(false);
 });
 
@@ -678,9 +689,9 @@ test('POST /login should transform email user into LDAP user when match found', 
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const authlessAgent = utils.createAgent(app);
 
@@ -692,12 +703,11 @@ test('POST /login should transform email user into LDAP user when match found', 
 		uid: uniqueId(),
 	};
 
-	const member = await testDb.createUser({
+	await testDb.createUser({
 		globalRole: globalMemberRole,
 		email: ldapUser.mail,
 		firstName: ldapUser.givenName,
 		lastName: 'lastname',
-		signInType: SignInType.EMAIL,
 	});
 
 	jest
@@ -716,17 +726,18 @@ test('POST /login should transform email user into LDAP user when match found', 
 	expect(response.statusCode).toBe(200);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+	const localLdapIdentities = await getLdapIdentities();
+	const localLdapUsers = localLdapIdentities.map(({ user }) => user);
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
 	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
 	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
-	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	expect(localLdapIdentities[0].providerId).toBe(ldapUser.uid);
 	expect(localLdapUsers[0].disabled).toBe(false);
 });
 
-test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" strategy when LDAP login disabled', async () => {
+test('PUT /ldap/config should apply "Convert all LDAP users to email users" strategy when LDAP login disabled', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
@@ -740,17 +751,18 @@ test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" stra
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+		},
+		uniqueId(),
+	);
 
-	const configuration = ldapConfig.data as LdapConfig;
+	const configuration = ldapConfig;
 
 	// disable the login, so the strategy is applied
 	await authAgent(owner)
@@ -758,13 +770,12 @@ test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" stra
 		.send({ ...configuration, loginEnabled: false });
 
 	const emailUser = await Db.collections.User.findOneOrFail(member.id);
+	const localLdapIdentities = await getLdapIdentities();
 
 	expect(emailUser.email).toBe(member.email);
 	expect(emailUser.lastName).toBe(member.lastName);
 	expect(emailUser.firstName).toBe(member.firstName);
-	expect(emailUser.ldapId).toBeDefined();
-	expect(emailUser.disabled).toBe(false);
-	expect(emailUser.signInType).toBe(SignInType.EMAIL);
+	expect(localLdapIdentities.length).toEqual(0);
 });
 
 test('Instance owner should able to delete LDAP users', async () => {
@@ -781,17 +792,18 @@ test('Instance owner should able to delete LDAP users', async () => {
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+		},
+		uniqueId(),
+	);
 
-	// delete the rember
+	// delete the remember
 	await authAgent(owner).post(`/users/${member.id}`);
 });
 
@@ -809,15 +821,16 @@ test('Instance owner should able to delete LDAP users and transfer workflows and
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+		},
+		uniqueId(),
+	);
 
 	// delete the LDAP member and transfer its workflows/credentials to instance owner
 	await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`);
@@ -837,22 +850,23 @@ test('Sign-type should be returned when listing users', async () => {
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
+	await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+		},
+		uniqueId(),
+	);
 
 	const response = await authAgent(owner).get(`/users`);
 
 	const { data } = response.body;
 
-	expect(data[0].signInType).toBe('email');
-	expect(data[1].signInType).toBe('ldap');
+	expect(data[0].signInType).toStrictEqual('email');
+	expect(data[1].signInType).toStrictEqual('ldap');
 });
 
 test('Once user disabled during synchronization it should lose access to the instance', async () => {
@@ -869,15 +883,16 @@ test('Once user disabled during synchronization it should lose access to the ins
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+	LdapManager.updateConfig(ldapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
+	const member = await testDb.createLdapUser(
+		{
+			globalRole: globalMemberRole,
+		},
+		uniqueId(),
+	);
 
 	jest
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
@@ -889,3 +904,11 @@ test('Once user disabled during synchronization it should lose access to the ins
 
 	expect(response.body.code).toBe(401);
 });
+
+const getLdapIdentities = () =>
+	Db.collections.AuthIdentity.find({
+		where: { providerType: 'ldap' },
+		relations: ['user'],
+	});
+
+const getAllUsers = () => Db.collections.User.find({ relations: ['globalRole'] });
