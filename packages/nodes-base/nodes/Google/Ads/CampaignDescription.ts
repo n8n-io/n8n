@@ -263,7 +263,7 @@ export const campaignFields: INodeProperties[] = [
 	},
 ];
 
-function processCampaignSearchResponse(
+async function processCampaignSearchResponse(
 	this: IExecuteSingleFunctions,
 	_inputData: INodeExecutionData[],
 	responseData: IN8nHttpFullResponse,

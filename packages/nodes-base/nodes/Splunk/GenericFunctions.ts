@@ -69,7 +69,7 @@ export async function splunkApiRequest(
 //                 utils
 // ----------------------------------------
 
-export function parseXml(xml: string) {
+export async function parseXml(xml: string) {
 	return new Promise((resolve, reject) => {
 		parseString(xml, { explicitArray: false }, (error, result) => {
 			error ? reject(error) : resolve(result);

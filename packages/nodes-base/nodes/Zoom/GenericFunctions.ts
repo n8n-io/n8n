@@ -67,7 +67,7 @@ export async function zoomApiRequestAllItems(
 
 	return returnData;
 }
-function wait() {
+async function wait() {
 	return new Promise((resolve, _reject) => {
 		setTimeout(() => {
 			resolve(true);

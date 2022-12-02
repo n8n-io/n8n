@@ -296,13 +296,15 @@ export class EmailReadImapV2 implements INodeType {
 			const attachmentPromises = [];
 			let attachmentPromise;
 			for (const attachmentPart of attachmentParts) {
-				attachmentPromise = imapConnection.getPartData(message, attachmentPart).then((partData) => {
-					// Return it in the format n8n expects
-					return this.helpers.prepareBinaryData(
-						partData,
-						attachmentPart.disposition.params.filename,
-					);
-				});
+				attachmentPromise = imapConnection
+					.getPartData(message, attachmentPart)
+					.then(async (partData) => {
+						// Return it in the format n8n expects
+						return this.helpers.prepareBinaryData(
+							partData,
+							attachmentPart.disposition.params.filename,
+						);
+					});
 
 				attachmentPromises.push(attachmentPromise);
 			}
@@ -479,7 +481,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise();
 
-		const establishConnection = (): Promise<ImapSimple> => {
+		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
 			if (options.customEmailConfig !== undefined) {
 				try {

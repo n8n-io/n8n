@@ -68,7 +68,7 @@ export async function googleApiRequest(
 	}
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	credentials: IGoogleAuthCredentials,
 ) {

@@ -318,7 +318,7 @@ export class MicrosoftSql implements INodeType {
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return chunk(items, 1000).map((insertValues) => {
+						return chunk(items, 1000).map(async (insertValues) => {
 							const values = insertValues.map((item: IDataObject) => extractValues(item)).join(',');
 							return pool
 								.request()
@@ -354,7 +354,7 @@ export class MicrosoftSql implements INodeType {
 						columnString: string;
 						items: IDataObject[];
 					}): Array<Promise<object>> => {
-						return items.map((item) => {
+						return items.map(async (item) => {
 							const columns = columnString.split(',').map((column) => column.trim());
 
 							const setValues = extractUpdateSet(item, columns);
@@ -385,15 +385,15 @@ export class MicrosoftSql implements INodeType {
 				}, {} as ITables);
 
 				const queriesResults = await Promise.all(
-					Object.keys(tables).map((table) => {
-						const deleteKeyResults = Object.keys(tables[table]).map((deleteKey) => {
+					Object.keys(tables).map(async (table) => {
+						const deleteKeyResults = Object.keys(tables[table]).map(async (deleteKey) => {
 							const deleteItemsList = chunk(
 								tables[table][deleteKey].map((item) =>
 									copyInputItem(item as INodeExecutionData, [deleteKey]),
 								),
 								1000,
 							);
-							const queryQueue = deleteItemsList.map((deleteValues) => {
+							const queryQueue = deleteItemsList.map(async (deleteValues) => {
 								return pool
 									.request()
 									.query(

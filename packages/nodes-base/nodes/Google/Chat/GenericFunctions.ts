@@ -104,7 +104,7 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
-export function getAccessToken(
+export async function getAccessToken(
 	this:
 		| IExecuteFunctions
 		| IExecuteSingleFunctions
