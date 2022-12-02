@@ -3319,8 +3319,8 @@ export default mixins(
 				this.removeNode(node.name, false);
 			},
 			async onRevertRemoveNode({node}: {node: INodeUi}): void {
-				// await this.addNodes([node]);
-				await this.addNode(node.type, { position: node.position });
+				await this.addNodes([node]);
+				// await this.addNode(node.type, { position: node.position });
 			},
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__removeConnection(connection, true);

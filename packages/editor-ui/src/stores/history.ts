@@ -26,6 +26,12 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 					this.currentBulkAction.commands.push(undoable);
 					return;
 				} else {
+					// TODO: Remove this later:
+					// console.log(`================================================`);
+					// console.log(`|         PUSHING SINGLE ACTION                 `);
+					// console.log(`================================================`);
+					// console.log(`|  ${ undoable.name }`);
+					// console.log(`================================================`);
 					this.undoStack.push(undoable);
 				}
 				this.checkUndoStackLimit();
@@ -78,8 +84,17 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			if (this.currentBulkAction) {
 				if (this.currentBulkAction.commands.length > 0) {
 					this.undoStack.push(this.currentBulkAction);
+					this.checkUndoStackLimit();
+					// TODO: Remove this later:
+					// console.log(`================================================`);
+					// console.log(`|         PUSHING BULK ACTION                   `);
+					// console.log(`================================================`);
+					// this.currentBulkAction.commands.forEach(command => {
+					// 	console.log(`|        ${command.name}       `);
+
+					// });
+					// console.log(`================================================`);
 				}
-				this.checkUndoStackLimit();
 				this.currentBulkAction = null;
 			}
 		},
