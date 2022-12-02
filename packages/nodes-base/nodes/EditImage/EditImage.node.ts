@@ -1284,7 +1284,7 @@ export class EditImage implements INodeType {
 					newItem.binary![dataPropertyName].fileExtension = options.format as string;
 					newItem.binary![dataPropertyName].mimeType = `image/${options.format}`;
 					const fileName = newItem.binary![dataPropertyName].fileName;
-					if (fileName && fileName.includes('.')) {
+					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}

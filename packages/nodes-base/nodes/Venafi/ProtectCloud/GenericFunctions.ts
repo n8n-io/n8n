@@ -72,7 +72,7 @@ export async function venafiApiRequestAllItems(
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData._links && responseData._links[0].Next);
+	} while (responseData._links?.[0].Next);
 
 	return returnData;
 }

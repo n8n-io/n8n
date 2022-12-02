@@ -222,7 +222,7 @@ export function rowsSequence(rows: IRow[]) {
 	const l = rows.length;
 	if (l) {
 		const [first] = rows;
-		if (first && first._seq !== undefined) {
+		if (first?._seq !== undefined) {
 			return;
 		}
 	}

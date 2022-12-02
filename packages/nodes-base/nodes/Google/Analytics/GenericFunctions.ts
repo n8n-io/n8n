@@ -65,9 +65,7 @@ export async function googleApiRequestAllItems(
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
-		(responseData[propertyName] &&
-			responseData[propertyName][0].nextPageToken &&
-			responseData[propertyName][0].nextPageToken !== undefined)
+		responseData[propertyName]?.[0].nextPageToken !== undefined
 	);
 
 	return returnData;

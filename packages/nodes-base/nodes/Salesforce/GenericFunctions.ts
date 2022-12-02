@@ -178,12 +178,11 @@ async function getAccessToken(
 		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }
 
 export function getConditions(options: IDataObject) {
-	const conditions = ((options.conditionsUi as IDataObject) || {}).conditionValues as IDataObject[];
+	const conditions = (options.conditionsUi as IDataObject)?.conditionValues as IDataObject[];
 	let data = undefined;
 	if (Array.isArray(conditions) && conditions.length !== 0) {
 		data = conditions.map(

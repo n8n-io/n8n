@@ -113,10 +113,10 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const options = this.getNodeParameter('options', 0, {});
 	const outputFormattingOption =
-		(((options.outputFormatting as IDataObject) || {}).values as IDataObject) || {};
+		((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
 
 	const dataLocationOnSheetOptions =
-		(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
+		((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
 
 	if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';

@@ -274,7 +274,7 @@ export class MicrosoftOutlook implements INodeType {
 						const messageId = this.getNodeParameter('messageId', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
-						if (additionalFields && additionalFields.recipients) {
+						if (additionalFields?.recipients) {
 							const recipients = (additionalFields.recipients as string)
 								.split(',')
 								.filter((email) => !!email);

@@ -102,11 +102,7 @@ export async function activeCampaignApiRequestAllItems(
 		}
 
 		query.offset = itemsReceived;
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.total !== undefined &&
-		responseData.meta.total > itemsReceived
-	);
+	} while (responseData.meta?.total !== undefined && responseData.meta.total > itemsReceived);
 
 	return returnData;
 }

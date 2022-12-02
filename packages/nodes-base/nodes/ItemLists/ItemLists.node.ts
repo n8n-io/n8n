@@ -1202,7 +1202,7 @@ return 0;`,
 						order: 'ascending' | 'descending';
 					}>;
 
-					if (!sortFields || !sortFields.length) {
+					if (!sortFields?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'No sorting specified. Please add a field to sort by',
@@ -1304,7 +1304,7 @@ return 0;`,
 					const code = this.getNodeParameter('code', 0) as string;
 					const regexCheck = /\breturn\b/g.exec(code);
 
-					if (regexCheck && regexCheck.length) {
+					if (regexCheck?.length) {
 						const sandbox = {
 							newItems,
 						};

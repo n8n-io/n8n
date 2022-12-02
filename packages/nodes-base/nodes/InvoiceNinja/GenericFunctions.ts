@@ -74,12 +74,7 @@ export async function invoiceNinjaApiRequestAllItems(
 			uri = next;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.pagination &&
-		responseData.meta.pagination.links &&
-		responseData.meta.pagination.links.next
-	);
+	} while (responseData.meta?.pagination?.links?.next);
 
 	return returnData;
 }

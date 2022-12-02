@@ -379,7 +379,7 @@ export class NotionV2 implements INodeType {
 						body.query = text;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
 						body.sort = sort;
 					}
 					if (returnAll) {
@@ -701,11 +701,11 @@ export class NotionV2 implements INodeType {
 						body.query = text;
 					}
 					if (options.filter) {
-						const filter = (((options.filter as IDataObject) || {}).filters as IDataObject[]) || [];
+						const filter = ((options.filter as IDataObject)?.filters as IDataObject[]) || [];
 						body.filter = filter;
 					}
 					if (options.sort) {
-						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
+						const sort = ((options.sort as IDataObject)?.sortValue as IDataObject) || {};
 						body.sort = sort;
 					}
 					if (returnAll) {

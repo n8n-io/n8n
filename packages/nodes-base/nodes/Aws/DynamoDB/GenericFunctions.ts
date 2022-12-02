@@ -36,9 +36,7 @@ export async function awsApiRequest(
 		);
 	} catch (error) {
 		const errorMessage =
-			(error.response && error.response.body && error.response.body.message) ||
-			(error.response && error.response.body && error.response.body.Message) ||
-			error.message;
+			error.response?.body?.message || error.response?.body?.Message || error.message;
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');

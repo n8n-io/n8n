@@ -73,10 +73,7 @@ export async function woocommerceApiRequestAllItems(
 			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
 		}
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.link !== undefined &&
-		responseData.headers.link.includes('rel="next"')
-	);
+	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;
 }
@@ -95,7 +92,7 @@ export function setMetadata(
 ) {
 	for (let i = 0; i < data.length; i++) {
 		//@ts-ignore\
-		if (data[i].metadataUi && data[i].metadataUi.metadataValues) {
+		if (data[i].metadataUi?.metadataValues) {
 			//@ts-ignore
 			data[i].meta_data = data[i].metadataUi.metadataValues;
 			//@ts-ignore

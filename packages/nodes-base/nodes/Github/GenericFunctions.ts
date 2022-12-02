@@ -105,6 +105,6 @@ export async function githubApiRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

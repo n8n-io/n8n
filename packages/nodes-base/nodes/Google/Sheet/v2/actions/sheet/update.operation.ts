@@ -173,8 +173,7 @@ export async function execute(
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	const locationDefineOptions = ((options.locationDefine as IDataObject) || {})
-		.values as IDataObject;
+	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 0;
 	let firstDataRow = 1;

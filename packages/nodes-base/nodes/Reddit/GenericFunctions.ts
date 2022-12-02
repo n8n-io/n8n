@@ -84,7 +84,7 @@ export async function redditApiRequestAllItems(
 		if (qs.limit && returnData.length >= qs.limit && !returnAll) {
 			return returnData;
 		}
-	} while (responseData.data && responseData.data.after);
+	} while (responseData.data?.after);
 
 	return returnData;
 }

@@ -105,10 +105,7 @@ export async function shopifyApiRequestAllItems(
 			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers.link !== undefined &&
-		responseData.headers.link.includes('rel="next"')
-	);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 

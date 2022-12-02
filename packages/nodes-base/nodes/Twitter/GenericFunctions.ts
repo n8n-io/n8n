@@ -69,7 +69,7 @@ export async function twitterApiRequestAllItems(
 		responseData = await twitterApiRequest.call(this, method, endpoint, body, query);
 		query.since_id = responseData.search_metadata.max_id;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData.search_metadata && responseData.search_metadata.next_results);
+	} while (responseData.search_metadata?.next_results);
 
 	return returnData;
 }

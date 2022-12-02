@@ -184,9 +184,7 @@ export function getRangeString(sheetName: string, options: RangeDetectionOptions
 
 export async function getExistingSheetNames(sheet: GoogleSheet) {
 	const { sheets } = await sheet.spreadsheetGetSheets();
-	return ((sheets as IDataObject[]) || []).map(
-		(entry) => ((entry.properties as IDataObject) || {}).title,
-	);
+	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
 }
 
 export function mapFields(this: IExecuteFunctions, inputSize: number) {
@@ -213,7 +211,7 @@ export async function autoMapInputData(
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 	const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
 
 	let headerRow = 1;

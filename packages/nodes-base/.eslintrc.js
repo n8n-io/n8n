@@ -32,7 +32,6 @@ module.exports = {
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-var-requires': 'off',
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
-		'@typescript-eslint/prefer-optional-chain': 'off',
 		'@typescript-eslint/restrict-plus-operands': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/unbound-method': 'off',

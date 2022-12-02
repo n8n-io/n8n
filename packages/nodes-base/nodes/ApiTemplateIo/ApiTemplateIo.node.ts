@@ -403,14 +403,13 @@ export class ApiTemplateIo implements INodeType {
 
 						if (!jsonParameters) {
 							const overrides =
-								(((this.getNodeParameter('overridesUi', i) as IDataObject) || {})
-									.overrideValues as IDataObject[]) || [];
+								((this.getNodeParameter('overridesUi', i) as IDataObject)
+									?.overrideValues as IDataObject[]) || [];
 							if (overrides.length !== 0) {
 								const data: IDataObject[] = [];
 								for (const override of overrides) {
 									const properties =
-										(((override.propertiesUi as IDataObject) || {})
-											.propertyValues as IDataObject[]) || [];
+										((override.propertiesUi as IDataObject)?.propertyValues as IDataObject[]) || [];
 									data.push(
 										properties.reduce(
 											(obj, value) => Object.assign(obj, { [`${value.key}`]: value.value }),
@@ -494,8 +493,8 @@ export class ApiTemplateIo implements INodeType {
 
 						if (!jsonParameters) {
 							const properties =
-								(((this.getNodeParameter('propertiesUi', i) as IDataObject) || {})
-									.propertyValues as IDataObject[]) || [];
+								((this.getNodeParameter('propertiesUi', i) as IDataObject)
+									?.propertyValues as IDataObject[]) || [];
 							if (properties.length === 0) {
 								throw new NodeOperationError(
 									this.getNode(),

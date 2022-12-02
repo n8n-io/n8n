@@ -396,8 +396,8 @@ export class AwsRekognition implements INodeType {
 							body.Filters = {};
 
 							const box =
-								(((additionalFields.regionsOfInterestUi as IDataObject) || {})
-									.regionsOfInterestValues as IDataObject[]) || [];
+								((additionalFields.regionsOfInterestUi as IDataObject)
+									?.regionsOfInterestValues as IDataObject[]) || [];
 
 							if (box.length !== 0) {
 								//@ts-ignore

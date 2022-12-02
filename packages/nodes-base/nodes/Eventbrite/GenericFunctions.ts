@@ -76,8 +76,7 @@ export async function eventbriteApiRequestAllItems(
 		query.continuation = responseData.pagination.continuation;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		responseData.pagination !== undefined &&
-		responseData.pagination.has_more_items !== undefined &&
+		responseData.pagination?.has_more_items !== undefined &&
 		responseData.pagination.has_more_items !== false
 	);
 

@@ -174,8 +174,7 @@ export async function execute(
 
 	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
-	const locationDefineOption = ((options.locationDefine as IDataObject) || {})
-		.values as IDataObject;
+	const locationDefineOption = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 	let headerRow = 0;
 	let firstDataRow = 1;

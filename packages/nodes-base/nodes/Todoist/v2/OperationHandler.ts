@@ -270,7 +270,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private enrichSection(command: Command, sections: Map<string, number>) {
-		if (command.args !== undefined && command.args.section !== undefined) {
+		if (command.args?.section !== undefined) {
 			const sectionId = sections.get(command.args.section);
 			if (sectionId) {
 				command.args.section_id = sectionId;

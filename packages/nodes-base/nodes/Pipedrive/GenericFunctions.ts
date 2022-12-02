@@ -121,11 +121,7 @@ export async function pipedriveApiRequestAllItems(
 		}
 
 		query.start = responseData.additionalData.pagination.next_start;
-	} while (
-		responseData.additionalData !== undefined &&
-		responseData.additionalData.pagination !== undefined &&
-		responseData.additionalData.pagination.more_items_in_collection === true
-	);
+	} while (responseData.additionalData?.pagination?.more_items_in_collection === true);
 
 	return {
 		data: returnData,

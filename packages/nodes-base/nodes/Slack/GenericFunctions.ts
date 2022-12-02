@@ -108,12 +108,10 @@ export async function slackApiRequestAllItems(
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.next_cursor !== undefined &&
+		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
-		(responseData.paging !== undefined &&
-			responseData.paging.pages !== undefined &&
+		(responseData.paging?.pages !== undefined &&
 			responseData.paging.page !== undefined &&
 			responseData.paging.page < responseData.paging.pages)
 	);

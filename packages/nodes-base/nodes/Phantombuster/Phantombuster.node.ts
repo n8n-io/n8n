@@ -214,8 +214,8 @@ export class Phantombuster implements INodeType {
 							}
 						} else {
 							const argumentParameters =
-								(((additionalFields.argumentsUi as IDataObject) || {})
-									.argumentValues as IDataObject[]) || [];
+								((additionalFields.argumentsUi as IDataObject)?.argumentValues as IDataObject[]) ||
+								[];
 							body.arguments = argumentParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;
@@ -223,8 +223,8 @@ export class Phantombuster implements INodeType {
 							delete additionalFields.argumentsUi;
 
 							const bonusParameters =
-								(((additionalFields.bonusArgumentUi as IDataObject) || {})
-									.bonusArgumentValue as IDataObject[]) || [];
+								((additionalFields.bonusArgumentUi as IDataObject)
+									?.bonusArgumentValue as IDataObject[]) || [];
 							body.bonusArgument = bonusParameters.reduce((object, currentValue) => {
 								object[currentValue.key as string] = currentValue.value;
 								return object;

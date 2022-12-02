@@ -4275,7 +4275,7 @@ export class Pipedrive implements INodeType {
 							qs.exclude = additionalFields.exclude as string;
 						}
 
-						if (additionalFields && additionalFields.done !== undefined) {
+						if (additionalFields?.done !== undefined) {
 							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 

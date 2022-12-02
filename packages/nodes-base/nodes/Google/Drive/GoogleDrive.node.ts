@@ -2114,7 +2114,7 @@ export class GoogleDrive implements INodeType {
 				const options = this.getNodeParameter('options', i, {});
 
 				let queryFields = 'id, name';
-				if (options && options.fields) {
+				if (options?.fields) {
 					const fields = options.fields as string[];
 					if (fields.includes('*')) {
 						queryFields = '*';

@@ -326,7 +326,7 @@ export class Salesmate implements INodeType {
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
 						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -341,7 +341,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,
@@ -519,7 +519,7 @@ export class Salesmate implements INodeType {
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
 						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -534,7 +534,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,
@@ -727,7 +727,7 @@ export class Salesmate implements INodeType {
 					if (!jsonActive) {
 						const filters: IDataObject[] = [];
 						const filtersUi = this.getNodeParameter('filters', i).filtersUi as IDataObject;
-						if (filtersUi && filtersUi.conditions) {
+						if (filtersUi?.conditions) {
 							const conditions = filtersUi.conditions as IDataObject;
 							if (conditions.conditionsUi) {
 								for (const condition of conditions.conditionsUi as IDataObject[]) {
@@ -742,7 +742,7 @@ export class Salesmate implements INodeType {
 								}
 							}
 						}
-						if (filtersUi && filtersUi.operator) {
+						if (filtersUi?.operator) {
 							//@ts-ignore
 							body.query.group = {
 								operator: filtersUi.operator,

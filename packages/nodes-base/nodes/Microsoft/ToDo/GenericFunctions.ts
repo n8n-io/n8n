@@ -55,7 +55,7 @@ export async function microsoftApiRequestAllItems(
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
-		if (uri && uri.includes('$top')) {
+		if (uri?.includes('$top')) {
 			delete query.$top;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
