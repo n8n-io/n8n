@@ -18,7 +18,7 @@ export async function venafiApiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
 
 	const options: OptionsWithUri = {
 		headers: {

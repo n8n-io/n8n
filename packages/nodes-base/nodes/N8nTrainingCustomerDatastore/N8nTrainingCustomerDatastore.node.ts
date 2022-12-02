@@ -113,7 +113,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		for (let i = 0; i < length; i++) {

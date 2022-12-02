@@ -327,8 +327,8 @@ export class ActiveCampaign implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				dataKey = undefined;
-				resource = this.getNodeParameter('resource', 0) as string;
-				operation = this.getNodeParameter('operation', 0) as string;
+				resource = this.getNodeParameter('resource', 0);
+				operation = this.getNodeParameter('operation', 0);
 
 				requestMethod = 'GET';
 				endpoint = '';
