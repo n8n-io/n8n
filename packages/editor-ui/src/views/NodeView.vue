@@ -2058,7 +2058,7 @@ export default mixins(
 							}
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
-							this.historyStore.stopRecordingUndo()
+							this.historyStore.stopRecordingUndo();
 						} else if (!this.historyStore.bulkInProgress && connectionInfo) {
 							// if connection is just being detached, save this in history
 							// but only if it's not detached as a side effect of bulk undo/redo process
