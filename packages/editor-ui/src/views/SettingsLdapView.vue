@@ -137,7 +137,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInputs, IUser } from '@/Interface';
+import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInput, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -388,6 +388,9 @@ export default mixins(showMessage).extend({
 				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.loginEnabled = this.adConfig.loginEnabled;
 				this.syncEnabled = this.adConfig.synchronizationEnabled;
+				const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['loginEnabled'] === true;
+				const whenSyncAndLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['synchronizationEnabled'] === true && values['loginEnabled'] === true;
+				const whenAdminBindingAndLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -408,9 +411,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.loginLabel.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.loginLabel.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'serverAddress',
@@ -422,9 +423,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.serverAddress.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.serverAddress.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'port',
@@ -435,9 +434,7 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: this.$locale.baseText('settings.ldap.form.port.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'connectionSecurity',
@@ -463,9 +460,7 @@ export default mixins(showMessage).extend({
 							required: true,
 							capitalize: true,
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'allowUnauthorizedCerts',
@@ -489,9 +484,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.baseDn.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.baseDn.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'bindingType',
@@ -511,9 +504,7 @@ export default mixins(showMessage).extend({
 								},
 							],
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'adminDn',
@@ -524,9 +515,7 @@ export default mixins(showMessage).extend({
 							infoText: this.$locale.baseText('settings.ldap.form.adminDn.infoText'),
 							capitalize: true,
 						},
-						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenAdminBindingAndLoginEnabled,
 					},
 					{
 						name: 'adminPassword',
@@ -537,9 +526,7 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: this.$locale.baseText('settings.ldap.form.adminPassword.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenAdminBindingAndLoginEnabled,
 					},
 					{
 						name: 'userFilter',
@@ -552,9 +539,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.userFilter.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.userFilter.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'attributeMappingInfo',
@@ -564,9 +549,7 @@ export default mixins(showMessage).extend({
 							labelSize: 'large',
 							labelAlignment: 'left',
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'ldapId',
@@ -579,9 +562,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.ldapId.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.ldapId.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'loginId',
@@ -595,9 +576,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.loginId.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.loginId.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'email',
@@ -611,9 +590,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.email.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.email.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'firstName',
@@ -627,9 +604,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.firstName.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.firstName.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'lastName',
@@ -643,9 +618,7 @@ export default mixins(showMessage).extend({
 							placeholder: this.$locale.baseText('settings.ldap.form.lastName.placeholder'),
 							infoText: this.$locale.baseText('settings.ldap.form.lastName.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'synchronizationEnabled',
@@ -656,9 +629,7 @@ export default mixins(showMessage).extend({
 							tooltipText: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.tooltip'),
 							required: true,
 						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
+						shouldDisplay: whenLoginEnabled,
 					},
 					{
 						name: 'synchronizationInterval',
@@ -668,11 +639,7 @@ export default mixins(showMessage).extend({
 							label: this.$locale.baseText('settings.ldap.form.synchronizationInterval.label'),
 							infoText: this.$locale.baseText('settings.ldap.form.synchronizationInterval.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return (
-								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
-							);
-						},
+						shouldDisplay: whenSyncAndLoginEnabled,
 					},
 					{
 						name: 'pageSize',
@@ -682,11 +649,7 @@ export default mixins(showMessage).extend({
 							label: this.$locale.baseText('settings.ldap.form.pageSize.label'),
 							infoText: this.$locale.baseText('settings.ldap.form.pageSize.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return (
-								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
-							);
-						},
+						shouldDisplay: whenSyncAndLoginEnabled,
 					},
 					{
 						name: 'searchTimeout',
@@ -696,11 +659,7 @@ export default mixins(showMessage).extend({
 							label: this.$locale.baseText('settings.ldap.form.searchTimeout.label'),
 							infoText: this.$locale.baseText('settings.ldap.form.searchTimeout.infoText'),
 						},
-						shouldDisplay(values): boolean {
-							return (
-								values['synchronizationEnabled'] === true && values['loginEnabled'] === true
-							);
-						},
+						shouldDisplay: whenSyncAndLoginEnabled,
 					},
 				];
 			} catch (error) {
