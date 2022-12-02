@@ -561,6 +561,30 @@ namespace ExecuteFunctions {
 			| 'resolveData';
 	}
 
+	namespace StringReturning {
+		export type NodeParameter =
+			| 'binaryProperty'
+			| 'color'
+			| 'company'
+			| 'currency'
+			| 'event'
+			| 'from'
+			| 'message'
+			| 'operation'
+			| 'password'
+			| 'path'
+			| 'query'
+			| 'range'
+			| 'resource'
+			| 'source'
+			| 'text'
+			| 'title'
+			| 'url'
+			| `${string}${StringSuffix}`;
+
+		type StringSuffix = 'Color' | 'Date' | 'Name' | 'Path' | 'Slug' | 'Url';
+	}
+
 	namespace RecordReturning {
 		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
 	}
@@ -572,6 +596,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
+		getNodeParameter(
+			parameterName: StringReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: string,
+			options?: IGetNodeParameterOptions,
+		): string;
 		getNodeParameter(
 			parameterName: RecordReturning.NodeParameter,
 			itemIndex: number,
