@@ -153,8 +153,8 @@ export class Storyblok implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const source = this.getNodeParameter('source', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (source === 'contentApi') {
