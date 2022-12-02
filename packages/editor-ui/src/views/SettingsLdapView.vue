@@ -244,7 +244,7 @@ export default mixins(showMessage).extend({
 			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 				this.loginEnabled = input.value;
 			}
-			if (input.name === 'syncronizationEnabled' && typeof input.value === 'boolean') {
+			if (input.name === 'synchronizationEnabled' && typeof input.value === 'boolean') {
 				this.syncEnabled = input.value;
 			}
 			this.hasAnyChanges = true;
@@ -387,7 +387,7 @@ export default mixins(showMessage).extend({
 			try {
 				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.loginEnabled = this.adConfig.loginEnabled;
-				this.syncEnabled = this.adConfig.syncronizationEnabled;
+				this.syncEnabled = this.adConfig.synchronizationEnabled;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -651,8 +651,8 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.synchronizationEnabled,
 						properties: {
 							type: 'toggle',
-							label: this.$locale.baseText('settings.ldap.form.syncronizationEnabled.label'),
-							tooltipText: this.$locale.baseText('settings.ldap.form.syncronizationEnabled.tooltip'),
+							label: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.label'),
+							tooltipText: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.tooltip'),
 							required: true,
 						},
 						shouldDisplay(values): boolean {
@@ -663,9 +663,9 @@ export default mixins(showMessage).extend({
 						name: 'synchronizationInterval',
 						initialValue: this.adConfig.synchronizationInterval,
 						properties: {
-							label: this.$locale.baseText('settings.ldap.form.syncronizationInterval.label'),
+							label: this.$locale.baseText('settings.ldap.form.synchronizationInterval.label'),
 							type: 'text',
-							infoText: this.$locale.baseText('settings.ldap.form.syncronizationInterval.infoText'),
+							infoText: this.$locale.baseText('settings.ldap.form.synchronizationInterval.infoText'),
 						},
 						shouldDisplay(values): boolean {
 							return (
