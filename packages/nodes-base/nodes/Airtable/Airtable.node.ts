@@ -556,10 +556,10 @@ export class Airtable implements INodeType {
 
 					if (rows.length === bulkSize || i === items.length - 1) {
 						if (options.typecast === true) {
-							body['typecast'] = true;
+							body.typecast = true;
 						}
 
-						body['records'] = rows;
+						body.records = rows;
 
 						responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 						const executionData = this.helpers.constructExecutionMetaData(

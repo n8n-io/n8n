@@ -60,13 +60,13 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		if (body.reportRequests && Array.isArray(body.reportRequests)) {
-			body.reportRequests[0]['pageToken'] = responseData[propertyName][0].nextPageToken;
+			body.reportRequests[0].pageToken = responseData[propertyName][0].nextPageToken;
 		} else {
-			body.pageToken = responseData['nextPageToken'];
+			body.pageToken = responseData.nextPageToken;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
+		(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
 		(responseData[propertyName] &&
 			responseData[propertyName][0].nextPageToken &&
 			responseData[propertyName][0].nextPageToken !== undefined)
@@ -91,10 +91,10 @@ export function simplify(responseData: any | [any]) {
 			if (dimensions) {
 				for (let i = 0; i < dimensions.length; i++) {
 					data[dimensions[i]] = row.dimensions[i];
-					data['total'] = row.metrics[0].values.join(',');
+					data.total = row.metrics[0].values.join(',');
 				}
 			} else {
-				data['total'] = row.metrics[0].values.join(',');
+				data.total = row.metrics[0].values.join(',');
 			}
 			response.push(data);
 		}

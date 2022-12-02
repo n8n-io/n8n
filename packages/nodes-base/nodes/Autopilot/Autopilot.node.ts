@@ -246,7 +246,7 @@ export class Autopilot implements INodeType {
 							}
 						} else if (operation === 'add' || operation === 'remove') {
 							responseData = await autopilotApiRequest.call(this, method[operation], endpoint);
-							responseData['success'] = true;
+							responseData.success = true;
 						}
 					}
 

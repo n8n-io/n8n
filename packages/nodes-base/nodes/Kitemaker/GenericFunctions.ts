@@ -62,7 +62,7 @@ function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
 		workItem: { group: 'workItems', items: 'workItems' },
 	};
 
-	return [map[resource]['group'], map[resource]['items']];
+	return [map[resource].group, map[resource].items];
 }
 
 export function createLoadOptions(

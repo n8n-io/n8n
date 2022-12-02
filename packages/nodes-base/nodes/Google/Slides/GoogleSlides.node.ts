@@ -556,7 +556,7 @@ export class GoogleSlides implements INodeType {
 						};
 
 						if (options.revisionId) {
-							body['writeControl'] = {
+							body.writeControl = {
 								requiredRevisionId: options.revisionId as string,
 							};
 						}

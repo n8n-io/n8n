@@ -38,7 +38,7 @@ export async function driftApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('driftApi');
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {

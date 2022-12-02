@@ -30,7 +30,7 @@ export async function addCustomer(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 

@@ -496,11 +496,11 @@ export class AwsTranscribe implements INodeType {
 						const body: IDataObject = {};
 
 						if (filters.status) {
-							body['Status'] = filters.status;
+							body.Status = filters.status;
 						}
 
 						if (filters.jobNameContains) {
-							body['JobNameContains'] = filters.jobNameContains;
+							body.JobNameContains = filters.jobNameContains;
 						}
 
 						if (returnAll === true) {
@@ -515,7 +515,7 @@ export class AwsTranscribe implements INodeType {
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
-							body['MaxResults'] = limit;
+							body.MaxResults = limit;
 							responseData = await awsApiRequestREST.call(
 								this,
 								'transcribe',

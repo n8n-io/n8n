@@ -25,7 +25,7 @@ export class MindeeReceiptApi implements ICredentialType {
 		// @ts-ignore
 		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
 		if (url.includes('https://api.mindee.net/v1/')) {
-			requestOptions.headers!['Authorization'] = `Token ${credentials.apiKey}`;
+			requestOptions.headers!.Authorization = `Token ${credentials.apiKey}`;
 		} else {
 			requestOptions.headers!['X-Inferuser-Token'] = `${credentials.apiKey}`;
 		}

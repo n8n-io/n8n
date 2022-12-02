@@ -69,9 +69,9 @@ export async function helpscoutApiRequestAllItems(
 			return returnData;
 		}
 	} while (
-		responseData['_links'] !== undefined &&
-		responseData['_links'].next !== undefined &&
-		responseData['_links'].next.href !== undefined
+		responseData._links !== undefined &&
+		responseData._links.next !== undefined &&
+		responseData._links.next.href !== undefined
 	);
 
 	return returnData;

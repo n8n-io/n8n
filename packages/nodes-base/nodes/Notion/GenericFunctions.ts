@@ -92,9 +92,9 @@ export async function notionApiRequestAllItems(
 		responseData = await notionApiRequest.call(this, method, endpoint, body, query);
 		const { next_cursor } = responseData;
 		if (resource === 'block' || resource === 'user') {
-			query['start_cursor'] = next_cursor;
+			query.start_cursor = next_cursor;
 		} else {
-			body['start_cursor'] = next_cursor;
+			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 		if (query.limit && query.limit <= returnData.length) {

@@ -41,7 +41,7 @@ export async function venafiApiRequest(
 	if (operation === 'download') {
 		// We need content-type for keystore
 		if (!resource.endsWith('keystore')) {
-			delete options!.headers!['Accept'];
+			delete options!.headers!.Accept;
 			delete options!.headers!['content-type'];
 		}
 	}

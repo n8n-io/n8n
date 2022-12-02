@@ -70,7 +70,7 @@ export async function quickBooksApiRequest(
 	}
 
 	if (isDownload) {
-		options.headers!['Accept'] = 'application/pdf';
+		options.headers!.Accept = 'application/pdf';
 	}
 
 	if (resource === 'invoice' && operation === 'send') {
@@ -402,7 +402,7 @@ export function populateFields(
 				const length = (body.CustomField as CustomField[]).length;
 				for (let i = 0; i < length; i++) {
 					//@ts-ignore
-					body.CustomField[i]['Type'] = 'StringType';
+					body.CustomField[i].Type = 'StringType';
 				}
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {

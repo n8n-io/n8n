@@ -265,7 +265,7 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
 						if (returnAll === true) {
@@ -278,7 +278,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -327,7 +327,7 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
 						if (returnAll === true) {
@@ -341,7 +341,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						} else {
 							const rowsQs = { ...qs };
-							rowsQs['$top'] = this.getNodeParameter('limit', i);
+							rowsQs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -353,7 +353,7 @@ export class MicrosoftExcel implements INodeType {
 						}
 						if (!rawData) {
 							const columnsQs = { ...qs };
-							columnsQs['$select'] = 'name';
+							columnsQs.$select = 'name';
 							// TODO: That should probably be cached in the future
 							let columns = await microsoftApiRequestAllItemsSkip.call(
 								this,
@@ -419,7 +419,7 @@ export class MicrosoftExcel implements INodeType {
 							{},
 						);
 
-						qs['$select'] = 'name';
+						qs.$select = 'name';
 						// TODO: That should probably be cached in the future
 						let columns = await microsoftApiRequestAllItemsSkip.call(
 							this,
@@ -522,7 +522,7 @@ export class MicrosoftExcel implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
 						if (returnAll === true) {
 							responseData = await microsoftApiRequestAllItems.call(
@@ -534,7 +534,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -584,7 +584,7 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
 						if (returnAll === true) {
 							responseData = await microsoftApiRequestAllItems.call(
@@ -596,7 +596,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -616,7 +616,7 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
 

@@ -248,7 +248,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.exactMatch === true) {
-							qs['additionalFlags'] = 'exactMatch';
+							qs.additionalFlags = 'exactMatch';
 							delete qs.exactMatch;
 						}
 

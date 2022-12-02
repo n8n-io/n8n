@@ -1068,7 +1068,7 @@ export class Jira implements INodeType {
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
+						returnData[index].binary = {};
 
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1081,7 +1081,7 @@ export class Jira implements INodeType {
 							{ json: false, encoding: null },
 						);
 						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
+						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
 							buffer,
 							// @ts-ignore
 							attachment.json.filename,
@@ -1122,7 +1122,7 @@ export class Jira implements INodeType {
 				if (download) {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
+						returnData[index].binary = {};
 						//@ts-ignore
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1135,7 +1135,7 @@ export class Jira implements INodeType {
 							{ json: false, encoding: null },
 						);
 						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
+						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
 							buffer,
 							// @ts-ignore
 							attachment.json.filename,

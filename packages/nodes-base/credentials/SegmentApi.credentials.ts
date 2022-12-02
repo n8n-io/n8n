@@ -22,7 +22,7 @@ export class SegmentApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const base64Key = Buffer.from(`${credentials.writekey}:`).toString('base64');
-		requestOptions.headers!['Authorization'] = `Basic ${base64Key}`;
+		requestOptions.headers!.Authorization = `Basic ${base64Key}`;
 		return requestOptions;
 	}
 }

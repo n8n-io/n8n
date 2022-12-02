@@ -43,7 +43,7 @@ export async function harvestApiRequest(
 			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {

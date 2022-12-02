@@ -259,18 +259,18 @@ export class SecurityScorecard implements INodeType {
 					let body: IDataObject = {};
 
 					if (reportType !== 'portfolio') {
-						body['scorecard_identifier'] = this.getNodeParameter('scorecardIdentifier', i);
+						body.scorecard_identifier = this.getNodeParameter('scorecardIdentifier', i);
 					} else {
-						body['portfolio_id'] = this.getNodeParameter('portfolioId', i);
+						body.portfolio_id = this.getNodeParameter('portfolioId', i);
 					}
 					if (reportType === 'events-json') {
-						body['date'] = this.getNodeParameter('date', i);
+						body.date = this.getNodeParameter('date', i);
 					}
 					if (['issues', 'portfolio'].indexOf(reportType) > -1) {
-						body['format'] = this.getNodeParameter('options.format', i) || 'pdf';
+						body.format = this.getNodeParameter('options.format', i) || 'pdf';
 					}
 					if (['detailed', 'summary'].indexOf(reportType) > -1) {
-						body['branding'] = this.getNodeParameter('branding', i);
+						body.branding = this.getNodeParameter('branding', i);
 					}
 					// json reports want the params differently
 					if (['events-json', 'full-scorecard-json'].indexOf(reportType) > -1) {
@@ -360,12 +360,12 @@ export class SecurityScorecard implements INodeType {
 					const industry = this.getNodeParameter('industry', i);
 					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
-					if (options['from']) {
-						options['from'] = moment(options['from'] as Date).format('YYYY-MM-DD');
+					if (options.from) {
+						options.from = moment(options.from as Date).format('YYYY-MM-DD');
 					}
 
-					if (options['to']) {
-						options['to'] = moment(options['to'] as Date).format('YYYY-MM-DD');
+					if (options.to) {
+						options.to = moment(options.to as Date).format('YYYY-MM-DD');
 					}
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -428,12 +428,12 @@ export class SecurityScorecard implements INodeType {
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
-					if (options['date_from']) {
-						options['date_from'] = moment(options['date_from'] as Date).format('YYYY-MM-DD');
+					if (options.date_from) {
+						options.date_from = moment(options.date_from as Date).format('YYYY-MM-DD');
 					}
 
-					if (options['date_to']) {
-						options['date_to'] = moment(options['date_to'] as Date).format('YYYY-MM-DD');
+					if (options.date_to) {
+						options.date_to = moment(options.date_to as Date).format('YYYY-MM-DD');
 					}
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -464,13 +464,13 @@ export class SecurityScorecard implements INodeType {
 					const options = this.getNodeParameter('options', i);
 
 					// for some reason the params are different between these two APis :/
-					if (options['date_from']) {
-						options['from'] = moment(options['date_from'] as Date).format('YYYY-MM-DD');
-						delete options['date_from'];
+					if (options.date_from) {
+						options.from = moment(options.date_from as Date).format('YYYY-MM-DD');
+						delete options.date_from;
 					}
-					if (options['date_to']) {
-						options['to'] = moment(options['date_to'] as Date).format('YYYY-MM-DD');
-						delete options['date_to'];
+					if (options.date_to) {
+						options.to = moment(options.date_to as Date).format('YYYY-MM-DD');
+						delete options.date_to;
 					}
 					responseData = await scorecardApiRequest.call(
 						this,

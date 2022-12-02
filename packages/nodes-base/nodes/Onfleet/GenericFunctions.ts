@@ -65,9 +65,9 @@ export async function onfleetApiRequestAllItems(
 
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
-		query.lastId = responseData['lastId'];
+		query.lastId = responseData.lastId;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['lastId'] !== undefined);
+	} while (responseData.lastId !== undefined);
 
 	return returnData;
 }

@@ -89,9 +89,9 @@ export async function apiRequestAllItems(
 	const url = uri ? uri : `https://sheets.googleapis.com${method}`;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }

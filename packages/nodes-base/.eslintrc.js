@@ -18,8 +18,6 @@ module.exports = {
 		'prefer-spread': 'off',
 		'import/no-extraneous-dependencies': 'off',
 
-		// '@typescript-eslint/default-param-last': 'off',
-		'@typescript-eslint/dot-notation': 'off',
 		'@typescript-eslint/lines-between-class-members': 'off',
 		'@typescript-eslint/member-delimiter-style': 'off',
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],

@@ -21,7 +21,7 @@ export async function updateContact(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address1 = addressData.address;
 	}
 

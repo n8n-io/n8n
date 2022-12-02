@@ -379,7 +379,7 @@ export class FreshworksCrm implements INodeType {
 						Object.assign(body, additionalFields);
 
 						if (attendees.length) {
-							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+							body.appointment_attendees_attributes = adjustAttendees(attendees);
 						}
 						responseData = await freshworksCrmApiRequest.call(this, 'POST', '/appointments', body);
 						responseData = responseData.appointment;
@@ -466,7 +466,7 @@ export class FreshworksCrm implements INodeType {
 						Object.assign(body, rest);
 
 						if (attendees.length) {
-							body['appointment_attendees_attributes'] = adjustAttendees(attendees);
+							body.appointment_attendees_attributes = adjustAttendees(attendees);
 							delete body.attendees;
 						}
 

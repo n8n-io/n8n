@@ -1846,17 +1846,17 @@ export class Salesforce implements INodeType {
 							},
 						};
 						if (additionalFields.ownerId) {
-							body.entity_content['ownerId'] = additionalFields.ownerId as string;
+							body.entity_content.ownerId = additionalFields.ownerId as string;
 						}
 						if (additionalFields.linkToObjectId) {
-							body.entity_content['FirstPublishLocationId'] =
+							body.entity_content.FirstPublishLocationId =
 								additionalFields.linkToObjectId as string;
 						}
 						if (items[i].binary && items[i].binary![binaryPropertyName]) {
 							const binaryData = items[i].binary![binaryPropertyName];
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
-							body.entity_content['PathOnClient'] = `${title}.${
+							body.entity_content.PathOnClient = `${title}.${
 								additionalFields.fileExtension || binaryData.fileExtension
 							}`;
 							data = {
@@ -1869,7 +1869,7 @@ export class Salesforce implements INodeType {
 								VersionData: {
 									value: dataBuffer,
 									options: {
-										filename: body.entity_content['PathOnClient'],
+										filename: body.entity_content.PathOnClient,
 									},
 								},
 							};

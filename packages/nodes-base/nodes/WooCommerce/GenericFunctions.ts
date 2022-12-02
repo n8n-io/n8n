@@ -76,8 +76,8 @@ export async function woocommerceApiRequestAllItems(
 		}
 		returnData.push.apply(returnData, responseData.body);
 	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
+		responseData.headers.link !== undefined &&
+		responseData.headers.link.includes('rel="next"')
 	);
 
 	return returnData;
@@ -136,7 +136,7 @@ export function toSnakeCase(
 export function setFields(fieldsToSet: IDataObject, body: IDataObject) {
 	for (const fields in fieldsToSet) {
 		if (fields === 'tags') {
-			body['tags'] = (fieldsToSet[fields] as string[]).map((tag) => ({ id: parseInt(tag, 10) }));
+			body.tags = (fieldsToSet[fields] as string[]).map((tag) => ({ id: parseInt(tag, 10) }));
 		} else {
 			body[snakeCase(fields.toString())] = fieldsToSet[fields];
 		}

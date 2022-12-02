@@ -1829,8 +1829,8 @@ export class Github implements INodeType {
 
 						const assignees = this.getNodeParameter('assignees', i) as IDataObject[];
 
-						body.labels = labels.map((data) => data['label']);
-						body.assignees = assignees.map((data) => data['assignee']);
+						body.labels = labels.map((data) => data.label);
+						body.assignees = assignees.map((data) => data.assignee);
 
 						endpoint = `/repos/${owner}/${repository}/issues`;
 					} else if (operation === 'createComment') {
@@ -1856,10 +1856,10 @@ export class Github implements INodeType {
 						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
 						if (body.labels !== undefined) {
-							body.labels = (body.labels as IDataObject[]).map((data) => data['label']);
+							body.labels = (body.labels as IDataObject[]).map((data) => data.label);
 						}
 						if (body.assignees !== undefined) {
-							body.assignees = (body.assignees as IDataObject[]).map((data) => data['assignee']);
+							body.assignees = (body.assignees as IDataObject[]).map((data) => data.assignee);
 						}
 
 						endpoint = `/repos/${owner}/${repository}/issues/${issueNumber}`;

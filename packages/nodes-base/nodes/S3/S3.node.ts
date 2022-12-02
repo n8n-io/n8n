@@ -196,7 +196,7 @@ export class S3 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 						if (additionalFields.prefix) {
-							qs['prefix'] = additionalFields.prefix as string;
+							qs.prefix = additionalFields.prefix as string;
 						}
 
 						if (additionalFields.encodingType) {
@@ -204,7 +204,7 @@ export class S3 implements INodeType {
 						}
 
 						if (additionalFields.delmiter) {
-							qs['delimiter'] = additionalFields.delmiter as string;
+							qs.delimiter = additionalFields.delmiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -403,7 +403,7 @@ export class S3 implements INodeType {
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
@@ -683,14 +683,14 @@ export class S3 implements INodeType {
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
 							qs['fetch-owner'] = options.fetchOwner as string;
 						}
 
-						qs['delimiter'] = '/';
+						qs.delimiter = '/';
 
 						qs['list-type'] = 2;
 

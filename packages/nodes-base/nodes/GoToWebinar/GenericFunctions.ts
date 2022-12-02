@@ -41,7 +41,7 @@ export async function goToWebinarApiRequest(
 	};
 
 	if (resource === 'session' && operation === 'getAll') {
-		options.headers!['Accept'] = 'application/vnd.citrix.g2wapi-v1.1+json';
+		options.headers!.Accept = 'application/vnd.citrix.g2wapi-v1.1+json';
 	}
 
 	if (['GET', 'DELETE'].includes(method)) {

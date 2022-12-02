@@ -84,9 +84,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['pageToken'];
+		query.pageToken = responseData.pageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['pageToken'] !== undefined && responseData['pageToken'] !== '');
+	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
 
 	return returnData;
 }

@@ -148,9 +148,9 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							if (item['json'][column]) {
+							if (item.json[column]) {
 								// @ts-ignore
-								document.fields[column] = jsonToDocument(item['json'][column]);
+								document.fields[column] = jsonToDocument(item.json[column]);
 							} else {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(null);
@@ -250,15 +250,15 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					const collection = this.getNodeParameter('collection', i) as string;
 					const updateKey = this.getNodeParameter('updateKey', i) as string;
 					// @ts-ignore
-					const documentId = item['json'][updateKey] as string;
+					const documentId = item.json[updateKey] as string;
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map((column) => column.trim()) as string[];
 					const document = {};
 					columnList.map((column) => {
 						// @ts-ignore
-						if (item['json'].hasOwnProperty(column)) {
+						if (item.json.hasOwnProperty(column)) {
 							// @ts-ignore
-							document[column] = jsonToDocument(item['json'][column]);
+							document[column] = jsonToDocument(item.json[column]);
 						} else {
 							// @ts-ignore
 							document[column] = jsonToDocument(null);
@@ -286,7 +286,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				);
 
 				for (let i = 0; i < writeResults.length; i++) {
-					writeResults[i]['status'] = status[i];
+					writeResults[i].status = status[i];
 					Object.assign(writeResults[i], items[i].json);
 
 					const executionData = this.helpers.constructExecutionMetaData(

@@ -621,7 +621,7 @@ export class SendGrid implements INodeType {
 
 						if (headers?.details.length) {
 							const parsedHeaders: { [key: string]: string } = {};
-							headers.details.forEach((obj) => (parsedHeaders[obj['key']] = obj['value']));
+							headers.details.forEach((obj) => (parsedHeaders[obj.key] = obj.value));
 							body.headers = parsedHeaders;
 						}
 

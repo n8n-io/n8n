@@ -73,12 +73,12 @@ export async function webexApiRequestAllItems(
 			...options,
 		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
 	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
+		responseData.headers.link !== undefined &&
+		responseData.headers.link.includes('rel="next"')
 	);
 	return returnData;
 }

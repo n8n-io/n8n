@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/dot-notation */
 import { IExecuteFunctions } from 'n8n-core';
 
 import {

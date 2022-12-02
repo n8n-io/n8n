@@ -71,7 +71,7 @@ export async function bubbleApiRequestAllItems(
 	do {
 		responseData = await bubbleApiRequest.call(this, method, endpoint, body, qs);
 		qs.cursor = responseData.cursor;
-		returnData.push.apply(returnData, responseData['response']['results']);
+		returnData.push.apply(returnData, responseData.response.results);
 	} while (responseData.response.remaining !== 0);
 
 	return returnData;

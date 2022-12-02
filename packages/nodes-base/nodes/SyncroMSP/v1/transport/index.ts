@@ -21,7 +21,7 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('syncroMspApi');
 
-	query['api_key'] = credentials.apiKey;
+	query.api_key = credentials.apiKey;
 
 	const options: IHttpRequestOptions = {
 		method,

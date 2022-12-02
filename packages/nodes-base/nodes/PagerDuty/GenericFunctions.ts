@@ -46,7 +46,7 @@ export async function pagerDutyApiRequest(
 		if (authenticationMethod === 'apiToken') {
 			const credentials = await this.getCredentials('pagerDutyApi');
 
-			options.headers!['Authorization'] = `Token token=${credentials.apiToken}`;
+			options.headers!.Authorization = `Token token=${credentials.apiToken}`;
 
 			return await this.helpers.request!(options);
 		} else {

@@ -177,7 +177,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}
@@ -263,7 +263,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}

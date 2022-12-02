@@ -1101,7 +1101,7 @@ return 0;`,
 				const newItems = items.map(
 					(item, index) =>
 						({
-							json: { ...item['json'], __INDEX: index },
+							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
 						} as INodeExecutionData),
 				);

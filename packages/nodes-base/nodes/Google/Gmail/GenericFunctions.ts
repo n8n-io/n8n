@@ -83,7 +83,7 @@ export async function googleApiRequest(
 
 			const { access_token } = await getAccessToken.call(this, credentials);
 
-			(options.headers as IDataObject)['Authorization'] = `Bearer ${access_token}`;
+			(options.headers as IDataObject).Authorization = `Bearer ${access_token}`;
 		}
 
 		const response = await this.helpers.requestWithAuthentication.call(
@@ -287,9 +287,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }

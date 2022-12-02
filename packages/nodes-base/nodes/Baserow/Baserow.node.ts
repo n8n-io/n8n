@@ -183,7 +183,7 @@ export class Baserow implements INodeType {
 					const qs: IDataObject = {};
 
 					if (order?.fields) {
-						qs['order_by'] = order.fields
+						qs.order_by = order.fields
 							.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
 							.join(',');
 					}

@@ -226,7 +226,7 @@ export class NotionTrigger implements INodeType {
 				records.push(...results);
 				hasMore = has_more;
 				if (next_cursor !== null) {
-					body['start_cursor'] = next_cursor;
+					body.start_cursor = next_cursor;
 				}
 				// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
 			} while (

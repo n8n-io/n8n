@@ -1233,14 +1233,14 @@ export class HttpRequestV3 implements INodeType {
 				};
 			}
 
-			if (requestOptions.headers!['accept'] === undefined) {
+			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
-					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+					requestOptions.headers!.accept = 'application/json,text/*;q=0.99';
 				} else if (responseFormat === 'text') {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
 				} else {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}

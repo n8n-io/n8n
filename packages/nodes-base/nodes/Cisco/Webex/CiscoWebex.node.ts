@@ -139,23 +139,23 @@ export class CiscoWebex implements INodeType {
 						const markdown = this.getNodeParameter('additionalFields.markdown', i, '') as boolean;
 						const body = {} as IDataObject;
 						if (destination === 'room') {
-							body['roomId'] = this.getNodeParameter('roomId', i);
+							body.roomId = this.getNodeParameter('roomId', i);
 						}
 
 						if (destination === 'person') {
 							const specifyPersonBy = this.getNodeParameter('specifyPersonBy', 0) as string;
 							if (specifyPersonBy === 'id') {
-								body['toPersonId'] = this.getNodeParameter('toPersonId', i);
+								body.toPersonId = this.getNodeParameter('toPersonId', i);
 							} else {
-								body['toPersonEmail'] = this.getNodeParameter('toPersonEmail', i);
+								body.toPersonEmail = this.getNodeParameter('toPersonEmail', i);
 							}
 						}
 
 						if (markdown) {
-							body['markdown'] = markdown;
+							body.markdown = markdown;
 						}
 
-						body['text'] = this.getNodeParameter('text', i);
+						body.text = this.getNodeParameter('text', i);
 
 						body.attachments = getAttachemnts(
 							this.getNodeParameter(
@@ -296,9 +296,9 @@ export class CiscoWebex implements INodeType {
 						} as IDataObject;
 
 						if (markdown === true) {
-							body['markdown'] = this.getNodeParameter('markdownText', i);
+							body.markdown = this.getNodeParameter('markdownText', i);
 						} else {
-							body['text'] = this.getNodeParameter('text', i);
+							body.text = this.getNodeParameter('text', i);
 						}
 
 						responseData = await webexApiRequest.call(this, 'PUT', endpoint, body);
@@ -329,7 +329,7 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+							body.registration = (body.requireRegistrationInfo as string[]).reduce(
 								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
 								{},
 							);
@@ -337,7 +337,7 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (invitees) {
-							body['invitees'] = invitees;
+							body.invitees = invitees;
 							delete body.inviteesUi;
 						}
 
@@ -459,7 +459,7 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+							body.registration = (body.requireRegistrationInfo as string[]).reduce(
 								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
 								{},
 							);
@@ -467,7 +467,7 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (invitees.length) {
-							body['invitees'] = invitees;
+							body.invitees = invitees;
 						}
 
 						if (body.start) {

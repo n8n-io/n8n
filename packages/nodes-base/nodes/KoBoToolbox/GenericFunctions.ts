@@ -193,7 +193,7 @@ export async function downloadAttachments(
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
-	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[]; // tslint:disable-line:no-any
+	const attachmentList = (submission._attachments || submission.attachments) as any[]; // tslint:disable-line:no-any
 	if (attachmentList && attachmentList.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment

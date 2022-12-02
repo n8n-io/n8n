@@ -119,15 +119,15 @@ export class AwsCertificateManager implements INodeType {
 						}
 
 						if (options.certificateStatuses) {
-							body.Includes['extendedKeyUsage'] = options.extendedKeyUsage as string[];
+							body.Includes.extendedKeyUsage = options.extendedKeyUsage as string[];
 						}
 
 						if (options.keyTypes) {
-							body.Includes['keyTypes'] = options.keyTypes as string[];
+							body.Includes.keyTypes = options.keyTypes as string[];
 						}
 
 						if (options.keyUsage) {
-							body.Includes['keyUsage'] = options.keyUsage as string[];
+							body.Includes.keyUsage = options.keyUsage as string[];
 						}
 
 						if (returnAll) {

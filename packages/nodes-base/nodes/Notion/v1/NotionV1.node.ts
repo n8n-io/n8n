@@ -327,7 +327,7 @@ export class NotionV1 implements INodeType {
 							body,
 						);
 					} else {
-						body['page_size'] = this.getNodeParameter('limit', i);
+						body.page_size = this.getNodeParameter('limit', i);
 						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
 						responseData = responseData.results;
 					}
@@ -350,7 +350,7 @@ export class NotionV1 implements INodeType {
 						parent: {},
 						properties: {},
 					};
-					body.parent['database_id'] = this.getNodeParameter('databaseId', i, '', {
+					body.parent.database_id = this.getNodeParameter('databaseId', i, '', {
 						extractValue: true,
 					}) as string;
 					const properties = this.getNodeParameter(
@@ -390,7 +390,7 @@ export class NotionV1 implements INodeType {
 						filter: {},
 					};
 					if (filters.singleCondition) {
-						body['filter'] = mapFilters([filters.singleCondition] as IDataObject[], timezone);
+						body.filter = mapFilters([filters.singleCondition] as IDataObject[], timezone);
 					}
 					if (filters.multipleCondition) {
 						const { or, and } = (filters.multipleCondition as IDataObject).condition as IDataObject;
@@ -410,7 +410,7 @@ export class NotionV1 implements INodeType {
 					}
 					if (sort) {
 						//@ts-expect-error
-						body['sorts'] = mapSorting(sort);
+						body.sorts = mapSorting(sort);
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -518,7 +518,7 @@ export class NotionV1 implements INodeType {
 						parent: {},
 						properties: {},
 					};
-					body.parent['page_id'] = extractPageId(
+					body.parent.page_id = extractPageId(
 						this.getNodeParameter('pageId', i, '', { extractValue: true }) as string,
 					);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
@@ -564,17 +564,17 @@ export class NotionV1 implements INodeType {
 					const body: IDataObject = {};
 
 					if (text) {
-						body['query'] = text;
+						body.query = text;
 					}
 
 					if (options.filter) {
 						const filter = (((options.filter as IDataObject) || {}).filters as IDataObject[]) || [];
-						body['filter'] = filter;
+						body.filter = filter;
 					}
 
 					if (options.sort) {
 						const sort = (((options.sort as IDataObject) || {}).sortValue as IDataObject) || {};
-						body['sort'] = sort;
+						body.sort = sort;
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(

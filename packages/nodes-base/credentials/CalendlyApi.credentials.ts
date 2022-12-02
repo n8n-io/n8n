@@ -31,7 +31,7 @@ export class CalendlyApi implements ICredentialType {
 		// remove condition once v1 is deprecated
 		// and only inject credentials as an access token
 		if (tokenType === 'accessToken') {
-			requestOptions.headers!['Authorization'] = `Bearer ${apiKey}`;
+			requestOptions.headers!.Authorization = `Bearer ${apiKey}`;
 		} else {
 			requestOptions.headers!['X-TOKEN'] = apiKey;
 		}

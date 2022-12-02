@@ -301,10 +301,10 @@ export class UptimeRobot implements INodeType {
 						};
 
 						if (type === 3) {
-							body['value'] = this.getNodeParameter('weekDay', i) as number;
+							body.value = this.getNodeParameter('weekDay', i) as number;
 						}
 						if (type === 4) {
-							body['value'] = this.getNodeParameter('monthDay', i) as number;
+							body.value = this.getNodeParameter('monthDay', i) as number;
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/newMWindow', body);
@@ -354,11 +354,11 @@ export class UptimeRobot implements INodeType {
 						}
 
 						if (body.type === 3) {
-							body['value'] = body.weekDay;
+							body.value = body.weekDay;
 							delete body.weekDay;
 						}
 						if (body.type === 4) {
-							body['value'] = body.monthDay;
+							body.value = body.monthDay;
 							delete body.monthDay;
 						}
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/editMWindow', body);

@@ -151,7 +151,7 @@ export class PostHog implements INodeType {
 							),
 						};
 
-						event.properties['distinct_id'] = distinctId;
+						event.properties.distinct_id = distinctId;
 
 						Object.assign(event, additionalFields);
 

@@ -254,12 +254,12 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by.login = this.getNodeParameter('email', i) as string;
 							} else {
-								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+								body.accessible_by.id = this.getNodeParameter('userId', i) as string;
 							}
 						} else {
-							body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
@@ -273,10 +273,10 @@ export class Box implements INodeType {
 						const attributes: IDataObject = {};
 
 						if (parentId !== '') {
-							attributes['parent'] = { id: parentId };
+							attributes.parent = { id: parentId };
 						} else {
 							// if not parent defined save it on the root directory
-							attributes['parent'] = { id: 0 };
+							attributes.parent = { id: 0 };
 						}
 
 						if (isBinaryData) {
@@ -304,11 +304,11 @@ export class Box implements INodeType {
 
 							const body: IDataObject = {};
 
-							attributes['name'] = fileName || binaryData.fileName;
+							attributes.name = fileName || binaryData.fileName;
 
-							body['attributes'] = JSON.stringify(attributes);
+							body.attributes = JSON.stringify(attributes);
 
-							body['file'] = {
+							body.file = {
 								value: binaryDataBuffer,
 								options: {
 									filename: binaryData.fileName,
@@ -335,13 +335,13 @@ export class Box implements INodeType {
 								});
 							}
 
-							attributes['name'] = fileName;
+							attributes.name = fileName;
 
 							const body: IDataObject = {};
 
-							body['attributes'] = JSON.stringify(attributes);
+							body.attributes = JSON.stringify(attributes);
 
-							body['file'] = {
+							body.file = {
 								value: Buffer.from(content),
 								options: {
 									filename: fileName,
@@ -488,12 +488,12 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by.login = this.getNodeParameter('email', i) as string;
 							} else {
-								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+								body.accessible_by.id = this.getNodeParameter('userId', i) as string;
 							}
 						} else {
-							body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);

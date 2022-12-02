@@ -352,7 +352,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -383,7 +383,7 @@ export class Zammad implements INodeType {
 						Object.assign(body, addressUi?.addressDetails);
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -475,7 +475,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -504,7 +504,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -575,7 +575,7 @@ export class Zammad implements INodeType {
 						) as ZammadTypes.UserAdditionalFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);
@@ -604,7 +604,7 @@ export class Zammad implements INodeType {
 						const { customFieldsUi, ...rest } = updateFields;
 
 						customFieldsUi?.customFieldPairs.forEach((pair) => {
-							body[pair['name']] = pair['value'];
+							body[pair.name] = pair.value;
 						});
 
 						Object.assign(body, rest);

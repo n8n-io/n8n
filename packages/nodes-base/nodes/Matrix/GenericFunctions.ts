@@ -214,7 +214,7 @@ export async function handleMatrixCall(
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 			//@ts-ignore
 			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
-			headers['accept'] = 'application/json,text/*;q=0.99';
+			headers.accept = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,

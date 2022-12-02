@@ -184,7 +184,7 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 
 export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
 	if (range && range !== 'all') {
-		body['query'].push({
+		body.query.push({
 			_name: 'page',
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),

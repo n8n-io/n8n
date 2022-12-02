@@ -79,7 +79,7 @@ export const questionsOperations: INodeProperties[] = [
 										console.log(items[i].json);
 										delete items[i].binary;
 									} else {
-										items[i].binary!['data'] = await this.helpers.prepareBinaryData(
+										items[i].binary!.data = await this.helpers.prepareBinaryData(
 											response.body as Buffer,
 											'data',
 											response.headers['content-type'],

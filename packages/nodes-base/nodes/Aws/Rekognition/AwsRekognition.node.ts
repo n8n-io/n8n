@@ -356,7 +356,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'ModerationLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 						}
 
@@ -370,7 +370,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'FaceDetails';
 
 							if (additionalFields.attributes) {
-								body['Attributes'] = additionalFields.attributes as string;
+								body.Attributes = additionalFields.attributes as string;
 							}
 						}
 
@@ -378,11 +378,11 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 
 							if (additionalFields.maxLabels) {
-								body['MaxLabels'] = additionalFields.maxLabels as number;
+								body.MaxLabels = additionalFields.maxLabels as number;
 							}
 						}
 

@@ -669,7 +669,7 @@ export class Slack implements INodeType {
 									}
 								}
 							}
-							body['attachments'] = attachments;
+							body.attachments = attachments;
 
 							if (blocksUi) {
 								const blocks: Block[] = [];
@@ -928,7 +928,7 @@ export class Slack implements INodeType {
 								}
 							}
 						}
-						body['attachments'] = attachments;
+						body.attachments = attachments;
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
 						if (jsonParameters) {

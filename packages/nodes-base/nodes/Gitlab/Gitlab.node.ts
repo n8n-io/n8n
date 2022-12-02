@@ -1065,8 +1065,8 @@ export class Gitlab implements INodeType {
 
 						const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
 
-						body.labels = labels.map((data) => data['label']).join(',');
-						body.assignee_ids = assigneeIds.map((data) => data['assignee']);
+						body.labels = labels.map((data) => data.label).join(',');
+						body.assignee_ids = assigneeIds.map((data) => data.assignee);
 
 						endpoint = `${baseEndpoint}/issues`;
 					} else if (operation === 'createComment') {
@@ -1092,12 +1092,10 @@ export class Gitlab implements INodeType {
 						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
 						if (body.labels !== undefined) {
-							body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+							body.labels = (body.labels as IDataObject[]).map((data) => data.label).join(',');
 						}
 						if (body.assignee_ids !== undefined) {
-							body.assignee_ids = (body.assignee_ids as IDataObject[]).map(
-								(data) => data['assignee'],
-							);
+							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
 						}
 
 						endpoint = `${baseEndpoint}/issues/${issueNumber}`;

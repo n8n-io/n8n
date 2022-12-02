@@ -216,7 +216,7 @@ export class GetResponseTrigger implements INodeType {
 		const query = this.getQueryData() as IDataObject;
 		const listIds = this.getNodeParameter('listIds') as string[];
 
-		if (!listIds.includes('*') && !listIds.includes(query['CAMPAIGN_ID'] as string)) {
+		if (!listIds.includes('*') && !listIds.includes(query.CAMPAIGN_ID as string)) {
 			return {};
 		}
 
