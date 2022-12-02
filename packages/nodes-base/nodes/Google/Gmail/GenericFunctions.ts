@@ -161,7 +161,7 @@ export async function googleApiRequest(
 
 export async function parseRawEmail(
 	this: IExecuteFunctions | IPollFunctions,
-	// tslint:disable-next-line:no-any
+
 	messageData: any,
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
@@ -275,10 +275,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

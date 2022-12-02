@@ -83,7 +83,7 @@ export async function freshworksCrmApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	let response: any; // tslint:disable-line: no-any
+	let response: any;
 
 	qs.page = 1;
 

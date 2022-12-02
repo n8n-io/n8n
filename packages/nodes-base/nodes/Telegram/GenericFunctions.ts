@@ -146,7 +146,6 @@ export async function apiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 

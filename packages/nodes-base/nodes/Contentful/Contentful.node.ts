@@ -194,7 +194,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -214,7 +214,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -293,7 +293,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});
@@ -313,7 +313,7 @@ export class Contentful implements INodeType {
 
 							if (!rawData) {
 								const assets: IDataObject[] = [];
-								// tslint:disable-next-line: no-any
+
 								responseData.map((asset: any) => {
 									assets.push(asset.fields);
 								});

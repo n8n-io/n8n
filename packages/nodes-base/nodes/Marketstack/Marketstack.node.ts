@@ -87,7 +87,7 @@ export class Marketstack implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as Resource;
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		let responseData: any; // tslint:disable-line: no-any
+		let responseData: any;
 		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {

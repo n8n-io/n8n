@@ -13,9 +13,7 @@ export async function msGraphSecurityApiRequest(
 	headers: IDataObject = {},
 ) {
 	const {
-		oauthTokenData: {
-			access_token, // tslint:disable-line variable-name
-		},
+		oauthTokenData: { access_token },
 	} = (await this.getCredentials('microsoftGraphSecurityOAuth2Api')) as {
 		oauthTokenData: {
 			access_token: string;

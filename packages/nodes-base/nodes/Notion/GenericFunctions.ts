@@ -41,12 +41,11 @@ export async function notionApiRequest(
 		| IPollFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	try {
 		let options: OptionsWithUri = {
@@ -77,10 +76,9 @@ export async function notionApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
@@ -251,7 +249,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				// prettier-ignore
-				// tslint:disable-next-line: no-any
+
 				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as any || []),
 			},
 		});
@@ -259,9 +257,7 @@ export function formatBlocks(blocks: IDataObject[]) {
 	return results;
 }
 
-// tslint:disable-next-line: no-any
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
-	// tslint:disable-next-line: no-any
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result: IDataObject = {};
@@ -289,7 +285,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-				// tslint:disable-next-line: no-any
+
 				relation: value.relationValue.reduce((acc: [], cur: any) => {
 					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
 				}, []),
@@ -303,7 +299,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					? multiSelectValue
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
-					// tslint:disable-next-line: no-any
+
 					.filter((value: any) => value !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
@@ -403,7 +399,6 @@ function getNameAndType(key: string) {
 export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
 	return properties
 		.filter(
-			// tslint:disable-next-line: no-any
 			(property): property is Record<string, { key: string; [k: string]: any }> =>
 				typeof property.key === 'string',
 		)
@@ -436,7 +431,6 @@ export function mapSorting(
 }
 
 export function mapFilters(filters: IDataObject[], timezone: string) {
-	// tslint:disable-next-line: no-any
 	return filters.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
@@ -481,16 +475,13 @@ export function mapFilters(filters: IDataObject[], timezone: string) {
 	}, {});
 }
 
-// tslint:disable-next-line: no-any
 function simplifyProperty(property: any) {
-	// tslint:disable-next-line: no-any
 	let result: any;
 	const type = (property as IDataObject).type as string;
 	if (['text'].includes(property.type)) {
 		result = property.plain_text;
 	} else if (['rich_text', 'title'].includes(property.type)) {
 		if (Array.isArray(property[type]) && property[type].length !== 0) {
-			// tslint:disable-next-line: no-any
 			result = property[type].map((text: any) => simplifyProperty(text) as string).join('');
 		} else {
 			result = '';
@@ -507,13 +498,11 @@ function simplifyProperty(property: any) {
 			'date',
 		].includes(property.type)
 	) {
-		// tslint:disable-next-line: no-any
 		result = property[type] as any;
 	} else if (['created_by', 'last_edited_by', 'select'].includes(property.type)) {
 		result = property[type] ? property[type].name : null;
 	} else if (['people'].includes(property.type)) {
 		if (Array.isArray(property[type])) {
-			// tslint:disable-next-line: no-any
 			result = property[type].map((person: any) => person.person?.email || {});
 		} else {
 			result = property[type];
@@ -545,7 +534,6 @@ function simplifyProperty(property: any) {
 		}
 	} else if (['files'].includes(property.type)) {
 		result = property[type].map(
-			// tslint:disable-next-line: no-any
 			(file: { type: string; [key: string]: any }) => file[file.type].url,
 		);
 	} else if (['status'].includes(property.type)) {
@@ -554,9 +542,7 @@ function simplifyProperty(property: any) {
 	return result;
 }
 
-// tslint:disable-next-line: no-any
 export function simplifyProperties(properties: any) {
-	// tslint:disable-next-line: no-any
 	const results: any = {};
 	for (const key of Object.keys(properties)) {
 		results[`${key}`] = simplifyProperty(properties[key]);
@@ -564,7 +550,6 @@ export function simplifyProperties(properties: any) {
 	return results;
 }
 
-// tslint:disable-next-line: no-any
 export function simplifyObjects(objects: any, download = false, version = 2) {
 	if (!Array.isArray(objects)) {
 		objects = [objects];
@@ -751,7 +736,7 @@ export function getConditions() {
 }
 
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string, type: string, files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { 
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
 		const element: INodeExecutionData = { json: {}, binary: {} };
@@ -804,7 +789,6 @@ export function extractDatabaseId(database: string) {
 	}
 }
 
-// tslint:disable-next-line: no-any
 function prepend(stringKey: string, properties: { [key: string]: any }) {
 	for (const key of Object.keys(properties)) {
 		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
@@ -813,7 +797,6 @@ function prepend(stringKey: string, properties: { [key: string]: any }) {
 	return properties;
 }
 
-// tslint:disable-next-line: no-any
 export function getPropertyTitle(properties: { [key: string]: any }) {
 	return (
 		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
@@ -934,7 +917,6 @@ export function getSearchFilters(resource: string) {
 	];
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

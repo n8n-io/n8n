@@ -922,7 +922,6 @@ return 0;`,
 						}),
 					};
 
-					// tslint:disable-next-line: no-any
 					const values: { [key: string]: any } = {};
 					const outputFields: string[] = [];
 
@@ -1131,7 +1130,6 @@ return 0;`,
 				});
 
 				for (const key of keys) {
-					// tslint:disable-next-line: no-any
 					let type: any = undefined;
 					for (const item of newItems) {
 						if (key === '') {
@@ -1390,7 +1388,6 @@ const flattenKeys = (obj: {}, path: string[] = []): {} => {
 		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next, [...path, key])), {});
 };
 
-// tslint:disable-next-line: no-any
 const shuffleArray = (array: any[]) => {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));

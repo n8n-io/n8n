@@ -828,7 +828,7 @@ export class Onfleet {
 					/*                                Clone a task                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					// tslint:disable-next-line: no-any
+
 					const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
 					if (!taskData) {
 						continue;

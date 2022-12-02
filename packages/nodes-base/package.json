@@ -19,8 +19,8 @@
     "build:translations": "gulp build:translations",
     "build:metadata": "pnpm n8n-generate-known && pnpm n8n-generate-ui-types",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials --fix",
+    "lint": "eslint nodes credentials",
+    "lintfix": "eslint nodes credentials --fix",
     "watch": "tsc-watch --onSuccess \"pnpm n8n-generate-ui-types\"",
     "test": "jest"
   },

@@ -337,7 +337,7 @@ export class MySql implements INodeType {
 					.map((_item) => insertPlaceholder)
 					.join(',')};`;
 				const queryItems = insertItems.reduce(
-					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+					(collection, item) => collection.concat(Object.values(item as any)),
 					[],
 				);
 

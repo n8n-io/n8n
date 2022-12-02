@@ -755,7 +755,6 @@ async function callRecursiveList(
 	let index = 0;
 
 	do {
-		// tslint:disable-next-line: array-type
 		const returnData: sftpClient.FileInfo[] | (string | ftpClient.ListingElement)[] =
 			await client.list(pathArray[index]);
 
