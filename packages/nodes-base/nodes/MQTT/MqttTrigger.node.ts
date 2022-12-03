@@ -137,28 +137,30 @@ export class MqttTrigger implements INodeType {
 						if (err) {
 							reject(err);
 						}
-						client.on('message', (topic: string, message: Buffer | string) => {
-							let result: IDataObject = {};
-
-							message = message.toString();
-
-							if (options.jsonParseBody) {
-								try {
-									message = JSON.parse(message.toString());
-								} catch (error) {}
-							}
-
-							result.message = message;
-							result.topic = topic;
-
-							if (options.onlyMessage) {
-								//@ts-ignore
-								result = [message as string];
-							}
-							self.emit([self.helpers.returnJsonArray(result)]);
-							resolve(true);
-						});
 					});
+				});
+
+				client.on('message', (topic: string, message: Buffer | string) => {
+					// tslint:disable-line:no-any
+					let result: IDataObject = {};
+
+					message = message.toString() as string;
+
+					if (options.jsonParseBody) {
+						try {
+							message = JSON.parse(message.toString());
+						} catch (err) {}
+					}
+
+					result.message = message;
+					result.topic = topic;
+
+					if (options.onlyMessage) {
+						//@ts-ignore
+						result = [message as string];
+					}
+					self.emit([self.helpers.returnJsonArray(result)]);
+					resolve(true);
 				});
 
 				client.on('error', (error) => {
