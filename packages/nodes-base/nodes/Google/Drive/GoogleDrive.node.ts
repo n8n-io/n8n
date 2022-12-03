@@ -2079,7 +2079,6 @@ export class GoogleDrive implements INodeType {
 						'https://www.googleapis.com/auth/drive',
 						'https://www.googleapis.com/auth/drive.appdata',
 						'https://www.googleapis.com/auth/drive.photos.readonly',
-						'https://www.googleapis.com/auth/forms',
 					];
 
 					if (!currentNodeScopes.every((s) => scope.includes(s))) {
