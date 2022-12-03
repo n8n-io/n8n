@@ -87,7 +87,7 @@ export class CircleCi implements INodeType {
 
 						const endpoint = `/project/${vcs}/${slug}/pipeline`;
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await circleciApiRequestAllItems.call(
 								this,
 								'items',

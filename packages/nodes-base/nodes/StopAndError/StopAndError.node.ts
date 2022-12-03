@@ -82,7 +82,7 @@ export class StopAndError implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
 		const { id: workflowId, name: workflowName } = this.getWorkflow();
 
@@ -92,7 +92,7 @@ export class StopAndError implements INodeType {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			// tslint:disable-next-line:no-any
+
 			const errorObject = jsonParse<any>(json);
 
 			toThrow = {

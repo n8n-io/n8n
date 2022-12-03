@@ -14,7 +14,12 @@ import {
 
 import { nodeDescription } from './MongoDbDescription';
 
-import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
+import {
+	buildParameterizedConnString,
+	prepareFields,
+	prepareItems,
+	validateAndResolveMongoCredentials,
+} from './GenericFunctions';
 
 import {
 	FindOneAndReplaceOptions,
@@ -23,8 +28,6 @@ import {
 	ObjectId,
 	UpdateOptions,
 } from 'mongodb';
-
-import { validateAndResolveMongoCredentials } from './GenericFunctions';
 
 import { IMongoParametricCredentials } from './mongoDb.types';
 
@@ -59,7 +62,7 @@ export class MongoDb implements INodeType {
 						// eslint-disable-next-line n8n-nodes-base/node-execute-block-wrong-error-thrown
 						throw new Error(`Database "${database}" does not exist`);
 					}
-					client.close();
+					await client.close();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -82,7 +85,7 @@ export class MongoDb implements INodeType {
 
 		const client: MongoClient = await MongoClient.connect(connectionString);
 
-		const mdb = client.db(database as string);
+		const mdb = client.db(database);
 
 		const returnItems: INodeExecutionData[] = [];
 		let responseData: IDataObject | IDataObject[] = [];
@@ -148,7 +151,7 @@ export class MongoDb implements INodeType {
 					.collection(this.getNodeParameter('collection', 0) as string)
 					.find(queryParameter);
 
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const limit = options.limit as number;
 				const skip = options.skip as number;
 				const sort = options.sort && JSON.parse(options.sort as string);
@@ -195,7 +198,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -235,7 +238,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -307,7 +310,7 @@ export class MongoDb implements INodeType {
 					const filter = { [updateKey]: item[updateKey] };
 					if (updateKey === '_id') {
 						filter[updateKey] = new ObjectId(item[updateKey] as string);
-						delete item['_id'];
+						delete item._id;
 					}
 
 					await mdb
@@ -335,7 +338,7 @@ export class MongoDb implements INodeType {
 			}
 		}
 
-		client.close();
+		await client.close();
 
 		const executionData = this.helpers.constructExecutionMetaData(
 			this.helpers.returnJsonArray(responseData),

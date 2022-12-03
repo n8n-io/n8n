@@ -301,7 +301,7 @@ export class SentryIo implements INodeType {
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
@@ -310,7 +310,7 @@ export class SentryIo implements INodeType {
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -345,14 +345,14 @@ export class SentryIo implements INodeType {
 							qs.query = additionalFields.query as string;
 						}
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -417,7 +417,7 @@ export class SentryIo implements INodeType {
 							qs.owner = additionalFields.owner as boolean;
 						}
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
@@ -428,7 +428,7 @@ export class SentryIo implements INodeType {
 							responseData = [];
 						}
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -467,7 +467,7 @@ export class SentryIo implements INodeType {
 
 						const body = {
 							name,
-							...(this.getNodeParameter('additionalFields', i) as IDataObject),
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						responseData = await sentryIoApiRequest.call(this, 'POST', endpoint, body, qs);
@@ -483,14 +483,14 @@ export class SentryIo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = `/api/0/projects/`;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -530,14 +530,14 @@ export class SentryIo implements INodeType {
 							qs.query = additionalFields.query as string;
 						}
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -569,7 +569,7 @@ export class SentryIo implements INodeType {
 						if (additionalFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							additionalFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 
@@ -623,7 +623,7 @@ export class SentryIo implements INodeType {
 						if (updateFields.commits) {
 							const commits: ICommit[] = [];
 							//@ts-ignore
-							// tslint:disable-next-line: no-any
+
 							updateFields.commits.commitProperties.map((commit: any) => {
 								const commitObject: ICommit = { id: commit.id };
 
@@ -679,14 +679,14 @@ export class SentryIo implements INodeType {
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

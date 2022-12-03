@@ -12,7 +12,6 @@ export async function redditApiRequest(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 
@@ -59,7 +58,6 @@ export async function redditApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 	const returnData: IDataObject[] = [];
@@ -77,16 +75,16 @@ export async function redditApiRequestAllItems(
 		}
 
 		if (endpoint === 'api/search_subreddits.json') {
-			responseData.subreddits.forEach((child: any) => returnData.push(child)); // tslint:disable-line:no-any
+			responseData.subreddits.forEach((child: any) => returnData.push(child));
 		} else if (resource === 'postComment' && operation === 'getAll') {
-			responseData[1].data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+			responseData[1].data.children.forEach((child: any) => returnData.push(child.data));
 		} else {
-			responseData.data.children.forEach((child: any) => returnData.push(child.data)); // tslint:disable-line:no-any
+			responseData.data.children.forEach((child: any) => returnData.push(child.data));
 		}
-		if (qs.limit && returnData.length >= qs.limit && returnAll === false) {
+		if (qs.limit && returnData.length >= qs.limit && !returnAll) {
 			return returnData;
 		}
-	} while (responseData.data && responseData.data.after);
+	} while (responseData.data?.after);
 
 	return returnData;
 }
@@ -100,7 +98,6 @@ export async function handleListing(
 	endpoint: string,
 	qs: IDataObject = {},
 	requestMethod: 'GET' | 'POST' = 'GET',
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 

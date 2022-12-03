@@ -8,8 +8,11 @@ import {
 
 export class TrelloApi implements ICredentialType {
 	name = 'trelloApi';
+
 	displayName = 'Trello API';
+
 	documentationUrl = 'trello';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -45,6 +48,7 @@ export class TrelloApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.trello.com',

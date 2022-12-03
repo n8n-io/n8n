@@ -232,7 +232,7 @@ export class Freshservice implements INodeType {
 				)) as {
 					asset_type_fields: [{ fields: LoadedResource[] }];
 				};
-				// tslint:disable-next-line: no-any
+
 				let fields: any[] = [];
 				fields = fields
 					.concat(...asset_type_fields.map((data) => data.fields))

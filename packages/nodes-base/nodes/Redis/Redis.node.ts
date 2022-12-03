@@ -511,8 +511,9 @@ export class Redis implements INodeType {
 					redisOptions.password = credentials.password as string;
 				}
 				try {
-					const client = await redis.createClient(redisOptions);
+					const client = redis.createClient(redisOptions);
 					// tslint:disable-next-line: no-any
+
 					const _data = await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
 							client.ping('ping', (error, pong) => {
@@ -540,7 +541,7 @@ export class Redis implements INodeType {
 		},
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// Parses the given value in a number if it is one else returns a string
 		function getParsedValue(value: string): string | number {
 			if (value.match(/^[\d\.]+$/) === null) {
@@ -591,16 +592,16 @@ export class Redis implements INodeType {
 
 			if (type === 'string') {
 				const clientGet = util.promisify(client.get).bind(client);
-				return await clientGet(keyName);
+				return clientGet(keyName);
 			} else if (type === 'hash') {
 				const clientHGetAll = util.promisify(client.hgetall).bind(client);
-				return await clientHGetAll(keyName);
+				return clientHGetAll(keyName);
 			} else if (type === 'list') {
 				const clientLRange = util.promisify(client.lrange).bind(client);
-				return await clientLRange(keyName, 0, -1);
+				return clientLRange(keyName, 0, -1);
 			} else if (type === 'sets') {
 				const clientSMembers = util.promisify(client.smembers).bind(client);
-				return await clientSMembers(keyName);
+				return clientSMembers(keyName);
 			}
 		}
 
@@ -644,7 +645,7 @@ export class Redis implements INodeType {
 				}
 			}
 
-			if (expire === true) {
+			if (expire) {
 				const clientExpire = util.promisify(client.expire).bind(client);
 				await clientExpire(keyName, ttl);
 			}
@@ -684,9 +685,7 @@ export class Redis implements INodeType {
 						const clientInfo = util.promisify(client.info).bind(client);
 						const result = await clientInfo();
 
-						resolve(
-							this.prepareOutputData([{ json: convertInfoToObject(result as unknown as string) }]),
-						);
+						resolve(this.prepareOutputData([{ json: convertInfoToObject(result as string) }]));
 						client.quit();
 					} else if (
 						['delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop'].includes(operation)
@@ -712,7 +711,7 @@ export class Redis implements INodeType {
 
 								const value = (await getValue(client, keyGet, keyType)) || null;
 
-								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								const options = this.getNodeParameter('options', itemIndex, {});
 
 								if (options.dotNotation === false) {
 									item.json[propertyName] = value;
@@ -742,6 +741,7 @@ export class Redis implements INodeType {
 								}
 
 								for (const keyName of keys) {
+									// eslint-disable-next-line @typescript-eslint/await-thenable
 									item.json[keyName] = await promises[keyName];
 								}
 								returnItems.push(item);
@@ -761,7 +761,7 @@ export class Redis implements INodeType {
 								const clientIncr = util.promisify(client.incr).bind(client);
 								// @ts-ignore
 								const incrementVal = await clientIncr(keyIncr);
-								if (expire === true && ttl > 0) {
+								if (expire && ttl > 0) {
 									const clientExpire = util.promisify(client.expire).bind(client);
 									await clientExpire(keyIncr, ttl);
 								}
@@ -800,7 +800,7 @@ export class Redis implements INodeType {
 								} catch {
 									outputValue = value;
 								}
-								const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+								const options = this.getNodeParameter('options', itemIndex, {});
 								if (options.dotNotation === false) {
 									item.json[propertyName] = outputValue;
 								} else {

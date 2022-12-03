@@ -16,7 +16,6 @@ export async function venafiApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const operation = this.getNodeParameter('operation', 0);
 
@@ -41,8 +40,8 @@ export async function venafiApiRequest(
 	if (operation === 'download') {
 		// We need content-type for keystore
 		if (!resource.endsWith('keystore')) {
-			delete options!.headers!['Accept'];
-			delete options!.headers!['content-type'];
+			delete options.headers!.Accept;
+			delete options.headers!['content-type'];
 		}
 	}
 
@@ -50,11 +49,7 @@ export async function venafiApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.requestWithAuthentication.call(
-			this,
-			'venafiTlsProtectCloudApi',
-			options,
-		);
+		return this.helpers.requestWithAuthentication.call(this, 'venafiTlsProtectCloudApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -65,10 +60,9 @@ export async function venafiApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -78,7 +72,7 @@ export async function venafiApiRequestAllItems(
 		responseData = await venafiApiRequest.call(this, method, endpoint, body, query);
 		endpoint = get(responseData, '_links[0].Next');
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData._links && responseData._links[0].Next);
+	} while (responseData._links?.[0].Next);
 
 	return returnData;
 }
@@ -114,9 +108,8 @@ export async function encryptPassphrase(
 	let encryptedKeyPass = '';
 	let encryptedKeyStorePass = '';
 
-	const promise = () => {
+	const promise = async () => {
 		return new Promise((resolve, reject) => {
-			// tslint:disable-next-line:no-any
 			nacl_factory.instantiate((nacl: any) => {
 				try {
 					const passphraseUTF8 = nacl.encode_utf8(passphrase) as string;
@@ -137,5 +130,5 @@ export async function encryptPassphrase(
 			});
 		});
 	};
-	return await promise();
+	return promise();
 }

@@ -7,8 +7,11 @@ import {
 
 export class PostmarkApi implements ICredentialType {
 	name = 'postmarkApi';
+
 	displayName = 'Postmark API';
+
 	documentationUrl = 'postmark';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Server API Token',
@@ -17,6 +20,7 @@ export class PostmarkApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +29,7 @@ export class PostmarkApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.postmarkapp.com',

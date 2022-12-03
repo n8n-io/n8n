@@ -18,8 +18,8 @@ export async function slackApiRequest(
 	resource: string,
 	body: object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
@@ -47,11 +47,15 @@ export async function slackApiRequest(
 	};
 
 	try {
-		let response: any; // tslint:disable-line:no-any
 		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-			oauth2: oAuth2Options,
-		});
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+			{
+				oauth2: oAuth2Options,
+			},
+		);
 
 		if (response.ok === false) {
 			if (response.error === 'paid_teams_only') {
@@ -84,10 +88,9 @@ export async function slackApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -105,12 +108,10 @@ export async function slackApiRequestAllItems(
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.next_cursor !== undefined &&
+		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
-		(responseData.paging !== undefined &&
-			responseData.paging.pages !== undefined &&
+		(responseData.paging?.pages !== undefined &&
 			responseData.paging.page !== undefined &&
 			responseData.paging.page < responseData.paging.pages)
 	);
@@ -118,7 +119,6 @@ export async function slackApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

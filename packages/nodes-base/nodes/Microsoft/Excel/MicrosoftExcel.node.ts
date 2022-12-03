@@ -197,7 +197,7 @@ export class MicrosoftExcel implements INodeType {
 					);
 					const columns = responseData.value.map((column: IDataObject) => column.name);
 
-					const rows: any[][] = []; // tslint:disable-line:no-any
+					const rows: any[][] = [];
 
 					// Bring the items into the correct format
 					for (const item of items) {
@@ -265,10 +265,10 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -278,7 +278,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -327,10 +327,10 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItemsSkip.call(
 								this,
 								'value',
@@ -341,7 +341,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						} else {
 							const rowsQs = { ...qs };
-							rowsQs['$top'] = this.getNodeParameter('limit', i);
+							rowsQs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -353,7 +353,7 @@ export class MicrosoftExcel implements INodeType {
 						}
 						if (!rawData) {
 							const columnsQs = { ...qs };
-							columnsQs['$select'] = 'name';
+							columnsQs.$select = 'name';
 							// TODO: That should probably be cached in the future
 							let columns = await microsoftApiRequestAllItemsSkip.call(
 								this,
@@ -365,14 +365,14 @@ export class MicrosoftExcel implements INodeType {
 							);
 							//@ts-ignore
 							columns = columns.map((column) => column.name);
-							for (let i = 0; i < responseData.length; i++) {
+							for (let index = 0; index < responseData.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < columns.length; y++) {
-									object[columns[y]] = responseData[i].values[0][y];
+									object[columns[y]] = responseData[index].values[0][y];
 								}
 								const executionData = this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ ...object }),
-									{ itemData: { item: i } },
+									{ itemData: { item: index } },
 								);
 
 								returnData.push(...executionData);
@@ -419,7 +419,7 @@ export class MicrosoftExcel implements INodeType {
 							{},
 						);
 
-						qs['$select'] = 'name';
+						qs.$select = 'name';
 						// TODO: That should probably be cached in the future
 						let columns = await microsoftApiRequestAllItemsSkip.call(
 							this,
@@ -438,10 +438,10 @@ export class MicrosoftExcel implements INodeType {
 						}
 
 						result.length = 0;
-						for (let i = 0; i < responseData.length; i++) {
+						for (let index = 0; index < responseData.length; index++) {
 							const object: IDataObject = {};
 							for (let y = 0; y < columns.length; y++) {
-								object[columns[y]] = responseData[i].values[0][y];
+								object[columns[y]] = responseData[index].values[0][y];
 							}
 							result.push({ ...object });
 						}
@@ -522,9 +522,9 @@ export class MicrosoftExcel implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -534,7 +534,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -584,9 +584,9 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
-							qs['$select'] = filters.fields;
+							qs.$select = filters.fields;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -596,7 +596,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -616,7 +616,7 @@ export class MicrosoftExcel implements INodeType {
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
-								qs['$select'] = filters.fields;
+								qs.$select = filters.fields;
 							}
 						}
 
@@ -637,14 +637,14 @@ export class MicrosoftExcel implements INodeType {
 								});
 							}
 							const keyValues = responseData.values[keyRow];
-							for (let i = dataStartRow; i < responseData.values.length; i++) {
+							for (let index = dataStartRow; index < responseData.values.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < keyValues.length; y++) {
-									object[keyValues[y]] = responseData.values[i][y];
+									object[keyValues[y]] = responseData.values[index][y];
 								}
 								const executionData = this.helpers.constructExecutionMetaData(
 									this.helpers.returnJsonArray({ ...object }),
-									{ itemData: { item: i } },
+									{ itemData: { item: index } },
 								);
 
 								returnData.push(...executionData);

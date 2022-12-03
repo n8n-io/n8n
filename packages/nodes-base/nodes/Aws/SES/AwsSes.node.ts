@@ -911,7 +911,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member',
@@ -1153,8 +1153,7 @@ export class AwsSes implements INodeType {
 						}
 
 						if (templateDataUi) {
-							const templateDataValues = (templateDataUi as IDataObject)
-								.templateDataValues as IDataObject[];
+							const templateDataValues = templateDataUi.templateDataValues as IDataObject[];
 							const templateData: IDataObject = {};
 							if (templateDataValues !== undefined) {
 								for (const templateDataValue of templateDataValues) {
@@ -1239,7 +1238,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',

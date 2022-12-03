@@ -315,7 +315,7 @@ export const updateEmployeeSharedDescription = (sync = false): INodeProperties[]
 		},
 	];
 
-	if (sync === true) {
+	if (sync) {
 		elements = elements.map((element) => {
 			return Object.assign(element, {
 				displayOptions: {

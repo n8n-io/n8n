@@ -449,11 +449,15 @@ export class Wise implements INodeType {
 						const { environment } = await this.getCredentials('wiseApi');
 
 						if (environment === 'test') {
-							for (const endpoint of ['processing', 'funds_converted', 'outgoing_payment_sent']) {
+							for (const testEndpoint of [
+								'processing',
+								'funds_converted',
+								'outgoing_payment_sent',
+							]) {
 								await wiseApiRequest.call(
 									this,
 									'GET',
-									`v1/simulation/transfers/${transferId}/${endpoint}`,
+									`v1/simulation/transfers/${transferId}/${testEndpoint}`,
 								);
 							}
 						}

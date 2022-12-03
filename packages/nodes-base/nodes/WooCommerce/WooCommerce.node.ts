@@ -164,9 +164,7 @@ export class WooCommerce implements INodeType {
 
 					const customerId = this.getNodeParameter('customerId', i);
 
-					const qs: IDataObject = {
-						force: true, // required, customers do not support trashing
-					};
+					qs.force = true; // required, customers do not support trashing
 
 					const endpoint = `/customers/${customerId}`;
 					responseData = await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, qs);
@@ -188,7 +186,6 @@ export class WooCommerce implements INodeType {
 
 					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#list-all-customers
 
-					const qs = {} as IDataObject;
 					const filters = this.getNodeParameter('filters', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
 
@@ -202,7 +199,7 @@ export class WooCommerce implements INodeType {
 							'GET',
 							'/customers',
 							{},
-							qs,
+							{},
 						);
 					} else {
 						qs.per_page = this.getNodeParameter('limit', i);
@@ -357,7 +354,7 @@ export class WooCommerce implements INodeType {
 					if (options.type) {
 						qs.type = options.type as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(
 							this,
 							'GET',
@@ -562,7 +559,7 @@ export class WooCommerce implements INodeType {
 					if (options.status) {
 						qs.status = options.status as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/orders', {}, qs);
 					} else {
 						qs.per_page = this.getNodeParameter('limit', i);

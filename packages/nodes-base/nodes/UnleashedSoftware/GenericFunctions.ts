@@ -17,12 +17,11 @@ export async function unleashedApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	pageNumber?: number,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const paginatedPath = pageNumber ? `/${path}/${pageNumber}` : `/${path}`;
 
@@ -65,10 +64,9 @@ export async function unleashedApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	let responseData;
@@ -90,7 +88,7 @@ export async function unleashedApiRequestAllItems(
 //.NET code is serializing dates in the following format: "/Date(1586833770780)/"
 //which is useless on JS side and could not treated as a date for other nodes
 //so we need to convert all of the fields that has it.
-// tslint:disable-next-line:no-any
+
 export function convertNETDates(item: { [key: string]: any }) {
 	Object.keys(item).forEach((path) => {
 		const type = typeof item[path] as string;

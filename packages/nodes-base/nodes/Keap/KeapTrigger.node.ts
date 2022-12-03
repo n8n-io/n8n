@@ -153,7 +153,7 @@ export class KeapTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const rawData = this.getNodeParameter('rawData') as boolean;
 		const headers = this.getHeaderData() as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		if (headers['x-hook-secret']) {
 			// Is a create webhook confirmation request

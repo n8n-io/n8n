@@ -191,7 +191,7 @@ export class PayPal implements INodeType {
 					if (operation === 'get') {
 						const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await payPalApiRequestAllItems.call(
 								this,
 								'items',

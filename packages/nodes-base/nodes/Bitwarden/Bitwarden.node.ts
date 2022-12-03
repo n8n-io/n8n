@@ -100,11 +100,11 @@ export class Bitwarden implements INodeType {
 	methods = {
 		loadOptions: {
 			async getGroups(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'groups');
+				return loadResource.call(this, 'groups');
 			},
 
 			async getCollections(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'collections');
+				return loadResource.call(this, 'collections');
 			},
 		},
 	};

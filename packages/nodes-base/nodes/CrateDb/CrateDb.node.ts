@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -374,10 +373,10 @@ export class CrateDb implements INodeType {
 					);
 				}
 				const _updateItems = await db.multi(pgp.helpers.concat(queries));
-				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns) as IDataObject[]);
+				returnItems = this.helpers.returnJsonArray(getItemsCopy(items, columns));
 			}
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -385,7 +384,7 @@ export class CrateDb implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

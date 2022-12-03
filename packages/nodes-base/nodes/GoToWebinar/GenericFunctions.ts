@@ -41,7 +41,7 @@ export async function goToWebinarApiRequest(
 	};
 
 	if (resource === 'session' && operation === 'getAll') {
-		options.headers!['Accept'] = 'application/vnd.citrix.g2wapi-v1.1+json';
+		options.headers!.Accept = 'application/vnd.citrix.g2wapi-v1.1+json';
 	}
 
 	if (['GET', 'DELETE'].includes(method)) {
@@ -98,7 +98,7 @@ export async function goToWebinarApiRequestAllItems(
 
 		if (responseData.page && parseInt(responseData.page.totalElements, 10) === 0) {
 			return [];
-		} else if (responseData._embedded && responseData._embedded[key]) {
+		} else if (responseData._embedded?.[key]) {
 			returnData.push(...responseData._embedded[key]);
 		} else {
 			returnData.push(...responseData);
@@ -129,7 +129,7 @@ export async function handleGetAll(
 		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
-	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
+	return goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);
 }
 
 export async function loadWebinars(this: ILoadOptionsFunctions) {
@@ -276,9 +276,8 @@ export async function loadRegistranMultiChoiceQuestions(this: ILoadOptionsFuncti
 	return returnData;
 }
 
-// tslint:disable-next-line: no-any
 function convertLosslessNumber(key: any, value: any) {
-	if (value && value.isLosslessNumber) {
+	if (value?.isLosslessNumber) {
 		return value.toString();
 	} else {
 		return value;

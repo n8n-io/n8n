@@ -13,11 +13,10 @@ export async function intercomApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('intercomApi');
 
@@ -51,10 +50,9 @@ export async function intercomApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -68,16 +66,11 @@ export async function intercomApiRequestAllItems(
 		responseData = await intercomApiRequest.call(this, endpoint, method, body, query, uri);
 		uri = responseData.pages.next;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.pages !== undefined &&
-		responseData.pages.next !== undefined &&
-		responseData.pages.next !== null
-	);
+	} while (responseData.pages?.next !== null);
 
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

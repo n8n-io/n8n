@@ -111,7 +111,7 @@ export class Oura implements INodeType {
 					responseData = await ouraApiRequest.call(this, 'GET', '/activity', {}, qs);
 					responseData = responseData.activity;
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
@@ -123,7 +123,7 @@ export class Oura implements INodeType {
 					responseData = await ouraApiRequest.call(this, 'GET', '/readiness', {}, qs);
 					responseData = responseData.readiness;
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
@@ -135,7 +135,7 @@ export class Oura implements INodeType {
 					responseData = await ouraApiRequest.call(this, 'GET', '/sleep', {}, qs);
 					responseData = responseData.sleep;
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}

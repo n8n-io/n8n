@@ -1,9 +1,27 @@
 name: End-to-End tests
+run-name: E2E Tests ${{ inputs.branch }} - ${{ inputs.user }}
 
 on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      user:
+        description: 'User who kicked this off.'
+        required: false
+        default: 'schedule'
+      start-url:
+        description: 'URL to call after workflow is kicked off.'
+        required: false
+        default: ''
+      success-url:
+        description: 'URL to call after workflow is done.'
+        required: false
+        default: ''
 
 jobs:
   build:
@@ -16,7 +34,15 @@ jobs:
         node-version: [14.x, 16.x]
 
     steps:
+      - name: Call Start URL - optionally
+        run: |
+          [[ "${{github.event.inputs.start-url}}" != "" ]] && curl -v -X POST -d 'url=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' ${{github.event.inputs.start-url}} || echo ""
+        shell: bash
+
       - uses: actions/checkout@v3
+        with:
+          repository: ${{ github.event.inputs.repository || 'n8n-io/n8n' }}
+          ref: ${{ github.event.inputs.branch || 'master' }}
 
       - uses: pnpm/action-setup@v2.2.4
 
@@ -44,3 +70,9 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Tests failure for branch `${{ inputs.branch }}` deployed by ${{ inputs.user }}
+
+      - name: Call Success URL - optionally
+        run: |
+          [[ "${{github.event.inputs.success-url}}" != "" ]] && curl -v ${{github.event.inputs.success-url}} || echo ""
+        shell: bash

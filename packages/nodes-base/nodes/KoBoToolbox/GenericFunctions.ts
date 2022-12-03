@@ -14,7 +14,6 @@ import _ from 'lodash';
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
@@ -84,7 +83,6 @@ const matchWildcard = (value: string, pattern: string): boolean => {
 	return regex.test(value);
 };
 
-// tslint:disable-next-line:no-any
 const formatValue = (value: any, format: string): any => {
 	if (_.isString(value)) {
 		// Sanitize value
@@ -193,8 +191,9 @@ export async function downloadAttachments(
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
-	const attachmentList = (submission['_attachments'] || submission['attachments']) as any[]; // tslint:disable-line:no-any
-	if (attachmentList && attachmentList.length) {
+	const attachmentList = (submission._attachments || submission.attachments) as any[]; // tslint:disable-line:no-any
+
+	if (attachmentList?.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
 			// look for the question name linked to this attachment
 			const fileName = attachment.filename;
@@ -239,7 +238,7 @@ export async function downloadAttachments(
 			while (!final && redir < 5) {
 				response = await this.helpers.httpRequest(axiosOptions);
 
-				if (response && response.headers.location) {
+				if (response?.headers.location) {
 					// Follow redirect
 					axiosOptions.url = response.headers.location;
 					redir++;
@@ -248,7 +247,7 @@ export async function downloadAttachments(
 				}
 			}
 
-			if (response && response.body) {
+			if (response?.body) {
 				// Use the provided prefix if any, otherwise try to use the original question name
 				let binaryName;
 				if ('question' === options.binaryNamingScheme && relatedQuestion) {
@@ -281,5 +280,5 @@ export async function loadForms(this: ILoadOptionsFunctions): Promise<INodePrope
 		scroll: true,
 	});
 
-	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || []; // tslint:disable-line:no-any
+	return responseData?.map((survey: any) => ({ name: survey.name, value: survey.uid })) || [];
 }

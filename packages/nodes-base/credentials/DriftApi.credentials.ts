@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DriftApi implements ICredentialType {
 	name = 'driftApi';
+
 	displayName = 'Drift API';
+
 	documentationUrl = 'drift';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Personal Access Token',
