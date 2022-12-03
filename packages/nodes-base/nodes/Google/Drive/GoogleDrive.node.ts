@@ -2041,19 +2041,54 @@ export class GoogleDrive implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as { oauthTokenData: { access_token: string } };
-
-				const options: OptionsWithUri = {
-					method: 'GET',
-					uri: 'https://www.googleapis.com/drive/v3/files',
-					headers: {
-						Authorization: `Bearer ${credentials.oauthTokenData.access_token}`,
-					},
-					json: true,
-				};
+				const {
+					oauthTokenData: { access_token: accessToken },
+				} = credential.data as { oauthTokenData: { access_token: string } };
 
 				try {
-					await this.helpers.request(options);
+					/*
+						Do a first request to make sure the API is enabled
+						in the Google console
+					*/
+					await this.helpers.request({
+						method: 'GET',
+						uri: 'https://www.googleapis.com/drive/v3/files',
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
+						json: true,
+					});
+
+					/*
+						Do a second request to get the scopes the user accepted,
+						and compare it to the scopes in the credentials (most up-to-date scopes).
+						If the scopes are not the same, let the user know that some funcionality
+						from the nodes might not work due to the missing scopes.
+					*/
+
+					const { scope } = (await this.helpers.request({
+						method: 'GET',
+						uri: 'https://www.googleapis.com/oauth2/v1/tokeninfo',
+						qs: {
+							access_token: accessToken,
+						},
+						json: true,
+					})) as { scope: string };
+
+					const currentNodeScopes = [
+						'https://www.googleapis.com/auth/drive',
+						'https://www.googleapis.com/auth/drive.appdata',
+						'https://www.googleapis.com/auth/drive.photos.readonly',
+						'https://www.googleapis.com/auth/forms',
+					];
+
+					if (!currentNodeScopes.every((s) => scope.includes(s))) {
+						return {
+							status: 'Error',
+							message:
+								'Scopes for the Google Drive integration have been updated since the last time you connected your Google Account. Reconnect the account to make sure the node works correctly.',
+						};
+					}
 				} catch (error) {
 					return {
 						status: 'Error',
