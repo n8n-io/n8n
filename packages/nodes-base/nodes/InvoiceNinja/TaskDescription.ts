@@ -19,6 +19,12 @@ export const taskOperations: INodeProperties[] = [
 				action: 'Create a task',
 			},
 			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an existing task',
+				action: 'Update a task',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a task',
@@ -43,7 +49,7 @@ export const taskOperations: INodeProperties[] = [
 
 export const taskFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                 task:create                               */
+	/*                                 task:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
@@ -115,6 +121,125 @@ export const taskFields: INodeProperties[] = [
 			show: {
 				resource: ['task'],
 				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'timeLogsValues',
+				displayName: 'Time Log',
+				values: [
+					{
+						displayName: 'Start Date',
+						name: 'startDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Date',
+						name: 'endDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'Duration (Hours)',
+						name: 'duration',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['task'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Client Name or ID',
+				name: 'client',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClients',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project Name or ID',
+				name: 'project',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Time Logs',
+		name: 'timeLogsUi',
+		placeholder: 'Add Time Log',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['update'],
 			},
 		},
 		default: {},

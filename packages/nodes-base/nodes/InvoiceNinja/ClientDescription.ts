@@ -19,6 +19,12 @@ export const clientOperations: INodeProperties[] = [
 				action: 'Create a client',
 			},
 			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an existing client',
+				action: 'Update a client',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
@@ -225,6 +231,255 @@ export const clientFields: INodeProperties[] = [
 			show: {
 				resource: ['client'],
 				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'shippingAddressValue',
+				displayName: 'Shipping Address',
+				values: [
+					{
+						displayName: 'Street Address',
+						name: 'streetAddress',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Apt/Suite',
+						name: 'aptSuite',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryCode',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodes',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:update                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Client Name',
+				name: 'clientName',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'ID Number',
+				name: 'idNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'VAT Number',
+				name: 'vatNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Work Phone',
+				name: 'workPhone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Billing Address',
+		name: 'billingAddressUi',
+		placeholder: 'Add Billing Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'billingAddressValue',
+				displayName: 'Billing Address',
+				values: [
+					{
+						displayName: 'Street Address',
+						name: 'streetAddress',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Apt/Suite',
+						name: 'aptSuite',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryCode',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodes',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Contacts',
+		name: 'contactsUi',
+		placeholder: 'Add Contact',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'contacstValues',
+				displayName: 'Contact',
+				values: [
+					{
+						displayName: 'First Name',
+						name: 'firstName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'lastName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+					},
+					{
+						displayName: 'Phone',
+						name: 'phone',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Shipping Address',
+		name: 'shippingAddressUi',
+		placeholder: 'Add Shipping Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['update'],
 			},
 		},
 		default: {},

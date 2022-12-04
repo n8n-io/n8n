@@ -19,6 +19,12 @@ export const paymentOperations: INodeProperties[] = [
 				action: 'Create a payment',
 			},
 			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an existing payment',
+				action: 'Update a payment',
+			},
+			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a payment',
@@ -243,7 +249,220 @@ export const paymentFields: INodeProperties[] = [
 			},
 		],
 	},
-
+	/* -------------------------------------------------------------------------- */
+	/*                                 payment:update                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['payment'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		displayName: 'Invoice Name or ID',
+		name: 'invoice',
+		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		typeOptions: {
+			loadOptionsMethod: 'getInvoices',
+		},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['payment'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Amount',
+		name: 'amount',
+		type: 'number',
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['payment'],
+			},
+		},
+		typeOptions: {
+			minValue: 0,
+		},
+		default: 0,
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['payment'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Payment Type',
+				name: 'paymentType',
+				type: 'options',
+				options: [
+					{
+						name: 'ACH',
+						value: 5,
+					},
+					{
+						name: 'Alipay',
+						value: 28,
+					},
+					{
+						name: 'American Express',
+						value: 8,
+					},
+					{
+						name: 'Apply Credit',
+						value: 1,
+					},
+					{
+						name: 'Bank Transfer',
+						value: 2,
+					},
+					{
+						name: 'Bitcoin',
+						value: 32,
+					},
+					{
+						name: 'Carte Blanche',
+						value: 17,
+					},
+					{
+						name: 'Cash',
+						value: 3,
+					},
+					{
+						name: 'Check',
+						value: 16,
+					},
+					{
+						name: 'Credit Card Other',
+						value: 13,
+					},
+					{
+						name: 'Debit',
+						value: 4,
+					},
+					{
+						name: 'Diners Card',
+						value: 10,
+					},
+					{
+						name: 'Discover Card',
+						value: 9,
+					},
+					{
+						name: 'EuroCard',
+						value: 11,
+					},
+					{
+						name: 'GoCardless',
+						value: 31,
+					},
+					{
+						name: 'Google Wallet',
+						value: 15,
+					},
+					{
+						name: 'iZettle',
+						value: 24,
+					},
+					{
+						name: 'JCB',
+						value: 19,
+					},
+					{
+						name: 'Laser',
+						value: 20,
+					},
+					{
+						name: 'Maestro',
+						value: 21,
+					},
+					{
+						name: 'MasterCard',
+						value: 7,
+					},
+					{
+						name: 'Money Order',
+						value: 27,
+					},
+					{
+						name: 'Nova',
+						value: 12,
+					},
+					{
+						name: 'Paypal',
+						value: 14,
+					},
+					{
+						name: 'SEPA',
+						value: 30,
+					},
+					{
+						name: 'Sofort',
+						value: 29,
+					},
+					{
+						name: 'Solo',
+						value: 22,
+					},
+					{
+						name: 'Swich',
+						value: 23,
+					},
+					{
+						name: 'Swish',
+						value: 25,
+					},
+					{
+						name: 'UnionPay',
+						value: 18,
+					},
+					{
+						name: 'Venmo',
+						value: 26,
+					},
+					{
+						name: 'Visa Card',
+						value: 6,
+					},
+				],
+				default: 1,
+			},
+			{
+				displayName: 'Transfer Reference',
+				name: 'transferReference',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				type: 'string',
+				default: '',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 payment:delete                             */
 	/* -------------------------------------------------------------------------- */

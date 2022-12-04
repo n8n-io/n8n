@@ -90,20 +90,104 @@ export class InvoiceNinjaTrigger implements INodeType {
 						value: 'create_client',
 					},
 					{
+						name: 'Client Updated',
+						value: 'update_client',
+					},
+					{
+						name: 'Client Deleted',
+						value: 'update_client',
+					},
+					{
+						name: 'Vendor Created',
+						value: 'create_vendor',
+					},
+					{
+						name: 'Vendor Updated',
+						value: 'update_vendor',
+					},
+					{
+						name: 'Vendor Deleted',
+						value: 'delete_vendor',
+					},
+					{
 						name: 'Invoice Created',
 						value: 'create_invoice',
 					},
 					{
-						name: 'Payment Created',
-						value: 'create_payment',
+						name: 'Invoice Updated',
+						value: 'update_invoice',
+					},
+					{
+						name: 'Invoice Delayed',
+						value: 'delay_invoice',
+					},
+					{
+						name: 'Invoice Reminded',
+						value: 'remind_invoice',
+					},
+					{
+						name: 'Invoice Deleted',
+						value: 'delete_invoice',
 					},
 					{
 						name: 'Quote Created',
 						value: 'create_quote',
 					},
 					{
-						name: 'Vendor Created',
-						value: 'create_vendor',
+						name: 'Quote Updated',
+						value: 'update_quote',
+					},
+					{
+						name: 'Quote Accepted',
+						value: 'accept_quote',
+					},
+					{
+						name: 'Quote Expired',
+						value: 'expire_quote',
+					},
+					{
+						name: 'Quote Deleted',
+						value: 'delete_quote',
+					},
+					{
+						name: 'Payment Created',
+						value: 'create_payment',
+					},
+					{
+						name: 'Payment Deleted',
+						value: 'delete_payment',
+					},
+					{
+						name: 'Expense Created',
+						value: 'create_expense',
+					},
+					{
+						name: 'Expense Updated',
+						value: 'update_expense',
+					},
+					{
+						name: 'Expense Deleted',
+						value: 'delete_expense',
+					},
+					{
+						name: 'Project Created',
+						value: 'create_project',
+					},
+					{
+						name: 'Project Deleted',
+						value: 'delete_project',
+					},
+					{
+						name: 'Task Created',
+						value: 'create_task',
+					},
+					{
+						name: 'Task Updated',
+						value: 'update_task',
+					},
+					{
+						name: 'Task Deleted',
+						value: 'delete_task',
 					},
 				],
 				default: '',
