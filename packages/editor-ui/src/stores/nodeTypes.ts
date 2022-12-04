@@ -1,9 +1,8 @@
 import { getNodeParameterOptions, getNodesInformation, getNodeTranslationHeaders, getNodeTypes, getResourceLocatorResults } from "@/api/nodeTypes";
 import { DEFAULT_NODETYPE_VERSION, STORES } from "@/constants";
 import { ICategoriesWithNodes, INodeCreateElement, INodeTypesState, IResourceLocatorReqParams } from "@/Interface";
-import { getCategoriesWithNodes, getCategorizedList } from "@/stores/nodeTypesHelpers";
 import { addHeaders, addNodeTranslation } from "@/plugins/i18n";
-import { omit } from "@/utils";
+import { omit, getCategoriesWithNodes, getCategorizedList } from "@/utils";
 import { ILoadOptions, INodeCredentials, INodeListSearchResult, INodeParameters, INodePropertyOptions, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { defineStore } from "pinia";
 import Vue from "vue";
@@ -121,7 +120,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 		},
 		async getNodeTypes(): Promise<void> {
 			const rootStore = useRootStore();
-			const nodeTypes = await getNodeTypes(rootStore.getRestApiContext);
+			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
 			}

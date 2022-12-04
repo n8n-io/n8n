@@ -10,11 +10,10 @@ import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } f
 export async function uprocApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
 		method: method as IHttpRequestMethods,

@@ -24,13 +24,13 @@ module.exports = {
 
 	overrides: [
 		{
-			files: ['src/**/*.stories.{js,ts}'],
+			files: ['src/**/*.stories.ts'],
 			rules: {
 				'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
 			},
 		},
 		{
-			files: ['src/**/*.stories.{js,ts}', 'src/**/*.vue', 'src/**/*.spec.ts'],
+			files: ['src/**/*.stories.ts', 'src/**/*.vue', 'src/**/*.spec.ts'],
 			rules: {
 				'@typescript-eslint/naming-convention': [
 					'warn',

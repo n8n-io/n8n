@@ -159,18 +159,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this);
+				return getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this, 'camera');
+				return getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantServices.call(this);
+				return getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return await getHomeAssistantServices.call(this, currentDomain);
+					return getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}
@@ -182,8 +182,8 @@ export class HomeAssistant implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {
@@ -207,7 +207,7 @@ export class HomeAssistant implements INodeType {
 							'/services',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'call') {
@@ -247,7 +247,7 @@ export class HomeAssistant implements INodeType {
 							'/states',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
@@ -290,7 +290,7 @@ export class HomeAssistant implements INodeType {
 							'/events',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'create') {
@@ -326,7 +326,7 @@ export class HomeAssistant implements INodeType {
 							};
 						}
 					} else if (operation === 'getLogbookEntries') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/logbook';
 
 						if (Object.entries(additionalFields).length) {
@@ -356,7 +356,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'history') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/history/period';
 
 						if (Object.entries(additionalFields).length) {
@@ -385,7 +385,7 @@ export class HomeAssistant implements INodeType {
 							qs,
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}

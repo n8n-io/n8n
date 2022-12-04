@@ -129,6 +129,7 @@ export function trimLeadingEmptyRows(
 }
 
 export function removeEmptyColumns(data: SheetRangeData) {
+	if (!data || data.length === 0) return [];
 	const returnData: SheetRangeData = [];
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
@@ -138,7 +139,7 @@ export function removeEmptyColumns(data: SheetRangeData) {
 			returnData.push(column);
 		}
 	}
-	return returnData[0].map((_, i) => returnData.map((row) => row[i] || ''));
+	return (returnData[0] || []).map((_, i) => returnData.map((row) => row[i] || ''));
 }
 
 export function prepareSheetData(
@@ -176,16 +177,14 @@ export function prepareSheetData(
 
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
 	if (options.rangeDefinition === 'specifyRangeA1') {
-		return options.range ? `${sheetName}!${options.range as string}` : sheetName;
+		return options.range ? `${sheetName}!${options.range}` : sheetName;
 	}
 	return sheetName;
 }
 
 export async function getExistingSheetNames(sheet: GoogleSheet) {
 	const { sheets } = await sheet.spreadsheetGetSheets();
-	return ((sheets as IDataObject[]) || []).map(
-		(sheet) => ((sheet.properties as IDataObject) || {}).title,
-	);
+	return ((sheets as IDataObject[]) || []).map((entry) => (entry.properties as IDataObject)?.title);
 }
 
 export function mapFields(this: IExecuteFunctions, inputSize: number) {
@@ -212,7 +211,7 @@ export async function autoMapInputData(
 ) {
 	const returnData: IDataObject[] = [];
 	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
-	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+	const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 	const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
 
 	let headerRow = 1;
@@ -241,7 +240,7 @@ export async function autoMapInputData(
 
 		items.forEach((item) => {
 			Object.keys(item.json).forEach((key) => {
-				if (key !== ROW_NUMBER && columnNames.includes(key) === false) {
+				if (key !== ROW_NUMBER && !columnNames.includes(key)) {
 					newColumns.add(key);
 				}
 			});
@@ -267,7 +266,7 @@ export async function autoMapInputData(
 	if (handlingExtraData === 'error') {
 		items.forEach((item, itemIndex) => {
 			Object.keys(item.json).forEach((key) => {
-				if (columnNames.includes(key) === false) {
+				if (!columnNames.includes(key)) {
 					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
 						itemIndex,
 						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
@@ -284,8 +283,8 @@ export async function autoMapInputData(
 export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
 	const returnData = [...data];
 	returnData.sort((a, b) => {
-		const aName = (a.name as string).toLowerCase();
-		const bName = (b.name as string).toLowerCase();
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
 		if (aName < bName) {
 			return -1;
 		}

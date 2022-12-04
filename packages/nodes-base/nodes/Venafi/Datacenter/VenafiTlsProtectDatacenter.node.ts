@@ -59,8 +59,8 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'certificate') {
@@ -69,7 +69,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 
 						const subject = this.getNodeParameter('Subject', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							PolicyDN: policyDN,
@@ -108,8 +108,8 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					if (operation === 'download') {
 						const certificateDn = this.getNodeParameter('certificateDn', i) as string;
 						const includePrivateKey = this.getNodeParameter('includePrivateKey', i) as boolean;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							CertificateDN: certificateDn,
@@ -159,7 +159,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					if (operation === 'getMany') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.fields) {
 							qs.OptionalFields = (options.fields as string[]).join(',');
@@ -175,7 +175,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.Limit = this.getNodeParameter('limit', i) as number;
+							qs.Limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
@@ -191,7 +191,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					if (operation === 'renew') {
 						const certificateDN = this.getNodeParameter('certificateDN', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							CertificateDN: certificateDN,
@@ -213,7 +213,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					if (operation === 'get') {
 						const policy = this.getNodeParameter('policyDn', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							PolicyDN: policy,

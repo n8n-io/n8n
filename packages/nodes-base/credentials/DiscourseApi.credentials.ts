@@ -8,8 +8,11 @@ import {
 
 export class DiscourseApi implements ICredentialType {
 	name = 'discourseApi';
+
 	displayName = 'Discourse API';
+
 	documentationUrl = 'discourse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

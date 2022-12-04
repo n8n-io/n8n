@@ -4,7 +4,7 @@
 		:title="$locale.baseText('activationModal.workflowActivated')"
 		width="460px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div>
 				<n8n-text>{{ triggerContent }}</n8n-text>
 			</div>
@@ -24,7 +24,7 @@
 		</template>
 
 
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.dontShowAgain') }}</el-checkbox>
 				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />
@@ -38,8 +38,7 @@ import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

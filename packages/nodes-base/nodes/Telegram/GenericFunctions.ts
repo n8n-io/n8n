@@ -65,10 +65,10 @@ export interface IMarkupReplyKeyboardRemove {
  */
 export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
 	// Add the additional fields
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index) as string;
+	const operation = this.getNodeParameter('operation', index);
 
 	// Add the reply markup
 	let replyMarkupOption = '';
@@ -146,7 +146,6 @@ export async function apiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 

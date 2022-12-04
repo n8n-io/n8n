@@ -181,11 +181,11 @@ export function findMatches(
 		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
-				valueToCompare = entry.json[matchCase.field1 as string];
+				valueToCompare = entry.json[matchCase.field1];
 			} else {
-				valueToCompare = get(entry.json, matchCase.field1 as string);
+				valueToCompare = get(entry.json, matchCase.field1);
 			}
-			lookup[matchCase.field2 as string] = valueToCompare;
+			lookup[matchCase.field2] = valueToCompare;
 		});
 
 		for (const fieldValue of Object.values(lookup)) {

@@ -9,39 +9,43 @@
 			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon" />
 			</div>
-			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
-				<el-dropdown-item
-					v-for="item in items"
-					:key="item.id"
-					:command="item.id"
-					:disabled="item.disabled"
-					:divided="item.divided"
-				>
-					<div
-						:class="{
-							[$style.itemContainer]: true,
-							[$style.hasCustomStyling]: item.customClass !== undefined,
-							[item.customClass]: item.customClass !== undefined,
-						}"
+			<template #dropdown>
+				<el-dropdown-menu :class="$style.userActionsMenu">
+					<el-dropdown-item
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
 					>
-						<span v-if="item.icon" :class="$style.icon">
-							<n8n-icon :icon="item.icon" :size="item.iconSize" />
-						</span>
-						<span :class="$style.label">
-							{{ item.label }}
-						</span>
-					</div>
-				</el-dropdown-item>
-			</el-dropdown-menu>
+						<div
+							:class="{
+								[$style.itemContainer]: true,
+								[$style.hasCustomStyling]: item.customClass !== undefined,
+								[item.customClass]: item.customClass !== undefined,
+							}"
+						>
+							<span v-if="item.icon" :class="$style.icon">
+								<n8n-icon :icon="item.icon" :size="iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+						</div>
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>
 
 <script lang="ts">
 import Vue, { PropType } from 'vue';
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
+import {
+	Dropdown as ElDropdown,
+	DropdownMenu as ElDropdownMenu,
+	DropdownItem as ElDropdownItem,
+} from 'element-ui';
 import N8nIcon from '../N8nIcon';
 
 interface IActionDropdownItem {
@@ -62,9 +66,9 @@ interface IActionDropdownItem {
 export default Vue.extend({
 	name: 'n8n-action-dropdown',
 	components: {
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
 	},
 	props: {

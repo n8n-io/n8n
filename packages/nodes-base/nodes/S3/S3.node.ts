@@ -84,8 +84,8 @@ export class S3 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const headers: IDataObject = {};
@@ -101,7 +101,7 @@ export class S3 implements INodeType {
 						}
 
 						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
 							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
 						}
@@ -124,7 +124,7 @@ export class S3 implements INodeType {
 						if (additionalFields.grantWriteAcp) {
 							headers['x-amz-grant-write-acp'] = '';
 						}
-						let region = credentials!.region as string;
+						let region = credentials.region as string;
 
 						if (additionalFields.region) {
 							region = additionalFields.region as string;
@@ -174,7 +174,7 @@ export class S3 implements INodeType {
 								'',
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
@@ -193,10 +193,10 @@ export class S3 implements INodeType {
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 						if (additionalFields.prefix) {
-							qs['prefix'] = additionalFields.prefix as string;
+							qs.prefix = additionalFields.prefix as string;
 						}
 
 						if (additionalFields.encodingType) {
@@ -204,7 +204,7 @@ export class S3 implements INodeType {
 						}
 
 						if (additionalFields.delmiter) {
-							qs['delimiter'] = additionalFields.delmiter as string;
+							qs.delimiter = additionalFields.delmiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -241,7 +241,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+							qs['max-keys'] = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAP.call(
 								this,
 								bucketName,
@@ -273,7 +273,7 @@ export class S3 implements INodeType {
 					if (operation === 'create') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const folderName = this.getNodeParameter('folderName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let path = `/${folderName}/`;
 
 						if (additionalFields.requesterPays) {
@@ -293,9 +293,19 @@ export class S3 implements INodeType {
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'PUT',
+							path,
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -390,10 +400,10 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
@@ -422,7 +432,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -458,7 +468,7 @@ export class S3 implements INodeType {
 					if (operation === 'copy') {
 						const sourcePath = this.getNodeParameter('sourcePath', i) as string;
 						const destinationPath = this.getNodeParameter('destinationPath', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						headers['x-amz-copy-source'] = sourcePath;
 
@@ -635,7 +645,7 @@ export class S3 implements INodeType {
 
 						const fileKey = this.getNodeParameter('fileKey', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.versionId) {
 							qs.versionId = options.versionId as string;
@@ -660,7 +670,7 @@ export class S3 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -670,17 +680,17 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
 							qs['fetch-owner'] = options.fetchOwner as string;
 						}
 
-						qs['delimiter'] = '/';
+						qs.delimiter = '/';
 
 						qs['list-type'] = 2;
 
@@ -704,7 +714,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -738,8 +748,8 @@ export class S3 implements INodeType {
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
 						let path = '/';
@@ -882,7 +892,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -895,7 +905,7 @@ export class S3 implements INodeType {
 						items[i].json = { error: error.message };
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({error: error.message}),
+							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

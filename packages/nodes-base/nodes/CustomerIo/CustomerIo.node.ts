@@ -76,8 +76,8 @@ export class CustomerIo implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const returnData: IDataObject[] = [];
 		const items = this.getInputData();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const body: IDataObject = {};
 
 		let responseData;
@@ -121,7 +121,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const period = this.getNodeParameter('period', i) as string;
 							let endpoint = `/campaigns/${campaignId}/metrics`;
 
@@ -168,10 +168,10 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.customProperties) {
-								const data: any = {}; // tslint:disable-line:no-any
+								const data: any = {};
 								//@ts-ignore
 								additionalFields.customProperties.customProperty.map((property) => {
 									data[property.key] = property.value;
@@ -237,8 +237,8 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-							const data: any = {}; // tslint:disable-line:no-any
+							const additionalFields = this.getNodeParameter('additionalFields', i);
+							const data: any = {};
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore
@@ -286,8 +286,8 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-							const data: any = {}; // tslint:disable-line:no-any
+							const additionalFields = this.getNodeParameter('additionalFields', i);
+							const data: any = {};
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore

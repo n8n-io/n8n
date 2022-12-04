@@ -7,7 +7,7 @@
 		width="460px"
 		:eventBus="modalBus"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-form-inputs
 				:inputs="config"
 				:eventBus="formBus"
@@ -16,7 +16,7 @@
 				@submit="onSubmit"
 			/>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button :loading="loading" :label="$locale.baseText('auth.changePassword')" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
@@ -26,7 +26,7 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs } from "@/Interface";

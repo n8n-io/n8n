@@ -8,7 +8,7 @@
 		:beforeClose="onModalClose"
 		:showClose="!loading"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
@@ -66,7 +66,7 @@
 				</el-checkbox>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="packageName === '' || loading"
@@ -91,7 +91,7 @@ import {
 	COMMUNITY_NODES_RISKS_DOCS_URL,
 } from '../constants';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 

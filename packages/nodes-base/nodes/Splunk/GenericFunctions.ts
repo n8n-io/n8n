@@ -48,7 +48,7 @@ export async function splunkApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options).then(parseXml);
+		return this.helpers.request!(options).then(parseXml);
 	} catch (error) {
 		if (error?.cause?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
@@ -69,7 +69,7 @@ export async function splunkApiRequest(
 //                 utils
 // ----------------------------------------
 
-export function parseXml(xml: string) {
+export async function parseXml(xml: string) {
 	return new Promise((resolve, reject) => {
 		parseString(xml, { explicitArray: false }, (error, result) => {
 			error ? reject(error) : resolve(result);
@@ -216,9 +216,7 @@ function compactEntryContent(splunkObject: any): any {
  * Set count of entries to retrieve.
  */
 export function setCount(this: IExecuteFunctions, qs: IDataObject) {
-	qs.count = this.getNodeParameter('returnAll', 0)
-		? 0
-		: (this.getNodeParameter('limit', 0) as number);
+	qs.count = this.getNodeParameter('returnAll', 0) ? 0 : this.getNodeParameter('limit', 0);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {

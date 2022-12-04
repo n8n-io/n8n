@@ -781,7 +781,7 @@ export class Spotify implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		// For Post
-		let body: IDataObject;
+		const body: IDataObject = {};
 		// For Query string
 		let qs: IDataObject;
 
@@ -791,13 +791,12 @@ export class Spotify implements INodeType {
 		let propertyName = '';
 		let responseData;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// Set initial values
 		requestMethod = 'GET';
 		endpoint = '';
-		body = {};
 		qs = {};
 		returnAll = false;
 
@@ -826,7 +825,7 @@ export class Spotify implements INodeType {
 						propertyName = 'items';
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs = {
 								limit,
@@ -927,7 +926,7 @@ export class Spotify implements INodeType {
 						requestMethod = 'GET';
 						propertyName = 'albums.items';
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -956,7 +955,7 @@ export class Spotify implements INodeType {
 						propertyName = 'items';
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs = {
 								limit,
@@ -975,7 +974,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -983,8 +982,8 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 							responseData = responseData.albums.items;
@@ -1007,7 +1006,7 @@ export class Spotify implements INodeType {
 						propertyName = 'items';
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs = {
 								limit,
@@ -1050,7 +1049,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1059,8 +1058,8 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 							responseData = responseData.artists.items;
@@ -1107,7 +1106,7 @@ export class Spotify implements INodeType {
 							propertyName = 'items';
 
 							if (!returnAll) {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 
 								qs = {
 									limit,
@@ -1127,7 +1126,7 @@ export class Spotify implements INodeType {
 							requestMethod = 'POST';
 
 							const trackId = this.getNodeParameter('trackID', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							qs = {
 								uris: trackId,
@@ -1151,7 +1150,7 @@ export class Spotify implements INodeType {
 						propertyName = 'items';
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs = {
 								limit,
@@ -1166,7 +1165,7 @@ export class Spotify implements INodeType {
 
 						body.name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -1182,7 +1181,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1191,8 +1190,8 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 							responseData = responseData.playlists.items;
@@ -1224,7 +1223,7 @@ export class Spotify implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 						const q = this.getNodeParameter('query', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						qs = {
 							q,
@@ -1233,8 +1232,8 @@ export class Spotify implements INodeType {
 							...filters,
 						};
 
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await spotifyApiRequest.call(this, requestMethod, endpoint, body, qs);
 							responseData = responseData.tracks.items;
@@ -1255,7 +1254,7 @@ export class Spotify implements INodeType {
 						propertyName = 'items';
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs = {
 								limit,
@@ -1281,7 +1280,7 @@ export class Spotify implements INodeType {
 						};
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs = {
 								type: 'artist',
 								limit,

@@ -8,7 +8,7 @@
 		width="70%"
 		height="80%"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
@@ -20,6 +20,7 @@
 						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
+						data-test-id="credential-name"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -32,6 +33,7 @@
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
+						data-test-id="credential-delete-button"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
@@ -41,12 +43,13 @@
 							? $locale.baseText('credentialEdit.credentialEdit.testing')
 							: $locale.baseText('credentialEdit.credentialEdit.saving')"
 						@click="saveCredential"
+						data-test-id="credential-save-button"
 					/>
 				</div>
 			</div>
 			<hr />
 		</template>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
@@ -127,8 +130,8 @@ import {
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { showMessage } from '../mixins/showMessage';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -149,7 +152,7 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
-import { isValidCredentialResponse } from '@/typeGuards';
+import { isValidCredentialResponse } from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -231,7 +234,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
-				if (!this.credentialData.hasOwnProperty(property.name)) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
 					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
@@ -516,7 +522,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				);
 			}
 
-			// The properties defined on the parent credentials take presidence
+			// The properties defined on the parent credentials take precedence
 			NodeHelpers.mergeNodeProperties(
 				combineProperties,
 				credentialTypeData.properties,

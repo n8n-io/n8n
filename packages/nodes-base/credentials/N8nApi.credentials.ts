@@ -7,8 +7,11 @@ import {
 
 export class N8nApi implements ICredentialType {
 	name = 'n8nApi';
+
 	displayName = 'n8n API';
+
 	documentationUrl = 'n8nApi';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -27,6 +30,7 @@ export class N8nApi implements ICredentialType {
 			description: 'The API URL of the n8n instance',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -35,6 +39,7 @@ export class N8nApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.baseUrl }}',

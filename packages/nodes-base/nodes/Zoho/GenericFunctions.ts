@@ -104,11 +104,11 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

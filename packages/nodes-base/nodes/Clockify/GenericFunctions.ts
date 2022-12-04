@@ -8,12 +8,11 @@ export async function clockifyApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';
 
@@ -28,17 +27,16 @@ export async function clockifyApiRequest(
 		json: true,
 		useQuerystring: true,
 	};
-	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
 }
 
 export async function clockifyApiRequestAllItems(
 	this: IExecuteFunctions | IPollFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

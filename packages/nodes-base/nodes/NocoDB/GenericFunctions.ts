@@ -30,7 +30,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	const credentials = await this.getCredentials(authenticationMethod);
@@ -60,7 +59,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -75,9 +74,8 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const version = this.getNode().typeVersion as number;
+	const version = this.getNode().typeVersion;
 
 	if (query === undefined) {
 		query = {};
@@ -110,8 +108,8 @@ export async function downloadRecordAttachments(
 		element.json = record as unknown as IDataObject;
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
-				for (const [index, attachment] of (
-					jsonParse(record[fieldName] as string) as IAttachment[]
+				for (const [index, attachment] of jsonParse<IAttachment[]>(
+					record[fieldName] as string,
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

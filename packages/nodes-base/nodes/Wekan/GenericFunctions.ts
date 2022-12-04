@@ -10,7 +10,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('wekanApi');
 
@@ -27,5 +26,5 @@ export async function apiRequest(
 		json: true,
 	};
 
-	return await this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
 }

@@ -135,8 +135,8 @@ export class GetResponse implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -146,7 +146,7 @@ export class GetResponse implements INodeType {
 
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -162,9 +162,9 @@ export class GetResponse implements INodeType {
 								.customFieldValues as IDataObject[];
 							if (customFieldValues) {
 								body.customFieldValues = customFieldValues;
-								for (let i = 0; i < customFieldValues.length; i++) {
-									if (!Array.isArray(customFieldValues[i].value)) {
-										customFieldValues[i].value = [customFieldValues[i].value];
+								for (let index = 0; index < customFieldValues.length; index++) {
+									if (!Array.isArray(customFieldValues[index].value)) {
+										customFieldValues[index].value = [customFieldValues[index].value];
 									}
 								}
 								delete body.customFieldsUi;
@@ -179,7 +179,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'delete') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -197,7 +197,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -213,7 +213,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const timezone = this.getTimezone();
 
@@ -248,7 +248,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.exactMatch === true) {
-							qs['additionalFlags'] = 'exactMatch';
+							qs.additionalFlags = 'exactMatch';
 							delete qs.exactMatch;
 						}
 
@@ -261,7 +261,7 @@ export class GetResponse implements INodeType {
 								qs,
 							);
 						} else {
-							qs.perPage = this.getNodeParameter('limit', i) as number;
+							qs.perPage = this.getNodeParameter('limit', i);
 							responseData = await getresponseApiRequest.call(this, 'GET', `/contacts`, {}, qs);
 						}
 					}
@@ -269,7 +269,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 

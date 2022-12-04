@@ -1,16 +1,18 @@
 <template>
 	<Modal
 		width="460px"
-		:title="$locale.baseText(fakeDoor.actionBoxTitle, { interpolate: { name: workflow.name } })"
+		:title="$locale.baseText(dynamicTranslations.workflows.shareModal.title, { interpolate: { name: workflow.name } })"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
+		:beforeClose="onCloseModal"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
+						class="mb-s"
 						size="large"
 						:users="usersList"
 						:currentUserId="currentUser.id"
@@ -29,7 +31,7 @@
 						:readonly="!workflowPermissions.updateSharing"
 						@delete="onRemoveSharee"
 					>
-						<template v-slot:actions="{ user }">
+						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
 								value="editor"
@@ -50,14 +52,16 @@
 					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
-							{{ $locale.baseText(fakeDoor.actionBoxDescription) }}
+							<i18n :path="dynamicTranslations.workflows.sharing.unavailable.description" tag="span">
+								<template #action />
+							</i18n>
 						</n8n-text>
 					</template>
 				</enterprise-edition>
 			</div>
 		</template>
 
-		<template slot="footer">
+		<template #footer>
 			<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
 				<n8n-text
 					v-show="isDirty"
@@ -78,12 +82,12 @@
 				</n8n-button>
 
 				<template #fallback>
-					<n8n-link :to="fakeDoor.linkURL">
+					<n8n-link :to="dynamicTranslations.workflows.sharing.unavailable.linkURL">
 						<n8n-button
 							:loading="loading"
 							size="medium"
 						>
-							{{ $locale.baseText(fakeDoor.actionBoxButtonLabel) }}
+							{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
 						</n8n-button>
 					</n8n-link>
 				</template>
@@ -97,14 +101,13 @@ import Vue from 'vue';
 import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
-	FAKE_DOOR_FEATURES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import {IFakeDoor, IUser, IWorkflowDb} from "@/Interface";
+import {IUser, IWorkflowDb, NestedRecord} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import {nodeViewEventBus} from "@/event-bus/node-view-event-bus";
 import {mapStores} from "pinia";
 import {useSettingsStore} from "@/stores/settings";
@@ -120,14 +123,23 @@ export default mixins(
 	components: {
 		Modal,
 	},
+	props: {
+		data: {
+			type: Object,
+			default: () => ({}),
+		},
+	},
 	data() {
 		const workflowsStore = useWorkflowsStore();
+		const workflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+			? workflowsStore.workflow
+			: workflowsStore.workflowsById[this.data.id];
 
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: false,
 			modalBus: new Vue(),
-			sharedWith: [...(workflowsStore.workflow.sharedWith || [])] as Array<Partial<IUser>>,
+			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -150,7 +162,9 @@ export default mixins(
 			] as Array<Partial<IUser>>).concat(this.sharedWith || []);
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+				? this.workflowsStore.workflow
+				: this.workflowsStore.workflowsById[this.data.id];
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -161,8 +175,8 @@ export default mixins(
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) === true;
 		},
-		fakeDoor(): IFakeDoor | undefined {
-			return this.uiStore.getFakeDoorById(FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
+		dynamicTranslations(): NestedRecord<string> {
+			return this.uiStore.dynamicTranslations;
 		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
@@ -193,9 +207,20 @@ export default mixins(
 				});
 			};
 
-			const workflowId = await saveWorkflowPromise();
-			await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
-			this.loading = false;
+			try {
+				const workflowId = await saveWorkflowPromise();
+				await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
+
+				this.$showMessage({
+					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
+			} finally {
+				this.modalBus.$emit('close');
+				this.loading = false;
+			}
 		},
 		async onAddSharee(userId: string) {
 			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId)!;
@@ -221,7 +246,7 @@ export default mixins(
 			}
 
 			if (confirm) {
-				this.sharedWith = this.sharedWith.filter((sharee: IUser) => {
+				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
 					return sharee.id !== user.id;
 				});
 			}
@@ -230,6 +255,25 @@ export default mixins(
 			if (action === 'remove') {
 				this.onRemoveSharee(user.id);
 			}
+		},
+		async onCloseModal() {
+			if (this.isDirty) {
+				const shouldSave = await this.confirmMessage(
+					this.$locale.baseText(
+						'workflows.shareModal.saveBeforeClose.message',
+					),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.title'),
+					'warning',
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.confirmButtonText'),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.cancelButtonText'),
+				);
+
+				if (shouldSave) {
+					return await this.onSave();
+				}
+			}
+
+			return true;
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();
@@ -245,7 +289,6 @@ export default mixins(
 
 <style module lang="scss">
 .container > * {
-	margin-bottom: var(--spacing-s);
 	overflow-wrap: break-word;
 }
 

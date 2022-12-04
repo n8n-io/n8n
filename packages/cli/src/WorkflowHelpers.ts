@@ -1,13 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
 import { In } from 'typeorm';
 import {
 	IDataObject,
@@ -25,15 +15,8 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
-import {
-	ICredentialsDb,
-	ICredentialsTypeData,
-	ITransferNodeTypes,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import { ICredentialsDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 
@@ -183,6 +166,7 @@ export async function executeErrorWorkflow(
 
 		if (workflowStartNode === undefined) {
 			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
 			);
 			return;
@@ -231,6 +215,7 @@ export async function executeErrorWorkflow(
 	} catch (error) {
 		ErrorReporter.error(error);
 		Logger.error(
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
 		);
@@ -238,163 +223,7 @@ export async function executeErrorWorkflow(
 }
 
 /**
- * Returns all the defined NodeTypes
- *
- */
-export function getAllNodeTypeData(): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Get the data of all the node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
-		}
-
-		returnData[nodeTypeName] = {
-			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns all the defined CredentialTypes
- *
- */
-export function getAllCredentalsTypeData(): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-
-	// Get the data of all the credential types that they
-	// can be loaded again in the subprocess
-	const returnData: ICredentialsTypeData = {};
-	for (const credentialTypeName of Object.keys(credentialTypes.credentialTypes)) {
-		if (credentialTypes.credentialTypes[credentialTypeName] === undefined) {
-			throw new Error(`The CredentialType "${credentialTypeName}" could not be found!`);
-		}
-
-		returnData[credentialTypeName] = {
-			className: credentialTypes.credentialTypes[credentialTypeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[credentialTypeName].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns the data of the node types that are needed
- * to execute the given nodes
- *
- */
-export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Check which node-types have to be loaded
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const neededNodeTypes = getNeededNodeTypes(nodes);
-
-	// Get all the data of the needed node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of neededNodeTypes) {
-		if (nodeTypes.nodeTypes[nodeTypeName.type] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName.type}" could not be found!`);
-		}
-
-		returnData[nodeTypeName.type] = {
-			className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns the credentials data of the given type and its parent types
- * it extends
- *
- * @param {string} type The credential type to return data off
- */
-export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-	const credentialType = credentialTypes.getByName(type);
-
-	const credentialTypeData: ICredentialsTypeData = {};
-	credentialTypeData[type] = {
-		className: credentialTypes.credentialTypes[type].type.constructor.name,
-		sourcePath: credentialTypes.credentialTypes[type].sourcePath,
-	};
-
-	if (credentialType === undefined || credentialType.extends === undefined) {
-		return credentialTypeData;
-	}
-
-	for (const typeName of credentialType.extends) {
-		if (credentialTypeData[typeName] !== undefined) {
-			continue;
-		}
-
-		credentialTypeData[typeName] = {
-			className: credentialTypes.credentialTypes[typeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[typeName].sourcePath,
-		};
-		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
-	}
-
-	return credentialTypeData;
-}
-
-/**
- * Returns all the credentialTypes which are needed to resolve
- * the given workflow credentials
- *
- * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
- */
-export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
-	const credentialTypeData: ICredentialsTypeData = {};
-
-	for (const node of nodes) {
-		const credentialsUsedByThisNode = node.credentials;
-		if (credentialsUsedByThisNode) {
-			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
-			for (const credentialType of Object.keys(credentialsUsedByThisNode)) {
-				if (credentialTypeData[credentialType] !== undefined) {
-					continue;
-				}
-
-				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
-			}
-		}
-	}
-
-	return credentialTypeData;
-}
-
-/**
- * Returns the names of the NodeTypes which are are needed
- * to execute the gives nodes
- *
- */
-export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
-	// Check which node-types have to be loaded
-	const neededNodeTypes: Array<{ type: string; version: number }> = [];
-	for (const node of nodes) {
-		if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
-			neededNodeTypes.push({ type: node.type, version: node.typeVersion });
-		}
-	}
-
-	return neededNodeTypes;
-}
-
-/**
  * Saves the static data if it changed
- *
  */
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
@@ -402,12 +231,13 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define, @typescript-eslint/no-non-null-assertion
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
@@ -452,7 +282,6 @@ export async function getStaticDataById(workflowId: string | number) {
 
 /**
  * Set node ids if not already set
- *
  */
 export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;

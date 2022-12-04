@@ -19,8 +19,9 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
+		data-test-id="ndv-output-panel"
 	>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.titleSection">
 				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
@@ -46,9 +47,9 @@
 			</div>
 		</template>
 
-		<template v-slot:node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning">
+		<template #node-not-run>
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
 					<br>
@@ -64,7 +65,7 @@
 			</n8n-text>
 		</template>
 
-		<template v-slot:no-output-data>
+		<template #no-output-data>
 			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
@@ -85,7 +86,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/components/mixins/pinData";
+import { pinData } from "@/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

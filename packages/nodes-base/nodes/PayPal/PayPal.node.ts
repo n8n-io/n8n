@@ -135,8 +135,8 @@ export class PayPal implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -146,7 +146,7 @@ export class PayPal implements INodeType {
 						const header: ISenderBatchHeader = {};
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						header.sender_batch_id = senderBatchId;
 						if (additionalFields.emailSubject) {
 							header.email_subject = additionalFields.emailSubject as string;
@@ -191,7 +191,7 @@ export class PayPal implements INodeType {
 					if (operation === 'get') {
 						const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await payPalApiRequestAllItems.call(
 								this,
 								'items',
@@ -201,7 +201,7 @@ export class PayPal implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await payPalApiRequest.call(
 								this,
 								`/payments/payouts/${payoutBatchId}`,

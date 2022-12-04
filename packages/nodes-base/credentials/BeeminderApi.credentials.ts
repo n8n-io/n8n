@@ -7,8 +7,11 @@ import {
 
 export class BeeminderApi implements ICredentialType {
 	name = 'beeminderApi';
+
 	displayName = 'Beeminder API';
+
 	documentationUrl = 'beeminder';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'User',

@@ -49,7 +49,7 @@ export async function getAllItemsViewId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ fromLoadOptions } = { fromLoadOptions: false },
 ) {
-	let resource = this.getNodeParameter('resource', 0) as string;
+	let resource = this.getNodeParameter('resource', 0);
 	let keyword = 'All';
 
 	if (resource === 'account' || fromLoadOptions) {
@@ -83,7 +83,7 @@ export async function freshworksCrmApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	let response: any; // tslint:disable-line: no-any
+	let response: any;
 
 	qs.page = 1;
 
@@ -107,7 +107,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);

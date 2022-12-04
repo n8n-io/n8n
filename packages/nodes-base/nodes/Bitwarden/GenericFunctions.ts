@@ -19,7 +19,6 @@ export async function bitwardenApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const baseUrl = await getBaseUrl.call(this);
 	const options: OptionsWithUri = {
@@ -44,7 +43,7 @@ export async function bitwardenApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -55,7 +54,6 @@ export async function bitwardenApiRequest(
  */
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('bitwardenApi');
 
@@ -103,7 +101,7 @@ export async function handleGetAll(
 	if (returnAll) {
 		return responseData.data;
 	} else {
-		const limit = this.getNodeParameter('limit', i) as number;
+		const limit = this.getNodeParameter('limit', i);
 		return responseData.data.slice(0, limit);
 	}
 }

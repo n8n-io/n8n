@@ -10,7 +10,7 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
