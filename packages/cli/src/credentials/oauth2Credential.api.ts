@@ -425,7 +425,6 @@ function getUri(options: OAuth2Parameters, tokenType: string) {
 
 function getToken(uri: string, incOptions: Object, oAuth2Parameters: OAuth2Parameters) {
 	let self = oAuth2Parameters;
-	console.log('URI', uri, 'IncOptions', incOptions, 'Oauth2 parameter', oAuth2Parameters);
 	let options = Object.assign({}, oAuth2Parameters, incOptions);
 
 	let url = new URL(uri);
@@ -527,7 +526,6 @@ interface ClientOAuth2Token {
 }
 
 function createToken(data: any) {
-	console.log('createToken', data);
 	const token: ClientOAuth2Token = {
 		data: data,
 	};
