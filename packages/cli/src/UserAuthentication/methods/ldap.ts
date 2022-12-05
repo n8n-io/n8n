@@ -7,7 +7,6 @@ import {
 	getLdapUserRole,
 	getUserByEmail,
 	getUserByLdapId,
-	isInstanceOwner,
 	isLdapDisabled,
 	mapLdapAttributesToDb,
 	transformEmailUserToLdapUser,
@@ -16,12 +15,10 @@ import {
 import type { User } from '@db/entities/User';
 
 export const handleLdapLogin = async (
-	email: string,
+	logindId: string,
 	password: string,
 ): Promise<User | undefined> => {
 	if (isLdapDisabled()) return undefined;
-
-	if (await isInstanceOwner(email)) return undefined;
 
 	const ldapConfig = await getLdapConfig();
 
@@ -29,7 +26,12 @@ export const handleLdapLogin = async (
 
 	const { loginIdAttribute, userFilter } = ldapConfig;
 
-	const ldapUser = await findAndAuthenticateLdapUser(email, password, loginIdAttribute, userFilter);
+	const ldapUser = await findAndAuthenticateLdapUser(
+		logindId,
+		password,
+		loginIdAttribute,
+		userFilter,
+	);
 
 	if (!ldapUser) return undefined;
 
