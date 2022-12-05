@@ -70,6 +70,11 @@ export class WorkflowsService {
 
 	/**
 	 * Find the pinned trigger to execute the workflow from, if any.
+	 *
+	 * - In a full execution, select the _first_ pinned trigger.
+	 * - In a partial execution,
+	 *   - select the _first_ pinned trigger that leads to the executed node,
+	 *   - else select the executed pinned trigger.
 	 */
 	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
@@ -87,7 +92,22 @@ export class WorkflowsService {
 
 		const [startNodeName] = startNodes;
 
-		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
+		const parentNames = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: workflow.active,
+			nodeTypes: NodeTypes(),
+		}).getParentNodes(startNodeName);
+
+		let checkNodeName = '';
+
+		if (parentNames.length === 0) {
+			checkNodeName = startNodeName;
+		} else {
+			checkNodeName = parentNames.find((pn) => pn === pinnedTriggers[0].name) as string;
+		}
+
+		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
@@ -202,7 +222,7 @@ export class WorkflowsService {
 
 		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
 			throw new ResponseHelper.BadRequestError(
-				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 			);
 		}
 

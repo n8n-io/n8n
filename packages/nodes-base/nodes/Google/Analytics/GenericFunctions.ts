@@ -8,12 +8,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -47,11 +46,10 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -60,22 +58,19 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		if (body.reportRequests && Array.isArray(body.reportRequests)) {
-			body.reportRequests[0]['pageToken'] = responseData[propertyName][0].nextPageToken;
+			body.reportRequests[0].pageToken = responseData[propertyName][0].nextPageToken;
 		} else {
-			body.pageToken = responseData['nextPageToken'];
+			body.pageToken = responseData.nextPageToken;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
-		(responseData[propertyName] &&
-			responseData[propertyName][0].nextPageToken &&
-			responseData[propertyName][0].nextPageToken !== undefined)
+		(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
+		responseData[propertyName]?.[0].nextPageToken !== undefined
 	);
 
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function simplify(responseData: any | [any]) {
 	const response = [];
 	for (const {
@@ -91,10 +86,10 @@ export function simplify(responseData: any | [any]) {
 			if (dimensions) {
 				for (let i = 0; i < dimensions.length; i++) {
 					data[dimensions[i]] = row.dimensions[i];
-					data['total'] = row.metrics[0].values.join(',');
+					data.total = row.metrics[0].values.join(',');
 				}
 			} else {
-				data['total'] = row.metrics[0].values.join(',');
+				data.total = row.metrics[0].values.join(',');
 			}
 			response.push(data);
 		}
@@ -102,7 +97,6 @@ export function simplify(responseData: any | [any]) {
 	return response;
 }
 
-// tslint:disable-next-line:no-any
 export function merge(responseData: [any]) {
 	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,

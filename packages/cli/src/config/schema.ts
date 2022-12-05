@@ -1013,6 +1013,12 @@ export const schema = {
 			env: 'N8N_LICENSE_ACTIVATION_KEY',
 			doc: 'Activation key to initialize license',
 		},
+		tenantId: {
+			format: Number,
+			default: 1,
+			env: 'N8N_LICENSE_TENANT_ID',
+			doc: 'Tenant id used by the license manager',
+		},
 	},
 
 	eventBus: {

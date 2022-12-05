@@ -14,7 +14,6 @@ export async function disqusApiRequest(
 	uri?: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('disqusApi')) as IDataObject;
 	qs.api_key = credentials.accessToken;
@@ -60,7 +59,6 @@ export async function disqusApiRequestAllItems(
 	uri?: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

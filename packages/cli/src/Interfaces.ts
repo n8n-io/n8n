@@ -15,7 +15,7 @@ import type {
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
-	LoadingDetails,
+	CredentialLoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -60,7 +60,7 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: LoadingDetails;
+	[key: string]: CredentialLoadingDetails;
 }
 
 export interface ICredentialsOverwrite {

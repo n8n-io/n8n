@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class DemioApi implements ICredentialType {
 	name = 'demioApi';
+
 	displayName = 'Demio API';
+
 	documentationUrl = 'demio';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

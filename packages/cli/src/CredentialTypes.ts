@@ -18,6 +18,10 @@ class CredentialTypesClass implements ICredentialTypes {
 		return this.getCredential(credentialType).type;
 	}
 
+	getNodeTypesToTestWith(type: string): string[] {
+		return this.knownCredentials[type]?.nodesToTestWith ?? [];
+	}
+
 	private getCredential(type: string): LoadedClass<ICredentialType> {
 		const loadedCredentials = this.loadedCredentials;
 		if (type in loadedCredentials) {

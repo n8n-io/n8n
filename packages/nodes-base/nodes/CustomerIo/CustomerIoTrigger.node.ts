@@ -213,6 +213,7 @@ export class CustomerIoTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -247,7 +248,6 @@ export class CustomerIoTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let webhook;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const events = this.getNodeParameter('events', []) as string[];
 
@@ -288,7 +288,7 @@ export class CustomerIoTrigger implements INodeType {
 					events: data,
 				};
 
-				webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
+				const webhook = await customerIoApiRequest.call(this, 'POST', endpoint, body, 'beta');
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = webhook.id as string;

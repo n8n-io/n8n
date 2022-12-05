@@ -123,8 +123,8 @@ export class Wordpress implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -282,7 +282,7 @@ export class Wordpress implements INodeType {
 						if (options.status) {
 							qs.status = options.status as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
@@ -404,7 +404,7 @@ export class Wordpress implements INodeType {
 						if (options.who) {
 							qs.who = options.who as string;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);

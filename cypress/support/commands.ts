@@ -52,7 +52,7 @@ Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypre
 
 Cypress.Commands.add(
 	'signin',
-	(email, password) => {
+	({ email, password }) => {
 		const signinPage = new SigninPage();
 		const workflowsPage = new WorkflowsPage();
 
@@ -75,8 +75,7 @@ Cypress.Commands.add(
 		});
 });
 
-// todo rename to setup
-Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
+Cypress.Commands.add('setup', ({ email, firstName, lastName, password }) => {
 	const signupPage = new SignupPage();
 
 	cy.visit(signupPage.url);
@@ -120,3 +119,24 @@ Cypress.Commands.add('skipSetup', () => {
 		});
 	});
 })
+
+Cypress.Commands.add('resetAll', () => {
+	cy.task('reset');
+	Cypress.session.clearAllSavedSessions();
+});
+
+Cypress.Commands.add('setupOwner', (payload) => {
+	cy.task('setup-owner', payload);
+});
+
+Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
+	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
+	cy.wrap(selector).then($destination => {
+		const pasteEvent = Object.assign(new Event('paste', { bubbles: true, cancelable: true }), {
+		clipboardData: {
+			getData: () => pastePayload
+		}
+		});
+		$destination[0].dispatchEvent(pasteEvent);
+	});
+});

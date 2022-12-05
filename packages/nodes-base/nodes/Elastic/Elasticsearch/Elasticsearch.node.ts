@@ -66,7 +66,7 @@ export class Elasticsearch implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const resource = this.getNodeParameter('resource', 0) as 'document' | 'index';
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -184,7 +184,7 @@ export class Elasticsearch implements INodeType {
 						responseData = responseData.map((item: IDataObject) => {
 							return {
 								_id: item._id,
-								...(item._source as {}),
+								...(item._source as IDataObject),
 							};
 						});
 					}
@@ -331,7 +331,7 @@ export class Elasticsearch implements INodeType {
 					// https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-aliases.html
 
 					responseData = await elasticsearchApiRequest.call(this, 'GET', '/_aliases');
-					responseData = Object.keys(responseData).map((i) => ({ indexId: i }));
+					responseData = Object.keys(responseData).map((index) => ({ indexId: index }));
 
 					const returnAll = this.getNodeParameter('returnAll', i);
 

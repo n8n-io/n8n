@@ -7,8 +7,11 @@ import {
 
 export class WufooApi implements ICredentialType {
 	name = 'wufooApi';
+
 	displayName = 'Wufoo API';
+
 	documentationUrl = 'wufoo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

@@ -1,6 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import { pushcutApiRequest } from './GenericFunctions';
 
@@ -108,7 +108,7 @@ export class PushcutTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const body = this.getBodyData() as IDataObject;
+		const body = this.getBodyData();
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(body)],
