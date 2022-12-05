@@ -86,7 +86,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	pinData: ISimplifiedPinData;
 
 	@Column({ length: 36 })
-	hash: string;
+	versionId: string;
 }
 
 /**

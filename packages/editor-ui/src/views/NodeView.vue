@@ -832,7 +832,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash);
+				this.workflowsStore.setWorkflowVersionId(data.versionId);
 
 				if (data.ownedBy) {
 					this.workflowsEEStore.setWorkflowOwnedBy({

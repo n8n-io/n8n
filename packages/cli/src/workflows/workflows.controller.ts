@@ -53,7 +53,7 @@ workflowsController.post(
 
 		Object.assign(newWorkflow, req.body);
 
-		newWorkflow.hash = uuid();
+		newWorkflow.versionId = uuid();
 
 		await validateEntity(newWorkflow);
 

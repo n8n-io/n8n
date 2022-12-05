@@ -153,7 +153,7 @@ export class WorkflowsService {
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes', 'hash'] : fields,
+			select: isSharingEnabled ? [...fields, 'nodes', 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -201,20 +201,24 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
+		if (
+			!forceSave &&
+			workflow.versionId !== '' &&
+			workflow.versionId !== shared.workflow.versionId
+		) {
 			throw new ResponseHelper.BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 			);
 		}
 
-		// Update the workflow's hash
-		workflow.hash = uuid();
+		// Update the workflow's version
+		workflow.versionId = uuid();
 
 		LoggerProxy.verbose(
-			`Updating hash for workflow ${workflowId} for user ${user.id} after saving`,
+			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
 			{
-				previousHash: shared.workflow.hash,
-				newHash: workflow.hash,
+				previousVersionId: shared.workflow.versionId,
+				newVersionId: workflow.versionId,
 			},
 		);
 
@@ -272,7 +276,7 @@ export class WorkflowsService {
 				'settings',
 				'staticData',
 				'pinData',
-				'hash',
+				'versionId',
 			]),
 		);
 

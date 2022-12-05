@@ -264,7 +264,7 @@ export interface IWorkflowData {
 	settings?: IWorkflowSettings;
 	tags?: string[];
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowDataUpdate {
@@ -276,7 +276,7 @@ export interface IWorkflowDataUpdate {
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -313,7 +313,7 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
-	hash: string;
+	versionId: string;
 	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 

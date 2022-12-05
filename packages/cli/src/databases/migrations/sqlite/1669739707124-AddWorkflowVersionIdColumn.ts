@@ -1,32 +1,33 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import config from '@/config';
 import { v4 as uuidv4 } from 'uuid';
 
-export class AddWorkflowHashColumn1669739707126 implements MigrationInterface {
-	name = 'AddWorkflowHashColumn1669739707126';
+export class AddWorkflowVersionIdColumn1669739707124 implements MigrationInterface {
+	name = 'AddWorkflowVersionIdColumn1669739707124';
 
-	async up(queryRunner: QueryRunner): Promise<void> {
+	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
 
-		const tablePrefix = getTablePrefix();
+		const tablePrefix = config.getEnv('database.tablePrefix');
+
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN hash CHAR(36)`,
+			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "versionId" char(36)`,
 		);
 
 		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
 			SELECT id
-			FROM ${tablePrefix}workflow_entity
+			FROM "${tablePrefix}workflow_entity"
 		`);
 
 		workflowIds.map(({ id }) => {
 			const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 				`
-					UPDATE ${tablePrefix}workflow_entity
-					SET hash = :hash
+					UPDATE "${tablePrefix}workflow_entity"
+					SET versionId = :versionId
 					WHERE id = '${id}'
 				`,
-				{ hash: uuidv4() },
+				{ versionId: uuidv4() },
 				{},
 			);
 
@@ -36,11 +37,11 @@ export class AddWorkflowHashColumn1669739707126 implements MigrationInterface {
 		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
+	async down(queryRunner: QueryRunner) {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN hash`,
+			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN "versionId"`,
 		);
 	}
 }
