@@ -2442,7 +2442,7 @@ export default mixins(
 						);
 					}
 
-					await this.addNodes([newNodeData]);
+					await this.addNodes([newNodeData], [], true);
 
 					const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
 					if (pinData) {
@@ -2694,6 +2694,7 @@ export default mixins(
 					}
 
 					setTimeout(() => {
+						// TODO: Make timeout based on waitForConnection
 						this.historyStore.stopRecordingUndo();
 					}, 100);
 				}, 0); // allow other events to finish like drag stop

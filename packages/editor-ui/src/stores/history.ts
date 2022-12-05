@@ -10,6 +10,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		undoStack: [],
 		redoStack: [],
 		currentBulkAction: null,
+		// TODO: rename to bulkRedoInProgress
 		bulkInProgress: false,
 	}),
 	actions: {
