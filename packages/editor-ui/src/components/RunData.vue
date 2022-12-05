@@ -43,6 +43,7 @@
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
+					data-test-id="ndv-run-data-display-mode"
 				/>
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnly"
@@ -133,6 +134,7 @@
 		<div
 			:class="$style['data-container']"
 			ref="dataContainer"
+			data-test-id="ndv-data-container"
 		>
 			<div v-if="isExecuting" :class="$style.center">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
@@ -237,7 +239,6 @@
 				class="ph-no-capture"
 				:paneType="paneType"
 				:editMode="editMode"
-				:currentOutputIndex="currentOutputIndex"
 				:sessioId="sessionId"
 				:node="node"
 				:inputData="inputData"

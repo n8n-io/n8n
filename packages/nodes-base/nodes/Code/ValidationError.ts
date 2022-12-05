@@ -1,7 +1,10 @@
 export class ValidationError extends Error {
 	description = '';
+
 	itemIndex: number | undefined = undefined;
+
 	context: { itemIndex: number } | undefined = undefined;
+
 	lineNumber: number | undefined = undefined;
 
 	constructor({

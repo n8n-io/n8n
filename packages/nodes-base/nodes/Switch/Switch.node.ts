@@ -526,7 +526,6 @@ export class Switch implements INodeType {
 		let mode: string;
 		let outputIndex: number;
 		let ruleData: INodeParameters;
-		let value1: NodeParameterValue, value2: NodeParameterValue;
 
 		// The compare operations
 		const compareOperationFunctions: {
@@ -637,7 +636,7 @@ export class Switch implements INodeType {
 
 					const dataType = this.getNodeParameter('dataType', 0) as string;
 
-					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
+					let value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 					if (dataType === 'dateTime') {
 						value1 = convertDateTime(value1);
 					}
@@ -649,7 +648,7 @@ export class Switch implements INodeType {
 					) as INodeParameters[]) {
 						// Check if the values passes
 
-						value2 = ruleData.value2 as NodeParameterValue;
+						let value2 = ruleData.value2 as NodeParameterValue;
 						if (dataType === 'dateTime') {
 							value2 = convertDateTime(value2);
 						}
@@ -659,7 +658,7 @@ export class Switch implements INodeType {
 							value2,
 						);
 
-						if (compareOperationResult === true) {
+						if (compareOperationResult) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
 							returnData[ruleData.output as number].push(item);

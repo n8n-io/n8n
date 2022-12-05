@@ -3,6 +3,7 @@
 	<div
 		class="node-view-root"
 		id="node-view-root"
+		data-test-id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
@@ -296,6 +297,7 @@ export default mixins(
 							this.resetWorkspace();
 							this.uiStore.stateIsDirty = previousDirtyState;
 						}
+						this.loadCredentials();
 						this.initView().then(() => {
 							this.stopLoading();
 							if (this.blankRedirect) {

@@ -8,12 +8,11 @@ export async function autopilotApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('autopilotApi')) as IDataObject;
 
@@ -40,7 +39,7 @@ export async function autopilotApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -51,10 +50,9 @@ export async function autopilotApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
@@ -66,7 +64,7 @@ export async function autopilotApiRequestAllItems(
 		responseData = await autopilotApiRequest.call(this, method, endpoint, body, query);
 		endpoint = `${base}/${responseData.bookmark}`;
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (query.limit && returnData.length >= query.limit && returnAll === false) {
+		if (query.limit && returnData.length >= query.limit && !returnAll) {
 			return returnData;
 		}
 	} while (responseData.bookmark !== undefined);

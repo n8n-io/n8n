@@ -695,8 +695,8 @@ export class Dropbox implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod = '';
@@ -759,7 +759,7 @@ export class Dropbox implements INodeType {
 
 						options = { json: false };
 
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -814,7 +814,7 @@ export class Dropbox implements INodeType {
 							limit: 1000,
 						};
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							body.limit = limit;
 						}
@@ -851,7 +851,7 @@ export class Dropbox implements INodeType {
 
 						Object.assign(body.options!, filters);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							Object.assign(body.options!, { max_results: limit });
 						}
@@ -909,7 +909,7 @@ export class Dropbox implements INodeType {
 
 				let responseData;
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await dropboxpiRequestAllItems.call(
 						this,
 						property,
@@ -977,7 +977,7 @@ export class Dropbox implements INodeType {
 						is_downloadable: 'isDownloadable',
 					};
 
-					if (returnAll === false) {
+					if (!returnAll) {
 						responseData = responseData.entries;
 					}
 
@@ -999,10 +999,10 @@ export class Dropbox implements INodeType {
 					}
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
-					if (returnAll === true) {
-						data = simple === true ? simplify(responseData) : responseData;
+					if (returnAll) {
+						data = simple ? simplify(responseData) : responseData;
 					} else {
-						data = simple === true ? simplify(responseData[property]) : responseData[property];
+						data = simple ? simplify(responseData[property]) : responseData[property];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(

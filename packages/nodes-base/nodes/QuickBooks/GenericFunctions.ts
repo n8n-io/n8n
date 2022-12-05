@@ -28,7 +28,6 @@ export async function quickBooksApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
@@ -70,7 +69,7 @@ export async function quickBooksApiRequest(
 	}
 
 	if (isDownload) {
-		options.headers!['Accept'] = 'application/pdf';
+		options.headers!.Accept = 'application/pdf';
 	}
 
 	if (resource === 'invoice' && operation === 'send') {
@@ -85,7 +84,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		return this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -101,7 +100,6 @@ export async function quickBooksApiRequestAllItems(
 	qs: IDataObject,
 	body: IDataObject,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 	let startPosition = 1;
@@ -141,7 +139,6 @@ async function getCount(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
 
@@ -156,7 +153,6 @@ export async function handleListing(
 	i: number,
 	endpoint: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let responseData;
 
@@ -172,7 +168,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
@@ -232,7 +228,7 @@ export async function handleBinaryData(
 	resource: string,
 	resourceId: string,
 ) {
-	const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+	const binaryProperty = this.getNodeParameter('binaryProperty', i);
 	const fileName = this.getNodeParameter('fileName', i) as string;
 	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
@@ -272,6 +268,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 
 	if (resource === 'preferences') {
 		const {
+			// eslint-disable-next-line @typescript-eslint/no-shadow
 			SalesFormsPrefs: { CustomField },
 		} = resourceItems[0];
 		const customFields = CustomField[1].CustomField;
@@ -402,7 +399,7 @@ export function populateFields(
 				const length = (body.CustomField as CustomField[]).length;
 				for (let i = 0; i < length; i++) {
 					//@ts-ignore
-					body.CustomField[i]['Type'] = 'StringType';
+					body.CustomField[i].Type = 'StringType';
 				}
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {

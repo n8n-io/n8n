@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -159,8 +158,8 @@ export class Twist implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -250,14 +249,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -359,14 +358,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -438,14 +437,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -563,14 +562,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -647,14 +646,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
@@ -755,14 +754,14 @@ export class Twist implements INodeType {
 						}
 
 						if (body.binaryProperties) {
-							const binaryProperties = (body.binaryProperties as string).split(',') as string[];
+							const binaryProperties = (body.binaryProperties as string).split(',');
 
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
 								const item = items[i].binary as IBinaryKeyData;
 
-								const binaryData = item[binaryProperty] as IBinaryData;
+								const binaryData = item[binaryProperty];
 
 								if (binaryData === undefined) {
 									throw new NodeOperationError(

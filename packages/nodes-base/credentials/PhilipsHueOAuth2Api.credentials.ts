@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PhilipsHueOAuth2Api implements ICredentialType {
 	name = 'philipsHueOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'PhilipHue OAuth2 API';
+
 	documentationUrl = 'philipsHue';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

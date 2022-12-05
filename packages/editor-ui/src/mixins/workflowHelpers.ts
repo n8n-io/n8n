@@ -24,7 +24,7 @@ import {
 	IPinData,
 	IRunData,
 	IRunExecutionData,
-	IWorfklowIssues,
+	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
 	Workflow,
 	NodeHelpers,
@@ -271,7 +271,7 @@ export const workflowHelpers = mixins(
 				let node: INode;
 				let nodeType: INodeType | undefined;
 				let nodeIssues: INodeIssues | null = null;
-				const workflowIssues: IWorfklowIssues = {};
+				const workflowIssues: IWorkflowIssues = {};
 
 				let checkNodes = Object.keys(workflow.nodes);
 				if (lastNodeName) {
@@ -335,10 +335,6 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | IVersionedNodeType> => {
-						// Does not get used in Workflow so no need to return it
-						return [];
-					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
 						const nodeTypeDescription = this.nodeTypesStore.getNodeType(nodeType, version);
 
@@ -707,7 +703,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
+			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true, forceSave = false): Promise<boolean> {
 				const currentWorkflow = id ||  this.$route.params.name;
 
 				if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
@@ -730,7 +726,7 @@ export const workflowHelpers = mixins(
 
 					workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
 
-					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest, forceSave);
 					this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 					if (name) {
@@ -750,6 +746,22 @@ export const workflowHelpers = mixins(
 					return true;
 				} catch (error) {
 					this.uiStore.removeActiveAction('workflowSaving');
+
+					if (error.errorCode === 400 && error.message.startsWith('Your most recent changes may be lost')) {
+						const overwrite = await this.confirmMessage(
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
+							null,
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
+						);
+
+						if (overwrite) {
+							return this.saveCurrentWorkflow({id, name, tags}, redirect, true);
+						}
+
+						return false;
+					}
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
@@ -849,6 +861,7 @@ export const workflowHelpers = mixins(
 					this.uiStore.stateIsDirty = false;
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
+					this.getCurrentWorkflow(true); // refresh cache
 					return true;
 				} catch (e) {
 					this.uiStore.removeActiveAction('workflowSaving');

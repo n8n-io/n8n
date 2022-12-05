@@ -115,8 +115,8 @@ export class Orbit implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'activity') {
@@ -163,7 +163,7 @@ export class Orbit implements INodeType {
 						if (filters.memberId) {
 							endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -280,7 +280,7 @@ export class Orbit implements INodeType {
 							'GET',
 							`/${workspaceId}/members/${memberId}`,
 						);
-						if (resolve === true) {
+						if (resolve) {
 							resolveIdentities(responseData);
 						}
 						responseData = responseData.data;
@@ -291,7 +291,7 @@ export class Orbit implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -418,7 +418,7 @@ export class Orbit implements INodeType {
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						qs.resolveMember = this.getNodeParameter('resolveMember', 0) as boolean;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -488,7 +488,7 @@ export class Orbit implements INodeType {
 						if (filters.memberId) {
 							endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',

@@ -15,12 +15,11 @@ export async function shopifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 
@@ -76,10 +75,9 @@ export async function shopifyApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -104,13 +102,10 @@ export async function shopifyApiRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 		if (responseData.headers.link) {
-			uri = responseData.headers['link'].split(';')[0].replace('<', '').replace('>', '');
+			uri = responseData.headers.link.split(';')[0].replace('<', '').replace('>', '');
 		}
 		returnData.push.apply(returnData, responseData.body[propertyName]);
-	} while (
-		responseData.headers['link'] !== undefined &&
-		responseData.headers['link'].includes('rel="next"')
-	);
+	} while (responseData.headers.link?.includes('rel="next"'));
 	return returnData;
 }
 

@@ -148,39 +148,39 @@ export class QuickBooks implements INodeType {
 	methods = {
 		loadOptions: {
 			async getCustomers(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'customer');
+				return loadResource.call(this, 'customer');
 			},
 
 			async getCustomFields(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'preferences');
+				return loadResource.call(this, 'preferences');
 			},
 
 			async getDepartments(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'department');
+				return loadResource.call(this, 'department');
 			},
 
 			async getItems(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'item');
+				return loadResource.call(this, 'item');
 			},
 
 			async getMemos(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'CreditMemo');
+				return loadResource.call(this, 'CreditMemo');
 			},
 
 			async getPurchases(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'purchase');
+				return loadResource.call(this, 'purchase');
 			},
 
 			async getTaxCodeRefs(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'TaxCode');
+				return loadResource.call(this, 'TaxCode');
 			},
 
 			async getTerms(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'Term');
+				return loadResource.call(this, 'Term');
 			},
 
 			async getVendors(this: ILoadOptionsFunctions) {
-				return await loadResource.call(this, 'vendor');
+				return loadResource.call(this, 'vendor');
 			},
 		},
 	};
@@ -188,8 +188,8 @@ export class QuickBooks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
