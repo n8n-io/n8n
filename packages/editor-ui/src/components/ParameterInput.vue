@@ -883,7 +883,6 @@ export default mixins(
 				this.trackExpressionEditOpen();
 			},
 			openExpressionEdit() {
-				console.log('openExpressionEdit');
 				// if (this.isValueExpression) {
 				// 	this.expressionEditDialogVisible = true;
 				// 	this.trackExpressionEditOpen();
