@@ -207,7 +207,13 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 			};
 			collection.children.push(subCollection);
 		}
+		// force Workflow group at the beginning of array
+		if (group === 'n8n.workflow') {
+			result.unshift(collection);
+		}
+		else {
 		result.push(collection);
+		}
 	}
-	return result.sort((a, b)=>b.label.localeCompare(a.label));
+	return result;
 }
