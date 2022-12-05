@@ -16,7 +16,6 @@ import {
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
-import { OptionsWithUri } from 'request';
 
 interface GoogleDriveFilesItem {
 	id: string;
@@ -2458,7 +2457,7 @@ export class GoogleDrive implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							// @ts-ignore
+							// @ts-expect-error Property 'binary' does not exist on type 'INodeExecutionData[]'.
 							Object.assign(newItem.binary, items[i].binary);
 						}
 
