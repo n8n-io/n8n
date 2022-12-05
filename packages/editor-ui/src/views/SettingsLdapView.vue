@@ -293,9 +293,9 @@ export default mixins(showMessage).extend({
 				ldapIdAttribute: formInputs.values.ldapId,
 				userFilter: formInputs.values.userFilter,
 				synchronizationEnabled: formInputs.values.synchronizationEnabled,
-				synchronizationInterval: formInputs.values.synchronizationInterval,
+				synchronizationInterval: +formInputs.values.synchronizationInterval,
 				searchPageSize: +formInputs.values.pageSize,
-				searchTimeout: formInputs.values.searchTimeout,
+				searchTimeout: +formInputs.values.searchTimeout,
 			};
 
 			let saveForm = true;
