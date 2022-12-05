@@ -1,7 +1,6 @@
 <template>
 	<div
-		:class="[$style['expression-parameter-input'], { [$style['pointer']]: openModalOnClick }]"
-
+		:class="$style['expression-parameter-input']"
 		v-click-outside="onBlur"
 	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
@@ -26,7 +25,7 @@
 				ref="inlineInput"
 			/>
 			<n8n-icon
-				v-if="!openModalOnClick && !isDragging"
+				v-if="!isDragging"
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
@@ -97,13 +96,6 @@ export default Vue.extend({
 			default: false,
 		},
 		/**
-		 * Whether clicking anywhere on the input (not on the opener icon) opens the expression editor modal. Only for record locator.
-		 */
-		openModalOnClick: {
-			type: Boolean,
-			default: false,
-		},
-		/**
 		 * Whether the prepend section has right-angle borders. Only for record locator.
 		 */
 		squarePrependSection: {
@@ -141,6 +133,8 @@ export default Vue.extend({
 			this.isFocused = false;
 		},
 		onChange({ value, segments }: { value: string; segments: Segment[] }) {
+			if (this.isDragging) return;
+
 			this.segments = segments;
 			this.$emit('valueChanged', value);
 		},

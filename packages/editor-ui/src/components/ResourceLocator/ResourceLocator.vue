@@ -81,10 +81,9 @@
 								<expression-parameter-input
 									v-if="isValueExpression || droppable || forceShowExpression"
 									:value="expressionDisplayValue"
-									:openModalOnClick="true"
-									:squarePrependSection="true"
-									@keydown.stop
-									@inputClick="$emit('inputClick')"
+									squarePrependSection
+									@valueChanged="onInputChange"
+									@openerClick="$emit('openerClick')"
 									ref="input"
 								/>
 								<n8n-input

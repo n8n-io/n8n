@@ -29,7 +29,7 @@
 				:node="node"
 				:path="path"
 				@input="valueChanged"
-				@inputClick="expressionEditDialogVisible = true"
+				@openerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
@@ -712,7 +712,8 @@ export default mixins(
 				if (this.isValueExpression || this.forceShowExpression) {
 					classes['expression'] = true;
 				}
-				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight)) {
+
+				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight) && !this.isValueExpression) {
 					classes['has-issues'] = true;
 				}
 
