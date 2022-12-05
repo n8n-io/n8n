@@ -137,7 +137,6 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 			getData: () => pastePayload
 		}
 		});
-		console.log(pastePayload);
 		$destination[0].dispatchEvent(pasteEvent);
 	});
 });
