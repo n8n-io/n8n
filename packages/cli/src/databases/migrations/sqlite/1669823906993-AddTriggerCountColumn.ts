@@ -14,25 +14,7 @@ export class AddTriggerCountColumn1669823906993 implements MigrationInterface {
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "triggerCount" integer NOT NULL DEFAULT 0`,
 		);
-
-		const workflowsQuery = `
-			SELECT id, nodes
-			FROM "${tablePrefix}workflow_entity"
-		`;
-
-		const workflows: Array<{ id: number; nodes: string }> = await queryRunner.query(workflowsQuery);
-
-		const updatePromises = workflows.map(async (workflow) => {
-			const nodes = JSON.parse(workflow.nodes);
-			const triggerCount = nodes.filter(
-				(node: INode) =>
-					node.type.endsWith('trigger') && node.type !== 'n8n-nodes-base.manualTrigger',
-			).length;
-			const query = `UPDATE "${tablePrefix}workflow_entity" SET triggerCount = ${triggerCount} WHERE id = ${workflow.id}`;
-			return queryRunner.query(query);
-		});
-
-		await Promise.all(updatePromises);
+		// Table will be populated by n8n startup - see ActiveWorkflowRunner.ts
 
 		logMigrationEnd(this.name);
 	}

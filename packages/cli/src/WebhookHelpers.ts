@@ -58,7 +58,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 /**
- * Returns all the webhooks which should be created for the give workflow
+ * Returns all the webhooks which should be created for the given workflow
  *
  */
 export function getWorkflowWebhooks(

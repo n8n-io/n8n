@@ -116,6 +116,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 
 		this.hash = crypto.createHash('md5').update(state).digest('hex');
 	}
+
+	@Column()
+	triggerCount: number;
 }
 
 /**

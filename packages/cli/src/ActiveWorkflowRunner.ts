@@ -854,6 +854,15 @@ export class ActiveWorkflowRunner {
 				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
 			}
+
+			if (workflowInstance.id) {
+				const triggerCount =
+					workflowInstance.getTriggerNodes().length +
+					workflowInstance.getPollNodes().length +
+					WebhookHelpers.getWorkflowWebhooks(workflowInstance, additionalData, undefined, true)
+						.length;
+				await Db.collections.Workflow.update(workflowInstance.id, { triggerCount });
+			}
 		} catch (error) {
 			// There was a problem activating the workflow
 
