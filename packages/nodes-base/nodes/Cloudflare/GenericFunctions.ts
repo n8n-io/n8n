@@ -17,7 +17,6 @@ export async function cloudflareApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -47,7 +46,6 @@ export async function cloudflareApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

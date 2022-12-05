@@ -6,6 +6,7 @@
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
+			:isReadOnly="isReadOnly"
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>

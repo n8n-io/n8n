@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class FileMaker implements ICredentialType {
 	name = 'fileMaker';
+
 	displayName = 'FileMaker API';
+
 	documentationUrl = 'fileMaker';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

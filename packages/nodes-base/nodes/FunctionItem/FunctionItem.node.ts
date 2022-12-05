@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-loop-func */
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
@@ -121,7 +122,7 @@ return item;`,
 						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
-									await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
 								)?.toString('base64');
 							}
 						}

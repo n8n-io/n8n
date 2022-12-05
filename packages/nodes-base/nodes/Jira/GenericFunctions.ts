@@ -13,12 +13,11 @@ export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -66,10 +65,9 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -90,7 +88,6 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

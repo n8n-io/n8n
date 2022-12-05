@@ -166,8 +166,8 @@ export class ElasticSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -454,7 +454,7 @@ export class ElasticSecurity implements INodeType {
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
@@ -516,7 +516,7 @@ export class ElasticSecurity implements INodeType {
 						const patchEndpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}

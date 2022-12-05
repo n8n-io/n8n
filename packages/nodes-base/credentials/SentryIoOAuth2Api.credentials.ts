@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SentryIoOAuth2Api implements ICredentialType {
 	name = 'sentryIoOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Sentry.io OAuth2 API';
+
 	documentationUrl = 'sentryIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

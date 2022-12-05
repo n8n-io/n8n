@@ -14,7 +14,7 @@ export async function getAll(
 
 	//limit parameters
 	const simplifyOutput: boolean = this.getNodeParameter('simplifyOutput', index) as boolean;
-	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll: boolean = this.getNodeParameter('returnAll', 0, false);
 	const limit: number = this.getNodeParameter('limit', 0, 0);
 
 	//response

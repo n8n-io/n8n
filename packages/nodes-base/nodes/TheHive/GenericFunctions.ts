@@ -11,12 +11,11 @@ export async function theHiveApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('theHiveApi');
 
@@ -25,7 +24,7 @@ export async function theHiveApiRequest(
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
 	};
 
@@ -95,7 +94,7 @@ export async function prepareCustomFields(
 	jsonParameters = false,
 ): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
-	if (jsonParameters === true) {
+	if (jsonParameters) {
 		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
@@ -182,9 +181,9 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { query: Array<{}> }) {
+export function prepareRangeQuery(range: string, body: { query: IDataObject[] }) {
 	if (range && range !== 'all') {
-		body['query'].push({
+		body.query.push({
 			_name: 'page',
 			from: parseInt(range.split('-')[0], 10),
 			to: parseInt(range.split('-')[1], 10),
