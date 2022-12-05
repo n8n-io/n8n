@@ -5,6 +5,7 @@ import {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchResult,
+	INodeParameterResourceLocator,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -874,7 +875,7 @@ export class SlackV2 implements INodeType {
 				}
 				if (resource === 'message') {
 					//https://api.slack.com/methods/chat.postMessage
-					if (['post', 'postEphemeral'].includes(operation)) {
+					if (operation === 'post') {
 						const select = this.getNodeParameter('select', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const target =
@@ -904,22 +905,31 @@ export class SlackV2 implements INodeType {
 							channel: target,
 							...content,
 						};
-						let action = 'postMessage';
-
-						if (operation === 'postEphemeral') {
-							body.user = this.getNodeParameter('user', i) as string;
-							action = 'postEphemeral';
-						}
-
-						if (authentication === 'accessToken' && sendAsUser !== '') {
+						console.log('Send as user', sendAsUser);
+						if (authentication === 'accessToken' && sendAsUser !== '' && sendAsUser !== undefined) {
 							body.username = sendAsUser;
 						}
 						// Add all the other options to the request
 						const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
+						let action = 'postMessage';
+						if (otherOptions.ephemeral) {
+							const ephemeral = otherOptions.ephemeral as IDataObject;
+							if (select === 'channel') {
+								const ephemeralValues = ephemeral.ephemeralValues as IDataObject;
+								const userRlc = ephemeralValues.user as INodeParameterResourceLocator;
+								body.user = userRlc.value;
+								action = 'postEphemeral';
+							} else if (select === 'user') {
+								body.user = target;
+								action = 'postEphemeral';
+								console.log(select);
+							}
+						}
 						//@ts-ignore
 						const replyValues = otherOptions.thread_ts?.replyValues[0] as IDataObject;
 						Object.assign(body, replyValues);
 						delete otherOptions.thread_ts;
+						delete otherOptions.ephemeral;
 						Object.assign(body, otherOptions);
 						responseData = await slackApiRequest.call(this, 'POST', `/chat.${action}`, body, qs);
 					}
@@ -933,33 +943,11 @@ export class SlackV2 implements INodeType {
 						) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const ts = this.getNodeParameter('ts', i) as string;
-						const attachments = this.getNodeParameter(
-							'attachments',
-							i,
-							[],
-						) as unknown as IAttachment[];
 						const body: IDataObject = {
 							channel,
 							text,
 							ts,
 						};
-
-						// The node does save the fields data differently than the API
-						// expects so fix the data befre we send the request
-						for (const attachment of attachments) {
-							if (attachment.fields !== undefined) {
-								if (attachment.fields.item !== undefined) {
-									// Move the field-content up
-									// @ts-ignore
-									attachment.fields = attachment.fields.item;
-								} else {
-									// If it does not have any items set remove it
-									// @ts-ignore
-									delete attachment.fields;
-								}
-							}
-						}
-						body['attachments'] = attachments;
 
 						const jsonParameters = this.getNodeParameter('jsonParameters', i, false) as boolean;
 						if (jsonParameters) {
@@ -973,20 +961,7 @@ export class SlackV2 implements INodeType {
 							if (blocksJson !== '') {
 								body.blocks = blocksJson;
 							}
-
-							const attachmentsJson = this.getNodeParameter('attachmentsJson', i, '') as string;
-
-							if (attachmentsJson !== '' && validateJSON(attachmentsJson) === undefined) {
-								throw new NodeOperationError(this.getNode(), 'Attachments it is not a valid json', {
-									itemIndex: i,
-								});
-							}
-
-							if (attachmentsJson !== '') {
-								body.attachments = attachmentsJson;
-							}
 						}
-
 						// Add all the other options to the request
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 						Object.assign(body, updateFields);

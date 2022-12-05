@@ -46,45 +46,40 @@ export async function slackApiRequest(
 		property: 'authed_user.access_token',
 	};
 
-	try {
-		let response: any; // tslint:disable-line:no-any
-		const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-		response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-			oauth2: oAuth2Options,
-		});
+	let response: any; // tslint:disable-line:no-any
+	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
+	response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
+		oauth2: oAuth2Options,
+	});
 
-		if (response.ok === false) {
-			if (response.error === 'paid_teams_only') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`Your current Slack plan does not include the resource '${
-						this.getNodeParameter('resource', 0) as string
-					}'`,
-					{
-						description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
-					},
-				);
-			} else if (response.error === 'missing_scope') {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Your Slack credential is missing required Oauth Scopes',
-					{
-						description: `Add the following scope(s) to your Slack App: ${response.needed}`,
-					},
-				);
-			}
-
+	if (response.ok === false) {
+		if (response.error === 'paid_teams_only') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Slack error response: ' + JSON.stringify(response),
+				`Your current Slack plan does not include the resource '${
+					this.getNodeParameter('resource', 0) as string
+				}'`,
+				{
+					description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
+				},
+			);
+		} else if (response.error === 'missing_scope') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Your Slack credential is missing required Oauth Scopes',
+				{
+					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+				},
 			);
 		}
-		Object.assign(response, { message_timestamp: response.ts });
-		delete response.ts;
-		return response;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeOperationError(
+			this.getNode(),
+			'Slack error response: ' + JSON.stringify(response.error),
+		);
 	}
+	Object.assign(response, { message_timestamp: response.ts });
+	delete response.ts;
+	return response;
 }
 
 export async function slackApiRequestAllItems(

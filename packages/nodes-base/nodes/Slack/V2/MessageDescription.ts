@@ -33,11 +33,6 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Send a message',
 			},
 			{
-				name: 'Send (Ephemeral)',
-				value: 'postEphemeral',
-				action: 'Send an ephemeral message',
-			},
-			{
 				name: 'Update',
 				value: 'update',
 				action: 'Update a message',
@@ -127,16 +122,17 @@ export const messageFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                          message:post/postEphemeral                        */
+	/*                          message:post                                      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Send message to',
 		name: 'select',
 		type: 'options',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 			},
 		},
 		options: [
@@ -205,7 +201,7 @@ export const messageFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				select: ['channel'],
 			},
@@ -221,7 +217,7 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Select a user...',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				select: ['user'],
 			},
@@ -259,7 +255,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 			},
 		},
@@ -288,13 +284,10 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Message Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				messageType: ['text'],
 			},
@@ -308,7 +301,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				messageType: ['block'],
 			},
@@ -318,7 +311,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		description:
 			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks.",
-		hint: "Use Blocks to build an interactive message.<br> To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		hint: "Use Blocks to build an interactive message. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		default: '',
 	},
 	{
@@ -327,7 +320,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'notice',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -344,7 +337,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 				messageType: ['attachment'],
 			},
@@ -524,7 +517,7 @@ export const messageFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: ['post', 'postEphemeral'],
+				operation: ['post'],
 				resource: ['message'],
 			},
 		},
@@ -589,11 +582,11 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Markdown',
+				displayName: 'Use markdown?',
 				name: 'mrkdwn',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to use Slack Markdown parsing',
+				description: 'Whether to use Slack Markdown to format the message',
 			},
 			{
 				displayName: 'Unfurl Links',
@@ -608,6 +601,79 @@ export const messageFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to disable unfurling of media content',
+			},
+			{
+				displayName: 'Send as Ephemeral Message',
+				name: 'ephemeral',
+				type: 'fixedCollection',
+				default: {},
+				displayOptions: {
+					show: {
+						'/select': ['channel'],
+					},
+				},
+				placeholder: 'Send as Ephemeral Message',
+				description: 'Whether to send a temmporary, ephemeral message',
+				options: [
+					{
+						displayName: 'Send as Ephemeral Message',
+						name: 'ephemeralValues',
+						values: [
+							{
+								name: 'user',
+								displayName: 'User',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								placeholder: 'Select a user...',
+								modes: [
+									{
+										displayName: 'From List',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a user...',
+										typeOptions: {
+											searchListMethod: 'getUsers',
+										},
+									},
+									{
+										displayName: 'By ID',
+										name: 'id',
+										type: 'string',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '[a-zA-Z0-9]{2,}',
+													errorMessage: 'Not a valid Slack User ID',
+												},
+											},
+										],
+										placeholder: 'U123AB45JGM',
+									},
+								],
+							},
+							{
+								displayName: 'Send as Ephemeral Message',
+								name: 'ephemeral',
+								type: 'boolean',
+								default: true,
+								description: 'Whether to send a temmporary, ephemeral message',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Send as Ephemeral Message',
+				name: 'ephemeral',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						'/select': ['user'],
+					},
+				},
+				default: true,
+				description: 'Whether to send a temmporary, ephemeral message',
 			},
 			{
 				displayName: 'Send as User',
@@ -689,20 +755,6 @@ export const messageFields: INodeProperties[] = [
 		description: 'The Slack channel to update the message from',
 	},
 	{
-		displayName: 'Message Text',
-		name: 'text',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
-		description:
-			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
-	},
-	{
 		displayName: 'Message Timestamp',
 		name: 'ts',
 		type: 'string',
@@ -718,10 +770,24 @@ export const messageFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Update Fields',
+		displayName: 'Message Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description:
+			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
+	},
+	{
+		displayName: 'Options',
 		name: 'updateFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -757,191 +823,6 @@ export const messageFields: INodeProperties[] = [
 				],
 				default: 'client',
 				description: 'Change how messages are treated',
-			},
-		],
-	},
-	{
-		displayName: 'Attachments',
-		name: 'attachments',
-		type: 'collection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add attachment',
-		},
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['message'],
-			},
-		},
-		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
-		placeholder: 'Add attachment item',
-		options: [
-			{
-				displayName: 'Fallback Text',
-				name: 'fallback',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Required plain-text summary of the attachment',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Title Link',
-				name: 'title_link',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Color',
-				name: 'color',
-				type: 'color',
-				default: '#ff0000',
-				description: 'Color of the line left of text',
-			},
-			{
-				displayName: 'Pretext',
-				name: 'pretext',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Text which appears before the message block',
-			},
-			{
-				displayName: 'Author Name',
-				name: 'author_name',
-				type: 'string',
-				default: '',
-				description: 'Name that should appear',
-			},
-			{
-				displayName: 'Author Link',
-				name: 'author_link',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Author Icon',
-				name: 'author_icon',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Icon which should appear for the user',
-			},
-			{
-				displayName: 'Image URL',
-				name: 'image_url',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Thumbnail URL',
-				name: 'thumb_url',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Footer',
-				name: 'footer',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Text of footer to add',
-			},
-			{
-				displayName: 'Footer Icon',
-				name: 'footer_icon',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Icon which should appear next to footer',
-			},
-			{
-				displayName: 'Message Timestamp',
-				name: 'ts',
-				type: 'dateTime',
-				default: '',
-				description: 'Timestamp of the message to reply.',
-				placeholder: '1663233118.856619',
-			},
-			{
-				displayName: 'Fields',
-				name: 'fields',
-				placeholder: 'Add Fields',
-				description: 'Fields to add to message',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'item',
-						displayName: 'Item',
-						values: [
-							{
-								displayName: 'Title',
-								name: 'title',
-								type: 'string',
-								default: '',
-								description: 'Title of the item',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-								description: 'Value of the item',
-							},
-							{
-								displayName: 'Short',
-								name: 'short',
-								type: 'boolean',
-								default: true,
-								description: 'Whether items can be displayed next to each other',
-							},
-						],
-					},
-				],
 			},
 		],
 	},
@@ -1067,7 +948,7 @@ export const messageFields: INodeProperties[] = [
 				value: 'relevance',
 			},
 		],
-		default: '',
+		default: 'newest',
 	},
 	{
 		displayName: 'Return All',
