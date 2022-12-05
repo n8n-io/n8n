@@ -9,8 +9,15 @@ import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { START_NODE_TYPE } from '@/constants';
-import '@/plugins/N8nCustomConnectorType';
-import '@/plugins/PlusEndpointType';
+import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { newInstance as newJsPlumbInstance } from "@jsplumb/browser-ui";
+import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
+import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
+
+import { EndpointFactory } from '@jsplumb/core';
+
+// import '@/plugins/N8nCustomConnectorType';
+// import '@/plugins/PlusEndpointType';
 // import * as jsPlumbBrowserUI from "@jsplumb/browser-ui";
 
 export const useCanvasStore = defineStore('canvas', () => {
@@ -18,7 +25,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	console.log('Before');
-	// const jsPlumbInstanceNew =  jsPlumbBrowserUI.newInstance();
+	const newInstance = ref<BrowserJsPlumbInstance>();
 	// console.log("🚀 ~ file: canvas.ts ~ line 21 ~ useCanvasStore ~ jsPlumbInstanceNew", jsPlumbInstanceNew);
 	const jsPlumbInstance = jsPlumb.getInstance();
 
@@ -31,6 +38,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
+
+
+	N8nPlusEndpointRenderer.register();
+	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
 		const position = CanvasHelpers.getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
@@ -116,8 +127,26 @@ export const useCanvasStore = defineStore('canvas', () => {
 		wheelMoveWorkflow(e);
 	};
 
+	function initInstance(container: Element) {
+		newInstance.value = newJsPlumbInstance({
+			container,
+			dragOptions: {
+				// drag(params) {
+				// 		console.log("🚀 ~ file: NodeView.vue:3314 ~ drag ~ params", params);
+				// },
+				// beforeStart(params) {
+				// 	console.log("🚀 ~ file: NodeView.vue:3314 ~ beforeStart ~ params", params);
+				// },
+				// stop(params) {
+				// 	console.log("🚀 ~ file: NodeView.vue:3314 ~ stop ~ params", params);
+				// },
+				grid: {w: 20, h: 20},
+			},
+		});
+		window.__plumbInstance = () => newInstance.value;
+	}
 	return {
-		jsPlumbInstance,
+		// jsPlumbInstance,
 		// jsPlumbInstanceNew,
 		isDemo,
 		nodeViewScale,
@@ -130,5 +159,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomOut,
 		zoomToFit,
 		wheelScroll,
+		initInstance,
+		newInstance,
 	};
 });

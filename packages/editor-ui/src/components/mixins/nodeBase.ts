@@ -142,6 +142,7 @@ export const nodeBase = mixins(
 			});
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
+			console.log("🚀 ~ file: nodeBase.ts:145 ~ __addOutputEndpoints ~ node", node);
 			let index;
 			const indexData: {
 				[key: string]: number;
@@ -160,34 +161,49 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 				console.log("🚀 ~ file: nodeBase.ts ~ line 160 ~ nodeTypeData.outputs.forEach ~ anchorPosition", anchorPosition);
 
-				const newEndpointData: EndpointOptions = {
-					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
-					anchor: anchorPosition,
-					maxConnections: -1,
-					endpoint: 'Dot',
-					paintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					hoverPaintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
-					source: true,
-					target: false,
-					enabled: !this.isReadOnly,
-					parameters: {
-						nodeId: this.nodeId,
-						type: inputName,
-						index,
-					},
-					cssClass: 'dot-output-endpoint',
-					dragAllowedWhenFull: false,
-					// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
-				};
 
-				if (nodeTypeData.outputNames) {
-					// Apply output names if they got set
-					newEndpointData.connectorOverlays = [
-						CanvasHelpers.getOutputNameOverlay(nodeTypeData.outputNames[index]),
-					];
-				}
+				if (!this.isReadOnly) {
+					const newEndpointData: EndpointOptions = {
+						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
+						anchor: anchorPosition,
+						maxConnections: -1,
+						endpoint: 'N8nPlus',
+						// paintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+						// hoverPaintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+						source: true,
+						target: false,
+						enabled: !this.isReadOnly,
+						parameters: {
+							nodeId: this.nodeId,
+							type: inputName,
+							index,
+						},
+						paintStyle: {
+							outlineStroke: 'none',
+							// hover: false,
+							showOutputLabel: nodeTypeData.outputs.length === 1,
+							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'small',
+							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+						},
+						hoverPaintStyle: {
+							outlineStroke: 'none',
+							hover: true, // hack to distinguish hover state
+						},
+						// cssClass: 'dot-output-endpoint',
+						dragAllowedWhenFull: false,
+						// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+					};
+					// console.log('After newEndpointData', newEndpointData);
 
-				const endpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, {...newEndpointData});
+					if (nodeTypeData.outputNames) {
+						// Apply output names if they got set
+						newEndpointData.connectorOverlays = [
+							CanvasHelpers.getOutputNameOverlay(nodeTypeData.outputNames[index]),
+						];
+					}
+
+					const endpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, {...newEndpointData});
+					console.log("🚀 ~ file: nodeBase.ts:193 ~ nodeTypeData.outputs.forEach ~ endpoint", endpoint);
 					if(!Array.isArray(endpoint)) {
 						endpoint.__meta = {
 							nodeName: node.name,
@@ -196,52 +212,52 @@ export const nodeBase = mixins(
 							totalEndpoints: nodeTypeData.outputs.length,
 						};
 					}
+					// const plusEndpointData: EndpointOptions = {
+					// 	uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
+					// 	anchor: anchorPosition,
+					// 	maxConnections: -1,
+					// 	endpoint: 'N8nPlus',
+					// 	source: true,
+					// 	target: false,
+					// 	enabled: !this.isReadOnly,
+					// 	paintStyle: {
+					// 		fill: getStyleTokenValue('--color-xdark'),
+					// 		outlineStroke: 'none',
+					// 		// hover: false,
+					// 		// showOutputLabel: nodeTypeData.outputs.length === 1,
+					// 		// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+					// 		// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+					// 	},
+					// 	hoverPaintStyle: {
+					// 		fill: getStyleTokenValue('--color-primary'),
+					// 		outlineStroke: 'none',
+					// 		// hover: true, // hack to distinguish hover state
+					// 	},
+					// 	parameters: {
+					// 		nodeId: this.nodeId,
+					// 		type: inputName,
+					// 		index,
+					// 	},
+					// 	cssClass: 'plus-draggable-endpoint',
+					// 	dragAllowedWhenFull: false,
+					// 	// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+					// };
 
-				if (!this.isReadOnly) {
-					const plusEndpointData: EndpointOptions = {
-						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
-						anchor: anchorPosition,
-						maxConnections: -1,
-						endpoint: 'N8nPlus',
-						source: true,
-						target: false,
-						enabled: !this.isReadOnly,
-						paintStyle: {
-							fill: getStyleTokenValue('--color-xdark'),
-							outlineStroke: 'none',
-							// hover: false,
-							// showOutputLabel: nodeTypeData.outputs.length === 1,
-							// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-							// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
-						},
-						hoverPaintStyle: {
-							fill: getStyleTokenValue('--color-primary'),
-							outlineStroke: 'none',
-							// hover: true, // hack to distinguish hover state
-						},
-						parameters: {
-							nodeId: this.nodeId,
-							type: inputName,
-							index,
-						},
-						cssClass: 'plus-draggable-endpoint',
-						dragAllowedWhenFull: false,
-						// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
-					};
-
-					const plusEndpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, plusEndpointData);
-					if(!Array.isArray(plusEndpoint)) {
-						plusEndpoint.__meta = {
-							nodeName: node.name,
-							nodeId: this.nodeId,
-							index: i,
-							totalEndpoints: nodeTypeData.outputs.length,
-						};
-					}
+					// const plusEndpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, plusEndpointData);
+					// if(!Array.isArray(plusEndpoint)) {
+					// 	plusEndpoint.__meta = {
+					// 		nodeName: node.name,
+					// 		nodeId: this.nodeId,
+					// 		index: i,
+					// 		totalEndpoints: nodeTypeData.outputs.length,
+					// 	};
+					// }
 				}
 			});
+			console.log('Added output endpoints');
 		},
 		__makeInstanceDraggable(node: INodeUi) {
+			console.log('Make instance draggable');
 			// TODO: This caused problems with displaying old information
 			//       https://github.com/jsplumb/katavorio/wiki
 			//       https://jsplumb.github.io/jsplumb/home.html
@@ -322,14 +338,17 @@ export const nodeBase = mixins(
 		},
 		__addNode (node: INodeUi) {
 			console.log('Add node');
-			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
-			if (!nodeTypeData) {
-				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE);
-			}
+			const nodeTypeData = (
+				this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)
+			) as INodeTypeDescription;
 
+
+			console.log('before __addInputEndpoints');
 			this.__addInputEndpoints(node, nodeTypeData);
+			console.log('after __addInputEndpoints');
 			this.__addOutputEndpoints(node, nodeTypeData);
+			console.log('Before making instance draggable');
 			this.__makeInstanceDraggable(node);
 		},
 		touchEnd(e: MouseEvent) {

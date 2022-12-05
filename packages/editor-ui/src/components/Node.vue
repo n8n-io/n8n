@@ -757,9 +757,32 @@ export default mixins(
 	$--box-size-medium: 24px;
 	$--box-size-small: 18px;
 
+	.plus-svg-circle {
+		z-index: 111;
+		circle {
+			stroke: var(--color-foreground-xdark);
+			stroke-width: 2px;
+			fill: var(--color-foreground-xdark);
+		}
+
+		&:hover {
+			circle {
+				stroke: var(--color-primary);
+				fill: var(--color-primary);
+			}
+		}
+	}
 	.plus-endpoint {
 		cursor: pointer;
+		z-index: 100;
 
+		&:hover .plus-container {
+			color: var(--color-primary);
+			border: 2px solid var(--color-primary);
+		}
+		&:hover .drop-hover-message {
+			display: block;
+		}
 		.plus-stalk {
 			border-top: 2px solid var(--color-foreground-dark);
 			position: absolute;
@@ -792,7 +815,7 @@ export default mixins(
 			align-items: center;
 			justify-content: center;
 			font-size: var(--font-size-2xs);
-			position: absolute;
+			// position: absolute;
 
 			top: 0;
 			right: 0;

@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container">
+	<div :class="$style.canvasAddButton" :style="containerCssVars" ref="container">
 		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
 			<button :class="$style.button" @click="$emit('click')">
 				<font-awesome-icon icon="plus" size="lg" />
@@ -47,7 +47,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.container {
+.canvasAddButton {
 	display: flex;
 	flex-direction: column;
 	align-items: center;

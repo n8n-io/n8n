@@ -1,7 +1,7 @@
 <template>
 <div :class="$style['content']">
 	<div
-		class="node-view-root"
+		class="node-view-root do-not-select"
 		id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
@@ -30,9 +30,10 @@
 					v-show="showCanvasAddButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasStore.canvasAddButtonPosition"
+					ref="canvasAddButton"
 					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 				/>
-				<div v-for="nodeData in nodes" :key="nodeData.id">
+				<template v-for="nodeData in nodes">
 					<node
 						v-if="nodeData.type !== STICKY_NODE_TYPE"
 						@duplicateNode="duplicateNode"
@@ -72,7 +73,7 @@
 						:gridSize="GRID_SIZE"
 						:hideActions="pullConnActive"
 					/>
-				</div>
+				</template>
 			</div>
 		</div>
 		<node-details-view
@@ -519,9 +520,9 @@ export default mixins(
 			// instance(): jsPlumbInstance {
 			// 	return this.canvasStore.jsPlumbInstance;
 			// },
-			// newInstance(): BrowserJsPlumbInstance {
-			// 	return this.canvasStore.jsPlumbInstanceNew;
-			// },
+			newInstance(): BrowserJsPlumbInstance | undefined {
+				return this.canvasStore.newInstance;
+			},
 		},
 		data() {
 			return {
@@ -544,7 +545,6 @@ export default mixins(
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
 				isProductionExecutionPreview: false,
-				newInstance: null as BrowserJsPlumbInstance | null,
 			};
 		},
 		beforeDestroy() {
@@ -884,6 +884,7 @@ export default mixins(
 				// Save the location of the mouse click
 				this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
+				// TODO: Uncomment
 				this.mouseDownMouseSelect(e as MouseEvent);
 				this.mouseDownMoveWorkflow(e as MouseEvent);
 
@@ -1121,6 +1122,7 @@ export default mixins(
 			},
 
 			deleteSelectedNodes() {
+				console.log('Delete selected nodes');
 				// Copy "selectedNodes" as the nodes get deleted out of selection
 				// when they get deleted and if we would use original it would mess
 				// with the index and would so not delete all nodes
@@ -1128,6 +1130,7 @@ export default mixins(
 					return node.name;
 				});
 				nodesToDelete.forEach((nodeName: string) => {
+					console.log("🚀 ~ file: NodeView.vue:1134 ~ nodesToDelete.forEach ~ nodeName", nodeName);
 					this.removeNode(nodeName);
 				});
 			},
@@ -1838,7 +1841,6 @@ export default mixins(
 							},
 						},
 					],
-					container: this.$refs['node-view'] as Element,
 				});
 
 				const insertNodeAfterSelected = (info: { sourceId: string, index: number, eventSource: string, connection?: Connection }) => {
@@ -1861,7 +1863,7 @@ export default mixins(
 					this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true});
 				};
 
-				this.newInstance.bind('connectionAborted', (connection) => {
+				this.newInstance?.bind('connectionAborted', (connection) => {
 					try {
 						if (this.dropPrevented) {
 							this.dropPrevented = false;
@@ -2490,10 +2492,7 @@ export default mixins(
 			},
 			getJSPlumbEndpoints(nodeName: string): Endpoint[] {
 				const node = this.workflowsStore.getNodeByName(nodeName);
-				const nodeEls: Element = (this.$refs[`node-${node?.id}`][0] as ComponentInstance).$el as Element;
-				console.log("🚀 ~ file: NodeView.vue ~ line 2492 ~ getJSPlumbEndpoints ~ nodeEls", nodeEls);
-				console.log("🚀 ~ file: NodeView.vue ~ line 2492 ~ getJSPlumbEndpoints ~ node?.id}", node?.id);
-				console.log("🚀 ~ file: NodeView.vue ~ line 2492 ~ getJSPlumbEndpoints ~ this.$refs[`node-${node?.id}`][0]", this.$refs);
+				const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0].$el as Element;
 
 				const endpoints = this.newInstance?.getEndpoints(nodeEls);
 				console.log("🚀 ~ file: NodeView.vue ~ line 2492 ~ getJSPlumbEndpoints ~ endpoints", endpoints);
@@ -2599,6 +2598,7 @@ export default mixins(
 				});
 			},
 			removeNode(nodeName: string) {
+				console.log("🚀 ~ file: NodeView.vue:2606 ~ removeNode ~ nodeName", nodeName);
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2676,12 +2676,12 @@ export default mixins(
 					// Suspend drawing
 					this.newInstance?.setSuspendDrawing(true);
 
-					// Remove all endpoints and the connections in jsplumb
-					this.newInstance?.removeAllEndpoints(node.id);
+					// Remove all connections
+					this.newInstance?.unmanage((this.$refs[`node-${node?.id}`] as ComponentInstance[])[0].$el as Element, true);
 
 					// Remove the draggable
-					// @ts-ignore
-					this.newInstance?.destroyDraggable(node.id);
+					// Todo is this still neede?
+					// this.newInstance?.destroyDraggable(node.id);
 
 					// Remove the connections in data
 					this.workflowsStore.removeAllNodeConnection(node);
@@ -3302,20 +3302,9 @@ export default mixins(
 			},
 		},
 		async mounted() {
-			this.newInstance = jsPlumbBrowserUI.newInstance({
-				container: this.$refs.nodeView as Element,
-			});
+			this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
 
-			this.newInstance.bind('ready', () => {
-				console.log('Ready');
-			});
-
-			jsPlumbBrowserUI.ready(() => {
-				console.log('Ready 2');
-			});
-
-
-			console.log("🚀 ~ file: NodeView.vue ~ line 3294 ~ mounted ~ instance", this.newInstance);
+			// console.log("🚀 ~ file: NodeView.vue ~ line 3294 ~ mounted ~ instance", this.newInstance);
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
 
@@ -3343,6 +3332,7 @@ export default mixins(
 				return;
 			}
 			jsPlumbBrowserUI.ready(async () => {
+				console.log('Ready');
 				try {
 					try {
 						this.initNodeView();
@@ -3518,8 +3508,7 @@ export default mixins(
 }
 
 /* Makes sure that when selected with mouse it does not select text */
-.do-not-select *,
-.jtk-drag-select * {
+.do-not-select *,.jtk-drag-select * {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
