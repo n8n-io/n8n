@@ -70,7 +70,7 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Tests failure for branch `${{ inputs.branch }}` deployed by ${{ inputs.user }}
+          message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Call Success URL - optionally
         run: |
