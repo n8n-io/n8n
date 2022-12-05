@@ -104,7 +104,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import {ICredentialsResponse, IUser, IWorkflowDb, NestedRecord} from "@/Interface";
+import {IUser, IWorkflowDb, NestedRecord} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/mixins/showMessage";
@@ -115,7 +115,6 @@ import {useUIStore} from "@/stores/ui";
 import {useUsersStore} from "@/stores/users";
 import {useWorkflowsStore} from "@/stores/workflows";
 import useWorkflowsEEStore from "@/stores/workflows.ee";
-import {ICredentialsDb} from "n8n";
 
 export default mixins(
 	showMessage,
@@ -280,8 +279,6 @@ export default mixins(
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.cancelButtonText'),
 				);
 			}
-
-			return;
 
 			if (confirm) {
 				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
