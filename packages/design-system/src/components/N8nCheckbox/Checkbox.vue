@@ -22,7 +22,6 @@
 import Vue from 'vue';
 import { Checkbox as ElCheckbox } from 'element-ui';
 import N8nInputLabel from '../N8nInputLabel';
-import { uid } from '../../utils';
 
 export default Vue.extend({
 	name: 'n8n-checkbox',
