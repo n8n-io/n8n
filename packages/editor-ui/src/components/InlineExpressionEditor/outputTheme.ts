@@ -31,7 +31,7 @@ export const SYNTAX_HIGHLIGHTING_CLASSES = {
 export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
 		'&': {
-			maxHeight: '112px',
+			maxHeight: '95px',
 			width: '100%',
 			fontSize: BASE_STYLING.fontSize,
 			padding: '0',
@@ -50,6 +50,7 @@ export const EXPRESSION_EDITOR_THEME = [
 		},
 		'.cm-scroller': {
 			lineHeight: '1.6',
+			// lineHeight: '0.875rem',
 		},
 		'.cm-content': {
 			fontFamily: 'var(--font-family)',

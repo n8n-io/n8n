@@ -40,7 +40,7 @@
 					: $style.hidden
 			"
 		>
-			<n8n-text :class="$style.header">
+			<n8n-text size="small" compact :class="$style.header">
 				{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 			</n8n-text>
 			<n8n-text :class="$style.body">
@@ -51,14 +51,14 @@
 				/>
 			</n8n-text>
 			<div :class="$style.footer">
-				<n8n-text>
+				<n8n-text size="small" compact>
 					{{ $locale.baseText('parameterInput.anythingInside') }}
 				</n8n-text>
 				<div :class="$style['expression-syntax-example']" v-text="`{{ }}`"></div>
-				<n8n-text>
+				<n8n-text size="small" compact>
 					{{ $locale.baseText('parameterInput.isJavaScript') }}
 				</n8n-text>
-				<n8n-link size="medium" :to="expressionsDocsUrl">
+				<n8n-link size="small" compact underline theme="text" :to="expressionsDocsUrl">
 					{{ $locale.baseText('parameterInput.learnMore') }}
 				</n8n-link>
 			</div>
@@ -150,7 +150,6 @@ export default Vue.extend({
 		height: 30px;
 		display: flex;
 		flex-direction: row;
-		line-height: normal;
 		display: inline-table;
 		width: 100%;
 		border-collapse: separate;
@@ -218,7 +217,7 @@ export default Vue.extend({
 	border: var(--border-base);
 	border-top: none;
 	width: 100%;
-	// @TODO: shadow
+	box-shadow: 0 2px 6px 0 rgba(#441C17, 0.1);
 
 	.header,
 	.body,
@@ -226,21 +225,34 @@ export default Vue.extend({
 		padding: var(--spacing-3xs);
 	}
 
-	.body {
-		padding-top: 0;
+	.header {
+		color: var(--color-text-dark);
+		font-weight: var(--font-weight-bold);
+		padding-left: var(--spacing-2xs);
+		padding-top: var(--spacing-2xs);
+		padding-bottom: var(--spacing-3xs);
 	}
 
-	.header {
-		font-weight: bold;
+	.body {
+		padding-top: 0;
+		padding-left: var(--spacing-2xs);
+		color: var(--color-text-dark);
+		// max-height: 80px;
+		// padding-bottom: 14px;
 	}
 
 	.footer {
 		border-top: var(--border-base);
+		padding: var(--spacing-4xs);
+		padding-left: var(--spacing-2xs);
+		padding-top: 0;
+		line-height: var(--font-line-height-regular) !important;
+		color: var(--color-text-base);
 
 		.expression-syntax-example {
 			display: inline-block;
-			height: 20px;
-			line-height: 1;
+			font-size: var(--font-size-2xs);
+			height: 16px;
 			background-color: #f0f0f0;
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);
