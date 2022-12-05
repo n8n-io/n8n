@@ -13,12 +13,11 @@ export async function bitlyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 	let options: OptionsWithUri = {
@@ -59,10 +58,9 @@ export async function bitlyApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,9 +71,9 @@ export async function bitlyApiRequestAllItems(
 	do {
 		responseData = await bitlyApiRequest.call(this, method, resource, body, query, uri);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		if (responseData.pagination && responseData.pagination.next) {
+		if (responseData.pagination?.next) {
 			uri = responseData.pagination.next;
 		}
-	} while (responseData.pagination !== undefined && responseData.pagination.next !== undefined);
+	} while (responseData.pagination?.next !== undefined);
 	return returnData;
 }

@@ -19,6 +19,6 @@ export class MattermostV1 implements INodeType {
 	methods = { loadOptions };
 
 	async execute(this: IExecuteFunctions) {
-		return await router.call(this);
+		return router.call(this);
 	}
 }

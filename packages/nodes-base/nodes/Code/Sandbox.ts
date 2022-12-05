@@ -8,6 +8,7 @@ import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } f
 
 export class Sandbox extends NodeVM {
 	private jsCode = '';
+
 	private itemIndex: number | undefined = undefined;
 
 	constructor(
@@ -254,7 +255,7 @@ export class Sandbox extends NodeVM {
 export function getSandboxContext(this: IExecuteFunctions, index?: number) {
 	const sandboxContext: Record<string, unknown> & {
 		$item: (i: number) => IWorkflowDataProxyData;
-		$input: any; // tslint:disable-line: no-any
+		$input: any;
 	} = {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,

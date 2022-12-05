@@ -354,20 +354,24 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 
 		// Nodes and credentials that will be lazy loaded
-		if (loader instanceof LazyPackageDirectoryLoader) {
+		if (loader instanceof PackageDirectoryLoader) {
 			const { packageName, known } = loader;
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[`${packageName}.${type}`] = {
+				this.known.nodes[type] = {
 					className,
 					sourcePath: path.join(dir, sourcePath),
 				};
 			}
 
 			for (const type in known.credentials) {
-				const { className, sourcePath } = known.credentials[type];
-				this.known.credentials[type] = { className, sourcePath: path.join(dir, sourcePath) };
+				const { className, sourcePath, nodesToTestWith } = known.credentials[type];
+				this.known.credentials[type] = {
+					className,
+					sourcePath: path.join(dir, sourcePath),
+					nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
+				};
 			}
 		}
 

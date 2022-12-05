@@ -101,6 +101,7 @@ export async function rabbitmqConnectExchange(
 
 export class MessageTracker {
 	messages: number[] = [];
+
 	isClosing = false;
 
 	received(message: amqplib.ConsumeMessage) {

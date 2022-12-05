@@ -290,7 +290,7 @@ export class AwsSqs implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -299,7 +299,7 @@ export class AwsSqs implements INodeType {
 
 				const params = ['Version=2012-11-05', `Action=${pascalCase(operation)}`];
 
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 				const sendInputData = this.getNodeParameter('sendInputData', i) as boolean;
 
 				const message = sendInputData

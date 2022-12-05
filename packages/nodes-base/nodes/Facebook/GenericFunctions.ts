@@ -21,12 +21,11 @@ export async function facebookApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let credentials;
 
@@ -36,7 +35,7 @@ export async function facebookApiRequest(
 		credentials = await this.getCredentials('facebookGraphApi');
 	}
 
-	qs.access_token = credentials!.accessToken;
+	qs.access_token = credentials.accessToken;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -549,16 +548,12 @@ export function getFields(object: string) {
 				value: 'account_update',
 			},
 		],
-		// tslint:disable-next-line: no-any
 	} as { [key: string]: any };
 
-	return [{ name: '*', value: '*' }]
-		.concat(data[object as string] || [])
-		.map((fieldObject: IDataObject) => ({
-			...fieldObject,
-			name:
-				fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,
-		}));
+	return [{ name: '*', value: '*' }].concat(data[object] || []).map((fieldObject: IDataObject) => ({
+		...fieldObject,
+		name: fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,
+	}));
 }
 
 export function getAllFields(object: string) {
