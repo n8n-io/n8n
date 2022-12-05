@@ -105,8 +105,8 @@ export const restApi = Vue.extend({
 				},
 
 				// Updates an existing workflow
-				updateWorkflow: (id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
-					return self.restApi().makeRestApiRequest('PATCH', `/workflows/${id}`, data);
+				updateWorkflow: (id: string, data: IWorkflowDataUpdate, forceSave = false): Promise<IWorkflowDb> => {
+					return self.restApi().makeRestApiRequest('PATCH', `/workflows/${id}${forceSave ? '?forceSave=true' : ''}`, data);
 				},
 
 				// Deletes a workflow

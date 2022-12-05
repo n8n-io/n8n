@@ -124,7 +124,7 @@ export class GoogleSheet {
 		const foundItem = response.sheets.find(
 			(item: { properties: { sheetId: number } }) => item.properties.sheetId === +sheetId,
 		);
-		if (!foundItem || !foundItem.properties || !foundItem.properties.title) {
+		if (!foundItem?.properties?.title) {
 			throw new Error(`Sheet with id ${sheetId} not found`);
 		}
 		return foundItem.properties.title;

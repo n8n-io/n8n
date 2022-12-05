@@ -1,5 +1,5 @@
-import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import * as path from 'path';
+import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
 import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
