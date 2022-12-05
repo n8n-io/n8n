@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<el-card v-for="group in logStreamingStore.items[destinationId].eventGroups"
+		<el-card v-for="group in logStreamingStore.items[destinationId]?.eventGroups"
 		:key="group.name"
 		:class="('box-card ' + $style.eventListCard)"
 		shadow="never"
@@ -15,7 +15,7 @@
 				</checkbox>
 				<checkbox
 					v-if="group.name === 'n8n.audit'"
-						:value="logStreamingStore.items[destinationId].destination.anonymizeAuditMessages"
+						:value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
 						size="small"
 						@input="onInput"
 						@change="anonymizeAuditMessagesChanged"
@@ -78,7 +78,7 @@
 				useLogStreamingStore,
 			),
 			anonymizeAuditMessages() {
-				return this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages;
+				return this.logStreamingStore.items[this.destinationId]?.destination.anonymizeAuditMessages;
 			},
 		},
 		methods: {

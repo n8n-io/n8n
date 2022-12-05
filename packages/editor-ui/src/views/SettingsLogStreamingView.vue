@@ -12,7 +12,7 @@
 				<strong>License&nbsp;</strong>
 				<el-switch v-model="fakeLicense" size="large" />
 			</div>
-			<template v-if="isLicensed">
+			<template v-if="(isLicensed() && storeHasItems())">
 				<div class="mt-xs mb-l">
 					<n8n-button size="large"  @click="addDestination">
 						{{ $locale.baseText(`settings.logstreaming.add`) }}
@@ -21,17 +21,39 @@
 			</template>
 		</template>
 
-		<template v-if="isLicensed">
-			<el-row :gutter="10" v-for="(value, propertyName) in logStreamingStore.items" :key="propertyName" :class="$style.destinationItem">
-				<el-col>
-					<event-destination-card
-						:destination="value.destination"
-						:eventBus="eventBus"
-						@remove="onRemove(value.destination.id)"
-						@edit="onEdit(value.destination.id)"
-					/>
-				</el-col>
-			</el-row>
+		<template v-if="isLicensed()">
+			<template v-if="storeHasItems()">
+				<el-row :gutter="10" v-for="(value, propertyName) in logStreamingStore.items" :key="propertyName" :class="$style.destinationItem">
+					<el-col>
+						<event-destination-card
+							:destination="value.destination"
+							:eventBus="eventBus"
+							@remove="onRemove(value.destination.id)"
+							@edit="onEdit(value.destination.id)"
+						/>
+					</el-col>
+				</el-row>
+			</template>
+			<template v-else>
+				<div v-if="$locale.baseText('settings.logstreaming.infoTextEnterprise')" class="mb-l">
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.logstreaming.infoTextEnterprise')"></span>
+					</template>
+				</n8n-info-tip>
+			</div>
+			<div :class="$style.actionBoxContainer">
+				<n8n-action-box
+					:description="$locale.baseText(`settings.logstreaming.addFirst`)"
+					:buttonText="$locale.baseText(`settings.logstreaming.add`)"
+					@click="addDestination"
+				>
+					<template #heading>
+						<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)"/>
+					</template>
+				</n8n-action-box>
+			</div>
+			</template>
 		</template>
 		<template v-else>
 			<div v-if="$locale.baseText('settings.logstreaming.infoText')" class="mb-l">
@@ -101,14 +123,15 @@ export default mixins(
 		this.logStreamingStore.$onAction(({name, after})=>{
 			if (name==='removeDestination') {
 				after(async () => {
-					await this.getDestinationDataFromREST();
+					// await this.getDestinationDataFromREST();
+					this.$forceUpdate();
     		});
 			}
 		});
 
 		// refresh when a modal closes
 		this.eventBus.$on('destinationWasUpdated', async () => {
-			await this.getDestinationDataFromREST();
+			this.$forceUpdate();
 		});
 		// listen to remove emission
 		this.eventBus.$on('remove', async (destinationId: string) => {
@@ -128,10 +151,6 @@ export default mixins(
 			useUIStore,
 			useCredentialsStore,
 		),
-		isLicensed(): boolean {
-			return true;
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming) || this.fakeLicense;
-		},
 	},
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
@@ -151,8 +170,15 @@ export default mixins(
 					this.allDestinations.push(destination);
 				}
 			}
-
 			this.$forceUpdate();
+			console.log(destinationData, this.storeHasItems(), this.logStreamingStore.items, Object.keys(this.logStreamingStore.items).length, Object.keys(this.logStreamingStore.items).length > 0,
+			this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0);
+		},
+		storeHasItems(): boolean {
+			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
+		},
+		isLicensed(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming) || this.fakeLicense;
 		},
 		async addDestination() {
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);

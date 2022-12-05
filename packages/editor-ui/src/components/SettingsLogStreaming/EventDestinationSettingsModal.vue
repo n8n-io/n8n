@@ -166,6 +166,7 @@ import {
 import Vue from 'vue';
 import {LOG_STREAM_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
+import {showMessage} from "@/mixins/showMessage";
 import { useUIStore } from '../../stores/ui';
 import { destinationToFakeINodeUi, saveDestinationToDb } from './Helpers';
 import { webhookModalDescription, sentryModalDescription, syslogModalDescription } from './descriptions';
@@ -176,6 +177,7 @@ import EventSelection from '@/components/SettingsLogStreaming/EventSelection.vue
 import { Checkbox } from 'element-ui';
 
 export default mixins(
+	showMessage,
 	restApi,
 ).extend({
 	name: 'event-destination-settings-modal',
@@ -367,10 +369,25 @@ export default mixins(
 				properties: { parameters: this.nodeParameters as unknown as IDataObject },
 			});
 		},
-		removeThis() {
-			this.$props.eventBus.$emit('remove', this.destination.id);
-			this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
-			this.uiStore.stateIsDirty = false;
+		async removeThis() {
+			const deleteConfirmed = await this.confirmMessage(
+				this.$locale.baseText(
+					'settings.logstreaming.destinationDelete.message',
+					{ interpolate: { destinationName: this.destination.label } },
+				),
+				this.$locale.baseText('settings.logstreaming.destinationDelete.headline'),
+				'warning',
+				this.$locale.baseText('settings.logstreaming.destinationDelete.confirmButtonText'),
+				this.$locale.baseText('settings.logstreaming.destinationDelete.cancelButtonText'),
+			);
+
+			if (deleteConfirmed === false) {
+				return;
+			} else {
+				this.$props.eventBus.$emit('remove', this.destination.id);
+				this.uiStore.closeModal(LOG_STREAM_MODAL_KEY);
+				this.uiStore.stateIsDirty = false;
+			}
 		},
 		onModalClose() {
 			if (!this.hasOnceBeenSaved) {
