@@ -3,7 +3,6 @@ import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } fro
 import { testHealthEndpoint } from "@/api/templates";
 import { CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, STORES, VALUE_SURVEY_MODAL_KEY } from "@/constants";
 import { ILogLevel, IN8nPromptResponse, IN8nPrompts, IN8nUISettings, IN8nValueSurveyData, ISettingsState, WorkflowCallerPolicyDefaultOption } from "@/Interface";
-import { store } from "@/store";
 import { ITelemetrySettings } from "n8n-workflow";
 import { defineStore } from "pinia";
 import Vue from "vue";

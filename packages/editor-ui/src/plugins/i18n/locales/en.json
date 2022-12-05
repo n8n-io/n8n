@@ -1110,6 +1110,7 @@
 	"settings.api.view.tryapi": "Try it out using the",
 	"settings.api.view.error": "Could not check if an api key already exists.",
 	"settings.version": "Version",
+	"settings.usageAndPlan.title": "Usage and plan",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",

@@ -15,6 +15,7 @@ import {
 	faBug,
 	faBan,
 	faCalendar,
+	faChartSimple,
 	faCheck,
 	faCheckCircle,
 	faChevronDown,
@@ -138,6 +139,7 @@ addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
 addIcon(faCalendar);
+addIcon(faChartSimple);
 addIcon(faCheck);
 addIcon(faCheckCircle);
 addIcon(faChevronLeft);
