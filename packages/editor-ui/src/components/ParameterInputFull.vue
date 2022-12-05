@@ -172,7 +172,6 @@ export default mixins(
 		methods: {
 			onFocus() {
 				this.focused = true;
-				// TODO: fix/patch Element UI tooltip: if 'manual' is set then 'open-delay' is ignored
 				setTimeout(() => {
 					this.mappingTooltipEnabled = true;
 				}, 500);
