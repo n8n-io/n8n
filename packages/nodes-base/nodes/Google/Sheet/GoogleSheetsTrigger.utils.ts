@@ -86,7 +86,7 @@ export function compareRevisions(
 		}
 
 		// if columnsToWatch is defined, only compare those columns
-		if (columnsToWatch && columnsToWatch.length) {
+		if (columnsToWatch?.length) {
 			const currentRow = columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1]);
 			const previousRow = columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1]);
 
@@ -104,18 +104,18 @@ export function compareRevisions(
 
 	if (includeInOutput === 'previousVersion') {
 		return arrayOfArraysToJson(
-			diffData.map(({ previous, rowIndex }) => (previous ? [rowIndex, ...previous] : [rowIndex])),
+			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 			columns,
 		);
 	}
 	if (includeInOutput === 'bothVersions') {
 		const previousData = arrayOfArraysToJson(
-			diffData.map(({ previous, rowIndex }) => (previous ? [rowIndex, ...previous] : [rowIndex])),
+			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 			columns,
 		).map((row) => ({ previous: row }));
 
 		const currentData = arrayOfArraysToJson(
-			diffData.map(({ current, rowIndex }) => (current ? [rowIndex, ...current] : [rowIndex])),
+			diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 			columns,
 		).map((row) => ({ current: row }));
 
@@ -123,7 +123,7 @@ export function compareRevisions(
 	}
 
 	return arrayOfArraysToJson(
-		diffData.map(({ current, rowIndex }) => (current ? [rowIndex, ...current] : [rowIndex])),
+		diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 		columns,
 	);
 }

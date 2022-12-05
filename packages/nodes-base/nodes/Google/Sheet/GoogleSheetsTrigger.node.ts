@@ -381,13 +381,13 @@ export class GoogleSheetsTrigger implements INodeType {
 				pageToken = nextPageToken as string;
 			} else {
 				pageToken = undefined;
-				const lastRevision = +revisions[revisions.length - 1]['id'];
+				const lastRevision = +revisions[revisions.length - 1].id;
 				if (lastRevision <= previousRevision) {
 					return null;
 				} else {
 					workflowStaticData.lastRevision = lastRevision;
 					workflowStaticData.lastRevisionLink =
-						revisions[revisions.length - 1]['exportLinks'][BINARY_MIME_TYPE];
+						revisions[revisions.length - 1].exportLinks[BINARY_MIME_TYPE];
 				}
 			}
 		} while (pageToken);
@@ -400,7 +400,7 @@ export class GoogleSheetsTrigger implements INodeType {
 		const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 		const options = this.getNodeParameter('options') as IDataObject;
 
-		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+		const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
 
 		let range = 'A:Z';
 		let keyRow = 1;
