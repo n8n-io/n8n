@@ -23,18 +23,16 @@
 <script setup lang="ts">
 import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
 
-import { INodeCreateElement } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
+import { INodeCreateElement, INodeItemProps } from '@/Interface';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
-import useNodeActions from '@/composables/useNodeActions';
-
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 export interface Props {
 	searchItems: INodeCreateElement[];
 }
 
 defineProps<Props>();
 const instance = getCurrentInstance();
-const { getMergedNodesActions } = useNodeActions();
 const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
@@ -173,11 +171,30 @@ const firstLevelItems = computed(() => isRoot.value ? items : []);
 const isSearchActive = computed(() => state.filter !== '');
 // On App Event is a special subcategory because we want to
 // show merged regular nodes with actions and trigger nodes
-const mergedNodes = computed(() => getMergedNodesActions(isAppEventSubcategory.value));
+const mergedNodes = computed(() => {
+	const WHITELISTED_APP_CORE_NODES = [
+		EMAIL_IMAP_NODE_TYPE,
+		WEBHOOK_NODE_TYPE,
+	];
+	const mergedNodesWithActions = useNodeCreatorStore().mergedNodesWithActions;
+
+	return mergedNodesWithActions.filter(nodeCreateElement => {
+		if(isAppEventSubcategory.value) {
+			const nodeType = (nodeCreateElement.properties as INodeItemProps).nodeType;
+			const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(nodeType.name);
+
+			return !isCoreNode;
+		}
+
+		return true;
+	});
+});
 
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');
 	state.showMergedActions = isLocal || window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
+
+	console.log('Merged nodes', mergedNodes.value);
 });
 
 const { isRoot } = toRefs(state);

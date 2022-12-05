@@ -9,7 +9,7 @@ import Vue from "vue";
 import { useCredentialsStore } from "./credentials";
 import { useRootStore } from "./n8nRootStore";
 import { useUsersStore } from "./users";
-
+import { useNodeCreatorStore } from './nodeCreator';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
@@ -90,6 +90,8 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				return acc;
 			}, { ...this.nodeTypes });
 			Vue.set(this, 'nodeTypes', nodeTypes);
+			// Trigger compute of mergedNodesWithActions getter so it's ready when user opens the node creator
+			useNodeCreatorStore().mergedNodesWithActions;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(

@@ -1,5 +1,5 @@
 <template>
-	<aside :class="$style.nodeActions" v-if="nodeType">
+	<aside :class="$style.nodeActions" v-if="nodeType" @keydown.capture="onKeyDown" tabindex="1">
 		<header :class="$style.header">
 			<button :class="$style.backButton" @click.stop="onBack">
 				<font-awesome-icon :class="$style.backIcon" icon="arrow-left" size="2x" />
@@ -11,15 +11,20 @@
 		</header>
 		<search-bar
 			v-model="search"
-			class="ignore-key-press"
 			:class="$style.search"
 			:placeholder="$locale.baseText('nodeCreator.actionsCategory.searchActions', { interpolate: { nodeNameTitle }})"
 		/>
-		<main :class="$style.content">
+		<main :class="$style.content" ref="contentRef">
 			<template v-for="action in filteredActions">
-				<!-- Categorised actions -->
-				<div v-if="action.type === 'category'" :key="`${action.key} + ${action.title}`" :class="$style.category">
-					<header :class="$style.categoryHeader" @click="toggleCategory(action.key)" v-if="actions.length > 1">
+				<div v-if="action.type === 'category'" :key="`${action.key} + ${action.title}`">
+					<header
+						:class="{
+							[$style.categoryHeader]: true,
+							[$style.active]: activeCategoryAction.action === '' && activeCategoryAction.category === action.key
+						}"
+						@click="toggleCategory(action.key)"
+						v-if="filteredActions.length > 1"
+					>
 						<p v-text="action.title" :class="$style.categoryTitle" />
 						<font-awesome-icon
 							:class="$style.categoryArrow"
@@ -29,12 +34,15 @@
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
 						<n8n-node-creator-node
 							v-for="item in action.items"
-							:key="`${action.key}_${item.key}`"
+							:key="`${action.key}_${item.title.replace(/\s/g, '')}`"
 							@click="onActionClick(item)"
 							@dragstart="$e => onDragStart($e, item)"
 							@dragend="$emit('dragend')"
 							draggable
-							:class="$style.action"
+							:class="{
+								[$style.action]: true,
+								[$style.active]: activeCategoryAction.action === item.title && activeCategoryAction.category === action.key
+							}"
 							:title="item.title"
 							:isTrigger="isTriggerAction(item)"
 						>
@@ -44,23 +52,6 @@
 						</n8n-node-creator-node>
 					</ul>
 				</div>
-
-				<!-- Flat actions -->
-				<n8n-node-creator-node
-					v-else
-					:key="`${action.key}__${action.title}`"
-					@click="onActionClick(action)"
-					@dragstart="$e => onDragStart($e, action)"
-					@dragend="$emit('dragend')"
-					draggable
-					:class="$style.action"
-					:title="action.title"
-					:isTrigger="isTriggerAction(action)"
-				>
-					<template #icon>
-						<node-icon :nodeType="nodeType" />
-					</template>
-				</n8n-node-creator-node>
 			</template>
 			<footer
 				v-if="containsAPIAction"
@@ -73,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance, onUnmounted, onMounted } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance, onMounted, watch, ref, nextTick } from 'vue';
 import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters, INodeTypeNameVersion } from 'n8n-workflow';
 import { externalHooks } from '@/mixins/externalHooks';
 import { IUpdateInformation } from '@/Interface';
@@ -102,8 +93,12 @@ const state = reactive({
 	subtractedCategories: [] as string[],
 	search: '',
 	latestNodeData: null as INodeTypeDescription | null,
+	activeCategoryAction: {
+		category: '',
+		action: '',
+	},
 });
-
+const contentRef = ref<HTMLElement | null>(null);
 const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
 
 const orderedActions = computed(() => {
@@ -127,10 +122,17 @@ const filteredActions = computed(() => {
 		[{key: 'title', weight: 1}],
 	);
 
-	return matchedActions.map(({item}) => item);
+	return [{
+		items: matchedActions.map(({item}) => item),
+		key: 'filtered_actions',
+		type: 'category',
+	}] as INodeAction[];
 });
 
-
+const activeCategoryIndex = computed(() => filteredActions.value.findIndex((category) => category.key === state.activeCategoryAction.category));
+const activeCategory = computed(() => filteredActions.value[activeCategoryIndex.value]);
+const activeActionIndex = computed(() => filteredActions.value[activeCategoryIndex.value].items?.findIndex((action) => action.title === state.activeCategoryAction.action) ?? -1);
+const activeAction = computed(() => filteredActions.value[activeCategoryIndex.value]?.items?.[activeActionIndex.value]);
 const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
 
 // The nodes.json doesn't contain API CALL option so we need to fetch the node detail
@@ -146,6 +148,134 @@ async function fechNodeDetails() {
 	const nodesInfo = await getNodesInformation([payload], false);
 
 	state.latestNodeData = nodesInfo[0];
+}
+
+// Set previous action as active unless it's the first action
+// then only set the previous category as active
+function setPreviousActionActive() {
+	const previousActionIndex = activeActionIndex.value - 1;
+	const isFirstActionInCategory = activeActionIndex.value === 0;
+	const previousCategory = filteredActions.value[activeCategoryIndex.value - 1];
+	const isCategory = state.activeCategoryAction.action === '' && state.activeCategoryAction.category !== '';
+	const isFirstItem = activeCategoryIndex.value === 0;
+
+	if(isFirstItem && isCategory) return;
+
+	if(isFirstActionInCategory) {
+		state.activeCategoryAction.action = '';
+		return;
+	}
+
+	if(isCategory) {
+		state.activeCategoryAction.category = previousCategory.key;
+		state.activeCategoryAction.action = state.subtractedCategories.includes(previousCategory.key)
+			? ''
+			: previousCategory.items?.slice(-1)[0].title ?? '';
+		return;
+	}
+
+	state.activeCategoryAction.action = activeCategory.value.items?.[previousActionIndex].title ?? '';
+}
+function onKeyDown(e: KeyboardEvent) {
+	// We only want to propagate 'Escape' as it closes the node-creator and
+  // 'Tab' which toggles it
+  if (!['Escape', 'Tab'].includes(e.key)) e.stopPropagation();
+
+	const actions = filteredActions.value;
+	const isSingleCategory = actions.length === 1;
+	const nextCategory = actions[activeCategoryIndex.value + 1];
+	const isSubstractedCategory = state.subtractedCategories.includes(state.activeCategoryAction.category);
+	const previousCategory = actions[activeCategoryIndex.value - 1];
+	const isCategory = state.activeCategoryAction.action === '' && state.activeCategoryAction.category !== '';
+	const isCategoryOpen = !state.subtractedCategories.includes(state.activeCategoryAction.category);
+
+	// If key is arrowd down
+	if (e.key === 'ArrowDown') {
+		if(isSubstractedCategory) {
+			state.activeCategoryAction.category = nextCategory.key || state.activeCategoryAction.category;
+			state.activeCategoryAction.action = '';
+			return;
+		}
+		const nextAction = activeCategory.value
+		? activeCategory.value.items?.[activeActionIndex.value + 1]
+		: actions[activeCategoryIndex.value + 1];
+
+		const isLastActionInCategory = activeActionIndex.value === (activeCategory.value.items ?? []).length - 1;
+		if(isLastActionInCategory) {
+			if(!nextCategory) return;
+			state.activeCategoryAction.category = actions[activeCategoryIndex.value + 1]?.key;
+			state.activeCategoryAction.action = '';
+			return;
+		}
+		if (nextAction) {
+			state.activeCategoryAction.action = nextAction.title;
+			return;
+		}
+
+		const nextCategoryFirstAction = nextCategory?.items?.[0];
+
+		if (nextCategoryFirstAction) {
+			state.activeCategoryAction.category = nextCategory.key;
+			state.activeCategoryAction.action = nextCategoryFirstAction.title;
+		}
+	}
+
+	if (e.key === 'ArrowUp') {
+		setPreviousActionActive();
+		// const firstNonSubstractedCategory = actions.slice(0, activeCategoryIndex.value).findLast((category) => !state.subtractedCategories.includes(category.key));
+		// const previousAction = activeCategory
+		// 	? activeCategory.value.items?.[activeActionIndex.value - 1]
+		// 	: actions[activeCategoryIndex.value + 1];
+
+		// const isFirstActionInCategory = activeActionIndex.value === 0;
+
+		// // console.log("🚀 ~ file: NodeActions.vue:200 ~ onKeyDown ~ isSubstractedCategory", isSubstractedCategory, state.activeCategoryAction.category, firstNonSubstractedCategory?.items[firstNonSubstractedCategory?.items?.length - 1].key);
+		// if(isCategory) {
+		// 	state.activeCategoryAction.category = previousCategory.key;
+		// 	state.activeCategoryAction.action = '';
+		// 	return;
+		// }
+		// if(isSubstractedCategory) {
+		// 	state.activeCategoryAction.category = previousCategory?.key || state.activeCategoryAction.category;
+		// 	state.activeCategoryAction.action = '';
+		// 	return;
+		// }
+		// if(isFirstActionInCategory) {
+		// 	state.activeCategoryAction.category = state.activeCategoryAction.category;
+		// 	state.activeCategoryAction.action = isSingleCategory ? state.activeCategoryAction.action : '';
+		// 	return;
+		// }
+		// if (previousAction) {
+		// 	state.activeCategoryAction.action = previousAction.key;
+		// 	return;
+		// }
+
+		// const previousCategoryLastAction = previousCategory?.items?.[previousCategory.items.length - 1];
+
+		// if (previousCategoryLastAction) {
+		// 	state.activeCategoryAction.category = previousCategory.key;
+		// 	state.activeCategoryAction.action = previousCategoryLastAction.key;
+		// }
+	}
+
+
+	if(e.key === 'ArrowRight') {
+		if(isCategory) {
+			if(isSingleCategory || isCategoryOpen) return;
+			toggleCategory(state.activeCategoryAction.category);
+			return;
+		}
+		if(activeAction.value) onActionClick(activeAction.value);
+	}
+
+	if(e.key === 'ArrowLeft') {
+		if(isCategory && !isSingleCategory && isCategoryOpen) {
+			toggleCategory(state.activeCategoryAction.category);
+			return;
+		}
+
+		onBack();
+	}
 }
 
 function toggleCategory(category: string) {
@@ -215,12 +345,26 @@ function trackView() {
 	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
 	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
+
+function setFirstActive() {
+	const firstCategory = filteredActions.value.find((action) => action.type === 'category');
+	state.activeCategoryAction.category = firstCategory?.key || '';
+	state.activeCategoryAction.action = (firstCategory?.items || filteredActions.value)[0]?.title || '';
+}
+
 fechNodeDetails();
+watch(() => state.search, setFirstActive);
+watch(() => `${state.activeCategoryAction.category} ${state.activeCategoryAction.action}`, () => nextTick(() => {
+	// Active element could be both category header and action item so we
+	// query DOM directly instead of keeping refst of both
+	contentRef.value?.querySelector('[class*=active]')?.scrollIntoView({ block: 'end' });
+}));
 onMounted(() => {
 	trackView();
+	setFirstActive();
 });
 
-const { subtractedCategories, search } = toRefs(state);
+const { subtractedCategories, search, activeCategoryAction } = toRefs(state);
 </script>
 
 <style lang="scss" module>
@@ -250,6 +394,17 @@ const { subtractedCategories, search } = toRefs(state);
 		bottom: 0;
 		width: 2px;
 		background: var(--color-text-light);
+	}
+
+}
+.active {
+	position: relative;
+	&::before {
+		content: "";
+		height: 100%;
+		left: calc(var(--spacing-s) * -1);
+		border-left: 2px solid $color-primary;
+		position: absolute;
 	}
 }
 .content {
@@ -281,11 +436,6 @@ const { subtractedCategories, search } = toRefs(state);
 	align-items: center;
 	padding: 11px 15px;
 }
-.categoryHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-}
 .categoryTitle {
 	font-weight: var(--font-weight-bold);
 	font-size: 11px;
@@ -313,10 +463,11 @@ const { subtractedCategories, search } = toRefs(state);
 }
 .categoryHeader {
 	border-bottom: 1px solid $node-creator-border-color;
-	padding: var(--spacing-xs) 0;
+	padding: 10px 0;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 }
 .categoryActions {
 	margin: var(--spacing-xs) 0;

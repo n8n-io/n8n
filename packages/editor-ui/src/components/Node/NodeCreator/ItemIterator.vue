@@ -1,6 +1,6 @@
 <template>
 	<div
-		class="item-iterator"
+		:class="$style.itemIterator"
 		name="accordion"
 		@before-enter="beforeEnter"
 		@enter="enter"
@@ -10,22 +10,35 @@
 		<div
 			v-for="(item, index) in renderedItems"
 			:key="item.key"
-			:class="item.type"
 			data-test-id="item-iterator-item"
+			:class="{
+				'clickable': !disabled,
+				[$style[item.type]]: true,
+				[$style.active]: activeIndex === index && !disabled,
+				[$style.iteratorItem]: true
+			}"
+			ref="iteratorItems"
+			@click="wrappedEmit('selected', item)"
 		>
-			<creator-item
+			<category-item
+				v-if="item.type === 'category'"
 				:item="item"
-				:active="activeIndex === index && !disabled"
-				:clickable="!disabled"
-				:disabled="disabled"
+			/>
+
+			<subcategory-item
+				v-else-if="item.type === 'subcategory'"
+				:item="item"
+			/>
+
+			<node-item
+				v-else-if="item.type === 'node'"
+				:nodeType="item.properties.nodeType"
 				:allow-actions="withActionsGetter && withActionsGetter(item)"
-				:lastNode="
-					index === renderedItems.length - 1 || renderedItems[index + 1].type !== 'node'
-				"
-				@click="wrappedEmit('selected', item)"
-				@nodeTypeSelected="$listeners.nodeTypeSelected"
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
+				@actionsClose="$listeners.actionsClose"
+				:ref="(activeIndex === index && !disabled) ? 'activeNode' : undefined"
 			/>
 		</div>
 	</div>
@@ -33,8 +46,10 @@
 
 <script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
-import CreatorItem from './CreatorItem.vue';
-import { reactive, toRefs, onMounted, watch, onUnmounted } from 'vue';
+import NodeItem from './NodeItem.vue';
+import SubcategoryItem from './SubcategoryItem.vue';
+import CategoryItem from './CategoryItem.vue';
+import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
 
 export interface Props {
 	elements: INodeCreateElement[];
@@ -57,6 +72,13 @@ const state = reactive({
 	renderedItems: [] as INodeCreateElement[],
 	renderAnimationRequest: 0,
 });
+const activeNode = ref<InstanceType<typeof Array<typeof NodeItem>>>([]);
+const iteratorItems = ref<HTMLElement[]>([]);
+
+watch(() => props.activeIndex, async () => {
+	if(props.activeIndex === undefined) return;
+	iteratorItems.value[props.activeIndex].scrollIntoView({ block: 'nearest' });
+});
 
 watch(() => props.elements, async () => {
 	state.renderedItems = [];
@@ -64,11 +86,17 @@ watch(() => props.elements, async () => {
 	renderItems();
 });
 
+function nodeSelected() {
+	// Always
+	activeNode.value[0].onClick();
+}
+
 function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INodeCreateElement, $e?: Event) {
 	if (props.disabled) return;
 
 	emit((event as 'selected' || 'dragstart' || 'dragend'), element, $e);
 }
+
 // Lazy render items to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
@@ -79,7 +107,6 @@ function renderItems() {
 }
 
 onMounted(renderItems);
-
 onUnmounted(() => {
 	window.cancelAnimationFrame(state.renderAnimationRequest);
 	state.renderedItems = [];
@@ -88,6 +115,7 @@ onUnmounted(() => {
 function beforeEnter(el: HTMLElement) {
 	el.style.height = '0';
 }
+
 
 function enter(el: HTMLElement) {
 	el.style.height = `${el.scrollHeight}px`;
@@ -101,15 +129,31 @@ function leave(el: HTMLElement) {
 	el.style.height = '0';
 }
 
+defineExpose({ nodeSelected });
 const { renderedItems } = toRefs(state);
 </script>
 
+<style lang="scss" module>
+.iteratorItem {
+	border-left: 2px solid transparent;
+	// Make sure border is fully visible
+	margin-left: 1px;
+	&:hover {
+		border-color: $node-creator-item-hover-border-color;
+	}
 
-<style lang="scss" scoped>
-.item-iterator > *:last-child {
-	margin-bottom: var(--spacing-2xl);
+	&.active  {
+		border-color: $color-primary !important;
+	}
+
 }
+.itemIterator {
+	> *:last-child {
+		margin-bottom: var(--spacing-2xl);
+	}
+}
+
 .node + .category {
-	margin-top: 15px;
+	margin-top: var(--spacing-s);
 }
 </style>

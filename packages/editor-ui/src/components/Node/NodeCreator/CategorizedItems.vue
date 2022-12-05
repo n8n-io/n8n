@@ -4,7 +4,7 @@
 			:class="$style.categorizedItems"
 			ref="mainPanelContainer"
 			tabindex="0"
-			@keydown.capture="nodeFilterKeyDown"
+			@keydown="nodeFilterKeyDown"
 			:key="`${activeSubcategoryTitle}_transition`"
 			data-test-id="categorized-items"
 		>
@@ -24,6 +24,7 @@
 				v-if="isSearchVisible"
 				:value="nodeCreatorStore.itemsFilter"
 				@input="onNodeFilterChange"
+				ref="searchBar"
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 			/>
 			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
@@ -31,8 +32,10 @@
 					:elements="renderedItems"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
+					@actionsClose="refocus"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:with-actions-getter="withActionsGetter"
+					ref="itemIterator"
 				/>
 			</div>
 			<div
@@ -44,7 +47,9 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
+					@actionsClose="refocus"
 					:with-actions-getter="withActionsGetter"
+					ref="itemIterator"
 				/>
 			</div>
 			<no-results
@@ -90,7 +95,7 @@
 </template>
 
 <script lang="ts" setup>
-import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, onUnmounted } from 'vue';
+import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, ref, onUnmounted } from 'vue';
 import camelcase from 'lodash.camelcase';
 
 import { externalHooks } from '@/mixins/externalHooks';
@@ -153,8 +158,9 @@ const state = reactive({
 	TRIGGER_NODE_FILTER,
 	REGULAR_NODE_FILTER,
 	mainPanelContainer: null as HTMLElement | null,
-	searchBarRef: null as HTMLElement | null,
 });
+const itemIterator = ref<InstanceType<typeof ItemIterator>>();
+const searchBar = ref<InstanceType<typeof SearchBar>>();
 
 const activeSubcategory = computed<INodeCreateElement | null> (
 	() => state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1] || null,
@@ -318,7 +324,9 @@ function selectWebhook() {
 function selectHttpRequest() {
   emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
 }
-
+function refocus() {
+	searchBar.value?.focus();
+}
 function nodeFilterKeyDown(e: KeyboardEvent) {
   // We only want to propagate 'Escape' as it closes the node-creator and
   // 'Tab' which toggles it
@@ -328,8 +336,8 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
   if(['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
 
   if (activeSubcategory.value) {
-    const activeList = subcategorizedItems.value;
-    const activeNodeType = activeList[state.activeSubcategoryIndex];
+    const activeList = renderedItems.value;
+		const activeNodeType = activeList[state.activeSubcategoryIndex];
 
     if (e.key === 'ArrowDown' && activeSubcategory.value) {
       state.activeSubcategoryIndex++;
@@ -350,7 +358,9 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
       onSubcategoryClose();
     } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
       selected(activeNodeType);
-    }
+    } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'node') {
+			onNodeSelected();
+		}
     return;
   }
 
@@ -376,7 +386,9 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
     selected(activeNodeType);
   } else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
     selected(activeNodeType);
-  }
+  } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'node') {
+		onNodeSelected();
+	}
 }
 function selected(element: INodeCreateElement) {
   const typeHandler = {
@@ -385,6 +397,10 @@ function selected(element: INodeCreateElement) {
   };
 
   typeHandler[element.type as "category" | "subcategory"]();
+}
+
+function onNodeSelected() {
+	itemIterator.value?.nodeSelected();
 }
 
 function onCategorySelected(category: string) {
@@ -465,7 +481,7 @@ watch(() => nodeCreatorStore.itemsFilter, (newValue, oldValue) => {
 	});
 });
 
-const { searchBarRef, activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state);
+const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state);
 </script>
 
 <style lang="scss" module>

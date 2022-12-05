@@ -42,16 +42,16 @@
 				:nodeType="nodeType"
 				:actions="nodeType.actions || []"
 				@actionSelected="onActionSelected"
-				@back="showActionsPanel = false"
+				@back="onActionsClose"
 				@dragstart.stop="onDragStart"
 				@dragend="onDragEnd"
 			/>
 		</template>
-</n8n-node-creator-node>
+	</n8n-node-creator-node>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, onMounted, getCurrentInstance } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
@@ -63,7 +63,6 @@ import { externalHooks } from '@/mixins/externalHooks';
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
 import { useWorkflowsStore } from '@/stores/workflows';
-import useNodeActions from '@/composables/useNodeActions';
 
 export interface Props {
 	nodeType: INodeTypeDescription;
@@ -80,12 +79,12 @@ const emit = defineEmits<{
 	(event: 'dragstart', $e: DragEvent): void,
 	(event: 'dragend', $e: DragEvent): void,
 	(event: 'nodeTypeSelected', value: string[]): void,
+	(event: 'actionsClose'): void,
 }>();
 
 const { $externalHooks } = new externalHooks();
 const instance = getCurrentInstance();
 const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-const { categorizedNodesWithActions } = useNodeActions();
 const state = reactive({
 	dragging: false,
 	showActionsPanel: false,
@@ -121,7 +120,10 @@ function onClick() {
 	if(hasActions.value && props.allowActions) state.showActionsPanel = true;
 	else emit('nodeTypeSelected', [props.nodeType.name]);
 }
-
+function onActionsClose() {
+	state.showActionsPanel = false;
+	emit('actionsClose');
+}
 function getActionNodeTypes(action: IUpdateInformation): string[] {
 	const actionKey = action.key as string;
 	const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
@@ -228,6 +230,10 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	}
 }
 
+
+defineExpose({
+	onClick,
+});
 const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 </script>
 <style lang="scss" module>
