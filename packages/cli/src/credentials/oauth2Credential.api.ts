@@ -93,7 +93,11 @@ oauth2CredentialController.get(
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		if (decryptedDataOriginal?.scope && !['oAuth1Api', 'oAuth2Api'].includes(credentialType)) {
+		if (
+			decryptedDataOriginal?.scope &&
+			credentialType.includes('OAuth2') &&
+			!['oAuth2Api'].includes(credentialType)
+		) {
 			delete decryptedDataOriginal.scope;
 		}
 
