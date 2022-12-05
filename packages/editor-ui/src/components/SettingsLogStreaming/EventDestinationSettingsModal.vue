@@ -85,11 +85,6 @@
 					</n8n-input-label>
 					</template>
 					<template v-else>
-						<el-card
-						class="box-card"
-						shadow="never"
-						>
-						<span :class="$style.cardTitle">{{$locale.baseText("settings.logstreaming.tab.settings")}}</span>
 						<template v-if="isTypeWebhook">
 							<parameter-input-list
 								:parameters="webhookDescription"
@@ -120,7 +115,6 @@
 								@valueChanged="valueChanged"
 							/>
 						</template>
-						</el-card>
 					</template>
 				</div>
 				<div v-if="activeTab === 'events'" :class="$style.mainContent">
