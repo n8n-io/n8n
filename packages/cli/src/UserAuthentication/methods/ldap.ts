@@ -7,6 +7,7 @@ import {
 	getLdapUserRole,
 	getUserByEmail,
 	getUserByLdapId,
+	isInstanceOwner,
 	isLdapDisabled,
 	mapLdapAttributesToDb,
 	transformEmailUserToLdapUser,
@@ -19,6 +20,8 @@ export const handleLdapLogin = async (
 	password: string,
 ): Promise<User | undefined> => {
 	if (isLdapDisabled()) return undefined;
+
+	if (await isInstanceOwner(email)) return undefined;
 
 	const ldapConfig = await getLdapConfig();
 

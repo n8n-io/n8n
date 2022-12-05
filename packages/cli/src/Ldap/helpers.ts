@@ -497,3 +497,8 @@ export const transformAllLdapUsersToEmailUsers = async () => {
 export const disableAllLdapUsers = async () => {
 	return Db.collections.User.update({ signInType: SignInType.LDAP }, { disabled: true });
 };
+
+export const isInstanceOwner = async (email: string): Promise<boolean> => {
+	const user = await Db.collections.User.findOne({ email });
+	return user && user?.globalRole?.name === 'owner' ? true : false;
+};
