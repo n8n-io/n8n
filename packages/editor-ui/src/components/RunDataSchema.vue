@@ -1,34 +1,5 @@
-<template>
-	<div :class="$style.schemaWrapper">
-		<draggable
-			type="mapping"
-			targetDataKey="mappable"
-			:disabled="!mappingEnabled"
-			@dragstart="onDragStart"
-			@dragend="onDragEnd"
-		>
-			<template #preview="{ canDrop, el }">
-				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
-			</template>
-			<template>
-				<div :class="$style.schema">
-					<run-data-schema-item
-						:schema="schema"
-						:level="0"
-						:parent="null"
-						:subKey="`${schema.type}-0-0`"
-						:mappingEnabled="mappingEnabled"
-						:draggingPath="draggingPath"
-						:distanceFromActive="distanceFromActive"
-						:node="node"
-					/>
-				</div>
-			</template>
-		</draggable>
-	</div>
-</template>
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { INodeUi, Schema } from "@/Interface";
 import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
@@ -36,9 +7,11 @@ import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
 import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
+import { IDataObject } from "n8n-workflow";
+import { getSchema, mergeDeep } from "@/utils";
 
 type Props = {
-	schema: Schema
+	data: IDataObject[]
 	mappingEnabled: boolean
 	distanceFromActive: number
 	runIndex: number
@@ -53,6 +26,11 @@ const props = withDefaults(defineProps<Props>(), {
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
 const webhooksStore = useWebhooksStore();
+
+const schema = computed<Schema>(() => {
+	const [head, ...tail] = props.data;
+	return getSchema(mergeDeep([head, ...tail, head]));
+});
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
@@ -86,6 +64,36 @@ const onDragEnd = (el: HTMLElement) => {
 };
 
 </script>
+
+<template>
+	<div :class="$style.schemaWrapper">
+		<draggable
+			type="mapping"
+			targetDataKey="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+		>
+			<template #preview="{ canDrop, el }">
+				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
+			</template>
+			<template>
+				<div :class="$style.schema">
+					<run-data-schema-item
+						:schema="schema"
+						:level="0"
+						:parent="null"
+						:subKey="`${schema.type}-0-0`"
+						:mappingEnabled="mappingEnabled"
+						:draggingPath="draggingPath"
+						:distanceFromActive="distanceFromActive"
+						:node="node"
+					/>
+				</div>
+			</template>
+		</draggable>
+	</div>
+</template>
 
 <style lang="scss" module>
 .schemaWrapper {

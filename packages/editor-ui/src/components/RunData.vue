@@ -250,8 +250,8 @@
 			/>
 
 			<run-data-schema
-				v-else-if="hasNodeRun && displayMode === 'schema' && schema.value?.length > 0"
-				:schema="schema"
+				v-else-if="hasNodeRun && displayMode === 'schema' && jsonData?.length > 0"
+				:data="jsonData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
 				:node="node"
@@ -362,7 +362,6 @@ import {
 	IRunDataDisplayMode,
 	ITab,
 	NodePanelType,
-	Schema,
 } from '@/Interface';
 
 import {
@@ -386,7 +385,7 @@ import { pinData } from '@/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
-import { isEmpty, getSchema, mergeDeep } from '@/utils';
+import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
@@ -718,10 +717,6 @@ export default mixins(
 			},
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
-			},
-			schema(): Schema {
-				const [head, ...tail] = this.jsonData;
-				return getSchema(mergeDeep([head, ...tail, head]));
 			},
 		},
 		methods: {

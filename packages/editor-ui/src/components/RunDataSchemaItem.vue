@@ -1,48 +1,3 @@
-<template>
-	<div :class="$style.item">
-		<div
-			v-if="level > 0 || level === 0 && !isSchemaValueArray"
-			:title="schema.type"
-			:class="{
-				[$style.pill]: true,
-				[$style.mappable]: mappingEnabled,
-				[$style.dragged]: draggingPath === schema.path,
-			}"
-		>
-			<span
-				:class="$style.label"
-				:data-value="getJsonParameterPath(schema.path)"
-				:data-name="schemaName"
-				:data-path="schema.path"
-				:data-depth="level"
-				data-target="mappable"
-			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
-				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
-				<span v-if="key" :class="{[$style.arrayIndex]: isSchemaParentTypeArray}">{{ key }}</span>
-			</span>
-		</div>
-		<span v-if="text" :class="$style.text">{{ text }}</span>
-		<input :id="subKey" type="checkbox" checked />
-		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<font-awesome-icon icon="angle-up" />
-		</label>
-		<div v-if="isSchemaValueArray" :class="{[$style.sub]: true, [$style.flat]: isFlat}">
-			<run-data-schema-item v-for="(s, i) in schema.value"
-				:key="`${s.type}-${level}-${i}`"
-				:schema="s"
-				:level="level + 1"
-				:parent="schema"
-				:subKey="`${s.type}-${level}-${i}`"
-				:mappingEnabled="mappingEnabled"
-				:draggingPath="draggingPath"
-				:distanceFromActive="distanceFromActive"
-				:node="node"
-				:style="{transitionDelay: transitionDelay(i)}"
-			/>
-		</div>
-	</div>
-</template>
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { INodeUi, Schema } from "@/Interface";
@@ -98,6 +53,52 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 };
 
 </script>
+
+<template>
+	<div :class="$style.item">
+		<div
+			v-if="level > 0 || level === 0 && !isSchemaValueArray"
+			:title="schema.type"
+			:class="{
+				[$style.pill]: true,
+				[$style.mappable]: mappingEnabled,
+				[$style.dragged]: draggingPath === schema.path,
+			}"
+		>
+			<span
+				:class="$style.label"
+				:data-value="getJsonParameterPath(schema.path)"
+				:data-name="schemaName"
+				:data-path="schema.path"
+				:data-depth="level"
+				data-target="mappable"
+			>
+				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
+				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
+				<span v-if="key" :class="{[$style.arrayIndex]: isSchemaParentTypeArray}">{{ key }}</span>
+			</span>
+		</div>
+		<span v-if="text" :class="$style.text">{{ text }}</span>
+		<input :id="subKey" type="checkbox" checked />
+		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
+			<font-awesome-icon icon="angle-up" />
+		</label>
+		<div v-if="isSchemaValueArray" :class="{[$style.sub]: true, [$style.flat]: isFlat}">
+			<run-data-schema-item v-for="(s, i) in schema.value"
+				:key="`${s.type}-${level}-${i}`"
+				:schema="s"
+				:level="level + 1"
+				:parent="schema"
+				:subKey="`${s.type}-${level}-${i}`"
+				:mappingEnabled="mappingEnabled"
+				:draggingPath="draggingPath"
+				:distanceFromActive="distanceFromActive"
+				:node="node"
+				:style="{transitionDelay: transitionDelay(i)}"
+			/>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" module>
 @import '@/styles/css-animation-helpers.scss';

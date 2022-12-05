@@ -40,43 +40,7 @@ describe('RunDataJsonSchema.vue', () => {
 						],
 						disabled: false,
 					},
-					schema: {
-						type: 'object',
-						value: [
-							{
-								key: 'name',
-								type: 'string',
-								value: 'John',
-								path: '["name"]',
-							},
-							{
-								key: 'age',
-								type: 'number',
-								value: '22',
-								path: '["age"]',
-							},
-							{
-								key: 'hobbies',
-								type: 'array',
-								value: [
-									{
-										key: '0',
-										type: 'string',
-										value: 'surfing',
-										path: '["hobbies"][0]',
-									},
-									{
-										key: '1',
-										type: 'string',
-										value: 'traveling',
-										path: '["hobbies"][1]',
-									},
-								],
-								path: '["hobbies"]',
-							},
-						],
-						path: '',
-					},
+					data: [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }],
 				},
 				mocks: {
 					$locale: {
