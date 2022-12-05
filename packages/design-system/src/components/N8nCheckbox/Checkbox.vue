@@ -1,6 +1,8 @@
 <template>
 	<el-checkbox
 		v-bind="$props"
+		ref="checkbox"
+		:name="id"
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
@@ -9,10 +11,12 @@
 	>
 		<n8n-input-label
 			:label="label"
+			:inputName="id"
 			:tooltipText="tooltipText"
 			:bold="false"
 			:size="labelSize"
-		></n8n-input-label>
+			@click.prevent="onLabelClick"
+		/>
 	</el-checkbox>
 </template>
 
@@ -20,6 +24,7 @@
 import Vue from 'vue';
 import { Checkbox as ElCheckbox } from 'element-ui';
 import N8nInputLabel from '../N8nInputLabel';
+import { uid } from '../../utils';
 
 export default Vue.extend({
 	name: 'n8n-checkbox',
@@ -48,6 +53,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		id: {
+			type: String,
+			default: () => uid('checkbox'),
+		},
 		labelSize: {
 			type: String,
 			default: 'medium',
@@ -57,6 +66,14 @@ export default Vue.extend({
 	methods: {
 		onChange(event: Event) {
 			this.$emit('input', event);
+		},
+		onLabelClick() {
+			const checkboxComponent = this.$refs.checkbox as ElCheckbox;
+			if (!checkboxComponent) {
+				return;
+			}
+
+			(checkboxComponent.$el as HTMLElement).click();
 		},
 	},
 });
@@ -69,6 +86,10 @@ export default Vue.extend({
 
 	span {
 		white-space: normal;
+	}
+
+	label {
+		cursor: pointer;
 	}
 }
 </style>
