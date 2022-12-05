@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TwitterOAuth1Api implements ICredentialType {
 	name = 'twitterOAuth1Api';
+
 	extends = ['oAuth1Api'];
+
 	displayName = 'Twitter OAuth API';
+
 	documentationUrl = 'twitter';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Request Token URL',

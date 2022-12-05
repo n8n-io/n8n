@@ -109,8 +109,8 @@ export class Bannerbear implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'image') {
 				//https://developers.bannerbear.com/#create-an-image
@@ -129,7 +129,7 @@ export class Bannerbear implements INodeType {
 						body.metadata = additionalFields.metadata as string;
 					}
 					if (modifications) {
-						body.modifications = keysToSnakeCase(modifications) as IDataObject[];
+						body.modifications = keysToSnakeCase(modifications);
 						// delete all fields set to empty
 						for (const modification of body.modifications as IDataObject[]) {
 							for (const key of Object.keys(modification)) {
@@ -143,7 +143,7 @@ export class Bannerbear implements INodeType {
 					if (additionalFields.waitForImage && responseData.status !== 'completed') {
 						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
 
-						const promise = (uid: string) => {
+						const promise = async (uid: string) => {
 							let data: IDataObject = {};
 							return new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {

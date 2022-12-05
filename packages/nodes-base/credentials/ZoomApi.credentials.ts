@@ -7,8 +7,11 @@ import {
 
 export class ZoomApi implements ICredentialType {
 	name = 'zoomApi';
+
 	displayName = 'Zoom API';
+
 	documentationUrl = 'zoom';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'JWT Token',
@@ -18,6 +21,7 @@ export class ZoomApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class ZoomApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.zoom.us/v2',

@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Smtp implements ICredentialType {
 	name = 'smtp';
+
 	displayName = 'SMTP';
+
 	documentationUrl = 'smtp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'User',

@@ -420,7 +420,6 @@ export class JiraTrigger implements INodeType {
 					body.excludeBody = additionalFields.excludeBody as boolean;
 				}
 
-				// tslint:disable-next-line: no-any
 				const parameters: any = {};
 
 				if (incomingAuthentication === 'queryAuth') {

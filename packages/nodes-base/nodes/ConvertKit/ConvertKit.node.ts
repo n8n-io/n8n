@@ -159,8 +159,8 @@ export class ConvertKit implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -380,9 +380,9 @@ export class ConvertKit implements INodeType {
 
 				if (resource === 'tag') {
 					if (operation === 'create') {
-						const names = ((this.getNodeParameter('name', i) as string).split(',') as string[]).map(
-							(e) => ({ name: e }),
-						);
+						const names = (this.getNodeParameter('name', i) as string)
+							.split(',')
+							.map((e) => ({ name: e }));
 
 						const body: IDataObject = {
 							tag: names,

@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Sftp implements ICredentialType {
 	name = 'sftp';
+
 	displayName = 'SFTP';
+
 	documentationUrl = 'ftp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

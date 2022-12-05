@@ -70,7 +70,7 @@ export async function getHomeAssistantServices(
 	const services = await homeAssistantApiRequest.call(this, 'GET', '/services');
 	if (domain === '') {
 		// If no domain specified return domains
-		const domains = services.map(({ domain }: IDataObject) => domain as string).sort();
+		const domains = services.map(({ domain: service }: IDataObject) => service as string).sort();
 		returnData.push(...domains.map((service: string) => ({ name: service, value: service })));
 		return returnData;
 	} else {

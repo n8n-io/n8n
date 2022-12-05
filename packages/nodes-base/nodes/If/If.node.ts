@@ -456,12 +456,12 @@ export class If implements INodeType {
 						value2,
 					);
 
-					if (compareOperationResult === true && combineOperation === 'any') {
+					if (compareOperationResult && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any
 						// other ones as it should pass anyway. So go on with the next item.
 						returnDataTrue.push(item);
 						continue itemLoop;
-					} else if (compareOperationResult === false && combineOperation === 'all') {
+					} else if (!compareOperationResult && combineOperation === 'all') {
 						// If it fails and the operation is "all" we do not have to check any
 						// other ones as it should be not pass anyway. So go on with the next item.
 						returnDataFalse.push(item);

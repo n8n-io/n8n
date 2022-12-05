@@ -60,7 +60,6 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: 'image
 	}));
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | object | undefined): any {
 	let result;
 	if (typeof json === 'object') {
@@ -74,7 +73,7 @@ export function validateJSON(json: string | object | undefined): any {
 	return result;
 }
 
-export function downloadImage(this: IExecuteFunctions, url: string) {
+export async function downloadImage(this: IExecuteFunctions, url: string) {
 	return this.helpers.request({
 		uri: url,
 		method: 'GET',

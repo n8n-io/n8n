@@ -13,7 +13,7 @@ export async function createTicket(
 	const { assetId, issueType, status, contactId } = this.getNodeParameter(
 		'additionalFields',
 		index,
-	) as IDataObject;
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
@@ -31,9 +31,7 @@ export async function createTicket(
 	body.customer_id = id;
 	body.subject = subject;
 
-	let responseData;
-
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	return this.helpers.returnJsonArray(responseData.ticket);
 }
