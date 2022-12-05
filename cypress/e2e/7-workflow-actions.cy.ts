@@ -98,8 +98,10 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should paste nodes', () => {
-		cy.get('body').paste(`{"meta":{"instanceId":"1a30c82b98a30444ad25bce513655a5e02be772d361403542c23172be6062f04"},"nodes":[{"parameters":{"rule":{"interval":[{}]}},"id":"a898563b-d2a4-4b15-a979-366872e801b0","name":"Schedule Trigger","type":"n8n-nodes-base.scheduleTrigger","typeVersion":1,"position":[420,260]},{"parameters":{"options":{}},"id":"b9a13e3d-bfa5-4873-959f-fd3d67e380d9","name":"Set","type":"n8n-nodes-base.set","typeVersion":1,"position":[640,260]}],"connections":{"Schedule Trigger":{"main":[[{"node":"Set","type":"main","index":0}]]}}}`);
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		cy.fixture('Test_workflow-actions_paste-data.json').then(data => {
+			cy.get('body').paste(JSON.stringify(data));
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		});
 	});
 
 });
