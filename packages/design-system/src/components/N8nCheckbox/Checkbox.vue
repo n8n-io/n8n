@@ -2,7 +2,6 @@
 	<el-checkbox
 		v-bind="$props"
 		ref="checkbox"
-		:name="id"
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
@@ -11,7 +10,6 @@
 	>
 		<n8n-input-label
 			:label="label"
-			:inputName="id"
 			:tooltipText="tooltipText"
 			:bold="false"
 			:size="labelSize"
@@ -52,10 +50,6 @@ export default Vue.extend({
 		value: {
 			type: Boolean,
 			default: false,
-		},
-		id: {
-			type: String,
-			default: () => uid('checkbox'),
 		},
 		labelSize: {
 			type: String,
