@@ -48,13 +48,6 @@ export class EventMessageAudit extends AbstractEventMessage {
 		return this;
 	}
 
-	anonymize(): this {
-		this.payload.firstName = '*';
-		this.payload.lastName = '*';
-		this.payload.userEmail = '*';
-		return this;
-	}
-
 	deserialize(data: JsonObject): this {
 		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);

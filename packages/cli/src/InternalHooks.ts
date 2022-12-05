@@ -360,6 +360,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				eventName: 'n8n.audit.user.updated',
 				payload: {
 					userId: userUpdateData.user_id,
+					_name: 'irgendwas',
 				},
 			}),
 			this.telemetry.track('User changed personal settings', userUpdateData),

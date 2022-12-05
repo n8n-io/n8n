@@ -30,14 +30,20 @@
 					</checkbox>
 			</template>
 			<ul :class="$style.eventList">
-				<li v-for="event in group.children" :key="event.name" :class="$style.eventListItem">
+				<li v-for="event in group.children" :key="event.name" :class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`">
 					<checkbox
-						:value="event.selected"
+						:value="(event.selected || group.selected)"
 						:indeterminate="event.indeterminate"
 						:disabled="group.selected"
 						@input="onInput"
 						@change="onCheckboxChecked(event.name, $event)">
 								{{ event.label }}
+								<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+									<!-- <n8n-icon icon="question-circle" size="small" /> -->
+									<template #content>
+										{{event.name}}
+									</template>
+								</n8n-tooltip>
 					</checkbox>
 				</li>
 			</ul>
@@ -97,8 +103,8 @@
 
 <style lang="scss" module>
 .eventListCard {
-
 }
+
 .eventList {
   height: auto;
 	max-height: 300px;
@@ -113,6 +119,19 @@
   justify-content: left;
   margin: 10px;
   color: var(--el-color-primary);
+}
+
+.eventListItemDisabled > {
+	label > {
+		span > {
+			span {
+				background-color: transparent !important;
+				&:after {
+					border-color: rgb(54, 54, 54) !important;
+				}
+			}
+		}
+	}
 }
 .eventList .eventListItem + .listItem {
   margin-top: 10px;

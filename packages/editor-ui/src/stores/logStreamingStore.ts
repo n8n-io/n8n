@@ -165,6 +165,15 @@ export function eventGroupFromEventName(eventName:string): string | undefined {
 	}
 }
 
+function prettifyEventName(label: string, group = ''): string {
+	label = label.replace(group + '.', '');
+	if (label.length > 0) {
+		label = label[0].toUpperCase() + label.substring(1);
+		label = label.replace('.', ' ');
+	}
+	return label;
+}
+
 export function eventGroupsFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
 	const result = [] as EventSelectionGroup[];
 	const eventNameArray = Array.from(dottedList.values());
@@ -191,7 +200,7 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 				collection.indeterminate = true;
 			}
 			const subCollection: EventSelectionItem = {
-				label: event.replace(group + '.', ''),
+				label: prettifyEventName(event, group),
 				name: event,
 				selected: selectionList.has(event),
 				indeterminate: false,
@@ -200,5 +209,5 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 		}
 		result.push(collection);
 	}
-	return result;
+	return result.sort((a, b)=>b.label.localeCompare(a.label));
 }

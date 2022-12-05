@@ -65,7 +65,21 @@ export abstract class AbstractEventMessage {
 	// abstract serialize(): EventMessageSerialized;
 	abstract deserialize(data: JsonObject): this;
 	abstract setPayload(payload: AbstractEventPayload): this;
-	abstract anonymize(): this;
+
+	anonymize(): this {
+		if (this.payload) {
+			for (const key of Object.keys(this.payload)) {
+				if (key.startsWith('_')) {
+					if (typeof this.payload[key] === 'string') {
+						this.payload[key] = '*';
+					} else {
+						this.payload[key] = undefined;
+					}
+				}
+			}
+		}
+		return this;
+	}
 
 	serialize(): AbstractEventMessageOptions {
 		return {

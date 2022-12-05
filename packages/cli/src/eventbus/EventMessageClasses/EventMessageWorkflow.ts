@@ -52,10 +52,6 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 		return this;
 	}
 
-	anonymize(): this {
-		return this;
-	}
-
 	deserialize(data: JsonObject): this {
 		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
