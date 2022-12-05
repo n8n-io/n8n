@@ -747,7 +747,7 @@ export const workflowHelpers = mixins(
 				} catch (error) {
 					this.uiStore.removeActiveAction('workflowSaving');
 
-					if (error.errorCode === 400 && error.message.startsWith('Your most recent changes may be lost')) {
+					if (error.errorCode === 100) {
 						const overwrite = await this.confirmMessage(
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
