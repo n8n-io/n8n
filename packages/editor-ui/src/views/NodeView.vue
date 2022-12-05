@@ -3,6 +3,7 @@
 	<div
 		class="node-view-root"
 		id="node-view-root"
+		data-test-id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
