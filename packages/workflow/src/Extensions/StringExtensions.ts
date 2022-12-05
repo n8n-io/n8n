@@ -213,7 +213,7 @@ function toSentenceCase(value: string) {
 		current =
 			current.slice(0, charIndex) +
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			current.at(charIndex)!.toLocaleUpperCase() +
+			current[charIndex]!.toLocaleUpperCase() +
 			current.slice(charIndex + 1).toLocaleLowerCase();
 		const puncIndex = current.search(PUNC_TEST_REGEXP);
 		if (puncIndex === -1) {
