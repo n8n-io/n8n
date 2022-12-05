@@ -540,6 +540,9 @@ export default mixins(
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
 				isProductionExecutionPreview: false,
+				// Renaming deletes nodes which makes jsplumb delete all loose connections.
+				// This should prevent automatically removed connections from populating undo stack
+				renameInProgress: false,
 			};
 		},
 		beforeDestroy() {
@@ -2060,7 +2063,7 @@ export default mixins(
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
 							this.historyStore.stopRecordingUndo();
-						} else if (!this.historyStore.bulkInProgress && !this.historyStore.currentBulkAction && connectionInfo) {
+						} else if (!this.historyStore.bulkInProgress && !this.renameInProgress && connectionInfo) {
 							// if connection is just being detached, save this in history
 							// but only if it's not detached as a side effect of bulk undo/redo process
 							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
@@ -2651,7 +2654,7 @@ export default mixins(
 							const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
 
 							setTimeout(() => {
-								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex, true);
+								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex, trackHistory);
 
 								if (waitForNewConnection) {
 									this.instance.setSuspendDrawing(false, true);
@@ -2735,6 +2738,7 @@ export default mixins(
 					return;
 				}
 
+				this.renameInProgress = true;
 				if (trackHistory) {
 					this.historyStore.startRecordingUndo();
 				}
@@ -2771,7 +2775,7 @@ export default mixins(
 				await Vue.nextTick();
 
 				// Add the new updated nodes
-				await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode);
+				await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode, false);
 
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
@@ -2785,6 +2789,7 @@ export default mixins(
 				if (trackHistory) {
 					this.historyStore.stopRecordingUndo();
 				}
+				this.renameInProgress = false;
 			},
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
@@ -3314,6 +3319,9 @@ export default mixins(
 				await this.saveCurrentWorkflow();
 				callback?.();
 			},
+			setRenameInProgress(inProgress: boolean) {
+				this.renameInProgress = inProgress;
+			},
 			onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
 				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
 				setTimeout(() => {
@@ -3450,6 +3458,8 @@ export default mixins(
 			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$on('revertRenameNode', this.onRevertNameChange);
+			this.$root.$on('renameStarted', this.setRenameInProgress);
+			this.$root.$on('renameEnded', this.setRenameInProgress);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3471,6 +3481,8 @@ export default mixins(
 			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$off('revertRenameNode', this.onRevertNameChange);
+			this.$root.$off('renameStarted', this.setRenameInProgress);
+			this.$root.$off('renameEnded', this.setRenameInProgress);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);

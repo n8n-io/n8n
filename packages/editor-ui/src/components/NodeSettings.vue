@@ -486,6 +486,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
+			this.$root.$emit('renameStarted', true);
 			this.historyStore.startRecordingUndo();
 			if (this.node) {
 				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
@@ -496,6 +497,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				name: 'name',
 			});
 			this.historyStore.stopRecordingUndo();
+			this.$root.$emit('renameEnded', false);
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			let newValue: NodeParameterValue;
