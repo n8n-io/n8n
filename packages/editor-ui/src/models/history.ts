@@ -12,9 +12,6 @@ enum COMMANDS {
 	REMOVE_NODE = 'removeNode',
 	ADD_CONNECTION = 'addConnection',
 	REMOVE_CONNECTION = 'removeConnection',
-	ENABLE_NODE = 'enableNode',
-	DISABLE_NODE = 'disableNode',
-	RENAME_NODE = 'renameNode',
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 }
 
