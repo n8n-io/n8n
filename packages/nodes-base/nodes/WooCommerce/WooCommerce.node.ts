@@ -126,8 +126,8 @@ export class WooCommerce implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'customer') {
@@ -148,7 +148,7 @@ export class WooCommerce implements INodeType {
 						email: this.getNodeParameter('email', i),
 					} as IDataObject;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(body, adjustMetadata(additionalFields));
@@ -164,9 +164,7 @@ export class WooCommerce implements INodeType {
 
 					const customerId = this.getNodeParameter('customerId', i);
 
-					const qs: IDataObject = {
-						force: true, // required, customers do not support trashing
-					};
+					qs.force = true; // required, customers do not support trashing
 
 					const endpoint = `/customers/${customerId}`;
 					responseData = await woocommerceApiRequest.call(this, 'DELETE', endpoint, {}, qs);
@@ -188,9 +186,8 @@ export class WooCommerce implements INodeType {
 
 					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#list-all-customers
 
-					const qs = {} as IDataObject;
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const filters = this.getNodeParameter('filters', i);
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (Object.keys(filters).length) {
 						Object.assign(qs, filters);
@@ -202,10 +199,10 @@ export class WooCommerce implements INodeType {
 							'GET',
 							'/customers',
 							{},
-							qs,
+							{},
 						);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
 					}
 				} else if (operation === 'update') {
@@ -216,7 +213,7 @@ export class WooCommerce implements INodeType {
 					// https://woocommerce.github.io/woocommerce-rest-api-docs/?javascript#update-a-customer
 
 					const body = {} as IDataObject;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 
 					if (Object.keys(updateFields).length) {
 						Object.assign(body, adjustMetadata(updateFields));
@@ -231,7 +228,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-a-product
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IProduct = {
 						name,
 					};
@@ -264,7 +261,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-a-product
 				if (operation === 'update') {
 					const productId = this.getNodeParameter('productId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IProduct = {};
 
 					setFields(updateFields, body);
@@ -304,8 +301,8 @@ export class WooCommerce implements INodeType {
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-products
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}
@@ -357,7 +354,7 @@ export class WooCommerce implements INodeType {
 					if (options.type) {
 						qs.type = options.type as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(
 							this,
 							'GET',
@@ -366,7 +363,7 @@ export class WooCommerce implements INodeType {
 							qs,
 						);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/products', {}, qs);
 					}
 				}
@@ -385,7 +382,7 @@ export class WooCommerce implements INodeType {
 			if (resource === 'order') {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#create-an-order
 				if (operation === 'create') {
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IOrder = {};
 
 					setFields(additionalFields, body);
@@ -441,7 +438,7 @@ export class WooCommerce implements INodeType {
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#update-an-order
 				if (operation === 'update') {
 					const orderId = this.getNodeParameter('orderId', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IOrder = {};
 
 					if (updateFields.currency) {
@@ -530,8 +527,8 @@ export class WooCommerce implements INodeType {
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					if (options.after) {
 						qs.after = options.after as string;
 					}
@@ -562,10 +559,10 @@ export class WooCommerce implements INodeType {
 					if (options.status) {
 						qs.status = options.status as string;
 					}
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/orders', {}, qs);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
 					}
 				}

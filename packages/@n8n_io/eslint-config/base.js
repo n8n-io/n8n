@@ -9,11 +9,12 @@ const config = (module.exports = {
 	},
 
 	ignorePatterns: [
-		'.eslintrc.js', // TODO: remove this
 		'node_modules/**',
 		'dist/**',
-		'test/**', // TODO: remove this
-		'jest.config.js', // TODO: remove this
+		// TODO: remove these
+		'test/**',
+		'.eslintrc.js',
+		'jest.config.js',
 	],
 
 	plugins: [
@@ -123,7 +124,15 @@ const config = (module.exports = {
 			'undefined',
 		],
 
+		/**
+		 * https://eslint.org/docs/latest/rules/no-void
+		 */
 		'no-void': ['error', { allowAsStatement: true }],
+
+		/**
+		 * https://eslint.org/docs/latest/rules/sort-imports
+		 */
+		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
 
 		// ----------------------------------
 		//        @typescript-eslint
@@ -183,11 +192,6 @@ const config = (module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md
 		 */
 		'@typescript-eslint/consistent-type-assertions': 'error',
-
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
-		 */
-		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -298,6 +302,11 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/promise-function-async': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
+		 */
+		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
@@ -359,12 +368,10 @@ const config = (module.exports = {
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 *
-		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
 		'no-unused-vars': 'off',
 		'@typescript-eslint/no-unused-vars': [
-			'error',
+			process.env.CI_LINT_MASTER ? 'warn' : 'error',
 			{
 				argsIgnorePattern: '^_',
 				destructuredArrayIgnorePattern: '^_',

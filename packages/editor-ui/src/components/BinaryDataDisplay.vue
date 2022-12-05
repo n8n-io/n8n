@@ -20,18 +20,14 @@
 </template>
 
 <script lang="ts">
-import {
-	IBinaryData,
-	IRunData,
-	IRunExecutionData,
-} from 'n8n-workflow';
+import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 
@@ -45,7 +41,7 @@ export default mixins(
 			BinaryDataDisplayEmbed,
 		},
 		props: [
-			'displayData', // IBinaryDisplayData
+			'displayData', // IBinaryData
 			'windowVisible', // boolean
 		],
 		computed: {
@@ -66,14 +62,6 @@ export default mixins(
 				const binaryDataItem: IBinaryData = binaryData[this.displayData.index][this.displayData.key];
 
 				return binaryDataItem;
-			},
-
-			embedClass (): string[] {
-				// @ts-ignore
-				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
-					return ['image'];
-				}
-				return ['other'];
 			},
 
 			workflowRunData (): IRunData | null {

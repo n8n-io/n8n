@@ -120,8 +120,8 @@ export class ERPNext implements INodeType {
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			// https://app.swaggerhub.com/apis-docs/alyf.de/ERPNext/11#/Resources/post_api_resource_Webhook
@@ -185,10 +185,10 @@ export class ERPNext implements INodeType {
 						);
 					}
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.limit_page_length = limit;
 						qs.limit_start = 0;
 						responseData = await erpNextApiRequest.call(this, 'GET', endpoint, {}, qs);

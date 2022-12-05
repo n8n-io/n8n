@@ -17,12 +17,12 @@ jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';
-
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
+let isSharingEnabled: jest.SpyInstance<boolean>;
 let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
@@ -45,7 +45,9 @@ beforeAll(async () => {
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 
-	config.set('enterprise.workflowSharingEnabled', true);
+	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+
+	config.set('enterprise.workflowSharingEnabled', true); // @TODO: Remove once temp flag is removed
 
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
@@ -60,6 +62,32 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
+});
+
+test('Router should switch dynamically', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const createWorkflowResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+	const { id } = createWorkflowResponse.body.data;
+
+	// free router
+
+	isSharingEnabled.mockReturnValueOnce(false);
+
+	const freeShareResponse = await authAgent(owner)
+		.put(`/workflows/${id}/share`)
+		.send({ shareWithIds: [member.id] });
+
+	expect(freeShareResponse.status).toBe(404);
+
+	// EE router
+
+	const paidShareResponse = await authAgent(owner)
+		.put(`/workflows/${id}/share`)
+		.send({ shareWithIds: [member.id] });
+
+	expect(paidShareResponse.status).toBe(200);
 });
 
 describe('PUT /workflows/:id', () => {
@@ -305,7 +333,7 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.data.sharedWith).toHaveLength(0);
 	});
 
-	test('GET should return workflow with credentials saying owner has access even when not shared', async () => {
+	test('GET should return workflow with credentials saying owner does not have access when not shared', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -323,7 +351,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				currentUserHasAccess: true, // owner has access to any cred
+				currentUserHasAccess: false, // although owner can see, he does not have access
 			},
 		]);
 
@@ -443,7 +471,7 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
-			'The workflow contains credentials that you do not have access to',
+			'The workflow you are trying to save contains credentials that are not shared with you',
 		);
 	});
 
@@ -702,8 +730,8 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 	});
 });
 
-describe.skip('PATCH /workflows/:id - validate interim updates', () => {
-	it('should block owner updating workflow nodes on interim update by member', async () => {
+describe('PATCH /workflows/:id - validate interim updates', () => {
+	xit('should block owner updating workflow nodes on interim update by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -732,11 +760,11 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow nodes on interim update by owner', async () => {
+	xit('should block member updating workflow nodes on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -774,11 +802,11 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block owner activation on interim activation by member', async () => {
+	xit('should block owner activation on interim activation by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -804,11 +832,11 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(activationAttemptResponse.status).toBe(400);
 		expect(activationAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member activation on interim activation by owner', async () => {
+	xit('should block member activation on interim activation by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -843,11 +871,11 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow settings on interim update by owner', async () => {
+	xit('should block member updating workflow settings on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -878,11 +906,11 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow name on interim update by owner', async () => {
+	xit('should block member updating workflow name on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -913,7 +941,7 @@ describe.skip('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 });

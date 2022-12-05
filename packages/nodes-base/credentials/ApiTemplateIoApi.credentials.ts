@@ -7,8 +7,11 @@ import {
 
 export class ApiTemplateIoApi implements ICredentialType {
 	name = 'apiTemplateIoApi';
+
 	displayName = 'APITemplate.io API';
+
 	documentationUrl = 'apiTemplateIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -18,6 +21,7 @@ export class ApiTemplateIoApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class ApiTemplateIoApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.apitemplate.io/v1',

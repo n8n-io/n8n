@@ -7,8 +7,11 @@ import {
 
 export class MailjetSmsApi implements ICredentialType {
 	name = 'mailjetSmsApi';
+
 	displayName = 'Mailjet SMS API';
+
 	documentationUrl = 'mailjet';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Token',

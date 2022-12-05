@@ -16,7 +16,6 @@
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
-			ref="draggable"
 		>
 			<template #preview="{ canDrop, el }">
 				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
@@ -47,7 +46,19 @@
 					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
-						<span>{{ getContent(node.content) }}</span>
+						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+						<span
+							v-else
+							data-target="mappable"
+							:data-value="getJsonParameterPath(node.path)"
+							:data-name="getListItemName(node.path)"
+							:data-path="node.path"
+							:data-depth="node.level"
+							:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>{{ getContent(node.content) }}</span>
 					</template>
 				</vue-json-pretty>
 			</template>
@@ -62,10 +73,9 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString } from "@/components/helpers";
+import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
 import { INodeUi } from "@/Interface";
-import { shorten } from './helpers';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import { externalHooks } from "@/mixins/externalHooks";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 
@@ -81,9 +91,6 @@ export default mixins(externalHooks).extend({
 	props: {
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string; },
-		},
-		currentOutputIndex: {
-			type: Number,
 		},
 		sessionId: {
 			type: String,
@@ -197,6 +204,9 @@ export default mixins(externalHooks).extend({
 		},
 		getContent(value: unknown): string {
 			return isString(value) ? `"${ value }"` : JSON.stringify(value);
+		},
+		getListItemName(path: string): string {
+			return path.replace(/^(\["?\d"?]\.?)/g, '');
 		},
 	},
 });

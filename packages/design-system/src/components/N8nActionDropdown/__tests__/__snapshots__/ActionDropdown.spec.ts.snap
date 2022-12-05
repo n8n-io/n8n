@@ -6,17 +6,6 @@ exports[`components > N8nActionDropdown > should render custom styling correctly
     <div class=\\"_activator_lf4ng_1\\">
       <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
     </div>
-    <el-dropdown-menu-stub transformorigin=\\"true\\" placement=\\"bottom\\" boundariespadding=\\"5\\" offset=\\"0\\" visiblearrow=\\"true\\" arrowoffset=\\"0\\" appendtobody=\\"true\\" popperoptions=\\"[object Object]\\">
-      <el-dropdown-item-stub command=\\"item1\\">
-        <div class=\\"_itemContainer_lf4ng_16\\"><span class=\\"_icon_lf4ng_20\\"><n8n-icon-stub icon=\\"thumbs-up\\" size=\\"medium\\"></n8n-icon-stub></span><span> Action 1 </span></div>
-      </el-dropdown-item-stub>
-      <el-dropdown-item-stub command=\\"item2\\" disabled=\\"true\\">
-        <div class=\\"_itemContainer_lf4ng_16\\"><span class=\\"_icon_lf4ng_20\\"><n8n-icon-stub icon=\\"thumbs-down\\" size=\\"medium\\"></n8n-icon-stub></span><span> Action 2 </span></div>
-      </el-dropdown-item-stub>
-      <el-dropdown-item-stub command=\\"item3\\" divided=\\"true\\">
-        <div class=\\"_itemContainer_lf4ng_16\\"><span class=\\"_icon_lf4ng_20\\"><n8n-icon-stub icon=\\"heart\\" size=\\"medium\\"></n8n-icon-stub></span><span> Action 3 </span></div>
-      </el-dropdown-item-stub>
-    </el-dropdown-menu-stub>
   </el-dropdown-stub>
 </div>"
 `;
@@ -27,16 +16,6 @@ exports[`components > N8nActionDropdown > should render default styling correctl
     <div class=\\"_activator_lf4ng_1\\">
       <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
     </div>
-    <el-dropdown-menu-stub transformorigin=\\"true\\" placement=\\"bottom\\" boundariespadding=\\"5\\" offset=\\"0\\" visiblearrow=\\"true\\" arrowoffset=\\"0\\" appendtobody=\\"true\\" popperoptions=\\"[object Object]\\">
-      <el-dropdown-item-stub command=\\"item1\\">
-        <div class=\\"_itemContainer_lf4ng_16\\">
-          <!----><span> Action 1 </span></div>
-      </el-dropdown-item-stub>
-      <el-dropdown-item-stub command=\\"item2\\">
-        <div class=\\"_itemContainer_lf4ng_16\\">
-          <!----><span> Action 2 </span></div>
-      </el-dropdown-item-stub>
-    </el-dropdown-menu-stub>
   </el-dropdown-stub>
 </div>"
 `;

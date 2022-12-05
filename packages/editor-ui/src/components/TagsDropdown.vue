@@ -58,7 +58,7 @@ import mixins from "vue-typed-mixins";
 import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
 import { useTagsStore } from "@/stores/tags";

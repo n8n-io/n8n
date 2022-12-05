@@ -1,3 +1,5 @@
+import { IDataObject } from 'n8n-workflow';
+
 export interface NewCustomer {
 	customer?: Customer;
 	password?: string;
@@ -117,10 +119,8 @@ export interface CustomerAttributeMetadata {
 export interface CustomerAttributeMetadataOption {
 	label?: string;
 	value?: string;
-	options?: OptionOption[];
+	options?: IDataObject[];
 }
-
-export interface OptionOption {}
 
 export interface ValidationRule {
 	name?: string;

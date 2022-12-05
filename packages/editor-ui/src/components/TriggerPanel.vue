@@ -99,14 +99,14 @@
 import { EXECUTIONS_MODAL_KEY, WEBHOOK_NODE_TYPE, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import { getTriggerNodeServiceName } from './helpers';
+import { getTriggerNodeServiceName } from '@/utils';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { workflowHelpers } from './mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import CopyInput from './CopyInput.vue';
 import NodeIcon from './NodeIcon.vue';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

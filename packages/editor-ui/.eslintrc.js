@@ -6,7 +6,11 @@ module.exports = {
 
 	parserOptions: {
 		project: ['./tsconfig.json'],
+		tsconfigRootDir: __dirname,
+		extraFileExtensions: ['.vue'],
 	},
+
+	ignorePatterns: ['*.d.cts'],
 
 	rules: {
 		// TODO: Remove these

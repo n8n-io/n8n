@@ -37,8 +37,7 @@ import {
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
+import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
@@ -292,7 +291,6 @@ export class WorkflowExecute {
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHook(hookName: string, parameters: any[]): Promise<void> {
-		// tslint:disable-line:no-any
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}

@@ -15,7 +15,7 @@
 				size="small"
 				color="text-dark"
 			>
-				<div v-if="isReadOnly">
+				<div v-if="readonly || isReadOnly">
 					<n8n-input
 						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
 						disabled
@@ -43,7 +43,9 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							<template #content>
+								<titled-list :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -58,7 +60,7 @@
 </template>
 
 <script lang="ts">
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 import {
 	ICredentialsResponse,
 	INodeUi,
@@ -71,9 +73,9 @@ import {
 	INodeCredentialsDetails,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import TitledList from '@/components/TitledList.vue';
 
@@ -94,6 +96,7 @@ export default mixins(
 ).extend({
 	name: 'NodeCredentials',
 	props: [
+		'readonly',
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],

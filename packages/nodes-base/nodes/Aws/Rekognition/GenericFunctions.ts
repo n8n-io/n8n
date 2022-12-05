@@ -9,7 +9,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 
@@ -23,7 +23,6 @@ export async function awsApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -42,11 +41,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -59,7 +54,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -89,7 +83,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -127,7 +120,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -174,7 +166,7 @@ export async function awsApiRequestSOAPAllItems(
 export function keysTPascalCase(object: IDataObject) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(object)) {
-		data[pascalCase(key as string)] = object[key];
+		data[pascalCase(key)] = object[key];
 	}
 	return data;
 }

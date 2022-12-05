@@ -32,6 +32,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -68,7 +69,7 @@ export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/down
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
-
+export const EXPRESSIONS_DOCS_URL = 'https://docs.n8n.io/code-examples/expressions/';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -315,7 +316,8 @@ export enum VIEWS {
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	SHARING = 'sharing',
+	CREDENTIALS_SHARING = 'credentialsSharing',
+	WORKFLOWS_SHARING = 'workflowsSharing',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -370,6 +372,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	WorkflowSharing = 'workflowSharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -418,6 +421,7 @@ export enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	WORKFLOWS_EE = 'workflowsEE',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',

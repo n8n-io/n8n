@@ -82,16 +82,13 @@ export class UProc implements INodeType {
 		const dataWebhook = additionalOptions.dataWebhook as string;
 
 		interface LooseObject {
-			[key: string]: any; // tslint:disable-line:no-any
+			[key: string]: any;
 		}
 
 		const fields = toolParameters
 			.filter((field) => {
 				return (
-					field &&
-					field.displayOptions &&
-					field.displayOptions.show &&
-					field.displayOptions.show.group &&
+					field?.displayOptions?.show?.group &&
 					field.displayOptions.show.tool &&
 					field.displayOptions.show.group.indexOf(group) !== -1 &&
 					field.displayOptions.show.tool.indexOf(tool) !== -1
@@ -111,17 +108,17 @@ export class UProc implements INodeType {
 				};
 
 				fields.forEach((field) => {
-					if (field && field.length) {
+					if (field?.length) {
 						const data = this.getNodeParameter(field, i) as string;
 						body.params[field] = data + '';
 					}
 				});
 
-				if (dataWebhook && dataWebhook.length) {
+				if (dataWebhook?.length) {
 					body.callback = {};
 				}
 
-				if (dataWebhook && dataWebhook.length) {
+				if (dataWebhook?.length) {
 					body.callback.data = dataWebhook;
 				}
 

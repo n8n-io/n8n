@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<n8n-input-label :label="label">
-			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
+			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy" data-test-id="copy-input">
 				<span ref="copyInputValue">{{ value }}</span>
 				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
@@ -12,8 +12,8 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from './mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(copyPaste, showMessage).extend({
 	props: {

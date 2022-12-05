@@ -297,8 +297,16 @@ export class Expression {
 					throw error;
 				}
 			}
+
+			if (
+				error instanceof Error &&
+				typeof error.message === 'string' &&
+				error.name === 'SyntaxError'
+			) {
+				throw new Error(error.message);
+			}
 		}
-		return undefined;
+		return null;
 	}
 
 	extendSyntax(bracketedExpression: string): string {

@@ -8,10 +8,10 @@
 		maxWidth="460px"
 		minHeight="250px"
 	>
-		<template slot="header">
+		<template #header>
 			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
 		</template>
-		<template slot="content">
+		<template #content>
 			<div>
 				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
 				<n8n-select
@@ -22,19 +22,23 @@
 					ref="select"
 					:value="selected"
 					@change="onSelect"
+					data-test-id="new-credential-type-select"
 				>
-					<font-awesome-icon icon="search" slot="prefix" />
+					<template #prefix>
+						<font-awesome-icon icon="search" />
+					</template>
 					<n8n-option
 						v-for="credential in credentialsStore.allCredentialTypes"
 						:value="credential.name"
 						:key="credential.name"
 						:label="credential.displayName"
 						filterable
+						data-test-id="new-credential-type-select-option"
 					/>
 				</n8n-select>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button
 					:label="$locale.baseText('credentialSelectModal.continue')"
@@ -42,6 +46,7 @@
 					size="large"
 					:disabled="!selected"
 					@click="openCredentialType"
+					data-test-id="new-credential-type-button"
 				/>
 			</div>
 		</template>
@@ -54,7 +59,7 @@ import mixins from 'vue-typed-mixins';
 
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
