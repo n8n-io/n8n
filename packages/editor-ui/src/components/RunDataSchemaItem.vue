@@ -242,6 +242,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	font-weight: var(--font-weight-normal);
 	font-size: var(--font-size-2xs);
 	overflow: hidden;
+	word-break: break-word;
 }
 
 .toggle {
