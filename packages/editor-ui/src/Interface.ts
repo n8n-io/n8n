@@ -205,7 +205,7 @@ export interface IRestApi {
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
-	updateWorkflow(id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb>;
+	updateWorkflow(id: string, data: IWorkflowDataUpdate, forceSave?: boolean): Promise<IWorkflowDb>;
 	deleteWorkflow(name: string): Promise<void>;
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
