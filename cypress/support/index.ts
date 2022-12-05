@@ -24,6 +24,7 @@ declare global {
 			setupOwner(payload: SetupPayload): void;
 			skipSetup(): void;
 			resetAll(): void;
+			paste(pastePayload: string): void,
 		}
 	}
 }

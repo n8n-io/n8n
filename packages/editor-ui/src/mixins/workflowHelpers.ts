@@ -703,7 +703,7 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
+			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true, forceSave = false): Promise<boolean> {
 				const currentWorkflow = id ||  this.$route.params.name;
 
 				if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
@@ -726,7 +726,7 @@ export const workflowHelpers = mixins(
 
 					workflowDataRequest.hash = this.workflowsStore.workflowHash;
 
-					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest, forceSave);
 					this.workflowsStore.setWorkflowHash(workflowData.hash);
 
 					if (name) {
@@ -746,6 +746,22 @@ export const workflowHelpers = mixins(
 					return true;
 				} catch (error) {
 					this.uiStore.removeActiveAction('workflowSaving');
+
+					if (error.errorCode === 400 && error.message.startsWith('Your most recent changes may be lost')) {
+						const overwrite = await this.confirmMessage(
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
+							null,
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.cancelButtonText'),
+						);
+
+						if (overwrite) {
+							return this.saveCurrentWorkflow({id, name, tags}, redirect, true);
+						}
+
+						return false;
+					}
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
