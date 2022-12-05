@@ -2,8 +2,11 @@ import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-work
 
 export class AirtableApi implements ICredentialType {
 	name = 'airtableApi';
+
 	displayName = 'Airtable API';
+
 	documentationUrl = 'airtable';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -13,6 +16,7 @@ export class AirtableApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

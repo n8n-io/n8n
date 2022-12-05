@@ -508,7 +508,7 @@ export class ScheduleTrigger implements INodeType {
 				const minute = interval[i].triggerAtMinute?.toString() as string;
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
-				const day = days.length === 0 ? '*' : (days.join(',') as string);
+				const day = days.length === 0 ? '*' : days.join(',');
 				const cronTimes: string[] = [minute, hour, '*', '*', day];
 				const cronExpression = cronTimes.join(' ');
 				if (week === 1) {
@@ -542,8 +542,8 @@ export class ScheduleTrigger implements INodeType {
 			for (const cronJob of cronJobs) {
 				cronJob.stop();
 			}
-			for (const interval of intervalArr) {
-				clearInterval(interval);
+			for (const entry of intervalArr) {
+				clearInterval(entry);
 			}
 		}
 

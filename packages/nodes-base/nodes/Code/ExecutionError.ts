@@ -1,8 +1,12 @@
 export class ExecutionError extends Error {
 	description: string | null = null;
+
 	itemIndex: number | undefined = undefined;
+
 	context: { itemIndex: number } | undefined = undefined;
+
 	stack = '';
+
 	lineNumber: number | undefined = undefined;
 
 	constructor(error: Error & { stack: string }, itemIndex?: number) {

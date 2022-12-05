@@ -8,10 +8,9 @@ import { get } from 'lodash';
 
 export async function mondayComApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
@@ -33,9 +32,9 @@ export async function mondayComApiRequest(
 
 			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
 
-			return await this.helpers.request!(options);
+			return this.helpers.request!(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
+			return this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -45,9 +44,8 @@ export async function mondayComApiRequest(
 export async function mondayComApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

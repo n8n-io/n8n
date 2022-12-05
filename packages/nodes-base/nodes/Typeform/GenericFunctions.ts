@@ -1,10 +1,8 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-
-import { IDataObject } from 'n8n-workflow';
 
 // Interface in Typeform
 export interface ITypeformDefinition {
@@ -39,7 +37,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -78,7 +75,6 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	query?: IDataObject,
 	_dataKey?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};

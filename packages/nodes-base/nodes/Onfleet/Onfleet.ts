@@ -141,16 +141,10 @@ export class Onfleet {
 					addressCity as string,
 					addressCountry as string,
 					additionalFields as IDataObject,
-				) as OnfleetDestination;
+				);
 			} else {
-				let unparsed,
-					address,
-					addressNumber,
-					addressStreet,
-					addressCity,
-					addressCountry,
-					additionalFields;
-				unparsed = this.getNodeParameter('unparsed', item) as boolean;
+				let address, addressNumber, addressStreet, addressCity, addressCountry;
+				const unparsed = this.getNodeParameter('unparsed', item) as boolean;
 				if (unparsed) {
 					address = this.getNodeParameter('address', item) as string;
 				} else {
@@ -159,7 +153,7 @@ export class Onfleet {
 					addressCity = this.getNodeParameter('addressCity', item) as string;
 					addressCountry = this.getNodeParameter('addressCountry', item) as string;
 				}
-				additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 
 				return formatAddress(
 					unparsed,
@@ -169,7 +163,7 @@ export class Onfleet {
 					addressCity,
 					addressCountry,
 					additionalFields,
-				) as OnfleetDestination;
+				);
 			}
 		}
 		return null;
@@ -191,7 +185,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			const name = this.getNodeParameter('name', item) as string;
 			const email = this.getNodeParameter('email', item) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', item);
 
 			const adminData: OnfleetAdmins = { name, email };
 			// Adding additional fields
@@ -202,7 +196,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			/*                         Get fields for update admin                        */
 			/* -------------------------------------------------------------------------- */
-			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+			const updateFields = this.getNodeParameter('updateFields', item);
 			const adminData: OnfleetAdmins = {};
 			if (!Object.keys(updateFields).length) {
 				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
@@ -235,7 +229,7 @@ export class Onfleet {
 				true,
 			) as OnfleetDestination;
 			const name = this.getNodeParameter('name', item) as string;
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', item);
 
 			const hubData: OnfleetHubs = { name, ...destination };
 
@@ -253,7 +247,7 @@ export class Onfleet {
 			const hubData: OnfleetHubs = { ...destination };
 
 			// Adding additional fields
-			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+			const updateFields = this.getNodeParameter('updateFields', item);
 
 			if (!Object.keys(updateFields).length) {
 				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
@@ -285,7 +279,7 @@ export class Onfleet {
 			const workerData: OnfleetWorker = { name, phone, teams };
 
 			// Adding additional fields
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', item);
 
 			if (additionalFields.vehicle) {
 				const { vehicleProperties } = additionalFields.vehicle as IDataObject;
@@ -304,7 +298,7 @@ export class Onfleet {
 			const workerData: OnfleetWorker = {};
 
 			// Adding additional fields
-			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+			const updateFields = this.getNodeParameter('updateFields', item);
 
 			if (!Object.keys(updateFields).length) {
 				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
@@ -313,7 +307,7 @@ export class Onfleet {
 			Object.assign(workerData, updateFields);
 			return workerData;
 		} else if (operation === 'get') {
-			const options = this.getNodeParameter('options', item, {}) as IDataObject;
+			const options = this.getNodeParameter('options', item, {});
 			const workerFilter: OnfleetWorkerFilter = {};
 			if (options.filter) {
 				options.filter = (options.filter as string[]).join(',');
@@ -328,8 +322,8 @@ export class Onfleet {
 			/*                    Get fields for get and getAll workers                   */
 			/* -------------------------------------------------------------------------- */
 
-			const options = this.getNodeParameter('options', item, {}) as IDataObject;
-			const filters = this.getNodeParameter('filters', item, {}) as IDataObject;
+			const options = this.getNodeParameter('options', item, {});
+			const filters = this.getNodeParameter('filters', item, {});
 			const workerFilter: OnfleetWorkerFilter = {};
 
 			if (filters.states) {
@@ -354,7 +348,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			const { scheduleProperties } = this.getNodeParameter('schedule', item) as IDataObject;
 			const entries = ((scheduleProperties as IDataObject[]) || []).map((entry) => {
-				const { timezone, date, shifts } = entry as IDataObject;
+				const { timezone, date, shifts } = entry;
 				const { shiftsProperties } = shifts as IDataObject;
 				return {
 					timezone: timezone as string,
@@ -364,7 +358,7 @@ export class Onfleet {
 						new Date(end as Date).getTime(),
 					]),
 				} as OnfleetWorkerScheduleEntry;
-			}) as OnfleetWorkerScheduleEntry[];
+			});
 			return { entries } as OnfleetWorkerSchedule;
 		}
 		return null;
@@ -387,7 +381,7 @@ export class Onfleet {
 			const url = this.getNodeParameter('url', item) as string;
 			const name = this.getNodeParameter('name', item) as string;
 			const trigger = this.getNodeParameter('trigger', item) as number;
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', item);
 
 			const webhookData: OnfleetWebhook = { url, name, trigger };
 			// Adding additional fields
@@ -470,7 +464,7 @@ export class Onfleet {
 				const phone = this.getNodeParameter('recipientPhone', item) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
 				const options = this.getNodeParameter('options', item) as IDataObject;
-				return Onfleet.formatRecipient(name, phone, additionalFields, options) as OnfleetRecipient;
+				return Onfleet.formatRecipient(name, phone, additionalFields, options);
 			}
 		} else if (operation === 'update') {
 			/* -------------------------------------------------------------------------- */
@@ -576,8 +570,7 @@ export class Onfleet {
 			}
 
 			// Adding overrides data
-			const { notes, pickupTask, serviceTime, completeAfter, completeBefore } =
-				overrideFields as IDataObject;
+			const { notes, pickupTask, serviceTime, completeAfter, completeBefore } = overrideFields;
 			const overridesData = {} as OnfleetCloneOverrideTaskOptions;
 
 			if (notes) overridesData.notes = notes as string;
@@ -651,7 +644,7 @@ export class Onfleet {
 			const name = this.getNodeParameter('name', item) as string;
 			const workers = this.getNodeParameter('workers', item) as string[];
 			const managers = this.getNodeParameter('managers', item) as string[];
-			const additionalFields = this.getNodeParameter('additionalFields', item) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', item);
 
 			const teamData: OnfleetTeams = { name, workers, managers };
 			// Adding additional fields
@@ -664,7 +657,7 @@ export class Onfleet {
 			/* -------------------------------------------------------------------------- */
 			const teamData: OnfleetTeams = {};
 			// Adding additional fields
-			const updateFields = this.getNodeParameter('updateFields', item) as IDataObject;
+			const updateFields = this.getNodeParameter('updateFields', item);
 
 			if (!Object.keys(updateFields).length) {
 				throw new NodeOperationError(this.getNode(), 'Select at least one field to be updated');
@@ -680,7 +673,7 @@ export class Onfleet {
 				dropOff = {},
 				pickUp = {},
 				...additionalFields
-			} = this.getNodeParameter('filters', item) as IDataObject;
+			} = this.getNodeParameter('filters', item);
 			const { dropOffProperties = {} } = dropOff as IDataObject;
 			const { pickUpProperties = {} } = pickUp as IDataObject;
 			const hasPickUp = pickUp && Object.keys(pickUpProperties as IDataObject).length > 0;
@@ -726,7 +719,7 @@ export class Onfleet {
 				taskTimeWindow = {},
 				endingRoute = {},
 				...additionalFields
-			} = this.getNodeParameter('additionalFields', item) as IDataObject;
+			} = this.getNodeParameter('additionalFields', item);
 			const { endingRouteProperties = {} } = endingRoute as IDataObject;
 			const { scheduleTimeWindowProperties = {} } = scheduleTimeWindow as IDataObject;
 			const { taskTimeWindowProperties = {} } = taskTimeWindow as IDataObject;
@@ -828,7 +821,7 @@ export class Onfleet {
 					/*                                Clone a task                                */
 					/* -------------------------------------------------------------------------- */
 					const id = this.getNodeParameter('id', index) as string;
-					// tslint:disable-next-line: no-any
+
 					const taskData = Onfleet.getTaskFields.call(this, index, operation) as any;
 					if (!taskData) {
 						continue;
@@ -1126,7 +1119,7 @@ export class Onfleet {
 
 					const returnAll = this.getNodeParameter('returnAll', 0, false);
 					let hubs = await onfleetApiRequest.call(this, 'GET', resource);
-					if (returnAll === false) {
+					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);
 						hubs = hubs.slice(0, limit);
 					}
@@ -1180,7 +1173,7 @@ export class Onfleet {
 					/*                               Get all workers                              */
 					/* -------------------------------------------------------------------------- */
 					const byLocation = this.getNodeParameter('byLocation', index) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', index, false) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', index, false);
 					let workers;
 
 					if (byLocation) {
@@ -1403,7 +1396,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					/*                                Get all teams                               */
 					/* -------------------------------------------------------------------------- */
-					const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0, false);
 					let teams = await onfleetApiRequest.call(this, 'GET', resource);
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', 0);

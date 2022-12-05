@@ -69,8 +69,8 @@ export class UnleashedSoftware implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-			const resource = this.getNodeParameter('resource', 0) as string;
-			const operation = this.getNodeParameter('operation', 0) as string;
+			const resource = this.getNodeParameter('resource', 0);
+			const operation = this.getNodeParameter('operation', 0);
 
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {

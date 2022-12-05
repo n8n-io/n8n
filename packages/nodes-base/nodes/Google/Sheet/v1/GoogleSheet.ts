@@ -45,6 +45,7 @@ export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VAL
 
 export class GoogleSheet {
 	id: string;
+
 	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
 
 	constructor(
@@ -138,8 +139,6 @@ export class GoogleSheet {
 	 * Sets values in one or more ranges of a spreadsheet.
 	 */
 	async spreadsheetBatchUpdate(requests: IDataObject[]) {
-		// tslint:disable-line:no-any
-
 		const body = {
 			requests,
 		};
@@ -312,14 +311,14 @@ export class GoogleSheet {
 		upsert = false,
 	): Promise<string[][]> {
 		// Get current data in Google Sheet
-		let rangeStart: string, rangeEnd: string, rangeFull: string;
+		let rangeFull: string;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, rangeFull] = range.split('!');
 		} else {
 			rangeFull = range;
 		}
-		[rangeStart, rangeEnd] = rangeFull.split(':');
+		const [rangeStart, rangeEnd] = rangeFull.split(':');
 
 		const rangeStartSplit = rangeStart.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
 		const rangeEndSplit = rangeEnd.match(/([a-zA-Z]{1,10})([0-9]{0,10})/);
@@ -413,7 +412,7 @@ export class GoogleSheet {
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey as string);
+			itemKeyIndex = keyColumnIndexLookup.indexOf(itemKey);
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
@@ -549,12 +548,11 @@ export class GoogleSheet {
 		keyRowIndex: number,
 		usePathForKeyRow: boolean,
 	): Promise<string[][]> {
-		let startColumn, endColumn;
 		let sheet: string | undefined = undefined;
 		if (range.includes('!')) {
 			[sheet, range] = range.split('!');
 		}
-		[startColumn, endColumn] = range.split(':');
+		const [startColumn, endColumn] = range.split(':');
 
 		let getRange = `${startColumn}${keyRowIndex + 1}:${endColumn}${keyRowIndex + 1}`;
 
@@ -582,7 +580,7 @@ export class GoogleSheet {
 				const value = get(item, key) as string;
 				if (usePathForKeyRow && value !== undefined && value !== null) {
 					//match by key path
-					rowData.push(value!.toString());
+					rowData.push(value.toString());
 				} else if (
 					!usePathForKeyRow &&
 					item.hasOwnProperty(key) &&

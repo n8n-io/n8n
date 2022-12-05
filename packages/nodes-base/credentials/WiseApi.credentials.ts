@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class WiseApi implements ICredentialType {
 	name = 'wiseApi';
+
 	displayName = 'Wise API';
+
 	documentationUrl = 'wise';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
