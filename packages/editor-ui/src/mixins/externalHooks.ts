@@ -6,7 +6,7 @@ import Vue from 'vue';
 
 declare global {
 	interface Window {
-		n8nExternalHooks: Record<string, Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>>;
+		n8nExternalHooks?: Record<string, Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>>;
 	}
 }
 
@@ -21,7 +21,7 @@ export async function runExternalHook(
 
 	const [resource, operator] = eventName.split('.');
 
-	if (window.n8nExternalHooks[resource] && window.n8nExternalHooks[resource][operator]) {
+	if (window.n8nExternalHooks[resource]?.[operator]) {
 		const hookMethods = window.n8nExternalHooks[resource][operator];
 
 		for (const hookMethod of hookMethods) {
