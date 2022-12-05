@@ -499,6 +499,6 @@ export const disableAllLdapUsers = async () => {
 };
 
 export const isInstanceOwner = async (email: string): Promise<boolean> => {
-	const user = await Db.collections.User.findOne({ email });
+    const user = await Db.collections.User.findOne({ where: { email }, relation: ['globalRole']});
 	return user && user?.globalRole?.name === 'owner' ? true : false;
 };
