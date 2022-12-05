@@ -39,7 +39,7 @@ export class MessageEventBusDestinationSyslog
 
 	eol: string;
 
-	anonymizeMessages?: boolean;
+	anonymizeAuditMessages?: boolean;
 
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
@@ -53,7 +53,8 @@ export class MessageEventBusDestinationSyslog
 		this.app_name = options.app_name ?? 'n8n';
 		this.eol = options.eol ?? '\n';
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
-		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
+		if (options.anonymizeAuditMessages)
+			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 
 		this.client = syslog.createClient(this.host, {
 			appName: this.app_name,
@@ -75,7 +76,7 @@ export class MessageEventBusDestinationSyslog
 		if (!eventBus.isLogStreamingEnabled()) return false;
 		if (!this.hasSubscribedToEvent(msg)) return false;
 		try {
-			if (this.anonymizeMessages) {
+			if (this.anonymizeAuditMessages) {
 				msg = msg.anonymize();
 			}
 			this.client.log(

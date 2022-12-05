@@ -9,7 +9,6 @@ import { Db } from '../..';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
 import uniqby from 'lodash.uniqby';
 import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
-import { EventMessageUser, EventMessageUserOptions } from '../EventMessageClasses/EventMessageUser';
 import {
 	EventMessageAuditOptions,
 	EventMessageAudit,
@@ -233,10 +232,6 @@ class MessageEventBus extends EventEmitter {
 	/**
 	 * Convenience Methods
 	 */
-
-	async sendUserEvent(options: EventMessageUserOptions) {
-		await this.send(new EventMessageUser(options));
-	}
 
 	async sendAuditEvent(options: EventMessageAuditOptions) {
 		await this.send(new EventMessageAudit(options));

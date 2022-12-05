@@ -38,12 +38,12 @@
 
 // 	redisOptions: RedisOptions;
 
-// 	anonymizeMessages?: boolean;
+// 	anonymizeAuditMessages?: boolean;
 
 // 	constructor(options: MessageEventBusDestinationRedisOptions) {
 // 		super(options);
 // 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.redis;
-// 		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
+// 		if (options.anonymizeAuditMessages) this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 // 		this.redisOptions = options?.redisOptions ?? {
 // 			port: 6379, // Redis port
 // 			host: '127.0.0.1', // Redis host
@@ -62,7 +62,7 @@
 // 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 // 		if (!eventBus.isLogStreamingEnabled()) return false;
 // 		if (this.client?.status === 'ready') {
-// 			if (this.anonymizeMessages) {
+// 			if (this.anonymizeAuditMessages) {
 // 				msg = msg.anonymize();
 // 			}
 // 			const publishResult = await this.client?.publish(this.channelName, msg.toString());

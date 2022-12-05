@@ -30,7 +30,7 @@ export class MessageEventBusDestinationSentry
 
 	sendPayload: boolean;
 
-	anonymizeMessages?: boolean;
+	anonymizeAuditMessages?: boolean;
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
@@ -40,7 +40,8 @@ export class MessageEventBusDestinationSentry
 		this.dsn = options.dsn;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.tracesSampleRate) this.tracesSampleRate = options.tracesSampleRate;
-		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
+		if (options.anonymizeAuditMessages)
+			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 		const { ENVIRONMENT: environment } = process.env;
 
 		GenericHelpers.getVersions()

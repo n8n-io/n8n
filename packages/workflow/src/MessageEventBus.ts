@@ -31,7 +31,7 @@ export interface MessageEventBusDestinationOptions {
 	enabled?: boolean;
 	subscribedEvents?: string[];
 	credentials?: INodeCredentials;
-	anonymizeMessages?: boolean;
+	anonymizeAuditMessages?: boolean;
 }
 
 export interface MessageEventBusDestinationWebhookParameterItem {
@@ -116,7 +116,7 @@ export const defaultMessageEventBusDestinationOptions: MessageEventBusDestinatio
 	enabled: true,
 	subscribedEvents: ['n8n.audit', 'n8n.workflow'],
 	credentials: {},
-	anonymizeMessages: false,
+	anonymizeAuditMessages: false,
 };
 
 export const defaultMessageEventBusDestinationSyslogOptions: MessageEventBusDestinationSyslogOptions =

@@ -1097,6 +1097,8 @@
 	"settings.logstreaming.type": "Type",
 	"settings.logstreaming.saving": "Saving",
 	"settings.logstreaming.delete": "Delete",
+	"settings.logstreaming.selecttype": "Select type to create",
+	"settings.logstreaming.selecttypehint": "Select the type for the new log stream destination",
 	"settings.logstreaming.tab.settings": "Settings",
 	"settings.logstreaming.tab.events": "Events",
 	"settings.logstreaming.eventGroup.n8n.audit": "Audit",

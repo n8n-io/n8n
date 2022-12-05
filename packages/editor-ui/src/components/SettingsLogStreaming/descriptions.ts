@@ -278,14 +278,6 @@ export const webhookModalDescription = [
 	// 		},
 	// 	},
 	// },
-	// {
-	// 	displayName: 'Anonymize Messages',
-	// 	name: 'anonymizeMessages',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	noDataExpression: true,
-	// 	description: 'Anonymize user information where possible',
-	// },
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -520,14 +512,6 @@ export const syslogModalDescription = [
 					noDataExpression: true,
 					description: 'Syslog app name parameter',
 				},
-				{
-					displayName: 'Anonymize Messages',
-					name: 'anonymizeMessages',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-					description: 'Anonymize user information where possible',
-				},
 			] as INodeProperties[];
 
 export const sentryModalDescription = [
@@ -562,13 +546,5 @@ export const sentryModalDescription = [
 		default: true,
 		noDataExpression: true,
 		description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
-	},
-	{
-		displayName: 'Anonymize Messages',
-		name: 'anonymizeMessages',
-		type: 'boolean',
-		default: false,
-		noDataExpression: true,
-		description: 'Anonymize user information where possible',
 	},
 ] as INodeProperties[];

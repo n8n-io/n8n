@@ -13,6 +13,21 @@
 					@change="onCheckboxChecked(group.name, $event)">
 						<strong>{{groupLabelName(group.name)}}</strong>
 				</checkbox>
+				<checkbox
+					v-if="group.name === 'n8n.audit'"
+						:value="logStreamingStore.items[destinationId].destination.anonymizeAuditMessages"
+						size="small"
+						@input="onInput"
+						@change="anonymizeAuditMessagesChanged"
+						>
+							Anonymize user fields
+							<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
+								<n8n-icon icon="question-circle" size="small" />
+								<template #content>
+									Fields containing personal information like name or email are anonymized
+								</template>
+							</n8n-tooltip>
+					</checkbox>
 			</template>
 			<ul :class="$style.eventList">
 				<li v-for="event in group.children" :key="event.name" :class="$style.eventListItem">
@@ -56,6 +71,9 @@
 			...mapStores(
 				useLogStreamingStore,
 			),
+			anonymizeAuditMessages() {
+				return this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages;
+			},
 		},
 		methods: {
 			onInput() {
@@ -63,6 +81,11 @@
 			},
 			onCheckboxChecked(eventName: string, checked: boolean) {
 				this.logStreamingStore.setSelectedInGroup(this.destinationId, eventName, checked);
+				this.$forceUpdate();
+			},
+			anonymizeAuditMessagesChanged(value: boolean) {
+				this.logStreamingStore.items[this.destinationId].destination.anonymizeAuditMessages = value;
+				this.$emit('change', {name: 'anonymizeAuditMessages', node: this.destinationId, value});
 				this.$forceUpdate();
 			},
 			groupLabelName(t: string): string {

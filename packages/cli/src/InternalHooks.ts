@@ -272,8 +272,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 		publicApi: boolean,
 	): Promise<any> {
 		return Promise.all([
-			eventBus.sendUserEvent({
-				eventName: 'n8n.user.deleted',
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.deleted',
 				payload: {
 					userId,
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -293,8 +293,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 	}): Promise<void> {
-		await eventBus.sendUserEvent({
-			eventName: 'n8n.user.invited',
+		await eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.invited',
 			payload: {
 				userId: userInviteData.user_id,
 				targetUserId: userInviteData.target_user_id,
@@ -356,8 +356,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		Promise.all([
-			eventBus.sendUserEvent({
-				eventName: 'n8n.user.updated',
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.updated',
 				payload: {
 					userId: userUpdateData.user_id,
 				},

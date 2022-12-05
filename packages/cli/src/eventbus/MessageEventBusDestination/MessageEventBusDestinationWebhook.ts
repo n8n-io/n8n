@@ -79,7 +79,7 @@ export class MessageEventBusDestinationWebhook
 
 	axiosRequestOptions: AxiosRequestConfig;
 
-	anonymizeMessages?: boolean;
+	anonymizeAuditMessages?: boolean;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
@@ -102,7 +102,8 @@ export class MessageEventBusDestinationWebhook
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
-		if (options.anonymizeMessages) this.anonymizeMessages = options.anonymizeMessages;
+		if (options.anonymizeAuditMessages)
+			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -395,7 +396,7 @@ export class MessageEventBusDestinationWebhook
 		requestPromise.catch(() => {});
 		const requestResponse = await requestPromise;
 
-		if (this.anonymizeMessages) {
+		if (this.anonymizeAuditMessages) {
 			msg = msg.anonymize();
 		}
 

@@ -1,12 +1,15 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
+import { EventMessageTypeNames, JsonObject, JsonValue } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const eventNamesAudit = [
-	'n8n.audit.userCreated',
-	'n8n.audit.userUpdated',
-	'n8n.audit.userDeleted',
+	'n8n.audit.user.created',
+	'n8n.audit.user.updated',
+	'n8n.audit.user.deleted',
+	'n8n.audit.user.invited',
+	'n8n.audit.user.reinvited',
+	'n8n.audit.user.emailFailed',
 ] as const;
 export type EventNamesAuditType = typeof eventNamesAudit[number];
 
@@ -14,11 +17,11 @@ export type EventNamesAuditType = typeof eventNamesAudit[number];
 // EventMessage class for Audit events
 // --------------------------------------
 export interface EventPayloadAudit extends AbstractEventPayload {
-	msg?: string;
-
+	msg?: JsonValue;
 	userId?: string;
-
 	userEmail?: string;
+	firstName?: string;
+	lastName?: string;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
@@ -46,6 +49,9 @@ export class EventMessageAudit extends AbstractEventMessage {
 	}
 
 	anonymize(): this {
+		this.payload.firstName = '*';
+		this.payload.lastName = '*';
+		this.payload.userEmail = '*';
 		return this;
 	}
 

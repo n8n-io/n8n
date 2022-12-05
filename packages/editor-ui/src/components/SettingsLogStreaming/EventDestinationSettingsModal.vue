@@ -62,11 +62,12 @@
 					<template v-if="isTypeAbstract">
 						<n8n-input-label
 								:class="$style.labelMargins"
-								label="Select type to create"
-								tooltipText="Select the type for the new log stream destination"
+								:label="$locale.baseText('settings.logstreaming.selecttype')"
+								:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
 								:bold="false"
+								size="small"
 								:underline="false"
-							></n8n-input-label>
+							>
 						<n8n-select
 							:value="typeSelectValue"
 							:placeholder="typeSelectPlaceholder"
@@ -81,8 +82,14 @@
 								:label="$locale.baseText(option.label)"
 							/>
 						</n8n-select>
+					</n8n-input-label>
 					</template>
 					<template v-else>
+						<el-card
+						class="box-card"
+						shadow="never"
+						>
+						<span :class="$style.cardTitle">{{$locale.baseText("settings.logstreaming.tab.settings")}}</span>
 						<template v-if="isTypeWebhook">
 							<parameter-input-list
 								:parameters="webhookDescription"
@@ -113,22 +120,17 @@
 								@valueChanged="valueChanged"
 							/>
 						</template>
+						</el-card>
 					</template>
 				</div>
 				<div v-if="activeTab === 'events'" :class="$style.mainContent">
 					<template>
-						<div class="multi-parameter">
-							<el-switch
-							:class="$style.sidebarSwitches"
-							v-model="nodeParameters.anonymizeMessages"
-							size="small"
-							active-text="Anonymize user fields"
-							@input="onInput"
-							/>
+						<div class="">
 							<event-selection
-								class="item collection-parameter"
+								class=""
 								:destinationId="destination.id"
 								@input="onInput"
+								@change="valueChanged"
 							/>
 						</div>
 					</template>
@@ -171,6 +173,7 @@ import { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.vue';
+import { Checkbox } from 'element-ui';
 
 export default mixins(
 	restApi,
@@ -194,6 +197,7 @@ export default mixins(
 		InlineNameEdit,
 		SaveButton,
 		EventSelection,
+		Checkbox,
 	},
 	data() {
 		return {
@@ -394,18 +398,18 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-	.labelMargins {
-		margin-bottom: 1em;
-		margin-top: 1em;
-	}
+.labelMargins {
+	margin-bottom: 1em;
+	margin-top: 1em;
+}
 
-	.sidebarSwitches {
-		margin-left: 1.5em;
-		margin-bottom: .5em;
-		span {
-			color: var(--color-text-dark)!important;
-		}
+.sidebarSwitches {
+	margin-left: 1.5em;
+	margin-bottom: .5em;
+	span {
+		color: var(--color-text-dark)!important;
 	}
+}
 
 .mainContent {
 	flex: 1;
@@ -414,6 +418,7 @@ export default mixins(
 }
 
 .sidebar {
+	padding-top: 1em;
 	max-width: 170px;
 	min-width: 170px;
 	margin-right: var(--spacing-l);
@@ -424,8 +429,14 @@ export default mixins(
 	}
 }
 
+.cardTitle {
+	font-size: 14px;
+	font-weight: bold;
+}
+
 .header {
 	display: flex;
+	min-height: 61px;
 }
 
 .container {
