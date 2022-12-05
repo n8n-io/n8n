@@ -78,7 +78,7 @@ export async function dropboxpiRequestAllItems(
 	return returnData;
 }
 
-export function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
+export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions) {
 	return dropboxApiRequest.call(
 		this,
 		'POST',

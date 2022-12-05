@@ -110,7 +110,7 @@ export class Mailjet implements INodeType {
 						const textBody = this.getNodeParameter('text', i) as string;
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
+						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',');
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
@@ -157,7 +157,7 @@ export class Mailjet implements INodeType {
 							body.TextPart = textBody;
 						}
 						if (additionalFields.bccEmail) {
-							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+							const bccEmail = (additionalFields.bccEmail as string).split(',');
 							for (const email of bccEmail) {
 								body.Bcc!.push({
 									Email: email,
@@ -165,7 +165,7 @@ export class Mailjet implements INodeType {
 							}
 						}
 						if (additionalFields.ccAddresses) {
-							const ccEmail = (additionalFields.ccAddresses as string).split(',') as string[];
+							const ccEmail = (additionalFields.ccAddresses as string).split(',');
 							for (const email of ccEmail) {
 								body.Cc!.push({
 									Email: email,
@@ -177,7 +177,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}
@@ -204,7 +204,7 @@ export class Mailjet implements INodeType {
 						const templateId = parseInt(this.getNodeParameter('templateId', i) as string, 10);
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
+						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',');
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
@@ -246,7 +246,7 @@ export class Mailjet implements INodeType {
 						}
 
 						if (additionalFields.bccEmail) {
-							const bccEmail = (additionalFields.bccEmail as string).split(',') as string[];
+							const bccEmail = (additionalFields.bccEmail as string).split(',');
 							for (const email of bccEmail) {
 								body.Bcc!.push({
 									Email: email,
@@ -254,7 +254,7 @@ export class Mailjet implements INodeType {
 							}
 						}
 						if (additionalFields.ccEmail) {
-							const ccEmail = (additionalFields.ccEmail as string).split(',') as string[];
+							const ccEmail = (additionalFields.ccEmail as string).split(',');
 							for (const email of ccEmail) {
 								body.Cc!.push({
 									Email: email,
@@ -263,7 +263,7 @@ export class Mailjet implements INodeType {
 						}
 						if (additionalFields.replyTo) {
 							const replyTo = additionalFields.replyTo as string;
-							body['ReplyTo'] = {
+							body.ReplyTo = {
 								Email: replyTo,
 							};
 						}

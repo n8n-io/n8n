@@ -322,7 +322,7 @@ export class TimescaleDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -330,7 +330,7 @@ export class TimescaleDb implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

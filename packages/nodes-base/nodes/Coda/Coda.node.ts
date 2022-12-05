@@ -284,7 +284,7 @@ export class Coda implements INodeType {
 
 						if (options.keyColumns) {
 							// @ts-ignore
-							(sendData[endpoint]! as IDataObject).keyColumns! = options.keyColumns.split(
+							(sendData[endpoint]! as IDataObject).keyColumns = options.keyColumns.split(
 								',',
 							) as string[];
 						}
@@ -362,7 +362,7 @@ export class Coda implements INodeType {
 				const docId = this.getNodeParameter('docId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
 				if (options.useColumnNames === false) {
 					qs.useColumnNames = options.useColumnNames as boolean;
@@ -382,7 +382,7 @@ export class Coda implements INodeType {
 					qs.query = options.query as string;
 				}
 				try {
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(
 							this,
 							'items',
@@ -711,7 +711,7 @@ export class Coda implements INodeType {
 				const docId = this.getNodeParameter('docId', 0) as string;
 				const returnAll = this.getNodeParameter('returnAll', 0);
 				const viewId = this.getNodeParameter('viewId', 0) as string;
-				const options = this.getNodeParameter('options', 0) as IDataObject;
+				const options = this.getNodeParameter('options', 0);
 				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
 				if (options.useColumnNames === false) {
 					qs.useColumnNames = options.useColumnNames as boolean;
@@ -728,7 +728,7 @@ export class Coda implements INodeType {
 					qs.query = options.query as string;
 				}
 				try {
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await codaApiRequestAllItems.call(
 							this,
 							'items',

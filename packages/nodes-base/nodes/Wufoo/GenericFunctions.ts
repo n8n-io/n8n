@@ -26,7 +26,7 @@ export async function wufooApiRequest(
 		form: body,
 		body,
 		qs,
-		uri: `https://${credentials!.subdomain}.wufoo.com/api/v3/${resource}`,
+		uri: `https://${credentials.subdomain}.wufoo.com/api/v3/${resource}`,
 		json: true,
 	};
 

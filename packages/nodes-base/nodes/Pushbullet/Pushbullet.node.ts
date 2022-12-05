@@ -395,7 +395,7 @@ export class Pushbullet implements INodeType {
 
 						if (target !== 'default') {
 							const value = this.getNodeParameter('value', i) as string;
-							body[target as string] = value;
+							body[target] = value;
 						}
 
 						if (['note', 'link'].includes(type)) {

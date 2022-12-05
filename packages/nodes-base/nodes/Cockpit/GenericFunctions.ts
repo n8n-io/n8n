@@ -19,10 +19,10 @@ export async function cockpitApiRequest(
 		},
 		method,
 		qs: {
-			token: credentials!.accessToken,
+			token: credentials.accessToken,
 		},
 		body,
-		uri: uri || `${credentials!.url}/api${resource}`,
+		uri: uri || `${credentials.url}/api${resource}`,
 		json: true,
 	};
 
@@ -58,8 +58,8 @@ export function createDataFromParameters(
 		return unpacked;
 	}
 
-	for (const field of uiDataFields!.field as IDataObject[]) {
-		unpacked[field!.name as string] = field!.value;
+	for (const field of uiDataFields.field as IDataObject[]) {
+		unpacked[field.name as string] = field.value;
 	}
 
 	return unpacked;

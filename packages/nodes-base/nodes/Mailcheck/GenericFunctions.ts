@@ -41,10 +41,9 @@ export async function mailCheckApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return await this.helpers.request!.call(this, options);
 	} catch (error) {
-		if (error.response && error.response.body && error.response.body.message) {
+		if (error.response?.body?.message) {
 			// Try to return the error prettier
 			throw new Error(
 				`Mailcheck error response [${error.statusCode}]: ${error.response.body.message}`,

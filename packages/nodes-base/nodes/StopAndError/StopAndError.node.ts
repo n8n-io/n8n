@@ -82,7 +82,7 @@ export class StopAndError implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
 		const { id: workflowId, name: workflowName } = this.getWorkflow();
 

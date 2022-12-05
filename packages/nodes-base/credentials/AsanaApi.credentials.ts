@@ -2,8 +2,11 @@ import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-work
 
 export class AsanaApi implements ICredentialType {
 	name = 'asanaApi';
+
 	displayName = 'Asana API';
+
 	documentationUrl = 'asana';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',

@@ -137,8 +137,8 @@ export async function handleListing(
 	this: IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
+	body: IDataObject,
+	qs: IDataObject,
 	i: number,
 ) {
 	let responseData;
@@ -146,7 +146,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
-		return await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
 	} else {
 		qs.limit = this.getNodeParameter('limit', i);
 		responseData = await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
@@ -165,5 +165,5 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: Resource) 
 }
 
 export async function getVersionForUpdate(this: IExecuteFunctions, endpoint: string) {
-	return await taigaApiRequest.call(this, 'GET', endpoint).then((response) => response.version);
+	return taigaApiRequest.call(this, 'GET', endpoint).then((response) => response.version);
 }

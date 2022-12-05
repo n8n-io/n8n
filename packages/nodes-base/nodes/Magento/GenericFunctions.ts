@@ -60,7 +60,7 @@ export async function magentoApiRequestAllItems(
 	do {
 		responseData = await magentoApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query['current_page'] = query.current_page ? (query.current_page as number)++ : 1;
+		query.current_page = query.current_page ? (query.current_page as number)++ : 1;
 	} while (returnData.length < responseData.total_count);
 
 	return returnData;
@@ -1012,8 +1012,8 @@ export async function getProductAttributes(
 	const returnData: INodePropertyOptions[] = [];
 	for (const attribute of attributes) {
 		returnData.push({
-			name: attribute.default_frontend_label as string,
-			value: attribute.attribute_code as string,
+			name: attribute.default_frontend_label,
+			value: attribute.attribute_code,
 		});
 	}
 	if (extraValue) {

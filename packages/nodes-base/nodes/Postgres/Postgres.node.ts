@@ -277,6 +277,7 @@ export class Postgres implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		credentialTest: {
 			async postgresConnectionTest(
@@ -305,7 +306,7 @@ export class Postgres implements INodeType {
 
 					const db = pgp(config);
 					await db.connect();
-					await pgp.end();
+					pgp.end();
 				} catch (error) {
 					return {
 						status: 'Error',
@@ -394,7 +395,7 @@ export class Postgres implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(updateItems);
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -402,7 +403,7 @@ export class Postgres implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

@@ -114,11 +114,11 @@ export async function quickbaseApiRequestAllItems(
 		}
 
 		for (const record of data) {
-			const data: IDataObject = {};
+			const recordData: IDataObject = {};
 			for (const [key, value] of Object.entries(record)) {
-				data[fieldsIdKey[key]] = (value as IDataObject).value;
+				recordData[fieldsIdKey[key]] = (value as IDataObject).value;
 			}
-			responseData.push(data);
+			responseData.push(recordData);
 		}
 
 		if (method === 'POST') {

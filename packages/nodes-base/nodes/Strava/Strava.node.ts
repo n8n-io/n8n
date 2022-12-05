@@ -113,7 +113,7 @@ export class Strava implements INodeType {
 							`/activities/${activityId}/${path[operation]}`,
 						);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

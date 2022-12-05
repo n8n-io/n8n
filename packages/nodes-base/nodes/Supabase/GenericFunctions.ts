@@ -247,7 +247,7 @@ export function getFilters(
 					],
 				},
 			],
-			description: `Filter to decide which rows get ${mapOperations[operations[0] as string]}`,
+			description: `Filter to decide which rows get ${mapOperations[operations[0]]}`,
 		},
 		{
 			displayName:

@@ -124,7 +124,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 			if (operation === 'getAllPeople') {
 				const returnAll = this.getNodeParameter('returnAll', i);
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = data;
 				} else {
 					const limit = this.getNodeParameter('limit', i);

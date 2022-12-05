@@ -121,10 +121,10 @@ export class Bubble implements INodeType {
 
 					const endpoint = `/obj/${typeName}`;
 
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const options = this.getNodeParameter('options', i);
 
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						if (options.filters) {
 							const { filter } = options.filters as IDataObject;
 							qs.constraints = JSON.stringify(filter);
@@ -145,7 +145,7 @@ export class Bubble implements INodeType {
 						Object.assign(qs, sortValue);
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 					} else {
 						qs.limit = this.getNodeParameter('limit', 0);

@@ -372,7 +372,7 @@ export class Reddit implements INodeType {
 							const endpoint = 'api/trending_subreddits.json';
 							responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 							responseData = responseData.subreddit_names.map((name: string) => ({ name }));
-							if (returnAll === false) {
+							if (!returnAll) {
 								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.splice(0, limit);
 							}
@@ -385,7 +385,7 @@ export class Reddit implements INodeType {
 
 							const returnAll = this.getNodeParameter('returnAll', 0);
 
-							if (returnAll === false) {
+							if (!returnAll) {
 								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.subreddits.splice(0, limit);
 							}

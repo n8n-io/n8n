@@ -150,7 +150,7 @@ export class AgileCrm implements INodeType {
 					} else if (filterType === 'json') {
 						const filterJsonRules = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJsonRules) !== undefined) {
-							Object.assign(filterJson, jsonParse(filterJsonRules) as IFilter);
+							Object.assign(filterJson, jsonParse(filterJsonRules));
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', {
 								itemIndex: i,

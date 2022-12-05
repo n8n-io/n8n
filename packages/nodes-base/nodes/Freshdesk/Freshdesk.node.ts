@@ -1213,17 +1213,17 @@ export class Freshdesk implements INodeType {
 										itemIndex: i,
 									});
 								}
-								body.requester_id = parseInt(value as string, 10);
+								body.requester_id = parseInt(value, 10);
 							} else if (updateFields.requester === 'email') {
-								body.email = value as string;
+								body.email = value;
 							} else if (updateFields.requester === 'facebookId') {
-								body.facebook_id = value as string;
+								body.facebook_id = value;
 							} else if (updateFields.requester === 'phone') {
-								body.phone = value as string;
+								body.phone = value;
 							} else if (updateFields.requester === 'twitterId') {
-								body.twitter_id = value as string;
+								body.twitter_id = value;
 							} else if (updateFields.requester === 'uniqueExternalId') {
-								body.unique_external_id = value as string;
+								body.unique_external_id = value;
 							}
 						}
 						if (updateFields.status) {
@@ -1310,7 +1310,7 @@ export class Freshdesk implements INodeType {
 								qs.include = (options.include as string[]).join(',');
 							}
 						}
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await freshdeskApiRequestAllItems.call(
 								this,
 								'GET',
@@ -1333,11 +1333,7 @@ export class Freshdesk implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						if (additionalFields.customFields) {
 							const metadata = (additionalFields.customFields as IDataObject)
@@ -1375,16 +1371,12 @@ export class Freshdesk implements INodeType {
 						);
 						//https://developers.freshdesk.com/api/#list_all_contacts
 					} else if (operation === 'getAll') {
-						const qs = this.getNodeParameter('filters', i, {}) as IDataObject;
-						responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, qs);
+						const filters = this.getNodeParameter('filters', i, {});
+						responseData = await freshdeskApiRequest.call(this, 'GET', '/contacts', {}, filters);
 						//https://developers.freshdesk.com/api/#update_contact
 					} else if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						if (additionalFields.customFields) {
 							const metadata = (additionalFields.customFields as IDataObject)

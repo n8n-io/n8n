@@ -197,7 +197,7 @@ export class CoinGecko implements INodeType {
 
 						responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/list', {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

@@ -43,7 +43,7 @@ export async function githubApiRequest(
 			const credentials = await this.getCredentials('githubApi');
 			credentialType = 'githubApi';
 
-			const baseUrl = credentials!.server || 'https://api.github.com';
+			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;
 		} else {
 			const credentials = await this.getCredentials('githubOAuth2Api');
@@ -105,6 +105,6 @@ export async function githubApiRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

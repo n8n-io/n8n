@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PagerDutyOAuth2Api implements ICredentialType {
 	name = 'pagerDutyOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'PagerDuty OAuth2 API';
+
 	documentationUrl = 'pagerDuty';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

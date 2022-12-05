@@ -61,8 +61,7 @@ export async function hunterApiRequestAllItems(
 		returnData.push(responseData[propertyName]);
 		query.offset += query.limit;
 	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.results !== undefined &&
+		responseData.meta?.results !== undefined &&
 		responseData.meta.offset <= responseData.meta.results
 	);
 	return returnData;

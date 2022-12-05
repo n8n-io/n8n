@@ -531,7 +531,7 @@ export class YouTube implements INodeType {
 
 						if (options.tags) {
 							//@ts-ignore
-							body.snippet.tags = (options.tags as string).split(',') as string[];
+							body.snippet.tags = (options.tags as string).split(',');
 						}
 
 						if (options.description) {
@@ -578,7 +578,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.privacyStatus) {
@@ -919,7 +919,7 @@ export class YouTube implements INodeType {
 
 						if (options.tags) {
 							//@ts-ignore
-							data.snippet.tags = (options.tags as string).split(',') as string[];
+							data.snippet.tags = (options.tags as string).split(',');
 						}
 
 						if (options.embeddable) {
@@ -995,7 +995,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.embeddable) {
@@ -1091,7 +1091,7 @@ export class YouTube implements INodeType {
 						);
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

@@ -8,6 +8,7 @@ import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } f
 
 export class Sandbox extends NodeVM {
 	private jsCode = '';
+
 	private itemIndex: number | undefined = undefined;
 
 	constructor(

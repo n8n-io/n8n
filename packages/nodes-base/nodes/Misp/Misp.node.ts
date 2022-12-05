@@ -416,7 +416,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/feeds')) as Array<{
 							Feed: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Feed);
+						responseData = responseData.map((entry) => entry.Feed);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               feed: update
@@ -469,7 +469,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/galaxies')) as Array<{
 							Galaxy: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Galaxy);
+						responseData = responseData.map((entry) => entry.Galaxy);
 					}
 				} else if (resource === 'noticelist') {
 					// **********************************************************************
@@ -493,7 +493,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/noticelists')) as Array<{
 							Noticelist: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Noticelist);
+						responseData = responseData.map((entry) => entry.Noticelist);
 					}
 				} else if (resource === 'organisation') {
 					// **********************************************************************
@@ -543,7 +543,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/organisations')) as Array<{
 							Organisation: unknown;
 						}>;
-						responseData = responseData.map((i) => i.Organisation);
+						responseData = responseData.map((entry) => entry.Organisation);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//           organisation: update
@@ -678,7 +678,7 @@ export class Misp implements INodeType {
 						responseData = (await mispApiRequestAllItems.call(this, '/admin/users')) as Array<{
 							User: unknown;
 						}>;
-						responseData = responseData.map((i) => i.User);
+						responseData = responseData.map((entry) => entry.User);
 					} else if (operation === 'update') {
 						// ----------------------------------------
 						//               user: update
@@ -721,9 +721,11 @@ export class Misp implements INodeType {
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.Warninglists.slice(0, limit).map((i) => i.Warninglist);
+							responseData = responseData.Warninglists.slice(0, limit).map(
+								(entry) => entry.Warninglist,
+							);
 						} else {
-							responseData = responseData.Warninglists.map((i) => i.Warninglist);
+							responseData = responseData.Warninglists.map((entry) => entry.Warninglist);
 						}
 					}
 				}

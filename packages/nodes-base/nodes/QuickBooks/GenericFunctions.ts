@@ -69,7 +69,7 @@ export async function quickBooksApiRequest(
 	}
 
 	if (isDownload) {
-		options.headers!['Accept'] = 'application/pdf';
+		options.headers!.Accept = 'application/pdf';
 	}
 
 	if (resource === 'invoice' && operation === 'send') {
@@ -84,7 +84,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		return this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -168,7 +168,7 @@ export async function handleListing(
 	}
 
 	if (returnAll) {
-		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
+		return quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
 		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
@@ -268,6 +268,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 
 	if (resource === 'preferences') {
 		const {
+			// eslint-disable-next-line @typescript-eslint/no-shadow
 			SalesFormsPrefs: { CustomField },
 		} = resourceItems[0];
 		const customFields = CustomField[1].CustomField;
@@ -398,7 +399,7 @@ export function populateFields(
 				const length = (body.CustomField as CustomField[]).length;
 				for (let i = 0; i < length; i++) {
 					//@ts-ignore
-					body.CustomField[i]['Type'] = 'StringType';
+					body.CustomField[i].Type = 'StringType';
 				}
 			} else if (key === 'CustomerMemo') {
 				body.CustomerMemo = {

@@ -7,8 +7,11 @@ import {
 
 export class JiraSoftwareCloudApi implements ICredentialType {
 	name = 'jiraSoftwareCloudApi';
+
 	displayName = 'Jira SW Cloud API';
+
 	documentationUrl = 'jira';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
@@ -31,6 +34,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			placeholder: 'https://example.atlassian.net',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -40,6 +44,7 @@ export class JiraSoftwareCloudApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.domain}}',
