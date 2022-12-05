@@ -105,6 +105,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import {
+IDataObject,
 	INodeTypeDescription,
 	ITaskData,
 	NodeHelpers,
@@ -117,13 +118,14 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
+import { IExecutionsSummary, INodeUi, INodeUpdatePropertiesInformation, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { EnableNodeToggleCommand } from '@/models/history';
 
 export default mixins(
 	externalHooks,
@@ -399,12 +401,16 @@ export default mixins(
 		}
 	},
 	mounted() {
+		this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
 		this.setSubtitle();
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
 			}, 0);
 		}
+	},
+	destroyed() {
+		this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
 	},
 	data () {
 		return {
@@ -417,6 +423,22 @@ export default mixins(
 		};
 	},
 	methods: {
+		onRevertEnableToggle({ nodeName, isDisabled }: { nodeName: string, isDisabled: boolean }) {
+			const node: INodeUi|null = this.data;
+			if (node && nodeName === node.name) {
+				const updateInformation = {
+					name: node.name,
+					properties: {
+						disabled: isDisabled,
+					} as IDataObject,
+				} as INodeUpdatePropertiesInformation;
+
+				this.workflowsStore.updateNodeProperties(updateInformation);
+				this.workflowsStore.clearNodeExecutionData(node.name);
+				this.updateNodeParameterIssues(node);
+				this.updateNodeCredentialIssues(node);
+			}
+		},
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 			if (!this.isTriggerNode || this.isManualTypeNode || this.isScheduledGroup || dataItemsCount === 0) return;
 
@@ -433,7 +455,9 @@ export default mixins(
 				: nodeSubtitle;
 		},
 		disableNode () {
-			this.disableNodes([this.data]);
+			const nodeData = this.data as INodeUi;
+			this.disableNodes([nodeData]);
+			this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(nodeData.name, !nodeData.disabled, nodeData.disabled === true, this));
 			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
 		},
 		executeNode () {

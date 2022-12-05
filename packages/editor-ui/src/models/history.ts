@@ -11,17 +11,18 @@ enum COMMANDS {
 	ADD_NODE = 'addNode',
 	REMOVE_NODE = 'removeNode',
 	ADD_CONNECTION = 'addConnection',
-	REMOVE_CONNECtiON = 'removeConnection',
+	REMOVE_CONNECTION = 'removeConnection',
 	ENABLE_NODE = 'enableNode',
 	DISABLE_NODE = 'disableNode',
 	RENAME_NODE = 'renameNode',
+	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
 }
 
 // Triggering multiple canvas actions in sequence leaves
 // canvas out of sync with store state, so we are adding
 // this timeout in between canvas actions
 // (0 is usually enough but leaving this just in case)
-const CANVAS_ACTION_TIMEOUT = 50;
+const CANVAS_ACTION_TIMEOUT = 10;
 
 export abstract class Undoable { }
 
@@ -140,7 +141,7 @@ export class RemoveConnectionCommand extends Command {
 	connectionData: [IConnection, IConnection];
 
 	constructor(connectionData: [IConnection, IConnection], eventBus: Vue) {
-		super(COMMANDS.REMOVE_CONNECtiON, eventBus);
+		super(COMMANDS.REMOVE_CONNECTION, eventBus);
 		this.connectionData = connectionData;
 	}
 
@@ -154,6 +155,30 @@ export class RemoveConnectionCommand extends Command {
 				this.eventBus.$root.$emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
 			}, CANVAS_ACTION_TIMEOUT);
+		});
+	}
+}
+
+export class EnableNodeToggleCommand extends Command {
+	nodeName: string;
+	oldState: boolean;
+	newState: boolean;
+
+	constructor(nodeName: string, oldState: boolean, newState: boolean, eventBus: Vue) {
+		super(COMMANDS.ENABLE_NODE_TOGGLE, eventBus);
+		this.nodeName = nodeName;
+		this.newState = newState;
+		this.oldState = oldState;
+	}
+
+	getReverseCommand(): Command {
+			return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState, this.eventBus);
+	}
+
+	async revert(): Promise<void> {
+		return new Promise<void>(resolve => {
+			this.eventBus.$root.$emit('enableNodeToggle', { nodeName: this.nodeName, isDisabled: this.oldState });
+			resolve();
 		});
 	}
 }

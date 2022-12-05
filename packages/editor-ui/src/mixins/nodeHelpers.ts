@@ -1,3 +1,5 @@
+import { EnableNodeToggleCommand } from './../models/history';
+import { useHistoryStore } from '@/stores/history';
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	CUSTOM_API_CALL_KEY,
@@ -51,6 +53,7 @@ export const nodeHelpers = mixins(
 		computed: {
 			...mapStores(
 				useCredentialsStore,
+				useHistoryStore,
 				useNodeTypesStore,
 				useSettingsStore,
 				useWorkflowsStore,
@@ -433,11 +436,12 @@ export const nodeHelpers = mixins(
 
 			disableNodes(nodes: INodeUi[]) {
 				for (const node of nodes) {
+					const oldState = node.disabled;
 					// Toggle disabled flag
 					const updateInformation = {
 						name: node.name,
 						properties: {
-							disabled: !node.disabled,
+							disabled: !oldState,
 						} as IDataObject,
 					} as INodeUpdatePropertiesInformation;
 

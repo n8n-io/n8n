@@ -1195,7 +1195,7 @@ export default mixins(
 					this.workflowsStore.updateNodeProperties(updateInformation);
 					this.onNodeMoved(node);
 
-					if (recordHistory) {
+					if (recordHistory && oldPosition[0] !== node.position[0] && oldPosition[1] !== node.position[1]) {
 						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this));
 					}
 				}
@@ -2928,7 +2928,7 @@ export default mixins(
 										},
 									] as [IConnection, IConnection];
 
-									this.__addConnection(connectionData, true);
+									this.__addConnection(connectionData, true, trackHistory);
 								});
 							}
 						}
@@ -3047,7 +3047,9 @@ export default mixins(
 				}
 
 				// Add the nodes with the changed node names, expressions and connections
-				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+				this.historyStore.startRecordingUndo();
+				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode, true);
+				this.historyStore.stopRecordingUndo();
 
 				this.uiStore.stateIsDirty = true;
 
