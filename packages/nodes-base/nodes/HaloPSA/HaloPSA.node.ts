@@ -222,8 +222,8 @@ export class HaloPSA implements INodeType {
 
 		const tokens = await getAccessTokens.call(this);
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		//====================================================================
 		//                        Main Loop
@@ -270,8 +270,7 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const clientId = this.getNodeParameter('clientId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/client/${clientId}`,
@@ -378,8 +377,7 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const siteId = this.getNodeParameter('siteId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/site/${siteId}`,
@@ -488,8 +486,7 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const ticketId = this.getNodeParameter('ticketId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/tickets/${ticketId}`,
@@ -597,8 +594,7 @@ export class HaloPSA implements INodeType {
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
-						let response;
-						response = await haloPSAApiRequest.call(
+						const response = await haloPSAApiRequest.call(
 							this,
 							'GET',
 							`/users/${userId}`,

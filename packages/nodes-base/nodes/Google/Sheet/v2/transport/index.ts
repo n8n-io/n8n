@@ -82,7 +82,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	uri: string,
+	uri?: string,
 ) {
 	const returnData: IDataObject[] = [];
 
@@ -91,14 +91,14 @@ export async function apiRequestAllItems(
 	const url = uri ? uri : `https://sheets.googleapis.com${method}`;
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query, url);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
 
-export function getAccessToken(
+export async function getAccessToken(
 	this:
 		| IExecuteFunctions
 		| IExecuteSingleFunctions
@@ -117,12 +117,12 @@ export function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
+			iss: credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: `https://oauth2.googleapis.com/token`,
 			iat: now,

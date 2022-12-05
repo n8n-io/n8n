@@ -28,7 +28,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
 		return this.prepareOutputData(items);

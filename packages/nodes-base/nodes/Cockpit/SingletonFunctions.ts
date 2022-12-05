@@ -4,7 +4,6 @@ import { cockpitApiRequest } from './GenericFunctions';
 export async function getSingleton(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	resourceName: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	return cockpitApiRequest.call(this, 'get', `/singletons/get/${resourceName}`);
 }

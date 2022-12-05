@@ -18,7 +18,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -48,7 +47,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -65,7 +63,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -93,7 +90,6 @@ export async function awsApiRequestSOAPAllItems(
 	_headers: IDataObject = {},
 	_option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -105,7 +101,7 @@ export async function awsApiRequestSOAPAllItems(
 		responseData = await awsApiRequestSOAP.call(this, service, method, path, body, query);
 
 		if (get(responseData, `${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`)) {
-			query['NextToken'] = get(
+			query.NextToken = get(
 				responseData,
 				`${propertyNameArray[0]}.${propertyNameArray[1]}.NextToken`,
 			);

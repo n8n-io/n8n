@@ -3,6 +3,7 @@
 	<div
 		class="node-view-root"
 		id="node-view-root"
+		data-test-id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
@@ -31,6 +32,7 @@
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasStore.canvasAddButtonPosition"
 					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
+					data-test-id="canvas-add-button"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
@@ -295,6 +297,7 @@ export default mixins(
 							this.resetWorkspace();
 							this.uiStore.stateIsDirty = previousDirtyState;
 						}
+						this.loadCredentials();
 						this.initView().then(() => {
 							this.stopLoading();
 							if (this.blankRedirect) {

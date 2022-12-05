@@ -247,12 +247,13 @@ export class BitbucketTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				let endpoint = '';
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
@@ -273,12 +274,11 @@ export class BitbucketTrigger implements INodeType {
 				return false;
 			},
 			async create(this: IHookFunctions): Promise<boolean> {
-				let responseData;
 				let endpoint = '';
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const events = this.getNodeParameter('events') as string[];
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				const workspace = this.getNodeParameter('workspace', 0) as string;
 
 				if (resource === 'workspace') {
@@ -294,7 +294,7 @@ export class BitbucketTrigger implements INodeType {
 					active: true,
 					events,
 				};
-				responseData = await bitbucketApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await bitbucketApiRequest.call(this, 'POST', endpoint, body);
 				webhookData.webhookId = responseData.uuid.replace('{', '').replace('}', '');
 				return true;
 			},
@@ -302,7 +302,7 @@ export class BitbucketTrigger implements INodeType {
 				let endpoint = '';
 				const webhookData = this.getWorkflowStaticData('node');
 				const workspace = this.getNodeParameter('workspace', 0) as string;
-				const resource = this.getNodeParameter('resource', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
 				if (resource === 'workspace') {
 					endpoint = `/workspaces/${workspace}/hooks/${webhookData.webhookId}`;
 				}

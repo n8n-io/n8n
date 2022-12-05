@@ -7,12 +7,13 @@
 			tabindex="0"
 			@keydown.capture="nodeFilterKeyDown"
 			:key="`${activeSubcategoryTitle}_transition`"
+			data-test-id="categorized-items"
 		>
 			<div class="header" v-if="$slots.header">
 				<slot name="header" />
 			</div>
 
-			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+			<div :class="$style.subcategoryHeader" v-if="activeSubcategory" data-test-id="categorized-items-subcategory">
 				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
 					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
 				</button>
@@ -45,6 +46,7 @@
 			</div>
 			<no-results
 				v-else
+				data-test-id="categorized-no-results"
 				:showRequest="filteredAllNodeTypes.length === 0"
 				:show-icon="filteredAllNodeTypes.length === 0"
 			>

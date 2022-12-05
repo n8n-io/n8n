@@ -537,13 +537,15 @@ export default mixins(
 				if (parentNode.length) {
 					// If the node has an input node add the input data
 
+					const activeInputParentNode = parentNode.find(node => node === this.ndvStore.ndvInputNodeName)!;
+
 					// Check from which output to read the data.
 					// Depends on how the nodes are connected.
 					// (example "IF" node. If node is connected to "true" or to "false" output)
-					const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
+					const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, activeInputParentNode, 'main');
 					const outputIndex = nodeConnection === undefined ? 0: nodeConnection.sourceIndex;
 
-					tempOutputData = this.getNodeRunDataOutput(parentNode[0], runData, filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
+					tempOutputData = this.getNodeRunDataOutput(activeInputParentNode, runData, filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
 
 					const pinDataOptions: IVariableSelectorOption[] = [
 						{

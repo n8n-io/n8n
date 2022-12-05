@@ -8,12 +8,11 @@ export async function pushcutApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	option = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('pushcutApi');
 
@@ -35,7 +34,7 @@ export async function pushcutApiRequest(
 			Object.assign(options, option);
 		}
 		//@ts-ignore
-		return await this.helpers.request.call(this, options);
+		return this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

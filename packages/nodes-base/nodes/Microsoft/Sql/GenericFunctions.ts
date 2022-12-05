@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { ITables } from './TableInterface';
 
@@ -59,11 +60,14 @@ export function createTableStruct(
  * @param {ITables} tables The ITables to be processed.
  * @param {function} buildQueryQueue function that builds the queue of promises
  */
-// tslint:disable-next-line: no-any
-export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): Promise<any[]> {
+
+export async function executeQueryQueue(
+	tables: ITables,
+	buildQueryQueue: Function,
+): Promise<any[]> {
 	return Promise.all(
-		Object.keys(tables).map((table) => {
-			const columnsResults = Object.keys(tables[table]).map((columnString) => {
+		Object.keys(tables).map(async (table) => {
+			const columnsResults = Object.keys(tables[table]).map(async (columnString) => {
 				return Promise.all(
 					buildQueryQueue({
 						table,
@@ -83,7 +87,7 @@ export function executeQueryQueue(tables: ITables, buildQueryQueue: Function): P
  * @param {IDataObject} item The item to extract
  */
 export function extractValues(item: IDataObject): string {
-	return `(${Object.values(item as any) // tslint:disable-line:no-any
+	return `(${Object.values(item as any)
 		.map((val) => {
 			//the column cannot be found in the input
 			//so, set it to null in the sql query
