@@ -177,7 +177,7 @@ export class AwsSnsTrigger implements INodeType {
 					data,
 					'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions',
 				);
-				if (!subscriptions || !subscriptions.member) {
+				if (!subscriptions?.member) {
 					return false;
 				}
 
