@@ -40,7 +40,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {
@@ -102,7 +102,7 @@ export function throwOnMissingSharingGroup(this: IExecuteFunctions, fields: IDat
 
 const isValidUrl = (str: string) => {
 	try {
-		new URL(str); // tslint:disable-line: no-unused-expression
+		new URL(str);
 		return true;
 	} catch (error) {
 		return false;

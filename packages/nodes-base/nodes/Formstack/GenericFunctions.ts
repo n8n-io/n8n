@@ -53,7 +53,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -74,7 +73,7 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
-			options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 			return await this.helpers.request!(options);
 		} else {
 			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
@@ -97,7 +96,6 @@ export async function apiRequestAllItems(
 	body: IDataObject,
 	dataKey: string,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};

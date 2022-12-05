@@ -7,8 +7,11 @@ import {
 
 export class HighLevelApi implements ICredentialType {
 	name = 'highLevelApi';
+
 	displayName = 'HighLevel API';
+
 	documentationUrl = 'highLevel';
+
 	properties = [
 		{
 			displayName: 'API Key',
@@ -17,6 +20,7 @@ export class HighLevelApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +29,7 @@ export class HighLevelApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://rest.gohighlevel.com/v1',

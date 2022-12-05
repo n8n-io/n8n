@@ -216,8 +216,8 @@ export class Xero implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const resource = this.getNodeParameter('resource', 0) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const resource = this.getNodeParameter('resource', 0);
+				const operation = this.getNodeParameter('operation', 0);
 				//https://developer.xero.com/documentation/api/invoices
 				if (resource === 'invoice') {
 					if (operation === 'create') {

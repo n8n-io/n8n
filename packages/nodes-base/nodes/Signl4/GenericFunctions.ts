@@ -17,7 +17,6 @@ export async function SIGNL4ApiRequest(
 	body: string,
 	query: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('signl4Api');
 
@@ -43,7 +42,7 @@ export async function SIGNL4ApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

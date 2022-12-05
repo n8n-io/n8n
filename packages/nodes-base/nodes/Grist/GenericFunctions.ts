@@ -80,12 +80,7 @@ export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
 	}, {});
 }
 
-export function parseAutoMappedInputs(
-	incomingKeys: string[],
-	inputsToIgnore: string[],
-	item: any, // tslint:disable-line:no-any
-) {
-	// tslint:disable-next-line:no-any
+export function parseAutoMappedInputs(incomingKeys: string[], inputsToIgnore: string[], item: any) {
 	return incomingKeys.reduce<{ [key: string]: any }>((acc, curKey) => {
 		if (inputsToIgnore.includes(curKey)) return acc;
 		acc = { ...acc, [curKey]: item[curKey] };

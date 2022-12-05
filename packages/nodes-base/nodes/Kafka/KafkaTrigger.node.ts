@@ -171,9 +171,7 @@ export class KafkaTrigger implements INodeType {
 
 		const credentials = await this.getCredentials('kafka');
 
-		const brokers = ((credentials.brokers as string) || '')
-			.split(',')
-			.map((item) => item.trim()) as string[];
+		const brokers = ((credentials.brokers as string) || '').split(',').map((item) => item.trim());
 
 		const clientId = credentials.clientId as string;
 
@@ -231,7 +229,7 @@ export class KafkaTrigger implements INodeType {
 			await consumer.run({
 				autoCommitInterval: (options.autoCommitInterval as number) || null,
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
-				eachMessage: async ({ topic, message }) => {
+				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
 					let value = message.value?.toString() as string;
 
@@ -259,7 +257,7 @@ export class KafkaTrigger implements INodeType {
 					}
 
 					data.message = value;
-					data.topic = topic;
+					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
 						//@ts-ignore
@@ -271,7 +269,7 @@ export class KafkaTrigger implements INodeType {
 			});
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -286,7 +284,7 @@ export class KafkaTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			startConsumer();
+			await startConsumer();
 		}
 
 		return {
