@@ -18,7 +18,7 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
+	const { apiKey, planType, customSubdomain, selfHostedUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'gristApi',
 	)) as GristCredentials;
 
@@ -37,6 +37,7 @@ export async function gristApiRequest(
 		uri: gristapiurl,
 		qs,
 		body,
+		rejectUnauthorized: !allowUnauthorizedCerts || false,
 		json: true,
 	};
 

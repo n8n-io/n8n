@@ -61,5 +61,18 @@ export class GristApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Skip certificate validation',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			default: false,
+			description:
+				'Enable if you are using a self-signed certificate and your CA chain is not installed on the n8n host.',
+			displayOptions: {
+				show: {
+					planType: ['selfHosted'],
+				},
+			},
+		},
 	];
 }

@@ -75,7 +75,7 @@ export class Grist implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const { apiKey, planType, customSubdomain, selfHostedUrl } =
+				const { apiKey, planType, customSubdomain, selfHostedUrl, allowUnauthorizedCerts } =
 					credential.data as GristCredentials;
 
 				const endpoint = '/orgs';
@@ -93,6 +93,7 @@ export class Grist implements INodeType {
 					},
 					method: 'GET',
 					uri: gristapiurl,
+					rejectUnauthorized: !allowUnauthorizedCerts || false,
 					qs: { limit: 1 },
 					json: true,
 				};
