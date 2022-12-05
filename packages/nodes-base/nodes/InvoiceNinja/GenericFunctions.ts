@@ -28,8 +28,8 @@ export const eventID: { [key: string]: string } = {
 
 	create_quote: '3',
 	update_quote: '6',
-	accept_invoice: '21',
-	expire_invoice: '23',
+	accept_quote: '21',
+	expire_quote: '23',
 	delete_quote: '7',
 
 	create_payment: '4',
