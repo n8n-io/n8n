@@ -138,6 +138,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			}
 		}
 	}
+
+	&::after {
+		content: '';
+		display: block;
+		clear: both;
+	}
 }
 
 .sub {
