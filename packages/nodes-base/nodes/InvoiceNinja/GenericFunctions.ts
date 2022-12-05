@@ -41,6 +41,7 @@ export const eventID: { [key: string]: string } = {
 
 	create_project: '25',
 	update_project: '26',
+	delete_project: '30',
 
 	create_task: '18',
 	update_task: '19',
