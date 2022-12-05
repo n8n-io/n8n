@@ -11,7 +11,7 @@ export class AddWorkflowVersionIdColumn1669739707126 implements MigrationInterfa
 
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN versionId CHAR(36)`,
+			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN "versionId" CHAR(36)`,
 		);
 
 		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
@@ -23,7 +23,7 @@ export class AddWorkflowVersionIdColumn1669739707126 implements MigrationInterfa
 			const [updateQuery, updateParams] = queryRunner.connection.driver.escapeQueryWithParameters(
 				`
 					UPDATE ${tablePrefix}workflow_entity
-					SET versionId = :versionId
+					SET "versionId" = :versionId
 					WHERE id = '${id}'
 				`,
 				{ versionId: uuidv4() },
@@ -39,6 +39,6 @@ export class AddWorkflowVersionIdColumn1669739707126 implements MigrationInterfa
 	async down(queryRunner: QueryRunner) {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN versionId`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN "versionId"`);
 	}
 }

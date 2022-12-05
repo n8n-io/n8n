@@ -738,7 +738,6 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		console.log('createResponse', createResponse.body);
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
@@ -747,7 +746,6 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses and updates workflow name
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		console.log('memberGetResponse', memberGetResponse.body);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		await authAgent(member)
@@ -759,7 +757,6 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		const updateAttemptResponse = await authAgent(owner)
 			.patch(`/workflows/${id}`)
 			.send({ nodes: [], versionId: ownerVersionId });
-		console.log('updateAttemptResponse', updateAttemptResponse.body);
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.code).toBe(100);
