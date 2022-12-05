@@ -2113,7 +2113,7 @@ export class GoogleDrive implements INodeType {
 				query.push(`mimeType != 'application/vnd.google-apps.folder'`);
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 					orderBy: 'name_natural',
 				});
@@ -2138,7 +2138,7 @@ export class GoogleDrive implements INodeType {
 				query.push(`mimeType = 'application/vnd.google-apps.folder'`);
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
 					orderBy: 'name_natural',
 				});
@@ -2158,7 +2158,7 @@ export class GoogleDrive implements INodeType {
 			): Promise<INodeListSearchResult> {
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
 					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
-					pageToken: paginationToken as string | undefined,
+					pageToken: paginationToken,
 				});
 				return {
 					results: res.drives.map((i: GoogleDriveDriveItem) => ({
@@ -2175,15 +2175,15 @@ export class GoogleDrive implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const options = this.getNodeParameter('options', i, {}) as IDataObject;
+				const options = this.getNodeParameter('options', i, {});
 
 				let queryFields = 'id, name';
-				if (options && options.fields) {
+				if (options?.fields) {
 					const fields = options.fields as string[];
 					if (fields.includes('*')) {
 						queryFields = '*';
@@ -2275,7 +2275,7 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(qs, options);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							response = await googleApiRequestAllItems.call(
 								this,
 								'drives',
@@ -2372,7 +2372,7 @@ export class GoogleDrive implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const options = this.getNodeParameter('options', i);
+						const downloadOptions = this.getNodeParameter('options', i);
 
 						const requestOptions = {
 							resolveWithFullResponse: true,
@@ -2445,8 +2445,8 @@ export class GoogleDrive implements INodeType {
 							mimeType = response.headers['content-type'];
 						}
 
-						if (options.fileName) {
-							fileName = options.fileName as string;
+						if (downloadOptions.fileName) {
+							fileName = downloadOptions.fileName as string;
 						}
 
 						const newItem: INodeExecutionData = {
@@ -2504,7 +2504,7 @@ export class GoogleDrive implements INodeType {
 
 						let queryString = '';
 						const useQueryString = this.getNodeParameter('useQueryString', i) as boolean;
-						if (useQueryString === true) {
+						if (useQueryString) {
 							// Use the user defined query string
 							queryString = this.getNodeParameter('queryString', i) as string;
 						} else {
@@ -2514,13 +2514,13 @@ export class GoogleDrive implements INodeType {
 							const queryFilterFields: string[] = [];
 							if (queryFilters.name) {
 								(queryFilters.name as IDataObject[]).forEach((nameFilter) => {
-									let operation = nameFilter.operation;
-									if (operation === 'is') {
-										operation = '=';
-									} else if (operation === 'isNot') {
-										operation = '!=';
+									let filterOperation = nameFilter.operation;
+									if (filterOperation === 'is') {
+										filterOperation = '=';
+									} else if (filterOperation === 'isNot') {
+										filterOperation = '!=';
 									}
-									queryFilterFields.push(`name ${operation} '${nameFilter.value}'`);
+									queryFilterFields.push(`name ${filterOperation} '${nameFilter.value}'`);
 								});
 
 								queryString += queryFilterFields.join(' or ');
@@ -2560,7 +2560,7 @@ export class GoogleDrive implements INodeType {
 
 						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
 
-						const files = response!.files;
+						const files = response.files;
 
 						const version = this.getNode().typeVersion;
 
@@ -2583,7 +2583,7 @@ export class GoogleDrive implements INodeType {
 						let mimeType = 'text/plain';
 						let body;
 						let originalFilename: string | undefined;
-						if (this.getNodeParameter('binaryData', i) === true) {
+						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
 							const item = items[i];
 
@@ -2694,7 +2694,7 @@ export class GoogleDrive implements INodeType {
 							qs,
 						);
 
-						if (resolveData === true) {
+						if (resolveData) {
 							response = await googleApiRequest.call(
 								this,
 								'GET',
@@ -2717,7 +2717,7 @@ export class GoogleDrive implements INodeType {
 						const id = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const updateFields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i, {});
 
 						const qs: IDataObject = {
 							supportsAllDrives: true,
@@ -2820,7 +2820,7 @@ export class GoogleDrive implements INodeType {
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i);
+						const shareOption = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 
@@ -2832,7 +2832,7 @@ export class GoogleDrive implements INodeType {
 							Object.assign(body, permissions.permissionsValues);
 						}
 
-						Object.assign(qs, options);
+						Object.assign(qs, shareOption);
 
 						const response = await googleApiRequest.call(
 							this,

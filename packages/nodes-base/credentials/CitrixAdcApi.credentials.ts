@@ -7,8 +7,11 @@ import {
 
 export class CitrixAdcApi implements ICredentialType {
 	name = 'citrixAdcApi';
+
 	displayName = 'Citrix ADC API';
+
 	documentationUrl = 'citrix';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

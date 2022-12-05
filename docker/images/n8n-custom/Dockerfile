@@ -6,7 +6,6 @@ FROM n8nio/base:${NODE_VERSION} as builder
 COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY scripts ./scripts
 COPY packages ./packages
-COPY patches ./patches
 
 RUN corepack enable && corepack prepare --activate
 RUN chown -R node:node .
@@ -16,7 +15,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm build
 RUN rm -rf node_modules
 RUN NODE_ENV=production pnpm install --prod --no-optional
-RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm
+RUN find . -type f -name "*.ts" -o -name "*.js.map" -o -name "*.vue" -o -name "tsconfig.json" -o -name "*.tsbuildinfo" | xargs rm -rf
 RUN rm -rf patches .npmrc *.yaml node_modules/.cache packages/**/node_modules/.cache packages/**/.turbo .config .cache .local .node /tmp/*
 
 

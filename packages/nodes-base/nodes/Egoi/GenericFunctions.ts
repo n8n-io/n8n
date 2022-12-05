@@ -31,11 +31,10 @@ export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	_headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');
 
@@ -67,10 +66,9 @@ export async function egoiApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -101,7 +99,6 @@ export async function simplify(this: IExecuteFunctions, contacts: IContact[], li
 
 	for (const contact of contacts) {
 		const extras = contact.extra.reduce(
-			// tslint:disable-next-line:no-any
 			(acumulator: IDataObject, currentValue: IDataObject): any => {
 				const key = fieldsKeyValue[currentValue.field_id as string] as string;
 				return { [key]: currentValue.value, ...acumulator };

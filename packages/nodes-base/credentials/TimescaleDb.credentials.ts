@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TimescaleDb implements ICredentialType {
 	name = 'timescaleDb';
+
 	displayName = 'TimescaleDB';
+
 	documentationUrl = 'timescaleDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

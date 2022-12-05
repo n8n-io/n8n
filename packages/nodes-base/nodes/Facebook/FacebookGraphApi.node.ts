@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -80,6 +79,10 @@ export class FacebookGraphApi implements INodeType {
 					{
 						name: 'Default',
 						value: '',
+					},
+					{
+						name: 'v15.0',
+						value: 'v15.0',
 					},
 					{
 						name: 'v14.0',
@@ -289,7 +292,7 @@ export class FacebookGraphApi implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		const returnItems: INodeExecutionData[] = [];
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -300,7 +303,7 @@ export class FacebookGraphApi implements INodeType {
 			let graphApiVersion = this.getNodeParameter('graphApiVersion', itemIndex) as string;
 			const node = this.getNodeParameter('node', itemIndex) as string;
 			const edge = this.getNodeParameter('edge', itemIndex) as string;
-			const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const options = this.getNodeParameter('options', itemIndex, {});
 
 			if (graphApiVersion !== '') {
 				graphApiVersion += '/';
@@ -320,13 +323,9 @@ export class FacebookGraphApi implements INodeType {
 				json: true,
 				gzip: true,
 				qs: {
-					access_token: graphApiCredentials!.accessToken,
+					access_token: graphApiCredentials.accessToken,
 				},
-				rejectUnauthorized: !this.getNodeParameter(
-					'allowUnauthorizedCerts',
-					itemIndex,
-					false,
-				) as boolean,
+				rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 			};
 
 			if (options !== undefined) {
@@ -396,7 +395,7 @@ export class FacebookGraphApi implements INodeType {
 					);
 				}
 
-				const binaryProperty = item.binary[binaryPropertyName] as IBinaryData;
+				const binaryProperty = item.binary[binaryPropertyName];
 
 				const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 					itemIndex,
@@ -417,7 +416,7 @@ export class FacebookGraphApi implements INodeType {
 				// Now that the options are all set make the actual http request
 				response = await this.helpers.request(requestOptions);
 			} catch (error) {
-				if (this.continueOnFail() === false) {
+				if (!this.continueOnFail()) {
 					throw new NodeApiError(this.getNode(), error);
 				}
 
@@ -442,7 +441,7 @@ export class FacebookGraphApi implements INodeType {
 			}
 
 			if (typeof response === 'string') {
-				if (this.continueOnFail() === false) {
+				if (!this.continueOnFail()) {
 					throw new NodeOperationError(this.getNode(), 'Response body is not valid JSON.', {
 						itemIndex,
 					});

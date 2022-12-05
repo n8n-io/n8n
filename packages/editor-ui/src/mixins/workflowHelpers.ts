@@ -845,6 +845,7 @@ export const workflowHelpers = mixins(
 					this.uiStore.stateIsDirty = false;
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
+					this.getCurrentWorkflow(true); // refresh cache
 					return true;
 				} catch (e) {
 					this.uiStore.removeActiveAction('workflowSaving');

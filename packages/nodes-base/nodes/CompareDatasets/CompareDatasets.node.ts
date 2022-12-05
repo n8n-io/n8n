@@ -168,18 +168,18 @@ export class CompareDatasets implements INodeType {
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
 
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		const input1 = checkInput(
 			this.getInputData(0),
-			matchFields.map((pair) => pair.field1 as string),
+			matchFields.map((pair) => pair.field1),
 			(options.disableDotNotation as boolean) || false,
 			'Input A',
 		);
 
 		const input2 = checkInput(
 			this.getInputData(1),
-			matchFields.map((pair) => pair.field2 as string),
+			matchFields.map((pair) => pair.field2),
 			(options.disableDotNotation as boolean) || false,
 			'Input B',
 		);

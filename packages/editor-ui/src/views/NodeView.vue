@@ -296,6 +296,7 @@ export default mixins(
 							this.resetWorkspace();
 							this.uiStore.stateIsDirty = previousDirtyState;
 						}
+						this.loadCredentials();
 						this.initView().then(() => {
 							this.stopLoading();
 							if (this.blankRedirect) {

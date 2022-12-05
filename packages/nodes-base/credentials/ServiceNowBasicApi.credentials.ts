@@ -7,9 +7,13 @@ import {
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
+
 	extends = ['httpBasicAuth'];
+
 	displayName = 'ServiceNow Basic Auth API';
+
 	documentationUrl = 'serviceNow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'User',

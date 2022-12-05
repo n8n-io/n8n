@@ -123,8 +123,8 @@ export class Grafana implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -240,7 +240,7 @@ export class Grafana implements INodeType {
 							const dashboards = (await grafanaApiRequest.call(this, 'GET', '/search')) as Array<{
 								title: string;
 							}>;
-							const titles = dashboards.map(({ title }) => title);
+							const titles = dashboards.map(({ title: entry }) => entry);
 
 							if (titles.includes(title)) {
 								throw new NodeApiError(this.getNode(), {
