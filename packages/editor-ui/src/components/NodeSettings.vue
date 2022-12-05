@@ -161,6 +161,8 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useHistoryStore } from '@/stores/history';
+import { RenameNodeCommand } from '@/models/history';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -175,6 +177,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useHistoryStore,
 			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
@@ -483,11 +486,16 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
+			this.historyStore.startRecordingUndo();
+			if (this.node) {
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+			}
 			// @ts-ignore
 			this.valueChanged({
 				value: name,
 				name: 'name',
 			});
+			this.historyStore.stopRecordingUndo();
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			let newValue: NodeParameterValue;

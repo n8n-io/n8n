@@ -13,6 +13,7 @@ enum COMMANDS {
 	ADD_CONNECTION = 'addConnection',
 	REMOVE_CONNECTION = 'removeConnection',
 	ENABLE_NODE_TOGGLE = 'enableNodeToggle',
+	RENAME_NODE = 'renameNode',
 }
 
 // Triggering multiple canvas actions in sequence leaves
@@ -175,6 +176,28 @@ export class EnableNodeToggleCommand extends Command {
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
 			this.eventBus.$root.$emit('enableNodeToggle', { nodeName: this.nodeName, isDisabled: this.oldState });
+			resolve();
+		});
+	}
+}
+
+export class RenameNodeCommand extends Command {
+	currentName: string;
+	newName: string;
+
+	constructor(currentName: string, newName: string, eventBus: Vue) {
+		super(COMMANDS.RENAME_NODE, eventBus);
+		this.currentName = currentName;
+		this.newName = newName;
+	}
+
+	getReverseCommand(): Command {
+			return new RenameNodeCommand(this.newName, this.currentName, this.eventBus);
+	}
+
+	async revert(): Promise<void> {
+		return new Promise<void>(resolve => {
+			this.eventBus.$root.$emit('revertRenameNode', { currentName: this.currentName, newName: this.newName });
 			resolve();
 		});
 	}
