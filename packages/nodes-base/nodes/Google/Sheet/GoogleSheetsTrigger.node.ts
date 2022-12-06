@@ -384,6 +384,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				pageToken = nextPageToken as string;
 			} else {
 				pageToken = undefined;
+
 				const lastRevision = +revisions[revisions.length - 1].id;
 				if (lastRevision <= previousRevision) {
 					return null;
@@ -449,7 +450,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				)) as IDataObject
 			).values as string[][];
 
-			if (columns === undefined || columns.length === 0) {
+			if (!columns?.length) {
 				throw new NodeOperationError(this.getNode(), 'Could not retrieve the columns from key row');
 			}
 

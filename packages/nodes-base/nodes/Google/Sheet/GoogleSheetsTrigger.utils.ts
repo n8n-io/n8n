@@ -62,7 +62,7 @@ export function compareRevisions(
 	current: SheetRangeData,
 	keyRow: number,
 	includeInOutput: string,
-	columnsToWatch?: string[],
+	columnsToWatch: string[] = [],
 ) {
 	const [dataLength, columns] =
 		current.length > previous.length
