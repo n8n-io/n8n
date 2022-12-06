@@ -8,12 +8,12 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
 import { EXPRESSION_EDITOR_THEME } from './inputTheme';
-import { addColor, removeColor } from './colorDecorations';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
@@ -64,8 +64,8 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				const plaintexts = this.plaintextSegments;
 				const resolvables = this.resolvableSegments;
 
-				removeColor(this.editor, plaintexts);
-				addColor(this.editor, resolvables);
+				highlighter.removeColor(this.editor, plaintexts);
+				highlighter.addColor(this.editor, resolvables);
 
 				this.cursorPosition = viewUpdate.view.state.selection.ranges[0].from;
 
@@ -86,7 +86,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			}),
 		});
 
-		addColor(this.editor, this.resolvableSegments);
+		highlighter.addColor(this.editor, this.resolvableSegments);
 
 		this.editor.dispatch({
 			selection: { anchor: this.editor.state.doc.length },

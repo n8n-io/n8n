@@ -50,7 +50,7 @@ export const EXPRESSION_EDITOR_THEME = [
 	),
 ];
 
-export const DYNAMICALLY_STYLED_RESOLVABLES_THEME = EditorView.theme({
+export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
 	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
 		color: 'var(--color-valid-resolvable-foreground)',
 		backgroundColor: 'var(--color-valid-resolvable-background)',

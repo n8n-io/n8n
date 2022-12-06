@@ -8,12 +8,12 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { doubleBraceHandler } from '../../plugins/codemirror/doubleBraceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
-import { addColor, removeColor } from './colorDecorations';
 
 import type { IVariableItemSelected } from '@/Interface';
 
@@ -46,8 +46,8 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				const plaintexts = this.plaintextSegments;
 				const resolvables = this.resolvableSegments;
 
-				removeColor(this.editor, plaintexts);
-				addColor(this.editor, resolvables);
+				highlighter.removeColor(this.editor, plaintexts);
+				highlighter.addColor(this.editor, resolvables);
 
 				setTimeout(() => this.editor?.focus()); // prevent blur on paste
 
@@ -70,7 +70,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 
 		this.editor.focus();
 
-		addColor(this.editor, this.resolvableSegments);
+		highlighter.addColor(this.editor, this.resolvableSegments);
 
 		this.editor.dispatch({
 			selection: { anchor: this.editor.state.doc.length },

@@ -8,9 +8,9 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 
 import { EXPRESSION_EDITOR_THEME } from './outputTheme';
-import { addColor, removeColor } from './colorDecorations';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
-import type { Plaintext, Resolved, Segment } from './types';
+import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 
 export default Vue.extend({
 	name: 'inline-expression-editor-output',
@@ -27,8 +27,8 @@ export default Vue.extend({
 				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
 			});
 
-			addColor(this.editor, this.resolvedSegments);
-			removeColor(this.editor, this.plaintextSegments);
+			highlighter.addColor(this.editor, this.resolvedSegments);
+			highlighter.removeColor(this.editor, this.plaintextSegments);
 		},
 	},
 	data() {
