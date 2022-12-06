@@ -16,6 +16,7 @@ import {
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
+	INode,
 	INodeExecutionData,
 	IRun,
 	ITaskData,
@@ -394,6 +395,11 @@ class WorkflowRunnerProcess {
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					await this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
+				},
+			],
+			nodeFetchedData: [
+				async (workflowId: string, node: INode) => {
+					await this.sendHookToParentProcess('nodeFetchedData', [workflowId, node]);
 				},
 			],
 		};

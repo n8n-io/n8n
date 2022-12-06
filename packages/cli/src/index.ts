@@ -25,6 +25,8 @@ import * as WebhookServer from './WebhookServer';
 import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData';
 import * as WorkflowHelpers from './WorkflowHelpers';
 
+import './events';
+
 export {
 	ActiveExecutions,
 	ActiveWorkflowRunner,

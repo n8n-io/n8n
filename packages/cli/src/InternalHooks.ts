@@ -484,7 +484,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('cnr package deleted', updateData);
 	}
 
-	async onLdapSyncFinished(data: {
+  async onLdapSyncFinished(data: {
 		type: string;
 		succeeded: boolean;
 		users_synced: number;
@@ -524,5 +524,26 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
 		return this.telemetry.track('User login failed since ldap disabled', data);
+  }
+
+  /*
+	 * Execution Statistics
+	 */
+	async onFirstProductionWorkflowSuccess(data: {
+		user_id: string;
+		workflow_id: string | number;
+	}): Promise<void> {
+		return this.telemetry.track('Workflow first prod success', data, { withPostHog: true });
+	}
+
+	async onFirstWorkflowDataLoad(data: {
+		user_id: string;
+		workflow_id: string | number;
+		node_type: string;
+		node_id: string;
+		credential_type?: string;
+		credential_id?: string;
+	}): Promise<void> {
+		return this.telemetry.track('Workflow first data fetched', data, { withPostHog: true });
 	}
 }

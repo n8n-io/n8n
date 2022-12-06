@@ -178,7 +178,8 @@ export async function init(
 	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
-	collections.FeatureConfig = linkRepository(entities.FeatureConfig);
+	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
+  collections.FeatureConfig = linkRepository(entities.FeatureConfig);
 	collections.LdapSyncHistory = linkRepository(entities.LdapSyncHistory);
 
 	isInitialized = true;
