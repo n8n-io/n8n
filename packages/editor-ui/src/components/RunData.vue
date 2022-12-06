@@ -121,7 +121,7 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="{[$style.tabs]: displayMode === 'table'}">
+		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -249,6 +249,16 @@
 				:totalRuns="maxRunIndex"
 			/>
 
+			<run-data-schema
+				v-else-if="hasNodeRun && displayMode === 'schema' && jsonData?.length > 0"
+				:data="jsonData"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:node="node"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
+			/>
+
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
 			</div>
@@ -351,6 +361,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
 	ITab,
+	NodePanelType,
 } from '@/Interface';
 
 import {
@@ -382,6 +393,7 @@ import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
+const RunDataSchema = () => import('@/components/RunDataSchema.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -402,6 +414,7 @@ export default mixins(
 			CodeEditor,
 			RunDataTable,
 			RunDataJson,
+			RunDataSchema,
 		},
 		props: {
 			nodeUi: {
@@ -432,7 +445,7 @@ export default mixins(
 				type: String,
 			},
 			paneType: {
-				type: String,
+				type: String as PropType<NodePanelType>,
 			},
 			overrideOutputs: {
 				type: Array as PropType<number[]>,
@@ -513,7 +526,7 @@ export default mixins(
 				return DATA_EDITING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.ndvStore.getPanelDisplayMode(this.paneType as "input" | "output");
+				return this.ndvStore.getPanelDisplayMode(this.paneType);
 			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
@@ -537,10 +550,13 @@ export default mixins(
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 				];
+
 				if (this.binaryData.length) {
-					return [ ...defaults,
-						{ label: this.$locale.baseText('runData.binary'), value: 'binary'},
-					];
+					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
+				}
+
+				if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
+					defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema'});
 				}
 
 				return defaults;
@@ -957,7 +973,7 @@ export default mixins(
 			},
 			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: displayMode});
+				this.ndvStore.setPanelDisplayMode({pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {

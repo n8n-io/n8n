@@ -6,21 +6,10 @@ import {
 } from 'n8n-workflow';
 import { Route } from "vue-router";
 
-import type { INodeCreateElement, IRootState } from "@/Interface";
+import type { INodeCreateElement } from "@/Interface";
 import type { IUserNodesPanelSession } from "./telemetry.types";
 import { useSettingsStore } from "@/stores/settings";
 import { useRootStore } from "@/stores/n8nRootStore";
-
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	const telemetry = new Telemetry();
-
-	Object.defineProperty(vue, '$telemetry', {
-		get() { return telemetry; },
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() { return telemetry; },
-	});
-}
 
 export class Telemetry {
 
@@ -51,7 +40,7 @@ export class Telemetry {
 			instanceId: string;
 			userId?: string;
 			versionCli: string
-	 },
+		},
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
@@ -251,4 +240,15 @@ export class Telemetry {
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
+}
+
+export const telemetry = new Telemetry();
+
+export function TelemetryPlugin(vue: typeof _Vue): void {
+	Object.defineProperty(vue, '$telemetry', {
+		get() { return telemetry; },
+	});
+	Object.defineProperty(vue.prototype, '$telemetry', {
+		get() { return telemetry; },
+	});
 }
