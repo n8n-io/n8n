@@ -1,4 +1,5 @@
-import { BulkCommand } from '@/models/history';
+import { useNDVStore } from '@/stores/ndv';
+import { BulkCommand, Undoable } from '@/models/history';
 import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -14,10 +15,14 @@ const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend({
 	computed: {
 		...mapStores(
-			useUIStore,
+			useNDVStore,
 			useHistoryStore,
+			useUIStore,
 			useWorkflowsStore,
 		),
+		isNDVOpen(): boolean {
+			return this.ndvStore.activeNodeName !== null;
+		},
 	},
 	mounted() {
 		document.addEventListener('keydown', this.handleKeyDown);
@@ -27,7 +32,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 	},
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
-			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
+			if (this.isCtrlKeyPressed(event) && event.key === 'z' && !this.isNDVOpen) {
 				event.preventDefault();
 				if (event.shiftKey) {
 					this.callDebounced('redo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
@@ -52,13 +57,14 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				this.historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
 				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
-				return;
+				// return;
 			}
 			if (command instanceof Command) {
 				await command.revert();
 				this.historyStore.pushUndoableToRedo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
 			}
+			this.trackEvent(command, 'undo');
 		},
 		async redo() {
 			const command = this.historyStore.popUndoableToRedo();
@@ -76,12 +82,30 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands));
 				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
-				return;
 			}
 			if (command instanceof Command) {
 				await command.revert();
 				this.historyStore.pushCommandToUndo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
+			}
+			this.trackEvent(command, 'redo');
+		},
+		trackEvent(command: Undoable, type: 'undo'|'redo'): void {
+			let telemetryData: { type: string|null, commands: Array<Partial<Command>> } = { type: null, commands: [] };
+			if (command instanceof Command) {
+				telemetryData = {
+					type: 'single',
+					commands: [command],
+				};
+			} else if (command instanceof BulkCommand) {
+				telemetryData = {
+					type: 'bulk',
+					commands: command.commands,
+				};
+			}
+			if (telemetryData.type && telemetryData.commands.length > 0) {
+				telemetryData.commands.forEach(command => { delete command.eventBus; });
+				this.$telemetry.track(`user hit ${type}`, telemetryData);
 			}
 		},
 	},
