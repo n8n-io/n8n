@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import Vue from 'vue';
+import '../plugins';
 
 Vue.config.productionTip = false;
 Vue.config.devtools = false;
