@@ -28,7 +28,8 @@
 				<i />
 			</template>
 			<template #noResultsAction  v-if="isActionsActive">
-				<span v-html="getCustomAPICallHintLocale('makeApiCall')" @click="addHttpNode" />
+				<p v-if="containsAPIAction" v-html="customAPICallHint" class="clickable" @click.stop="addHttpNode" />
+				<p v-else v-text="$locale.baseText('nodeCreator.noResults.noMatchingActions')"/>
 			</template>
 
 			<template #header>
@@ -39,13 +40,9 @@
 					:class="$style.title"
 				/>
 			</template>
-			<template #footer>
+			<template #footer v-if="(activeNodeActions && containsAPIAction)">
 				<slot name="footer" />
-				<p
-					v-if="(activeNodeActions && containsAPIAction)"
-					v-html="getCustomAPICallHintLocale('apiCall')"
-					@click.stop="addHttpNode"
-				/>
+				<p v-html="customAPICallHint" class="clickable" @click.stop="addHttpNode" />
 			</template>
 		</categorized-items>
 	</div>
@@ -269,14 +266,6 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 	}));
 });
 
-function getCustomAPICallHintLocale(key: string) {
-	const nodeNameTitle  = state.activeNodeActions?.displayName as string;
-
-	return instance?.proxy.$locale.baseText(
-		`nodeCreator.actionsList.${key}` as BaseTextKey,
-		{ interpolate: { nodeNameTitle }},
-	) || '';
-}
 // The nodes.json doesn't contain API CALL option so we need to fetch the node detail
 // to determine if need to render the API CALL hint
 async function fechNodeDetails() {

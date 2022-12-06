@@ -17,9 +17,6 @@ import { computed, getCurrentInstance } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
 import { INodeCreateElement, ICategoryItemProps } from '@/Interface';
-import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
-import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	item: INodeCreateElement;
@@ -27,14 +24,10 @@ export interface Props {
 }
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
-const { categoriesWithNodes } = useNodeTypesStore();
-const nodeCreatorStore = useNodeCreatorStore();
 
-const isExpanded = computed<boolean>(() => {
-	return (props.item.properties as ICategoryItemProps).expanded;
-});
+const isExpanded = computed<boolean>(() =>(props.item.properties as ICategoryItemProps).expanded);
 
-function renderCategoryName(categoryName: CategoryName) {
+function renderCategoryName(categoryName: string) {
 	const camelCasedCategoryName = camelcase(categoryName) as CategoryName;
 	const key = `nodeCreator.categoryNames.${camelCasedCategoryName}` as const;
 

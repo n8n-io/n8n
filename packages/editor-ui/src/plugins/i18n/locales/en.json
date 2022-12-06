@@ -667,7 +667,6 @@
 	"nodeCreator.actionsCategory.recommended": "Recommended",
 	"nodeCreator.actionsCategory.searchActions": "Search {nodeNameTitle} Actions...",
 	"nodeCreator.actionsList.apiCall": "Didn't find the right event? Make a <a data-action='addHttpNode'>Custom {nodeNameTitle} API call</a>",
-	"nodeCreator.actionsList.makeApiCall": "Make a <a data-action='addHttpNode'>Custom {nodeNameTitle} API call</a>",
 	"nodeCreator.categoryNames.analytics": "Analytics",
 	"nodeCreator.categoryNames.communication": "Communication",
 	"nodeCreator.categoryNames.coreNodes": "Core Nodes",
