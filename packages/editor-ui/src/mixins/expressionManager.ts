@@ -1,15 +1,14 @@
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { syntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from './workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 
 import type { TargetItem } from '@/Interface';
-import type { RawSegment, Segment } from '@/components/ExpressionEditorModal/types';
-import type { Plaintext, Resolvable } from '@/components/InlineExpressionEditor/types';
+import type { RawSegment, Segment, Plaintext, Resolvable } from '@/types/expressions';
 import type { EditorView } from '@codemirror/view';
-import { syntaxTree } from '@codemirror/language';
-import { mapStores } from 'pinia';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -28,7 +27,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			setTimeout(() => {
 				this.$emit('change', {
 					value: this.unresolvedExpression,
-					segments: this.getDisplayables(this.segments),
+					segments: this.getDisplayableSegments,
 				});
 			});
 		},
@@ -114,13 +113,8 @@ export const expressionManager = mixins(workflowHelpers).extend({
 
 			return delay;
 		},
-	},
-	methods: {
-		isEmptyExpression(resolvable: string) {
-			return /\{\{\s*\}\}/.test(resolvable);
-		},
 
-		/**
+	/**
 		 * Some segments are conditionally displayed, i.e. not displayed when they are
 		 * _part_ of the result, but displayed when they are the _entire_ result.
 		 *
@@ -142,37 +136,44 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		 *   - `1,2,3` when part of the result
 		 *   - `[Array: [1, 2, 3]]` when the entire result
 		 */
-		getDisplayables(segments: Segment[]): Segment[] {
-			return segments
-				.map((s) => {
-					if (segments.length <= 1 || s.kind !== 'resolvable') return s;
+	 getDisplayableSegments(): Segment[] {
+		return this.segments
+			.map((s) => {
+				if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
 
-					if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
-						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
-						s.resolved = new Date(utcDateString).toString();
-					}
+				if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
+					const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
+					s.resolved = new Date(utcDateString).toString();
+				}
 
-					if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
-						s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
-					}
+				if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
+					s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+				}
 
-					return s;
-				})
-				.filter((s) => {
-					if (
-						segments.length > 1 &&
-						s.kind === 'resolvable' &&
-						typeof s.resolved === 'string' &&
-						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
-							s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
-							s.resolved === this.$locale.baseText('expressionModalInput.null'))
-					) {
-						return false;
-					}
+				return s;
+			})
+			.filter((s) => {
+				if (
+					this.segments.length > 1 &&
+					s.kind === 'resolvable' &&
+					typeof s.resolved === 'string' &&
+					(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
+						s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
+						s.resolved === this.$locale.baseText('expressionModalInput.null'))
+				) {
+					return false;
+				}
 
-					return true;
-				});
+				return true;
+			});
+	},
+	},
+	methods: {
+		isEmptyExpression(resolvable: string) {
+			return /\{\{\s*\}\}/.test(resolvable);
 		},
+
+
 
 		resolve(resolvable: string, targetItem?: TargetItem) {
 			const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
