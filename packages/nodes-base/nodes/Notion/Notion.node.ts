@@ -6,12 +6,12 @@ import { NotionV2 } from './v2/NotionV2.node';
 export class Notion extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'Notion (Beta)',
+			displayName: 'Notion',
 			name: 'notion',
 			icon: 'file:notion.svg',
 			group: ['output'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-			description: 'Consume Notion API (Beta)',
+			description: 'Consume Notion API',
 			defaultVersion: 2,
 		};
 

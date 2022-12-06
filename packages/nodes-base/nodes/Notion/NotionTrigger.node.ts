@@ -10,7 +10,7 @@ import { getDatabases } from './SearchFunctions';
 export class NotionTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-display-name-unsuffixed-trigger-node
-		displayName: 'Notion Trigger (Beta)',
+		displayName: 'Notion Trigger',
 		name: 'notionTrigger',
 		icon: 'file:notion.svg',
 		group: ['trigger'],
