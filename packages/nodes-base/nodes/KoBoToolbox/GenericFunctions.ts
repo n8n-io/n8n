@@ -71,7 +71,7 @@ export async function koBoToolboxRawRequest(
 		option.url = credentials.URL + option.url;
 	}
 
-	return await this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
+	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
 }
 
 function parseGeoPoint(geoPoint: string): null | number[] {
