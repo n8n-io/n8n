@@ -128,3 +128,15 @@ Cypress.Commands.add('resetAll', () => {
 Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });
+
+Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
+	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
+	cy.wrap(selector).then($destination => {
+		const pasteEvent = Object.assign(new Event('paste', { bubbles: true, cancelable: true }), {
+		clipboardData: {
+			getData: () => pastePayload
+		}
+		});
+		$destination[0].dispatchEvent(pasteEvent);
+	});
+});
