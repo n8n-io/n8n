@@ -930,6 +930,17 @@ export class SlackV2 implements INodeType {
 						Object.assign(body, replyValues);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
+						if (otherOptions.botProfile) {
+							const botProfile = otherOptions.botProfile as IDataObject;
+							const botProfileValues = botProfile.imageValues as IDataObject;
+							Object.assign(
+								body,
+								botProfileValues.profilePhotoType === 'image'
+									? { icon_url: botProfileValues.icon_url }
+									: { icon_emoji: botProfileValues.icon_emoji },
+							);
+						}
+						delete otherOptions.botProfile;
 						Object.assign(body, otherOptions);
 						responseData = await slackApiRequest.call(this, 'POST', `/chat.${action}`, body, qs);
 					}

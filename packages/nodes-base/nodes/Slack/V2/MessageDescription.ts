@@ -526,19 +526,68 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Icon Emoji',
-				name: 'icon_emoji',
-				type: 'string',
-				default: '',
+				displayName: 'Custom Bot Profile Photo',
+				name: 'botProfile',
+				type: 'fixedCollection',
+				default: {
+					imageValues: [
+						{
+							profilePhotoType: '',
+						},
+					],
+				},
 				description:
-					'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
-			},
-			{
-				displayName: 'Icon URL',
-				name: 'icon_url',
-				type: 'string',
-				default: '',
-				description: 'URL to an image to use as the icon for this message',
+					'Set an image or an emoji as the Profile Photo (avatar) of the bot sending the message. Will not be used if sending message as a user.',
+				options: [
+					{
+						name: 'imageValues',
+						displayName: 'Add Bot Profile Photo',
+						values: [
+							{
+								displayName: 'Profile photo type',
+								name: 'profilePhotoType',
+								type: 'options',
+								options: [
+									{
+										name: 'Image',
+										value: 'image',
+									},
+									{
+										name: 'Emoji',
+										value: 'emoji',
+									},
+								],
+								default: '',
+								placeholder: 'Select a type…',
+							},
+							{
+								displayName: 'Emoji',
+								name: 'icon_emoji',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										profilePhotoType: ['emoji'],
+									},
+								},
+								description:
+									'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
+							},
+							{
+								displayName: 'Image',
+								name: 'icon_url',
+								type: 'string',
+								default: '',
+								displayOptions: {
+									show: {
+										profilePhotoType: ['image'],
+									},
+								},
+								description: 'URL to an image to use as the icon for this message',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Link User and Channel names',
