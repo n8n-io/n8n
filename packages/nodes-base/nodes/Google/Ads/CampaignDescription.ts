@@ -1,5 +1,5 @@
-import { IDataObject } from 'n8n-workflow';
 import {
+	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
@@ -263,7 +263,7 @@ export const campaignFields: INodeProperties[] = [
 	},
 ];
 
-function processCampaignSearchResponse(
+async function processCampaignSearchResponse(
 	this: IExecuteSingleFunctions,
 	_inputData: INodeExecutionData[],
 	responseData: IN8nHttpFullResponse,

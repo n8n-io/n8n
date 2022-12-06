@@ -448,16 +448,16 @@ export class MergeV2 implements INodeType {
 
 				const input1 = checkInput(
 					this.getInputData(0),
-					matchFields.map((pair) => pair.field1 as string),
-					(options.disableDotNotation as boolean) || false,
+					matchFields.map((pair) => pair.field1),
+					options.disableDotNotation || false,
 					'Input 1',
 				);
 				if (!input1) return [returnData];
 
 				const input2 = checkInput(
 					this.getInputData(1),
-					matchFields.map((pair) => pair.field2 as string),
-					(options.disableDotNotation as boolean) || false,
+					matchFields.map((pair) => pair.field2),
+					options.disableDotNotation || false,
 					'Input 2',
 				);
 

@@ -189,7 +189,7 @@ export class AwsLambda implements INodeType {
 					},
 				);
 
-				if (responseData !== null && responseData?.errorMessage !== undefined) {
+				if (responseData?.errorMessage !== undefined) {
 					let _errorMessage = responseData.errorMessage;
 
 					if (responseData.stackTrace) {

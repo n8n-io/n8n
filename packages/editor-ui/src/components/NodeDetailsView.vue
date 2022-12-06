@@ -7,6 +7,7 @@
 		class="ndv-wrapper"
 		width="auto"
 		append-to-body
+		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -92,9 +93,10 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:isReadOnly="readOnly || hasForeignCredential"
+						:hasForeignCredential="hasForeignCredential"
+						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
-						:executable="!readOnly || hasForeignCredential"
+						:executable="!readOnly"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"

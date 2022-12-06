@@ -97,9 +97,7 @@ describe('Node Creator', () => {
 		// TODO: Replace once we have canvas feature utils
 		cy.get('div').contains("On clicking 'execute'").should('exist');
 	})
-	// TODO: This tests has to be skipped due to a memory leak in the node creator
-	// we should unskip it once we have fixed the memory leak
-	it.skip('check if non-core nodes are rendered', () => {
+	it('check if non-core nodes are rendered', () => {
 		cy.wait('@nodesIntercept').then((interception) => {
 			const nodes = interception.response?.body as INodeTypeDescription[];
 
@@ -115,9 +113,18 @@ describe('Node Creator', () => {
 				nodeCreatorFeature.actions.toggleCategory(category)
 
 				// Check if all nodes are present
-				categorizedNodes[category].forEach((node: INodeTypeDescription) => {
-					if(node.hidden) return;
-					nodeCreatorFeature.getters.categorizedItems().contains(node.displayName).should('exist');
+				nodeCreatorFeature.getters.nodeItemName().then($elements => {
+					const visibleNodes: string[] = [];
+					$elements.each((_, element) => {
+						visibleNodes.push(element.textContent?.trim() || '');
+					})
+					const visibleCategoryNodes = (categorizedNodes[category] as INodeTypeDescription[])
+						.filter(node => !node.hidden)
+						.map(node => node.displayName?.trim());
+
+					cy.wrap(visibleCategoryNodes).each((categoryNode: string) => {
+						expect(visibleNodes).to.include(categoryNode);
+					});
 				})
 
 				nodeCreatorFeature.actions.toggleCategory(category)

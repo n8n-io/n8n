@@ -13,12 +13,11 @@ export async function netlifyApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -42,7 +41,7 @@ export async function netlifyApiRequest(
 	try {
 		const credentials = await this.getCredentials('netlifyApi');
 
-		options.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
+		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
 		return await this.helpers.request!(options);
 	} catch (error) {
@@ -54,10 +53,9 @@ export async function netlifyRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

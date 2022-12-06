@@ -31,7 +31,6 @@ interface ScriptObject {
 export async function layoutsApiRequest(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
 ): Promise<INodePropertyOptions[]> {
-	// tslint:disable-line:no-any
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -77,10 +76,7 @@ function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
  * Make an API request to ActiveCampaign
  *
  */
-export async function getFields(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -111,10 +107,7 @@ export async function getFields(
  * Make an API request to ActiveCampaign
  *
  */
-export async function getPortals(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 	const layout = this.getCurrentNodeParameter('layout') as string;
@@ -145,10 +138,7 @@ export async function getPortals(
  * Make an API request to ActiveCampaign
  *
  */
-export async function getScripts(
-	this: ILoadOptionsFunctions,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	const token = await getToken.call(this);
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -193,7 +183,6 @@ function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
 
 export async function getToken(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -204,9 +193,8 @@ export async function getToken(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'POST',
@@ -214,15 +202,15 @@ export async function getToken(
 		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
 	};
 	requestOptions.auth = {
-		user: login as string,
-		pass: password as string,
+		user: login,
+		pass: password,
 	};
 	requestOptions.body = {
 		fmDataSource: [
 			{
 				database: host,
-				username: login as string,
-				password: password as string,
+				username: login,
+				password,
 			},
 		],
 	};
@@ -246,7 +234,6 @@ export async function getToken(
 export async function logout(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
 	token: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('fileMaker');
 
@@ -255,9 +242,8 @@ export async function logout(
 
 	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions/${token}`;
 
-	let requestOptions: OptionsWithUri;
 	// Reset all values
-	requestOptions = {
+	const requestOptions: OptionsWithUri = {
 		uri: url,
 		headers: {},
 		method: 'DELETE',
@@ -297,11 +283,11 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 		const sortParametersUi = this.getNodeParameter('sortParametersUi', i, {}) as IDataObject;
 		if (sortParametersUi.rules !== undefined) {
 			// @ts-ignore
-			for (const parameterData of sortParametersUi!.rules as IDataObject[]) {
+			for (const parameterData of sortParametersUi.rules as IDataObject[]) {
 				// @ts-ignore
 				sort.push({
-					fieldName: parameterData!.name as string,
-					sortOrder: parameterData!.value,
+					fieldName: parameterData.name as string,
+					sortOrder: parameterData.value,
 				});
 			}
 		}
@@ -320,7 +306,7 @@ export function parseScripts(this: IExecuteFunctions, i: number): object | null 
 		const scripts = {} as ScriptsOptions;
 		if (setScriptAfter) {
 			scripts.script = this.getNodeParameter('scriptAfter', i);
-			scripts!['script.param'] = this.getNodeParameter('scriptAfter', i);
+			scripts['script.param'] = this.getNodeParameter('scriptAfter', i);
 		}
 		if (setScriptBefore) {
 			scripts['script.prerequest'] = this.getNodeParameter('scriptBefore', i);
@@ -336,8 +322,8 @@ export function parseScripts(this: IExecuteFunctions, i: number): object | null 
 
 export function parsePortals(this: IExecuteFunctions, i: number): object | null {
 	let portals;
-	const getPortals = this.getNodeParameter('getPortals', i);
-	if (!getPortals) {
+	const getPortalsData = this.getNodeParameter('getPortals', i);
+	if (!getPortalsData) {
 		portals = [];
 	} else {
 		portals = this.getNodeParameter('portals', i);
@@ -352,14 +338,14 @@ export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 	if (queriesParamUi.query !== undefined) {
 		// @ts-ignore
 		queries = [];
-		for (const queryParam of queriesParamUi!.query as IDataObject[]) {
+		for (const queryParam of queriesParamUi.query as IDataObject[]) {
 			const query = {
 				omit: queryParam.omit ? 'true' : 'false',
 			};
 			// @ts-ignore
-			for (const field of queryParam!.fields!.field as IDataObject[]) {
+			for (const field of queryParam.fields!.field as IDataObject[]) {
 				// @ts-ignore
-				query[field.name] = field!.value;
+				query[field.name] = field.value;
 			}
 			queries.push(query);
 		}
@@ -376,9 +362,9 @@ export function parseFields(this: IExecuteFunctions, i: number): object | null {
 	if (fieldsParametersUi.fields !== undefined) {
 		// @ts-ignore
 		fieldData = {};
-		for (const field of fieldsParametersUi!.fields as IDataObject[]) {
+		for (const field of fieldsParametersUi.fields as IDataObject[]) {
 			// @ts-ignore
-			fieldData[field.name] = field!.value;
+			fieldData[field.name] = field.value;
 		}
 	} else {
 		fieldData = null;

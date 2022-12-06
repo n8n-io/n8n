@@ -180,7 +180,7 @@ export class Compression implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -294,7 +294,7 @@ export class Compression implements INodeType {
 						} else if (outputFormat === 'gzip') {
 							const outputPrefix = this.getNodeParameter('outputPrefix', 0) as string;
 
-							const data = (await gzip(binaryDataBuffer)) as Uint8Array;
+							const data = await gzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
 

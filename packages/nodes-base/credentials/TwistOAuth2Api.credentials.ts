@@ -11,9 +11,13 @@ const scopes = [
 
 export class TwistOAuth2Api implements ICredentialType {
 	name = 'twistOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Twist OAuth2 API';
+
 	documentationUrl = 'twist';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
