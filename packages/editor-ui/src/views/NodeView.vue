@@ -2204,8 +2204,6 @@ export default mixins(
 				this.stopLoading();
 			}),
 			async initView(): Promise<void> {
-				this.historyStore.reset();
-
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2268,6 +2266,7 @@ export default mixins(
 						await this.newWorkflow();
 					}
 				}
+				this.historyStore.reset();
 				this.uiStore.nodeViewInitialized = true;
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
