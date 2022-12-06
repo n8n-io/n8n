@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class WebhookModel1592445003908 implements MigrationInterface {
 	name = 'WebhookModel1592445003908';

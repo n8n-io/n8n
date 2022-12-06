@@ -7,12 +7,13 @@
 			tabindex="0"
 			@keydown.capture="nodeFilterKeyDown"
 			:key="`${activeSubcategoryTitle}_transition`"
+			data-test-id="categorized-items"
 		>
 			<div class="header" v-if="$slots.header">
 				<slot name="header" />
 			</div>
 
-			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+			<div :class="$style.subcategoryHeader" v-if="activeSubcategory" data-test-id="categorized-items-subcategory">
 				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
 					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
 				</button>
@@ -43,32 +44,41 @@
 					@selected="selected"
 				/>
 			</div>
-			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
+			<no-results
+				v-else
+				data-test-id="categorized-no-results"
+				:showRequest="filteredAllNodeTypes.length === 0"
+				:show-icon="filteredAllNodeTypes.length === 0"
+			>
 					<!-- There are results in other sub-categories/tabs  -->
-					<template v-if="filteredAllNodeTypes.length > 0">
-						<p
-							v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')"
-							slot="title"
-						/>
+					<template v-if="filteredAllNodeTypes.length > 0" #title>
+						<p v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
 					</template>
 
 					<!-- Regular Search -->
-					<template v-else>
-						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
-						<template slot="action">
-							{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-								{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
-							</n8n-link>
-							<template v-if="selectedType === ALL_NODE_FILTER">
-								{{ $locale.baseText('nodeCreator.noResults.or') }}
-							</template>
+					<template v-else  #title>
+						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
+					</template>
 
-							<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-								{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-							</n8n-link>
-							{{ $locale.baseText('nodeCreator.noResults.node') }}
+					<template v-if="filteredAllNodeTypes.length === 0" #action>
+						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+						<n8n-link
+							@click="selectHttpRequest"
+							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+						</n8n-link>
+						<template v-if="nodeCreatorStore.selectedType === ALL_NODE_FILTER">
+							{{ $locale.baseText('nodeCreator.noResults.or') }}
 						</template>
+
+						<n8n-link
+							@click="selectWebhook"
+							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+							{{ $locale.baseText('nodeCreator.noResults.node') }}
+						</n8n-link>
 					</template>
 			</no-results>
 		</div>
@@ -79,8 +89,8 @@
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { externalHooks } from '@/mixins/externalHooks';
+import { globalLinkActions } from '@/mixins/globalLinkActions';
 
 import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
@@ -88,14 +98,13 @@ import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
-import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
-import { intersection } from '@/utils';
-import { sublimeSearch } from './sortUtils';
+import { intersection, sublimeSearch, matchesNodeType, matchesSelectType  } from '@/utils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -146,11 +155,12 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.registerCustomAction('showAllNodeCreatorNodes', this.switchToAllTabAndFilter);
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setFilter', '');
+		this.nodeCreatorStore.itemsFilter = '';
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
 		...mapStores(
+			useNodeCreatorStore,
 			useNodeTypesStore,
 			useRootStore,
 			useWorkflowsStore,
@@ -159,10 +169,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
 		nodeFilter(): string {
-			return this.$store.getters['nodeCreator/itemsFilter'];
+			return this.nodeCreatorStore.itemsFilter;
 		},
 		selectedType(): INodeFilterType {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return this.nodeTypesStore.categoriesWithNodes;
@@ -363,14 +373,14 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		switchToAllTabAndFilter() {
 			const currentFilter = this.nodeFilter;
-			this.$store.commit('nodeCreator/setShowTabs', true);
-			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+			this.nodeCreatorStore.showTabs = true;
+			this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
 			this.activeSubcategoryHistory = [];
 
-			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter));
+			this.$nextTick(() => this.nodeCreatorStore.itemsFilter = currentFilter);
 		},
 		onNodeFilterChange(filter: string) {
-			this.$store.commit('nodeCreator/setFilter', filter);
+			this.nodeCreatorStore.itemsFilter = filter;
 		},
 		selectWebhook() {
 			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
@@ -462,7 +472,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		onSubcategorySelected(selected: INodeCreateElement) {
 			this.$emit('onSubcategorySelected', selected);
-			this.$store.commit('nodeCreator/setShowTabs', false);
+			this.nodeCreatorStore.showTabs = false;
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategoryHistory.push(selected);
 			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.workflowsStore.workflowId });
@@ -472,10 +482,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			this.$emit('subcategoryClose', this.activeSubcategory);
 			this.activeSubcategoryHistory.pop();
 			this.activeSubcategoryIndex = 0;
-			this.$store.commit('nodeCreator/setFilter', '');
+			this.nodeCreatorStore.itemsFilter = '';
 
-			if(!this.$store.getters['nodeCreator/showScrim']) {
-				this.$store.commit('nodeCreator/setShowTabs', true);
+			if (!this.nodeCreatorStore.showScrim) {
+				this.nodeCreatorStore.showTabs = true;
 			}
 		},
 

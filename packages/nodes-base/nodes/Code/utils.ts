@@ -26,4 +26,4 @@ function isTraversable(maybe: unknown): maybe is IDataObject {
 
 export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';
 
-export const SUPPORTED_ITEM_KEYS = new Set(['json', 'binary', 'error', 'pairedItem', 'index']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem']);

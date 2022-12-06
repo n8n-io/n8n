@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MailchimpOAuth2Api implements ICredentialType {
 	name = 'mailchimpOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Mailchimp OAuth2 API';
+
 	documentationUrl = 'mailchimp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

@@ -1,6 +1,8 @@
 <template>
 	<n8n-tooltip  content=" " placement="top" >
-		<div slot="content"><slot /></div>
+		<template #content>
+			<slot />
+		</template>
 		<font-awesome-icon :class="$style['icon']" icon="exclamation-triangle"></font-awesome-icon>
 	</n8n-tooltip>
 </template>

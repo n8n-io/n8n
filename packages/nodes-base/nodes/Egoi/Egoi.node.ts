@@ -541,8 +541,8 @@ export class Egoi implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const items = this.getInputData();
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -551,9 +551,9 @@ export class Egoi implements INodeType {
 
 						const email = this.getNodeParameter('email', i) as string;
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: ICreateMemberBody = {
 							base: {
@@ -631,7 +631,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							const data = (await simplify.call(this, [responseData], listId))[0];
 
 							responseData = {
@@ -648,7 +648,7 @@ export class Egoi implements INodeType {
 					if (operation === 'getAll') {
 						const listId = this.getNodeParameter('list', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
@@ -661,7 +661,7 @@ export class Egoi implements INodeType {
 								{},
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await egoiApiRequest.call(
 								this,
@@ -674,7 +674,7 @@ export class Egoi implements INodeType {
 							responseData = responseData.items;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							responseData = await simplify.call(this, responseData, listId);
 						}
 					}
@@ -682,9 +682,9 @@ export class Egoi implements INodeType {
 					if (operation === 'update') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateMemberBody = {
 							base: {},
 							extra: [],
@@ -735,7 +735,7 @@ export class Egoi implements INodeType {
 					}
 				}
 			} catch (error) {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					throw error;
 				} else {
 					// Return the actual reason as error

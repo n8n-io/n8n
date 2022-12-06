@@ -9,6 +9,7 @@
 		<div :class="$style.formContainer">
 			<n8n-form-box
 				v-bind="form"
+				data-test-id="auth-form"
 				:buttonLoading="formLoading"
 				@secondaryClick="onSecondaryClick"
 				@submit="onSubmit"

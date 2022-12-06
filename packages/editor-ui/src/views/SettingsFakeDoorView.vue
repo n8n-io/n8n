@@ -1,21 +1,17 @@
 <template>
-	<SettingsView>
-		<FeatureComingSoon :featureId="featureId" showTitle />
-	</SettingsView>
+	<feature-coming-soon :featureId="featureId" showTitle />
 </template>
 
 <script lang="ts">
 import { IFakeDoor } from '@/Interface';
 import Vue from 'vue';
-import SettingsView from './SettingsView.vue';
-import FeatureComingSoon from '../components/FeatureComingSoon.vue';
+import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'SettingsFakeDoorView',
 	components: {
-		SettingsView,
 		FeatureComingSoon,
 	},
 	props: {

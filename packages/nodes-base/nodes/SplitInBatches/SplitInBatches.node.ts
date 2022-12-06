@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,7 +64,7 @@ export class SplitInBatches implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs

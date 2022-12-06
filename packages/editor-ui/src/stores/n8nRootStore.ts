@@ -1,5 +1,5 @@
 import { STORES } from '@/constants';
-import { INodeUi, IRestApiContext, RootState } from '@/Interface';
+import { IRestApiContext, RootState } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -26,6 +26,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		instanceId: '',
 	}),
 	getters: {
+		getBaseUrl(): string {
+			return this.baseUrl;
+		},
+
 		getWebhookUrl(): string {
 			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
 		},

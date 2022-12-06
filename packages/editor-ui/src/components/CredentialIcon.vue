@@ -7,6 +7,7 @@
 </template>
 
 <script lang="ts">
+import { useCredentialsStore } from '@/stores/credentials';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
@@ -21,6 +22,7 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNodeTypesStore,
 			useRootStore,
 		),
@@ -29,21 +31,19 @@ export default Vue.extend({
 		},
 
 		filePath(): string | null {
-			if (!this.credentialWithIcon || !this.credentialWithIcon.icon || !this.credentialWithIcon.icon.startsWith('file:')) {
+			const iconUrl = this.credentialWithIcon?.iconUrl;
+			if (!iconUrl) {
 				return null;
 			}
-
-			const restUrl = this.rootStore.getRestUrl;
-
-			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
+			return this.rootStore.getBaseUrl + iconUrl;
 		},
+
 		relevantNode(): INodeTypeDescription | null	 {
-			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
+			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
-
-			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 
 			if (nodesWithAccess.length) {
 				return nodesWithAccess[0];
@@ -53,21 +53,28 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getCredentialWithIcon(name: string): ICredentialType | null {
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
+		getCredentialWithIcon(name: string | null): ICredentialType | null {
+			if (!name) {
+				return null;
+			}
+
+			const type = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (!type) {
 				return null;
 			}
 
-			if (type.icon) {
+			if (type.icon || type.iconUrl) {
 				return type;
 			}
 
 			if (type.extends) {
-				return type.extends.reduce((accu: string | null, type: string) => {
-					return accu || this.getCredentialWithIcon(type);
-				}, null);
+				let parentCred = null;
+				type.extends.forEach(name => {
+					parentCred = this.getCredentialWithIcon(name);
+					if (parentCred !== null) return;
+				});
+				return parentCred;
 			}
 
 			return null;

@@ -97,6 +97,7 @@ export class WiseTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -185,7 +186,7 @@ export class WiseTrigger implements INodeType {
 		const sig = createVerify('RSA-SHA1').update(req.rawBody);
 		const verified = sig.verify(publicKey, signature, 'base64');
 
-		if (verified === false) {
+		if (!verified) {
 			return {};
 		}
 

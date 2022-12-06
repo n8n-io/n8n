@@ -8,11 +8,10 @@
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { mapGetters } from 'vuex';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';

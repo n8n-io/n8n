@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -16,7 +15,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -42,34 +41,30 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import config from '../config';
+import config from '@/config';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ActiveExecutions,
-	CredentialsHelper,
-	Db,
-	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
-	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowHelpers,
-} from '.';
-import {
-	checkPermissionsForExecution,
-	getUserById,
-	getWorkflowOwner,
-} from './UserManagement/UserManagementHelper';
-import { whereClause } from './WorkflowHelpers';
-import { IWorkflowErrorData } from './Interfaces';
-import { findSubworkflowStart } from './utils';
+	IWorkflowErrorData,
+} from '@/Interfaces';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import { findSubworkflowStart } from '@/utils';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -199,7 +194,7 @@ export function executeErrorWorkflow(
  *
  */
 let throttling = false;
-function pruneExecutionData(this: WorkflowHooks): void {
+async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -213,27 +208,31 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
-			.then((data) =>
-				setTimeout(() => {
-					throttling = false;
-				}, timeout * 1000),
-			)
-			.catch((error) => {
-				ErrorReporter.error(error);
-
-				throttling = false;
-				Logger.error(
-					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
-					{
-						...error,
-						executionId: this.executionId,
-						sessionId: this.sessionId,
-						workflowId: this.workflowData.id,
-					},
-				);
+		try {
+			const executions = await Db.collections.Execution.find({
+				stoppedAt: LessThanOrEqual(utcDate),
 			});
+			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			setTimeout(() => {
+				throttling = false;
+			}, timeout * 1000);
+			// Mark binary data for deletion for all executions
+			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+				executions.map(({ id }) => id.toString()),
+			);
+		} catch (error) {
+			ErrorReporter.error(error);
+			throttling = false;
+			Logger.error(
+				`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
+				{
+					...error,
+					executionId: this.executionId,
+					sessionId: this.sessionId,
+					workflowId: this.workflowData.id,
+				},
+			);
+		}
 	}
 }
 
@@ -497,7 +496,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.getEnv('executions.pruneData')) {
-					pruneExecutionData.call(this);
+					await pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
@@ -650,7 +649,18 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 					}
+				} finally {
+					eventEmitter.emit(
+						eventEmitter.types.workflowExecutionCompleted,
+						this.workflowData,
+						fullRunData,
+					);
 				}
+			},
+		],
+		nodeFetchedData: [
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};
@@ -744,7 +754,18 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.executionId,
 						this.retryOf,
 					);
+				} finally {
+					eventEmitter.emit(
+						eventEmitter.types.workflowExecutionCompleted,
+						this.workflowData,
+						fullRunData,
+					);
 				}
+			},
+		],
+		nodeFetchedData: [
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};
@@ -886,10 +907,8 @@ export async function getWorkflowData(
 
 /**
  * Executes the workflow with the given ID
- *
- * @param {string} workflowId The id of the workflow to execute
  */
-export async function executeWorkflow(
+async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options?: {
@@ -944,7 +963,7 @@ export async function executeWorkflow(
 
 	let data;
 	try {
-		await checkPermissionsForExecution(workflow, additionalData.userId);
+		await PermissionChecker.check(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -1117,7 +1136,7 @@ export async function getBase(
  * Returns WorkflowHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getWorkflowHooksIntegrated(
+function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,

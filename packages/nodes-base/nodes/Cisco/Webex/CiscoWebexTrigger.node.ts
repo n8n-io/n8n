@@ -1,12 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	getAutomaticSecret,
@@ -540,13 +534,13 @@ export class CiscoWebexTrigger implements INodeType {
 				};
 
 				if (filters.ownedBy) {
-					body['ownedBy'] = filters.ownedBy as string;
+					body.ownedBy = filters.ownedBy as string;
 				}
 
-				body['secret'] = secret;
+				body.secret = secret;
 
 				if (filter.length) {
-					body['filter'] = filter.join('&');
+					body.filter = filter.join('&');
 				}
 
 				const responseData = await webexApiRequest.call(this, 'POST', endpoint, body);

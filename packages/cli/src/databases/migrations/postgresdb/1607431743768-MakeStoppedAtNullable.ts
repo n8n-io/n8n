@@ -1,6 +1,6 @@
-import {MigrationInterface, QueryRunner} from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class MakeStoppedAtNullable1607431743768 implements MigrationInterface {
 	name = 'MakeStoppedAtNullable1607431743768';
@@ -14,11 +14,13 @@ export class MakeStoppedAtNullable1607431743768 implements MigrationInterface {
 
 		await queryRunner.query(`SET search_path TO ${schema};`);
 
-		await queryRunner.query('ALTER TABLE ' + tablePrefix + 'execution_entity ALTER COLUMN "stoppedAt" DROP NOT NULL', undefined);
+		await queryRunner.query(
+			'ALTER TABLE ' + tablePrefix + 'execution_entity ALTER COLUMN "stoppedAt" DROP NOT NULL',
+			undefined,
+		);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
 		// Cannot be undone as column might already have null values
 	}
-
 }

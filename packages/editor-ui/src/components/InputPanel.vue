@@ -13,20 +13,22 @@
 		:mappingEnabled="!readOnly"
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
+		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		data-test-id="ndv-input-panel"
 		>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.titleSection">
-				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
-					<template slot="prepend">
+				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable data-test-id="ndv-input-select">
+					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
+					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`" data-test-id="ndv-input-option">
 						{{ truncate(node.name) }}&nbsp;
 						<span v-if="getMultipleNodesText(node.name)">{{ getMultipleNodesText(node.name) }}</span>
 						<span v-else>{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
@@ -36,11 +38,13 @@
 			</div>
 		</template>
 
-		<template v-slot:node-not-run>
+		<template #node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
 				<n8n-tooltip v-if="!readOnly" :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
-					<div slot="content" v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					<template #content>
+						<div v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					</template>
 					<NodeExecuteButton type="secondary" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
@@ -61,7 +65,7 @@
 			</div>
 		</template>
 
-		<template v-slot:no-output-data>
+		<template #no-output-data>
 			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
 		</template>
 	</RunData>
@@ -71,7 +75,7 @@
 import { INodeUi } from '@/Interface';
 import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
@@ -106,6 +110,10 @@ export default mixins(
 		},
 		readOnly: {
 			type: Boolean,
+		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {

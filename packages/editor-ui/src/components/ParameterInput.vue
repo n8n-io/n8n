@@ -6,6 +6,7 @@
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
+			:isReadOnly="isReadOnly"
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>
@@ -105,15 +106,17 @@
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 				>
-					<div slot="suffix" class="expand-input-icon-container">
-						<font-awesome-icon
-							v-if="!isReadOnly"
-							icon="expand-alt"
-							class="edit-window-button clickable"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</div>
+					<template #suffix>
+						<div class="expand-input-icon-container">
+							<font-awesome-icon
+								v-if="!isReadOnly"
+								icon="expand-alt"
+								class="edit-window-button clickable"
+								:title="$locale.baseText('parameterInput.openEditWindow')"
+								@click="displayEditDialog()"
+							/>
+						</div>
+					</template>
 				</n8n-input>
 			</div>
 
@@ -200,7 +203,7 @@
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
-				<template v-slot:issues-and-options>
+				<template #issues-and-options>
 					<parameter-issues :issues="getIssues" />
 				</template>
 			</credentials-select>
@@ -326,23 +329,22 @@ import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression } from './helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(
 	externalHooks,
@@ -477,11 +479,11 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCredentialsStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useWorkflowsStore,
 			),
-			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression) {
 					return '';
@@ -492,7 +494,7 @@ export default mixins(
 					return value.slice(1);
 				}
 
-				return '';
+				return `${this.displayValue ?? ''}`;
 			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
@@ -563,14 +565,14 @@ export default mixins(
 					returnValue = this.expressionEvaluated;
 				}
 
-				if (this.parameter.type === 'credentialsSelect') {
-					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+				if (this.parameter.type === 'credentialsSelect' && typeof this.value === 'string') {
+					const credType = this.credentialsStore.getCredentialTypeByName(this.value);
 					if (credType) {
 						returnValue = credType.displayName;
 					}
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
+				if (Array.isArray(returnValue) && this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
 					// Convert the value to rgba that el-color-picker can display it correctly
 					const bigint = parseInt(returnValue.slice(1), 16);
 					const h = [];
@@ -1013,7 +1015,14 @@ export default mixins(
 					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
 						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
-						this.valueChanged(typeof value !== 'undefined' ? value : null);
+						let newValue = typeof value !== 'undefined' ? value : null;
+
+						if (this.parameter.type === 'string') {
+							// Strip the '=' from the beginning
+							newValue = this.value ? this.value.toString().substring(1) : null;
+						}
+
+						this.valueChanged(newValue);
 					}
 				} else if (command === 'refreshOptions') {
 					if (this.isResourceLocatorParameter) {
@@ -1156,18 +1165,23 @@ export default mixins(
 
 
 .droppable {
-	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
+	--input-border-color: var(--color-secondary);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: dashed;
+
+	textarea, input {
+		border-width: 1.5px;
+	}
 }
 
 .activeDrop {
 	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-2);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 
 	textarea, input {
 		cursor: grabbing !important;
+		border-width: 1px;
 	}
 }
 

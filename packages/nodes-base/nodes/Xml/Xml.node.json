@@ -19,6 +19,6 @@
 	},
 	"alias": ["Parse"],
 	"subcategories": {
-		"Core Nodes": ["Files"]
+		"Core Nodes": ["Files", "Data Transformation"]
 	}
 }

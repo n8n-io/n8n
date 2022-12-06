@@ -13,9 +13,11 @@
 						<span class="el-dropdown-link clickable" @click.stop>
 							<font-awesome-icon icon="dot-circle" :title="$locale.baseText('variableSelectorItem.selectItem')" />
 						</span>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
-						</el-dropdown-menu>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
 					</el-dropdown>
 
 				</div>
@@ -41,7 +43,7 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import { externalHooks } from "@/mixins/externalHooks";
 import mixins from 'vue-typed-mixins';
 
 export default mixins(externalHooks).extend({
@@ -51,6 +53,20 @@ export default mixins(externalHooks).extend({
 		'extendAll',
 		'item',
 	],
+	mounted() {
+		if (this.extended) return;
+
+		const shouldAutoExtend = [
+			this.$locale.baseText('variableSelectorItem.currentNode'),
+			this.$locale.baseText('variableSelectorItem.inputData'),
+			this.$locale.baseText('variableSelectorItem.binary'),
+			this.$locale.baseText('variableSelectorItem.json'),
+		].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
+	},
 	computed: {
 		itemAddOperations () {
 			const returnOptions = [

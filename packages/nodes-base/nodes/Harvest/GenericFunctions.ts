@@ -7,17 +7,16 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	path: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -43,7 +42,7 @@ export async function harvestApiRequest(
 			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {
@@ -61,12 +60,11 @@ export async function harvestApiRequest(
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	uri: string,
 	resource: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -95,8 +93,8 @@ export async function getAllResource(
 
 	qs.per_page = 100;
 
-	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const additionalFields = this.getNodeParameter('filters', i);
+	const returnAll = this.getNodeParameter('returnAll', i);
 
 	Object.assign(qs, additionalFields);
 
@@ -110,7 +108,7 @@ export async function getAllResource(
 			resource,
 		);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as string;
+		const limit = this.getNodeParameter('limit', i);
 		qs.per_page = limit;
 		responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 	}

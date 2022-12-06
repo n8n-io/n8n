@@ -4,9 +4,13 @@ const scopes = ['boards:write', 'boards:read'];
 
 export class MondayComOAuth2Api implements ICredentialType {
 	name = 'mondayComOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Monday.com OAuth2 API';
+
 	documentationUrl = 'monday';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

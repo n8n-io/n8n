@@ -10,7 +10,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="!isReadOnly">
+				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -66,7 +66,15 @@
 				</template>
 			</i18n>
 		</div>
-		<div class="node-parameters-wrapper" v-if="node && nodeValid">
+		<div
+			class="node-parameters-wrapper"
+			data-test-id="node-parameters"
+			v-if="node && nodeValid"
+		>
+			<n8n-notice
+				v-if="hasForeignCredential"
+				:content="$locale.baseText('nodeSettings.hasForeignCredential')"
+			/>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -79,7 +87,7 @@
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-					<node-credentials :node="node" @credentialSelected="credentialSelected" />
+					<node-credentials :node="node" :readonly="isReadOnly" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -146,12 +154,12 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -178,6 +186,12 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		),
 		isCurlImportModalOpen(): boolean {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
+		},
+		isReadOnly(): boolean {
+			return this.readOnly || this.hasForeignCredential;
+		},
+		isExecutable(): boolean {
+			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
@@ -253,12 +267,21 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
 		},
-		isReadOnly: {
+		readOnly: {
 			type: Boolean,
+			default: false,
+		},
+		hasForeignCredential: {
+			type: Boolean,
+			default: false,
 		},
 		blockUI: {
 			type: Boolean,
 			default: false,
+		},
+		executable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	data() {
@@ -665,7 +688,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				}
 
 				// Update the data in vuex
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
 					name: node.name,
 					value: nodeParameters,
 				};

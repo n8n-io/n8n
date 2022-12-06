@@ -8,8 +8,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-
 import { scanFields, scanOperations } from './descriptions';
 
 import { handleListing, normalizeId, urlScanIoApiRequest } from './GenericFunctions';

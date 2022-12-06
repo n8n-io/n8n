@@ -5,13 +5,14 @@
 import { FindOneOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
-import { Db, ICredentialsDb } from '../../../..';
-import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../../../../databases/entities/SharedCredentials';
-import { User } from '../../../../databases/entities/User';
-import { externalHooks } from '../../../../Server';
+import * as Db from '@/Db';
+import type { ICredentialsDb } from '@/Interfaces';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { User } from '@db/entities/User';
+import { externalHooks } from '@/Server';
 import { IDependency, IJsonSchema } from '../../../types';
-import { CredentialRequest } from '../../../../requests';
+import { CredentialRequest } from '@/requests';
 
 export async function getCredentials(
 	credentialId: number | string,

@@ -9,7 +9,9 @@
 				:searchItems="searchItems"
 				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector/>
+				</template>
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
@@ -18,7 +20,9 @@
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
 				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector />
+				</template>
 			</categorized-items>
 		</div>
 	</div>
@@ -26,7 +30,7 @@
 
 <script lang="ts">
 import { PropType } from 'vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
@@ -35,6 +39,7 @@ import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -58,10 +63,11 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeCreatorStore,
 			useWorkflowsStore,
 		),
 		selectedType(): string {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 	},
 	watch: {
@@ -80,10 +86,10 @@ export default mixins(externalHooks).extend({
 	mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
 		// Make sure tabs are visible on mount
-		this.$store.commit('nodeCreator/setShowTabs', true);
+		this.nodeCreatorStore.showTabs = true;
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+		this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
 		this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.workflowsStore.workflowId });
 	},

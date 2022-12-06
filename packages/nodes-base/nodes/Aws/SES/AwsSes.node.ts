@@ -828,8 +828,8 @@ export class AwsSes implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -909,9 +909,9 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member',
@@ -920,7 +920,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListCustomVerificationEmailTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -941,7 +941,7 @@ export class AwsSes implements INodeType {
 
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
 							`Action=SendCustomVerificationEmail`,
@@ -967,7 +967,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'update') {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const params = [
 							`Action=UpdateCustomVerificationEmailTemplate`,
@@ -1018,7 +1018,7 @@ export class AwsSes implements INodeType {
 
 						const isBodyHtml = this.getNodeParameter('isBodyHtml', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
 							`Message.Subject.Data=${encodeURIComponent(subject)}`,
@@ -1096,7 +1096,7 @@ export class AwsSes implements INodeType {
 
 						const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
 
@@ -1153,8 +1153,7 @@ export class AwsSes implements INodeType {
 						}
 
 						if (templateDataUi) {
-							const templateDataValues = (templateDataUi as IDataObject)
-								.templateDataValues as IDataObject[];
+							const templateDataValues = templateDataUi.templateDataValues as IDataObject[];
 							const templateData: IDataObject = {};
 							if (templateDataValues !== undefined) {
 								for (const templateDataValue of templateDataValues) {
@@ -1184,7 +1183,7 @@ export class AwsSes implements INodeType {
 
 						const htmlPart = this.getNodeParameter('htmlPart', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
 							`Template.TemplateName=${templateName}`,
@@ -1237,9 +1236,9 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',
@@ -1248,7 +1247,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -1265,7 +1264,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'update') {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const params = [`Template.TemplateName=${templateName}`];
 

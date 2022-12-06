@@ -7,8 +7,11 @@ import {
 
 export class UrlScanIoApi implements ICredentialType {
 	name = 'urlScanIoApi';
+
 	displayName = 'urlscan.io API';
+
 	documentationUrl = 'urlScanIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -19,6 +22,7 @@ export class UrlScanIoApi implements ICredentialType {
 			required: true,
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

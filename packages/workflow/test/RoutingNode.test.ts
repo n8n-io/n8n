@@ -1,11 +1,9 @@
-import {
+import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	DeclarativeRestApiSettings,
 	IRunExecutionData,
-	RoutingNode,
-	Workflow,
 	INodeProperties,
 	IDataObject,
 	IExecuteSingleFunctions,
@@ -17,7 +15,9 @@ import {
 	INodeCredentialDescription,
 	IExecuteData,
 	INodeTypeDescription,
-} from '../src';
+} from '@/Interfaces';
+import { RoutingNode } from '@/RoutingNode';
+import { Workflow } from '@/Workflow';
 
 import * as Helpers from './Helpers';
 

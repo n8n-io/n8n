@@ -8,12 +8,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -45,10 +44,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -57,9 +55,9 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
@@ -91,7 +89,6 @@ export const allFields = [
 	'userDefined',
 ];
 
-// tslint:disable-next-line:no-any
 export function cleanData(responseData: any) {
 	const fields = ['emailAddresses', 'phoneNumbers', 'relations', 'events', 'addresses'];
 	const newResponseData = [];
@@ -99,7 +96,7 @@ export function cleanData(responseData: any) {
 		responseData = [responseData];
 	}
 	for (let y = 0; y < responseData.length; y++) {
-		const object: { [key: string]: any } = {}; // tslint:disable-line:no-any
+		const object: { [key: string]: any } = {};
 		for (const key of Object.keys(responseData[y])) {
 			if (key === 'metadata') {
 				continue;
@@ -129,7 +126,7 @@ export function cleanData(responseData: any) {
 				}
 			}
 			if (fields.includes(key)) {
-				const value: { [key: string]: any } = {}; // tslint:disable-line:no-any
+				const value: { [key: string]: any } = {};
 				for (const data of responseData[y][key]) {
 					let result;
 					if (value[data.type] === undefined) {

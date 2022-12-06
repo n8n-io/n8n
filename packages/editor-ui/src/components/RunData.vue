@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="canPinData && hasPinData && !editMode.enabled"
+			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
@@ -37,12 +37,13 @@
 		<div :class="$style.header">
 			<slot name="header"></slot>
 
-			<div v-show="!hasRunError" @click.stop :class="$style.displayModes">
+			<div v-show="!hasRunError" @click.stop :class="$style.displayModes" data-test-id="run-data-pane-header">
 				<n8n-radio-buttons
 					v-show="hasNodeRun && ((jsonData && jsonData.length > 0) || (binaryData && binaryData.length > 0)) && !editMode.enabled"
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
+					data-test-id="ndv-run-data-display-mode"
 				/>
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnly"
@@ -107,7 +108,7 @@
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
 			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop popper-append-to-body>
-				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
+				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
 
@@ -120,7 +121,7 @@
 			<slot name="run-info"></slot>
 		</div>
 
-		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="{[$style.tabs]: displayMode === 'table'}">
+		<div v-if="maxOutputIndex > 0 && branches.length > 1" :class="$style.tabs">
 			<n8n-tabs :value="currentOutputIndex" @input="onBranchChange" :options="branches" />
 		</div>
 
@@ -133,6 +134,7 @@
 		<div
 			:class="$style['data-container']"
 			ref="dataContainer"
+			data-test-id="ndv-data-container"
 		>
 			<div v-if="isExecuting" :class="$style.center">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
@@ -237,13 +239,22 @@
 				class="ph-no-capture"
 				:paneType="paneType"
 				:editMode="editMode"
-				:currentOutputIndex="currentOutputIndex"
 				:sessioId="sessionId"
 				:node="node"
 				:inputData="inputData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
 				:showMappingHint="showMappingHint"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
+			/>
+
+			<run-data-schema
+				v-else-if="hasNodeRun && displayMode === 'schema' && jsonData?.length > 0"
+				:data="jsonData"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:node="node"
 				:runIndex="runIndex"
 				:totalRuns="maxRunIndex"
 			/>
@@ -282,9 +293,13 @@
 									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.mimeType') }}: </n8n-text></div>
 									<div :class="$style.binaryValue">{{binaryData.mimeType}}</div>
 								</div>
+								<div v-if="binaryData.fileSize">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileSize') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileSize}}</div>
+								</div>
 
 								<div :class="$style.binaryButtonContainer">
-									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+									<n8n-button v-if="isViewable(index, key)" size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 									<n8n-button v-if="isDownloadable(index, key)" size="small" type="secondary" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 								</div>
 							</div>
@@ -307,7 +322,7 @@
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
-					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
+					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
 						:key="size"
@@ -341,12 +356,12 @@ import {
 } from 'n8n-workflow';
 
 import {
-	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
 	ITab,
+	NodePanelType,
 } from '@/Interface';
 
 import {
@@ -363,28 +378,28 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { externalHooks } from "@/components/mixins/externalHooks";
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { pinData } from '@/components/mixins/pinData';
+import { externalHooks } from "@/mixins/externalHooks";
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { pinData } from '@/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
-import RunDataTable from './RunDataTable.vue';
-import RunDataJson from '@/components/RunDataJson.vue';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
 import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
 
+const RunDataTable = () => import('@/components/RunDataTable.vue');
+const RunDataJson = () => import('@/components/RunDataJson.vue');
+const RunDataSchema = () => import('@/components/RunDataSchema.vue');
+
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
 };
 
 export default mixins(
-	copyPaste,
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
@@ -399,6 +414,7 @@ export default mixins(
 			CodeEditor,
 			RunDataTable,
 			RunDataJson,
+			RunDataSchema,
 		},
 		props: {
 			nodeUi: {
@@ -429,7 +445,7 @@ export default mixins(
 				type: String,
 			},
 			paneType: {
-				type: String,
+				type: String as PropType<NodePanelType>,
 			},
 			overrideOutputs: {
 				type: Array as PropType<number[]>,
@@ -447,6 +463,10 @@ export default mixins(
 				type: Boolean,
 				default: false,
 			},
+			isProductionExecutionPreview: {
+				type: Boolean,
+				default: false,
+			},
 		},
 		data () {
 			return {
@@ -455,7 +475,7 @@ export default mixins(
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
-				binaryDataDisplayData: null as IBinaryDisplayData | null,
+				binaryDataDisplayData: null as IBinaryData | null,
 
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
@@ -506,7 +526,7 @@ export default mixins(
 				return DATA_EDITING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.ndvStore.getPanelDisplayMode(this.paneType as "input" | "output");
+				return this.ndvStore.getPanelDisplayMode(this.paneType);
 			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
@@ -530,10 +550,13 @@ export default mixins(
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 				];
+
 				if (this.binaryData.length) {
-					return [ ...defaults,
-						{ label: this.$locale.baseText('runData.binary'), value: 'binary'},
-					];
+					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
+				}
+
+				if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
+					defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema'});
 				}
 
 				return defaults;
@@ -629,7 +652,7 @@ export default mixins(
 			inputData (): INodeExecutionData[] {
 				let inputData = this.rawInputData;
 
-				if (this.node && this.pinData) {
+				if (this.node && this.pinData && !this.isProductionExecutionPreview) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
 							json: value,
@@ -950,7 +973,7 @@ export default mixins(
 			},
 			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: displayMode});
+				this.ndvStore.setPanelDisplayMode({pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
@@ -1036,23 +1059,26 @@ export default mixins(
 				this.workflowsStore.setWorkflowExecutionData(null);
 				this.updateNodesExecutionIssues();
 			},
+			isViewable (index: number, key: string): boolean {
+				const { fileType }: IBinaryData = this.binaryData[index][key];
+				return !!fileType && ['image', 'video'].includes(fileType);
+			},
 			isDownloadable (index: number, key: string): boolean {
-				const binaryDataItem: IBinaryData = this.binaryData[index][key];
-				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
+				const { mimeType, fileName }: IBinaryData = this.binaryData[index][key];
+				return !!(mimeType && fileName);
 			},
 			async downloadBinaryData (index: number, key: string) {
-				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				const { id, data, fileName, fileExtension, mimeType }: IBinaryData = this.binaryData[index][key];
 
-				let bufferString = 'data:' + binaryDataItem.mimeType + ';base64,';
-				if(binaryDataItem.id) {
-					bufferString += await this.restApi().getBinaryBufferString(binaryDataItem.id);
+				if(id) {
+					const url = this.restApi().getBinaryUrl(id);
+					saveAs(url, [fileName, fileExtension].join('.'));
+					return;
 				} else {
-					bufferString += binaryDataItem.data;
+					const bufferString = 'data:' + mimeType + ';base64,' + data;
+					const blob = await fetch(bufferString).then(d => d.blob());
+					saveAs(blob, fileName);
 				}
-
-				const data = await fetch(bufferString);
-				const blob = await data.blob();
-				saveAs(blob, binaryDataItem.fileName);
 			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;

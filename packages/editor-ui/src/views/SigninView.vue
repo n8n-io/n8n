@@ -2,13 +2,14 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		data-test-id="signin-form"
 		@submit="onSubmit"
 	/>
 </template>
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';

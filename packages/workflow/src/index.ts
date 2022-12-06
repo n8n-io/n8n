@@ -18,7 +18,7 @@ export * from './WorkflowErrors';
 export * from './WorkflowHooks';
 export * from './VersionedNodeType';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
-export { deepCopy, jsonParse } from './utils';
+export { deepCopy, jsonParse, sleep } from './utils';
 export {
 	isINodeProperties,
 	isINodePropertyOptions,

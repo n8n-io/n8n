@@ -166,7 +166,7 @@ export class Snowflake implements INodeType {
 		await connect(connection);
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -189,7 +189,7 @@ export class Snowflake implements INodeType {
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
 			const query = `INSERT INTO ${table}(${columns.join(',')}) VALUES (${columns
-				.map((column) => '?')
+				.map((_column) => '?')
 				.join(',')})`;
 			const data = copyInputItems(items, columns);
 			const binds = data.map((element) => Object.values(element));

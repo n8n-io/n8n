@@ -9,7 +9,9 @@ import {
 
 export class VenafiTlsProtectDatacenterApi implements ICredentialType {
 	name = 'venafiTlsProtectDatacenterApi';
+
 	displayName = 'Venafi TLS Protect Datacenter API';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Domain',
@@ -78,7 +80,9 @@ export class VenafiTlsProtectDatacenterApi implements ICredentialType {
 			},
 		};
 
-		const { access_token }  = await this.helpers.httpRequest(requestOptions) as { access_token: string };
+		const { access_token } = (await this.helpers.httpRequest(requestOptions)) as {
+			access_token: string;
+		};
 
 		return { token: access_token };
 	}

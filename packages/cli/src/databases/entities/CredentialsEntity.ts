@@ -3,7 +3,7 @@ import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeor
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { ICredentialsDb } from '../../Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {

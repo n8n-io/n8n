@@ -218,6 +218,7 @@ export class Code implements INodeType {
 			const jsCodeAllItems = this.getNodeParameter('jsCode', 0) as string;
 
 			const context = getSandboxContext.call(this);
+			context.items = context.$input.all();
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
 
 			if (workflowMode === 'manual') {
@@ -250,6 +251,7 @@ export class Code implements INodeType {
 			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
 			const context = getSandboxContext.call(this, index);
+			context.item = context.$input.item;
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
 
 			if (workflowMode === 'manual') {

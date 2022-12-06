@@ -1,20 +1,19 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable import/no-cycle */
 import cookieParser from 'cookie-parser';
 import passport from 'passport';
 import { NextFunction, Request, Response } from 'express';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { N8nApp } from '../Interfaces';
-import { AuthenticatedRequest } from '../../requests';
+import { AuthenticatedRequest } from '@/requests';
 import {
 	isAuthExcluded,
 	isPostUsersId,
 	isAuthenticatedRequest,
 	isUserManagementDisabled,
 } from '../UserManagementHelper';
-import { Db } from '../..';
+import * as Db from '@/Db';
 import { jwtAuth, refreshExpiringCookie } from '../middlewares';
 import { authenticationMethods } from './auth';
 import { meNamespace } from './me';
