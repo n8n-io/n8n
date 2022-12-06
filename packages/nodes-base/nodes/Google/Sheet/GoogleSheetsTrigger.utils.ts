@@ -72,10 +72,15 @@ export function compareRevisions(
 	columnsToWatch: string[] = [],
 ) {
 	try {
-		const [dataLength, columns] =
-			current.length > previous.length
-				? [current.length, ['row_number', ...current[keyRow - 1]]]
-				: [previous.length, ['row_number', ...previous[keyRow - 1]]];
+		const dataLength = current.length > previous.length ? current.length : previous.length;
+
+		const columns =
+			current[keyRow - 1].length > previous[keyRow - 1].length
+				? ['row_number', ...current[keyRow - 1]]
+				: ['row_number', ...previous[keyRow - 1]];
+
+		console.log([current.length, ['row_number', ...current[keyRow - 1]]]);
+		console.log([previous.length, ['row_number', ...previous[keyRow - 1]]]);
 
 		const diffData: Array<{
 			rowIndex: number;
