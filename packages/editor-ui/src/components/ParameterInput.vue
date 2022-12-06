@@ -35,7 +35,7 @@
 				@drop="onResourceLocatorDrop"
 			/>
 			<expression-parameter-input
-				v-else-if="isValueExpression || droppable || forceShowExpression"
+				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
@@ -717,6 +717,8 @@ export default mixins(
 					classes['has-issues'] = true;
 				}
 
+				console.log('classes', classes);
+
 				return classes;
 			},
 			parameterInputWrapperStyle () {
@@ -1183,7 +1185,7 @@ export default mixins(
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
+	// --input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 }
 
