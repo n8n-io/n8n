@@ -2065,8 +2065,8 @@ export default mixins(
 							this.pullConnActiveNodeName = null;
 							this.historyStore.stopRecordingUndo();
 						} else if (!this.historyStore.bulkInProgress && !this.renameInProgress && connectionInfo) {
-							// if connection is just being detached, save this in history
-							// but only if it's not detached as a side effect of bulk undo/redo process
+							// Ff connection being detached by user, save this in history
+							// but skip if it's detached as a side effect of bulk undo/redo or node rename process
 							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
 						}
 					} catch (e) {
@@ -2693,10 +2693,10 @@ export default mixins(
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
 
+					const recordingTimeout = waitForNewConnection ? 100 : 0;
 					setTimeout(() => {
-						// TODO: Make timeout based on waitForConnection
 						this.historyStore.stopRecordingUndo();
-					}, 100);
+					}, recordingTimeout);
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {

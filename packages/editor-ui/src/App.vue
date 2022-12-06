@@ -187,7 +187,6 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
-		// TODO: Un-comment once front-end hooks are updated to work with pinia store
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
