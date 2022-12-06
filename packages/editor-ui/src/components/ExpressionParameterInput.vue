@@ -186,6 +186,11 @@ export default Vue.extend({
 	svg {
 		transform: rotate(270deg);
 	}
+
+	svg:hover {
+		transform: rotate(270deg);
+		color: var(--color-primary);
+	}
 }
 
 .focused > .prepend-section {

@@ -5,7 +5,7 @@ import { tags } from '@lezer/highlight';
 // @TODO: Dedup after review
 
 const BASE_STYLING = {
-	fontSize: '0.8em',
+	fontSize: 'var(--font-size-2xs)',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 	// maxHeight: '200px',
 	tooltip: {
@@ -33,6 +33,7 @@ export const EXPRESSION_EDITOR_THEME = [
 		'&': {
 			maxHeight: '112px',
 			width: '100%',
+			minHeight: '30px',
 			fontSize: BASE_STYLING.fontSize,
 			padding: '0 0 0 var(--spacing-2xs)',
 			borderWidth: 'var(--border-width-base)',

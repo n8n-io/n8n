@@ -5,7 +5,7 @@ import { tags } from '@lezer/highlight';
 // @TODO: Dedup after review
 
 const BASE_STYLING = {
-	fontSize: '1em',
+	fontSize: 'var(--font-size-2xs)',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 	// maxHeight: '200px',
 	tooltip: {
