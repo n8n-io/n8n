@@ -1,5 +1,5 @@
 import { STORES } from "@/constants";
-import { INodeUi, IRunDataDisplayMode, NDVState, XYPosition } from "@/Interface";
+import { INodeUi, IRunDataDisplayMode, NDVState, NodePanelType, XYPosition } from "@/Interface";
 import { IRunData } from "n8n-workflow";
 import { defineStore } from "pinia";
 import Vue from "vue";
@@ -11,7 +11,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		mainPanelDimensions: {},
 		sessionId: '',
 		input: {
-			displayMode: 'table',
+			displayMode: window.posthog?.isFeatureEnabled?.('schema-view') ? 'schema': 'table',
 			nodeName: undefined,
 			run: undefined,
 			branch: undefined,
@@ -60,7 +60,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
 		},
 		getPanelDisplayMode() {
-			return (panel: 'input' | 'output') => this[panel].displayMode;
+			return (panel: NodePanelType) => this[panel].displayMode;
 		},
 		inputPanelDisplayMode(): IRunDataDisplayMode {
 			return this.input.displayMode;
@@ -125,7 +125,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		resetNDVSessionId(): void  {
 			Vue.set(this, 'sessionId', '');
 		},
-		setPanelDisplayMode(params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}): void {
+		setPanelDisplayMode(params: {pane: NodePanelType, mode: IRunDataDisplayMode}): void {
 			Vue.set(this[params.pane], 'displayMode', params.mode);
 		},
 		setOutputPanelEditModeEnabled(isEnabled: boolean): void  {
