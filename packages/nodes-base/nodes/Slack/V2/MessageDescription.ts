@@ -600,9 +600,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Reply to a Message',
 				name: 'thread_ts',
 				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
 				default: {},
 				placeholder: 'Reply to a Message',
 				description: "Provide another message's Timestamp value to make this message a reply",
@@ -613,7 +610,7 @@ export const messageFields: INodeProperties[] = [
 						values: [
 							{
 								displayName: 'Message timestamp to reply to',
-								name: 'timestamp_reply',
+								name: 'thread_ts',
 								type: 'string',
 								default: '',
 								placeholder: '1663233118.856619',

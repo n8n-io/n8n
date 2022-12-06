@@ -922,11 +922,10 @@ export class SlackV2 implements INodeType {
 							} else if (select === 'user') {
 								body.user = target;
 								action = 'postEphemeral';
-								console.log(select);
 							}
 						}
 						//@ts-ignore
-						const replyValues = otherOptions.thread_ts?.replyValues[0] as IDataObject;
+						const replyValues = otherOptions.thread_ts?.replyValues as IDataObject;
 						Object.assign(body, replyValues);
 						delete otherOptions.thread_ts;
 						delete otherOptions.ephemeral;
