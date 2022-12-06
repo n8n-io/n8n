@@ -878,7 +878,7 @@ export class SlackV2 implements INodeType {
 					if (operation === 'post') {
 						const select = this.getNodeParameter('select', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
-						const target =
+						let target =
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
 										extractValue: true,
@@ -886,6 +886,10 @@ export class SlackV2 implements INodeType {
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
 								  }) as string);
+						// @ts-ignore
+						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+							target = target.slice(0, 1) === '@' ? target : `@${target}`;
+						}
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
 						switch (messageType) {
@@ -905,7 +909,6 @@ export class SlackV2 implements INodeType {
 							channel: target,
 							...content,
 						};
-						console.log('Send as user', sendAsUser);
 						if (authentication === 'accessToken' && sendAsUser !== '' && sendAsUser !== undefined) {
 							body.username = sendAsUser;
 						}
@@ -917,7 +920,10 @@ export class SlackV2 implements INodeType {
 							if (select === 'channel') {
 								const ephemeralValues = ephemeral.ephemeralValues as IDataObject;
 								const userRlc = ephemeralValues.user as INodeParameterResourceLocator;
-								body.user = userRlc.value;
+								body.user =
+									userRlc.value?.toString().slice(0, 1) !== '@' && userRlc.mode === 'username'
+										? `@${userRlc.value}`
+										: userRlc.value;
 								action = 'postEphemeral';
 							} else if (select === 'user') {
 								body.user = target;

@@ -247,6 +247,12 @@ export const messageFields: INodeProperties[] = [
 				],
 				placeholder: 'U123AB45JGM',
 			},
+			{
+				displayName: 'By username',
+				name: 'username',
+				type: 'string',
+				placeholder: '@username',
+			},
 		],
 	},
 	{
@@ -695,6 +701,12 @@ export const messageFields: INodeProperties[] = [
 											},
 										],
 										placeholder: 'U123AB45JGM',
+									},
+									{
+										displayName: 'By Username',
+										name: 'username',
+										type: 'string',
+										placeholder: '@username',
 									},
 								],
 							},
