@@ -173,7 +173,7 @@
     "shelljs": "^0.8.5",
     "source-map-support": "^0.5.21",
     "sqlite3": "^5.1.2",
-    "sse-channel": "^3.1.1",
+    "sse-channel": "^4.0.0",
     "swagger-ui-express": "^4.3.0",
     "tslib": "1.14.1",
     "typeorm": "0.2.45",
