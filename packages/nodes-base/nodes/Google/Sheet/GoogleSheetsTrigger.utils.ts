@@ -32,10 +32,17 @@ export function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
 	const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
 	const sheet = workbook.Sheets[sheetName];
 	const sheetData: string[][] = sheet['!ref']
-		? XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' })
+		? XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
 		: [];
 
-	return sheetData.filter((row) => row.filter((cell) => cell !== '').length);
+	const lastDataRowIndex = sheetData.reduce((lastRowIndex, row, rowIndex) => {
+		if (row.some((cell) => cell !== '')) {
+			return rowIndex;
+		}
+		return lastRowIndex;
+	}, 0);
+
+	return sheetData.slice(0, lastDataRowIndex + 1);
 }
 
 export function arrayOfArraysToJson(sheetData: SheetRangeData, columns: SheetDataRow) {
@@ -64,66 +71,79 @@ export function compareRevisions(
 	includeInOutput: string,
 	columnsToWatch: string[] = [],
 ) {
-	const [dataLength, columns] =
-		current.length > previous.length
-			? [current.length, ['row_number', ...current[keyRow - 1]]]
-			: [previous.length, ['row_number', ...previous[keyRow - 1]]];
+	try {
+		const [dataLength, columns] =
+			current.length > previous.length
+				? [current.length, ['row_number', ...current[keyRow - 1]]]
+				: [previous.length, ['row_number', ...previous[keyRow - 1]]];
 
-	const diffData: Array<{
-		rowIndex: number;
-		previous: SheetDataRow;
-		current: SheetDataRow;
-	}> = [];
+		const diffData: Array<{
+			rowIndex: number;
+			previous: SheetDataRow;
+			current: SheetDataRow;
+		}> = [];
 
-	for (let i = 0; i < dataLength; i++) {
-		// columns row, continue
-		if (i === keyRow - 1) {
-			continue;
+		for (let i = 0; i < dataLength; i++) {
+			// columns row, continue
+			if (i === keyRow - 1) {
+				continue;
+			}
+
+			// sheets API omits trailing empty columns, xlsx does not - so we need to pad the shorter array
+			if (Array.isArray(current[i]) && Array.isArray(previous[i])) {
+				while (current[i].length < previous[i].length) {
+					current[i].push('');
+				}
+			}
+
+			// if columnsToWatch is defined, only compare those columns
+			if (columnsToWatch?.length) {
+				const currentRow = columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1]);
+				const previousRow = columnsToWatch.map(
+					(column) => previous[i][columns.indexOf(column) - 1],
+				);
+
+				if (isEqual(currentRow, previousRow)) continue;
+			} else {
+				if (isEqual(current[i], previous[i])) continue;
+			}
+
+			diffData.push({
+				rowIndex: i + 1,
+				previous: previous[i],
+				current: current[i],
+			});
 		}
-		// sheets API omits trailing empty columns, xlsx does not - so we need to pad the shorter array
-		while (current[i].length < previous[i].length) {
-			current[i].push('');
+
+		if (includeInOutput === 'previousVersion') {
+			return arrayOfArraysToJson(
+				diffData.map(({ previous: entry, rowIndex }) =>
+					entry ? [rowIndex, ...entry] : [rowIndex],
+				),
+				columns,
+			);
+		}
+		if (includeInOutput === 'bothVersions') {
+			const previousData = arrayOfArraysToJson(
+				diffData.map(({ previous: entry, rowIndex }) =>
+					entry ? [rowIndex, ...entry] : [rowIndex],
+				),
+				columns,
+			).map((row) => ({ previous: row }));
+
+			const currentData = arrayOfArraysToJson(
+				diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+				columns,
+			).map((row) => ({ current: row }));
+
+			return zip(previousData, currentData).map((row) => Object.assign({}, ...row));
 		}
 
-		// if columnsToWatch is defined, only compare those columns
-		if (columnsToWatch?.length) {
-			const currentRow = columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1]);
-			const previousRow = columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1]);
-
-			if (isEqual(currentRow, previousRow)) continue;
-		} else {
-			if (isEqual(current[i], previous[i])) continue;
-		}
-
-		diffData.push({
-			rowIndex: i + 1,
-			previous: previous[i],
-			current: current[i],
-		});
-	}
-
-	if (includeInOutput === 'previousVersion') {
 		return arrayOfArraysToJson(
-			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-			columns,
-		);
-	}
-	if (includeInOutput === 'bothVersions') {
-		const previousData = arrayOfArraysToJson(
-			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-			columns,
-		).map((row) => ({ previous: row }));
-
-		const currentData = arrayOfArraysToJson(
 			diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 			columns,
-		).map((row) => ({ current: row }));
-
-		return zip(previousData, currentData).map((row) => Object.assign({}, ...row));
+		);
+	} catch (error) {
+		throw error;
 	}
-
-	return arrayOfArraysToJson(
-		diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-		columns,
-	);
 }
