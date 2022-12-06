@@ -66,7 +66,7 @@
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="4"
+						:stickyOffset="isValueExpression ? [26, 4] : [4, 4]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -79,7 +79,7 @@
 								@keydown.stop="onKeyDown"
 							>
 								<expression-parameter-input
-									v-if="isValueExpression || droppable || forceShowExpression"
+									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
 									squarePrependSection
 									@valueChanged="onInputChange"
@@ -732,7 +732,7 @@ $--mode-selector-width: 92px;
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
+	// --input-background-color: var(--color-secondary-tint-2);
 	--input-border-style: dashed;
 }
 

@@ -24,7 +24,7 @@
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
-				:stickyOffset="4"
+				:stickyOffset="isValueExpression ? [26, 4] : [4, 4]"
 				@drop="onDrop"
 			>
 				<template #default="{ droppable, activeDrop }">
@@ -75,7 +75,7 @@ import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
+import { hasExpressionMapping, isResourceLocatorValue, hasOnlyListMode, isValueExpression } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
 import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { BaseTextKey } from "@/plugins/i18n";
@@ -140,6 +140,9 @@ export default mixins(
 			...mapStores(
 				useNDVStore,
 			),
+			isValueExpression(): boolean {
+				return isValueExpression(this.parameter, this.value);
+			},
 			node (): INodeUi | null {
 				return this.ndvStore.activeNode;
 			},
