@@ -717,8 +717,6 @@ export default mixins(
 					classes['has-issues'] = true;
 				}
 
-				console.log('classes', classes);
-
 				return classes;
 			},
 			parameterInputWrapperStyle () {
