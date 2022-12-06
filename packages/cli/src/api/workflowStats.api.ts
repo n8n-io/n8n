@@ -1,6 +1,5 @@
 import { User } from '@/databases/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import {
@@ -10,28 +9,11 @@ import {
 	IWorkflowStatisticsTimestamps,
 	ResponseHelper,
 } from '..';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import { ExecutionRequest } from '../requests';
 
 export const workflowStatsController = express.Router();
-
-/**
- * Initialise Logger if needed
- */
-workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
-	try {
-		LoggerProxy.getInstance();
-	} catch (error) {
-		LoggerProxy.init(getLogger());
-	}
-
-	// Call the checkWorkflowId function here
-	await checkWorkflowId(req.params.id, req.user);
-
-	next();
-});
 
 // Helper function that validates the ID, throws an error if not valud
 async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
@@ -53,6 +35,22 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
 		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
 }
+
+/**
+ * Initialise Logger if needed, and check the workflowId is acceptable
+ */
+ workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
+	try {
+		LoggerProxy.getInstance();
+	} catch (error) {
+		LoggerProxy.init(getLogger());
+	}
+
+	// Call the checkWorkflowId function here
+	await checkWorkflowId(req.params.id, req.user);
+
+	next();
+});
 
 /**
  * GET /workflow-stats/:id/counts/
