@@ -2011,7 +2011,9 @@ export default mixins(
 							connection: connectionData,
 							setStateDirty: true,
 						});
-						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
+						if (!this.suspendRecordingDetachedConnections) {
+							this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
+						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -3470,8 +3472,6 @@ export default mixins(
 			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$on('revertRenameNode', this.onRevertNameChange);
-			this.$root.$on('renameStarted', this.setSuspendRecordingDetachedConnections);
-			this.$root.$on('renameEnded', this.setSuspendRecordingDetachedConnections);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3493,8 +3493,6 @@ export default mixins(
 			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$off('revertRenameNode', this.onRevertNameChange);
-			this.$root.$off('renameStarted', this.setSuspendRecordingDetachedConnections);
-			this.$root.$off('renameEnded', this.setSuspendRecordingDetachedConnections);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
