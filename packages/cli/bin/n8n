@@ -29,9 +29,7 @@ if (![14, 16, 18].includes(nodeVersionMajor)) {
 	process.exit(1);
 }
 
-try {
-	require('source-map-support').install();
-} catch {}
+require('source-map-support').install();
 
 require('@oclif/command')
 	.run()

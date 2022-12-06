@@ -1,0 +1,326 @@
+// Vitest Snapshot v1
+
+exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
+<div>
+  <div
+    class="_schemaWrapper_1w572_1"
+  >
+    <div
+      class=""
+    >
+      <div
+        class="_schema_1w572_1"
+      >
+        <div
+          class="_item_eg159_1"
+        >
+          <!---->
+          <!---->
+          <input
+            checked="checked"
+            id="object-0-0"
+            type="checkbox"
+          />
+          <!---->
+          <div
+            class="_sub_eg159_14"
+          >
+            <div
+              class="_item_eg159_1"
+              style="transition-delay: 0s;"
+            >
+              <div
+                class="_pill_eg159_51 _mappable_eg159_70"
+                title="string"
+              >
+                <span
+                  class="_label_eg159_89"
+                  data-depth="1"
+                  data-name="name"
+                  data-path="[\\"name\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"name\\"] }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                    data-icon="font"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    name
+                  </span>
+                </span>
+              </div>
+              <span
+                class="_text_eg159_100"
+              >
+                John
+              </span>
+              <input
+                checked="checked"
+                id="string-0-0"
+                type="checkbox"
+              />
+              <!---->
+              <!---->
+            </div>
+            <div
+              class="_item_eg159_1"
+              style="transition-delay: 0.033s;"
+            >
+              <div
+                class="_pill_eg159_51 _mappable_eg159_70"
+                title="number"
+              >
+                <span
+                  class="_label_eg159_89"
+                  data-depth="1"
+                  data-name="age"
+                  data-path="[\\"age\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"age\\"] }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-hashtag fa-w-14 fa-sm"
+                    data-icon="hashtag"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 448 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M440.667 182.109l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l14.623-81.891C377.123 38.754 371.468 32 363.997 32h-40.632a12 12 0 0 0-11.813 9.891L296.175 128H197.54l14.623-81.891C213.477 38.754 207.822 32 200.35 32h-40.632a12 12 0 0 0-11.813 9.891L132.528 128H53.432a12 12 0 0 0-11.813 9.891l-7.143 40C33.163 185.246 38.818 192 46.289 192h74.81L98.242 320H19.146a12 12 0 0 0-11.813 9.891l-7.143 40C-1.123 377.246 4.532 384 12.003 384h74.81L72.19 465.891C70.877 473.246 76.532 480 84.003 480h40.632a12 12 0 0 0 11.813-9.891L151.826 384h98.634l-14.623 81.891C234.523 473.246 240.178 480 247.65 480h40.632a12 12 0 0 0 11.813-9.891L315.472 384h79.096a12 12 0 0 0 11.813-9.891l7.143-40c1.313-7.355-4.342-14.109-11.813-14.109h-74.81l22.857-128h79.096a12 12 0 0 0 11.813-9.891zM261.889 320h-98.634l22.857-128h98.634l-22.857 128z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    age
+                  </span>
+                </span>
+              </div>
+              <span
+                class="_text_eg159_100"
+              >
+                22
+              </span>
+              <input
+                checked="checked"
+                id="number-0-1"
+                type="checkbox"
+              />
+              <!---->
+              <!---->
+            </div>
+            <div
+              class="_item_eg159_1"
+              style="transition-delay: 0.066s;"
+            >
+              <div
+                class="_pill_eg159_51 _mappable_eg159_70"
+                title="array"
+              >
+                <span
+                  class="_label_eg159_89"
+                  data-depth="1"
+                  data-name="hobbies"
+                  data-path="[\\"hobbies\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"hobbies\\"] }}"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="svg-inline--fa fa-list fa-w-16 fa-sm"
+                    data-icon="list"
+                    data-prefix="fas"
+                    focusable="false"
+                    role="img"
+                    viewBox="0 0 512 512"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class=""
+                      d="M80 368H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm0-320H16A16 16 0 0 0 0 64v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16V64a16 16 0 0 0-16-16zm0 160H16a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h64a16 16 0 0 0 16-16v-64a16 16 0 0 0-16-16zm416 176H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zm0-320H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16V80a16 16 0 0 0-16-16zm0 160H176a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h320a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    hobbies
+                  </span>
+                </span>
+              </div>
+              <!---->
+              <input
+                checked="checked"
+                id="array-0-2"
+                type="checkbox"
+              />
+              <label
+                class="_toggle_eg159_20"
+                for="array-0-2"
+              >
+                <svg
+                  aria-hidden="true"
+                  class="svg-inline--fa fa-angle-up fa-w-10"
+                  data-icon="angle-up"
+                  data-prefix="fas"
+                  focusable="false"
+                  role="img"
+                  viewBox="0 0 320 512"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    class=""
+                    d="M177 159.7l136 136c9.4 9.4 9.4 24.6 0 33.9l-22.6 22.6c-9.4 9.4-24.6 9.4-33.9 0L160 255.9l-96.4 96.4c-9.4 9.4-24.6 9.4-33.9 0L7 329.7c-9.4-9.4-9.4-24.6 0-33.9l136-136c9.4-9.5 24.6-9.5 34-.1z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </label>
+              <div
+                class="_sub_eg159_14"
+              >
+                <div
+                  class="_item_eg159_1"
+                  style="transition-delay: 0s;"
+                >
+                  <div
+                    class="_pill_eg159_51 _mappable_eg159_70"
+                    title="string"
+                  >
+                    <span
+                      class="_label_eg159_89"
+                      data-depth="2"
+                      data-name="string[0]"
+                      data-path="[\\"hobbies\\"][0]"
+                      data-target="mappable"
+                      data-value="{{ $json[\\"hobbies\\"][0] }}"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                        data-icon="font"
+                        data-prefix="fas"
+                        focusable="false"
+                        role="img"
+                        viewBox="0 0 448 512"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          class=""
+                          d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="_arrayIndex_eg159_94"
+                      >
+                        [0]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="_text_eg159_100"
+                  >
+                    surfing
+                  </span>
+                  <input
+                    checked="checked"
+                    id="string-1-0"
+                    type="checkbox"
+                  />
+                  <!---->
+                  <!---->
+                </div>
+                <div
+                  class="_item_eg159_1"
+                  style="transition-delay: 0.033s;"
+                >
+                  <div
+                    class="_pill_eg159_51 _mappable_eg159_70"
+                    title="string"
+                  >
+                    <span
+                      class="_label_eg159_89"
+                      data-depth="2"
+                      data-name="string[1]"
+                      data-path="[\\"hobbies\\"][1]"
+                      data-target="mappable"
+                      data-value="{{ $json[\\"hobbies\\"][1] }}"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        class="svg-inline--fa fa-font fa-w-14 fa-sm"
+                        data-icon="font"
+                        data-prefix="fas"
+                        focusable="false"
+                        role="img"
+                        viewBox="0 0 448 512"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          class=""
+                          d="M432 416h-23.41L277.88 53.69A32 32 0 0 0 247.58 32h-47.16a32 32 0 0 0-30.3 21.69L39.41 416H16a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16h-19.58l23.3-64h152.56l23.3 64H304a16 16 0 0 0-16 16v32a16 16 0 0 0 16 16h128a16 16 0 0 0 16-16v-32a16 16 0 0 0-16-16zM176.85 272L224 142.51 271.15 272z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="_arrayIndex_eg159_94"
+                      >
+                        [1]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="_text_eg159_100"
+                  >
+                    traveling
+                  </span>
+                  <input
+                    checked="checked"
+                    id="string-1-1"
+                    type="checkbox"
+                  />
+                  <!---->
+                  <!---->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="teleporter hidden"
+        data-v-d4e6e290=""
+      />
+    </div>
+  </div>
+</div>
+`;
