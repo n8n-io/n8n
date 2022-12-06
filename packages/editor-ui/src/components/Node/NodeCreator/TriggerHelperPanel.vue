@@ -24,22 +24,26 @@
 			@actionSelected="onActionSelected"
 		>
 
-			<!-- We don't have no-results -->
-			<template #noResultsTitle>
-				There's no actions matching your search
+			<template #noResultsTitle v-if="isActionsActive">
+				<i />
 			</template>
-			<template #noResultsAction>
-				<i></i>
+			<template #noResultsAction  v-if="isActionsActive">
+				<span v-html="getCustomAPICallHintLocale('makeApiCall')" @click="addHttpNode" />
 			</template>
+
 			<template #header>
 				<slot name="header" />
-				<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
+				<p
+					v-if="isRoot"
+					v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')"
+					:class="$style.title"
+				/>
 			</template>
 			<template #footer>
 				<slot name="footer" />
 				<p
 					v-if="(activeNodeActions && containsAPIAction)"
-					v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle: activeNodeActions?.displayName }})"
+					v-html="getCustomAPICallHintLocale('apiCall')"
 					@click.stop="addHttpNode"
 				/>
 			</template>
@@ -51,12 +55,13 @@
 import { reactive, toRefs, getCurrentInstance, computed, onMounted, ref } from 'vue';
 import { INodeTypeDescription, INodeActionTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 import { INodeCreateElement, IActionItemProps, SubcategoryCreateElement, IUpdateInformation } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, CUSTOM_API_CALL_NAME, GIT_NODE_TYPE, HTTP_REQUEST_NODE_TYPE } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, CUSTOM_API_CALL_NAME, HTTP_REQUEST_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-import { omit, getCategoriesWithNodes, getCategorizedList } from "@/utils";
+import { getCategoriesWithNodes, getCategorizedList } from "@/utils";
 import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { BaseTextKey } from '@/plugins/i18n';
 
 const instance = getCurrentInstance();
 const items: INodeCreateElement[] = [{
@@ -184,7 +189,12 @@ const containsAPIAction = computed(() => state.latestNodeData?.properties.some((
 
 const computedCategorizedItems = computed(() => getCategorizedList(computedCategoriesWithNodes.value, true));
 
-const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
+const customAPICallHint = computed<string>(() => {
+	const nodeNameTitle  = state.activeNodeActions?.displayName as string;
+	return instance?.proxy.$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle }}) || '';
+});
+
+const nodeAppSubcategory = computed<(SubcategoryCreateElement | undefined)>(() => {
 	if(!state.activeNodeActions) return undefined;
 
 	return {
@@ -201,12 +211,15 @@ const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => 
 	};
 });
 const searchPlaceholder = computed(() => {
-	if(isActionsActive) return instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
-		interpolate: { nodeNameTitle: state.activeNodeActions?.displayName as string },
-	});
+	const nodeNameTitle = state.activeNodeActions?.displayName?.trim() as string;
+	const actionsSearchPlaceholder = instance?.proxy.$locale.baseText(
+		'nodeCreator.actionsCategory.searchActions',
+		{ interpolate: { nodeNameTitle }},
+	);
 
-	return undefined;
+	return isActionsActive.value ? actionsSearchPlaceholder : undefined;
 });
+
 const filteredMergedAppNodes = computed(() => {
 	const WHITELISTED_APP_CORE_NODES = [
 		EMAIL_IMAP_NODE_TYPE,
@@ -214,8 +227,10 @@ const filteredMergedAppNodes = computed(() => {
 	];
 
 	if(isAppEventSubcategory.value) return mergedAppNodes.filter(node => {
+		const isStickyNode = node.name === STICKY_NODE_TYPE;
 		const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.name);
-		return !isCoreNode;
+
+		return !isCoreNode && !isStickyNode;
 	});
 
 	return mergedAppNodes;
@@ -254,7 +269,14 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 	}));
 });
 
+function getCustomAPICallHintLocale(key: string) {
+	const nodeNameTitle  = state.activeNodeActions?.displayName as string;
 
+	return instance?.proxy.$locale.baseText(
+		`nodeCreator.actionsList.${key}` as BaseTextKey,
+		{ interpolate: { nodeNameTitle }},
+	) || '';
+}
 // The nodes.json doesn't contain API CALL option so we need to fetch the node detail
 // to determine if need to render the API CALL hint
 async function fechNodeDetails() {

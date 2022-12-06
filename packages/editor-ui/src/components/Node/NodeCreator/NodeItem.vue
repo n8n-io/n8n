@@ -1,18 +1,15 @@
 <template>
 	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<n8n-node-creator-node
-		:draggable="!(allowActions && nodeType.actions && nodeType.actions.length > 0)"
+		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		@click.stop="onClick"
 		:class="$style.nodeItem"
-		:description="allowActions ? undefined : $locale.headerText({
-			key: `headers.${shortNodeType}.description`,
-			fallback: nodeType.description,
-		})"
+		:description="allowActions ? undefined : description"
 		:title="displayName"
 		:isTrigger="!allowActions && isTriggerNode"
-		:isPanelActive="showActionsPanel"
+		:show-action-arrow="showActionArrow"
 	>
 		<template #icon>
 			<node-icon :nodeType="nodeType" />
@@ -35,22 +32,16 @@
 				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
 			</div>
 		</template>
-
-		<template #panel v-if="allowActions && nodeType.actions && nodeType.actions.length > 0">
-			123
-		</template>
 	</n8n-node-creator-node>
 </template>
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { isCommunityPackageName } from '@/utils';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { IUpdateInformation } from '@/Interface';
-import { externalHooks } from '@/mixins/externalHooks';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -73,17 +64,22 @@ const emit = defineEmits<{
 	(event: 'actionsOpen', value: INodeTypeDescription): void,
 }>();
 
-// const { $externalHooks } = new externalHooks();
 const instance = getCurrentInstance();
 const state = reactive({
 	dragging: false,
-	showActionsPanel: false,
 	draggablePosition: {
 		x: -100,
 		y: -100,
 	},
 	draggableDataTransfer: null as Element | null,
 });
+const description = computed<string>(() => {
+	return instance?.proxy.$locale.headerText({
+		key: `headers.${shortNodeType.value}.description`,
+		fallback: props.nodeType.description,
+	}) as string;
+});
+const showActionArrow = computed(() => props.allowActions && hasActions.value);
 
 const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
 
@@ -104,6 +100,7 @@ const displayName = computed<any>(() => {
 		fallback: props.allowActions ? displayName.replace('Trigger', '') : displayName,
 	});
 });
+
 const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
 
 function onClick() {
@@ -165,7 +162,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 defineExpose({
 	onClick,
 });
-const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
+const { dragging, draggableDataTransfer } = toRefs(state);
 </script>
 <style lang="scss" module>
 .nodeItem {

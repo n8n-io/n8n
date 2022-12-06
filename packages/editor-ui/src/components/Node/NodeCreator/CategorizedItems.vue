@@ -30,7 +30,7 @@
 				v-if="alwaysShowSearch || isSearchVisible"
 				:key="nodeCreatorStore.selectedType"
 				:value="nodeCreatorStore.itemsFilter"
-				:placeholder="searchPlaceholder || $locale.baseText('nodeCreator.searchBar.searchNodes')"
+				:placeholder="searchPlaceholder ? searchPlaceholder : $locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="searchBar"
 				@input="onNodeFilterChange"
 			/>
@@ -39,7 +39,7 @@
 				<no-results
 					data-test-id="categorized-no-results"
 					:showRequest="(!$slots.noResultsTitle && !$slots.noResultsAction) && filteredAllNodeTypes.length === 0"
-					:show-icon="(!!$slots.noResultsTitle && !!$slots.noResultsAction) || filteredAllNodeTypes.length === 0"
+					:show-icon="(!$slots.noResultsTitle && !$slots.noResultsAction) && filteredAllNodeTypes.length === 0"
 				>
 					<template v-if="$slots.noResultsTitle" #title>
 						<slot name="noResultsTitle" />
