@@ -541,9 +541,10 @@ export default mixins(
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
 				isProductionExecutionPreview: false,
-				// Renaming deletes nodes which makes jsplumb delete all loose connections.
+				// jsplumb automatically deletes all loose connections which is in turn recorded
+				// in undo history as a user action.
 				// This should prevent automatically removed connections from populating undo stack
-				renameInProgress: false,
+				suspendRecordingDetachedConnections: false,
 			};
 		},
 		beforeDestroy() {
@@ -1200,7 +1201,7 @@ export default mixins(
 					this.workflowsStore.updateNodeProperties(updateInformation);
 					this.onNodeMoved(node);
 
-					if (recordHistory && oldPosition[0] !== node.position[0] && oldPosition[1] !== node.position[1]) {
+					if (recordHistory && oldPosition[0] !== node.position[0] || oldPosition[1] !== node.position[1]) {
 						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this));
 					}
 				}
@@ -2064,7 +2065,7 @@ export default mixins(
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
 							this.historyStore.stopRecordingUndo();
-						} else if (!this.historyStore.bulkInProgress && !this.renameInProgress && connectionInfo) {
+						} else if (!this.historyStore.bulkInProgress && !this.suspendRecordingDetachedConnections && connectionInfo) {
 							// Ff connection being detached by user, save this in history
 							// but skip if it's detached as a side effect of bulk undo/redo or node rename process
 							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
@@ -2740,7 +2741,7 @@ export default mixins(
 					return;
 				}
 
-				this.renameInProgress = true;
+				this.suspendRecordingDetachedConnections = true;
 				if (trackHistory) {
 					this.historyStore.startRecordingUndo();
 				}
@@ -2791,7 +2792,7 @@ export default mixins(
 				if (trackHistory) {
 					this.historyStore.stopRecordingUndo();
 				}
-				this.renameInProgress = false;
+				this.suspendRecordingDetachedConnections = false;
 			},
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
@@ -3321,8 +3322,8 @@ export default mixins(
 				await this.saveCurrentWorkflow();
 				callback?.();
 			},
-			setRenameInProgress(inProgress: boolean) {
-				this.renameInProgress = inProgress;
+			setSuspendRecordingDetachedConnections(suspend: boolean) {
+				this.suspendRecordingDetachedConnections = suspend;
 			},
 			onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
 				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
@@ -3344,7 +3345,9 @@ export default mixins(
 				await this.addNodes([node]);
 			},
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.suspendRecordingDetachedConnections = true;
 				this.__removeConnection(connection, true);
+				this.suspendRecordingDetachedConnections = false;
 			},
 			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__addConnection(connection, true);
@@ -3460,8 +3463,8 @@ export default mixins(
 			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$on('revertRenameNode', this.onRevertNameChange);
-			this.$root.$on('renameStarted', this.setRenameInProgress);
-			this.$root.$on('renameEnded', this.setRenameInProgress);
+			this.$root.$on('renameStarted', this.setSuspendRecordingDetachedConnections);
+			this.$root.$on('renameEnded', this.setSuspendRecordingDetachedConnections);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3483,8 +3486,8 @@ export default mixins(
 			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$off('revertRenameNode', this.onRevertNameChange);
-			this.$root.$off('renameStarted', this.setRenameInProgress);
-			this.$root.$off('renameEnded', this.setRenameInProgress);
+			this.$root.$off('renameStarted', this.setSuspendRecordingDetachedConnections);
+			this.$root.$off('renameEnded', this.setSuspendRecordingDetachedConnections);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
