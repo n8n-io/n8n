@@ -14,6 +14,7 @@
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
+				:isSingleLine="squarePrependSection"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"

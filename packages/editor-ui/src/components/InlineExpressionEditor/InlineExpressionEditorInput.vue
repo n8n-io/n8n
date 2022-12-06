@@ -13,7 +13,7 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
 import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
-import { EXPRESSION_EDITOR_THEME } from './inputTheme';
+import { makeInlineExpressionEditorInput } from './inputTheme';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
@@ -22,6 +22,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			type: String,
 		},
 		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		isSingleLine: {
 			type: Boolean,
 			default: false,
 		},
@@ -47,7 +51,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	mounted() {
 		const extensions = [
-			EXPRESSION_EDITOR_THEME,
+			makeInlineExpressionEditorInput({ isSingleLine: this.isSingleLine }),
 			n8nLanguageSupport(),
 			history(),
 			doubleBraceHandler(),

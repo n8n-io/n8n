@@ -5,10 +5,10 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
 // @TODO: Dedup
 
-export const EXPRESSION_EDITOR_THEME = [
+export const makeInlineExpressionEditorInput = ({ isSingleLine } = { isSingleLine: false }) => [
 	EditorView.theme({
 		'&': {
-			maxHeight: '112px',
+			maxHeight: isSingleLine ? '30px' : '112px',
 			width: '100%',
 			minHeight: '30px',
 			fontSize: 'var(--font-size-2xs)',
