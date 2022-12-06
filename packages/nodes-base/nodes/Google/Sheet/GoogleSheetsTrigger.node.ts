@@ -30,50 +30,51 @@ export class GoogleSheetsTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{($parameter["event"])}}',
-		description: 'Starts the workflow when Google Sheets events occur.',
+		description: 'Starts the workflow when Google Sheets events occur',
 		defaults: {
 			name: 'Google Sheets Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
+			// {
+			// 	name: 'googleApi',
+			// 	required: true,
+			// 	displayOptions: {
+			// 		show: {
+			// 			authentication: ['serviceAccount'],
+			// 		},
+			// 	},
+			// },
 			{
-				name: 'googleApi',
+				name: 'googleSheetsTriggerOAuth2Api',
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['serviceAccount'],
-					},
-				},
-			},
-			{
-				name: 'googleSheetsOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth2'],
+						authentication: ['triggerOAuth2'],
 					},
 				},
 			},
 		],
 		polling: true,
 		properties: [
+			// trigger shared logic with GoogleSheets node, leaving this here for compatibility
 			{
 				displayName: 'Authentication',
 				name: 'authentication',
-				type: 'options',
+				type: 'hidden',
 				options: [
-					{
-						name: 'Service Account',
-						value: 'serviceAccount',
-					},
+					// {
+					// 	name: 'Service Account',
+					// 	value: 'serviceAccount',
+					// },
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'OAuth2 (recommended)',
-						value: 'oAuth2',
+						value: 'triggerOAuth2',
 					},
 				],
-				default: 'oAuth2',
+				default: 'triggerOAuth2',
 			},
 			{
 				displayName: 'Document',
@@ -180,13 +181,13 @@ export class GoogleSheetsTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Watch for ...',
+				displayName: 'Trigger On',
 				name: 'event',
 				type: 'options',
 				options: [
 					{
-						name: 'All Updates',
-						value: 'allUpdates',
+						name: 'Any Update',
+						value: 'anyUpdate',
 					},
 					{
 						name: 'Column Changes',
@@ -264,9 +265,9 @@ export class GoogleSheetsTrigger implements INodeType {
 										displayName: 'Range',
 										name: 'range',
 										type: 'string',
-										default: 'A:Z',
-										required: true,
-										description: 'The table range to read from',
+										default: '',
+										placeholder: 'e.g. A2:D10',
+										description: 'The range of cells to return',
 									},
 									{
 										displayName: 'Header Row',
@@ -277,8 +278,8 @@ export class GoogleSheetsTrigger implements INodeType {
 										},
 										default: 1,
 										description:
-											'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-										hint: 'From start of range. First row is row 1',
+											'Index of the row which contains the keys. The incoming node data is matched to the keys for assignment. The matching is case-sensitive.',
+										hint: 'FRelative to the defined range. Row index starts from 1.',
 									},
 									{
 										displayName: 'First Data Row',
@@ -289,58 +290,60 @@ export class GoogleSheetsTrigger implements INodeType {
 										},
 										default: 2,
 										description:
-											'Index of the first row which contains the actual data and not the keys. Starts with 1.',
-										hint: 'From start of range. First row is row 1',
+											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
+										hint: 'Relative to the defined range. Row index starts from 1.',
 									},
 								],
 							},
 						],
 					},
 					{
-						displayName: 'Value Render Option',
-						name: 'valueRenderOption',
+						displayName: 'Value Render',
+						name: 'valueRender',
 						type: 'options',
 						options: [
 							{
-								name: 'Formatted Value',
+								name: 'Formatted',
 								value: 'FORMATTED_VALUE',
 								description:
-									"Values will be calculated & formatted in the reply according to the cell's formatting.Formatting is based on the spreadsheet's locale, not the requesting user's locale.For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return \"$1.23\"",
+									"Values will be formatted and calculated according to the cell's formatting (based on the spreadsheet's locale)",
 							},
 							{
 								name: 'Formula',
 								value: 'FORMULA',
-								description:
-									'Values will not be calculated. The reply will include the formulas. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return "=A1".',
+								description: 'Values will not be calculated. The reply will include the formulas.',
 							},
 							{
-								name: 'Unformatted Value',
+								name: 'Unformatted',
 								value: 'UNFORMATTED_VALUE',
-								description:
-									'Values will be calculated, but not formatted in the reply. For example, if A1 is 1.23 and A2 is =A1 and formatted as currency, then A2 would return the number 1.23.',
+								description: 'Values will be calculated, but not formatted in the reply',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
-						description: 'Determines how values should be rendered in the output',
+						description:
+							'Determines how values will be rendered in the output. <a href="https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption" target="_blank">More info</a>.',
 					},
 					{
-						displayName: 'DateTime Render Option',
+						displayName: 'DateTime Render',
 						name: 'dateTimeRenderOption',
 						type: 'options',
 						options: [
 							{
 								name: 'Serial Number',
 								value: 'SERIAL_NUMBER',
+								description:
+									'Fields will be returned as doubles in "serial number" format (as popularized by Lotus 1-2-3)',
 							},
 							{
 								name: 'Formatted String',
 								value: 'FORMATTED_STRING',
 								description:
-									'Instructs date, time, datetime, and duration fields to be output as strings in their given number format (which is dependent on the spreadsheet locale)',
+									'Fields will be rendered as strings in their given number format (which depends on the spreadsheet locale)',
 							},
 						],
 						default: 'SERIAL_NUMBER',
-						description: 'Determines how dates should be rendered in the output',
+						description:
+							'Determines how dates should be rendered in the output.  <a href="https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption" target="_blank">More info</a>.',
 					},
 				],
 			},
@@ -392,9 +395,11 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		} while (pageToken);
 
-		const sheetId = this.getNodeParameter('sheetName', undefined, {
+		let sheetId = this.getNodeParameter('sheetName', undefined, {
 			extractValue: true,
 		}) as string;
+
+		sheetId = sheetId === 'gid=0' ? '0' : sheetId;
 
 		const googleSheet = new GoogleSheet(documentId, this);
 		const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
@@ -450,7 +455,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 			const sheetData = await googleSheet.getData(
 				`${sheetName}!${rangeToCheck}`,
-				options.valueRenderOption as ValueRenderOption,
+				options.valueRender as ValueRenderOption,
 			);
 
 			if (Array.isArray(sheetData)) {
@@ -465,7 +470,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		}
 
-		if (event === 'allUpdates' || event === 'columnChanges') {
+		if (event === 'anyUpdate' || event === 'columnChanges') {
 			const currentData = (await googleSheet.getData(sheetName, 'UNFORMATTED_VALUE')) as string[][];
 
 			if (previousRevision === undefined) {

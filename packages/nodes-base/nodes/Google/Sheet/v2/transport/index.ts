@@ -56,6 +56,8 @@ export async function apiRequest(
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
 			return this.helpers.request!(options);
+		} else if (authenticationMethod === 'triggerOAuth2') {
+			return this.helpers.requestOAuth2!.call(this, 'googleSheetsTriggerOAuth2Api', options);
 		} else {
 			return this.helpers.requestOAuth2!.call(this, 'googleSheetsOAuth2Api', options);
 		}

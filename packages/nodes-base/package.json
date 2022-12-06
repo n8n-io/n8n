@@ -129,6 +129,7 @@
       "dist/credentials/GoogleOAuth2Api.credentials.js",
       "dist/credentials/GooglePerspectiveOAuth2Api.credentials.js",
       "dist/credentials/GoogleSheetsOAuth2Api.credentials.js",
+      "dist/credentials/GoogleSheetsTriggerOAuth2Api.credentials.js",
       "dist/credentials/GoogleSlidesOAuth2Api.credentials.js",
       "dist/credentials/GoogleTasksOAuth2Api.credentials.js",
       "dist/credentials/GoogleTranslateOAuth2Api.credentials.js",
