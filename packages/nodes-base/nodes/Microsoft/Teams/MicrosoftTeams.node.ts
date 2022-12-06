@@ -188,6 +188,30 @@ export class MicrosoftTeams implements INodeType {
 				const results = filterSortSearchListItems(returnData, filter);
 				return { results };
 			},
+			async getPlans(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				let groupId = this.getCurrentNodeParameter('groupId', { extractValue: true }) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (groupId === undefined || groupId === null)) {
+					// groupId not found at base, check updateFields for the groupId
+					groupId = this.getCurrentNodeParameter('updateFields.groupId', {
+						extractValue: true,
+					}) as string;
+				}
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/groups/${groupId}/planner/plans`,
+				);
+				for (const plan of value) {
+					returnData.push({
+						name: plan.title,
+						value: plan.id,
+					});
+				}
+				const results = filterSortSearchListItems(returnData, filter);
+				return { results };
+			},
 		},
 		loadOptions: {
 			// Get all the plans to display them to user so that he can
@@ -219,11 +243,13 @@ export class MicrosoftTeams implements INodeType {
 			// select them easily
 			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				let planId = this.getCurrentNodeParameter('planId') as string;
+				let planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
 				if (operation === 'update' && (planId === undefined || planId === null)) {
 					// planId not found at base, check updateFields for the planId
-					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
+					planId = this.getCurrentNodeParameter('updateFields.planId', {
+						extractValue: true,
+					}) as string;
 				}
 				const { value } = await microsoftApiRequest.call(
 					this,
@@ -268,11 +294,13 @@ export class MicrosoftTeams implements INodeType {
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				let planId = this.getCurrentNodeParameter('planId') as string;
+				let planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
 				const operation = this.getNodeParameter('operation', 0) as string;
 				if (operation === 'update' && (planId === undefined || planId === null)) {
 					// planId not found at base, check updateFields for the planId
-					planId = this.getCurrentNodeParameter('updateFields.planId') as string;
+					planId = this.getCurrentNodeParameter('updateFields.planId', {
+						extractValue: true,
+					}) as string;
 				}
 				const { categoryDescriptions } = await microsoftApiRequest.call(
 					this,
@@ -514,7 +542,7 @@ export class MicrosoftTeams implements INodeType {
 				if (resource === 'task') {
 					//https://docs.microsoft.com/en-us/graph/api/planner-post-tasks?view=graph-rest-1.0&tabs=http
 					if (operation === 'create') {
-						const planId = this.getNodeParameter('planId', i) as string;
+						const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
 						const bucketId = this.getNodeParameter('bucketId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -602,7 +630,9 @@ export class MicrosoftTeams implements INodeType {
 							}
 						} else {
 							//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
-							const planId = this.getNodeParameter('planId', i) as string;
+							const planId = this.getNodeParameter('planId', i, '', {
+								extractValue: true,
+							}) as string;
 							if (returnAll) {
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
@@ -627,8 +657,15 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'update') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
+						const planId = this.getNodeParameter('updateFields.planId', i, '', {
+							extractValue: true,
+						}) as string;
 						const body: IDataObject = {};
-						Object.assign(body, updateFields);
+						Object.assign(body, updateFields, { planId });
+
+						if (!planId) {
+							delete body.planId;
+						}
 
 						if (body.assignedTo) {
 							body.assignments = {

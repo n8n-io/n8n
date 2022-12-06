@@ -124,23 +124,38 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Plan Name or ID',
+		displayName: 'Plan',
 		name: 'planId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getPlans',
-			loadOptionsDependsOn: ['groupId'],
-		},
+		modes: [
+			{
+				displayName: 'Plan',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Plan...',
+				typeOptions: {
+					searchListMethod: 'getPlans',
+					// missing searchListDependsOn: ['groupId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['create'],
 				resource: ['task'],
 			},
 		},
-		default: '',
-		description:
-			'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The plan for the task to belong to',
 	},
 	{
 		displayName: 'Bucket Name or ID',
@@ -363,15 +378,31 @@ export const taskFields: INodeProperties[] = [
 		default: '',
 	},
 	{
-		displayName: 'Plan Name or ID',
+		displayName: 'Plan',
 		name: 'planId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getPlans',
-			loadOptionsDependsOn: ['groupId'],
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Plan',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Plan...',
+				typeOptions: {
+					searchListMethod: 'getPlans',
+					// missing searchListDependsOn: ['groupId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -379,7 +410,6 @@ export const taskFields: INodeProperties[] = [
 				tasksFor: ['plan'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -539,16 +569,31 @@ export const taskFields: INodeProperties[] = [
 					'Percentage of task completion. When set to 100, the task is considered completed.',
 			},
 			{
-				displayName: 'Plan Name or ID',
+				displayName: 'Plan',
 				name: 'planId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getPlans',
-					loadOptionsDependsOn: ['groupId'],
-				},
-				default: '',
-				description:
-					'The plan for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Plan',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Plan...',
+						typeOptions: {
+							searchListMethod: 'getPlans',
+							// missing searchListDependsOn: ['groupId'],
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
+						// validation missing because no documentation found how these unique ids look like.
+					},
+				],
+				description: 'The plan for the task to belong to',
 			},
 			{
 				displayName: 'Title',
