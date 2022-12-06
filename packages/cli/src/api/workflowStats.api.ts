@@ -56,10 +56,11 @@ workflowStatsController.use((req, res, next) => {
 workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
 	const allowed = await checkWorkflowId(req.params.id, req.user);
 	if (allowed) next();
-
-	// Otherwise, make and return an error
-	const err = new ResponseHelper.NotFoundError(`Workflow ${req.params.id} does not exist.`);
-	next(err);
+	else {
+		// Otherwise, make and return an error
+		const err = new ResponseHelper.NotFoundError(`Workflow ${req.params.id} does not exist.`);
+		next(err);
+	}
 });
 
 /**
