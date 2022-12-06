@@ -2,7 +2,7 @@ import { closeBrackets, insertBracket } from '@codemirror/autocomplete';
 import { codePointAt, codePointSize, Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
-const braceInputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
+const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 	if (view.composing || view.state.readOnly) return false;
 
 	const selection = view.state.selection.main;
@@ -54,4 +54,7 @@ const braceInputHandler = EditorView.inputHandler.of((view, from, to, insert) =>
 
 const [_, bracketState] = closeBrackets() as readonly Extension[];
 
-export const braceHandler = () => [braceInputHandler, bracketState];
+/**
+ * CodeMirror plugin to handle double braces `{{ }}` for resolvables in n8n expressions.
+ */
+export const doubleBraceHandler = () => [inputHandler, bracketState];

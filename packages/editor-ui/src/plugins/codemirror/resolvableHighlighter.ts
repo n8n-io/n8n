@@ -1,7 +1,26 @@
 import { EditorView, Decoration, DecorationSet } from '@codemirror/view';
 import { StateField, StateEffect } from '@codemirror/state';
-import { DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME, SYNTAX_HIGHLIGHTING_CLASSES } from './inputTheme';
-import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from './types';
+import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/types/expressions';
+
+// @TODO: Clean up and document
+
+export const SYNTAX_HIGHLIGHTING_CSS_CLASSES = {
+	validResolvable: 'cm-valid-resolvable',
+	invalidResolvable: 'cm-invalid-resolvable',
+	brokenResolvable: 'cm-broken-resolvable',
+	plaintext: 'cm-plaintext',
+};
+
+export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
+	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable]: {
+		color: '#29a568',
+		backgroundColor: '#e1f3d8',
+	},
+	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable]: {
+		color: '#f45959',
+		backgroundColor: '#fef0f0',
+	},
+});
 
 const stateEffects = {
 	addColor: StateEffect.define<ColoringStateEffect.Value>({
@@ -21,8 +40,8 @@ const stateEffects = {
 };
 
 const marks = {
-	valid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CLASSES.validResolvable }),
-	invalid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable }),
+	valid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable }),
+	invalid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable }),
 };
 
 const coloringField = StateField.define<DecorationSet>({
@@ -59,7 +78,7 @@ const coloringField = StateField.define<DecorationSet>({
 	},
 });
 
-export function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
+function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to, kind, error }) =>
 		stateEffects.addColor.of({ from, to, kind, error }),
 	);
@@ -75,7 +94,7 @@ export function addColor(view: EditorView, segments: Array<Resolvable | Resolved
 	view.dispatch({ effects });
 }
 
-export function removeColor(view: EditorView, segments: Plaintext[]) {
+function removeColor(view: EditorView, segments: Plaintext[]) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to }) =>
 		stateEffects.removeColor.of({ from, to }),
 	);
@@ -90,3 +109,9 @@ export function removeColor(view: EditorView, segments: Plaintext[]) {
 
 	view.dispatch({ effects });
 }
+
+export const highlighter = {
+	addColor,
+	removeColor,
+	SYNTAX_HIGHLIGHTING_CSS_CLASSES,
+};
