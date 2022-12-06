@@ -392,7 +392,7 @@ export class KoBoToolbox implements INodeType {
 
 				if (operation === 'get') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
+					const download = this.getNodeParameter('download', i);
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
@@ -400,7 +400,7 @@ export class KoBoToolbox implements INodeType {
 						}),
 					];
 
-					if (responseData && responseData[0] && download) {
+					if (responseData?.[0] && download) {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 
 						const binaryItem: INodeExecutionData = {
@@ -444,7 +444,7 @@ export class KoBoToolbox implements INodeType {
 					if ('binary' === fileMode) {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 						const item = items[i].binary as IBinaryKeyData;
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 
 						body.base64Encoded = 'data:' + binaryData.mimeType + ';base64,' + binaryData.data;
 						body.metadata = {
