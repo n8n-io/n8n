@@ -1,4 +1,5 @@
 import { User } from '@/databases/entities/User';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
@@ -19,33 +20,38 @@ export const workflowStatsController = express.Router();
 /**
  * Initialise Logger if needed
  */
-workflowStatsController.use((req, res, next) => {
+workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
 		LoggerProxy.init(getLogger());
 	}
+
+	// Call the checkWorkflowId function here
+	await checkWorkflowId(req.params.id, req.user);
+
 	next();
 });
 
 // Helper function that validates the ID, throws an error if not valud
-async function checkWorkflowId(workflowId: string, user: User): Promise<WorkflowEntity> {
-	const workflow = await Db.collections.Workflow.findOne(workflowId);
-	if (!workflow) {
-		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
-	}
-
+async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
 	// Check permissions
-	const sharedWorkflowIds = await getSharedWorkflowIds(user);
+	const shared = await Db.collections.SharedWorkflow.findOne({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+			entityId: workflowId,
+		}),
+	});
 
-	if (sharedWorkflowIds.length === 0 || !sharedWorkflowIds.includes(parseInt(workflowId, 10))) {
+	if (!shared) {
 		LoggerProxy.info('User attempted to read a workflow without permissions', {
 			workflowId,
 			userId: user.id,
 		});
 		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
-	return workflow;
 }
 
 /**
@@ -56,9 +62,6 @@ workflowStatsController.get(
 	ResponseHelper.send(async (req: ExecutionRequest.Get): Promise<IWorkflowStatisticsCounts> => {
 		// Get counts from DB
 		const workflowId = req.params.id;
-
-		// Check that the id is valid
-		await checkWorkflowId(workflowId, req.user);
 
 		// Find the stats for this workflow
 		const stats = await Db.collections.WorkflowStatistics.find({
@@ -107,9 +110,6 @@ workflowStatsController.get(
 	ResponseHelper.send(async (req: ExecutionRequest.Get): Promise<IWorkflowStatisticsTimestamps> => {
 		// Get times from DB
 		const workflowId = req.params.id;
-
-		// Check that the id is valid
-		await checkWorkflowId(workflowId, req.user);
 
 		// Find the stats for this workflow
 		const stats = await Db.collections.WorkflowStatistics.find({
@@ -160,7 +160,9 @@ workflowStatsController.get(
 		const workflowId = req.params.id;
 
 		// Get the corresponding workflow
-		const workflow = await checkWorkflowId(workflowId, req.user);
+		const workflow = await Db.collections.Workflow.findOne(workflowId);
+		// It will be valid if we reach this point, this is just for TS
+		if (!workflow) return { dataLoaded: false };
 
 		const data: IWorkflowStatisticsDataLoaded = {
 			dataLoaded: workflow.dataLoaded,
