@@ -2187,7 +2187,7 @@ export default mixins(
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
-					const result = this.uiStore.stateIsDirty;;
+					const result = this.uiStore.stateIsDirty;
 					if (result) {
 						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -2210,17 +2210,18 @@ export default mixins(
 						workflowId = this.$route.params.name;
 					}
 					if (workflowId !== null) {
-						const workflow = await this.restApi().getWorkflow(workflowId);
-						if (!workflow) {
+						let workflow;
+						try {
+							workflow = await this.restApi().getWorkflow(workflowId);
+						} catch (error) {
+							this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+
 							this.$router.push({
 								name: VIEWS.NEW_WORKFLOW,
 							});
-							this.$showMessage({
-								title: 'Error',
-								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-								type: 'error',
-							});
-						} else {
+						}
+
+						if (workflow) {
 							this.$titleSet(workflow.name, 'IDLE');
 							// Open existing workflow
 							await this.openWorkflow(workflowId);
