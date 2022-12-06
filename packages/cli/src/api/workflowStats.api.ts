@@ -15,8 +15,8 @@ import { ExecutionRequest } from '../requests';
 
 export const workflowStatsController = express.Router();
 
-// Helper function that validates the ID, throws an error if not valud
-async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
+// Helper function that validates the ID, return a flag stating whether the request is allowed
+async function checkWorkflowId(workflowId: string, user: User): Promise<boolean> {
 	// Check permissions
 	const shared = await Db.collections.SharedWorkflow.findOne({
 		relations: ['workflow'],
@@ -32,24 +32,34 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
 			workflowId,
 			userId: user.id,
 		});
-		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
+		return false;
 	}
+	return true;
 }
 
 /**
- * Initialise Logger if needed, and check the workflowId is acceptable
+ * Initialise Logger if needed
  */
-workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
+workflowStatsController.use((req, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
 		LoggerProxy.init(getLogger());
 	}
 
-	// Call the checkWorkflowId function here
-	await checkWorkflowId(req.params.id, req.user);
-
 	next();
+});
+
+/**
+ * Check that the workflow ID is valid and allowed to be read by the user
+ */
+workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
+	const allowed = await checkWorkflowId(req.params.id, req.user);
+	if (allowed) next();
+
+	// Otherwise, make and return an error
+	const err = new ResponseHelper.NotFoundError(`Workflow ${req.params.id} does not exist.`);
+	next(err);
 });
 
 /**
@@ -160,7 +170,9 @@ workflowStatsController.get(
 		// Get the corresponding workflow
 		const workflow = await Db.collections.Workflow.findOne(workflowId);
 		// It will be valid if we reach this point, this is just for TS
-		if (!workflow) return { dataLoaded: false };
+		if (!workflow) {
+			return { dataLoaded: false };
+		}
 
 		const data: IWorkflowStatisticsDataLoaded = {
 			dataLoaded: workflow.dataLoaded,
