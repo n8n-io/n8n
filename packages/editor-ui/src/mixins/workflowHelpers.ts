@@ -418,7 +418,7 @@ export const workflowHelpers = mixins(
 					active: this.workflowsStore.isWorkflowActive,
 					settings: this.workflowsStore.workflow.settings,
 					tags: this.workflowsStore.workflowTags,
-					hash: this.workflowsStore.workflow.hash,
+					versionId: this.workflowsStore.workflow.versionId,
 				};
 
 				const workflowId = this.workflowsStore.workflowId;
@@ -680,8 +680,8 @@ export const workflowHelpers = mixins(
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
 				} else {
-					const { hash } = await this.restApi().getWorkflow(workflowId);
-					data.hash = hash;
+					const { versionId } = await this.restApi().getWorkflow(workflowId);
+					data.versionId = versionId;
 				}
 
 				if (active !== undefined) {
@@ -689,7 +689,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
-				this.workflowsStore.setWorkflowHash(workflow.hash);
+				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 				if (isCurrentWorkflow) {
 					this.workflowsStore.setActive(!!workflow.active);
@@ -724,10 +724,10 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
-					workflowDataRequest.hash = this.workflowsStore.workflowHash;
+					workflowDataRequest.versionId = this.workflowsStore.workflowVersionId;
 
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest, forceSave);
-					this.workflowsStore.setWorkflowHash(workflowData.hash);
+					this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 					if (name) {
 						this.workflowsStore.setWorkflowName({newName: workflowData.name, setStateDirty:  false});
@@ -747,7 +747,7 @@ export const workflowHelpers = mixins(
 				} catch (error) {
 					this.uiStore.removeActiveAction('workflowSaving');
 
-					if (error.errorCode === 400 && error.message.startsWith('Your most recent changes may be lost')) {
+					if (error.errorCode === 100) {
 						const overwrite = await this.confirmMessage(
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
@@ -810,7 +810,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 					this.workflowsStore.addWorkflow(workflowData);
-					this.workflowsStore.setWorkflowHash(workflowData.hash);
+					this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 					if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) && this.usersStore.currentUser) {
 						this.workflowsEEStore.setWorkflowOwnedBy({ workflowId: workflowData.id, ownedBy: this.usersStore.currentUser });
