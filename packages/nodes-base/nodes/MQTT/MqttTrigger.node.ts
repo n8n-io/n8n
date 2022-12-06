@@ -144,7 +144,7 @@ export class MqttTrigger implements INodeType {
 					// tslint:disable-line:no-any
 					let result: IDataObject = {};
 
-					message = message.toString() as string;
+					message = message.toString();
 
 					if (options.jsonParseBody) {
 						try {
