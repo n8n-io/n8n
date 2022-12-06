@@ -136,6 +136,11 @@ export default Vue.extend({
 			if (this.isDragging) return;
 
 			this.segments = segments;
+
+			// if identical to current, only hovering item changed
+			// hence do not re-emit, preventing marking output as stale
+			if (value === '=' + this.value) return;
+
 			this.$emit('valueChanged', value);
 		},
 	},
