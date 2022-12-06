@@ -26,7 +26,7 @@ import { WorkflowExecute } from 'n8n-core';
 import PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { Url } from 'url';
 
 import type { Request } from 'express';

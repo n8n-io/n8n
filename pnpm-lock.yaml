@@ -276,6 +276,7 @@ importers:
       replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
+      source-map-support: 0.5.21
       sqlite3: 5.1.2
       sse-channel: 3.1.1
       swagger-ui-express: 4.5.0_express@4.18.2
@@ -322,7 +323,6 @@ importers:
       concurrently: 5.3.0
       nodemon: 2.0.20
       run-script-os: 1.1.6
-      source-map-support: 0.5.21
       supertest: 6.3.0
       ts-node: 9.1.1_typescript@4.8.4
       tsc-alias: 1.7.1
@@ -19204,7 +19204,6 @@ packages:
     dependencies:
       buffer-from: 1.1.2
       source-map: 0.6.1
-    dev: true
 
   /source-map-url/0.4.1:
     resolution: {integrity: sha512-cPiFOTLUKvJFIg4SKVScy4ilPPW6rFgMgfuZJPNoDuMs3nC1HbMUycBoJw77xFIp6z1UJQJOfx6C9GMH80DiTw==}
