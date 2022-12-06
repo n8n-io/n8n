@@ -258,7 +258,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -742,7 +741,6 @@ export class Asana implements INodeType {
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -841,7 +839,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -929,9 +926,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -947,9 +941,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],

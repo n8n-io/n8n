@@ -364,9 +364,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'biographies',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

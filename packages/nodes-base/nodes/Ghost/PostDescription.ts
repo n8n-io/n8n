@@ -122,9 +122,6 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				source: ['adminApi'],

@@ -186,18 +186,12 @@ export const quoteFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
 				displayName: 'Public Notes',
 				name: 'publicNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -264,9 +258,6 @@ export const quoteFields: INodeProperties[] = [
 					{
 						displayName: 'Service',
 						name: 'service',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						type: 'string',
 						default: '',
 					},

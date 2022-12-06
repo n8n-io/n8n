@@ -678,9 +678,6 @@ export const issueFields: INodeProperties[] = [
 				name: 'jql',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'A JQL expression',
 			},
 		],
@@ -795,9 +792,6 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Text Body',
 				name: 'textBody',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'The subject of the email notification for the issue. If this is not specified, then the subject is set to the issue key and summary.',

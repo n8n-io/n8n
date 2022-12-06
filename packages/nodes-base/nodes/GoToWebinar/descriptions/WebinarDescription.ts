@@ -378,9 +378,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Experience Type',

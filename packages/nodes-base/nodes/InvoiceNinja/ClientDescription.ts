@@ -74,9 +74,6 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Private Notes',
 				name: 'privateNotes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
