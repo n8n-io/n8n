@@ -166,18 +166,12 @@ export async function parseRawEmail(
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
 	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
-	let responseData = await simpleParser(messageEncoded);
+	const responseData = await simpleParser(messageEncoded);
 
 	const headers: IDataObject = {};
-	// @ts-ignore
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
@@ -196,8 +190,6 @@ export async function parseRawEmail(
 				);
 			}
 		}
-		// @ts-ignore
-		responseData.attachments = undefined;
 	}
 
 	const mailBaseData: IDataObject = {};
@@ -205,14 +197,17 @@ export async function parseRawEmail(
 	const resolvedModeAddProperties = ['id', 'threadId', 'labelIds', 'sizeEstimate'];
 
 	for (const key of resolvedModeAddProperties) {
-		// @ts-ignore
 		mailBaseData[key] = messageData[key];
 	}
 
-	responseData = Object.assign(mailBaseData, responseData);
+	const json = Object.assign({}, mailBaseData, responseData, {
+		headers,
+		headerLines: undefined,
+		attachments: undefined,
+	}) as IDataObject;
 
 	return {
-		json: responseData as unknown as IDataObject,
+		json,
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
@@ -389,6 +384,14 @@ export function prepareQuery(
 	if (qs.receivedAfter) {
 		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
 		const timestampLengthInMilliseconds1990 = 12;
+
+		if (
+			!timestamp &&
+			typeof qs.receivedAfter === 'number' &&
+			qs.receivedAfter.toString().length < timestampLengthInMilliseconds1990
+		) {
+			timestamp = qs.receivedAfter;
+		}
 
 		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
 			timestamp = parseInt(qs.receivedAfter as string, 10);

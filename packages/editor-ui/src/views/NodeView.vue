@@ -3,6 +3,7 @@
 	<div
 		class="node-view-root"
 		id="node-view-root"
+		data-test-id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
@@ -833,7 +834,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash);
+				this.workflowsStore.setWorkflowVersionId(data.versionId);
 
 				if (data.ownedBy) {
 					this.workflowsEEStore.setWorkflowOwnedBy({
@@ -2186,7 +2187,7 @@ export default mixins(
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
 				} else {
-					const result = this.uiStore.stateIsDirty;;
+					const result = this.uiStore.stateIsDirty;
 					if (result) {
 						const confirmModal = await this.confirmModal(
 							this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -2209,17 +2210,18 @@ export default mixins(
 						workflowId = this.$route.params.name;
 					}
 					if (workflowId !== null) {
-						const workflow = await this.restApi().getWorkflow(workflowId);
-						if (!workflow) {
+						let workflow;
+						try {
+							workflow = await this.restApi().getWorkflow(workflowId);
+						} catch (error) {
+							this.$showError(error, this.$locale.baseText('openWorkflow.workflowNotFoundError'));
+
 							this.$router.push({
 								name: VIEWS.NEW_WORKFLOW,
 							});
-							this.$showMessage({
-								title: 'Error',
-								message: this.$locale.baseText('openWorkflow.workflowNotFoundError'),
-								type: 'error',
-							});
-						} else {
+						}
+
+						if (workflow) {
 							this.$titleSet(workflow.name, 'IDLE');
 							// Open existing workflow
 							await this.openWorkflow(workflowId);
@@ -3368,6 +3370,7 @@ export default mixins(
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3376,6 +3379,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 	});
 </script>

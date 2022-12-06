@@ -3,12 +3,14 @@ import { BasePage } from './base';
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
-		workflowNameInputContainer: () => cy
-		.getByTestId('workflow-name-input', { timeout: 5000 }),
+		workflowNameInputContainer: () => cy.getByTestId('workflow-name-input', { timeout: 5000 }),
 		workflowNameInput: () => this.getters.workflowNameInputContainer().then(($el) => cy.wrap($el.find('input'))),
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
+		workflowTagsInput: () => this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
+		workflowTagElements: () => this.getters.workflowTagsContainer().find('span.tags').children(),
+		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
@@ -29,6 +31,10 @@ export class WorkflowPage extends BasePage {
 		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
 		expressionModalInput: () => cy.getByTestId('expression-modal-input'),
 		expressionModalOutput: () => cy.getByTestId('expression-modal-output'),
+
+		nodeViewRoot: () => cy.getByTestId('node-view-root'),
+		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
+		canvasNodes: () => cy.getByTestId('canvas-node'),
 	};
 	actions = {
 		visit: () => {
@@ -86,10 +92,9 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{enter}');
 		},
 		addTags: (tags: string[]) => {
-			this.getters.newTagLink().click();
 			tags.forEach(tag => {
-				cy.get('body').type(tag);
-				cy.get('body').type('{enter}');
+				this.getters.workflowTagsInput().type(tag);
+				this.getters.workflowTagsInput().type('{enter}');
 			});
 			cy.get('body').type('{enter}');
 		},

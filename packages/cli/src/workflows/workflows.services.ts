@@ -2,6 +2,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
 import pick from 'lodash.pick';
+import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -172,7 +173,7 @@ export class WorkflowsService {
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes'] : fields,
+			select: isSharingEnabled ? [...fields, 'nodes', 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -220,11 +221,27 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
+		if (
+			!forceSave &&
+			workflow.versionId !== '' &&
+			workflow.versionId !== shared.workflow.versionId
+		) {
 			throw new ResponseHelper.BadRequestError(
 				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
+				100,
 			);
 		}
+
+		// Update the workflow's version
+		workflow.versionId = uuid();
+
+		LoggerProxy.verbose(
+			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+			{
+				previousVersionId: shared.workflow.versionId,
+				newVersionId: workflow.versionId,
+			},
+		);
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
@@ -280,6 +297,7 @@ export class WorkflowsService {
 				'settings',
 				'staticData',
 				'pinData',
+				'versionId',
 			]),
 		);
 
