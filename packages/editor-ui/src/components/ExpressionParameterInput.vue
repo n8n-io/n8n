@@ -65,7 +65,7 @@ import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/In
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
-import type { Segment } from './InlineExpressionEditor/types';
+import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
 Vue.component('expression-function-icon', ExpressionFunctionIcon);
@@ -177,13 +177,16 @@ export default Vue.extend({
 	right: 0;
 	bottom: 0;
 	background-color: white;
-	padding: var(--spacing-4xs);
+	padding: 3px;
 	border: var(--border-base);
+	line-height: 9px;
 	border-top-left-radius: var(--border-radius-base);
 	border-bottom-right-radius: var(--border-radius-base);
 	cursor: pointer;
 
 	svg {
+		height: 9px;
+		width: 9px !important;
 		transform: rotate(270deg);
 	}
 
@@ -223,6 +226,8 @@ export default Vue.extend({
 	border-top: none;
 	width: 100%;
 	box-shadow: 0 2px 6px 0 rgba(#441c17, 0.1);
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
 
 	.header,
 	.body,
