@@ -484,7 +484,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('cnr package deleted', updateData);
 	}
 
-  async onLdapSyncFinished(data: {
+	async onLdapSyncFinished(data: {
 		type: string;
 		succeeded: boolean;
 		users_synced: number;
@@ -524,9 +524,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
 		return this.telemetry.track('User login failed since ldap disabled', data);
-  }
+	}
 
-  /*
+	/*
 	 * Execution Statistics
 	 */
 	async onFirstProductionWorkflowSuccess(data: {

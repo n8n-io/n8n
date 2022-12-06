@@ -82,7 +82,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
-  WorkflowStatistics: Repository<WorkflowStatistics>;
+	WorkflowStatistics: Repository<WorkflowStatistics>;
 	FeatureConfig: Repository<FeatureConfig>;
 	LdapSyncHistory: Repository<LdapSyncHistory>;
 }

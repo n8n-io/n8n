@@ -29,6 +29,6 @@ export const entities = {
 	InstalledPackages,
 	InstalledNodes,
 	WorkflowStatistics,
-  FeatureConfig,
+	FeatureConfig,
 	LdapSyncHistory,
 };
