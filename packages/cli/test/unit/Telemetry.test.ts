@@ -335,37 +335,51 @@ describe('Telemetry', () => {
 
 			expect(pulseSpy).toBeCalledTimes(1);
 			expect(spyTrack).toHaveBeenCalledTimes(3);
-			expect(spyTrack).toHaveBeenNthCalledWith(1, 'Workflow execution count', {
-				event_version: '2',
-				workflow_id: '1',
-				manual_error: {
-					count: 2,
-					first: testDateTime,
+			expect(spyTrack).toHaveBeenNthCalledWith(
+				1,
+				'Workflow execution count',
+				{
+					event_version: '2',
+					workflow_id: '1',
+					user_id: undefined,
+					manual_error: {
+						count: 2,
+						first: testDateTime,
+					},
+					manual_success: {
+						count: 2,
+						first: testDateTime,
+					},
+					prod_error: {
+						count: 2,
+						first: testDateTime,
+					},
+					prod_success: {
+						count: 2,
+						first: testDateTime,
+					},
 				},
-				manual_success: {
-					count: 2,
-					first: testDateTime,
+				{ withPostHog: true },
+			);
+			expect(spyTrack).toHaveBeenNthCalledWith(
+				2,
+				'Workflow execution count',
+				{
+					event_version: '2',
+					workflow_id: '2',
+					user_id: undefined,
+					prod_error: {
+						count: 2,
+						first: testDateTime,
+					},
 				},
-				prod_error: {
-					count: 2,
-					first: testDateTime,
-				},
-				prod_success: {
-					count: 2,
-					first: testDateTime,
-				},
-			});
-			expect(spyTrack).toHaveBeenNthCalledWith(2, 'Workflow execution count', {
-				event_version: '2',
-				workflow_id: '2',
-				prod_error: {
-					count: 2,
-					first: testDateTime,
-				},
-			});
+				{ withPostHog: true },
+			);
 			expect(spyTrack).toHaveBeenNthCalledWith(3, 'pulse');
 			expect(Object.keys(execBuffer).length).toBe(0);
 
+			// Adding a second step here because we believe PostHog may use timers for sending data
+			// and adding posthog to the above metric was causing the pulseSpy timer to not be ran
 			jest.advanceTimersToNextTimer();
 
 			execBuffer = telemetry.getCountsBuffer();

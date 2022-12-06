@@ -1026,8 +1026,8 @@ export interface NestedRecord<T> {
 	[key: string]: T | NestedRecord<T>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
-export type nodePanelType = 'input' | 'output';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -1290,3 +1290,21 @@ export interface CurlToJSONResponse {
 	"parameters.sendQuery": boolean;
 	"parameters.sendBody": boolean;
 }
+
+export type Basic = string | number | boolean;
+export type Primitives = Basic | bigint | symbol;
+
+export type Optional<T> = T | undefined | null;
+
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+export type Schema = { type: SchemaType, key?: string, value: string | Schema[], path: string };

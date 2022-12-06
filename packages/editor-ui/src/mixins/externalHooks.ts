@@ -1,29 +1,31 @@
-import { IExternalHooks, IRootState } from '@/Interface';
-import { store } from '@/store';
+import { IExternalHooks } from '@/Interface';
 import { useWebhooksStore } from '@/stores/webhooks';
 import { IDataObject } from 'n8n-workflow';
 import { Store } from 'pinia';
 import Vue from 'vue';
+
+declare global {
+	interface Window {
+		n8nExternalHooks?: Record<string, Record<string, Array<(store: Store, metadata?: IDataObject) => Promise<void>>>>;
+	}
+}
 
 export async function runExternalHook(
 	eventName: string,
 	store: Store,
 	metadata?: IDataObject,
 ) {
-	// @ts-ignore
 	if (!window.n8nExternalHooks) {
 		return;
 	}
 
 	const [resource, operator] = eventName.split('.');
 
-	// @ts-ignore
-	if (window.n8nExternalHooks[resource] && window.n8nExternalHooks[resource][operator]) {
-		// @ts-ignore
+	if (window.n8nExternalHooks[resource]?.[operator]) {
 		const hookMethods = window.n8nExternalHooks[resource][operator];
 
-		for (const hookmethod of hookMethods) {
-			await hookmethod(store, metadata);
+		for (const hookMethod of hookMethods) {
+			await hookMethod(store, metadata);
 		}
 	}
 }
