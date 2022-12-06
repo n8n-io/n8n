@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Length } from 'class-validator';
 
 import type {
@@ -11,9 +10,6 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	AfterLoad,
-	AfterUpdate,
-	AfterInsert,
 	Column,
 	Entity,
 	Index,
@@ -29,7 +25,6 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
-import { alphabetizeKeys } from '@/utils';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
@@ -90,32 +85,8 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	pinData: ISimplifiedPinData;
 
-	/**
-	 * Hash of editable workflow state.
-	 */
-	hash: string;
-
-	@AfterLoad()
-	@AfterUpdate()
-	@AfterInsert()
-	setHash(): void {
-		const { name, active, nodes, connections, settings, staticData, pinData } = this;
-
-		// Workflow listing page does not request the `connections` column, so we can use this for `undefined` to avoid generating hashes for all the workflows.
-		if (!connections) return;
-
-		const state = JSON.stringify({
-			name,
-			active,
-			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
-			connections,
-			settings,
-			staticData,
-			pinData,
-		});
-
-		this.hash = crypto.createHash('md5').update(state).digest('hex');
-	}
+	@Column({ length: 36 })
+	versionId: string;
 }
 
 /**
