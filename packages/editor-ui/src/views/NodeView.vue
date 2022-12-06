@@ -3,6 +3,7 @@
 	<div
 		class="node-view-root"
 		id="node-view-root"
+		data-test-id="node-view-root"
 	 	@dragover="onDragOver"
 	 	@drop="onDrop"
 	>
@@ -296,6 +297,7 @@ export default mixins(
 							this.resetWorkspace();
 							this.uiStore.stateIsDirty = previousDirtyState;
 						}
+						this.loadCredentials();
 						this.initView().then(() => {
 							this.stopLoading();
 							if (this.blankRedirect) {
@@ -832,7 +834,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash);
+				this.workflowsStore.setWorkflowVersionId(data.versionId);
 
 				if (data.ownedBy) {
 					this.workflowsEEStore.setWorkflowOwnedBy({
@@ -3367,6 +3369,7 @@ export default mixins(
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3375,6 +3378,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 	});
 </script>

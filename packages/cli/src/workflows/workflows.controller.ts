@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import express from 'express';
+import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
@@ -51,6 +52,8 @@ workflowsController.post(
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
+
+		newWorkflow.versionId = uuid();
 
 		await validateEntity(newWorkflow);
 

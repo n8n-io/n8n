@@ -104,7 +104,7 @@ export default mixins(
 				name: '',
 				sharedWith: [],
 				ownedBy: {} as IUser,
-				hash: '',
+				versionId: '',
 			}),
 		},
 		readonly: {
