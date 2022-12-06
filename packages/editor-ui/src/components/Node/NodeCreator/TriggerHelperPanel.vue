@@ -1,11 +1,6 @@
 <template>
 	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
 		<categorized-items
-			@subcategoryClose="onSubcategoryClose"
-			@onSubcategorySelected="onSubcategorySelected"
-			@nodeTypeSelected="$listeners.nodeTypeSelected"
-			@actionsOpen="setActiveActionsNodeType"
-			@actionSelected="onActionSelected"
 			:expandAllCategories="isActionsActive"
 			:subcategoryOverride="nodeAppSubcategory"
 			:alwaysShowSearch="isActionsActive"
@@ -22,6 +17,11 @@
 			:allItems="allNodes"
 			:searchPlaceholder="searchPlaceholder"
 			ref="categorizedItemsRef"
+			@subcategoryClose="onSubcategoryClose"
+			@onSubcategorySelected="onSubcategorySelected"
+			@nodeTypeSelected="$listeners.nodeTypeSelected"
+			@actionsOpen="setActiveActionsNodeType"
+			@actionSelected="onActionSelected"
 		>
 
 			<!-- We don't have no-results -->
@@ -39,8 +39,8 @@
 				<slot name="footer" />
 				<p
 					v-if="(activeNodeActions && containsAPIAction)"
-					@click.stop="addHttpNode"
 					v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle: activeNodeActions?.displayName }})"
+					@click.stop="addHttpNode"
 				/>
 			</template>
 		</categorized-items>

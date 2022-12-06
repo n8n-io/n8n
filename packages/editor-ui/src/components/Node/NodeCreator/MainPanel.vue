@@ -14,6 +14,7 @@
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
+				enable-global-categories-counter
 				:categorizedItems="categorizedItems"
 				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"

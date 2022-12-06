@@ -1169,8 +1169,6 @@ export interface INodeCreatorState {
 	showTabs: boolean;
 	showScrim: boolean;
 	selectedType: INodeFilterType;
-	// categorizedNodesWithActions: INodeCreateElement[];
-	// meregedNodesWithActions: INodeCreateElement[];
 }
 
 export interface ISettingsState {

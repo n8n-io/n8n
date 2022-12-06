@@ -1,12 +1,12 @@
 <template>
 	<div :class="$style.category">
 		<span :class="$style.name">
-			{{ renderCategoryName(item.category) }}
+			{{ renderCategoryName(item.category) }}{{ count !== undefined ? ` (${count})` : ''}}
 		</span>
 		<font-awesome-icon
-			:class="$style.arrow"
-			icon="chevron-down"
 			v-if="isExpanded"
+			icon="chevron-down"
+			:class="$style.arrow"
 		/>
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>
@@ -23,6 +23,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	item: INodeCreateElement;
+	count?: number;
 }
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
@@ -31,28 +32,6 @@ const nodeCreatorStore = useNodeCreatorStore();
 
 const isExpanded = computed<boolean>(() => {
 	return (props.item.properties as ICategoryItemProps).expanded;
-});
-
-// const categoryName = computed<CategoryName>(() => {
-// 	return camelcase(props.item.category) as CategoryName;
-// });
-
-const nodesCount = computed<number>(() => {
-	const currentCategory = categoriesWithNodes[props.item.category];
-	const subcategories = Object.keys(currentCategory);
-
-	// We need to sum subcategories count for the curent nodeType view
-	// to get the total count of category
-	const count = subcategories.reduce((accu: number, subcategory: string) => {
-		const countKeys = NODE_TYPE_COUNT_MAPPER[nodeCreatorStore.selectedType];
-
-		for (const countKey of countKeys) {
-			accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
-		}
-
-		return accu;
-	}, 0);
-	return count;
 });
 
 function renderCategoryName(categoryName: CategoryName) {

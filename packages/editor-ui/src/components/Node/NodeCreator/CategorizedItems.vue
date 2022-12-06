@@ -1,12 +1,12 @@
 <template>
 	<transition :name="`panel-slide-${state.transitionDirection}`" >
 		<div
-			:class="$style.categorizedItems"
 			ref="mainPanelContainer"
 			tabindex="0"
-			@keydown.capture="nodeFilterKeyDown"
-			:key="`${activeSubcategoryTitle}_transition`"
 			data-test-id="categorized-items"
+			:class="$style.categorizedItems"
+			:key="`${activeSubcategoryTitle}_transition`"
+			@keydown.capture="nodeFilterKeyDown"
 		>
 			<div v-if="$slots.header">
 				<slot name="header" />
@@ -27,12 +27,12 @@
 			</div>
 
 			<search-bar
-				:key="nodeCreatorStore.selectedType"
 				v-if="alwaysShowSearch || isSearchVisible"
+				:key="nodeCreatorStore.selectedType"
 				:value="nodeCreatorStore.itemsFilter"
-				@input="onNodeFilterChange"
-				ref="searchBar"
 				:placeholder="searchPlaceholder || $locale.baseText('nodeCreator.searchBar.searchNodes')"
+				ref="searchBar"
+				@input="onNodeFilterChange"
 			/>
 
 			<template v-if="(searchFilter.length > 0 && filteredNodeTypes.length === 0)">
@@ -83,11 +83,12 @@
 				<item-iterator
 					:elements="searchFilter.length === 0 ? renderedItems :filteredNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
+					:with-actions-getter="withActionsGetter"
+					:lazyRender="lazyRender"
+					:enable-global-categories-counter="enableGlobalCategoriesCounter"
 					@selected="selected"
 					@actionsOpen="$listeners.actionsOpen"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:with-actions-getter="withActionsGetter"
-					:lazyRender="lazyRender"
 				>
 
 				</item-iterator>
@@ -124,6 +125,7 @@ export interface Props {
 	showSubcategoryIcon?: boolean;
 	alwaysShowSearch?: boolean;
 	expandAllCategories?: boolean;
+	enableGlobalCategoriesCounter?: boolean;
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
 	withActionsGetter?: Function;
