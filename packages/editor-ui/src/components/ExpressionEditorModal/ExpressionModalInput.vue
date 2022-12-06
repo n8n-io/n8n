@@ -11,7 +11,7 @@ import { history } from '@codemirror/commands';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
-import { braceHandler } from './braceHandler';
+import { doubleBraceHandler } from '../../plugins/codemirror/doubleBraceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
 import { addColor, removeColor } from './colorDecorations';
 
@@ -37,7 +37,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			EXPRESSION_EDITOR_THEME,
 			n8nLanguageSupport(),
 			history(),
-			braceHandler(),
+			doubleBraceHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.updateListener.of((viewUpdate) => {
@@ -98,7 +98,9 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			const afterIsBraced = doc.toString().slice(head, doc.length).includes(CLOSE_MARKER);
 
 			const insert =
-				beforeIsBraced && afterIsBraced ? variable : [OPEN_MARKER, variable, CLOSE_MARKER].join(' ');
+				beforeIsBraced && afterIsBraced
+					? variable
+					: [OPEN_MARKER, variable, CLOSE_MARKER].join(' ');
 
 			this.editor.dispatch({
 				changes: {

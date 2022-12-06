@@ -11,7 +11,7 @@ import { history } from '@codemirror/commands';
 import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
-import { braceHandler } from './braceHandler';
+import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
 import { EXPRESSION_EDITOR_THEME } from './inputTheme';
 import { addColor, removeColor } from './colorDecorations';
 
@@ -50,7 +50,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			EXPRESSION_EDITOR_THEME,
 			n8nLanguageSupport(),
 			history(),
-			braceHandler(),
+			doubleBraceHandler(),
 			EditorView.lineWrapping,
 			EditorView.editable.of(!this.isReadOnly),
 			EditorView.domEventHandlers({
