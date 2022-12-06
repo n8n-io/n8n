@@ -186,7 +186,7 @@ importers:
       passport-jwt: ^4.0.0
       pg: ^8.3.0
       picocolors: ^1.0.0
-      posthog-node: ^1.3.0
+      posthog-node: ^2.2.2
       prom-client: ^13.1.0
       psl: ^1.8.0
       replacestream: ^4.0.3
@@ -270,7 +270,7 @@ importers:
       passport-jwt: 4.0.0
       pg: 8.8.0
       picocolors: 1.0.0
-      posthog-node: 1.3.0
+      posthog-node: 2.2.2
       prom-client: 13.2.0
       psl: 1.9.0
       replacestream: 4.0.3
@@ -7587,10 +7587,11 @@ packages:
       - debug
     dev: false
 
-  /axios/0.24.0:
-    resolution: {integrity: sha512-Q6cWsys88HoPgAaFAVUb0WpPk0O8iTeisR9IMqy9G8AbO4NlpVknrnQS03zzF9PGAWgO3cgletO3VjV/P7VztA==}
+  /axios/0.27.2:
+    resolution: {integrity: sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
+      form-data: 4.0.0
     transitivePeerDependencies:
       - debug
     dev: false
@@ -7607,7 +7608,7 @@ packages:
   /axios/1.1.3:
     resolution: {integrity: sha512-00tXVRwKx/FZr/IDVFt4C+f9FYairX517WoGCL6dpOntqLkZofjhu43F/Xl44UOpqa+9sLFDrG/XAnFsUYgkDA==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
       form-data: 4.0.0
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -17301,19 +17302,11 @@ packages:
       xtend: 4.0.2
     dev: false
 
-  /posthog-node/1.3.0:
-    resolution: {integrity: sha512-2+VhqiY/rKIqKIXyvemBFHbeijHE25sP7eKltnqcFqAssUE6+sX6vusN9A4luzToOqHQkUZexiCKxvuGagh7JA==}
-    engines: {node: '>=4'}
-    hasBin: true
+  /posthog-node/2.2.2:
+    resolution: {integrity: sha512-aXYe/D+28kF63W8Cz53t09ypEORz+ULeDCahdAqhVrRm2scbOXFbtnn0GGhvMpYe45grepLKuwui9KxrZ2ZuMw==}
+    engines: {node: '>=14.17.0'}
     dependencies:
-      axios: 0.24.0
-      axios-retry: 3.3.1
-      component-type: 1.2.1
-      join-component: 1.1.0
-      md5: 2.3.0
-      ms: 2.1.3
-      remove-trailing-slash: 0.1.1
-      uuid: 8.3.2
+      axios: 0.27.2
     transitivePeerDependencies:
       - debug
     dev: false
