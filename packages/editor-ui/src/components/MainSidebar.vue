@@ -214,7 +214,7 @@ export default mixins(
 						label: this.$locale.baseText('settings'),
 						position: 'bottom',
 						available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
-						activateOnRouteNames: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
+						activateOnRouteNames: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS, VIEWS.LOGSTREAMING_SETTINGS ],
 					},
 					{
 						id: 'help',

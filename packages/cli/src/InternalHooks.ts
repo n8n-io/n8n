@@ -89,20 +89,43 @@ export class InternalHooksClass implements IInternalHooksClass {
 		publicApi: boolean,
 	): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
-		return this.telemetry.track('User created workflow', {
-			user_id: userId,
-			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
-			public_api: publicApi,
-		});
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.workflow.created',
+				payload: {
+					user_id: userId,
+					workflow_id: workflow.id,
+					workflow_name: workflow.name,
+					public_api: publicApi,
+				},
+			}),
+			this.telemetry.track('User created workflow', {
+				user_id: userId,
+				workflow_id: workflow.id,
+				node_graph_string: JSON.stringify(nodeGraph),
+				public_api: publicApi,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void> {
-		return this.telemetry.track('User deleted workflow', {
-			user_id: userId,
-			workflow_id: workflowId,
-			public_api: publicApi,
-		});
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.workflow.deleted',
+				payload: {
+					user_id: userId,
+					workflow_id: workflowId,
+					public_api: publicApi,
+				},
+			}),
+			this.telemetry.track('User deleted workflow', {
+				user_id: userId,
+				workflow_id: workflowId,
+				public_api: publicApi,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onWorkflowSaved(userId: string, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
@@ -112,21 +135,32 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const overlappingCount = Object.values(nodeGraph.notes).filter(
 			(note) => note.overlapping,
 		).length;
-
-		return this.telemetry.track(
-			'User saved workflow',
-			{
-				user_id: userId,
-				workflow_id: workflow.id,
-				node_graph_string: JSON.stringify(nodeGraph),
-				notes_count_overlapping: overlappingCount,
-				notes_count_non_overlapping: notesCount - overlappingCount,
-				version_cli: this.versionCli,
-				num_tags: workflow.tags?.length ?? 0,
-				public_api: publicApi,
-			},
-			{ withPostHog: true },
-		);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.workflow.updated',
+				payload: {
+					user_id: userId,
+					workflow_id: workflow.id,
+					workflow_name: workflow.name,
+					public_api: publicApi,
+				},
+			}),
+			this.telemetry.track(
+				'User saved workflow',
+				{
+					user_id: userId,
+					workflow_id: workflow.id,
+					node_graph_string: JSON.stringify(nodeGraph),
+					notes_count_overlapping: overlappingCount,
+					notes_count_non_overlapping: notesCount - overlappingCount,
+					version_cli: this.versionCli,
+					num_tags: workflow.tags?.length ?? 0,
+					public_api: publicApi,
+				},
+				{ withPostHog: true },
+			),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onWorkflowPostExecute(
@@ -249,11 +283,21 @@ export class InternalHooksClass implements IInternalHooksClass {
 			}
 		}
 
-		return Promise.all([
+		Promise.all([
+			eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.finished',
+				payload: {
+					success: properties.success,
+					user_id: properties.user_id,
+					workflow_id: properties.workflow_id,
+					is_manual: properties.is_manual,
+				},
+			}),
 			...promises,
 			BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId),
 			this.telemetry.trackWorkflowExecution(properties),
-		]).then(() => {});
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onN8nStop(): Promise<void> {
@@ -270,14 +314,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 		userId: string,
 		userDeletionData: ITelemetryUserDeletionData,
 		publicApi: boolean,
-	): Promise<any> {
-		return Promise.all([
+	): Promise<void> {
+		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.deleted',
 				payload: {
 					userId,
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					userDeletionData: userDeletionData as unknown as JsonValue,
+					...userDeletionData,
+					publicApi,
 				},
 			}),
 			this.telemetry.track('User deleted user', {
@@ -285,7 +329,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userId,
 				public_api: publicApi,
 			}),
-		]);
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserInvite(userInviteData: {
@@ -293,14 +338,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		target_user_id: string[];
 		public_api: boolean;
 	}): Promise<void> {
-		await eventBus.sendAuditEvent({
-			eventName: 'n8n.audit.user.invited',
-			payload: {
-				userId: userInviteData.user_id,
-				targetUserId: userInviteData.target_user_id,
-			},
-		});
-		return this.telemetry.track('User invited new user', userInviteData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.invited',
+				payload: {
+					...userInviteData,
+				},
+			}),
+			this.telemetry.track('User invited new user', userInviteData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserReinvite(userReinviteData: {
@@ -308,7 +355,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		target_user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User resent new user invite email', userReinviteData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.reinvited',
+				payload: {
+					...userReinviteData,
+				},
+			}),
+			this.telemetry.track('User resent new user invite email', userReinviteData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserRetrievedUser(userRetrievedData: {
@@ -354,17 +410,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.updated',
 				payload: {
-					userId: userUpdateData.user_id,
-					_name: 'irgendwas',
+					...userUpdateData,
 				},
 			}),
 			this.telemetry.track('User changed personal settings', userUpdateData),
-		]);
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void> {
@@ -402,21 +457,44 @@ export class InternalHooksClass implements IInternalHooksClass {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('API key deleted', apiKeyDeletedData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.api.deleted',
+				payload: {
+					...apiKeyDeletedData,
+				},
+			}),
+			this.telemetry.track('API key deleted', apiKeyDeletedData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onApiKeyCreated(apiKeyCreatedData: {
 		user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('API key created', apiKeyCreatedData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.api.created',
+				payload: {
+					...apiKeyCreatedData,
+				},
+			}),
+			this.telemetry.track('API key created', apiKeyCreatedData),
+		]).catch((error) => console.log(error));
 	}
 
 	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {
-		return this.telemetry.track(
-			'User requested password reset while logged out',
-			userPasswordResetData,
-		);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.reset.requested',
+				payload: {
+					...userPasswordResetData,
+				},
+			}),
+			this.telemetry.track('User requested password reset while logged out', userPasswordResetData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
@@ -424,7 +502,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onUserSignup(userSignupData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('User signed up', userSignupData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.signedup',
+				payload: {
+					...userSignupData,
+				},
+			}),
+			this.telemetry.track('User signed up', userSignupData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onEmailFailed(failedEmailData: {
@@ -432,10 +519,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track(
-			'Instance failed to send transactional email to user',
-			failedEmailData,
-		);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.email.failed',
+				payload: {
+					...failedEmailData,
+				},
+			}),
+			this.telemetry.track('Instance failed to send transactional email to user', failedEmailData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	/**
@@ -447,10 +540,19 @@ export class InternalHooksClass implements IInternalHooksClass {
 		credential_id: string;
 		public_api: boolean;
 	}): Promise<void> {
-		return this.telemetry.track('User created credentials', {
-			...userCreatedCredentialsData,
-			instance_id: this.instanceId,
-		});
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.created',
+				payload: {
+					...userCreatedCredentialsData,
+				},
+			}),
+			this.telemetry.track('User created credentials', {
+				...userCreatedCredentialsData,
+				instance_id: this.instanceId,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
@@ -460,10 +562,19 @@ export class InternalHooksClass implements IInternalHooksClass {
 		user_ids_sharees_added: string[];
 		sharees_removed: number | null;
 	}): Promise<void> {
-		return this.telemetry.track('User updated cred sharing', {
-			...userSharedCredentialsData,
-			instance_id: this.instanceId,
-		});
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.credentials.shared',
+				payload: {
+					...userSharedCredentialsData,
+				},
+			}),
+			this.telemetry.track('User updated cred sharing', {
+				...userSharedCredentialsData,
+				instance_id: this.instanceId,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	/**
@@ -481,7 +592,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_author_email?: string;
 		failure_reason?: string;
 	}): Promise<void> {
-		return this.telemetry.track('cnr package install finished', installationData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.package.installed',
+				payload: {
+					...installationData,
+				},
+			}),
+			this.telemetry.track('cnr package install finished', installationData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onCommunityPackageUpdateFinished(updateData: {
@@ -493,7 +613,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		return this.telemetry.track('cnr package updated', updateData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.package.updated',
+				payload: {
+					...updateData,
+				},
+			}),
+			this.telemetry.track('cnr package updated', updateData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onCommunityPackageDeleteFinished(updateData: {
@@ -504,6 +633,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 		package_author?: string;
 		package_author_email?: string;
 	}): Promise<void> {
-		return this.telemetry.track('cnr package deleted', updateData);
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.package.deleted',
+				payload: {
+					...updateData,
+				},
+			}),
+			this.telemetry.track('cnr package deleted', updateData),
+		]).catch((error) => console.log(error));
+		return;
 	}
 }

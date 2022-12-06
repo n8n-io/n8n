@@ -51,6 +51,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { eventBus } from './eventbus';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -349,6 +350,18 @@ export class WorkflowRunner {
 			workflowExecution
 				.then((fullRunData) => {
 					clearTimeout(executionTimeout);
+					eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.executed',
+						payload: {
+							finished: fullRunData.finished,
+							mode: fullRunData.mode,
+							startedAt: fullRunData.startedAt.toISOString(),
+							stoppedAt: fullRunData.stoppedAt?.toISOString(),
+							lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted,
+							workflow_id: workflow.id,
+							workflow_name: workflow.name,
+						},
+					});
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}

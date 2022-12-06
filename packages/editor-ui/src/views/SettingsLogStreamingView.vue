@@ -171,8 +171,6 @@ export default mixins(
 				}
 			}
 			this.$forceUpdate();
-			console.log(destinationData, this.storeHasItems(), this.logStreamingStore.items, Object.keys(this.logStreamingStore.items).length, Object.keys(this.logStreamingStore.items).length > 0,
-			this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0);
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;

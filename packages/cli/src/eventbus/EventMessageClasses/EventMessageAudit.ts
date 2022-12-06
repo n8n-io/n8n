@@ -4,12 +4,23 @@ import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const eventNamesAudit = [
-	'n8n.audit.user.created',
+	'n8n.audit.user.signedup',
 	'n8n.audit.user.updated',
 	'n8n.audit.user.deleted',
 	'n8n.audit.user.invited',
 	'n8n.audit.user.reinvited',
-	'n8n.audit.user.emailFailed',
+	'n8n.audit.user.email.failed',
+	'n8n.audit.user.reset.requested',
+	'n8n.audit.user.credentials.created',
+	'n8n.audit.user.credentials.shared',
+	'n8n.audit.user.api.created',
+	'n8n.audit.user.api.deleted',
+	'n8n.audit.package.installed',
+	'n8n.audit.package.updated',
+	'n8n.audit.package.deleted',
+	'n8n.audit.workflow.created',
+	'n8n.audit.workflow.deleted',
+	'n8n.audit.workflow.updated',
 ] as const;
 export type EventNamesAuditType = typeof eventNamesAudit[number];
 

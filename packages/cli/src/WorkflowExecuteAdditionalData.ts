@@ -491,8 +491,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				await eventBus.sendWorkflowEvent({
 					eventName: 'n8n.workflow.started',
 					payload: {
-						executionId: this.executionId,
-						workflowId: this.workflowData.id,
+						execution_id: this.executionId,
+						workflow_id: this.workflowData.id,
 					},
 				});
 				return;
@@ -659,8 +659,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						payload: {
 							workflowData: this.workflowData,
 							msg: error,
-							executionId: this.executionId,
-							workflowId: this.workflowData.id,
+							execution_id: this.executionId,
+							workflow_id: this.workflowData.id,
 						},
 					});
 

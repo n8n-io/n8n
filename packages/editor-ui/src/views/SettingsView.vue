@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<SettingsSidebar @return="onReturn" />
 		<div :class="$style.contentContainer">
-			<div :class="$style.content">
+			<div :class="fullWidthContent() ? $style.contentFullWidth : $style.content">
 				<!--
 					Because we're using nested routes the props are going to be bind to the top level route
 					so we need to pass them down to the child component
@@ -39,6 +39,9 @@ const SettingsView = defineComponent({
 		onReturn() {
 			this.$router.push(this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE });
 		},
+		fullWidthContent(): boolean {
+			return this.$router.currentRoute.meta?.fullWidthPage;
+		}
 	},
 });
 
@@ -66,6 +69,12 @@ export default SettingsView;
 	height: 100%;
 	width: 100%;
 	max-width: 800px;
+	padding: 0 var(--spacing-2xl);
+}
+
+.contentFullWidth {
+	height: 100%;
+	width: 100%;
 	padding: 0 var(--spacing-2xl);
 }
 </style>

@@ -511,34 +511,35 @@ const router = new Router({
 						},
 					},
 				},
-				// {
-				// 	path: 'logstreaming',
-				// 	name: VIEWS.LOGSTREAMING_SETTINGS,
-				// 	components: {
-				// 		settingsView: SettingsLogStreamingView,
-				// 	},
-				// 	meta: {
-				// 		telemetry: {
-				// 			pageCategory: 'settings',
-				// 			getProperties(route: Route) {
-				// 				return {
-				// 					feature: 'logstreaming',
-				// 				};
-				// 			},
-				// 		},
-				// 		permissions: {
-				// 			allow: {
-				// 				loginStatus: [LOGIN_STATUS.LoggedIn],
-				// 			},
-				// 			deny: {
-				// 				shouldDeny: () => {
-				// 					const settingsStore =  useSettingsStore();
-				// 					return settingsStore.isPublicApiEnabled === false;
-				// 				},
-				// 			},
-				// 		},
-				// 	},
-				// },
+				{
+					path: 'logstreaming',
+					name: VIEWS.LOGSTREAMING_SETTINGS,
+					components: {
+						settingsView: SettingsLogStreamingView,
+					},
+					meta: {
+						fullWidthPage: true,
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'logstreaming',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore =  useSettingsStore();
+									return settingsStore.isPublicApiEnabled === false;
+								},
+							},
+						},
+					},
+				},
 				{
 					path: 'community-nodes',
 					name: VIEWS.COMMUNITY_NODES,
@@ -599,35 +600,6 @@ const router = new Router({
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedOut],
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/logstreaming',
-			name: VIEWS.LOGSTREAMING_SETTINGS,
-			components: {
-				default: SettingsLogStreamingView,
-				sidebar: SettingsSidebar,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route) {
-						return {
-							feature: 'logstreaming',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						shouldDeny: () => {
-							const settingsStore =  useSettingsStore();
-							return settingsStore.isPublicApiEnabled === false;
-						},
 					},
 				},
 			},

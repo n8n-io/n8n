@@ -165,13 +165,14 @@ export function eventGroupFromEventName(eventName:string): string | undefined {
 	if (matches && matches?.length > 0) {
 		return matches[0];
 	}
+	return undefined;
 }
 
 function prettifyEventName(label: string, group = ''): string {
 	label = label.replace(group + '.', '');
 	if (label.length > 0) {
 		label = label[0].toUpperCase() + label.substring(1);
-		label = label.replace('.', ' ');
+		label = label.replaceAll('.', ' ');
 	}
 	return label;
 }

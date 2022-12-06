@@ -7,10 +7,8 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.started',
 	'n8n.workflow.finished',
 	'n8n.workflow.error',
-	'n8n.workflow.created',
-	'n8n.workflow.changed',
-	'n8n.workflow.deleted',
 	'n8n.workflow.shared',
+	'n8n.workflow.executed',
 ] as const;
 export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
 
@@ -22,10 +20,10 @@ export interface EventPayloadWorkflow extends AbstractEventPayload {
 
 	workflowData?: IWorkflowBase;
 
-	executionId?: string;
+	execution_id?: string;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	workflowId?: number | string | any;
+	workflow_id?: number | string | any;
 }
 
 export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions {
