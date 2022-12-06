@@ -40,6 +40,12 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 					this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
 				}
 			}
+			if (this.isNDVOpen) {
+				const activeNode = this.ndvStore.activeNode;
+				if (activeNode) {
+					this.$telemetry.track(`User hit undo in NDV`, { node_type: activeNode.type });
+				}
+			}
 		},
 		async undo() {
 			const command = this.historyStore.popUndoableToUndo();
@@ -104,7 +110,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 			}
 			if (telemetryData.type && telemetryData.commands.length > 0) {
 				telemetryData.commands.forEach(command => { delete command.eventBus; });
-				this.$telemetry.track(`user hit ${type}`, telemetryData);
+				this.$telemetry.track(`User hit ${type}`, telemetryData);
 			}
 		},
 	},
