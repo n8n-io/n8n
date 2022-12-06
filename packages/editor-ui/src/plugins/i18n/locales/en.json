@@ -1114,6 +1114,7 @@
 	"settings.api.view.error": "Could not check if an api key already exists.",
 	"settings.version": "Version",
 	"settings.usageAndPlan.title": "Usage and plan",
+	"settings.usageAndPlan.actual": "You’re on the {plan} plan",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",

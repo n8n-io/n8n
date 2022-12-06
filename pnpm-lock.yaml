@@ -482,9 +482,9 @@ importers:
       '@codemirror/state': ^6.1.4
       '@codemirror/view': ^6.5.1
       '@fontsource/open-sans': ^4.5.0
-      '@fortawesome/fontawesome-svg-core': ^6.2.1
-      '@fortawesome/free-regular-svg-icons': ^6.2.1
-      '@fortawesome/free-solid-svg-icons': ^6.2.1
+      '@fortawesome/fontawesome-svg-core': ^1.2.35
+      '@fortawesome/free-regular-svg-icons': ^6.1.1
+      '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
@@ -557,10 +557,10 @@ importers:
       '@codemirror/state': 6.1.4
       '@codemirror/view': 6.5.1
       '@fontsource/open-sans': 4.5.12
-      '@fortawesome/fontawesome-svg-core': 6.2.1
-      '@fortawesome/free-regular-svg-icons': 6.2.1
-      '@fortawesome/free-solid-svg-icons': 6.2.1
-      '@fortawesome/vue-fontawesome': 2.0.8_rfmmfuraqzwwtdrzdelzbtnoqm
+      '@fortawesome/fontawesome-svg-core': 1.2.36
+      '@fortawesome/free-regular-svg-icons': 6.2.0
+      '@fortawesome/free-solid-svg-icons': 5.15.4
+      '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
       axios: 0.21.4
       dateformat: 3.0.3
       esprima-next: 5.8.4
@@ -2795,10 +2795,9 @@ packages:
   /@fortawesome/fontawesome-common-types/0.2.36:
     resolution: {integrity: sha512-a/7BiSgobHAgBWeN7N0w+lAhInrGxksn13uK7231n2m8EDPE3BMCl9NZLTGrj9ZXfCmC6LM0QLqXidIizVQ6yg==}
     engines: {node: '>=6'}
-    dev: true
 
-  /@fortawesome/fontawesome-common-types/6.2.1:
-    resolution: {integrity: sha512-Sz07mnQrTekFWLz5BMjOzHl/+NooTdW8F8kDQxjWwbpOJcnoSg4vUDng8d/WR1wOxM0O+CY9Zw0nR054riNYtQ==}
+  /@fortawesome/fontawesome-common-types/6.2.0:
+    resolution: {integrity: sha512-rBevIsj2nclStJ7AxTdfsa3ovHb1H+qApwrxcTVo+NNdeJiB9V75hsKfrkG5AwNcRUNxrPPiScGYCNmLMoh8pg==}
     engines: {node: '>=6'}
     dev: false
 
@@ -2807,20 +2806,12 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       '@fortawesome/fontawesome-common-types': 0.2.36
-    dev: true
 
-  /@fortawesome/fontawesome-svg-core/6.2.1:
-    resolution: {integrity: sha512-HELwwbCz6C1XEcjzyT1Jugmz2NNklMrSPjZOWMlc+ZsHIVk+XOvOXLGGQtFBwSyqfJDNgRq4xBCwWOaZ/d9DEA==}
+  /@fortawesome/free-regular-svg-icons/6.2.0:
+    resolution: {integrity: sha512-M1dG+PAmkYMTL9BSUHFXY5oaHwBYfHCPhbJ8qj8JELsc9XCrUJ6eEHWip4q0tE+h9C0DVyFkwIM9t7QYyCpprQ==}
     engines: {node: '>=6'}
     dependencies:
-      '@fortawesome/fontawesome-common-types': 6.2.1
-    dev: false
-
-  /@fortawesome/free-regular-svg-icons/6.2.1:
-    resolution: {integrity: sha512-wiqcNDNom75x+pe88FclpKz7aOSqS2lOivZeicMV5KRwOAeypxEYWAK/0v+7r+LrEY30+qzh8r2XDaEHvoLsMA==}
-    engines: {node: '>=6'}
-    dependencies:
-      '@fortawesome/fontawesome-common-types': 6.2.1
+      '@fortawesome/fontawesome-common-types': 6.2.0
     dev: false
 
   /@fortawesome/free-solid-svg-icons/5.15.4:
@@ -2828,24 +2819,6 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       '@fortawesome/fontawesome-common-types': 0.2.36
-    dev: true
-
-  /@fortawesome/free-solid-svg-icons/6.2.1:
-    resolution: {integrity: sha512-oKuqrP5jbfEPJWTij4sM+/RvgX+RMFwx3QZCZcK9PrBDgxC35zuc7AOFsyMjMd/PIFPeB2JxyqDr5zs/DZFPPw==}
-    engines: {node: '>=6'}
-    dependencies:
-      '@fortawesome/fontawesome-common-types': 6.2.1
-    dev: false
-
-  /@fortawesome/vue-fontawesome/2.0.8_rfmmfuraqzwwtdrzdelzbtnoqm:
-    resolution: {integrity: sha512-SRmP0q9Ox4zq8ydDR/hrH+23TVU1bdwYVnugLVaAIwklOHbf56gx6JUGlwES7zjuNYqzKgl8e39iYf6ph8qSQw==}
-    peerDependencies:
-      '@fortawesome/fontawesome-svg-core': ~1 || ~6
-      vue: ~2
-    dependencies:
-      '@fortawesome/fontawesome-svg-core': 6.2.1
-      vue: 2.7.13
-    dev: false
 
   /@fortawesome/vue-fontawesome/2.0.8_tc4irwwlc7tvswdic4b5cxexom:
     resolution: {integrity: sha512-SRmP0q9Ox4zq8ydDR/hrH+23TVU1bdwYVnugLVaAIwklOHbf56gx6JUGlwES7zjuNYqzKgl8e39iYf6ph8qSQw==}
@@ -2855,7 +2828,6 @@ packages:
     dependencies:
       '@fortawesome/fontawesome-svg-core': 1.2.36
       vue: 2.7.13
-    dev: true
 
   /@gar/promisify/1.1.3:
     resolution: {integrity: sha512-k2Ty1JcVojjJFwrg/ThKi2ujJ7XNLYaFGNB/bWT9wGR+oSMJHMa5w+CUq6p/pVrKeNNgA7pCqEcjSnHVoqJQFw==}

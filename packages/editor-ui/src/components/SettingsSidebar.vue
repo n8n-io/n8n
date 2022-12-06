@@ -103,7 +103,7 @@ export default mixins(
 			menuItems.push(
 				{
 					id: 'settings-usage-and-plan',
-					icon: 'chart-simple',
+					icon: 'chart-bar',
 					label: this.$locale.baseText('settings.usageAndPlan.title'),
 					position: 'top',
 					available: this.canAccessUsageAndPlan(),

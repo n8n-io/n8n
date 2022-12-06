@@ -16,7 +16,7 @@ import {
 	faBug,
 	faCalculator,
 	faCalendar,
-	faChartSimple,
+	faChartBar,
 	faCheck,
 	faCheckCircle,
 	faCheckSquare,
@@ -145,7 +145,7 @@ addIcon(faBoxOpen);
 addIcon(faBug);
 addIcon(faCalculator);
 addIcon(faCalendar);
-addIcon(faChartSimple);
+addIcon(faChartBar);
 addIcon(faCheck);
 addIcon(faCheckCircle);
 addIcon(faCheckSquare);
