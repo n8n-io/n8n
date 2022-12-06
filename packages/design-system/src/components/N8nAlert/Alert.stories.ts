@@ -1,5 +1,6 @@
 import type { StoryFn } from '@storybook/vue';
 import N8nAlert from './Alert.vue';
+import N8nIcon from '../N8nIcon';
 
 export default {
 	title: 'Atoms/Alert',
@@ -25,8 +26,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		'<div style="position: relative; width: 100%; height: 300px;"><n8n-alert v-bind="$props"><template #aside>custom content slot</template></n8n-alert></div>',
 });
 
-export const Alert = Template.bind({});
-Alert.args = {
+export const ContentAsProps = Template.bind({});
+ContentAsProps.args = {
 	type: 'info',
 	effect: 'light',
 	title: 'Alert title',
@@ -34,4 +35,31 @@ Alert.args = {
 	center: false,
 	showIcon: true,
 	background: true,
+};
+
+const TemplateForSlots: StoryFn = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nAlert,
+		N8nIcon,
+	},
+	template: `<div style="position: relative; width: 100%; height: 300px;">
+			  <n8n-alert v-bind="$props">
+					<template #title>Title</template>
+					<template>Description</template>
+					<template #aside><button>Button</button></template>
+					<template #icon>
+						<n8n-icon icon="grin-stars" size="xlarge" />
+					</template>
+				</n8n-alert>
+		</div>`,
+});
+
+export const ContentInSlots = TemplateForSlots.bind({});
+ContentInSlots.args = {
+	type: 'info',
+	effect: 'light',
+	center: false,
+	background: true,
+	showIcon: false,
 };

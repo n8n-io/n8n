@@ -1,22 +1,9 @@
 <template>
-	<div
-		:class="{
-			'n8n-alert': true,
-			[$style.alert]: true,
-			[$style.success]: type === 'success',
-			[$style.error]: type === 'error',
-			[$style.warning]: type === 'warning',
-			[$style.info]: type === 'info',
-			[$style.isLight]: effect === 'light',
-			[$style.isDark]: effect === 'dark',
-			[$style.center]: center,
-			[$style.background]: background,
-		}"
-		role="alert"
-	>
+	<div :class="alertBoxClassNames" role="alert">
 		<div :class="$style.content">
-			<span v-if="showIcon" :class="$style.icon">
-				<n8n-icon :icon="icon" />
+			<span v-if="showIcon || $slots.icon" :class="$style.icon">
+				<n8n-icon v-if="showIcon" :icon="icon" />
+				<slot v-else-if="$slots.icon" name="icon" />
 			</span>
 			<div :class="$style.text">
 				<div v-if="$slots.title || title" :class="$style.title">
@@ -34,7 +21,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, useCssModule } from 'vue';
 import N8nIcon from '../N8nIcon';
 
 type AlertProps = {
@@ -68,6 +55,24 @@ const icon = computed(() => {
 	}
 	/* eslint-enable */
 });
+
+const style = useCssModule();
+const alertBoxClassNames = computed(() => {
+	const classNames = ['n8n-alert', style.alert];
+	if (props.type) {
+		classNames.push(style[props.type]);
+	}
+	if (props.effect) {
+		classNames.push(style[props.effect]);
+	}
+	if (props.center) {
+		classNames.push(style.center);
+	}
+	if (props.background) {
+		classNames.push(style.background);
+	}
+	return classNames;
+});
 </script>
 
 <style lang="scss" module>
@@ -76,7 +81,7 @@ const icon = computed(() => {
 .alert {
 	display: flex;
 	position: relative;
-	height: 60px;
+	min-height: 60px;
 	border-bottom: 1px solid transparent;
 	align-items: center;
 	justify-content: space-between;
@@ -87,7 +92,7 @@ const icon = computed(() => {
 	}
 
 	&.success {
-		&.isLight {
+		&.light {
 			color: var(--color-success);
 
 			&.background {
@@ -100,7 +105,7 @@ const icon = computed(() => {
 			}
 		}
 
-		&.isDark {
+		&.dark {
 			color: $color-white;
 
 			&:not(.background) {
@@ -115,7 +120,7 @@ const icon = computed(() => {
 	}
 
 	&.info {
-		&.isLight {
+		&.light {
 			color: var(--color-info);
 
 			&.background {
@@ -124,7 +129,7 @@ const icon = computed(() => {
 			}
 		}
 
-		&.isDark {
+		&.dark {
 			color: $color-white;
 
 			&:not(.background) {
@@ -143,7 +148,7 @@ const icon = computed(() => {
 	}
 
 	&.warning {
-		&.isLight {
+		&.light {
 			color: var(--color-warning);
 
 			&.background {
@@ -156,7 +161,7 @@ const icon = computed(() => {
 			}
 		}
 
-		&.isDark {
+		&.dark {
 			color: $color-white;
 
 			&:not(.background) {
@@ -171,7 +176,7 @@ const icon = computed(() => {
 	}
 
 	&.error {
-		&.isLight {
+		&.light {
 			color: var(--color-danger);
 
 			&.background {
@@ -184,7 +189,7 @@ const icon = computed(() => {
 			}
 		}
 
-		&.isDark {
+		&.dark {
 			color: $color-white;
 
 			&:not(.background) {
