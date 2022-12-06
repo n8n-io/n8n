@@ -11,7 +11,7 @@ import { history } from '@codemirror/commands';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import { n8nLanguageSupport } from './n8nLanguageSupport';
+import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
 import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
 import { EXPRESSION_EDITOR_THEME } from './inputTheme';
 
