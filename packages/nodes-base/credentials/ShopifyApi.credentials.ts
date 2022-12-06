@@ -9,8 +9,11 @@ import {
 
 export class ShopifyApi implements ICredentialType {
 	name = 'shopifyApi';
+
 	displayName = 'Shopify API';
+
 	documentationUrl = 'shopify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -43,6 +46,7 @@ export class ShopifyApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

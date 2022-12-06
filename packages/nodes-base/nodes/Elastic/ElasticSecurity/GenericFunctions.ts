@@ -44,7 +44,7 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
@@ -63,7 +63,7 @@ export async function elasticSecurityApiRequestAllItems(
 ) {
 	let _page = 1;
 	const returnData: IDataObject[] = [];
-	let responseData: any; // tslint:disable-line
+	let responseData: any;
 
 	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
 
@@ -89,7 +89,7 @@ export async function handleListing(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await elasticSecurityApiRequestAllItems.call(

@@ -335,8 +335,8 @@ export class AwsRekognition implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'image') {
@@ -356,7 +356,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'ModerationLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 						}
 
@@ -370,7 +370,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'FaceDetails';
 
 							if (additionalFields.attributes) {
-								body['Attributes'] = additionalFields.attributes as string;
+								body.Attributes = additionalFields.attributes as string;
 							}
 						}
 
@@ -378,11 +378,11 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 
 							if (additionalFields.maxLabels) {
-								body['MaxLabels'] = additionalFields.maxLabels as number;
+								body.MaxLabels = additionalFields.maxLabels as number;
 							}
 						}
 
@@ -396,13 +396,13 @@ export class AwsRekognition implements INodeType {
 							body.Filters = {};
 
 							const box =
-								(((additionalFields.regionsOfInterestUi as IDataObject) || {})
-									.regionsOfInterestValues as IDataObject[]) || [];
+								((additionalFields.regionsOfInterestUi as IDataObject)
+									?.regionsOfInterestValues as IDataObject[]) || [];
 
 							if (box.length !== 0) {
 								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(box) };
+								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+									return { BoundingBox: keysTPascalCase(entry) };
 								});
 							}
 

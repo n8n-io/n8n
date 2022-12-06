@@ -19,12 +19,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -59,10 +58,10 @@ export async function googleApiRequest(
 			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.request!(options);
+			return this.helpers.request!(options);
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
+			return this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -78,10 +77,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -92,12 +90,12 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {
@@ -112,22 +110,22 @@ function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
+			iss: credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: `https://oauth2.googleapis.com/token`,
 			iat: now,
 			exp: now + 3600,
 		},
-		privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				kid: privateKey as string,
+				kid: privateKey,
 				typ: 'JWT',
 				alg: 'RS256',
 			},

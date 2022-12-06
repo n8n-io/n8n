@@ -547,6 +547,10 @@ export interface IGetNodeParameterOptions {
 }
 
 namespace ExecuteFunctions {
+	namespace StringReturning {
+		export type NodeParameter = 'binaryProperty' | 'resource' | 'operation';
+	}
+
 	namespace NumberReturning {
 		export type NodeParameter = 'limit';
 	}
@@ -572,6 +576,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
+		getNodeParameter(
+			parameterName: StringReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: string,
+			options?: IGetNodeParameterOptions,
+		): string;
 		getNodeParameter(
 			parameterName: RecordReturning.NodeParameter,
 			itemIndex: number,

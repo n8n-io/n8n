@@ -240,7 +240,7 @@ export class AirtableTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), `The Field "${triggerField}" does not exist.`);
 			}
 
-			if (downloadAttachments === true) {
+			if (downloadAttachments) {
 				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(
 					',',
 				);

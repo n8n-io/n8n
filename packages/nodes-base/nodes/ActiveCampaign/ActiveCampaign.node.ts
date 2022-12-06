@@ -327,8 +327,8 @@ export class ActiveCampaign implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				dataKey = undefined;
-				resource = this.getNodeParameter('resource', 0) as string;
-				operation = this.getNodeParameter('operation', 0) as string;
+				resource = this.getNodeParameter('resource', 0);
+				operation = this.getNodeParameter('operation', 0);
 
 				requestMethod = 'GET';
 				endpoint = '';
@@ -344,7 +344,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'POST';
 
 						const updateIfExists = this.getNodeParameter('updateIfExists', i) as boolean;
-						if (updateIfExists === true) {
+						if (updateIfExists) {
 							endpoint = '/api/3/contact/sync';
 						} else {
 							endpoint = '/api/3/contacts';
@@ -387,7 +387,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -398,7 +398,7 @@ export class ActiveCampaign implements INodeType {
 							delete qs.orderBy;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'contacts';
 						}
 
@@ -471,11 +471,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'accounts';
 						}
 
@@ -640,11 +640,11 @@ export class ActiveCampaign implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'lists';
 						}
 
@@ -696,11 +696,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'tags';
 						}
 
@@ -803,11 +803,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'deals';
 						}
 
@@ -902,11 +902,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'connections';
 						}
 
@@ -932,7 +932,7 @@ export class ActiveCampaign implements INodeType {
 							source: this.getNodeParameter('source', i) as string,
 							email: this.getNodeParameter('email', i) as string,
 							totalPrice: this.getNodeParameter('totalPrice', i) as number,
-							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase() as string,
+							currency: this.getNodeParameter('currency', i)!.toString().toUpperCase(),
 							externalCreatedDate: this.getNodeParameter('externalCreatedDate', i) as string,
 							connectionid: this.getNodeParameter('connectionid', i) as number,
 							customerid: this.getNodeParameter('customerid', i) as number,
@@ -1002,11 +1002,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'ecomOrders';
 						}
 
@@ -1091,11 +1091,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'ecomCustomers';
 						}
 
@@ -1137,11 +1137,11 @@ export class ActiveCampaign implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
-						if (simple === true) {
+						if (simple) {
 							dataKey = 'ecomOrderProducts';
 						}
 
@@ -1160,7 +1160,7 @@ export class ActiveCampaign implements INodeType {
 				}
 
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await activeCampaignApiRequestAllItems.call(
 						this,
 						requestMethod,

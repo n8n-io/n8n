@@ -68,7 +68,7 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	settings: {},
 	tags: [],
 	pinData: {},
-	hash: '',
+	versionId: '',
 });
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
@@ -97,8 +97,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowId(): string {
 			return this.workflow.id;
 		},
-		workflowHash(): string | undefined {
-			return this.workflow.hash;
+		workflowVersionId(): string | undefined {
+			return this.workflow.versionId;
 		},
 		workflowSettings() : IWorkflowSettings {
 			if (this.workflow.settings === undefined) {
@@ -287,8 +287,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 		},
 
-		setWorkflowHash(hash: string): void {
-			this.workflow.hash = hash;
+		setWorkflowVersionId(versionId: string): void {
+			this.workflow.versionId = versionId;
 		},
 
 		// replace invalid credentials in workflow

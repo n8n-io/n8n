@@ -202,7 +202,7 @@ export class EmailReadImapV2 implements INodeType {
 						};
 						const tlsOptions: IDataObject = {};
 
-						if (credentials.allowUnauthorizedCerts === true) {
+						if (credentials.allowUnauthorizedCerts) {
 							tlsOptions.rejectUnauthorized = false;
 						}
 
@@ -253,7 +253,7 @@ export class EmailReadImapV2 implements INodeType {
 		let isCurrentlyReconnecting = false;
 
 		// Returns the email text
-		// tslint:disable-next-line:no-any
+
 		const getText = async (parts: any[], message: Message, subtype: string) => {
 			if (!message.attributes.struct) {
 				return '';
@@ -278,8 +278,9 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns the email attachments
 		const getAttachment = async (
-			connection: ImapSimple,
+			imapConnection: ImapSimple,
 			// tslint:disable-next-line:no-any
+
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {
@@ -295,13 +296,15 @@ export class EmailReadImapV2 implements INodeType {
 			const attachmentPromises = [];
 			let attachmentPromise;
 			for (const attachmentPart of attachmentParts) {
-				attachmentPromise = connection.getPartData(message, attachmentPart).then((partData) => {
-					// Return it in the format n8n expects
-					return this.helpers.prepareBinaryData(
-						partData,
-						attachmentPart.disposition.params.filename,
-					);
-				});
+				attachmentPromise = imapConnection
+					.getPartData(message, attachmentPart)
+					.then(async (partData) => {
+						// Return it in the format n8n expects
+						return this.helpers.prepareBinaryData(
+							partData,
+							attachmentPart.disposition.params.filename,
+						);
+					});
 
 				attachmentPromises.push(attachmentPromise);
 			}
@@ -311,7 +314,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns all the new unseen messages
 		const getNewEmails = async (
-			connection: ImapSimple,
+			imapConnection: ImapSimple,
 			searchCriteria: Array<string | string[]>,
 		): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
@@ -332,7 +335,7 @@ export class EmailReadImapV2 implements INodeType {
 				};
 			}
 
-			const results = await connection.search(searchCriteria, fetchOptions);
+			const results = await imapConnection.search(searchCriteria, fetchOptions);
 
 			const newEmails: INodeExecutionData[] = [];
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
@@ -378,7 +381,7 @@ export class EmailReadImapV2 implements INodeType {
 				const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
 
 				let dataPropertyAttachmentsPrefixName = '';
-				if (downloadAttachments === true) {
+				if (downloadAttachments) {
 					dataPropertyAttachmentsPrefixName = this.getNodeParameter(
 						'dataPropertyAttachmentsPrefixName',
 					) as string;
@@ -423,9 +426,9 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 
-					if (downloadAttachments === true) {
+					if (downloadAttachments) {
 						// Get attachments and add them if any get found
-						attachments = await getAttachment(connection, parts, message);
+						attachments = await getAttachment(imapConnection, parts, message);
 						if (attachments.length) {
 							newEmail.binary = {};
 							for (let i = 0; i < attachments.length; i++) {
@@ -470,15 +473,15 @@ export class EmailReadImapV2 implements INodeType {
 			if (postProcessAction === 'read') {
 				const uidList = results.map((e) => e.attributes.uid);
 				if (uidList.length > 0) {
-					connection.addFlags(uidList, '\\SEEN');
+					await imapConnection.addFlags(uidList, '\\SEEN');
 				}
 			}
 			return newEmails;
 		};
 
-		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise();
 
-		const establishConnection = (): Promise<ImapSimple> => {
+		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
 			if (options.customEmailConfig !== undefined) {
 				try {
@@ -527,7 +530,7 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							returnedPromise.promise().then(() => {
+							await returnedPromise.promise().then(() => {
 								this.emitError(error as Error);
 							});
 						}
@@ -540,12 +543,12 @@ export class EmailReadImapV2 implements INodeType {
 
 			const tlsOptions: IDataObject = {};
 
-			if (credentials.allowUnauthorizedCerts === true) {
+			if (credentials.allowUnauthorizedCerts) {
 				tlsOptions.rejectUnauthorized = false;
 			}
 
 			if (credentials.secure) {
-				tlsOptions.servername = credentials.host as string;
+				tlsOptions.servername = credentials.host;
 			}
 
 			if (!_.isEmpty(tlsOptions)) {
@@ -556,9 +559,9 @@ export class EmailReadImapV2 implements INodeType {
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
-					if (isCurrentlyReconnecting === true) {
+					if (isCurrentlyReconnecting) {
 						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
-					} else if (closeFunctionWasCalled === true) {
+					} else if (closeFunctionWasCalled) {
 						Logger.debug(`Email Read Imap: Shutting down workflow - connected closed`);
 					} else {
 						Logger.error(`Email Read Imap: Connected closed unexpectedly`);
@@ -586,7 +589,7 @@ export class EmailReadImapV2 implements INodeType {
 				Logger.verbose(`Forcing reconnect to IMAP server`);
 				try {
 					isCurrentlyReconnecting = true;
-					if (connection.closeBox) connection.closeBox(false);
+					if (connection.closeBox) await connection.closeBox(false);
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);
@@ -604,7 +607,7 @@ export class EmailReadImapV2 implements INodeType {
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			if (connection.closeBox) connection.closeBox(false);
+			if (connection.closeBox) await connection.closeBox(false);
 			connection.end();
 		}
 

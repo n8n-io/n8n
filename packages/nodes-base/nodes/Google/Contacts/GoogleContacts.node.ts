@@ -91,8 +91,8 @@ export class GoogleContacts implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
@@ -154,17 +154,17 @@ export class GoogleContacts implements INodeType {
 						if (additionalFields.eventsUi) {
 							const eventsValues = (additionalFields.eventsUi as IDataObject)
 								.eventsValues as IDataObject[];
-							for (let i = 0; i < eventsValues.length; i++) {
-								const [month, day, year] = moment(eventsValues[i].date as string)
+							for (let index = 0; index < eventsValues.length; index++) {
+								const [month, day, year] = moment(eventsValues[index].date as string)
 									.format('MM/DD/YYYY')
 									.split('/');
-								eventsValues[i] = {
+								eventsValues[index] = {
 									date: {
 										day,
 										month,
 										year,
 									},
-									type: eventsValues[i].type,
+									type: eventsValues[index].type,
 								};
 							}
 							body.events = eventsValues;
@@ -249,7 +249,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						responseData = await googleApiRequest.call(this, 'GET', `/people/${contactId}`, {}, qs);
@@ -265,7 +265,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const options = this.getNodeParameter('options', i, {}) as IDataObject;
+						const options = this.getNodeParameter('options', i, {});
 						const rawData = this.getNodeParameter('rawData', i);
 						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
 
@@ -282,7 +282,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						if (useQuery) {
@@ -317,8 +317,8 @@ export class GoogleContacts implements INodeType {
 							responseData = cleanData(responseData);
 						}
 
-						for (let i = 0; i < responseData.length; i++) {
-							responseData[i].contactId = responseData[i].resourceName.split('/')[1];
+						for (let index = 0; index < responseData.length; index++) {
+							responseData[index].contactId = responseData[index].resourceName.split('/')[1];
 						}
 					}
 					//https://developers.google.com/people/api/rest/v1/people/updateContact
@@ -350,7 +350,7 @@ export class GoogleContacts implements INodeType {
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
 						} else {
-							qs.personFields = (fields as string[]).join(',');
+							qs.personFields = fields.join(',');
 						}
 
 						const body: IDataObject = {
@@ -414,17 +414,17 @@ export class GoogleContacts implements INodeType {
 						if (updateFields.eventsUi) {
 							const eventsValues = (updateFields.eventsUi as IDataObject)
 								.eventsValues as IDataObject[];
-							for (let i = 0; i < eventsValues.length; i++) {
-								const [month, day, year] = moment(eventsValues[i].date as string)
+							for (let index = 0; index < eventsValues.length; index++) {
+								const [month, day, year] = moment(eventsValues[index].date as string)
 									.format('MM/DD/YYYY')
 									.split('/');
-								eventsValues[i] = {
+								eventsValues[index] = {
 									date: {
 										day,
 										month,
 										year,
 									},
-									type: eventsValues[i].type,
+									type: eventsValues[index].type,
 								};
 							}
 							body.events = eventsValues;

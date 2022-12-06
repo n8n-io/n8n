@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MispApi implements ICredentialType {
 	name = 'mispApi';
+
 	displayName = 'MISP API';
+
 	documentationUrl = 'misp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

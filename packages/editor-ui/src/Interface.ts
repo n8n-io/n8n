@@ -206,7 +206,7 @@ export interface IRestApi {
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
 	createNewWorkflow(sendData: IWorkflowDataUpdate): Promise<IWorkflowDb>;
-	updateWorkflow(id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb>;
+	updateWorkflow(id: string, data: IWorkflowDataUpdate, forceSave?: boolean): Promise<IWorkflowDb>;
 	deleteWorkflow(name: string): Promise<void>;
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
@@ -265,7 +265,7 @@ export interface IWorkflowData {
 	settings?: IWorkflowSettings;
 	tags?: string[];
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowDataUpdate {
@@ -277,7 +277,7 @@ export interface IWorkflowDataUpdate {
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -314,7 +314,7 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
-	hash: string;
+	versionId: string;
 	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
@@ -1053,8 +1053,8 @@ export interface NestedRecord<T> {
 	[key: string]: T | NestedRecord<T>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
-export type nodePanelType = 'input' | 'output';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -1319,3 +1319,21 @@ export interface CurlToJSONResponse {
 	"parameters.sendQuery": boolean;
 	"parameters.sendBody": boolean;
 }
+
+export type Basic = string | number | boolean;
+export type Primitives = Basic | bigint | symbol;
+
+export type Optional<T> = T | undefined | null;
+
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+export type Schema = { type: SchemaType, key?: string, value: string | Schema[], path: string };
