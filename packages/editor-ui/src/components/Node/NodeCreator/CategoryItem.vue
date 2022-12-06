@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.category">
 		<span :class="$style.name">
-			{{ renderCategoryName(categoryName) }} ({{ nodesCount }})
+			{{ renderCategoryName(item.category) }}
 		</span>
 		<font-awesome-icon
 			:class="$style.arrow"
@@ -33,9 +33,9 @@ const isExpanded = computed<boolean>(() => {
 	return (props.item.properties as ICategoryItemProps).expanded;
 });
 
-const categoryName = computed<CategoryName>(() => {
-	return camelcase(props.item.category) as CategoryName;
-});
+// const categoryName = computed<CategoryName>(() => {
+// 	return camelcase(props.item.category) as CategoryName;
+// });
 
 const nodesCount = computed<number>(() => {
 	const currentCategory = categoriesWithNodes[props.item.category];
@@ -56,7 +56,8 @@ const nodesCount = computed<number>(() => {
 });
 
 function renderCategoryName(categoryName: CategoryName) {
-	const key = `nodeCreator.categoryNames.${categoryName}` as const;
+	const camelCasedCategoryName = camelcase(categoryName) as CategoryName;
+	const key = `nodeCreator.categoryNames.${camelCasedCategoryName}` as const;
 
 	return instance?.proxy.$locale.exists(key)
 		? instance?.proxy.$locale.baseText(key)

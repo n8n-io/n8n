@@ -229,7 +229,6 @@ function onKeyDown(e: KeyboardEvent) {
 
 		// const isFirstActionInCategory = activeActionIndex.value === 0;
 
-		// // console.log("🚀 ~ file: NodeActions.vue:200 ~ onKeyDown ~ isSubstractedCategory", isSubstractedCategory, state.activeCategoryAction.category, firstNonSubstractedCategory?.items[firstNonSubstractedCategory?.items?.length - 1].key);
 		// if(isCategory) {
 		// 	state.activeCategoryAction.category = previousCategory.key;
 		// 	state.activeCategoryAction.action = '';
@@ -356,7 +355,7 @@ fechNodeDetails();
 watch(() => state.search, setFirstActive);
 watch(() => `${state.activeCategoryAction.category} ${state.activeCategoryAction.action}`, () => nextTick(() => {
 	// Active element could be both category header and action item so we
-	// query DOM directly instead of keeping refst of both
+	// query DOM directly instead of keeping refs of both
 	contentRef.value?.querySelector('[class*=active]')?.scrollIntoView({ block: 'end' });
 }));
 onMounted(() => {

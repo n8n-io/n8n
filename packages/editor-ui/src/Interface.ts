@@ -35,6 +35,7 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
+	INodeActionTypeDescription,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import {ICredentialsDb} from "n8n";
@@ -824,6 +825,11 @@ export interface INodeItemProps {
 	nodeType: INodeTypeDescription;
 }
 
+export interface IActionItemProps {
+	subcategory: string;
+	nodeType: INodeActionTypeDescription;
+}
+
 export interface ICategoryItemProps {
 	expanded: boolean;
 }
@@ -850,7 +856,12 @@ export interface SubcategoryCreateElement extends CreateElementBase {
 	properties: ISubcategoryItemProps;
 }
 
-export type INodeCreateElement = NodeCreateElement | CategoryCreateElement | SubcategoryCreateElement;
+export interface ActionCreateElement extends CreateElementBase {
+	type: 'action';
+	properties: IActionItemProps;
+}
+
+export type INodeCreateElement = NodeCreateElement | CategoryCreateElement | SubcategoryCreateElement | ActionCreateElement;
 
 export interface ICategoriesWithNodes {
 	[category: string]: {
@@ -1158,6 +1169,8 @@ export interface INodeCreatorState {
 	showTabs: boolean;
 	showScrim: boolean;
 	selectedType: INodeFilterType;
+	// categorizedNodesWithActions: INodeCreateElement[];
+	// meregedNodesWithActions: INodeCreateElement[];
 }
 
 export interface ISettingsState {

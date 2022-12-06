@@ -4,43 +4,61 @@
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
-			@filterChange="onFilterChange"
+			@actionsOpen="setActiveActionsNodeType"
+			@actionSelected="onActionSelected"
+			:expandAllCategories="isActionsActive"
+			:subcategoryOverride="nodeAppSubcategory"
+			:alwaysShowSearch="isActionsActive"
+			:categorizedItems="computedCategorizedItems"
+			:categoriesWithNodes="computedCategoriesWithNodes"
 			:initialActiveIndex="0"
-			:searchItems="mergedNodes"
+			:searchItems="searchItems"
 			:withActionsGetter="shouldShowNodeActions"
 			:firstLevelItems="firstLevelItems"
-			:flatten="isAppEventSubcategory"
+			:showSubcategoryIcon="isActionsActive"
+			:flatten="!isActionsActive && isAppEventSubcategory"
 			:filterByType="false"
+			:lazyRender="true"
+			:allItems="allNodes"
+			:searchPlaceholder="searchPlaceholder"
+			ref="categorizedItemsRef"
 		>
+
+			<!-- We don't have no-results -->
+			<template #noResultsTitle>
+				There's no actions matching your search
+			</template>
+			<template #noResultsAction>
+				<i></i>
+			</template>
 			<template #header>
 				<slot name="header" />
 				<p v-if="isRoot" v-text="$locale.baseText('nodeCreator.triggerHelperPanel.title')" :class="$style.title" />
+			</template>
+			<template #footer>
+				<slot name="footer" />
+				<p
+					v-if="(activeNodeActions && containsAPIAction)"
+					@click.stop="addHttpNode"
+					v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle: activeNodeActions?.displayName }})"
+				/>
 			</template>
 		</categorized-items>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
-
-import { INodeCreateElement, INodeItemProps } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE } from '@/constants';
+import { reactive, toRefs, getCurrentInstance, computed, onMounted, ref } from 'vue';
+import { INodeTypeDescription, INodeActionTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
+import { INodeCreateElement, IActionItemProps, SubcategoryCreateElement, IUpdateInformation } from '@/Interface';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, CUSTOM_API_CALL_NAME, GIT_NODE_TYPE, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
-export interface Props {
-	searchItems: INodeCreateElement[];
-}
+import { omit, getCategoriesWithNodes, getCategorizedList } from "@/utils";
+import { externalHooks } from '@/mixins/externalHooks';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-defineProps<Props>();
 const instance = getCurrentInstance();
-const state = reactive({
-	isRoot: true,
-	selectedSubcategory: '',
-	showMergedActions: false,
-	filter: '',
-});
-
-
 const items: INodeCreateElement[] = [{
 		key: "*",
 		type: "subcategory",
@@ -138,21 +156,162 @@ const items: INodeCreateElement[] = [{
 	},
 ];
 
-function onFilterChange(filter: string) {
-	state.filter = filter;
+const emit = defineEmits({
+	"nodeTypeSelected": (nodeTypes: string[]) => true,
+});
+
+const state = reactive({
+	isRoot: true,
+	selectedSubcategory: '',
+	showMergedActions: false,
+	activeNodeActions: null as INodeTypeDescription | null,
+	latestNodeData: null as INodeTypeDescription | null,
+});
+const categorizedItemsRef = ref<InstanceType<typeof CategorizedItems>>();
+
+const { $externalHooks } = new externalHooks();
+const {
+	mergedAppNodes,
+	setShowTabs,
+	getActionData,
+	getActionNodeTypes,
+	setAddedNodeActionParameters,
+} = useNodeCreatorStore();
+
+const telemetry = instance?.proxy.$telemetry;
+const { categorizedItems: allNodes } = useNodeTypesStore();
+const containsAPIAction = computed(() => state.latestNodeData?.properties.some((p) => p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME)) === true);
+
+const computedCategorizedItems = computed(() => getCategorizedList(computedCategoriesWithNodes.value, true));
+
+const nodeAppSubcategory = computed<SubcategoryCreateElement | undefined>(() => {
+	if(!state.activeNodeActions) return undefined;
+
+	return {
+		type: 'subcategory',
+		properties: {
+			subcategory: state.activeNodeActions.displayName,
+			nodeType: {
+				description: '',
+				key: state.activeNodeActions.name,
+				iconUrl: state.activeNodeActions.iconUrl,
+				icon: state.activeNodeActions.icon,
+			},
+		},
+	};
+});
+const searchPlaceholder = computed(() => {
+	if(isActionsActive) return instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.searchActions', {
+		interpolate: { nodeNameTitle: state.activeNodeActions?.displayName as string },
+	});
+
+	return undefined;
+});
+const filteredMergedAppNodes = computed(() => {
+	const WHITELISTED_APP_CORE_NODES = [
+		EMAIL_IMAP_NODE_TYPE,
+		WEBHOOK_NODE_TYPE,
+	];
+
+	if(isAppEventSubcategory.value) return mergedAppNodes.filter(node => {
+		const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.name);
+		return !isCoreNode;
+	});
+
+	return mergedAppNodes;
+});
+
+const computedCategoriesWithNodes = computed(() => {
+	if(!state.activeNodeActions) return getCategoriesWithNodes(filteredMergedAppNodes.value, []);
+
+	return getCategoriesWithNodes(selectedNodeActions.value, [], state.activeNodeActions.displayName) ;
+});
+
+const selectedNodeActions = computed<INodeActionTypeDescription[]>(() => state.activeNodeActions?.actions ?? []);
+const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
+const isActionsActive = computed(() => state.activeNodeActions !== null);
+const firstLevelItems = computed(() => isRoot.value ? items : []);
+
+const isSearchActive = computed(() => useNodeCreatorStore().itemsFilter !== '');
+const searchItems = computed<INodeCreateElement[]>(() => {
+	const sorted = state.activeNodeActions ? [...selectedNodeActions.value] : [...filteredMergedAppNodes.value];
+	sorted.sort((a, b) => {
+		const textA = a.displayName.toLowerCase();
+		const textB = b.displayName.toLowerCase();
+		return textA < textB ? -1 : textA > textB ? 1 : 0;
+	});
+
+	return sorted.map((nodeType) => ({
+		type: 'node',
+		category: '',
+		key: nodeType.name,
+		properties: {
+			nodeType,
+			subcategory: state.activeNodeActions ? state.activeNodeActions.displayName : '',
+		},
+		includedByTrigger: nodeType.group.includes('trigger'),
+		includedByRegular: !nodeType.group.includes('trigger'),
+	}));
+});
+
+
+// The nodes.json doesn't contain API CALL option so we need to fetch the node detail
+// to determine if need to render the API CALL hint
+async function fechNodeDetails() {
+	if(!state.activeNodeActions) return;
+
+	const { getNodesInformation } = useNodeTypesStore();
+	const { version, name } = state.activeNodeActions;
+	const payload = {
+		name,
+		version: Array.isArray(version) ? version?.slice(-1)[0] : version,
+	} as INodeTypeNameVersion;
+
+	const nodesInfo = await getNodesInformation([payload], false);
+
+	state.latestNodeData = nodesInfo[0];
 }
 
-function isRootSubcategory(subcategory: INodeCreateElement) {
-	return items.find(item => item.key === subcategory.key) !== undefined;
+function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
+	state.activeNodeActions = nodeType;
+	setShowTabs(false);
+	fechNodeDetails();
+
+	if(nodeType) trackActionsView();
 }
+
+function onActionSelected(actionCreateElement: INodeCreateElement) {
+	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
+	const actionUpdateData = getActionData(action);
+	emit('nodeTypeSelected', getActionNodeTypes(actionUpdateData));
+	setAddedNodeActionParameters(actionUpdateData, telemetry);
+}
+function addHttpNode() {
+	const updateData = {
+		name: '',
+		key: HTTP_REQUEST_NODE_TYPE,
+		value: {
+			authentication: "predefinedCredentialType",
+		},
+	} as IUpdateInformation;
+
+	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
+	setAddedNodeActionParameters(updateData, telemetry, false);
+
+	const app_identifier = state.activeNodeActions?.name;
+	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+}
+
 function onSubcategorySelected(subcategory: INodeCreateElement) {
 	state.isRoot = false;
 	state.selectedSubcategory = subcategory.key;
 }
-function onSubcategoryClose(subcategory: INodeCreateElement) {
-	state.isRoot = isRootSubcategory(subcategory);
-	state.selectedSubcategory = '';
-	state.filter = '';
+function onSubcategoryClose(activeSubcategories: INodeCreateElement[]) {
+	if(isActionsActive.value === true) setActiveActionsNodeType(null);
+
+	state.isRoot = activeSubcategories.length === 0;
+	state.selectedSubcategory = activeSubcategories[activeSubcategories.length - 1]?.key ?? '';
 }
 
 function shouldShowNodeActions(node: INodeCreateElement) {
@@ -164,40 +323,26 @@ function shouldShowNodeActions(node: INodeCreateElement) {
 	return false;
 }
 
-const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
+function trackActionsView() {
+	const trigger_action_count = selectedNodeActions.value
+		.filter((action) => action.name.toLowerCase().includes('trigger')).length;
 
-const firstLevelItems = computed(() => isRoot.value ? items : []);
+	const trackingPayload = {
+		app_identifier: state.activeNodeActions?.name,
+		actions: selectedNodeActions.value.map(action => action.displayName),
+		regular_action_count: selectedNodeActions.value.length - trigger_action_count,
+		trigger_action_count,
+	};
 
-const isSearchActive = computed(() => state.filter !== '');
-// On App Event is a special subcategory because we want to
-// show merged regular nodes with actions and trigger nodes
-const mergedNodes = computed(() => {
-	const WHITELISTED_APP_CORE_NODES = [
-		EMAIL_IMAP_NODE_TYPE,
-		WEBHOOK_NODE_TYPE,
-	];
-	const mergedNodesWithActions = useNodeCreatorStore().mergedNodesWithActions;
-
-	return mergedNodesWithActions.filter(nodeCreateElement => {
-		if(isAppEventSubcategory.value) {
-			const nodeType = (nodeCreateElement.properties as INodeItemProps).nodeType;
-			const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(nodeType.name);
-
-			return !isCoreNode;
-		}
-
-		return true;
-	});
-});
-
+	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+}
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');
 	state.showMergedActions = isLocal || window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
-
-	console.log('Merged nodes', mergedNodes.value);
 });
 
-const { isRoot } = toRefs(state);
+const { isRoot, activeNodeActions } = toRefs(state);
 </script>
 
 <style lang="scss" module>

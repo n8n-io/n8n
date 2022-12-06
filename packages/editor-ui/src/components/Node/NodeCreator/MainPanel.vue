@@ -6,7 +6,6 @@
 		<div class="main-panel">
 			<trigger-helper-panel
 				v-if="nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER"
-				:searchItems="searchItems"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
 				<template #header>
@@ -15,10 +14,14 @@
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
+				:categorizedItems="categorizedItems"
+				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
+				:allItems="categorizedItems"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
+				@actionsOpen="() => {}"
 			>
 				<template #header>
 					<type-selector />
@@ -38,6 +41,7 @@ import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export interface Props {
 	searchItems?: INodeCreateElement[];
@@ -51,6 +55,7 @@ const instance = getCurrentInstance();
 const { $externalHooks } = new externalHooks();
 const { workflowId } = useWorkflowsStore();
 const nodeCreatorStore = useNodeCreatorStore();
+const { categorizedItems, categoriesWithNodes } = useNodeTypesStore();
 
 watch(() => nodeCreatorStore.selectedType, (newValue, oldValue) => {
 	$externalHooks().run('nodeCreateList.selectedTypeChanged', {

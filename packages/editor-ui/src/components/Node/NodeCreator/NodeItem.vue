@@ -37,15 +37,7 @@
 		</template>
 
 		<template #panel v-if="allowActions && nodeType.actions && nodeType.actions.length > 0">
-			<node-actions
-				:class="$style.actions"
-				:nodeType="nodeType"
-				:actions="nodeType.actions || []"
-				@actionSelected="onActionSelected"
-				@back="onActionsClose"
-				@dragstart.stop="onDragStart"
-				@dragend="onDragEnd"
-			/>
+			123
 		</template>
 	</n8n-node-creator-node>
 </template>
@@ -61,7 +53,6 @@ import { IUpdateInformation } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import NodeActions from './NodeActions.vue';
 import { useWorkflowsStore } from '@/stores/workflows';
 
 export interface Props {
@@ -79,12 +70,11 @@ const emit = defineEmits<{
 	(event: 'dragstart', $e: DragEvent): void,
 	(event: 'dragend', $e: DragEvent): void,
 	(event: 'nodeTypeSelected', value: string[]): void,
-	(event: 'actionsClose'): void,
+	(event: 'actionsOpen', value: INodeTypeDescription): void,
 }>();
 
-const { $externalHooks } = new externalHooks();
+// const { $externalHooks } = new externalHooks();
 const instance = getCurrentInstance();
-const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 const state = reactive({
 	dragging: false,
 	showActionsPanel: false,
@@ -117,51 +107,8 @@ const displayName = computed<any>(() => {
 const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
 
 function onClick() {
-	if(hasActions.value && props.allowActions) state.showActionsPanel = true;
+	if(hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
 	else emit('nodeTypeSelected', [props.nodeType.name]);
-}
-function onActionsClose() {
-	state.showActionsPanel = false;
-	emit('actionsClose');
-}
-function getActionNodeTypes(action: IUpdateInformation): string[] {
-	const actionKey = action.key as string;
-	const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
-	const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-
-	const nodeTypes = !isTriggerAction && !workflowContainsTrigger
-		? [MANUAL_TRIGGER_NODE_TYPE, actionKey]
-		: [actionKey];
-
-	return nodeTypes;
-}
-
-function setAddedNodeActionParameters(action: IUpdateInformation) {
-	const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters }, args }) => {
-		if (name !== 'addNode' || args[0].type !== action.key) return;
-		after(() => {
-			setLastNodeParameters(action);
-			trackActionSelected(action);
-			storeWatcher();
-		});
-	});
-}
-function trackActionSelected(action: IUpdateInformation) {
-	const payload = {
-		node_type: action.key,
-		action: action.name,
-		resource: (action.value as INodeParameters).resource || '',
-	};
-	$externalHooks().run('nodeCreateList.addAction', payload);
-	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.addAction', payload);
-}
-
-function onActionSelected(action: IUpdateInformation) {
-	emit('nodeTypeSelected', getActionNodeTypes(action));
-	setAddedNodeActionParameters(action);
-}
-function onDragActionSelected(action: IUpdateInformation) {
-	setAddedNodeActionParameters(action);
 }
 function onDragStart(event: DragEvent): void {
 	/**
@@ -180,22 +127,6 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.dropEffect = "copy";
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
 		event.dataTransfer.setData('nodeTypeName', props.nodeType.name);
-
-		const actionData = event.dataTransfer.getData('actionData');
-		if(actionData) {
-			try {
-				const action = JSON.parse(actionData) as IUpdateInformation;
-
-				event.dataTransfer.setData('nodeTypeName', getActionNodeTypes(action).join(','));
-				function onDragEnd() {
-					onDragActionSelected(action);
-					document.body.removeEventListener("dragend", onDragEnd);
-				}
-				document.body.addEventListener("dragend", onDragEnd);
-			} catch (error) {
-				// Fail silently
-			}
-		}
 	}
 
 	state.dragging = true;
@@ -237,12 +168,6 @@ defineExpose({
 const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 </script>
 <style lang="scss" module>
-.actions {
-
-	position: absolute;
-	top: 0;
-	z-index: 1;
-}
 .nodeItem {
 	--trigger-icon-background-color: #{$trigger-icon-background-color};
 	--trigger-icon-border-color: #{$trigger-icon-border-color};

@@ -63,9 +63,7 @@ function clear() {
 
 onMounted(() => {
 	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.inputRef });
-	setTimeout(() => {
-		focus();
-	}, 0);
+	setTimeout(focus, 0);
 });
 
 onBeforeUnmount(() => {

@@ -23,7 +23,6 @@ export function TelemetryPlugin(vue: typeof _Vue): void {
 }
 
 export class Telemetry {
-
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 

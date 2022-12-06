@@ -80,6 +80,7 @@ export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
+export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
@@ -141,6 +142,7 @@ export const PIN_DATA_NODE_TYPES_DENYLIST = [
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+export const RECOMMENDED_CATEGORY = 'Recommended';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {

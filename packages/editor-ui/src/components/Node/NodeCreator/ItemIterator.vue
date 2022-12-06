@@ -9,7 +9,7 @@
 	>
 		<div
 			v-for="(item, index) in renderedItems"
-			:key="item.key"
+			:key="`${item.key}-${index}`"
 			data-test-id="item-iterator-item"
 			:class="{
 				'clickable': !disabled,
@@ -37,9 +37,24 @@
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
-				@actionsClose="$listeners.actionsClose"
-				:ref="(activeIndex === index && !disabled) ? 'activeNode' : undefined"
+				@actionsOpen="$listeners.actionsOpen"
 			/>
+
+			<action-item
+				v-else-if="item.type === 'action'"
+				:nodeType="item.properties.nodeType"
+				:action="item.properties.nodeType"
+				@dragstart="wrappedEmit('dragstart', item, $event)"
+				@dragend="wrappedEmit('dragend', item, $event)"
+			/>
+		</div>
+		<div
+			v-for="item in elements.length"
+			:key="item"
+			v-show="(renderedItems.length < item)"
+			:class="{[$style.loadingItem]: true}"
+		>
+			<n8n-loading :loading="true" :rows="1" variant="p" />
 		</div>
 	</div>
 </template>
@@ -49,12 +64,14 @@ import { INodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
+import ActionItem from './ActionItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
 
 export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
+	lazyRender?: boolean;
 	withActionsGetter?: Function;
 }
 
@@ -71,25 +88,21 @@ const emit = defineEmits<{
 const state = reactive({
 	renderedItems: [] as INodeCreateElement[],
 	renderAnimationRequest: 0,
+	renderStartTime: 0,
 });
-const activeNode = ref<InstanceType<typeof Array<typeof NodeItem>>>([]);
 const iteratorItems = ref<HTMLElement[]>([]);
 
 watch(() => props.activeIndex, async () => {
 	if(props.activeIndex === undefined) return;
-	iteratorItems.value[props.activeIndex].scrollIntoView({ block: 'nearest' });
+	iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
 });
 
 watch(() => props.elements, async () => {
-	state.renderedItems = [];
 	window.cancelAnimationFrame(state.renderAnimationRequest);
+	state.renderedItems = [];
+	state.renderStartTime = performance.now();
 	renderItems();
 });
-
-function nodeSelected() {
-	// Always
-	activeNode.value[0].onClick();
-}
 
 function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INodeCreateElement, $e?: Event) {
 	if (props.disabled) return;
@@ -97,16 +110,27 @@ function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INode
 	emit((event as 'selected' || 'dragstart' || 'dragend'), element, $e);
 }
 
-// Lazy render items to prevent the browser from freezing
+// Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
+	if(props.elements.length <= 20 || props.lazyRender === false) {
+		state.renderedItems = props.elements;
+		return;
+	};
+
 	if (state.renderedItems.length < props.elements.length) {
-		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 1));
+		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 10));
 		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
+	} else {
+		const endTime = performance.now();
+		console.log('rendered in', endTime - state.renderStartTime, 'ms');
 	}
 }
 
-onMounted(renderItems);
+onMounted(() => {
+	state.renderStartTime = performance.now();
+	renderItems();
+});
 onUnmounted(() => {
 	window.cancelAnimationFrame(state.renderAnimationRequest);
 	state.renderedItems = [];
@@ -129,21 +153,36 @@ function leave(el: HTMLElement) {
 	el.style.height = '0';
 }
 
-defineExpose({ nodeSelected });
 const { renderedItems } = toRefs(state);
 </script>
 
 <style lang="scss" module>
+.loadingItem {
+	height: 48px;
+	margin: 0 var(--search-margin, var(--spacing-s));
+}
 .iteratorItem {
-	border-left: 2px solid transparent;
 	// Make sure border is fully visible
 	margin-left: 1px;
-	&:hover {
+	position: relative;
+	&::before {
+		content: "";
+		position: absolute;
+		left: -1px;
+		top: 0;
+		bottom: 0;
+		border-left: 2px solid transparent;
+	}
+	&:hover::before {
 		border-color: $node-creator-item-hover-border-color;
 	}
 
-	&.active  {
+	&.active::before  {
 		border-color: $color-primary !important;
+	}
+
+	&.category.singleCategory {
+		display: none;
 	}
 
 }

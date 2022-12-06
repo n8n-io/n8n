@@ -90,8 +90,10 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				return acc;
 			}, { ...this.nodeTypes });
 			Vue.set(this, 'nodeTypes', nodeTypes);
-			// Trigger compute of mergedNodesWithActions getter so it's ready when user opens the node creator
-			useNodeCreatorStore().mergedNodesWithActions;
+
+			// Trigger compute of mergedAppNodes getter so it's ready when user opens the node creator
+			// tslint:disable-next-line: no-unused-expression
+			useNodeCreatorStore().mergedAppNodes;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(

@@ -1,49 +1,78 @@
 import startCase from 'lodash.startCase';
 import { defineStore } from "pinia";
-
-import { INodeAction, INodePropertyCollection, INodePropertyOptions, INodeProperties, INodeTypeDescription, deepCopy } from 'n8n-workflow';
-import { STORES } from "@/constants";
+import { INodePropertyCollection, INodePropertyOptions, IDataObject, INodeProperties, INodeTypeDescription, deepCopy, INodeParameters, INodeActionTypeDescription } from 'n8n-workflow';
+import { STORES, MANUAL_TRIGGER_NODE_TYPE, CORE_NODES_CATEGORY, CALENDLY_TRIGGER_NODE_TYPE } from "@/constants";
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
-import { INodeCreateElement, INodeItemProps, INodeCreatorState, INodeFilterType } from '@/Interface';
+import { INodeCreatorState, INodeFilterType, IUpdateInformation } from '@/Interface';
 import { i18n } from '@/plugins/i18n';
+import { externalHooks } from '@/mixins/externalHooks';
+import { Telemetry } from '@/plugins/telemetry';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
-const customNodeActionsParsers: {[key: string]: (matchedProperty: INodeProperties) => INodeAction[] | undefined} = {
-	['n8n-nodes-base.hubspotTrigger']: (matchedProperty) => {
+const customNodeActionsParsers: {[key: string]: (matchedProperty: INodeProperties, nodeTypeDescription: INodeTypeDescription) => INodeActionTypeDescription[] | undefined} = {
+	['n8n-nodes-base.hubspotTrigger']: (matchedProperty, nodeTypeDescription) => {
 		const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
 
-		return (collection?.values[0]?.options as INodePropertyOptions[])?.map((categoryItem) => ({
-			nodeName: 'n8n-nodes-base.hubspotTrigger',
-			key: categoryItem.value as string,
-			title: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+		return (collection?.values[0]?.options as INodePropertyOptions[])?.map((categoryItem): INodeActionTypeDescription => ({
+			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
+			actionKey: categoryItem.value as string,
+			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
 				interpolate: {event: startCase(categoryItem.name)},
 			}),
-			description: categoryItem.description,
+			description: categoryItem.description || '',
 			displayOptions: matchedProperty.displayOptions,
 			values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
 		}));
 	},
 };
 
-function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
-	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return null;
+function filterSinglePlaceholderAction(actions: INodeActionTypeDescription[]) {
+	return actions.filter((action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
+		const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
+		return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
+	});
+}
+
+function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, category: string) {
+	return {
+		name: nodeTypeDescription.name,
+		group: ['trigger'],
+		codex: {
+			categories: [category],
+			subcategories: {
+				[nodeTypeDescription.displayName]: [category],
+			},
+		},
+		iconUrl: nodeTypeDescription.iconUrl,
+		icon: nodeTypeDescription.icon,
+		version: [1],
+		defaults: {},
+		inputs: [],
+		outputs: [],
+		properties: [],
+	};
+}
+
+function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
 
 	const matchedProperty = nodeTypeDescription.properties
 		.find((property) =>property.name?.toLowerCase() === 'operation');
 
-	if (!matchedProperty || !matchedProperty.options) return null;
+	if (!matchedProperty || !matchedProperty.options) return [];
 
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
-		nodeName: nodeTypeDescription.name,
-		key: item.value as string,
-		title: item.action ?? startCase(item.name),
-		description: item.description,
+		...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.operations')),
+		actionKey: item.value as string,
+		displayName: item.action ?? startCase(item.name),
+		description: item.description ?? '',
 		displayOptions: matchedProperty.displayOptions,
 		values: {
 			[matchedProperty.name]: matchedProperty.type === 'multiOptions' ? [item.value] : item.value,
@@ -51,61 +80,48 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAct
 	}));
 
 	// Do not return empty category
-	if (items.length === 0) return null;
+	if (items.length === 0) return [];
 
-	return {
-		key: matchedProperty.name,
-		title: i18n.baseText('nodeCreator.actionsCategory.operations'),
-		type: 'category',
-		items,
-	};
+	return items;
 }
 
-function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
+function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
 		matchingKeys.includes(property.displayName?.toLowerCase()),
 	);
 
-	if (!isTrigger) return null;
+	if (!isTrigger) return [];
 
 	// Inject placeholder action if no events are available
 	// so user is able to add node to the canvas from the actions panel
 	if (!matchedProperty || !matchedProperty.options) {
-		return {
-			key: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
-			title: i18n.baseText('nodeCreator.actionsCategory.recommended'),
-			type: 'category',
-			items: [
-				{
-					nodeName: nodeTypeDescription.name,
-					key: nodeTypeDescription.name,
-					title: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
-						interpolate: {event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd()},
-					}),
-					displayOptions: {},
-					values: {},
-				},
-			],
-		};
+		return [{
+			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
+			actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
+			displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
+				interpolate: {event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd()},
+			}),
+			description: '',
+		}];
 	}
 
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 	);
 
-	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty);
+	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty, nodeTypeDescription);
 
 	const items =
 		customParsedItem ??
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
-			nodeName: nodeTypeDescription.name,
-			key: categoryItem.value as string,
-			title: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
+			actionKey: categoryItem.value as string,
+			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
 				interpolate: {event: startCase(categoryItem.name)},
 			}),
-			description: categoryItem.description,
+			description: categoryItem.description || '',
 			displayOptions: matchedProperty.displayOptions,
 			values: {
 				[matchedProperty.name]:
@@ -113,19 +129,11 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAc
 			},
 		}));
 
-	// Do not return empty category
-	if (items.length === 0) return null;
-
-	return {
-		key: matchedProperty.name,
-		title: i18n.baseText('nodeCreator.actionsCategory.recommended'),
-		type: 'category',
-		items,
-	};
+	return items;
 }
 
-function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAction[] {
-	const categories: INodeAction[] = [];
+function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+	const transformedNodes: INodeActionTypeDescription[] = [];
 	const matchedProperties = nodeTypeDescription.properties.filter((property) =>property.displayName?.toLowerCase() === 'resource');
 
 	matchedProperties.forEach((property) => {
@@ -133,12 +141,6 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAct
 			.filter((option) => option.value !== CUSTOM_API_CALL_KEY)
 			.forEach((resourceOption, i, options) => {
 				const isSingleResource = options.length === 1;
-				const resourceCategory: INodeAction = {
-					title: resourceOption.name,
-					key: resourceOption.value as string,
-					type: 'category',
-					items: [],
-				};
 
 				// Match operations for the resource by checking if displayOptions matches or contains the resource name
 				const operations = nodeTypeDescription.properties.find(
@@ -150,9 +152,9 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAct
 
 				if (!operations?.options) return;
 
-				resourceCategory.items = (operations.options as INodePropertyOptions[]).map(
+				const items = (operations.options as INodePropertyOptions[] || []).map(
 					(operationOption) => {
-						const title =
+						const displayName =
 							operationOption.action ??
 							`${resourceOption.name} ${startCase(operationOption.name)}`;
 
@@ -163,10 +165,9 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAct
 							: operations?.displayOptions;
 
 						return {
-							nodeName: nodeTypeDescription.name,
-							key: operationOption.value as string,
-							title,
-							description: operationOption?.description,
+							...getNodeTypeBase(nodeTypeDescription, resourceOption.name),
+							actionKey: operationOption.value as string,
+							description: operationOption?.description ?? '',
 							displayOptions,
 							values: {
 								operation:
@@ -174,18 +175,18 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAct
 										? [operationOption.value]
 										: operationOption.value,
 							},
+							displayName,
+							group: ['trigger'],
 						};
 					},
 				);
 
-				if (resourceCategory.items.length > 0) categories.push(resourceCategory);
+				transformedNodes.push(...items);
 			});
 	});
 
-	return categories;
+	return transformedNodes;
 }
-
-const getNodeType = (nodeCreateElement: INodeCreateElement): INodeTypeDescription => (nodeCreateElement.properties as INodeItemProps).nodeType;
 
 export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 	state: (): INodeCreatorState => ({
@@ -207,48 +208,102 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		setFilter(search: string) {
 			this.itemsFilter = search;
 		},
+		setAddedNodeActionParameters (action: IUpdateInformation, telemetry?: Telemetry, track = true) {
+			const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
+			const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters }, args }) => {
+				if (name !== 'addNode' || args[0].type !== action.key) return;
+				after(() => {
+					setLastNodeParameters(action);
+					if(track) this.trackActionSelected(action, telemetry);
+					storeWatcher();
+				});
+			});
+
+			return storeWatcher;
+		},
+		trackActionSelected (action: IUpdateInformation, telemetry?: Telemetry) {
+			const { $externalHooks } = new externalHooks();
+
+			const payload = {
+				node_type: action.key,
+				action: action.name,
+				resource: (action.value as INodeParameters).resource || '',
+			};
+			$externalHooks().run('nodeCreateList.addAction', payload);
+			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+		},
 	},
 	getters: {
-		mergedNodesWithActions(): INodeCreateElement[] {
-			const mergedNodes = this.categorizedNodesWithActions.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
-				const clonedNode = deepCopy(node);
-				const nodeType = getNodeType(clonedNode);
-				const actions = nodeType.actions || [];
-				const normalizedName = nodeType.name.toLowerCase().replace('trigger', '');
-				const existingNode = acc[normalizedName];
+		visibleNodesWithActions(): INodeTypeDescription[] {
+			const startTime = performance.now();
+			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
+			const nodesWithActions = nodes.map((node) => {
+				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
+				// Core nodes shouldn't support actions
+				node.actions = [];
+				if(isCoreNode) return node;
 
-				if(existingNode) getNodeType(existingNode).actions?.push(...actions);
-				else acc[normalizedName] = clonedNode;
-
-				// Filter-out placeholder recommended actions if they are the only actions
-				nodeType.actions = (nodeType.actions || [])
-					.filter((action: INodeAction, _: number, arr: INodeAction[]) => {
-						const isPlaceholderCategory = action.key === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
-						return !isPlaceholderCategory || (isPlaceholderCategory && arr.length > 1);
-					});
-
-				return acc;
-			}, {});
-
-			return Object.values(mergedNodes)
-				.sort((a, b) => getNodeType(a).displayName.localeCompare(getNodeType(b).displayName));
-		},
-		categorizedNodesWithActions(): INodeCreateElement[] {
-			const nodes = deepCopy(useNodeTypesStore().categorizedItems).filter((i) => i.type === 'node');
-			const uniqueNodes = [...new Map(nodes.map((node: INodeCreateElement) => [getNodeType(node).name, node])).values()];
-			const nodesWithActions = uniqueNodes.map((node) => {
-				const nodeType = getNodeType(node);
-
-				nodeType.actions = [
-					recommendedCategory(nodeType),
-					...resourceCategories(nodeType),
-					operationsCategory(nodeType),
-				].filter((action: INodeAction | null) => action) as INodeAction[];
+				node.actions.push(
+					...recommendedCategory(node),
+					...operationsCategory(node),
+					...resourceCategories(node),
+				);
 
 				return node;
 			});
-
+			const endTime = performance.now();
+			console.log("Generating visible Nodes took:" + (endTime - startTime).toFixed(3) + " milliseconds");
 			return nodesWithActions;
+		},
+		mergedAppNodes(): INodeTypeDescription[] {
+			const startTime = performance.now();
+			const mergedNodes = this.visibleNodesWithActions.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
+
+				const clonedNode = deepCopy(node);
+				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
+				const actions = filterSinglePlaceholderAction((node.actions || []));
+				// Do not merge core nodes
+				const normalizedName = isCoreNode ? node.name : node.name.toLowerCase().replace('trigger', '');
+				const existingNode = acc[normalizedName];
+
+				if(existingNode) existingNode.actions?.push(...actions);
+				else acc[normalizedName] = clonedNode;
+
+				if(!isCoreNode) acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
+
+				return acc;
+			}, {});
+			const endTime = performance.now();
+			console.log("Merged visible Nodes took:" + (endTime - startTime).toFixed(3) + " milliseconds");
+			return Object.values(mergedNodes);
+		},
+		getActionNodeTypes: () => (action: IUpdateInformation): string[] => {
+			const { workflowTriggerNodes } = useWorkflowsStore();
+			const actionKey = action.key as string;
+			const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
+			const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+
+			const nodeTypes = !isTriggerAction && !workflowContainsTrigger
+				? [MANUAL_TRIGGER_NODE_TYPE, actionKey]
+				: [actionKey];
+
+			return nodeTypes;
+		},
+
+		getActionData: () => (actionItem: INodeActionTypeDescription): IUpdateInformation => {
+			const displayOptions = actionItem.displayOptions ;
+
+			const displayConditions = Object.keys(displayOptions?.show || {})
+				.reduce((acc: IDataObject, showCondition: string) => {
+					acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
+					return acc;
+				}, {});
+
+			return {
+				name: actionItem.displayName,
+				key: actionItem.name as string,
+				value: { ...actionItem.values , ...displayConditions} as INodeParameters,
+			};
 		},
 	},
 });
