@@ -157,7 +157,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
-import { licenseController } from './license/LicenseController';
+import { licenseController } from './license/license.controller';
 
 require('body-parser-xml')(bodyParser);
 

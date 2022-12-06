@@ -5,6 +5,7 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
 import { ResponseHelper } from '..';
+import { LicenseService } from './License.service';
 
 export const licenseController = express.Router();
 
@@ -23,8 +24,9 @@ licenseController.use((req, res, next) => {
 licenseController.get(
 	'/quota',
 	ResponseHelper.send(async () => {
+		const triggerCount = await LicenseService.getActiveTriggerCount();
 		return {
-			quota: 0,
+			triggerCount,
 		};
 	}),
 );
