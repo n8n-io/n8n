@@ -3339,6 +3339,10 @@ export default mixins(
 				this.removeNode(node.name, false);
 			},
 			async onRevertRemoveNode({node}: {node: INodeUi}): Promise<void> {
+				const prevNode = this.workflowsStore.workflow.nodes.find(n => n.id === node.id);
+				if (prevNode) {
+					return;
+				}
 				// For some reason, returning node to canvas with old id
 				// makes it's endpoint to render at wrong position
 				node.id = uuid();

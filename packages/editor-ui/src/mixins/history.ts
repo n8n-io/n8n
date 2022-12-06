@@ -57,14 +57,13 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				this.historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
 				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
-				// return;
 			}
 			if (command instanceof Command) {
 				await command.revert();
 				this.historyStore.pushUndoableToRedo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
 			}
-			this.trackEvent(command, 'undo');
+			this.trackCommand(command, 'undo');
 		},
 		async redo() {
 			const command = this.historyStore.popUndoableToRedo();
@@ -88,9 +87,9 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				this.historyStore.pushCommandToUndo(command.getReverseCommand());
 				this.uiStore.stateIsDirty = true;
 			}
-			this.trackEvent(command, 'redo');
+			this.trackCommand(command, 'redo');
 		},
-		trackEvent(command: Undoable, type: 'undo'|'redo'): void {
+		trackCommand(command: Undoable, type: 'undo'|'redo'): void {
 			let telemetryData: { type: string|null, commands: Array<Partial<Command>> } = { type: null, commands: [] };
 			if (command instanceof Command) {
 				telemetryData = {

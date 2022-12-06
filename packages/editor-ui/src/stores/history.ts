@@ -1,6 +1,7 @@
+import { useWorkflowsStore } from './workflows';
 import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/models/history";
 import { STORES } from "@/constants";
-import { HistoryState, XYPosition } from "@/Interface";
+import { HistoryState } from "@/Interface";
 import { defineStore } from "pinia";
 
 const STACK_LIMIT = 100;
@@ -26,12 +27,6 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 					this.currentBulkAction.commands.push(undoable);
 					return;
 				} else {
-					// TODO: Remove this later:
-					console.log(`================================================`);
-					console.log(`|         PUSHING SINGLE ACTION                 `);
-					console.log(`================================================`);
-					console.log(`|  ${ undoable.name }`);
-					console.log(`================================================`);
 					this.undoStack.push(undoable);
 				}
 				this.checkUndoStackLimit();
@@ -81,22 +76,11 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			this.currentBulkAction = new BulkCommand([]);
 		},
 		stopRecordingUndo() {
-			if (this.currentBulkAction) {
-				if (this.currentBulkAction.commands.length > 0) {
-					this.undoStack.push(this.currentBulkAction);
-					this.checkUndoStackLimit();
-					// TODO: Remove this later:
-					console.log(`================================================`);
-					console.log(`|         PUSHING BULK ACTION                   `);
-					console.log(`================================================`);
-					this.currentBulkAction.commands.forEach(command => {
-						console.log(`|        ${command.name}       `);
-
-					});
-					console.log(`================================================`);
-				}
-				this.currentBulkAction = null;
+			if (this.currentBulkAction && this.currentBulkAction.commands.length > 0) {
+				this.undoStack.push(this.currentBulkAction);
+				this.checkUndoStackLimit();
 			}
+			this.currentBulkAction = null;
 		},
 	},
 });
