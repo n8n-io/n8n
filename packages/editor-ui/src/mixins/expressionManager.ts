@@ -120,8 +120,6 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return /\{\{\s*\}\}/.test(resolvable);
 		},
 
-
-
 		/**
 		 * Some segments are conditionally displayed, i.e. not displayed when they are
 		 * _part_ of the result, but displayed when they are the _entire_ result.
