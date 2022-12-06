@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-export class CreateLdapEntities1666304975928 implements MigrationInterface {
-	name = 'CreateLdapEntities1666304975928';
+export class CreateLdapEntities1670333612644 implements MigrationInterface {
+	name = 'CreateLdapEntities1670333612644';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);

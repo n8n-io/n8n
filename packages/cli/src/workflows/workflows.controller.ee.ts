@@ -1,4 +1,5 @@
 import express from 'express';
+import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -112,6 +113,8 @@ EEWorkflowController.post(
 
 		Object.assign(newWorkflow, req.body);
 
+		newWorkflow.versionId = uuid();
+
 		await validateEntity(newWorkflow);
 
 		await externalHooks.run('workflow.create', [newWorkflow]);
@@ -213,7 +216,7 @@ EEWorkflowController.patch(
 	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
-		// const forceSave = req.query.forceSave === 'true'; // disabled temporarily - tests were also disabled
+		const forceSave = req.query.forceSave === 'true';
 
 		const updateData = new WorkflowEntity();
 		const { tags, ...rest } = req.body;
@@ -226,7 +229,7 @@ EEWorkflowController.patch(
 			safeWorkflow,
 			workflowId,
 			tags,
-			true,
+			forceSave,
 		);
 
 		const { id, ...remainder } = updatedWorkflow;

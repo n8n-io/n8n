@@ -20,7 +20,8 @@ import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCr
 import { CreateWorkflowsEditorRole1663755770892 } from './1663755770892-CreateWorkflowsUserRole';
 import { CreateCredentialUsageTable1665484192211 } from './1665484192211-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637024 } from './1665754637024-RemoveCredentialUsageTable';
-import { CreateLdapEntities1666304975928 } from './1666304975928-CreateLdapEntities';
+import { AddWorkflowVersionIdColumn1669739707124 } from './1669739707124-AddWorkflowVersionIdColumn';
+import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -45,7 +46,8 @@ const sqliteMigrations = [
 	CreateWorkflowsEditorRole1663755770892,
 	CreateCredentialUsageTable1665484192211,
 	RemoveCredentialUsageTable1665754637024,
-	CreateLdapEntities1666304975928,
+	AddWorkflowVersionIdColumn1669739707124,
+	CreateLdapEntities1670333612644,
 ];
 
 export { sqliteMigrations };

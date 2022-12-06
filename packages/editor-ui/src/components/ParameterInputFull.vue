@@ -24,7 +24,7 @@
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
-				:stickyOffset="4"
+				:stickyOffset="3"
 				@drop="onDrop"
 			>
 				<template #default="{ droppable, activeDrop }">
@@ -98,6 +98,7 @@ export default mixins(
 				menuExpanded: false,
 				forceShowExpression: false,
 				dataMappingTooltipButtons: [] as IN8nButton[],
+				mappingTooltipEnabled: false,
 			};
 		},
 		props: {
@@ -165,18 +166,22 @@ export default mixins(
 				return this.ndvStore.inputPanelDisplayMode;
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.mappingTooltipEnabled && this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
 			onFocus() {
 				this.focused = true;
+				setTimeout(() => {
+					this.mappingTooltipEnabled = true;
+				}, 500);
 				if (!this.parameter.noDataExpression) {
 					this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
+				this.mappingTooltipEnabled = false;
 				if (!this.parameter.noDataExpression) {
 					this.ndvStore.setMappableNDVInputFocus('');
 				}
