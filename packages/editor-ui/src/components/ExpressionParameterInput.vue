@@ -66,6 +66,7 @@ import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import type { Segment } from './InlineExpressionEditor/types';
+import type { TargetItem } from '@/Interface';
 
 Vue.component('expression-function-icon', ExpressionFunctionIcon);
 
@@ -103,9 +104,9 @@ export default Vue.extend({
 			return EXPRESSIONS_DOCS_URL;
 		},
 		hoveringItemNumber(): number {
-			return (this.ndvStore.hoveringItem?.itemIndex ?? 0) + 1;
+			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
-		hoveringItem(): object | null {
+		hoveringItem(): TargetItem | null {
 			return this.ndvStore.hoveringItem;
 		},
 		isDragging(): boolean {
