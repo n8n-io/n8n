@@ -1,13 +1,9 @@
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
-export const SYNTAX_HIGHLIGHTING_CLASSES = {
-	validResolvable: 'cm-valid-resolvable',
-	invalidResolvable: 'cm-invalid-resolvable',
-	brokenResolvable: 'cm-broken-resolvable',
-	plaintext: 'cm-plaintext',
-};
+// @TODO: Deduplicate
 
 export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
@@ -36,27 +32,13 @@ export const EXPRESSION_EDITOR_THEME = [
 		HighlightStyle.define([
 			{
 				tag: tags.content,
-				class: SYNTAX_HIGHLIGHTING_CLASSES.plaintext,
+				class: highlighter.SYNTAX_HIGHLIGHTING_CSS_CLASSES.plaintext,
 			},
 			{
 				tag: tags.className,
-				class: SYNTAX_HIGHLIGHTING_CLASSES.brokenResolvable,
+				class: highlighter.SYNTAX_HIGHLIGHTING_CSS_CLASSES.brokenResolvable,
 			},
-			/**
-			 * Resolvables are dynamically styled with
-			 * `cm-valid-resolvable` and `cm-invalid-resolvable`
-			 */
+			// resolvables dynamically styled
 		]),
 	),
 ];
-
-export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
-		color: 'var(--color-valid-resolvable-foreground)',
-		backgroundColor: 'var(--color-valid-resolvable-background)',
-	},
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: {
-		color: 'var(--color-invalid-resolvable-foreground)',
-		backgroundColor: 'var(--color-invalid-resolvable-background)',
-	},
-});

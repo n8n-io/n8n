@@ -4,7 +4,7 @@ import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/typ
 
 // @TODO: Clean up and document
 
-export const SYNTAX_HIGHLIGHTING_CLASSES = {
+export const SYNTAX_HIGHLIGHTING_CSS_CLASSES = {
 	validResolvable: 'cm-valid-resolvable',
 	invalidResolvable: 'cm-invalid-resolvable',
 	brokenResolvable: 'cm-broken-resolvable',
@@ -12,11 +12,11 @@ export const SYNTAX_HIGHLIGHTING_CLASSES = {
 };
 
 export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
+	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable]: {
 		color: '#29a568',
 		backgroundColor: '#e1f3d8',
 	},
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: {
+	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable]: {
 		color: '#f45959',
 		backgroundColor: '#fef0f0',
 	},
@@ -40,8 +40,8 @@ const stateEffects = {
 };
 
 const marks = {
-	valid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CLASSES.validResolvable }),
-	invalid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable }),
+	valid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable }),
+	invalid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable }),
 };
 
 const coloringField = StateField.define<DecorationSet>({
@@ -113,4 +113,5 @@ function removeColor(view: EditorView, segments: Plaintext[]) {
 export const highlighter = {
 	addColor,
 	removeColor,
+	SYNTAX_HIGHLIGHTING_CSS_CLASSES,
 };

@@ -1,32 +1,9 @@
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 
-// @TODO: Dedup after review
-
-const BASE_STYLING = {
-	fontSize: 'var(--font-size-2xs)',
-	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
-	// maxHeight: '200px',
-	tooltip: {
-		maxWidth: '100px',
-		lineHeight: '1.3em',
-	},
-	diagnosticButton: {
-		backgroundColor: 'inherit',
-		lineHeight: '1em',
-		textDecoration: 'underline',
-		marginLeft: '0.2em',
-		cursor: 'pointer',
-	},
-};
-
-export const SYNTAX_HIGHLIGHTING_CLASSES = {
-	validResolvable: 'cm-valid-resolvable',
-	invalidResolvable: 'cm-invalid-resolvable',
-	brokenResolvable: 'cm-broken-resolvable',
-	plaintext: 'cm-plaintext',
-};
+// @TODO: Dedup
 
 export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
@@ -34,7 +11,7 @@ export const EXPRESSION_EDITOR_THEME = [
 			maxHeight: '112px',
 			width: '100%',
 			minHeight: '30px',
-			fontSize: BASE_STYLING.fontSize,
+			fontSize: 'var(--font-size-2xs)',
 			padding: '0 0 0 var(--spacing-2xs)',
 			borderWidth: 'var(--border-width-base)',
 			borderStyle: 'var(--input-border-style, var(--border-style-base))',
@@ -53,9 +30,7 @@ export const EXPRESSION_EDITOR_THEME = [
 			lineHeight: '1.6',
 		},
 		'.cm-content': {
-			fontFamily: BASE_STYLING.fontFamily,
-			// height: '220px',
-			// padding: '12px', // var(--spacing-xs)
+			fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 			color: 'var(--input-font-color, var(--color-text-dark))',
 		},
 		'.cm-line': {
@@ -66,27 +41,13 @@ export const EXPRESSION_EDITOR_THEME = [
 		HighlightStyle.define([
 			{
 				tag: tags.content,
-				class: SYNTAX_HIGHLIGHTING_CLASSES.plaintext,
+				class: highlighter.SYNTAX_HIGHLIGHTING_CSS_CLASSES.plaintext,
 			},
 			{
 				tag: tags.className,
-				class: SYNTAX_HIGHLIGHTING_CLASSES.brokenResolvable,
+				class: highlighter.SYNTAX_HIGHLIGHTING_CSS_CLASSES.brokenResolvable,
 			},
-			/**
-			 * Resolvables are dynamically highlighted with
-			 * `cm-valid-resolvable` and `cm-invalid-resolvable`
-			 */
+			// resolvables dynamically styled
 		]),
 	),
 ];
-
-export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
-		color: '#29a568',
-		backgroundColor: '#e1f3d8',
-	},
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: {
-		color: '#f45959',
-		backgroundColor: '#fef0f0',
-	},
-});
