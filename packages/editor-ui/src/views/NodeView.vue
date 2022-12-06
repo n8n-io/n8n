@@ -1994,21 +1994,24 @@ export default mixins(
 
 						NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
+						const connectionData: [IConnection, IConnection] = [
+							{
+								node: sourceNodeName,
+								type: sourceInfo.type,
+								index: sourceInfo.index,
+							},
+							{
+								node: targetNodeName,
+								type: targetInfo.type,
+								index: targetInfo.index,
+							},
+						];
+
 						this.workflowsStore.addConnection({
-							connection: [
-								{
-									node: sourceNodeName,
-									type: sourceInfo.type,
-									index: sourceInfo.index,
-								},
-								{
-									node: targetNodeName,
-									type: targetInfo.type,
-									index: targetInfo.index,
-								},
-							],
+							connection: connectionData,
 							setStateDirty: true,
 						});
+						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
