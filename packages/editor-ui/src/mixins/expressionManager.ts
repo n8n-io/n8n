@@ -114,7 +114,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return delay;
 		},
 
-	/**
+		/**
 		 * Some segments are conditionally displayed, i.e. not displayed when they are
 		 * _part_ of the result, but displayed when they are the _entire_ result.
 		 *
@@ -136,44 +136,42 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		 *   - `1,2,3` when part of the result
 		 *   - `[Array: [1, 2, 3]]` when the entire result
 		 */
-	 getDisplayableSegments(): Segment[] {
-		return this.segments
-			.map((s) => {
-				if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
+		getDisplayableSegments(): Segment[] {
+			return this.segments
+				.map((s) => {
+					if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
 
-				if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
-					const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
-					s.resolved = new Date(utcDateString).toString();
-				}
+					if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
+						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
+						s.resolved = new Date(utcDateString).toString();
+					}
 
-				if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
-					s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
-				}
+					if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
+						s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+					}
 
-				return s;
-			})
-			.filter((s) => {
-				if (
-					this.segments.length > 1 &&
-					s.kind === 'resolvable' &&
-					typeof s.resolved === 'string' &&
-					(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
-						s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
-						s.resolved === this.$locale.baseText('expressionModalInput.null'))
-				) {
-					return false;
-				}
+					return s;
+				})
+				.filter((s) => {
+					if (
+						this.segments.length > 1 &&
+						s.kind === 'resolvable' &&
+						typeof s.resolved === 'string' &&
+						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
+							s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
+							s.resolved === this.$locale.baseText('expressionModalInput.null'))
+					) {
+						return false;
+					}
 
-				return true;
-			});
-	},
+					return true;
+				});
+		},
 	},
 	methods: {
 		isEmptyExpression(resolvable: string) {
 			return /\{\{\s*\}\}/.test(resolvable);
 		},
-
-
 
 		resolve(resolvable: string, targetItem?: TargetItem) {
 			const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
