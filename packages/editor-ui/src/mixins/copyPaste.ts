@@ -56,6 +56,7 @@ export const copyPaste = Vue.extend({
 		hiddenInput.setAttribute('type', 'text');
 		hiddenInput.setAttribute('id', 'hidden-input-copy-paste');
 		hiddenInput.setAttribute('class', 'hidden-copy-paste');
+		hiddenInput.setAttribute('data-test-id', 'hidden-copy-paste');
 		this.hiddenInput = hiddenInput;
 
 		document.body.append(hiddenInput);

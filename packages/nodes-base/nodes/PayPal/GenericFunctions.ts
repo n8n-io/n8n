@@ -20,11 +20,10 @@ export async function payPalApiRequest(
 		| IWebhookFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
 	const env = getEnvironment(credentials.env as string);
@@ -63,11 +62,10 @@ async function getAccessToken(
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
 		| IWebhookFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials!.env as string);
-	const data = Buffer.from(`${credentials!.clientId}:${credentials!.secret}`).toString(
+	const env = getEnvironment(credentials.env as string);
+	const data = Buffer.from(`${credentials.clientId}:${credentials.secret}`).toString(
 		BINARY_ENCODING,
 	);
 	const headerWithAuthentication = Object.assign(
@@ -99,11 +97,10 @@ export async function payPalApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -129,7 +126,6 @@ function getNext(links: IDataObject[]): string | undefined {
 	return undefined;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

@@ -11,9 +11,13 @@ const scopes = [
 
 export class SurveyMonkeyOAuth2Api implements ICredentialType {
 	name = 'surveyMonkeyOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'SurveyMonkey OAuth2 API';
+
 	documentationUrl = 'surveyMonkey';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

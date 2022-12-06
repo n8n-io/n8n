@@ -19,12 +19,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -74,10 +73,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -86,14 +84,14 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['nextPageToken'];
+		query.pageToken = responseData.nextPageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
+	} while (responseData.nextPageToken !== undefined && responseData.nextPageToken !== '');
 
 	return returnData;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {
@@ -107,22 +105,22 @@ function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
-			iss: credentials.email as string,
-			sub: credentials.email as string,
+			iss: credentials.email,
+			sub: credentials.email,
 			scope: scopes.join(' '),
 			aud: `https://oauth2.googleapis.com/token`,
 			iat: now,
 			exp: now + 3600,
 		},
-		privateKey as string,
+		privateKey,
 		{
 			algorithm: 'RS256',
 			header: {
-				kid: privateKey as string,
+				kid: privateKey,
 				typ: 'JWT',
 				alg: 'RS256',
 			},
@@ -142,6 +140,5 @@ function getAccessToken(
 		json: true,
 	};
 
-	//@ts-ignore
-	return this.helpers.request(options);
+	return this.helpers.request!(options);
 }

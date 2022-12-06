@@ -23,6 +23,7 @@ import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCr
 import { CreateWorkflowsEditorRole1663755770894 } from './1663755770894-CreateWorkflowsEditorRole';
 import { CreateCredentialUsageTable1665484192213 } from './1665484192213-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637026 } from './1665754637026-RemoveCredentialUsageTable';
+import { AddWorkflowVersionIdColumn1669739707125 } from './1669739707125-AddWorkflowVersionIdColumn';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -50,4 +51,5 @@ export const mysqlMigrations = [
 	CreateWorkflowsEditorRole1663755770894,
 	CreateCredentialUsageTable1665484192213,
 	RemoveCredentialUsageTable1665754637026,
+	AddWorkflowVersionIdColumn1669739707125,
 ];

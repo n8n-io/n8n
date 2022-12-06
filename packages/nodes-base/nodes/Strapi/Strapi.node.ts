@@ -68,7 +68,7 @@ export class Strapi implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = (await credential.data) as IDataObject;
+				const credentials = credential.data as IDataObject;
 				let options = {} as OptionsWithUri;
 
 				options = {
@@ -109,8 +109,8 @@ export class Strapi implements INodeType {
 		const qs: IDataObject = {};
 		const headers: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const { apiVersion } = await this.getCredentials('strapiApi');
 		const { jwt } = await getToken.call(this);

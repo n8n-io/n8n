@@ -2,7 +2,7 @@ import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import snowflake from 'snowflake-sdk';
 
-export function connect(conn: snowflake.Connection) {
+export async function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
 		conn.connect((err, _conn) => {
 			if (!err) {
@@ -15,7 +15,7 @@ export function connect(conn: snowflake.Connection) {
 	});
 }
 
-export function destroy(conn: snowflake.Connection) {
+export async function destroy(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
 		conn.destroy((err, _conn) => {
 			if (!err) {
@@ -28,7 +28,11 @@ export function destroy(conn: snowflake.Connection) {
 	});
 }
 
-export function execute(conn: snowflake.Connection, sqlText: string, binds: snowflake.InsertBinds) {
+export async function execute(
+	conn: snowflake.Connection,
+	sqlText: string,
+	binds: snowflake.InsertBinds,
+) {
 	return new Promise((resolve, reject) => {
 		conn.execute({
 			sqlText,
