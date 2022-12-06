@@ -39,7 +39,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<void> {
 /**
  * Initialise Logger if needed, and check the workflowId is acceptable
  */
- workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
+workflowStatsController.use(async (req: ExecutionRequest.Get, res, next) => {
 	try {
 		LoggerProxy.getInstance();
 	} catch (error) {
