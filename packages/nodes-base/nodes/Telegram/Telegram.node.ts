@@ -503,9 +503,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -587,9 +584,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -1018,9 +1012,6 @@ export class Telegram implements INodeType {
 										displayName: 'Caption',
 										name: 'caption',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										default: '',
 										description: 'Caption text to set, 0-1024 characters',
 									},
@@ -1056,9 +1047,6 @@ export class Telegram implements INodeType {
 				name: 'text',
 				type: 'string',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -1476,9 +1464,6 @@ export class Telegram implements INodeType {
 						displayName: 'Caption',
 						name: 'caption',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -1626,9 +1611,6 @@ export class Telegram implements INodeType {
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': ['sendAudio'],

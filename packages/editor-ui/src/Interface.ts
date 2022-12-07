@@ -37,7 +37,6 @@ import {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
-import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -314,7 +313,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	versionId: string;
-	usedCredentials?: Array<Partial<ICredentialsDb>>;
+	usedCredentials?: Array<Partial<ICredentialsResponse>>;
 }
 
 // Identical to cli.Interfaces.ts

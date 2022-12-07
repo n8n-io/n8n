@@ -55,9 +55,6 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {
@@ -173,9 +170,6 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Search Text',
 		name: 'searchText',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {
