@@ -42,8 +42,6 @@ ldapController.put('/config', async (req: LdapConfiguration.Update, res: express
 
 	const data = await getLdapConfig();
 
-	LdapManager.updateConfig(data);
-
 	void InternalHooksManager.getInstance().onUserUpdatedLdapSettings({
 		user_id: req.user.id,
 		...pick(data, NON_SENSIBLE_LDAP_CONFIG_PROPERTIES),
