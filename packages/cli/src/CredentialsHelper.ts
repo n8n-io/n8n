@@ -695,7 +695,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
-			} else if (error.cause.code) {
+			} else if (error.cause?.code) {
 				return {
 					status: 'Error',
 					message: error.cause.code,
