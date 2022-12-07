@@ -18,26 +18,32 @@ import "@fontsource/open-sans/latin-700.css";
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from './components/mixins/externalHooks';
+import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
-import { store } from './store';
+import { createPinia, PiniaVuePlugin } from 'pinia';
+
+import { useWebhooksStore } from './stores/webhooks';
 
 Vue.config.productionTip = false;
-router.afterEach((to, from) => {
-	runExternalHook('main.routeChange', store, { from, to });
-});
 
 Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue, store));
+Vue.use((vue) => I18nPlugin(vue));
+Vue.use(PiniaVuePlugin);
+
+const pinia = createPinia();
 
 new Vue({
 	i18n: i18nInstance,
 	router,
-	store,
+	pinia,
 	render: h => h(App),
 }).$mount('#app');
+
+router.afterEach((to, from) => {
+	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
+});
 
 if (import.meta.env.NODE_ENV !== 'production') {
 	// Make sure that we get all error messages properly displayed

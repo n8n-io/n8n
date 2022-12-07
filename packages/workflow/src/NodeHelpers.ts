@@ -12,8 +12,8 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get, isEqual } from 'lodash';
+import get from 'lodash.get';
+import isEqual from 'lodash.isequal';
 
 import {
 	IContextObject,
@@ -30,7 +30,7 @@ import {
 	INodePropertyModeValidation,
 	INodePropertyRegexValidation,
 	INodeType,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IParameterDependencies,
 	IRunExecutionData,
 	IWebhookData,
@@ -38,6 +38,7 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -292,6 +293,10 @@ export function displayParameter(
 				value = get(nodeValues, propertyName);
 			}
 
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
 			values.length = 0;
 			if (!Array.isArray(value)) {
 				values.push(value);
@@ -323,6 +328,10 @@ export function displayParameter(
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
 			}
 
 			values.length = 0;
@@ -414,9 +423,7 @@ export function getContext(
  * Returns which parameters are dependent on which
  *
  */
-export function getParamterDependencies(
-	nodePropertiesArray: INodeProperties[],
-): IParameterDependencies {
+function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
 	for (const nodeProperties of nodePropertiesArray) {
@@ -539,7 +546,7 @@ export function getNodeParameters(
 	parameterDependencies?: IParameterDependencies,
 ): INodeParameters | null {
 	if (parameterDependencies === undefined) {
-		parameterDependencies = getParamterDependencies(nodePropertiesArray);
+		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
 
 	// Get the parameter names which get used multiple times as for this
@@ -620,6 +627,14 @@ export function getNodeParameters(
 						nodeValues[nodeProperties.name] !== undefined
 							? nodeValues[nodeProperties.name]
 							: nodeProperties.default;
+				} else if (
+					nodeProperties.type === 'resourceLocator' &&
+					typeof nodeProperties.default === 'object'
+				) {
+					nodeParameters[nodeProperties.name] =
+						nodeValues[nodeProperties.name] !== undefined
+							? nodeValues[nodeProperties.name]
+							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] || nodeProperties.default;
@@ -871,7 +886,7 @@ export function getNodeWebhooks(
 		return [];
 	}
 
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1134,7 +1149,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'resourceLocator' &&
-			(!value || (typeof value === 'object' && !value.value)))
+			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
@@ -1379,18 +1394,18 @@ export function mergeNodeProperties(
 }
 
 export function getVersionedNodeType(
-	object: INodeVersionedType | INodeType,
+	object: IVersionedNodeType | INodeType,
 	version?: number,
 ): INodeType {
 	if (isNodeTypeVersioned(object)) {
-		return (object as INodeVersionedType).getNodeType(version);
+		return (object as IVersionedNodeType).getNodeType(version);
 	}
 	return object as INodeType;
 }
 
-export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType): INodeType[] {
+export function getVersionedNodeTypeAll(object: IVersionedNodeType | INodeType): INodeType[] {
 	if (isNodeTypeVersioned(object)) {
-		return Object.values((object as INodeVersionedType).nodeVersions).map((element) => {
+		return Object.values((object as IVersionedNodeType).nodeVersions).map((element) => {
 			element.description.name = object.description.name;
 			return element;
 		});
@@ -1398,6 +1413,6 @@ export function getVersionedNodeTypeAll(object: INodeVersionedType | INodeType):
 	return [object as INodeType];
 }
 
-export function isNodeTypeVersioned(object: INodeVersionedType | INodeType): boolean {
+export function isNodeTypeVersioned(object: IVersionedNodeType | INodeType): boolean {
 	return !!('getNodeType' in object);
 }

@@ -354,6 +354,7 @@ export class Medium implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the available publications to display them to user so that he can
@@ -400,8 +401,8 @@ export class Medium implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'post') {
 					//https://github.com/Medium/medium-api-docs
@@ -420,7 +421,7 @@ export class Medium implements INodeType {
 							content,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.tags) {
 							const tags = additionalFields.tags as string;
 							bodyRequest.tags = tags.split(',').map((name) => {
@@ -493,7 +494,7 @@ export class Medium implements INodeType {
 						//         publication:getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const user = await mediumApiRequest.call(this, 'GET', `/me`);
 
@@ -508,7 +509,7 @@ export class Medium implements INodeType {
 						responseData = responseData.data;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

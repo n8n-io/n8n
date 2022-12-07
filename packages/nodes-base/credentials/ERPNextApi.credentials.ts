@@ -7,13 +7,17 @@ import {
 
 export class ERPNextApi implements ICredentialType {
 	name = 'erpNextApi';
+
 	displayName = 'ERPNext API';
+
 	documentationUrl = 'erpnext';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -73,6 +77,7 @@ export class ERPNextApi implements ICredentialType {
 			default: false,
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -81,6 +86,7 @@ export class ERPNextApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:

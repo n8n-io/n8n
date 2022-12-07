@@ -1,6 +1,6 @@
-import { Db } from '../../../..';
-import { Role } from '../../../../databases/entities/Role';
-import { User } from '../../../../databases/entities/User';
+import * as Db from '@/Db';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
 
 export function isInstanceOwner(user: User): boolean {
 	return user.globalRole.name === 'owner';

@@ -2,12 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -73,7 +68,7 @@ export async function googleApiRequest(
 	}
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	credentials: IGoogleAuthCredentials,
 ) {
@@ -87,7 +82,7 @@ function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{

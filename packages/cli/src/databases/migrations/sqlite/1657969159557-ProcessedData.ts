@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
+import config from '@/config';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
 export class ProcessedData1657969159557 implements MigrationInterface {

@@ -10,7 +10,7 @@ import { VIEWS } from '@/constants';
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: 'TemplateList',
+	name: 'GoBackButton',
 	data() {
 		return {
 			routeHasHistory: false,

@@ -325,6 +325,7 @@ export class ShopifyTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -356,9 +357,7 @@ export class ShopifyTrigger implements INodeType {
 					},
 				};
 
-				let responseData;
-
-				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful
@@ -412,7 +411,6 @@ export class ShopifyTrigger implements INodeType {
 			headerData['x-shopify-shop-domain'] !== undefined &&
 			headerData['x-shopify-api-version'] !== undefined
 		) {
-			// @ts-ignore
 			const computedSignature = createHmac('sha256', secret).update(req.rawBody).digest('base64');
 
 			if (headerData['x-shopify-hmac-sha256'] !== computedSignature) {

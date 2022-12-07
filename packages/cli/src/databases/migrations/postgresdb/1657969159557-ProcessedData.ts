@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '../../../../config';
+import config from '@/config';
 
 export class ProcessedData1657969159557 implements MigrationInterface {
 	name = 'ProcessedData1657969159557';

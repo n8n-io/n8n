@@ -13,26 +13,20 @@ import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
 
 import compression from 'compression';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
-import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	ICustomRequest,
-	IExternalHooksClass,
-	IPackageVersions,
-	ResponseHelper,
-	WaitingWebhooks,
-} from '.';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WEBHOOK_METHODS } from './WebhookHelpers';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import { WaitingWebhooks } from '@/WaitingWebhooks';
+import type { ICustomRequest, IExternalHooksClass, IPackageVersions } from '@/Interfaces';
+import config from '@/config';
+import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { setupErrorMiddleware } from '@/ErrorReporting';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -217,6 +211,8 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		setupErrorMiddleware(this.app);
 	}
 
 	/**
@@ -236,7 +232,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -246,7 +241,6 @@ class App {
 			bodyParser.json({
 				limit: '16mb',
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -269,7 +263,6 @@ class App {
 			bodyParser.text({
 				limit: '16mb',
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -280,7 +273,6 @@ class App {
 			bodyParser.urlencoded({
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -301,7 +293,7 @@ class App {
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -325,7 +317,7 @@ class App {
 				await connection.query('SELECT 1');
 				// eslint-disable-next-line id-denylist
 			} catch (err) {
-				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 

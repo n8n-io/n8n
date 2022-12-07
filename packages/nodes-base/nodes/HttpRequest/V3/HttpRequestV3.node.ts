@@ -9,6 +9,7 @@ import {
 	jsonParse,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request-promise-native';
@@ -890,24 +891,33 @@ export class HttpRequestV3 implements INodeType {
 		let nodeCredentialType;
 
 		if (authentication === 'genericCredentialType') {
-			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (_) {}
-			try {
-				httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			} catch (_) {}
-			try {
-				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (_) {}
-			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (_) {}
-			try {
-				oAuth1Api = await this.getCredentials('oAuth1Api');
-			} catch (_) {}
-			try {
-				oAuth2Api = await this.getCredentials('oAuth2Api');
-			} catch (_) {}
+			const genericAuthType = this.getNodeParameter('genericAuthType', 0) as string;
+
+			if (genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.getCredentials('httpDigestAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.getCredentials('oAuth1Api');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.getCredentials('oAuth2Api');
+				} catch (_) {}
+			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
@@ -993,7 +1003,7 @@ export class HttpRequestV3 implements INodeType {
 
 			if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, batchInterval));
+					await sleep(batchInterval);
 				}
 			}
 
@@ -1013,7 +1023,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.resolveWithFullResponse = true;
 			}
 
-			if (redirect?.redirect?.followRedirects !== false) {
+			if (redirect?.redirect?.followRedirects) {
 				requestOptions.followRedirect = true;
 				requestOptions.followAllRedirects = true;
 			}
@@ -1022,7 +1032,7 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
 			}
 
-			if (response?.response?.neverError === true) {
+			if (response?.response?.neverError) {
 				requestOptions.simple = false;
 			}
 
@@ -1044,7 +1054,6 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			const parmetersToKeyValue = async (
-				// tslint:disable-next-line: no-any
 				acc: Promise<{ [key: string]: any }>,
 				cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
 			) => {
@@ -1213,7 +1222,7 @@ export class HttpRequestV3 implements INodeType {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
-				requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -1223,20 +1232,20 @@ export class HttpRequestV3 implements INodeType {
 				};
 			}
 
-			if (requestOptions.headers!['accept'] === undefined) {
+			if (requestOptions.headers!.accept === undefined) {
 				if (responseFormat === 'json') {
-					requestOptions.headers!['accept'] = 'application/json,text/*;q=0.99';
+					requestOptions.headers!.accept = 'application/json,text/*;q=0.99';
 				} else if (responseFormat === 'text') {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
 				} else {
-					requestOptions.headers!['accept'] =
+					requestOptions.headers!.accept =
 						'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
 				}
 			}
 
 			try {
-				let sendRequest: any = requestOptions; // tslint:disable-line:no-any
+				let sendRequest: any = requestOptions;
 				// Protect browser from sending large binary data
 				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
 					sendRequest = {
@@ -1283,13 +1292,13 @@ export class HttpRequestV3 implements INodeType {
 		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
-		let response: any; // tslint:disable-line:no-any
+		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			// @ts-ignore
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
-				if (this.continueOnFail() !== true) {
+				if (!this.continueOnFail()) {
 					if (autoDetectResponseFormat && response.reason.error instanceof Buffer) {
 						response.reason.error = Buffer.from(response.reason.error).toString();
 					}
@@ -1318,7 +1327,7 @@ export class HttpRequestV3 implements INodeType {
 				'autodetect',
 			) as string;
 
-			const fullResponse = this.getNodeParameter(
+			fullResponse = this.getNodeParameter(
 				'options.response.response.fullResponse',
 				0,
 				false,
@@ -1347,7 +1356,11 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (responseFormat === 'file') {
-				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
+				const outputPropertyName = this.getNodeParameter(
+					'options.response.response.outputPropertyName',
+					0,
+					'data',
+				) as string;
 
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -1367,7 +1380,7 @@ export class HttpRequestV3 implements INodeType {
 
 				const fileName = url.split('/').pop();
 
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1398,7 +1411,7 @@ export class HttpRequestV3 implements INodeType {
 					0,
 					'data',
 				) as string;
-				if (fullResponse === true) {
+				if (fullResponse) {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
@@ -1464,6 +1477,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 
 					if (Array.isArray(response)) {
+						// eslint-disable-next-line @typescript-eslint/no-loop-func
 						response.forEach((item) =>
 							returnItems.push({
 								json: item,

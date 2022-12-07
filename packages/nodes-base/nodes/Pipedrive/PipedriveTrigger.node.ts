@@ -344,8 +344,8 @@ export class PipedriveTrigger implements INodeType {
 			}
 
 			if (
-				basicAuthData.name !== httpBasicAuth!.user ||
-				basicAuthData.pass !== httpBasicAuth!.password
+				basicAuthData.name !== httpBasicAuth.user ||
+				basicAuthData.pass !== httpBasicAuth.password
 			) {
 				// Provided authentication data is wrong
 				return authorizationError(resp, realm, 403);

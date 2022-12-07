@@ -9,7 +9,7 @@ import {
 	ITriggerFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function togglApiRequest(
 	this:
@@ -21,11 +21,10 @@ export async function togglApiRequest(
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('togglApi');
 	const headerWithAuthentication = Object.assign(

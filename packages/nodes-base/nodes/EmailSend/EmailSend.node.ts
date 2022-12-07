@@ -1,11 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
@@ -141,7 +135,7 @@ export class EmailSend implements INodeType {
 				const text = this.getNodeParameter('text', itemIndex) as string;
 				const html = this.getNodeParameter('html', itemIndex) as string;
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				const credentials = await this.getCredentials('smtp');
 

@@ -46,7 +46,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			options: ICheckProcessedOptions,
 		): Promise<ICheckProcessedOutputItems>;
 		removeProcessed(items: string[], context: ProcessedDataContext): Promise<void>;
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 		prepareBinaryData(
 			binaryData: Buffer,
 			filePath?: string,
@@ -54,7 +54,7 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		): Promise<IBinaryData>;
 		getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 		setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -66,12 +66,12 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
@@ -90,13 +90,13 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 	helpers: {
 		getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
 		setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 		prepareBinaryData(
 			binaryData: Buffer,
 			filePath?: string,
 			mimeType?: string,
 		): Promise<IBinaryData>;
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -108,12 +108,12 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -124,13 +124,13 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 
 export interface IPollFunctions extends IPollFunctionsBase {
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 		prepareBinaryData(
 			binaryData: Buffer,
 			filePath?: string,
 			mimeType?: string,
 		): Promise<IBinaryData>;
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -142,12 +142,12 @@ export interface IPollFunctions extends IPollFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -163,13 +163,13 @@ export interface IResponseError extends Error {
 
 export interface ITriggerFunctions extends ITriggerFunctionsBase {
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 		prepareBinaryData(
 			binaryData: Buffer,
 			filePath?: string,
 			mimeType?: string,
 		): Promise<IBinaryData>;
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -181,12 +181,12 @@ export interface ITriggerFunctions extends ITriggerFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -204,8 +204,8 @@ export interface IUserSettings {
 
 export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
-		request?: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+		request?: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -217,12 +217,12 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		) => Promise<any>; // tslint:disable-line:no-any
+		) => Promise<any>;
 		requestOAuth1?(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -239,8 +239,8 @@ export interface ICredentialTestFunctions extends ICredentialTestFunctionsBase {
 
 export interface IHookFunctions extends IHookFunctionsBase {
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -252,12 +252,12 @@ export interface IHookFunctions extends IHookFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -268,13 +268,14 @@ export interface IHookFunctions extends IHookFunctionsBase {
 
 export interface IWebhookFunctions extends IWebhookFunctionsBase {
 	helpers: {
-		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
+		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
 		prepareBinaryData(
 			binaryData: Buffer,
 			filePath?: string,
 			mimeType?: string,
 		): Promise<IBinaryData>;
-		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>; // tslint:disable-line:no-any
+		copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
@@ -286,12 +287,12 @@ export interface IWebhookFunctions extends IWebhookFunctionsBase {
 			credentialsType: string,
 			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
 			requestOptions: OptionsWithUrl | RequestPromiseOptions,
-		): Promise<any>; // tslint:disable-line:no-any
+		): Promise<any>;
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -320,10 +321,21 @@ export interface IBinaryDataConfig {
 	persistedBinaryDataTTL: number;
 }
 
+export interface BinaryMetadata {
+	fileName?: string;
+	mimeType?: string;
+	fileSize: number;
+}
+
 export interface IBinaryDataManager {
 	init(startPurger: boolean): Promise<void>;
+	getFileSize(filePath: string): Promise<number>;
+	copyBinaryFile(filePath: string, executionId: string): Promise<string>;
+	storeBinaryMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
+	getBinaryMetadata(identifier: string): Promise<BinaryMetadata>;
 	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
+	getBinaryPath(identifier: string): string;
 	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
@@ -390,4 +402,18 @@ export interface ICheckProcessedContextData {
 export interface ICheckProcessedOptions {
 	mode: ProcessedDataMode;
 	maxEntries?: number;
+}
+export namespace n8n {
+	export interface PackageJson {
+		name: string;
+		version: string;
+		n8n?: {
+			credentials?: string[];
+			nodes?: string[];
+		};
+		author?: {
+			name?: string;
+			email?: string;
+		};
+	}
 }

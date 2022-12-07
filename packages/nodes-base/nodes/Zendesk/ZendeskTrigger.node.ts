@@ -1,5 +1,3 @@
-import { parse as urlParse } from 'url';
-
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
@@ -143,6 +141,7 @@ export class ZendeskTrigger implements INodeType {
 			},
 		],
 	};
+
 	methods = {
 		loadOptions: {
 			// Get all the fields to display them to user so that he can
@@ -218,6 +217,7 @@ export class ZendeskTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

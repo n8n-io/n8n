@@ -4,7 +4,7 @@
 		@click="onClick"
 	>
 			<template #header>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading" data-test-id="workflow-card-name">
 					{{ data.name }}
 				</n8n-heading>
 			</template>
@@ -12,21 +12,22 @@
 				<n8n-text color="text-light" size="small">
 					<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 					<span v-show="data" class="mr-2xs">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
-					<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
+					<span v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
 					<n8n-tags
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
 						@click="onClickTag"
+						data-test-id="workflow-card-tags"
 					/>
 				</span>
 				</n8n-text>
 			</div>
 			<template #append>
 				<div :class="$style.cardActions">
-					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-show="false">
+					<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 						<n8n-badge
-							v-if="credentialPermissions.isOwner"
+							v-if="workflowPermissions.isOwner"
 							class="mr-xs"
 							theme="tertiary"
 							bold
@@ -40,12 +41,14 @@
 						:workflow-active="data.active"
 						:workflow-id="data.id"
 						ref="activator"
+						data-test-id="workflow-card-activator"
 					/>
 
 					<n8n-action-toggle
 						:actions="actions"
 						theme="dark"
 						@action="onAction"
+						data-test-id="workflow-card-actions"
 					/>
 				</div>
 			</template>
@@ -55,16 +58,22 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import {IWorkflowDb, IUser, ITag} from "@/Interface";
-import {DUPLICATE_MODAL_KEY, EnterpriseEditionFeature, VIEWS} from '@/constants';
-import {showMessage} from "@/components/mixins/showMessage";
+import {DUPLICATE_MODAL_KEY, EnterpriseEditionFeature, VIEWS, WORKFLOW_SHARE_MODAL_KEY} from '@/constants';
+import {showMessage} from "@/mixins/showMessage";
 import {getWorkflowPermissions, IPermissions} from "@/permissions";
 import dateformat from "dateformat";
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from "vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
+	SHARE: 'share',
 	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
 };
@@ -95,6 +104,7 @@ export default mixins(
 				name: '',
 				sharedWith: [],
 				ownedBy: {} as IUser,
+				versionId: '',
 			}),
 		},
 		readonly: {
@@ -103,14 +113,17 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
 		currentUser (): IUser {
-			return this.$store.getters['users/currentUser'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
-		areTagsEnabled(): boolean {
-			return this.$store.getters['settings/areTagsEnabled'];
-		},
-		credentialPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.data, this.$store);
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string; }> {
 			return [
@@ -119,10 +132,14 @@ export default mixins(
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 				},
 				{
+					label: this.$locale.baseText('workflows.item.share'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
+				},
+				{
 					label: this.$locale.baseText('workflows.item.duplicate'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 				},
-			].concat(this.credentialPermissions.delete ? [{
+			].concat(this.workflowPermissions.delete ? [{
 				label: this.$locale.baseText('workflows.item.delete'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
 			}]: []);
@@ -162,7 +179,7 @@ export default mixins(
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
-				await this.$store.dispatch('ui/openModalWithData', {
+				this.uiStore.openModalWithData({
 					name: DUPLICATE_MODAL_KEY,
 					data: {
 						id: this.data.id,
@@ -170,6 +187,8 @@ export default mixins(
 						tags: (this.data.tags || []).map((tag: ITag) => tag.id),
 					},
 				});
+			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.SHARE) {
+				this.uiStore.openModalWithData({ name: WORKFLOW_SHARE_MODAL_KEY, data: { id: this.data.id } });
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText(
@@ -188,7 +207,7 @@ export default mixins(
 
 				try {
 					await this.restApi().deleteWorkflow(this.data.id);
-					this.$store.commit('deleteWorkflow', this.data.id);
+					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(
 						error,

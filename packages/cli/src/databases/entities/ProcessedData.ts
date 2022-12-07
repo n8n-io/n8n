@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
 
-import * as config from '../../../config';
+import config from '@/config';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, IProcessedDataDb, IProcessedDataEntries, IProcessedDataLatest } from '../..';
 import { jsonColumnType } from './AbstractEntity';

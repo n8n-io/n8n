@@ -7,21 +7,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	companyFields,
-	contactFields,
-	dealFields,
-	hubspotApiRequest,
-	propertyEvents,
-} from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
 
 import { createHash } from 'crypto';
-
-import { capitalCase } from 'change-case';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -324,8 +315,7 @@ export class HubspotTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 				const events =
-					(((this.getNodeParameter('eventsUi') as IDataObject) || {})
-						.eventValues as IDataObject[]) || [];
+					((this.getNodeParameter('eventsUi') as IDataObject)?.eventValues as IDataObject[]) || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
@@ -399,7 +389,7 @@ export class HubspotTrigger implements INodeType {
 			return {};
 		}
 
-		const hash = `${credentials!.clientSecret}${JSON.stringify(bodyData)}`;
+		const hash = `${credentials.clientSecret}${JSON.stringify(bodyData)}`;
 		const signature = createHash('sha256').update(hash).digest('hex');
 		//@ts-ignore
 		if (signature !== headerData['x-hubspot-signature']) {

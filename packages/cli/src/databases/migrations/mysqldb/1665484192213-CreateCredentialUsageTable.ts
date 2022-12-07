@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateCredentialUsageTable1665484192213 implements MigrationInterface {
 	name = 'CreateCredentialUsageTable1665484192213';
@@ -33,8 +33,6 @@ export class CreateCredentialUsageTable1665484192213 implements MigrationInterfa
 	async down(queryRunner: QueryRunner) {
 		const tablePrefix = getTablePrefix();
 
-		await queryRunner.query(`
-			DELETE FROM ${tablePrefix}role WHERE name='user' AND scope='workflow';
-		`);
+		await queryRunner.query(`DROP TABLE "${tablePrefix}credential_usage"`);
 	}
 }

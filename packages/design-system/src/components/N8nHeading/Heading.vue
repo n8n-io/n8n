@@ -21,11 +21,15 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['2xlarge', 'xlarge', 'large', 'medium', 'small'].includes(value),
+			validator: (value: string): boolean =>
+				['2xlarge', 'xlarge', 'large', 'medium', 'small'].includes(value),
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
+			validator: (value: string): boolean =>
+				['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(
+					value,
+				),
 		},
 		align: {
 			type: String,
@@ -36,15 +40,17 @@ export default Vue.extend({
 		classes() {
 			const applied = [];
 			if (this.align) {
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				applied.push(`align-${this.align}`);
 			}
 			if (this.color) {
 				applied.push(this.color);
 			}
 
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			applied.push(`size-${this.size}`);
 
-			applied.push(this.bold? 'bold': 'regular');
+			applied.push(this.bold ? 'bold' : 'regular');
 
 			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
 		},
@@ -121,5 +127,4 @@ export default Vue.extend({
 .align-center {
 	text-align: center;
 }
-
 </style>

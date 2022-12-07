@@ -1,15 +1,16 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 import { Response } from 'express';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import { In } from 'typeorm';
 import validator from 'validator';
 
-import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
-import { User } from '../../databases/entities/User';
-import { UserRequest } from '../../requests';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { ITelemetryUserDeletionData } from '@/Interfaces';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
@@ -21,8 +22,9 @@ import {
 	validatePassword,
 } from '../UserManagementHelper';
 
-import * as config from '../../../config';
+import config from '@/config';
 import { issueCookie } from '../auth/jwt';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -35,10 +37,8 @@ export function usersNamespace(this: N8nApp): void {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because emailing was not set up',
 				);
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Email sending must be set up in order to request a password reset email',
-					undefined,
-					500,
 				);
 			}
 
@@ -47,10 +47,8 @@ export function usersNamespace(this: N8nApp): void {
 				mailer = await UserManagementMailer.getInstance();
 			} catch (error) {
 				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.InternalServerError(
 						`There is a problem with your SMTP setup! ${error.message}`,
-						undefined,
-						500,
 					);
 				}
 			}
@@ -60,17 +58,15 @@ export function usersNamespace(this: N8nApp): void {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
-				throw new ResponseHelper.ResponseError('User management is disabled');
+				throw new ResponseHelper.BadRequestError('User management is disabled');
 			}
 
 			if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'You must set up your own account before inviting others',
-					undefined,
-					400,
 				);
 			}
 
@@ -81,7 +77,7 @@ export function usersNamespace(this: N8nApp): void {
 						payload: req.body,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			if (!req.body.length) return [];
@@ -90,19 +86,15 @@ export function usersNamespace(this: N8nApp): void {
 			// Validate payload
 			req.body.forEach((invite) => {
 				if (typeof invite !== 'object' || !invite.email) {
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-						undefined,
-						400,
 					);
 				}
 
 				if (!validator.isEmail(invite.email)) {
 					Logger.debug('Invalid email in payload', { invalidEmail: invite.email });
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-						undefined,
-						400,
 					);
 				}
 				createUsers[invite.email.toLowerCase()] = null;
@@ -114,10 +106,8 @@ export function usersNamespace(this: N8nApp): void {
 				Logger.error(
 					'Request to send email invite(s) to user(s) failed because no global member role was found in database',
 				);
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Members role not found in database - inconsistent state',
-					undefined,
-					500,
 				);
 			}
 
@@ -159,8 +149,9 @@ export function usersNamespace(this: N8nApp): void {
 					public_api: false,
 				});
 			} catch (error) {
+				ErrorReporter.error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
-				throw new ResponseHelper.ResponseError('An error occurred during user creation');
+				throw new ResponseHelper.InternalServerError('An error occurred during user creation');
 			}
 
 			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
@@ -242,7 +233,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to resolve signup token failed because of missing user IDs in query string',
 					{ inviterId, inviteeId },
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			// Postgres validates UUID format
@@ -251,7 +242,7 @@ export function usersNamespace(this: N8nApp): void {
 					Logger.debug('Request to resolve signup token failed because of invalid user ID', {
 						userId,
 					});
-					throw new ResponseHelper.ResponseError('Invalid userId', undefined, 400);
+					throw new ResponseHelper.BadRequestError('Invalid userId');
 				}
 			}
 
@@ -262,7 +253,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
 					{ inviterId, inviteeId },
 				);
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid invite URL');
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId);
@@ -272,10 +263,8 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'The invitation was likely either deleted or already claimed',
-					undefined,
-					400,
 				);
 			}
 
@@ -288,7 +277,7 @@ export function usersNamespace(this: N8nApp): void {
 						inviterId: inviter?.id,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			void InternalHooksManager.getInstance().onUserInviteEmailClick({
@@ -318,7 +307,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to fill out a user shell failed because of missing properties in payload',
 					{ payload: req.body },
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			const validPassword = validatePassword(password);
@@ -336,7 +325,7 @@ export function usersNamespace(this: N8nApp): void {
 						inviteeId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload or URL', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload or URL');
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId) as User;
@@ -346,11 +335,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to fill out a user shell failed because the invite had already been accepted',
 					{ inviteeId },
 				);
-				throw new ResponseHelper.ResponseError(
-					'This invite has been accepted already',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('This invite has been accepted already');
 			}
 
 			invitee.firstName = firstName;
@@ -395,16 +380,14 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to delete a user failed because it attempted to delete the requesting user',
 					{ userId: req.user.id },
 				);
-				throw new ResponseHelper.ResponseError('Cannot delete your own user', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Cannot delete your own user');
 			}
 
 			const { transferId } = req.query;
 
 			if (transferId === idToDelete) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'Request to delete a user failed because the user to delete and the transferee are the same user',
-					undefined,
-					400,
 				);
 			}
 
@@ -413,10 +396,8 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!users.length || (transferId && users.length !== 2)) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
-					undefined,
-					404,
 				);
 			}
 
@@ -499,10 +480,8 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!isEmailSetUp()) {
 				Logger.error('Request to reinvite a user failed because email sending was not set up');
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Email sending must be set up in order to invite other users',
-					undefined,
-					500,
 				);
 			}
 
@@ -512,7 +491,7 @@ export function usersNamespace(this: N8nApp): void {
 				Logger.debug(
 					'Request to reinvite a user failed because the ID of the reinvitee was not found in database',
 				);
-				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
+				throw new ResponseHelper.NotFoundError('Could not find user');
 			}
 
 			if (reinvitee.password) {
@@ -520,11 +499,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to reinvite a user failed because the invite had already been accepted',
 					{ userId: reinvitee.id },
 				);
-				throw new ResponseHelper.ResponseError(
-					'User has already accepted the invite',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('User has already accepted the invite');
 			}
 
 			const baseUrl = getInstanceBaseUrl();
@@ -535,7 +510,7 @@ export function usersNamespace(this: N8nApp): void {
 				mailer = await UserManagementMailer.getInstance();
 			} catch (error) {
 				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+					throw new ResponseHelper.InternalServerError(error.message);
 				}
 			}
 
@@ -556,11 +531,7 @@ export function usersNamespace(this: N8nApp): void {
 					inviteAcceptUrl,
 					domain: baseUrl,
 				});
-				throw new ResponseHelper.ResponseError(
-					`Failed to send email to ${reinvitee.email}`,
-					undefined,
-					500,
-				);
+				throw new ResponseHelper.InternalServerError(`Failed to send email to ${reinvitee.email}`);
 			}
 
 			void InternalHooksManager.getInstance().onUserReinvite({

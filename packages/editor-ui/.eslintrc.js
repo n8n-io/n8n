@@ -6,7 +6,11 @@ module.exports = {
 
 	parserOptions: {
 		project: ['./tsconfig.json'],
+		tsconfigRootDir: __dirname,
+		extraFileExtensions: ['.vue'],
 	},
+
+	ignorePatterns: ['*.d.cts'],
 
 	rules: {
 		// TODO: Remove these
@@ -49,5 +53,6 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 };

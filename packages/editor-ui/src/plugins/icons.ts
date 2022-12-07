@@ -10,13 +10,15 @@ import {
 	faArrowLeft,
 	faArrowRight,
 	faAt,
+	faBan,
 	faBook,
 	faBoxOpen,
 	faBug,
-	faBan,
+	faCalculator,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
+	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
 	faChevronLeft,
@@ -50,12 +52,16 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFlask,
 	faFolderOpen,
+	faFont,
 	faGlobeAmericas,
 	faGift,
 	faGlobe,
 	faGraduationCap,
 	faGripVertical,
+	faHandPointLeft,
+	faHashtag,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -65,6 +71,7 @@ import {
 	faInfoCircle,
 	faKey,
 	faLink,
+	faList,
 	faLightbulb,
 	faMapSigns,
 	faMousePointer,
@@ -135,9 +142,11 @@ addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
+addIcon(faCalculator);
 addIcon(faCalendar);
 addIcon(faCheck);
 addIcon(faCheckCircle);
+addIcon(faCheckSquare);
 addIcon(faChevronLeft);
 addIcon(faChevronRight);
 addIcon(faChevronDown);
@@ -172,11 +181,15 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFlask);
 addIcon(faFolderOpen);
+addIcon(faFont);
 addIcon(faGift);
 addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
+addIcon(faHandPointLeft);
+addIcon(faHashtag);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);
@@ -186,6 +199,7 @@ addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
 addIcon(faLink);
+addIcon(faList);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
 addIcon(faMousePointer);

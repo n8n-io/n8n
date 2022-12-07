@@ -32,6 +32,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -68,7 +69,7 @@ export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/down
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
-
+export const EXPRESSIONS_DOCS_URL = 'https://docs.n8n.io/code-examples/expressions/';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -249,6 +250,7 @@ export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
+export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -287,6 +289,9 @@ export enum VIEWS {
 	HOMEPAGE = "Homepage",
 	COLLECTION = "TemplatesCollectionView",
 	EXECUTION = "ExecutionById",
+	EXECUTIONS = "ExecutionList",
+	EXECUTION_PREVIEW = "ExecutionPreview",
+	EXECUTION_HOME = "ExecutionsLandingPage",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
 	CREDENTIALS = "CredentialsView",
@@ -311,7 +316,8 @@ export enum VIEWS {
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	SHARING = 'sharing',
+	CREDENTIALS_SHARING = 'credentialsSharing',
+	WORKFLOWS_SHARING = 'workflowsSharing',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -366,9 +372,15 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	WorkflowSharing = 'workflowSharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
+export enum MAIN_HEADER_TABS {
+	WORKFLOW = 'workflow',
+	EXECUTIONS = 'executions',
+	SETTINGS = 'settings',
+}
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
 	'ftps',
@@ -401,3 +413,21 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	'imap': 'IMAP',
 	'imaps': 'IMAP',
 };
+
+export enum STORES {
+	COMMUNITY_NODES = 'communityNodes',
+	ROOT = 'root',
+	SETTINGS = 'settings',
+	UI = 'ui',
+	USERS = 'users',
+	WORKFLOWS = 'workflows',
+	WORKFLOWS_EE = 'workflowsEE',
+	NDV = 'ndv',
+	TEMPLATES = 'templates',
+	NODE_TYPES = 'nodeTypes',
+	CREDENTIALS = 'credentials',
+	TAGS = 'tags',
+	VERSIONS = 'versions',
+	NODE_CREATOR = 'nodeCreator',
+	WEBHOOKS = 'webhooks',
+}

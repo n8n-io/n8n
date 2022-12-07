@@ -32,7 +32,6 @@ export class Jenkins implements INodeType {
 		description: 'Consume Jenkins API',
 		defaults: {
 			name: 'Jenkins',
-			color: '#04AA51',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -487,8 +486,8 @@ export class Jenkins implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -502,9 +501,9 @@ export class Jenkins implements INodeType {
 					if (operation === 'triggerParams') {
 						const job = this.getNodeParameter('job', i) as string;
 						const params = this.getNodeParameter('param.params', i, []) as [];
-						let body = {};
+						let form = {};
 						if (params.length) {
-							body = params.reduce((body: IDataObject, param: { name: string; value: string }) => {
+							form = params.reduce((body: IDataObject, param: { name: string; value: string }) => {
 								body[param.name] = param.value;
 								return body;
 							}, {});
@@ -517,7 +516,7 @@ export class Jenkins implements INodeType {
 							{},
 							{},
 							{
-								form: body,
+								form,
 								headers: {
 									'content-type': 'application/x-www-form-urlencoded',
 								},
@@ -626,10 +625,10 @@ export class Jenkins implements INodeType {
 					if (operation === 'getAll') {
 						const job = this.getNodeParameter('job', i) as string;
 						let endpoint = `/job/${job}/api/json?tree=builds[*]`;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							endpoint += `{0,${limit}}`;
 						}
 

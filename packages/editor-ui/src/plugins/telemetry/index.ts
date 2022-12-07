@@ -6,26 +6,15 @@ import {
 } from 'n8n-workflow';
 import { Route } from "vue-router";
 
-import type { INodeCreateElement, IRootState } from "@/Interface";
-import type { Store } from "vuex";
+import type { INodeCreateElement } from "@/Interface";
 import type { IUserNodesPanelSession } from "./telemetry.types";
-
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	const telemetry = new Telemetry();
-
-	Object.defineProperty(vue, '$telemetry', {
-		get() { return telemetry; },
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() { return telemetry; },
-	});
-}
+import { useSettingsStore } from "@/stores/settings";
+import { useRootStore } from "@/stores/n8nRootStore";
 
 export class Telemetry {
 
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
-	private store: Store<IRootState> | null;
 
 	private get rudderStack() {
 		return window.rudderanalytics;
@@ -43,25 +32,24 @@ export class Telemetry {
 	constructor() {
 		this.pageEventQueue = [];
 		this.previousPath = '';
-		this.store = null;
 	}
 
 	init(
 		telemetrySettings: ITelemetrySettings,
-		{ instanceId, userId, store, versionCli }: {
+		{ instanceId, userId, versionCli }: {
 			instanceId: string;
 			userId?: string;
-			store: Store<IRootState>;
 			versionCli: string
-	 },
+		},
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
 		const { config: { key, url } } = telemetrySettings;
 
-		this.store = store;
+		const settingsStore = useSettingsStore();
+		const rootStore = useRootStore();
 
-		const logLevel = store.getters['settings/logLevel'];
+		const logLevel = settingsStore.logLevel;
 
 		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
@@ -78,7 +66,7 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli);
 
 		this.flushPageEvents();
-		this.track('Session started', { session_id: store.getters.sessionId });
+		this.track('Session started', { session_id: rootStore.sessionId });
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string) {
@@ -88,7 +76,6 @@ export class Telemetry {
 		}
 		else {
 			this.rudderStack.reset();
-			this.rudderStack.identify(undefined, traits);
 		}
 	}
 
@@ -97,7 +84,7 @@ export class Telemetry {
 
 		const updatedProperties = {
 			...properties,
-			version_cli: this.store && this.store.getters.versionCli,
+			version_cli: useRootStore().versionCli,
 		};
 
 		this.rudderStack.track(event, updatedProperties);
@@ -112,8 +99,8 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: {[key: string]: string} = {};
-			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
-				properties = route.meta.telemetry.getProperties(route, this.store);
+			if (route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
+				properties = route.meta.telemetry.getProperties(route);
 			}
 
 			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';
@@ -253,4 +240,15 @@ export class Telemetry {
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
+}
+
+export const telemetry = new Telemetry();
+
+export function TelemetryPlugin(vue: typeof _Vue): void {
+	Object.defineProperty(vue, '$telemetry', {
+		get() { return telemetry; },
+	});
+	Object.defineProperty(vue.prototype, '$telemetry', {
+		get() { return telemetry; },
+	});
 }

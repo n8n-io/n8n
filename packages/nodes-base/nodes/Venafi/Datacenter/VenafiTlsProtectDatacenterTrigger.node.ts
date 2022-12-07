@@ -14,10 +14,9 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		subtitle: '={{$parameter["triggerOn"]}}',
-		description: 'Starts the workflow when Venafi events occure',
+		description: 'Starts the workflow when Venafi events occur',
 		defaults: {
 			name: 'Venafi TLS Protect Datacenter​',
-			color: '#000000',
 		},
 		credentials: [
 			{

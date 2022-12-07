@@ -225,7 +225,7 @@ export class TelegramTrigger implements INodeType {
 			}
 
 			if (
-				(bodyData[key] && bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
+				(bodyData[key]?.photo && Array.isArray(bodyData[key]?.photo)) ||
 				bodyData[key]?.document
 			) {
 				if (additionalFields.imageSize) {

@@ -1,18 +1,9 @@
 <template>
 	<span>
-		<router-link
-			v-if="useRouterLink"
-			:to="to"
-			v-on="$listeners"
-		>
+		<router-link v-if="useRouterLink" :to="to" v-on="$listeners">
 			<slot></slot>
 		</router-link>
-		<a
-			v-else
-			:href="to"
-			:target="openNewWindow ? '_blank': '_self'"
-			v-on="$listeners"
-		>
+		<a v-else :href="to" :target="openNewWindow ? '_blank' : '_self'" v-on="$listeners">
 			<slot></slot>
 		</a>
 	</span>
@@ -56,4 +47,3 @@ export default Vue.extend({
 	},
 });
 </script>
-

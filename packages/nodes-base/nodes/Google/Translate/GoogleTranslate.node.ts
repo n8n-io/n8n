@@ -186,8 +186,8 @@ export class GoogleTranslate implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			if (resource === 'language') {

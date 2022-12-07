@@ -13,18 +13,20 @@ import {
 	Column,
 	Entity,
 	Index,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
 	PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import * as config from '../../../config';
+import config from '@/config';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { IWorkflowDb } from '../../Interfaces';
+import { WorkflowStatistics } from './WorkflowStatistics';
+import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
@@ -78,12 +80,25 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
 
+	@OneToMany(
+		() => WorkflowStatistics,
+		(workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow,
+	)
+	@JoinColumn({ referencedColumnName: 'workflow' })
+	statistics: WorkflowStatistics[];
+
+	@Column({ default: false })
+	dataLoaded: boolean;
+
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 		nullable: true,
 		transformer: sqlite.jsonColumn,
 	})
 	pinData: ISimplifiedPinData;
+
+	@Column({ length: 36 })
+	versionId: string;
 }
 
 /**

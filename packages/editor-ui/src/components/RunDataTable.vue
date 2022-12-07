@@ -26,10 +26,12 @@
 							:disabled="!mappingEnabled"
 							:open-delay="1000"
 						>
-							<div slot="content">
-								<img src='/static/data-mapping-gif.gif'/>
-								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
-							</div>
+							<template #content>
+								<div>
+									<img src='/static/data-mapping-gif.gif'/>
+									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+								</div>
+							</template>
 							<draggable
 								type="mapping"
 								:data="getExpression(column)"
@@ -37,7 +39,7 @@
 								@dragstart="onDragStart"
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
-								<template v-slot:preview="{ canDrop }">
+								<template #preview="{ canDrop }">
 									<div
 										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
 									>
@@ -48,12 +50,12 @@
 										}}
 									</div>
 								</template>
-								<template v-slot="{ isDragging }">
+								<template #default="{ isDragging }">
 									<div
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: i === activeColumn && mappingEnabled,
+											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -64,6 +66,24 @@
 									</div>
 								</template>
 							</draggable>
+						</n8n-tooltip>
+					</th>
+					<th v-if="columnLimitExceeded" :class="$style.header">
+						<n8n-tooltip placement="bottom-end">
+							<template #content>
+								<div>
+									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+										<template #columnLimit>{{ columnLimit }}</template>
+										<template #link>
+										  <a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+										</template>
+									</i18n>
+								</div>
+							</template>
+							<span>
+								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+							</span>
 						</n8n-tooltip>
 					</th>
 					<th :class="$style.tableRightMargin"></th>
@@ -78,7 +98,7 @@
 				@dragend="onCellDragEnd"
 				ref="draggable"
 			>
-				<template v-slot:preview="{ canDrop, el }">
+				<template #preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
 						{{
 							$locale.baseText(
@@ -105,7 +125,7 @@
 						>
 							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template v-slot:label="{ label, path }">
+								<template #label="{ label, path }">
 									<span
 										@mouseenter="() => onMouseEnterKey(path, index2)"
 										@mouseleave="onMouseLeaveKey"
@@ -122,13 +142,14 @@
 										>{{ label || $locale.baseText('runData.unnamedField') }}</span
 									>
 								</template>
-								<template v-slot:value="{ value }">
+								<template #value="{ value }">
 									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
 										getValueToRender(value)
 									}}</span>
 								</template>
 							</n8n-tree>
 						</td>
+						<td v-if="columnLimitExceeded"></td>
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
@@ -139,15 +160,19 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-
-import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
-import { getPairedItemId } from '@/pairedItemUtils';
+import { INodeUi, ITableData, NDVState } from '@/Interface';
+import { getPairedItemId } from '@/utils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
-import { externalHooks } from './mixins/externalHooks';
+import { shorten } from '@/utils';
+import { externalHooks } from '@/mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+
+const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -184,11 +209,14 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeColumn: -1,
+			forceShowGrip: false,
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimit: MAX_COLUMNS_LIMIT,
+			columnLimitExceeded: false,
 		};
 	},
 	mounted() {
@@ -202,14 +230,21 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		hoveringItem(): IUiState['ndv']['hoveringItem'] {
-			return this.$store.getters['ui/hoveringItem'];
+		...mapStores(
+			useNDVStore,
+			useWorkflowsStore,
+		),
+		hoveringItem(): NDVState['hoveringItem'] {
+			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
-			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		pairedItemMappings(): {[itemId: string]: Set<string>} {
+			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
+		},
+		focusedMappableInput(): string {
+			return this.ndvStore.focusedMappableInput;
 		},
 	},
 	methods: {
@@ -345,8 +380,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragStart() {
 			this.draggedColumn = true;
-
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -369,7 +403,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
@@ -411,7 +445,14 @@ export default mixins(externalHooks).extend({
 
 				// Go over all keys of entry
 				entryRows = [];
-				leftEntryColumns = Object.keys(entry || {});
+				const entryColumns = Object.keys(entry || {});
+
+				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+					this.columnLimitExceeded = true;
+					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
+				} else {
+					leftEntryColumns = entryColumns;
+				}
 
 				// Go over all the already existing column-keys
 				tableColumns.forEach((key) => {
@@ -450,8 +491,8 @@ export default mixins(externalHooks).extend({
 			// Make sure that all entry-rows have the same length
 			tableData.forEach((entryRows) => {
 				if (tableColumns.length > entryRows.length) {
-					// Has to less entries so add the missing ones
-					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+					// Has fewer entries so add the missing ones
+					entryRows.push(...new Array(tableColumns.length - entryRows.length));
 				}
 			});
 
@@ -460,6 +501,19 @@ export default mixins(externalHooks).extend({
 				columns: tableColumns,
 				data: tableData,
 			};
+		},
+		switchToJsonView(){
+			this.$emit('displayModeChange', 'json');
+		},
+	},
+	watch: {
+		focusedMappableInput(curr: boolean) {
+			setTimeout(
+				() => {
+					this.forceShowGrip = !!this.focusedMappableInput;
+				},
+				curr ? 300 : 150,
+			);
 		},
 	},
 });
@@ -580,7 +634,10 @@ export default mixins(externalHooks).extend({
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	display: flex;
+	height: 24px;
+	align-items: center;
+	padding: 0 var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
@@ -654,4 +711,9 @@ export default mixins(externalHooks).extend({
 		background-color: var(--color-secondary);
 	}
 }
+
+.warningTooltip {
+	color: var(--color-warning);
+}
+
 </style>

@@ -1,40 +1,30 @@
 /* eslint-disable no-param-reassign */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { IDataObject, INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
+import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
-import { FindManyOptions, In } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	GenericHelpers,
-	NodeTypes,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-	WorkflowExecuteAdditionalData,
-	IWorkflowResponse,
-	IExecutionPushResponse,
-	IWorkflowExecutionDataProcess,
-	TestWebhooks,
-	WorkflowRunner,
-	IWorkflowDb,
-} from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { InternalHooksManager } from '../InternalHooksManager';
-import { externalHooks } from '../Server';
-import { getLogger } from '../Logger';
-import type { WorkflowRequest } from '../requests';
-import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
+import config from '@/config';
+import * as TagHelpers from '@/TagHelpers';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { externalHooks } from '@/Server';
+import { getLogger } from '@/Logger';
+import type { WorkflowRequest } from '@/requests';
+import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
+import { WorkflowsService } from './workflows.services';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 
-const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
 
 /**
@@ -51,18 +41,6 @@ workflowsController.use((req, res, next) => {
 
 workflowsController.use('/', EEWorkflowController);
 
-const isTrigger = (nodeType: string) =>
-	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
-
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
-	if (!pinData) return;
-
-	// eslint-disable-next-line consistent-return
-	return workflow.nodes.find(
-		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
-	);
-}
-
 /**
  * POST /workflows
  */
@@ -74,6 +52,8 @@ workflowsController.post(
 		const newWorkflow = new WorkflowEntity();
 
 		Object.assign(newWorkflow, req.body);
+
+		newWorkflow.versionId = uuid();
 
 		await validateEntity(newWorkflow);
 
@@ -114,7 +94,7 @@ workflowsController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError('Failed to save workflow');
+			throw new ResponseHelper.InternalServerError('Failed to save workflow');
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
@@ -135,72 +115,13 @@ workflowsController.post(
 	}),
 );
 
-// Returns workflows
 /**
  * GET /workflows
  */
 workflowsController.get(
-	`/`,
+	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		let workflows: WorkflowEntity[] = [];
-
-		let filter: IDataObject = {};
-		if (req.query.filter) {
-			try {
-				filter = (JSON.parse(req.query.filter) as IDataObject) || {};
-			} catch (error) {
-				LoggerProxy.error('Failed to parse filter', {
-					userId: req.user.id,
-					filter: req.query.filter,
-				});
-				throw new ResponseHelper.ResponseError('Failed to parse filter');
-			}
-		}
-
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
-			relations: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete query.relations;
-		}
-
-		if (req.user.globalRole.name === 'owner') {
-			workflows = await Db.collections.Workflow.find(
-				Object.assign(query, {
-					where: filter,
-				}),
-			);
-		} else {
-			const shared = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow'],
-				where: whereClause({
-					user: req.user,
-					entityType: 'workflow',
-				}),
-			});
-
-			if (!shared.length) return [];
-
-			workflows = await Db.collections.Workflow.find(
-				Object.assign(query, {
-					where: {
-						id: In(shared.map(({ workflow }) => workflow.id)),
-						...filter,
-					},
-				}),
-			);
-		}
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
-		});
+		return WorkflowsService.getMany(req.user, req.query.filter);
 	}),
 );
 
@@ -234,13 +155,11 @@ workflowsController.get(
 	`/from-url`,
 	ResponseHelper.send(async (req: express.Request): Promise<IWorkflowResponse> => {
 		if (req.query.url === undefined) {
-			throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`The parameter "url" is missing!`);
 		}
 		if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`,
-				undefined,
-				400,
 			);
 		}
 		let workflowData: IWorkflowResponse | undefined;
@@ -248,11 +167,7 @@ workflowsController.get(
 			const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
 			workflowData = data;
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				`The URL does not point to valid JSON file!`,
-				undefined,
-				400,
-			);
+			throw new ResponseHelper.BadRequestError(`The URL does not point to valid JSON file!`);
 		}
 
 		// Do a very basic check if it is really a n8n-workflow-json
@@ -264,10 +179,8 @@ workflowsController.get(
 			typeof workflowData.connections !== 'object' ||
 			Array.isArray(workflowData.connections)
 		) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The data in the file does not seem to be a n8n workflow JSON file!`,
-				undefined,
-				400,
 			);
 		}
 
@@ -283,7 +196,7 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		let relations = ['workflow', 'workflow.tags'];
+		let relations = ['workflow', 'workflow.tags', 'role'];
 
 		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
@@ -295,6 +208,7 @@ workflowsController.get(
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 
@@ -303,10 +217,8 @@ workflowsController.get(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Could not load the workflow - you can only access workflows owned by you',
 			);
 		}
 
@@ -334,128 +246,14 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'workflow',
-				entityId: workflowId,
-			}),
-		});
-
-		if (!shared) {
-			LoggerProxy.info('User attempted to update a workflow without permissions', {
-				workflowId,
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				404,
-			);
-		}
-
-		// check credentials for old format
-		await WorkflowHelpers.replaceInvalidCredentials(updateData);
-
-		WorkflowHelpers.addNodeIds(updateData);
-
-		await externalHooks.run('workflow.update', [updateData]);
-
-		if (shared.workflow.active) {
-			// When workflow gets saved always remove it as the triggers could have been
-			// changed and so the changes would not take effect
-			await activeWorkflowRunner.remove(workflowId);
-		}
-
-		if (updateData.settings) {
-			if (updateData.settings.timezone === 'DEFAULT') {
-				// Do not save the default timezone
-				delete updateData.settings.timezone;
-			}
-			if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete updateData.settings.saveDataErrorExecution;
-			}
-			if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
-				// Do not save when default got set
-				delete updateData.settings.saveDataSuccessExecution;
-			}
-			if (updateData.settings.saveManualExecutions === 'DEFAULT') {
-				// Do not save when default got set
-				delete updateData.settings.saveManualExecutions;
-			}
-			if (
-				parseInt(updateData.settings.executionTimeout as string, 10) ===
-				config.get('executions.timeout')
-			) {
-				// Do not save when default got set
-				delete updateData.settings.executionTimeout;
-			}
-		}
-
-		if (updateData.name) {
-			updateData.updatedAt = new Date(); // required due to atomic update
-			await validateEntity(updateData);
-		}
-
-		await Db.collections.Workflow.update(workflowId, updateData);
-
-		if (tags && !config.getEnv('workflowTagsDisabled')) {
-			const tablePrefix = config.getEnv('database.tablePrefix');
-			await TagHelpers.removeRelations(workflowId, tablePrefix);
-
-			if (tags.length) {
-				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
-			}
-		}
-
-		const options: FindManyOptions<WorkflowEntity> = {
-			relations: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete options.relations;
-		}
-
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
-
-		if (updatedWorkflow === undefined) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				400,
-			);
-		}
-
-		if (updatedWorkflow.tags?.length && tags?.length) {
-			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
-				requestOrder: tags,
-			});
-		}
-
-		await externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow, false);
-
-		if (updatedWorkflow.active) {
-			// When the workflow is supposed to be active add it again
-			try {
-				await externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await activeWorkflowRunner.add(workflowId, shared.workflow.active ? 'update' : 'activate');
-			} catch (error) {
-				// If workflow could not be activated set it again to inactive
-				updateData.active = false;
-				await Db.collections.Workflow.update(workflowId, updateData);
-
-				// Also set it in the returned data
-				updatedWorkflow.active = false;
-
-				// Now return the original error for UI to display
-				throw error;
-			}
-		}
+		const updatedWorkflow = await WorkflowsService.update(
+			req.user,
+			updateData,
+			workflowId,
+			tags,
+			true,
+			['owner'],
+		);
 
 		const { id, ...remainder } = updatedWorkflow;
 
@@ -478,11 +276,12 @@ workflowsController.delete(
 		await externalHooks.run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
+			relations: ['workflow', 'role'],
 			where: whereClause({
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 
@@ -491,16 +290,14 @@ workflowsController.delete(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be deleted.`,
-				undefined,
-				400,
+			throw new ResponseHelper.BadRequestError(
+				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
 
 		if (shared.workflow.active) {
 			// deactivate before deleting
-			await activeWorkflowRunner.remove(workflowId);
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
 		}
 
 		await Db.collections.Workflow.delete(workflowId);
@@ -516,82 +313,8 @@ workflowsController.delete(
  * POST /workflows/run
  */
 workflowsController.post(
-	`/run`,
+	'/run',
 	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
-		const { workflowData } = req.body;
-		const { runData } = req.body;
-		const { pinData } = req.body;
-		const { startNodes } = req.body;
-		const { destinationNode } = req.body;
-		const executionMode = 'manual';
-		const activationMode = 'manual';
-
-		const sessionId = GenericHelpers.getSessionId(req);
-
-		const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
-
-		// If webhooks nodes exist and are active we have to wait for till we receive a call
-		if (
-			pinnedTrigger === undefined &&
-			(runData === undefined ||
-				startNodes === undefined ||
-				startNodes.length === 0 ||
-				destinationNode === undefined)
-		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-			const nodeTypes = NodeTypes();
-			const workflowInstance = new Workflow({
-				id: workflowData.id?.toString(),
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: false,
-				nodeTypes,
-				staticData: undefined,
-				settings: workflowData.settings,
-			});
-			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
-				workflowData,
-				workflowInstance,
-				additionalData,
-				executionMode,
-				activationMode,
-				sessionId,
-				destinationNode,
-			);
-			if (needsWebhook) {
-				return {
-					waitingForWebhook: true,
-				};
-			}
-		}
-
-		// For manual testing always set to not active
-		workflowData.active = false;
-
-		// Start the workflow
-		const data: IWorkflowExecutionDataProcess = {
-			destinationNode,
-			executionMode,
-			runData,
-			pinData,
-			sessionId,
-			startNodes,
-			workflowData,
-			userId: req.user.id,
-		};
-
-		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
-
-		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
-			data.startNodes = [pinnedTrigger.name];
-		}
-
-		const workflowRunner = new WorkflowRunner();
-		const executionId = await workflowRunner.run(data);
-
-		return {
-			executionId,
-		};
+		return WorkflowsService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
 	}),
 );

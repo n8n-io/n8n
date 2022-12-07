@@ -8,7 +8,7 @@
 		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
-				<span :class="$style.name">
+				<span :class="$style.name" data-test-id="node-item-name">
 					{{ $locale.headerText({
 							key: `headers.${shortNodeType}.displayName`,
 							fallback: nodeType.displayName,
@@ -18,14 +18,15 @@
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
 					<trigger-icon />
 				</span>
-				<n8n-tooltip v-if="isCommunityNode" placement="top">
-					<div
-						:class="$style['community-node-icon']"
-						slot="content"
-						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
-						@click="onCommunityNodeTooltipClick"
-					>
-					</div>
+				<n8n-tooltip v-if="isCommunityNode" placement="top" data-test-id="node-item-community-tooltip">
+					<template #content>
+						<div
+							:class="$style['community-node-icon']"
+							v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+							@click="onCommunityNodeTooltipClick"
+						>
+						</div>
+					</template>
 					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>
@@ -57,12 +58,12 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
+import { isCommunityPackageName } from '@/utils';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
-import { isCommunityPackageName } from '@/components/helpers';
 
 Vue.component('node-icon', NodeIcon);
 Vue.component('trigger-icon', TriggerIcon);
@@ -104,19 +105,14 @@ export default Vue.extend({
 			return isCommunityPackageName(this.nodeType.name);
 		},
 	},
-	mounted() {
-		/**
-		 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-		 * All browsers attach the correct page coordinates to the "dragover" event.
-		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-		 */
-		document.body.addEventListener("dragover", this.onDragOver);
-	},
-	destroyed() {
-		document.body.removeEventListener("dragover", this.onDragOver);
-	},
 	methods: {
 		onDragStart(event: DragEvent): void {
+			/**
+			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+			 * All browsers attach the correct page coordinates to the "dragover" event.
+			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+			 */
+			document.body.addEventListener("dragover", this.onDragOver);
 			const { pageX: x, pageY: y } = event;
 
 			this.$emit('dragstart', event);
@@ -141,6 +137,7 @@ export default Vue.extend({
 			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
+			document.body.removeEventListener("dragover", this.onDragOver);
 			this.$emit('dragend', event);
 
 			this.dragging = false;

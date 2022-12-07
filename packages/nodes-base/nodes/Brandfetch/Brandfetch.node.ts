@@ -145,13 +145,13 @@ export class Brandfetch implements INodeType {
 		const items = this.getInputData();
 		const length = items.length;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		const responseData: INodeExecutionData[] = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'logo') {
 					const domain = this.getNodeParameter('domain', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
+					const download = this.getNodeParameter('download', i);
 
 					const body: IDataObject = {
 						domain,
@@ -159,7 +159,7 @@ export class Brandfetch implements INodeType {
 
 					const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
 
-					if (download === true) {
+					if (download) {
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
 
 						const imageFormats = this.getNodeParameter('imageFormats', i) as string[];
@@ -278,7 +278,7 @@ export class Brandfetch implements INodeType {
 			}
 		}
 
-		if (operation === 'logo' && this.getNodeParameter('download', 0) === true) {
+		if (operation === 'logo' && this.getNodeParameter('download', 0)) {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {

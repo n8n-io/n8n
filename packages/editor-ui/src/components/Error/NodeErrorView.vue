@@ -18,9 +18,11 @@
 				</div>
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.time') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.time') }}</span>
+							</div>
+						</template>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
 						</div>
@@ -40,9 +42,11 @@
 			</div>
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.httpCode') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.httpCode') }}</span>
+							</div>
+						</template>
 						<div>
 							{{error.httpCode}}
 						</div>
@@ -50,11 +54,13 @@
 				</div>
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
-							<br>
-							<span class="box-card__subtitle">{{ $locale.baseText('nodeErrorView.dataBelowMayContain') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
+								<br>
+								<span class="box-card__subtitle">{{ $locale.baseText('nodeErrorView.dataBelowMayContain') }}</span>
+							</div>
+							</template>
 						<div>
 							<div class="copy-button" v-if="displayCause">
 								<n8n-icon-button @click="copyCause" :title="$locale.baseText('nodeErrorView.copyToClipboard')" icon="copy" />
@@ -76,9 +82,11 @@
 				</div>
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.stack') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.stack') }}</span>
+							</div>
+						</template>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>
 						</div>
@@ -92,8 +100,8 @@
 <script lang="ts">
 //@ts-ignore
 import VueJsonPretty from 'vue-json-pretty';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { showMessage } from '@/components/mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import {
 	MAX_DISPLAY_DATA_SIZE,
@@ -106,9 +114,11 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	copyPaste,
@@ -122,15 +132,19 @@ export default mixins(
 		VueJsonPretty,
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+		),
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
 		parameters (): INodeProperties[] {
-			const node = this.$store.getters.activeNode;
+			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return [];
 			}
-			const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 			if (nodeType === null) {
 				return [];

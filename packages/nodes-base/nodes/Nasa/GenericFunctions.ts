@@ -11,11 +11,10 @@ export async function nasaApiRequest(
 	qs: IDataObject,
 	option: IDataObject = {},
 	uri?: string | undefined,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('nasaApi');
 
-	qs.api_key = credentials['api_key'] as string;
+	qs.api_key = credentials.api_key as string;
 
 	const options: OptionsWithUri = {
 		method,
@@ -41,7 +40,6 @@ export async function nasaApiRequestAllItems(
 	method: string,
 	resource: string,
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

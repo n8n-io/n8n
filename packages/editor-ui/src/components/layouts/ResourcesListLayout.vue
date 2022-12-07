@@ -8,7 +8,7 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<n8n-button size="large" block @click="$emit('click:add', $event)">
+				<n8n-button size="large" block @click="$emit('click:add', $event)" data-test-id="resources-list-add">
 					{{ $locale.baseText(`${resourceKey}.add`) }}
 				</n8n-button>
 			</div>
@@ -31,9 +31,10 @@
 			<div class="ph-no-capture" v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
+						data-test-id="empty-resources-list"
 						emoji="👋"
-						:heading="$locale.baseText(currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
-							interpolate: { name: currentUser.firstName }
+						:heading="$locale.baseText(usersStore.currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
+							interpolate: { name: usersStore.currentUser.firstName }
 						})"
 						:description="$locale.baseText(`${resourceKey}.empty.description`)"
 						:buttonText="$locale.baseText(`${resourceKey}.empty.button`)"
@@ -53,13 +54,17 @@
 								size="medium"
 								clearable
 								ref="search"
+								data-test-id="resources-list-search"
 							>
-								<n8n-icon icon="search" slot="prefix"/>
+								<template #prefix>
+									<n8n-icon icon="search"/>
+								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select
 									v-model="sortBy"
 									size="medium"
+									data-test-id="resources-list-sort"
 								>
 									<n8n-option value="lastUpdated" :label="$locale.baseText(`${resourceKey}.sort.lastUpdated`)"/>
 									<n8n-option value="lastCreated" :label="$locale.baseText(`${resourceKey}.sort.lastCreated`)"/>
@@ -74,7 +79,7 @@
 									@input="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>
-									<template v-slot="resourceFiltersSlotProps">
+									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
 									</template>
 								</resource-filters-dropdown>
@@ -93,14 +98,14 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0">
-						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs">
+					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0" data-test-id="resources-list">
+						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs" data-test-id="resources-list-item">
 							<slot :data="resource" />
 						</li>
 					</ul>
-					<n8n-text color="text-base" size="medium" v-else>
+					<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 						{{ $locale.baseText(`${resourceKey}.noResults`) }}
-						<template v-if="!hasFilters && isOwnerSubview && resourcesNotOwned.length > 0">
+						<template v-if="shouldSwitchToAllSubview">
 							<span v-if="!filters.search">
 								({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
 								<n8n-link @click="setOwnerSubview(false)">{{$locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }}</n8n-link>)
@@ -118,7 +123,7 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
+import {showMessage} from '@/mixins/showMessage';
 import {IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
@@ -127,9 +132,12 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue, {PropType} from "vue";
-import {debounceHelper} from '@/components/mixins/debounce';
+import {debounceHelper} from '@/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export interface IResource {
 	id: string;
@@ -204,20 +212,18 @@ export default mixins(
 		};
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
+		...mapStores(
+			useSettingsStore,
+			useUsersStore,
+		),
 		subviewResources(): IResource[] {
 			if (!this.shareable) {
 				return this.resources as IResource[];
 			}
 
 			return (this.resources as IResource[]).filter((resource) => {
-				if (this.isOwnerSubview && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
-					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser.id);
+				if (this.isOwnerSubview && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+					return !!(resource.ownedBy && resource.ownedBy.id === this.usersStore.currentUser?.id);
 				}
 
 				return true;
@@ -268,8 +274,11 @@ export default mixins(
 		},
 		resourcesNotOwned(): IResource[] {
 			return (this.resources as IResource[]).filter((resource) => {
-				return resource.ownedBy && resource.ownedBy.id !== this.currentUser.id;
+				return resource.ownedBy && resource.ownedBy.id !== this.usersStore.currentUser?.id;
 			});
+		},
+		shouldSwitchToAllSubview(): boolean {
+			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
 		},
 	},
 	methods: {
@@ -365,6 +374,11 @@ export default mixins(
 		sortBy() {
 			this.sendSortingTelemetry();
 		},
+		loading(value) {
+			if (!value && this.subviewResources.length === 0 && this.shouldSwitchToAllSubview) {
+				this.isOwnerSubview = false;
+			}
+		},
 	},
 });
 </script>
@@ -405,4 +419,3 @@ export default mixins(
 	height: 69px;
 }
 </style>
-
