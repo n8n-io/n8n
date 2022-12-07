@@ -855,7 +855,7 @@ test('Sign-type should be returned when listing users', async () => {
 	expect(data[1].signInType).toBe('ldap');
 });
 
-test.only('Once user disabled during synchronization it should lose access to the instance', async () => {
+test('Once user disabled during synchronization it should lose access to the instance', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
