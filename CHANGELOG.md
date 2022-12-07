@@ -1,3 +1,14 @@
+## [0.206.1](https://github.com/n8n-io/n8n/compare/n8n@0.206.0...n8n@0.206.1) (2022-12-07)
+
+
+### Bug Fixes
+
+* **core:** Make expression resolution improvements ([#4829](https://github.com/n8n-io/n8n/issues/4829)) ([0bd13c7](https://github.com/n8n-io/n8n/commit/0bd13c71739c4fb34feab4f7a169ee89bc77eee8))
+* **editor:** Schema unit test stub fontawesome icon ([#4840](https://github.com/n8n-io/n8n/issues/4840)) ([1e4ca1f](https://github.com/n8n-io/n8n/commit/1e4ca1f0d0c89386470db7f6ce265a1339c79562))
+* Remove unnecessary console message ([#4848](https://github.com/n8n-io/n8n/issues/4848)) ([2ad62bc](https://github.com/n8n-io/n8n/commit/2ad62bcd442c4595daef4d02119122d9c37ab43d))
+
+
+
 # [0.206.0](https://github.com/n8n-io/n8n/compare/n8n@0.205.0...n8n@0.206.0) (2022-12-06)
 
 
