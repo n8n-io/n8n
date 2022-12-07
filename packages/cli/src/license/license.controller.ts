@@ -26,17 +26,20 @@ licenseController.get(
 	'/',
 	ResponseHelper.send(async () => {
 		const triggerCount = await LicenseService.getActiveTriggerCount();
-
-		const features = getLicense().getFeatures();
+		const license = getLicense();
+		const mainPlan = license.getMainPlan();
 
 		return {
 			usage: {
 				executions: {
 					value: triggerCount,
-					limit: -1,
+					limit: license.getFeatureValue('quota:activeWorkflows') ?? -1,
 					warningThreshold: 0.8,
 				},
-				features,
+			},
+			license: {
+				planId: mainPlan?.productId ?? '',
+				planName: license.getFeatureValue('planName') ?? 'Community',
 			},
 		};
 	}),

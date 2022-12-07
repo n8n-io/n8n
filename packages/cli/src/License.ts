@@ -1,4 +1,4 @@
-import { LicenseManager, TLicenseContainerStr } from '@n8n_io/license-sdk';
+import { LicenseManager, TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
 import { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
@@ -109,8 +109,38 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
 
-	getFeatures() {
-		return this.manager?.getFeatures() ?? [];
+	getCurrentEntitlements() {
+		return this.manager?.getCurrentEntitlements() ?? [];
+	}
+
+	getFeatureValue(
+		feature: string,
+		requireValidCert?: boolean,
+	): undefined | boolean | number | string {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		return this.manager.getFeatureValue(feature, requireValidCert);
+	}
+
+	/**
+	 * Helper function to get the main plan for a license
+	 */
+	getMainPlan(): TEntitlement | undefined {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		const entitlements = this.manager.getCurrentEntitlements();
+		if (!entitlements.length) {
+			return undefined;
+		}
+
+		return entitlements.find(
+			(entitlement) =>
+				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+		);
 	}
 }
 
