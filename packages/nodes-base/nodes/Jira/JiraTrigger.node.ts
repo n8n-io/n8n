@@ -285,9 +285,6 @@ export class JiraTrigger implements INodeType {
 						displayName: 'Filter',
 						name: 'filter',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						placeholder: 'Project = JRA AND resolution = Fixed',
 						description:

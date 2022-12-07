@@ -254,6 +254,7 @@ export class Expression {
 		// Execute the expression
 		const returnValue = this.renderExpression(parameterValue, data);
 		if (typeof returnValue === 'function') {
+			if (returnValue.name === '$') throw new Error('invalid syntax');
 			throw new Error('Expression resolved to a function. Please add "()"');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
@@ -278,12 +279,8 @@ export class Expression {
 				}
 			}
 
-			if (
-				error instanceof Error &&
-				typeof error.message === 'string' &&
-				error.name === 'SyntaxError'
-			) {
-				throw new Error(error.message);
+			if (error instanceof Error && error.name === 'SyntaxError') {
+				throw new Error('invalid syntax');
 			}
 		}
 

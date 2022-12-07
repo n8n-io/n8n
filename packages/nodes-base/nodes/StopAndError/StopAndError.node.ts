@@ -51,9 +51,6 @@ export class StopAndError implements INodeType {
 				name: 'errorMessage',
 				type: 'string',
 				placeholder: 'An error occurred!',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				required: true,
 				displayOptions: {
