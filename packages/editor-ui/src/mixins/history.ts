@@ -40,12 +40,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 					this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
 				}
 			}
-			if (this.isNDVOpen) {
-				const activeNode = this.ndvStore.activeNode;
-				if (activeNode) {
-					this.$telemetry.track(`User hit undo in NDV`, { node_type: activeNode.type });
-				}
-			}
+			this.trackUndoAttempt(event);
 		},
 		async undo() {
 			const command = this.historyStore.popUndoableToUndo();
@@ -96,21 +91,18 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 			this.trackCommand(command, 'redo');
 		},
 		trackCommand(command: Undoable, type: 'undo'|'redo'): void {
-			let telemetryData: { type: string|null, commands: Array<Partial<Command>> } = { type: null, commands: [] };
 			if (command instanceof Command) {
-				telemetryData = {
-					type: 'single',
-					commands: [command],
-				};
+				this.$telemetry.track(`User hit ${type}`, { commands_length: 1, commands: [ command.name ] });
 			} else if (command instanceof BulkCommand) {
-				telemetryData = {
-					type: 'bulk',
-					commands: command.commands,
-				};
+				this.$telemetry.track(`User hit ${type}`, { commands_length: command.commands.length, commands: command.commands.map(c => c.name) });
 			}
-			if (telemetryData.type && telemetryData.commands.length > 0) {
-				telemetryData.commands.forEach(command => { delete command.eventBus; });
-				this.$telemetry.track(`User hit ${type}`, telemetryData);
+		},
+		trackUndoAttempt(event: KeyboardEvent) {
+			if (this.isNDVOpen && !event.shiftKey) {
+				const activeNode = this.ndvStore.activeNode;
+				if (activeNode) {
+					this.$telemetry.track(`User hit undo in NDV`, { node_type: activeNode.type });
+				}
 			}
 		},
 	},
