@@ -280,6 +280,11 @@ export class GoogleSheetsTrigger implements INodeType {
 										description:
 											'Index of the row which contains the keys. The incoming node data is matched to the keys for assignment. The matching is case-sensitive.',
 										hint: 'Relative to the defined range. Row index starts from 1.',
+										displayOptions: {
+											hide: {
+												'/event': ['anyUpdate', 'columnChanges'],
+											},
+										},
 									},
 									{
 										displayName: 'First Data Row',
@@ -292,6 +297,11 @@ export class GoogleSheetsTrigger implements INodeType {
 										description:
 											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
 										hint: 'Relative to the defined range. Row index starts from 1.',
+										displayOptions: {
+											hide: {
+												'/event': ['anyUpdate', 'columnChanges'],
+											},
+										},
 									},
 								],
 							},
@@ -473,9 +483,11 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'anyUpdate' || event === 'columnChanges') {
+			const sheetRange = locationDefine?.range ? `${sheetName}!${locationDefine.range}` : sheetName;
+
 			const currentData =
 				((await googleSheet.getData(
-					sheetName,
+					sheetRange,
 					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				)) as string[][]) || [];
@@ -499,9 +511,17 @@ export class GoogleSheetsTrigger implements INodeType {
 			const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
 
 			const previousRevisionSheetData =
-				sheetBinaryToArrayOfArrays(previousRevisionBinaryData, sheetName) || [];
+				sheetBinaryToArrayOfArrays(
+					previousRevisionBinaryData,
+					sheetName,
+					locationDefine?.range as string,
+				) || [];
 
 			const includeInOutput = this.getNodeParameter('includeInOutput', 'currentVersion') as string;
+
+			const [rangeFrom, _rangeTo] = range.split(':');
+			const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+			const startRowIndex = +(cellData[2] || startIndex - 1);
 
 			let returnData;
 			if (event === 'columnChanges') {
@@ -512,6 +532,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					keyRow,
 					includeInOutput,
 					columnsToWatch,
+					startRowIndex,
 				);
 			} else {
 				returnData = compareRevisions(
@@ -519,6 +540,8 @@ export class GoogleSheetsTrigger implements INodeType {
 					currentData,
 					keyRow,
 					includeInOutput,
+					[],
+					startRowIndex,
 				);
 			}
 

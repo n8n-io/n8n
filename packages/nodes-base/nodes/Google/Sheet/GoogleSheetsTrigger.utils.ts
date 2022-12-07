@@ -28,11 +28,15 @@ export async function getRevisionFile(this: IPollFunctions, exportLink: string) 
 	return Buffer.from(response.body as string);
 }
 
-export function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
+export function sheetBinaryToArrayOfArrays(
+	data: Buffer,
+	sheetName: string,
+	range: string | undefined,
+) {
 	const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
 	const sheet = workbook.Sheets[sheetName];
 	const sheetData: string[][] = sheet['!ref']
-		? XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' })
+		? XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', range })
 		: [];
 
 	const lastDataRowIndex = sheetData.reduce((lastRowIndex, row, rowIndex) => {
@@ -69,10 +73,10 @@ export function compareRevisions(
 	current: SheetRangeData,
 	keyRow: number,
 	includeInOutput: string,
-	columnsToWatch: string[] = [],
+	columnsToWatch: string[],
+	startRowIndex: number,
 ) {
 	try {
-		console.log(current, previous, keyRow, includeInOutput, columnsToWatch);
 		const dataLength = current.length > previous.length ? current.length : previous.length;
 
 		const columnsRowIndex = keyRow - 1;
@@ -122,7 +126,7 @@ export function compareRevisions(
 			}
 
 			diffData.push({
-				rowIndex: i + 1,
+				rowIndex: i + startRowIndex,
 				previous: previous[i],
 				current: current[i],
 			});
