@@ -1186,7 +1186,7 @@ export default mixins(
 	// --input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 
-	textarea, input {
+	textarea, input, .cm-editor {
 		border-width: 1.5px;
 	}
 }
