@@ -3360,9 +3360,7 @@ export default mixins(
 				await this.addNodes([node]);
 			},
 			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
-				this.suspendRecordingDetachedConnections = true;
 				this.__removeConnection(connection, true);
-				this.suspendRecordingDetachedConnections = false;
 			},
 			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__addConnection(connection, true);

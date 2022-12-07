@@ -83,13 +83,13 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 					await commands[i].revert();
 					reverseCommands.push(commands[i].getReverseCommand());
 				}
-				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands));
+				this.historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
 				await Vue.nextTick();
 				this.historyStore.bulkInProgress = false;
 			}
 			if (command instanceof Command) {
 				await command.revert();
-				this.historyStore.pushCommandToUndo(command.getReverseCommand());
+				this.historyStore.pushCommandToUndo(command.getReverseCommand(), false);
 				this.uiStore.stateIsDirty = true;
 			}
 			this.trackCommand(command, 'redo');
