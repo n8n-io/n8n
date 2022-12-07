@@ -9,6 +9,6 @@ export class LicenseService {
 		if (!results) {
 			throw new Error('Could not get active trigger count');
 		}
-		return results.triggerCount;
+		return results.triggerCount ?? 0;
 	}
 }
