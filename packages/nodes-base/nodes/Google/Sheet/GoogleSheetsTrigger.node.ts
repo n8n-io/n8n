@@ -499,6 +499,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				((await googleSheet.getData(
 					sheetRange,
 					'UNFORMATTED_VALUE',
+					'SERIAL_NUMBER',
 					// (options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
 					// (options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				)) as string[][]) || [];
