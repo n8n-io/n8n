@@ -111,7 +111,7 @@
 							v-if="!isReadOnly"
 							icon="external-link-alt"
 							size="xsmall"
-							class="edit-window-button input-expander-icon"
+							class="edit-window-button textarea-modal-opener"
 							:class="{ focused: isFocused, invalid: !isFocused && getIssues.length && !isValueExpression }"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
@@ -1243,18 +1243,27 @@ export default mixins(
 	right: 0;
 }
 
-.input-expander-icon {
+// @TODO: Dedup with expression-editor-modal-opener
+.textarea-modal-opener {
 	position: absolute;
 	right: 0;
 	bottom: 0;
-	padding: var(--spacing-4xs);
+	background-color: white;
+	padding: 3px; // intentionally hardcoded
 	border: var(--border-base);
+	line-height: 9px;
 	border-top-left-radius: var(--border-radius-base);
 	border-bottom-right-radius: var(--border-radius-base);
 	cursor: pointer;
 
 	svg {
+		width: 9px !important;
+		height: 9px;
 		transform: rotate(270deg);
+
+		&:hover {
+			color: var(--color-primary);
+		}
 	}
 }
 

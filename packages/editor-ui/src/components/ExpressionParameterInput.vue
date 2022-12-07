@@ -173,27 +173,27 @@ export default Vue.extend({
 	cursor: pointer;
 }
 
+// @TODO: Dedup with textarea-modal-opener
 .expression-editor-modal-opener {
 	position: absolute;
 	right: 0;
 	bottom: 0;
 	background-color: white;
-	padding: 3px;
-	border: var(--border-base);
+	padding: 3px; // intentionally hardcoded
 	line-height: 9px;
+	border: var(--border-base);
 	border-top-left-radius: var(--border-radius-base);
 	border-bottom-right-radius: var(--border-radius-base);
 	cursor: pointer;
 
 	svg {
-		height: 9px;
 		width: 9px !important;
+		height: 9px;
 		transform: rotate(270deg);
-	}
 
-	svg:hover {
-		transform: rotate(270deg);
-		color: var(--color-primary);
+		&:hover {
+			color: var(--color-primary);
+		}
 	}
 }
 
