@@ -41,7 +41,7 @@ services:
     links:
       - postgres
     volumes:
-      - n8n_storage:/home/node/
+      - n8n_storage:/home/node/.n8n
     command: /bin/sh -c "n8n start --tunnel"
     depends_on:
       postgres:
