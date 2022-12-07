@@ -4,7 +4,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Expression editor modal', () => {
 	before(() => {
-		cy.task('db:reset');
+		cy.task('reset');
 		cy.skipSetup();
 	});
 
