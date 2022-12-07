@@ -32,6 +32,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 	},
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
+			if (event.repeat) return;
 			if (this.isCtrlKeyPressed(event) && event.key === 'z' && !this.isNDVOpen) {
 				event.preventDefault();
 				if (event.shiftKey) {
