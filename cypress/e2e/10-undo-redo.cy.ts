@@ -39,10 +39,10 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.zoomToFit();
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
-		// WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 4);
-		// WorkflowPage.getters.nodeConnections().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 3);
 	});
 
 	it('should undo/redo deleting node using delete button', () => {
