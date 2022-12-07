@@ -98,6 +98,7 @@ export default mixins(debounceHelper).extend({
 	},
 	mounted() {
 		this.setTotalWidth();
+		this.ndvStore.setCurrentNodePaneType(this.currentNodePaneType);
 
 		/*
 			Only set(or restore) initial position if `mainPanelDimensions`

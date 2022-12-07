@@ -1070,6 +1070,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+	currentNodePaneType: string;
 }
 
 

@@ -64,7 +64,7 @@ import { useNDVStore } from '@/stores/ndv';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -81,6 +81,7 @@ export default Vue.extend({
 		return {
 			isFocused: false,
 			segments: [] as Segment[],
+			paneWidth: -1,
 		};
 	},
 	props: {
@@ -113,6 +114,9 @@ export default Vue.extend({
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
 		},
+		currentNodePaneType(): string {
+			return this.ndvStore.getCurrentNodePaneType;
+		},
 	},
 	methods: {
 		focus() {
@@ -122,9 +126,22 @@ export default Vue.extend({
 		},
 		onFocus() {
 			this.isFocused = true;
+
+			this.paneWidth = this.getPaneWidth();
+		},
+		getPaneWidth() {
+			const key = `${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`;
+
+			return parseFloat(window.localStorage.getItem(key) ?? '0');
 		},
 		onBlur() {
+			// prevent defocus after dragging
 			if (this.isDragging) return;
+
+			// prevent defocus after resizing
+			const oldPaneWidth = this.paneWidth;
+			this.paneWidth = this.getPaneWidth();
+			if (oldPaneWidth !== this.paneWidth) return;
 
 			this.isFocused = false;
 		},
@@ -133,8 +150,7 @@ export default Vue.extend({
 
 			this.segments = segments;
 
-			// if identical to current, only hovering item changed
-			// hence do not re-emit, preventing marking output as stale
+			// prevent marking output as stale when only hovering item changed
 			if (value === '=' + this.value) return;
 
 			this.$emit('valueChanged', value);
