@@ -33,15 +33,18 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
 			if (event.repeat) return;
-			if (this.isCtrlKeyPressed(event) && event.key === 'z' && !this.isNDVOpen) {
+			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
 				event.preventDefault();
-				if (event.shiftKey) {
-					this.callDebounced('redo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
-				} else {
-					this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
+				if (!this.isNDVOpen) {
+					if (event.shiftKey) {
+						this.callDebounced('redo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
+					} else {
+						this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
+					}
+				} else if (!event.shiftKey) {
+					this.trackUndoAttempt(event);
 				}
 			}
-			this.trackUndoAttempt(event);
 		},
 		async undo() {
 			const command = this.historyStore.popUndoableToUndo();
