@@ -28,6 +28,7 @@
 						@input="(value) => onInput(input.name, value)"
 						@validate="(value) => onValidate(input.name, value)"
 						@change="(value) => onInput(input.name, value)"
+						@enter="onSubmit"
 					/>
 				</div>
 			</div>
