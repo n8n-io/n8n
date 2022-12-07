@@ -26,6 +26,7 @@ declare global {
 			resetAll(): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
+			paste(pastePayload: string): void,
 		}
 	}
 }

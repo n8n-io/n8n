@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import {
-	IDataObject,
 	IHookFunctions,
 	INodeType,
 	INodeTypeDescription,
@@ -282,7 +281,7 @@ export class SendInBlueTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		// The data to return and so start the workflow with
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

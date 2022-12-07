@@ -1,6 +1,5 @@
 import FormData from 'form-data';
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
-import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [
@@ -307,6 +306,13 @@ export const objectOperations: INodeProperties[] = [
 							let nextPageToken: string | undefined = undefined;
 							const returnAll = this.getNodeParameter('returnAll') as boolean;
 
+							const extractBucketsList = (page: INodeExecutionData) => {
+								const objects = page.json.items as IDataObject[];
+								if (objects) {
+									executions = executions.concat(objects.map((object) => ({ json: object })));
+								}
+							};
+
 							do {
 								requestOptions.options.qs.pageToken = nextPageToken;
 								responseData = await this.makeRoutingRequest(requestOptions);
@@ -316,12 +322,7 @@ export const objectOperations: INodeProperties[] = [
 								nextPageToken = lastItem.nextPageToken as string | undefined;
 
 								// Extract just the list of buckets from the page data
-								responseData.forEach((page) => {
-									const objects = page.json.items as IDataObject[];
-									if (objects) {
-										executions = executions.concat(objects.map((object) => ({ json: object })));
-									}
-								});
+								responseData.forEach(extractBucketsList);
 							} while (returnAll && nextPageToken);
 
 							// Return all execution responses as an array

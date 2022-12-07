@@ -270,7 +270,7 @@ export class SyncHandler implements OperationHandler {
 	}
 
 	private enrichSection(command: Command, sections: Map<string, number>) {
-		if (command.args !== undefined && command.args.section !== undefined) {
+		if (command.args?.section !== undefined) {
 			const sectionId = sections.get(command.args.section);
 			if (sectionId) {
 				command.args.section_id = sectionId;
@@ -292,7 +292,7 @@ export class SyncHandler implements OperationHandler {
 
 	private enrichTempId(command: Command, tempIdMapping: Map<string, string>, projectId: number) {
 		if (this.requiresTempId(command)) {
-			command.temp_id = uuid() as string;
+			command.temp_id = uuid();
 			tempIdMapping.set(command.temp_id, projectId as unknown as string);
 		}
 	}
@@ -319,7 +319,7 @@ export interface CreateTaskRequest {
 
 export interface SyncRequest {
 	commands: Command[];
-	temp_id_mapping?: {};
+	temp_id_mapping?: IDataObject;
 }
 
 export interface Command {

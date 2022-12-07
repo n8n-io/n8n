@@ -26,7 +26,7 @@ export async function erpNextApiRequest(
 		qs: query,
 		uri: uri || `${baseUrl}${resource}`,
 		json: true,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
 
 	options = Object.assign({}, options, option);
@@ -39,7 +39,7 @@ export async function erpNextApiRequest(
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'erpNextApi', options);
+		return this.helpers.requestWithAuthentication.call(this, 'erpNextApi', options);
 	} catch (error) {
 		if (error.statusCode === 403) {
 			throw new NodeApiError(this.getNode(), { message: 'DocType unavailable.' });
@@ -62,17 +62,16 @@ export async function erpNextApiRequestAllItems(
 	body: IDataObject,
 	query: IDataObject = {},
 ) {
-	// tslint:disable-next-line: no-any
 	const returnData: any[] = [];
 
 	let responseData;
-	query!.limit_start = 0;
-	query!.limit_page_length = 1000;
+	query.limit_start = 0;
+	query.limit_page_length = 1000;
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query!.limit_start += query!.limit_page_length - 1;
+		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 
 	return returnData;

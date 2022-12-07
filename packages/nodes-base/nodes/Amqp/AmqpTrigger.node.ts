@@ -197,7 +197,7 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
-			self.emit([self.helpers.returnJsonArray([data as any])]); // tslint:disable-line:no-any
+			self.emit([self.helpers.returnJsonArray([data as any])]);
 
 			if (!context.receiver?.has_credit()) {
 				setTimeout(() => {
@@ -264,7 +264,7 @@ export class AmqpTrigger implements INodeType {
 					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
 						self.emit([self.helpers.returnJsonArray([message.body])]);
 					} else {
-						self.emit([self.helpers.returnJsonArray([message as any])]); // tslint:disable-line:no-any
+						self.emit([self.helpers.returnJsonArray([message as any])]);
 					}
 					clearTimeout(timeoutHandler);
 					resolve(true);

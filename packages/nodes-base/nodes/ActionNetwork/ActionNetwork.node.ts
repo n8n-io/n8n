@@ -480,7 +480,7 @@ export class ActionNetwork implements INodeType {
 				if (simplify) {
 					response =
 						operation === 'getAll'
-							? response.map((i: Response) => simplifyResponse(i, resource))
+							? response.map((entry: Response) => simplifyResponse(entry, resource))
 							: simplifyResponse(response, resource);
 				}
 

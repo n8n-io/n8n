@@ -14,12 +14,11 @@ export async function clearbitApiRequest(
 	method: string,
 	api: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('clearbitApi');
 	let options: OptionsWithUri = {

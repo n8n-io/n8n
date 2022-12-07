@@ -6,10 +6,11 @@ import {
 	prepareSheetData,
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
-import { ILookupValues, SheetProperties } from '../../helpers/GoogleSheets.types';
 import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import {
+	ILookupValues,
 	RangeDetectionOptions,
+	SheetProperties,
 	SheetRangeData,
 	ValueRenderOption,
 } from '../../helpers/GoogleSheets.types';
@@ -110,12 +111,12 @@ export async function execute(
 	sheet: GoogleSheet,
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
-	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-	const outputFormatting =
-		(((options.outputFormatting as IDataObject) || {}).values as IDataObject) || {};
+	const options = this.getNodeParameter('options', 0, {});
+	const outputFormattingOption =
+		((options.outputFormatting as IDataObject)?.values as IDataObject) || {};
 
 	const dataLocationOnSheetOptions =
-		(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
+		((options.dataLocationOnSheet as IDataObject)?.values as RangeDetectionOptions) || {};
 
 	if (dataLocationOnSheetOptions.rangeDefinition === undefined) {
 		dataLocationOnSheetOptions.rangeDefinition = 'detectAutomatically';
@@ -123,8 +124,9 @@ export async function execute(
 
 	const range = getRangeString(sheetName, dataLocationOnSheetOptions);
 
-	const valueRenderMode = (outputFormatting.general || 'UNFORMATTED_VALUE') as ValueRenderOption;
-	const dateTimeRenderOption = (outputFormatting.date || 'FORMATTED_STRING') as string;
+	const valueRenderMode = (outputFormattingOption.general ||
+		'UNFORMATTED_VALUE') as ValueRenderOption;
+	const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
 
 	const sheetData = (await sheet.getData(
 		range,
