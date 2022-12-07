@@ -82,8 +82,11 @@
 				</n8n-input-label>
 			</template>
 			<template v-else>
-				<div :class="$style.sidebar">
+				<!-- <div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
+				</div> -->
+				<div :class="$style.tabbar">
+					<n8n-tabs :options="tabItems" :value="activeTab" @input="onTabSelect" />
 				</div>
 				<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
 					<template v-if="isTypeAbstract">
@@ -172,7 +175,7 @@ import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import { IMenuItem, INodeUi, IUpdateInformation } from '../../Interface';
+import { IMenuItem, INodeUi, ITab, IUpdateInformation } from '../../Interface';
 import {
 	deepCopy,
 	defaultMessageEventBusDestinationOptions,
@@ -297,6 +300,18 @@ export default mixins(
 					});
 				}
 				return items;
+		},
+		tabItems(): ITab[] {
+			return [
+				{
+					label: this.$locale.baseText('settings.logstreaming.tab.settings'),
+					value: 'settings',
+				},
+				{
+					label: this.$locale.baseText('settings.logstreaming.tab.events'),
+					value: 'events',
+				},
+			];
 		},
 	},
 	mounted() {
@@ -455,9 +470,14 @@ export default mixins(
 	}
 }
 
+.tabbar {
+	margin-bottom: 1em;
+}
+
 .mainContent {
 	flex: 1;
 	overflow: auto;
+	padding: 1em;
 	padding-bottom: 50px;
 }
 
@@ -486,6 +506,7 @@ export default mixins(
 .container {
 	display: flex;
 	height: 100%;
+	flex-direction: column;
 }
 
 .destinationInfo {

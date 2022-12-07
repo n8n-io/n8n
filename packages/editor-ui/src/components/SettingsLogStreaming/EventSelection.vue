@@ -1,11 +1,10 @@
 <template>
 	<div>
-		<el-card v-for="group in logStreamingStore.items[destinationId]?.eventGroups"
+		<div v-for="group in logStreamingStore.items[destinationId]?.eventGroups"
 		:key="group.name"
-		:class="('box-card ' + $style.eventListCard)"
 		shadow="never"
 		>
-			<template #header>
+			<!-- <template #header> -->
 				<checkbox
 					:value="group.selected"
 					:indeterminate="!group.selected && group.indeterminate"
@@ -16,7 +15,6 @@
 				<checkbox
 					v-if="group.name === 'n8n.audit'"
 						:value="logStreamingStore.items[destinationId]?.destination.anonymizeAuditMessages"
-						size="small"
 						@input="onInput"
 						@change="anonymizeAuditMessagesChanged"
 						>
@@ -28,7 +26,7 @@
 								</template>
 							</n8n-tooltip>
 					</checkbox>
-			</template>
+			<!-- </template> -->
 			<ul :class="$style.eventList">
 				<li v-for="event in group.children" :key="event.name" :class="`${$style.eventListItem} ${group.selected ? $style.eventListItemDisabled : ''}`">
 					<checkbox
@@ -46,7 +44,7 @@
 					</checkbox>
 				</li>
 			</ul>
-		</el-card>
+		</div>
 	</div>
 </template>
 
@@ -102,6 +100,7 @@
 
 <style lang="scss" module>
 .eventListCard {
+	margin-left: 1em;
 }
 
 .eventList {
@@ -131,6 +130,7 @@
 		}
 	}
 }
+
 .eventList .eventListItem + .listItem {
   margin-top: 10px;
 }
