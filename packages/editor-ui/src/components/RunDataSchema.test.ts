@@ -6,7 +6,7 @@ import { STORES } from "@/constants";
 
 describe('RunDataJsonSchema.vue', () => {
 	it('renders json schema properly', () => {
-		const {container} = render(RunDataJsonSchema, {
+		const { container } = render(RunDataJsonSchema, {
 				pinia: createTestingPinia({
 					initialState: {
 						[STORES.SETTINGS]: {
@@ -19,6 +19,7 @@ describe('RunDataJsonSchema.vue', () => {
 						},
 					},
 				}),
+				stubs: ['font-awesome-icon'],
 				props: {
 					mappingEnabled: true,
 					distanceFromActive: 1,
