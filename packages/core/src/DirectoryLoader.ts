@@ -43,8 +43,8 @@ export abstract class DirectoryLoader {
 
 	constructor(
 		protected readonly directory: string,
-		private readonly excludeNodes?: string,
-		private readonly includeNodes?: string,
+		protected readonly excludeNodes: string[] = [],
+		protected readonly includeNodes: string[] = [],
 	) {}
 
 	abstract loadAll(): Promise<void>;
@@ -69,11 +69,11 @@ export abstract class DirectoryLoader {
 
 		const fullNodeName = `${packageName}.${tempNode.description.name}`;
 
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		if (this.excludeNodes?.includes(fullNodeName)) {
+		if (this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
@@ -337,6 +337,28 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
+
+			if (this.includeNodes.length) {
+				const allowedNodes: typeof this.known.nodes = {};
+				for (const nodeName of this.includeNodes) {
+					allowedNodes[nodeName] = this.known.nodes[nodeName];
+				}
+				this.known.nodes = allowedNodes;
+
+				this.types.nodes = this.types.nodes.filter((nodeType) =>
+					this.includeNodes.includes(nodeType.name),
+				);
+			}
+
+			if (this.excludeNodes.length) {
+				for (const nodeName of this.excludeNodes) {
+					delete this.known.nodes[nodeName];
+				}
+
+				this.types.nodes = this.types.nodes.filter(
+					(nodeType) => !this.excludeNodes.includes(nodeType.name),
+				);
+			}
 
 			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,
