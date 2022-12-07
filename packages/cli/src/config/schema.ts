@@ -882,14 +882,16 @@ export const schema = {
 		features: {
 			sharing: {
 				format: Boolean,
-				default: true,
+				default: false,
+				env: 'N8N_SHARING_ENABLED',
 			},
 		},
 		// This is a temporary flag (acting as feature toggle)
 		// Will be removed when feature goes live
 		workflowSharingEnabled: {
 			format: Boolean,
-			default: true,
+			default: false,
+			env: 'N8N_SHARING_ENABLED',
 		},
 	},
 
