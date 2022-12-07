@@ -225,7 +225,6 @@ export default mixins(externalHooks).extend({
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
 	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 
 	&:hover {
 		/* Shows .actionsGroup element from <run-data-json-actions /> child component */
@@ -251,7 +250,10 @@ export default mixins(externalHooks).extend({
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	display: flex;
+	height: 24px;
+	align-items: center;
+	padding: 0 var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);

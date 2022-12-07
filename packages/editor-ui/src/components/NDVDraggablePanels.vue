@@ -51,7 +51,7 @@ import mixins from 'vue-typed-mixins';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
-import { nodePanelType } from '@/Interface';
+import { NodePanelType } from '@/Interface';
 
 
 const SIDE_MARGIN = 24;
@@ -128,7 +128,7 @@ export default mixins(debounceHelper).extend({
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as nodePanelType);
+			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType);
 		},
 		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
@@ -279,7 +279,7 @@ export default mixins(debounceHelper).extend({
 
 			if(isMaxRight) {
 				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType as nodePanelType,
+					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
 						relativeRight: this.maximumRightPosition as number,
@@ -289,7 +289,7 @@ export default mixins(debounceHelper).extend({
 			}
 
 			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType as nodePanelType,
+				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,
