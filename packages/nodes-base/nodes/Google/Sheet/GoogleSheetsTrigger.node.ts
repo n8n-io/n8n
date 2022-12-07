@@ -332,6 +332,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						default: 'UNFORMATTED_VALUE',
 						description:
 							'Determines how values will be rendered in the output. <a href="https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption" target="_blank">More info</a>.',
+						displayOptions: {
+							hide: {
+								'/event': ['anyUpdate', 'columnChanges'],
+							},
+						},
 					},
 					{
 						displayName: 'DateTime Render',
@@ -354,6 +359,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						default: 'SERIAL_NUMBER',
 						description:
 							'Determines how dates should be rendered in the output.  <a href="https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption" target="_blank">More info</a>.',
+						displayOptions: {
+							hide: {
+								'/event': ['anyUpdate', 'columnChanges'],
+							},
+						},
 					},
 				],
 			},
@@ -488,8 +498,9 @@ export class GoogleSheetsTrigger implements INodeType {
 			const currentData =
 				((await googleSheet.getData(
 					sheetRange,
-					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
-					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
+					'UNFORMATTED_VALUE',
+					// (options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
+					// (options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				)) as string[][]) || [];
 
 			if (previousRevision === undefined) {
@@ -521,7 +532,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 			const [rangeFrom, _rangeTo] = range.split(':');
 			const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-			const startRowIndex = +(cellData[2] || startIndex - 1);
+			const startRowIndex = +(cellData[2] || 1);
 
 			let returnData;
 			if (event === 'columnChanges') {
