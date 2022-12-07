@@ -171,6 +171,7 @@ export async function init(
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
 
+	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);

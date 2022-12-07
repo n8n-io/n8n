@@ -28,12 +28,14 @@ import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 import { Url } from 'url';
-import type { FeatureConfig } from './databases/entities/FeatureConfig';
-import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
 
 import type { Request } from 'express';
+
+import type { AuthIdentity } from '@db/entities/AuthIdentity';
+import type { FeatureConfig } from '@db/entities/FeatureConfig';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { LdapSyncHistory } from '@db/entities/LdapSyncHistory';
 import type { Role } from '@db/entities/Role';
 import type { Settings } from '@db/entities/Settings';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -70,6 +72,7 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
+	AuthIdentity: Repository<AuthIdentity>;
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import { AuthIdentity } from './AuthIdentity';
 import { CredentialsEntity } from './CredentialsEntity';
 import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -16,6 +17,7 @@ import { FeatureConfig } from './FeatureConfig';
 import { LdapSyncHistory } from './LdapSyncHistory';
 
 export const entities = {
+	AuthIdentity,
 	CredentialsEntity,
 	ExecutionEntity,
 	WorkflowEntity,

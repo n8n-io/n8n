@@ -19,6 +19,7 @@ import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
+import { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -80,11 +81,17 @@ export class User extends AbstractEntity implements IUser {
 	})
 	globalRole: Role;
 
+	@OneToMany(() => AuthIdentity, (authIdentity) => authIdentity.user)
+	authIdentities: AuthIdentity[];
+
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.user)
 	sharedWorkflows: SharedWorkflow[];
 
 	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.user)
 	sharedCredentials: SharedCredentials[];
+
+	@Column({ type: Boolean, default: false })
+	disabled: boolean;
 
 	@BeforeInsert()
 	@BeforeUpdate()
@@ -95,16 +102,6 @@ export class User extends AbstractEntity implements IUser {
 	@Column({ type: String, nullable: true })
 	@Index({ unique: true })
 	apiKey?: string | null;
-
-	@Column({ type: String, nullable: false, default: 'email' })
-	signInType: 'ldap' | 'email';
-
-	@Column({ type: String, nullable: true })
-	@Index({ unique: true })
-	ldapId?: string | null;
-
-	@Column({ type: Boolean, default: false })
-	disabled: boolean;
 
 	/**
 	 * Whether the user is pending setup completion.

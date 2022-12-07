@@ -21,7 +21,7 @@
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
 			</div>
-			<div>
+			<div v-if="!isOwner">
 				<n8n-text v-if="signInType" size="small" color="text-light">
 					Sign-in type: {{ signInType }}
 				</n8n-text>
@@ -55,6 +55,9 @@ export default mixins(Locale).extend({
 		email: {
 			type: String,
 		},
+		isOwner: {
+			type: Boolean,
+		},
 		isPendingUser: {
 			type: Boolean,
 		},
@@ -63,7 +66,6 @@ export default mixins(Locale).extend({
 		},
 		disabled: {
 			type: Boolean,
-			default: false,
 		},
 		signInType: {
 			type: String,

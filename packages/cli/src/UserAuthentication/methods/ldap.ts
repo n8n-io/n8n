@@ -1,21 +1,20 @@
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { SignInType } from '@/Ldap/constants';
 import {
 	createLdapUserOnLocalDb,
 	findAndAuthenticateLdapUser,
 	getLdapConfig,
 	getLdapUserRole,
 	getUserByEmail,
-	getUserByLdapId,
+	getAuthIdentityByLdapId,
 	isLdapDisabled,
-	mapLdapAttributesToDb,
-	transformEmailUserToLdapUser,
+	mapLdapAttributesToUser,
+	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
 
 export const handleLdapLogin = async (
-	logindId: string,
+	loginId: string,
 	password: string,
 ): Promise<User | undefined> => {
 	if (isLdapDisabled()) return undefined;
@@ -27,7 +26,7 @@ export const handleLdapLogin = async (
 	const { loginIdAttribute, userFilter } = ldapConfig;
 
 	const ldapUser = await findAndAuthenticateLdapUser(
-		logindId,
+		loginId,
 		password,
 		loginIdAttribute,
 		userFilter,
@@ -35,38 +34,37 @@ export const handleLdapLogin = async (
 
 	if (!ldapUser) return undefined;
 
-	const ldapAttributesValues = mapLdapAttributesToDb(ldapUser, ldapConfig);
+	const [ldapId, ldapAttributesValues] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 
-	const { ldapId: ldapIdAttributeValue, email: emailAttributeValue } = ldapAttributesValues;
+	const { email: emailAttributeValue } = ldapAttributesValues;
 
-	if (!ldapIdAttributeValue || !emailAttributeValue) return undefined;
+	if (!ldapId || !emailAttributeValue) return undefined;
 
-	const localLdapUser = await getUserByLdapId(ldapIdAttributeValue);
-
-	if (localLdapUser?.disabled) return undefined;
-
-	if (localLdapUser) {
-		await updateLdapUserOnLocalDb(ldapIdAttributeValue, ldapAttributesValues);
-	} else {
+	const ldapAuthIdentity = await getAuthIdentityByLdapId(ldapId);
+	if (!ldapAuthIdentity) {
 		const emailUser = await getUserByEmail(emailAttributeValue);
 
-		//check if there is an email user with the same email as the authenticated LDAP user trying to log-in
+		// check if there is an email user with the same email as the authenticated LDAP user trying to log-in
 		if (emailUser && emailUser.email === emailAttributeValue) {
-			await transformEmailUserToLdapUser(emailUser.email, ldapAttributesValues);
+			const identity = await createLdapAuthIdentity(emailUser, ldapId);
+			await updateLdapUserOnLocalDb(identity, ldapAttributesValues);
 		} else {
 			const role = await getLdapUserRole();
-			const { id } = await createLdapUserOnLocalDb(role, ldapAttributesValues);
-
+			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
 			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: id,
-				user_type: SignInType.LDAP,
+				user_id: user.id,
+				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});
+			return user;
+		}
+	} else {
+		if (ldapAuthIdentity.user) {
+			if (ldapAuthIdentity.user.disabled) return undefined;
+			await updateLdapUserOnLocalDb(ldapAuthIdentity, ldapAttributesValues);
 		}
 	}
 
 	// Retrieve the user again as user's data might have been updated
-	const updatedUser = await getUserByLdapId(ldapIdAttributeValue);
-
-	return updatedUser;
+	return (await getAuthIdentityByLdapId(ldapId))?.user;
 };

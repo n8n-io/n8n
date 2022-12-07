@@ -11,11 +11,18 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}user\`
-			ADD COLUMN \`ldapId\` VARCHAR(60) DEFAULT null,
-			ADD UNIQUE (\`ldapId\`),
-			ADD COLUMN \`signInType\` VARCHAR(20) DEFAULT \'email'\,
-			ADD COLUMN \`disabled\` BOOLEAN NOT NULL DEFAULT false;`,
+			`ALTER TABLE ${tablePrefix}user ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
+		);
+
+		await queryRunner.query(
+			`CREATE TABLE IF NOT EXISTS ${tablePrefix}auth_identity (
+				\`userId\` VARCHAR(36) REFERENCES ${tablePrefix}user (id),
+				\`providerId\` VARCHAR(60) NOT NULL,
+				\`providerType\` VARCHAR(20) NOT NULL,
+				\`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				\`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(\`providerId\`, \`providerType\`)
+			) ENGINE='InnoDB';`,
 		);
 
 		await queryRunner.query(
@@ -54,12 +61,7 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}feature_config`);
-
-		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}user\`
-			DROP COLUMN \`ldapId\`,
-			DROP COLUMN \`signInType\`,
-			DROP COLUMN \`disabled\`;`,
-		);
+		await queryRunner.query(`DROP TABLE ${tablePrefix}auth_identity`);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN disabled`);
 	}
 }

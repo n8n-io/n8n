@@ -14,11 +14,6 @@ export const LDAP_LOGIN_ENABLED = 'ldap.loginEnabled';
 
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
-export enum SignInType {
-	LDAP = 'ldap',
-	EMAIL = 'email',
-}
-
 export enum ConnectionSecurity {
 	NONE = 'none',
 	TLS = 'tls',

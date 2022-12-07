@@ -6,18 +6,20 @@
 			class="ph-no-capture"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
-			<n8n-user-info
-				v-bind="user"
-				:isCurrentUser="currentUserId === user.id"
-				:disabled="showDisabledBadge(user)"
-			/>
+			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
 				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
 				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
 				<n8n-action-toggle
-					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
+					v-if="
+						!user.isOwner &&
+						user.signInType !== 'ldap' &&
+						!readonly &&
+						getActions(user).length > 0 &&
+						actions.length > 0
+					"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -150,9 +152,6 @@ export default mixins(Locale).extend({
 			if (action === 'delete' || action === 'reinvite') {
 				this.$emit(action, user.id);
 			}
-		},
-		showDisabledBadge(user: IUser): boolean {
-			return user.signInType === 'ldap' && user.disabled;
 		},
 	},
 });

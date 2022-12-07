@@ -8,7 +8,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { JwtPayload, JwtToken } from '../Interfaces';
 import { User } from '@db/entities/User';
 import config from '@/config';
-import { ResponseHelper } from '@/index';
+import * as ResponseHelper from '@/ResponseHelper';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;

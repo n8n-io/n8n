@@ -9,21 +9,18 @@ export const handleEmailLogin = async (
 	password: string,
 ): Promise<User | undefined> => {
 	const user = await Db.collections.User.findOne(
-		{
-			email,
-		},
-		{
-			relations: ['globalRole'],
-		},
+		{ email },
+		{ relations: ['globalRole', 'authIdentities'] },
 	);
 
 	if (user?.password && (await compareHash(password, user.password))) {
 		return user;
 	}
 
-	// At this point if the user has a LDAP ID, means it was previosly an LDAP user,
+	// At this point if the user has a LDAP ID, means it was previously an LDAP user,
 	// so suggest to reset the password to gain access to the instance.
-	if (user?.ldapId) {
+	const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+	if (user && ldapIdentity) {
 		void InternalHooksManager.getInstance().userLoginFailedDueToLdapDisabled({
 			user_id: user.id,
 		});

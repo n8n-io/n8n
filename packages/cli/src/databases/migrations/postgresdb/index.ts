@@ -23,7 +23,7 @@ import { CreateWorkflowsEditorRole1663755770893 } from './1663755770893-CreateWo
 import { CreateCredentialUsageTable1665484192212 } from './1665484192212-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637025 } from './1665754637025-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707126 } from './1669739707126-AddWorkflowVersionIdColumn';
-import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities'
+import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,

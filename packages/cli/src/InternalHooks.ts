@@ -17,7 +17,7 @@ import {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { SignInType } from './Ldap/constants';
+import { AuthProviderType } from '@db/entities/AuthIdentity';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -398,7 +398,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 	async onUserSignup(userSignupData: {
 		user_id: string;
-		user_type: SignInType;
+		user_type: AuthProviderType;
 		was_disabled_ldap_user: boolean;
 	}): Promise<void> {
 		return this.telemetry.track('User signed up', userSignupData);
