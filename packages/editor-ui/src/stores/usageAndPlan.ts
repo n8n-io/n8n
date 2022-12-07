@@ -45,5 +45,7 @@ export const useUsageAndPlanStore = defineStore('usageAndPlan', () => {
 	return {
 		setData,
 		planName: computed(() => state.data.license.planName),
+		executionLimit: computed(() => state.data.usage.executions.limit),
+		executionCount: computed(() => state.data.usage.executions.value),
 	};
 });
