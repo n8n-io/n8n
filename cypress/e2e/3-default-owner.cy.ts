@@ -24,18 +24,15 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	// todo test should redirect to setup if have not skipped
-
 	before(() => {
 		cy.resetAll();
 	});
 	beforeEach(() => {
-		cy.skipSetup();
+		cy.visit('/');
 	})
 
 	it('should skip owner setup', () => {
-		cy.visit(workflowsPage.url);
-		cy.url().should('include', workflowsPage.url);
+		cy.skipSetup();
 	});
 
 	it('should be able to create workflows', () => {
