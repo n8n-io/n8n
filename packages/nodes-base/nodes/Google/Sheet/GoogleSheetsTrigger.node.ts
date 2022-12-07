@@ -255,7 +255,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						name: 'locationDefine',
 						type: 'fixedCollection',
 						placeholder: 'Select Range',
-						default: { values: { firstDataRow: 2 } },
+						default: { values: {} },
 						options: [
 							{
 								displayName: 'Values',
@@ -293,7 +293,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										typeOptions: {
 											minValue: 1,
 										},
-										default: 1,
+										default: 2,
 										description:
 											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
 										hint: 'Relative to the defined range. Row index starts from 1.',
@@ -452,13 +452,13 @@ export class GoogleSheetsTrigger implements INodeType {
 				rangeToCheck = `${rangeFrom}${workflowStaticData.lastIndexChecked}:${rangeTo}`;
 			}
 
-			const [columns] = (
+			const [columns] = ((
 				(await apiRequest.call(
 					this,
 					'GET',
 					`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
 				)) as IDataObject
-			).values as string[][];
+			).values as string[][]) || [[]];
 
 			if (!columns?.length) {
 				throw new NodeOperationError(this.getNode(), 'Could not retrieve the columns from key row');
