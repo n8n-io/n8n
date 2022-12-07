@@ -349,6 +349,9 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
+		typeOptions: {
+			alwaysOpenEditWindow: true,
+		},
 		default: '',
 		displayOptions: {
 			show: {
