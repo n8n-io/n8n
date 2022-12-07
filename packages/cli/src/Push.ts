@@ -1,48 +1,20 @@
-// @ts-ignore
-import sseChannel from 'sse-channel';
-import express from 'express';
+import SSEChannel from 'sse-channel';
+import type { Request, Response } from 'express';
 
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IPushData, IPushDataType } from '@/Interfaces';
 
-interface SSEChannelOptions {
-	cors?: {
-		origins: string[];
-	};
-}
-
-namespace SSE {
-	export type Channel = {
-		on(event: string, handler: (channel: string, res: express.Response) => void): void;
-		removeClient: (res: express.Response) => void;
-		addClient: (req: express.Request, res: express.Response) => void;
-		send: (msg: string, clients?: express.Response[]) => void;
-	};
-}
-
 export class Push {
-	private channel: SSE.Channel;
+	private channel = new SSEChannel();
 
-	private connections: {
-		[key: string]: express.Response;
-	} = {};
+	private connections: Record<string, Response> = {};
 
 	constructor() {
-		const options: SSEChannelOptions = {};
-		if (process.env.NODE_ENV !== 'production') {
-			options.cors = {
-				// Allow access also from frontend when developing
-				origins: ['http://localhost:8080'],
-			};
-		}
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-		this.channel = new sseChannel(options) as SSE.Channel;
-
-		this.channel.on('disconnect', (channel: string, res: express.Response) => {
+		this.channel.on('disconnect', (channel: string, res: Response) => {
 			if (res.req !== undefined) {
-				Logger.debug(`Remove editor-UI session`, { sessionId: res.req.query.sessionId });
-				delete this.connections[res.req.query.sessionId as string];
+				const { sessionId } = res.req.query;
+				Logger.debug(`Remove editor-UI session`, { sessionId });
+				delete this.connections[sessionId as string];
 			}
 		});
 	}
@@ -51,10 +23,10 @@ export class Push {
 	 * Adds a new push connection
 	 *
 	 * @param {string} sessionId The id of the session
-	 * @param {express.Request} req The request
-	 * @param {express.Response} res The response
+	 * @param {Request} req The request
+	 * @param {Response} res The response
 	 */
-	add(sessionId: string, req: express.Request, res: express.Response) {
+	add(sessionId: string, req: Request, res: Response) {
 		Logger.debug(`Add editor-UI session`, { sessionId });
 
 		if (this.connections[sessionId] !== undefined) {
