@@ -12,7 +12,6 @@ jobs:
     strategy:
       matrix:
         docker-context: ['', '-debian']
-        platforms: [linux/amd64, linux/arm64, linux/arm/v7]
 
     steps:
       - uses: actions/checkout@v3
@@ -39,7 +38,7 @@ jobs:
           context: ./docker/images/n8n${{ matrix.docker-context }}
           build-args: |
             N8N_VERSION=${{ steps.vars.outputs.tag }}
-          platforms: ${{ matrix.platforms }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
