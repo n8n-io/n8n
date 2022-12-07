@@ -435,6 +435,7 @@ export const nodeHelpers = mixins(
 			},
 
 			disableNodes(nodes: INodeUi[]) {
+				this.historyStore.startRecordingUndo();
 				for (const node of nodes) {
 					const oldState = node.disabled;
 					// Toggle disabled flag
@@ -451,7 +452,9 @@ export const nodeHelpers = mixins(
 					this.workflowsStore.clearNodeExecutionData(node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
+					this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this));
 				}
+				this.historyStore.stopRecordingUndo();
 			},
 			// @ts-ignore
 			getNodeSubtitle (data, nodeType, workflow): string | undefined {
