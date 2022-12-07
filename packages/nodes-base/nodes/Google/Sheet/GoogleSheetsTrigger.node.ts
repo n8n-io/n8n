@@ -198,7 +198,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						value: 'rowAdded',
 					},
 				],
-				default: 'rowAdded',
+				default: 'anyUpdate',
 				required: true,
 			},
 			{
@@ -255,7 +255,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						name: 'locationDefine',
 						type: 'fixedCollection',
 						placeholder: 'Select Range',
-						default: { values: {} },
+						default: { values: { firstDataRow: 2 } },
 						options: [
 							{
 								displayName: 'Values',
@@ -279,7 +279,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										default: 1,
 										description:
 											'Index of the row which contains the keys. The incoming node data is matched to the keys for assignment. The matching is case-sensitive.',
-										hint: 'FRelative to the defined range. Row index starts from 1.',
+										hint: 'Relative to the defined range. Row index starts from 1.',
 									},
 									{
 										displayName: 'First Data Row',
@@ -288,7 +288,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										typeOptions: {
 											minValue: 1,
 										},
-										default: 2,
+										default: 1,
 										description:
 											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
 										hint: 'Relative to the defined range. Row index starts from 1.',
@@ -473,13 +473,17 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'anyUpdate' || event === 'columnChanges') {
-			const currentData = (await googleSheet.getData(
-				sheetName,
-				(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
-				(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
-			)) as string[][];
+			const currentData =
+				((await googleSheet.getData(
+					sheetName,
+					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
+					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
+				)) as string[][]) || [];
 
 			if (previousRevision === undefined) {
+				if (currentData.length === 0) {
+					return [[]];
+				}
 				const zeroBasedKeyRow = keyRow - 1;
 				const columns = currentData[zeroBasedKeyRow];
 				currentData.splice(zeroBasedKeyRow, 1); // Remove key row
@@ -494,10 +498,8 @@ export class GoogleSheetsTrigger implements INodeType {
 
 			const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
 
-			const previousRevisionSheetData = sheetBinaryToArrayOfArrays(
-				previousRevisionBinaryData,
-				sheetName,
-			);
+			const previousRevisionSheetData =
+				sheetBinaryToArrayOfArrays(previousRevisionBinaryData, sheetName) || [];
 
 			const includeInOutput = this.getNodeParameter('includeInOutput', 'currentVersion') as string;
 

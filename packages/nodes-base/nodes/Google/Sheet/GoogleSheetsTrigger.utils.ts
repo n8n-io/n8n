@@ -72,12 +72,24 @@ export function compareRevisions(
 	columnsToWatch: string[] = [],
 ) {
 	try {
+		console.log(current, previous, keyRow, includeInOutput, columnsToWatch);
 		const dataLength = current.length > previous.length ? current.length : previous.length;
 
-		const columns =
-			current[keyRow - 1].length > previous[keyRow - 1].length
-				? ['row_number', ...current[keyRow - 1]]
-				: ['row_number', ...previous[keyRow - 1]];
+		const columnsRowIndex = keyRow - 1;
+		const columnsInCurrent = current[columnsRowIndex];
+		const columnsInPrevious = previous[columnsRowIndex];
+
+		let columns: SheetDataRow = ['row_number'];
+		if (columnsInCurrent !== undefined && columnsInPrevious !== undefined) {
+			columns =
+				columnsInCurrent.length > columnsInPrevious.length
+					? columns.concat(columnsInCurrent)
+					: columns.concat(columnsInPrevious);
+		} else if (columnsInCurrent !== undefined) {
+			columns = columns.concat(columnsInCurrent);
+		} else if (columnsInPrevious !== undefined) {
+			columns = columns.concat(columnsInPrevious);
+		}
 
 		const diffData: Array<{
 			rowIndex: number;
@@ -86,8 +98,7 @@ export function compareRevisions(
 		}> = [];
 
 		for (let i = 0; i < dataLength; i++) {
-			// columns row, continue
-			if (i === keyRow - 1) {
+			if (i === columnsRowIndex) {
 				continue;
 			}
 
