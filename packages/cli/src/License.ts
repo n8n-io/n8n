@@ -108,6 +108,10 @@ export class License {
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
+
+	getFeatures() {
+		return this.manager?.getFeatures() ?? [];
+	}
 }
 
 let licenseInstance: License | undefined;
