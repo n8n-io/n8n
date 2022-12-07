@@ -19,6 +19,23 @@ import {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import { eventBus } from './eventbus';
+import { User } from './databases/entities/User';
+
+function userToPayload(user: User): {
+	userId: string;
+	_email: string;
+	_firstName: string;
+	_lastName: string;
+	globalRole?: string;
+} {
+	return {
+		userId: user.id,
+		_email: user.email,
+		_firstName: user.firstName,
+		_lastName: user.lastName,
+		globalRole: user.globalRole?.name,
+	};
+}
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -310,31 +327,29 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return Promise.race([timeoutPromise, this.telemetry.trackN8nStop()]);
 	}
 
-	async onUserDeletion(
-		userId: string,
-		userDeletionData: ITelemetryUserDeletionData,
-		publicApi: boolean,
-	): Promise<void> {
+	async onUserDeletion(userDeletionData: {
+		user: User;
+		telemetryData: ITelemetryUserDeletionData;
+		publicApi: boolean;
+	}): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.deleted',
 				payload: {
-					userId,
-					...userDeletionData,
-					publicApi,
+					...userToPayload(userDeletionData.user),
 				},
 			}),
 			this.telemetry.track('User deleted user', {
-				...userDeletionData,
-				user_id: userId,
-				public_api: publicApi,
+				...userDeletionData.telemetryData,
+				user_id: userDeletionData.user.id,
+				public_api: userDeletionData.publicApi,
 			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
 	async onUserInvite(userInviteData: {
-		user_id: string;
+		user: User;
 		target_user_id: string[];
 		public_api: boolean;
 	}): Promise<void> {
@@ -342,16 +357,21 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.invited',
 				payload: {
-					...userInviteData,
+					...userToPayload(userInviteData.user),
+					tagertUserId: userInviteData.target_user_id,
 				},
 			}),
-			this.telemetry.track('User invited new user', userInviteData),
+			this.telemetry.track('User invited new user', {
+				user_id: userInviteData.user.id,
+				target_user_id: userInviteData.target_user_id,
+				public_api: userInviteData.public_api,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
 	async onUserReinvite(userReinviteData: {
-		user_id: string;
+		user: User;
 		target_user_id: string;
 		public_api: boolean;
 	}): Promise<void> {
@@ -359,10 +379,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.reinvited',
 				payload: {
-					...userReinviteData,
+					...userToPayload(userReinviteData.user),
+					tagertUserId: userReinviteData.target_user_id,
 				},
 			}),
-			this.telemetry.track('User resent new user invite email', userReinviteData),
+			this.telemetry.track('User resent new user invite email', {
+				user_id: userReinviteData.user.id,
+				target_user_id: userReinviteData.target_user_id,
+				public_api: userReinviteData.public_api,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
@@ -409,28 +434,59 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User retrieved all workflows', userRetrievedData);
 	}
 
-	async onUserUpdate(userUpdateData: { user_id: string; fields_changed: string[] }): Promise<void> {
+	async onUserUpdate(userUpdateData: { user: User; fields_changed: string[] }): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.updated',
 				payload: {
-					...userUpdateData,
+					...userToPayload(userUpdateData.user),
+					fieldsChanged: userUpdateData.fields_changed,
 				},
 			}),
-			this.telemetry.track('User changed personal settings', userUpdateData),
+			this.telemetry.track('User changed personal settings', {
+				user_id: userUpdateData.user.id,
+				fields_changed: userUpdateData.fields_changed,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
-	async onUserInviteEmailClick(userInviteClickData: { user_id: string }): Promise<void> {
-		return this.telemetry.track('User clicked invite link from email', userInviteClickData);
+	async onUserInviteEmailClick(userInviteClickData: {
+		inviter: User;
+		invitee: User;
+	}): Promise<void> {
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.invitation.accepted',
+				payload: {
+					invitee: {
+						...userToPayload(userInviteClickData.invitee),
+					},
+					inviter: {
+						...userToPayload(userInviteClickData.inviter),
+					},
+				},
+			}),
+			this.telemetry.track('User clicked invite link from email', {
+				user_id: userInviteClickData.invitee.id,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
-	async onUserPasswordResetEmailClick(userPasswordResetData: { user_id: string }): Promise<void> {
-		return this.telemetry.track(
-			'User clicked password reset link from email',
-			userPasswordResetData,
-		);
+	async onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void> {
+		Promise.all([
+			eventBus.sendAuditEvent({
+				eventName: 'n8n.audit.user.reset',
+				payload: {
+					...userToPayload(userPasswordResetData.user),
+				},
+			}),
+			this.telemetry.track('User clicked password reset link from email', {
+				user_id: userPasswordResetData.user.id,
+			}),
+		]).catch((error) => console.log(error));
+		return;
 	}
 
 	async onUserTransactionalEmail(userTransactionalEmailData: {
@@ -453,46 +509,48 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('User invoked API', userInvokedApiData);
 	}
 
-	async onApiKeyDeleted(apiKeyDeletedData: {
-		user_id: string;
-		public_api: boolean;
-	}): Promise<void> {
+	async onApiKeyDeleted(apiKeyDeletedData: { user: User; public_api: boolean }): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.api.deleted',
 				payload: {
-					...apiKeyDeletedData,
+					...userToPayload(apiKeyDeletedData.user),
 				},
 			}),
-			this.telemetry.track('API key deleted', apiKeyDeletedData),
+			this.telemetry.track('API key deleted', {
+				user_id: apiKeyDeletedData.user.id,
+				public_api: apiKeyDeletedData.public_api,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
-	async onApiKeyCreated(apiKeyCreatedData: {
-		user_id: string;
-		public_api: boolean;
-	}): Promise<void> {
+	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.api.created',
 				payload: {
-					...apiKeyCreatedData,
+					...userToPayload(apiKeyCreatedData.user),
 				},
 			}),
-			this.telemetry.track('API key created', apiKeyCreatedData),
+			this.telemetry.track('API key created', {
+				user_id: apiKeyCreatedData.user.id,
+				public_api: apiKeyCreatedData.public_api,
+			}),
 		]).catch((error) => console.log(error));
 	}
 
-	async onUserPasswordResetRequestClick(userPasswordResetData: { user_id: string }): Promise<void> {
+	async onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.reset.requested',
 				payload: {
-					...userPasswordResetData,
+					...userToPayload(userPasswordResetData.user),
 				},
 			}),
-			this.telemetry.track('User requested password reset while logged out', userPasswordResetData),
+			this.telemetry.track('User requested password reset while logged out', {
+				user_id: userPasswordResetData.user.id,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
@@ -501,21 +559,23 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
 	}
 
-	async onUserSignup(userSignupData: { user_id: string }): Promise<void> {
+	async onUserSignup(userSignupData: { user: User }): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.signedup',
 				payload: {
-					...userSignupData,
+					...userToPayload(userSignupData.user),
 				},
 			}),
-			this.telemetry.track('User signed up', userSignupData),
+			this.telemetry.track('User signed up', {
+				user_id: userSignupData.user.id,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
 	async onEmailFailed(failedEmailData: {
-		user_id: string;
+		user: User;
 		message_type: 'Reset password' | 'New user invite' | 'Resend invite';
 		public_api: boolean;
 	}): Promise<void> {
@@ -523,10 +583,13 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.email.failed',
 				payload: {
-					...failedEmailData,
+					messageType: failedEmailData.message_type,
+					...userToPayload(failedEmailData.user),
 				},
 			}),
-			this.telemetry.track('Instance failed to send transactional email to user', failedEmailData),
+			this.telemetry.track('Instance failed to send transactional email to user', {
+				user_id: failedEmailData.user.id,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
@@ -536,6 +599,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 	 */
 
 	async onUserCreatedCredentials(userCreatedCredentialsData: {
+		user: User;
+		credential_name: string;
 		credential_type: string;
 		credential_id: string;
 		public_api: boolean;
@@ -544,11 +609,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.credentials.created',
 				payload: {
-					...userCreatedCredentialsData,
+					...userToPayload(userCreatedCredentialsData.user),
+					credentialName: userCreatedCredentialsData.credential_name,
+					credentialType: userCreatedCredentialsData.credential_type,
+					credentialId: userCreatedCredentialsData.credential_id,
 				},
 			}),
 			this.telemetry.track('User created credentials', {
-				...userCreatedCredentialsData,
+				user_id: userCreatedCredentialsData.user.id,
+				credential_type: userCreatedCredentialsData.credential_type,
+				credential_id: userCreatedCredentialsData.credential_id,
 				instance_id: this.instanceId,
 			}),
 		]).catch((error) => console.log(error));
@@ -556,6 +626,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
+		user: User;
+		credential_name: string;
 		credential_type: string;
 		credential_id: string;
 		user_id_sharer: string;
@@ -566,11 +638,22 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.credentials.shared',
 				payload: {
-					...userSharedCredentialsData,
+					...userToPayload(userSharedCredentialsData.user),
+					credentialName: userSharedCredentialsData.credential_name,
+					credentialType: userSharedCredentialsData.credential_type,
+					credentialId: userSharedCredentialsData.credential_id,
+					userIdSharer: userSharedCredentialsData.user_id_sharer,
+					userIdsShareesAdded: userSharedCredentialsData.user_ids_sharees_added,
+					shareesRemoved: userSharedCredentialsData.sharees_removed,
 				},
 			}),
 			this.telemetry.track('User updated cred sharing', {
-				...userSharedCredentialsData,
+				user_id: userSharedCredentialsData.user.id,
+				credential_type: userSharedCredentialsData.credential_type,
+				credential_id: userSharedCredentialsData.credential_id,
+				user_id_sharer: userSharedCredentialsData.user_id_sharer,
+				user_ids_sharees_added: userSharedCredentialsData.user_ids_sharees_added,
+				sharees_removed: userSharedCredentialsData.sharees_removed,
 				instance_id: this.instanceId,
 			}),
 		]).catch((error) => console.log(error));
@@ -582,7 +665,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	 */
 
 	async onCommunityPackageInstallFinished(installationData: {
-		user_id: string;
+		user: User;
 		input_string: string;
 		package_name: string;
 		success: boolean;
@@ -596,16 +679,34 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.installed',
 				payload: {
-					...installationData,
+					...userToPayload(installationData.user),
+					inputString: installationData.input_string,
+					packageName: installationData.package_name,
+					success: installationData.success,
+					packageVersion: installationData.package_version,
+					packageNodeNames: installationData.package_node_names,
+					packageAuthor: installationData.package_author,
+					packageAuthorEmail: installationData.package_author_email,
+					failureReason: installationData.failure_reason,
 				},
 			}),
-			this.telemetry.track('cnr package install finished', installationData),
+			this.telemetry.track('cnr package install finished', {
+				user_id: installationData.user.id,
+				input_string: installationData.input_string,
+				package_name: installationData.package_name,
+				success: installationData.success,
+				package_version: installationData.package_version,
+				package_node_names: installationData.package_node_names,
+				package_author: installationData.package_author,
+				package_author_email: installationData.package_author_email,
+				failure_reason: installationData.failure_reason,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
 	async onCommunityPackageUpdateFinished(updateData: {
-		user_id: string;
+		user: User;
 		package_name: string;
 		package_version_current: string;
 		package_version_new: string;
@@ -617,16 +718,30 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.updated',
 				payload: {
-					...updateData,
+					...userToPayload(updateData.user),
+					packageName: updateData.package_name,
+					packageVersionCurrent: updateData.package_version_current,
+					packageVersionNew: updateData.package_version_new,
+					packageNodeNames: updateData.package_node_names,
+					packageAuthor: updateData.package_author,
+					packageAuthorEmail: updateData.package_author_email,
 				},
 			}),
-			this.telemetry.track('cnr package updated', updateData),
+			this.telemetry.track('cnr package updated', {
+				user_id: updateData.user.id,
+				package_name: updateData.package_name,
+				package_version_current: updateData.package_version_current,
+				package_version_new: updateData.package_version_new,
+				package_node_names: updateData.package_node_names,
+				package_author: updateData.package_author,
+				package_author_email: updateData.package_author_email,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
 
-	async onCommunityPackageDeleteFinished(updateData: {
-		user_id: string;
+	async onCommunityPackageDeleteFinished(deleteData: {
+		user: User;
 		package_name: string;
 		package_version: string;
 		package_node_names: string[];
@@ -637,10 +752,22 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.package.deleted',
 				payload: {
-					...updateData,
+					...userToPayload(deleteData.user),
+					packageName: deleteData.package_name,
+					packageVersion: deleteData.package_version,
+					packageNodeNames: deleteData.package_node_names,
+					packageAuthor: deleteData.package_author,
+					packageAuthorEmail: deleteData.package_author_email,
 				},
 			}),
-			this.telemetry.track('cnr package deleted', updateData),
+			this.telemetry.track('cnr package deleted', {
+				user_id: deleteData.user.id,
+				package_name: deleteData.package_name,
+				package_version: deleteData.package_version,
+				package_node_names: deleteData.package_node_names,
+				package_author: deleteData.package_author,
+				package_author_email: deleteData.package_author_email,
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}

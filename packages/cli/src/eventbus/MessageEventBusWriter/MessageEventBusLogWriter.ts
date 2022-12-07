@@ -7,7 +7,6 @@ import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker';
 import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
-import events from 'events';
 import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
@@ -19,6 +18,7 @@ import {
 	EventMessageConfirmSource,
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
+import { once as eventOnce } from 'node:events';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
@@ -186,20 +186,24 @@ export class MessageEventBusLogWriter {
 					crlfDelay: Infinity,
 				});
 				rl.on('line', (line) => {
-					const json = jsonParse(line);
-					if (isEventMessageOptions(json) && json.__type !== undefined) {
-						const msg = getEventMessageObjectByType(json);
-						if (msg !== null) results.loggedMessages.push(msg);
-					}
-					if (isEventMessageConfirm(json) && mode !== 'all') {
-						const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
-						if (mode === 'sent') {
-							results.sentMessages.push(...removedMessage);
+					try {
+						const json = jsonParse(line);
+						if (isEventMessageOptions(json) && json.__type !== undefined) {
+							const msg = getEventMessageObjectByType(json);
+							if (msg !== null) results.loggedMessages.push(msg);
 						}
+						if (isEventMessageConfirm(json) && mode !== 'all') {
+							const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
+							if (mode === 'sent') {
+								results.sentMessages.push(...removedMessage);
+							}
+						}
+					} catch (error) {
+						console.log(error, line);
 					}
 				});
 				// wait for stream to finish before continue
-				await events.once(rl, 'close');
+				await eventOnce(rl, 'close');
 			} catch (error) {
 				console.log(error);
 			}

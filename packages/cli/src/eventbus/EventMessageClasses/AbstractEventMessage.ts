@@ -5,6 +5,42 @@ import { v4 as uuid } from 'uuid';
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
+// TODO: temporarily added here, until merged via license manager
+function modifyUnderscoredKeys(
+	input: { [key: string]: any },
+	modifier: (secret: string) => string | undefined,
+) {
+	const result: { [key: string]: any } = {};
+	Object.keys(input).forEach((key) => {
+		if (typeof input[key] === 'string') {
+			if (key.substring(0, 1) === '_') {
+				const modifierResult = modifier(input[key]);
+				if (modifierResult !== undefined) {
+					result[key] = modifier(input[key]);
+				}
+			} else {
+				result[key] = input[key];
+			}
+		} else if (typeof input[key] === 'object') {
+			if (Array.isArray(input[key])) {
+				result[key] = input[key].map((item: any) => {
+					if (typeof item === 'object' && !Array.isArray(item)) {
+						return modifyUnderscoredKeys(item, modifier);
+					} else {
+						return item;
+					}
+				});
+			} else {
+				result[key] = modifyUnderscoredKeys(input[key], modifier);
+			}
+		} else {
+			result[key] = input[key];
+		}
+	});
+
+	return result;
+}
+
 export const isEventMessage = (candidate: unknown): candidate is AbstractEventMessage => {
 	const o = candidate as AbstractEventMessage;
 	if (!o) return false;
@@ -67,17 +103,18 @@ export abstract class AbstractEventMessage {
 	abstract setPayload(payload: AbstractEventPayload): this;
 
 	anonymize(): this {
-		if (this.payload) {
-			for (const key of Object.keys(this.payload)) {
-				if (key.startsWith('_')) {
-					if (typeof this.payload[key] === 'string') {
-						this.payload[key] = '*';
-					} else {
-						this.payload[key] = undefined;
-					}
-				}
-			}
-		}
+		// if (this.payload) {
+		// 	for (const key of Object.keys(this.payload)) {
+		// 		if (key.startsWith('_')) {
+		// 			if (typeof this.payload[key] === 'string') {
+		// 				this.payload[key] = '*';
+		// 			} else {
+		// 				this.payload[key] = undefined;
+		// 			}
+		// 		}
+		// 	}
+		// }
+		this.payload = modifyUnderscoredKeys(this.payload, (input) => '*');
 		return this;
 	}
 
