@@ -25,5 +25,6 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 });
