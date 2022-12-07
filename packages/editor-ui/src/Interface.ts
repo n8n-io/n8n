@@ -312,7 +312,6 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
-	hash: string;
 	versionId: string;
 	usedCredentials?: Array<Partial<ICredentialsResponse>>;
 }
