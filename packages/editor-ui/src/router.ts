@@ -566,12 +566,6 @@ const router = new Router({
 							allow: {
 								role: [ROLE.Owner],
 							},
-							deny: {
-								shouldDeny: () => {
-									const settingsStore = useSettingsStore();
-									return !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Ldap);
-								},
-							},
 						},
 					},
 				},
