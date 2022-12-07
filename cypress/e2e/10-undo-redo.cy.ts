@@ -1,4 +1,5 @@
-import { CODE_NODE, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
+import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -20,11 +21,72 @@ describe('Undo/Redo', () => {
 
 	it('should undo/redo adding connected nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
 		WorkflowPage.actions.hitRedo();
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+	});
+
+	it('should undo/redo adding node in the middle', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
+		cy.get('.connection-actions .add').click();
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
+		// WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 4);
+		// WorkflowPage.getters.nodeConnections().should('have.length', 3);
+	});
+
+	it('should undo/redo deleting node using delete button', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).
+			find('[data-test-id=delete-node-button]').click({ force: true });
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should undo/redo deleting node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should undo/redo deleting whole workflow', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.get('body').type('{esc}');
+		cy.get('body').type('{meta}', { release: false }).type('a');
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 });

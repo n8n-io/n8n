@@ -35,6 +35,7 @@ export class WorkflowPage extends BasePage {
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
 		nodeConnections: () => cy.get('.jtk-connector'),
+		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 	};
 	actions = {
 		visit: () => {

@@ -1,4 +1,4 @@
-import { CODE_NODE, MANUAL_TRIGGER_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
@@ -89,7 +89,7 @@ describe('Workflow Actions', () => {
 
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		WorkflowPage.actions.addNodeToCanvas(CODE_NODE);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{meta}', { release: false }).type('a');
 		cy.get('body').type('{meta}', { release: false }).type('c');
 		WorkflowPage.getters.successToast().should('exist');
