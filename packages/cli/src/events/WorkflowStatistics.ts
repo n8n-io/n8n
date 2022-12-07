@@ -52,7 +52,6 @@ export async function workflowExecutionCompleted(
 		// Send the metrics
 		await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
 	} catch (error) {
-		console.error(error);
 		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
 		await Db.collections.WorkflowStatistics.update(
 			{ workflowId, name },
