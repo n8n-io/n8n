@@ -30,7 +30,7 @@
 					[$style.disableActiveStyle]: !isItemActive(child),
 					[$style.active]: isItemActive(child),
 				}"
-				:data-test-id="`menu-item-${child.id}`"
+				data-test-id="menu-item"
 				:index="child.id"
 				@click="onItemClick(child)"
 			>
@@ -54,7 +54,7 @@
 					[$style.active]: isItemActive(item),
 					[$style.compact]: compact,
 				}"
-				:data-test-id="`menu-item-${item.id}`"
+				data-test-id="menu-item"
 				:index="item.id"
 				@click="onItemClick(item)"
 			>
