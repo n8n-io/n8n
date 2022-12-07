@@ -6,7 +6,7 @@ import { XYPosition } from "../Interface";
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
 // when debugging
-enum COMMANDS {
+export enum COMMANDS {
 	MOVE_NODE = 'moveNode',
 	ADD_NODE = 'addNode',
 	REMOVE_NODE = 'removeNode',
