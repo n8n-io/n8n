@@ -555,6 +555,9 @@ function digestAuthAxiosConfig(
 }
 
 async function proxyRequestToAxios(
+	workflow: Workflow,
+	additionalData: IWorkflowExecuteAdditionalData,
+	node: INode,
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
 ): Promise<any> {
@@ -624,7 +627,7 @@ async function proxyRequestToAxios(
 
 	return new Promise((resolve, reject) => {
 		axiosPromise
-			.then((response) => {
+			.then(async (response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
 					if (response.data === '') {
@@ -634,6 +637,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
 					resolve({
 						body,
 						headers: response.headers,
@@ -650,6 +654,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
 					resolve(body);
 				}
 			})
@@ -1517,7 +1522,7 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-		return await proxyRequestToAxios(requestOptions as IDataObject);
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1543,7 +1548,12 @@ export async function requestWithAuthentication(
 						additionalData.timezone,
 					);
 					// retry the request
-					return await proxyRequestToAxios(requestOptions as IDataObject);
+					return await proxyRequestToAxios(
+						workflow,
+						additionalData,
+						node,
+						requestOptions as IDataObject,
+					);
 				}
 			}
 			throw error;
@@ -2004,7 +2014,9 @@ export function getExecutePollFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2169,7 +2181,9 @@ export function getExecuteTriggerFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2437,7 +2451,9 @@ export function getExecuteFunctions(
 				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2662,7 +2678,9 @@ export function getExecuteSingleFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2816,7 +2834,9 @@ export function getLoadOptionsFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2962,7 +2982,9 @@ export function getExecuteHookFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -3162,7 +3184,9 @@ export function getExecuteWebhookFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,

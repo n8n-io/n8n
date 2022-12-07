@@ -20,9 +20,11 @@ import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData'
 import { AddNodeIds1658932910559 } from './1658932910559-AddNodeIds';
 import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
+import { WorkflowStatistics1664196174002 } from './1664196174002-WorkflowStatistics';
 import { CreateWorkflowsEditorRole1663755770894 } from './1663755770894-CreateWorkflowsEditorRole';
 import { CreateCredentialUsageTable1665484192213 } from './1665484192213-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637026 } from './1665754637026-RemoveCredentialUsageTable';
+import { AddWorkflowVersionIdColumn1669739707125 } from './1669739707125-AddWorkflowVersionIdColumn';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -50,4 +52,6 @@ export const mysqlMigrations = [
 	CreateWorkflowsEditorRole1663755770894,
 	CreateCredentialUsageTable1665484192213,
 	RemoveCredentialUsageTable1665754637026,
+	AddWorkflowVersionIdColumn1669739707125,
+	WorkflowStatistics1664196174002,
 ];

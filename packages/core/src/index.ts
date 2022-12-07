@@ -1,3 +1,4 @@
+import { eventEmitter } from './EventEmitter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
@@ -13,7 +14,7 @@ export * from './LoadNodeParameterOptions';
 export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
-export { NodeExecuteFunctions, UserSettings };
+export { eventEmitter, NodeExecuteFunctions, UserSettings };
 
 declare module 'http' {
 	export interface IncomingMessage {
