@@ -47,5 +47,6 @@ export const useUsageAndPlanStore = defineStore('usageAndPlan', () => {
 		planName: computed(() => state.data.license.planName),
 		executionLimit: computed(() => state.data.usage.executions.limit),
 		executionCount: computed(() => state.data.usage.executions.value),
+		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  state.data.usage.executions.value / state.data.usage.executions.limit >= state.data.usage.executions.warningThreshold),
 	};
 });
