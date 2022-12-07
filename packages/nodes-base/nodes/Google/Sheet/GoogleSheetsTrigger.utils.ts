@@ -79,9 +79,6 @@ export function compareRevisions(
 				? ['row_number', ...current[keyRow - 1]]
 				: ['row_number', ...previous[keyRow - 1]];
 
-		console.log([current.length, ['row_number', ...current[keyRow - 1]]]);
-		console.log([previous.length, ['row_number', ...previous[keyRow - 1]]]);
-
 		const diffData: Array<{
 			rowIndex: number;
 			previous: SheetDataRow;
