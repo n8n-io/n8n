@@ -21,11 +21,16 @@ export class CredentialsModal extends BasePage {
 			this.getters.name().click();
 			this.getters.nameInput().clear().type(name);
 		},
-		save: () => {
+		save: (test = false) => {
 			cy.intercept('POST', '/rest/credentials').as('saveCredential');
+			if(test) {
+				cy.intercept('POST', '/rest/credentials/test').as('testCredential');
+			}
 
 			this.getters.saveButton().click();
+
 			cy.wait('@saveCredential');
+			if(test) cy.wait('@testCredential')
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {

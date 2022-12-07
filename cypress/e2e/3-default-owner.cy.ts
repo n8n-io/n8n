@@ -61,7 +61,7 @@ describe('Default owner', () => {
 		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
 		credentialsModal.actions.setName('My awesome Notion account');
-		credentialsModal.actions.save();
+		credentialsModal.actions.save(true);
 
 		credentialsModal.actions.close();
 
