@@ -41,8 +41,8 @@ abstract class ResponseError extends Error {
 }
 
 export class BadRequestError extends ResponseError {
-	constructor(message: string) {
-		super(message, 400);
+	constructor(message: string, errorCode?: number) {
+		super(message, 400, errorCode);
 	}
 }
 

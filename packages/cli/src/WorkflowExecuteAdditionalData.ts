@@ -15,12 +15,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
@@ -674,13 +675,17 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} finally {
-					await eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.finished',
-						payload: {
-							workflowData: this.workflowData,
-						},
-					});
+					eventEmitter.emit(
+						eventEmitter.types.workflowExecutionCompleted,
+						this.workflowData,
+						fullRunData,
+					);
 				}
+			},
+		],
+		nodeFetchedData: [
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};
@@ -774,7 +779,18 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.executionId,
 						this.retryOf,
 					);
+				} finally {
+					eventEmitter.emit(
+						eventEmitter.types.workflowExecutionCompleted,
+						this.workflowData,
+						fullRunData,
+					);
 				}
+			},
+		],
+		nodeFetchedData: [
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};

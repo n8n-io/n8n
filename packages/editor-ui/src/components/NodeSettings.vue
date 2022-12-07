@@ -10,7 +10,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="executable">
+				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -71,6 +71,10 @@
 			data-test-id="node-parameters"
 			v-if="node && nodeValid"
 		>
+			<n8n-notice
+				v-if="hasForeignCredential"
+				:content="$locale.baseText('nodeSettings.hasForeignCredential')"
+			/>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -183,6 +187,12 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		isCurlImportModalOpen(): boolean {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
 		},
+		isReadOnly(): boolean {
+			return this.readOnly || this.hasForeignCredential;
+		},
+		isExecutable(): boolean {
+			return this.executable || this.hasForeignCredential;
+		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
@@ -257,8 +267,13 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
 		},
-		isReadOnly: {
+		readOnly: {
 			type: Boolean,
+			default: false,
+		},
+		hasForeignCredential: {
+			type: Boolean,
+			default: false,
 		},
 		blockUI: {
 			type: Boolean,
