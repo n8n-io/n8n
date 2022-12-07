@@ -32,6 +32,7 @@ export const webhookModalDescription = [
 		placeholder: 'http://example.com/index.html',
 		description: 'The URL to make the request to',
 	},
+	// TODO: commented out until required and implemented on backend
 	// {
 	// 	displayName: 'Authentication',
 	// 	name: 'authentication',
@@ -249,19 +250,6 @@ export const webhookModalDescription = [
 		},
 		default: '',
 	},
-	// {
-	// 	displayName: 'Send Payload',
-	// 	name: 'sendPayload',
-	// 	type: 'boolean',
-	// 	default: true,
-	// 	noDataExpression: true,
-	// 	description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
-	// 	displayOptions: {
-	// 		show: {
-	// 			dontShowThisField: [false],
-	// 		},
-	// 	},
-	// },
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -491,12 +479,4 @@ export const sentryModalDescription = [
 		noDataExpression: true,
 		description: 'Your Sentry DSN Client Key',
 	},
-	// {
-	// 	displayName: 'Send Payload',
-	// 	name: 'sendPayload',
-	// 	type: 'boolean',
-	// 	default: true,
-	// 	noDataExpression: true,
-	// 	description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
-	// },
 ] as INodeProperties[];
