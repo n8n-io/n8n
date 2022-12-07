@@ -101,9 +101,6 @@ export const estimateFields: INodeProperties[] = [
 				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Detail Type',

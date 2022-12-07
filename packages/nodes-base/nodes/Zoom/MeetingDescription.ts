@@ -81,9 +81,6 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Meeting agenda',
 			},

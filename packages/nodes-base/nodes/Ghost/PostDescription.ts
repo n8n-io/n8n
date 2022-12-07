@@ -692,9 +692,6 @@ export const postFields: INodeProperties[] = [
 						'/contentFormat': ['html'],
 					},
 				},
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

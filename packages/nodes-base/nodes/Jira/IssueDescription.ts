@@ -774,9 +774,6 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'HTML Body',
 				name: 'htmlBody',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The HTML body of the email notification for the issue',
 			},

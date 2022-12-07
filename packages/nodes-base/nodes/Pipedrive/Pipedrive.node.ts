@@ -847,7 +847,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',

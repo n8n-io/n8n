@@ -1455,9 +1455,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Pretext',
 				name: 'pretext',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text which appears before the message block',
 			},
