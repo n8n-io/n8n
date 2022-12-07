@@ -115,9 +115,6 @@ export class GmailTrigger implements INodeType {
 						displayName: 'Search',
 						name: 'q',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						placeholder: 'has:attachment',
 						hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',

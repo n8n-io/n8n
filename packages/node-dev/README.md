@@ -207,7 +207,7 @@ The following properties can be set in the node property options.
 
 All properties are optional. However, most only work when the node-property is of a specfic type.
 
-- **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
+- **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
 - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
 - **maxValue** [type: number]: Maximum value of the number
 - **minValue** [type: number]: Minimum value of the number

@@ -339,9 +339,6 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Private key to use when signing the string',
 				default: '',
 				required: true,

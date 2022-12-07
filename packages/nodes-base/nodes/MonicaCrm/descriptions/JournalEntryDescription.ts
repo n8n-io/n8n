@@ -72,9 +72,6 @@ export const journalEntryFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['journalEntry'],
@@ -189,9 +186,6 @@ export const journalEntryFields: INodeProperties[] = [
 				description: 'Content of the journal entry - max 100,000 characters',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Title',

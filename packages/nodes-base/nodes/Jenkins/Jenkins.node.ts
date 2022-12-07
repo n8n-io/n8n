@@ -208,9 +208,6 @@ export class Jenkins implements INodeType {
 				displayName: 'XML',
 				name: 'xml',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['job'],
