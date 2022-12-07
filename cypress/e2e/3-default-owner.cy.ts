@@ -88,11 +88,6 @@ describe('Default owner', () => {
 
 		messageBox.actions.confirm();
 		cy.url().should('include', settingsUsersPage.url);
-	});
-
-	it('can click back to workflows and have migrated workflow after setup', () => {
-		cy.signin({ email, password });
-		cy.visit(settingsUsersPage.url);
 		settingsSidebar.actions.back();
 
 		cy.url().should('include', workflowsPage.url);
