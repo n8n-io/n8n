@@ -27,7 +27,7 @@ export const makeInlineExpressionEditorInput = ({ isSingleLine } = { isSingleLin
 			borderBottomRightRadius: '0',
 		},
 		'.cm-scroller': {
-			lineHeight: '1.6',
+			lineHeight: '1.68',
 		},
 		'.cm-content': {
 			fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
