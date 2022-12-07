@@ -9,7 +9,7 @@ export class WorkflowPage extends BasePage {
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () => this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		workflowTagElements: () => this.getters.workflowTagsContainer().find('span.tags').children(),
+		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
 		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
