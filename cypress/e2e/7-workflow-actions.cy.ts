@@ -94,9 +94,10 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE);
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 
-		cy.get('body').click().type('{meta} a', { release: false });
+		cy.get("#node-creator").should('not.exist');
+		cy.get('body').type('{meta}', { delay: 500, release: false }).type('a');
 		cy.get('.jtk-drag-selected').should('have.length', 2);
-		cy.get('body').click().type('{meta} c', { release: false });
+		cy.get('body').type('{meta}', { delay: 500, release: false }).type('c');
 		WorkflowPage.getters.successToast().should('exist');
 	});
 
