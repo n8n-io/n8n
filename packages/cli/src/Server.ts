@@ -158,6 +158,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
+import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
@@ -624,30 +625,25 @@ class App {
 		this.app.use(cookieParser());
 
 		// Get push connections
-		this.app.use(
-			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
-					if (req.query.sessionId === undefined) {
-						next(new Error('The query parameter "sessionId" is missing!'));
-						return;
-					}
+		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
+			const { sessionId } = req.query;
+			if (sessionId === undefined) {
+				next(new Error('The query parameter "sessionId" is missing!'));
+				return;
+			}
 
-					if (isUserManagementEnabled()) {
-						try {
-							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-							await resolveJwt(authCookie);
-						} catch (error) {
-							res.status(401).send('Unauthorized');
-							return;
-						}
-					}
-
-					this.push.add(req.query.sessionId as string, req, res);
+			if (isUserManagementEnabled()) {
+				try {
+					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+					await resolveJwt(authCookie);
+				} catch (error) {
+					res.status(401).send('Unauthorized');
 					return;
 				}
-				next();
-			},
-		);
+			}
+
+			this.push.add(sessionId as string, req, res);
+		});
 
 		// Compress the response data
 		this.app.use(compression());
@@ -719,19 +715,7 @@ class App {
 			}),
 		);
 
-		if (process.env.NODE_ENV !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Credentials', 'true');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header(
-					'Access-Control-Allow-Headers',
-					'Origin, X-Requested-With, Content-Type, Accept, sessionid',
-				);
-				next();
-			});
-		}
+		this.app.use(corsMiddleware);
 
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
