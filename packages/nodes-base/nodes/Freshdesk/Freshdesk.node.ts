@@ -394,7 +394,6 @@ export class Freshdesk implements INodeType {
 						default: '',
 						typeOptions: {
 							rows: 5,
-							alwaysOpenEditWindow: true,
 						},
 						description: 'HTML content of the ticket',
 					},
