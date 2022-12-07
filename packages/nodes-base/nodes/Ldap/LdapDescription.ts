@@ -18,7 +18,7 @@ export const ldapFields: INodeProperties[] = [
 				operation: ['compare', 'create', 'delete', 'rename', 'modify'],
 			},
 		},
-		description: 'The DN of the entry',
+		description: 'The distinguished name of the entry',
 	},
 	// ----------------------------------
 	//         Compare
@@ -28,7 +28,7 @@ export const ldapFields: INodeProperties[] = [
 		name: 'id',
 		type: 'string',
 		default: '',
-		description: 'The attribute ID of the attribute to compare',
+		description: 'The ID of the attribute to compare',
 		required: true,
 		displayOptions: {
 			show: {
@@ -62,7 +62,7 @@ export const ldapFields: INodeProperties[] = [
 				operation: ['rename'],
 			},
 		},
-		description: 'The new DN for the entry',
+		description: 'The new distinguished name for the entry',
 	},
 	// ----------------------------------
 	//         Create
@@ -92,7 +92,7 @@ export const ldapFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'The attribute ID of the attribute to add',
+						description: 'The ID of the attribute to add',
 						required: true,
 					},
 					{
@@ -135,7 +135,7 @@ export const ldapFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'The attribute ID of the attribute to add',
+						description: 'The ID of the attribute to add',
 						required: true,
 					},
 					{
@@ -156,7 +156,7 @@ export const ldapFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'The attribute ID of the attribute to replace',
+						description: 'The ID of the attribute to replace',
 						required: true,
 					},
 					{
@@ -177,7 +177,7 @@ export const ldapFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						default: '',
-						description: 'The attribute ID of the attribute to remove',
+						description: 'The ID of the attribute to remove',
 						required: true,
 					},
 					{
@@ -205,7 +205,7 @@ export const ldapFields: INodeProperties[] = [
 				operation: ['search'],
 			},
 		},
-		description: 'The subtree to search in',
+		description: 'The distinguished name of the subtree to search in',
 	},
 	{
 		displayName: 'Filter',

@@ -49,26 +49,38 @@ export class Ldap implements INodeType {
 					{
 						name: 'Compare',
 						value: 'compare',
+						description: 'Compare an attribute against a value',
+						action: 'Compare an attribute against a value',
 					},
 					{
 						name: 'Create',
 						value: 'create',
+						description: 'Create a new object',
+						action: 'Create a new object',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
+						description: 'Delete an object',
+						action: 'Delete an object',
 					},
 					{
 						name: 'Modify',
 						value: 'modify',
+						description: 'Modify an attribute',
+						action: 'Modify an attribute',
 					},
 					{
 						name: 'Rename',
 						value: 'rename',
+						description: 'Raname an attribute',
+						action: 'Raname an attribute',
 					},
 					{
 						name: 'Search',
 						value: 'search',
+						description: 'Search LDAP with a filter',
+						action: 'Search LDAP with a filter',
 					},
 				],
 				default: 'search',
