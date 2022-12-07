@@ -81,9 +81,6 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -138,9 +135,6 @@ export const messageFields: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -183,9 +177,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Content',
 				name: 'content',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The content of the message',
 			},
