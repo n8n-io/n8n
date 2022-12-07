@@ -22,7 +22,6 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
 		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-
 		successToast: () => cy.get('.el-notification__title'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -34,7 +33,6 @@ export class WorkflowPage extends BasePage {
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
-		canvasNodes: () => cy.getByTestId('canvas-node'),
 	};
 	actions = {
 		visit: () => {

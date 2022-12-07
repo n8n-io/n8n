@@ -13,7 +13,8 @@ export class CredentialsModal extends BasePage {
 			.find('.n8n-input input'),
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
-		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 7000 }),
+		// Saving of the credentials takes a while on the CI so we need to increase the timeout
+		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 15000 }),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 	};
 	actions = {

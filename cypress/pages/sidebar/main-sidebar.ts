@@ -2,22 +2,23 @@ import { BasePage } from "../base";
 
 export class MainSidebar extends BasePage {
 	getters = {
-		settings: () => cy.getByTestId('menu-item-settings'),
-		templates: () => cy.getByTestId('menu-item-templates'),
-		workflows: () => cy.getByTestId('menu-item-workflows'),
-		credentials: () => cy.getByTestId('menu-item-credentials'),
-		executions: () => cy.getByTestId('menu-item-executions'),
+		menuItem: (menuLabel: string) => cy.getByTestId('menu-item').filter(`:contains("${menuLabel}")`),
+		settings: () => this.getters.menuItem('Settings'),
+		templates: () => this.getters.menuItem('Templates'),
+		workflows: () => this.getters.menuItem('Workflows'),
+		credentials: () => this.getters.menuItem('Credentials'),
+		executions: () => this.getters.menuItem('Executions'),
 	};
 	actions = {
 		goToSettings: () => {
-			// For some reason Cypress gets confused when clicking on the settings menu item
-			// and it pickups element that will get detached with the sidebar animation
-			// so we need to wait for it to happen first
-			cy.wait(500)
+			this.getters.settings().should('be.visible');
+			// We must wait before ElementUI menu is done with its animations
+			cy.get('[data-old-overflow]').should('not.exist');
 			this.getters.settings().click();
 		},
 		goToCredentials: () => {
-			cy.wait(500)
+			this.getters.credentials().should('be.visible');
+			cy.get('[data-old-overflow]').should('not.exist');
 			this.getters.credentials().click()
 		},
 	};
