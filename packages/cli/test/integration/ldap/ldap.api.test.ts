@@ -766,3 +766,131 @@ test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" stra
 	expect(emailUser.disabled).toBe(false);
 	expect(emailUser.signInType).toBe(SignInType.EMAIL);
 });
+
+test('Instance owner should able to delete LDAP users', async () => {
+	const ldapConfig = await testDb.createLdapDefaultConfig({
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
+	});
+
+	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		signInType: SignInType.LDAP,
+		ldapId: uniqueId(),
+	});
+
+	// delete the rember
+	await authAgent(owner).post(`/users/${member.id}`)
+
+});
+
+test('Instance owner should able to delete LDAP users and transfer workflows and credentials', async () => {
+	const ldapConfig = await testDb.createLdapDefaultConfig({
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
+	});
+
+	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		signInType: SignInType.LDAP,
+		ldapId: uniqueId(),
+	});
+
+	// delete the LDAP member and transfer its workflows/credentials to instance owner
+	await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`)
+
+});
+
+test('Sign-type should be returned when listing users', async () => {
+	const ldapConfig = await testDb.createLdapDefaultConfig({
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
+	});
+
+	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		signInType: SignInType.LDAP,
+		ldapId: uniqueId(),
+	});
+
+	const response = await authAgent(owner).get(`/users`);
+
+	const { data } = response.body;
+
+	expect(data[0].signInType).toBe('email');
+	expect(data[1].signInType).toBe('ldap');
+
+});
+
+test.only('Once user disabled during syncronization it should lose access to the instance', async () => {
+	const ldapConfig = await testDb.createLdapDefaultConfig({
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
+	});
+
+	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		signInType: SignInType.LDAP,
+		ldapId: uniqueId(),
+	});
+
+	jest
+	.spyOn(LdapService.prototype, 'searchWithAdminBinding')
+	.mockImplementation(() => Promise.resolve([]));
+
+	await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
+
+	const response = await authAgent(member).get(`/login`);
+
+	expect(response.body.code).toBe(401);
+
+});
+
