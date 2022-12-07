@@ -1,3 +1,43 @@
+## [0.206.1](https://github.com/n8n-io/n8n/compare/n8n@0.206.0...n8n@0.206.1) (2022-12-07)
+
+
+### Bug Fixes
+
+* **core:** Make expression resolution improvements ([#4829](https://github.com/n8n-io/n8n/issues/4829)) ([0bd13c7](https://github.com/n8n-io/n8n/commit/0bd13c71739c4fb34feab4f7a169ee89bc77eee8))
+* **editor:** Schema unit test stub fontawesome icon ([#4840](https://github.com/n8n-io/n8n/issues/4840)) ([1e4ca1f](https://github.com/n8n-io/n8n/commit/1e4ca1f0d0c89386470db7f6ce265a1339c79562))
+* Remove unnecessary console message ([#4848](https://github.com/n8n-io/n8n/issues/4848)) ([2ad62bc](https://github.com/n8n-io/n8n/commit/2ad62bcd442c4595daef4d02119122d9c37ab43d))
+
+
+
+# [0.206.0](https://github.com/n8n-io/n8n/compare/n8n@0.205.0...n8n@0.206.0) (2022-12-06)
+
+
+### Bug Fixes
+
+* **Code Node:** Restore `pairedItem` to required n8n item keys ([#4821](https://github.com/n8n-io/n8n/issues/4821)) ([915f144](https://github.com/n8n-io/n8n/commit/915f1445c26d834e3d43602f901a198931a107e1))
+* **core:** Fix linter error ([#4808](https://github.com/n8n-io/n8n/issues/4808)) ([3bb3809](https://github.com/n8n-io/n8n/commit/3bb3809eecd1b660c0d05c26164b9ccc90a37008))
+* **core:** Fix partial execution with pinned data on child node run ([#4764](https://github.com/n8n-io/n8n/issues/4764)) ([5d75e6c](https://github.com/n8n-io/n8n/commit/5d75e6ceb3bf7d88229b4e71dda3250086aceb05))
+* **core:** OAuth2 scopes does not save ([7aefed4](https://github.com/n8n-io/n8n/commit/7aefed46dcdb5d795fe9755c9fc64f445136bc17))
+* Enable source-maps on WorkflowRunnerProcess in `own` mode ([#4832](https://github.com/n8n-io/n8n/issues/4832)) ([9485e2f](https://github.com/n8n-io/n8n/commit/9485e2f12a4131ec24f504591290246e24f1cd09))
+* **Execute Workflow Node:** Update Execute Workflow node info notice text ([#4809](https://github.com/n8n-io/n8n/issues/4809)) ([9e7a156](https://github.com/n8n-io/n8n/commit/9e7a156532293956e74103c66babd6c967bb062c))
+* **Gmail Trigger Node:** Trigger node missing some emails ([67aad63](https://github.com/n8n-io/n8n/commit/67aad6334358dfecd5ba3a6e8f085fca73bd40ad))
+* Handle error when workflow does not exist or is inaccessible ([#4831](https://github.com/n8n-io/n8n/issues/4831)) ([b71295e](https://github.com/n8n-io/n8n/commit/b71295e4de658fb134b67eaa0b630704f858ce7e))
+* **Local File Trigger Node:** Fix issue that causes a crash if the ignore field is empty ([#4824](https://github.com/n8n-io/n8n/issues/4824)) ([#4825](https://github.com/n8n-io/n8n/issues/4825)) ([c311424](https://github.com/n8n-io/n8n/commit/c3114241fdd399555666d2f5890815b6196ce1bf))
+* Make `nodes.exclude` and `nodes.include` work with lazy-loaded nodes ([#4833](https://github.com/n8n-io/n8n/issues/4833)) ([85241fd](https://github.com/n8n-io/n8n/commit/85241fd230675691828c8d711f86aabb7e48dabe))
+
+
+### Features
+
+* Add message for readonly nodes. Improve foreign credentials handling ([#4759](https://github.com/n8n-io/n8n/issues/4759)) ([eb112ff](https://github.com/n8n-io/n8n/commit/eb112ffd23cec04f290d515917c227b628db2834))
+* Add prompt to overwrite changes when concurrent editing occurs ([#4817](https://github.com/n8n-io/n8n/issues/4817)) ([af6ac42](https://github.com/n8n-io/n8n/commit/af6ac42aa3ec6805a2a18b920128beafcb9a3cdc))
+* **core:** Workflow Execution Statistics ([#4200](https://github.com/n8n-io/n8n/issues/4200)) ([1722c6b](https://github.com/n8n-io/n8n/commit/1722c6b0c5dde87d3389c328b611cbb611b2853e))
+* **editor:** Alert design system component ([#4834](https://github.com/n8n-io/n8n/issues/4834)) ([9dbb3ea](https://github.com/n8n-io/n8n/commit/9dbb3ea182cba890781a89fe28eda2c7b50dbc65))
+* **editor:** Schema view ([#4615](https://github.com/n8n-io/n8n/issues/4615)) ([4528f34](https://github.com/n8n-io/n8n/commit/4528f34462396b5faf550c5a58c4dd9163bdbc40)) 
+* Fix checkbox line height and make checkbox label clickable ([#4818](https://github.com/n8n-io/n8n/issues/4818)) ([1b7952a](https://github.com/n8n-io/n8n/commit/1b7952a516a5c5dfe1f79e25f811fc044a5e4962))
+* **KoBoToolbox Node:** Add support for Media file API ([#4578](https://github.com/n8n-io/n8n/issues/4578)) ([37e580e](https://github.com/n8n-io/n8n/commit/37e580eb0628a651ecbc8faa3ad447cd0177d7cf))
+
+
+
 # [0.205.0](https://github.com/n8n-io/n8n/compare/n8n@0.204.0...n8n@0.205.0) (2022-12-02)
 
 
