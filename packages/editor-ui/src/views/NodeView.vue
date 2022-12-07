@@ -1772,7 +1772,7 @@ export default mixins(
 					},
 				] as [IConnection, IConnection];
 
-				this.__addConnection(connectionData, true, trackHistory);
+				this.__addConnection(connectionData, true);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
@@ -2304,7 +2304,7 @@ export default mixins(
 
 				return NodeViewUtils.getInputEndpointUUID(node.id, index);
 			},
-			__addConnection(connection: [IConnection, IConnection], addVisualConnection = false, trackHistory = false) {
+			__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
 				if (addVisualConnection) {
 					const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
 					const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
@@ -2328,10 +2328,6 @@ export default mixins(
 					// When nodes get connected it gets saved automatically to the storage
 					// so if we do not connect we have to save the connection manually
 					this.workflowsStore.addConnection(connectionProperties);
-				}
-
-				if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new AddConnectionCommand(connection, this));
 				}
 
 				setTimeout(() => {
@@ -2954,7 +2950,7 @@ export default mixins(
 										},
 									] as [IConnection, IConnection];
 
-									this.__addConnection(connectionData, true, trackHistory);
+									this.__addConnection(connectionData, true);
 								});
 							}
 						}
