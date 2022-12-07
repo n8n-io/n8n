@@ -792,8 +792,7 @@ test('Instance owner should able to delete LDAP users', async () => {
 	});
 
 	// delete the rember
-	await authAgent(owner).post(`/users/${member.id}`)
-
+	await authAgent(owner).post(`/users/${member.id}`);
 });
 
 test('Instance owner should able to delete LDAP users and transfer workflows and credentials', async () => {
@@ -821,8 +820,7 @@ test('Instance owner should able to delete LDAP users and transfer workflows and
 	});
 
 	// delete the LDAP member and transfer its workflows/credentials to instance owner
-	await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`)
-
+	await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`);
 });
 
 test('Sign-type should be returned when listing users', async () => {
@@ -855,10 +853,9 @@ test('Sign-type should be returned when listing users', async () => {
 
 	expect(data[0].signInType).toBe('email');
 	expect(data[1].signInType).toBe('ldap');
-
 });
 
-test.only('Once user disabled during syncronization it should lose access to the instance', async () => {
+test.only('Once user disabled during synchronization it should lose access to the instance', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
@@ -883,14 +880,12 @@ test.only('Once user disabled during syncronization it should lose access to the
 	});
 
 	jest
-	.spyOn(LdapService.prototype, 'searchWithAdminBinding')
-	.mockImplementation(() => Promise.resolve([]));
+		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
+		.mockImplementation(() => Promise.resolve([]));
 
 	await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
 
 	const response = await authAgent(member).get(`/login`);
 
 	expect(response.body.code).toBe(401);
-
 });
-
