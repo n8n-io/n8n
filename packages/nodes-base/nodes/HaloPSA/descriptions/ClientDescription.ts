@@ -98,9 +98,6 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -323,9 +320,6 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'notes',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
