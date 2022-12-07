@@ -2073,7 +2073,10 @@ export default mixins(
 						} else if (!this.historyStore.bulkInProgress && !this.suspendRecordingDetachedConnections && connectionInfo) {
 							// Ff connection being detached by user, save this in history
 							// but skip if it's detached as a side effect of bulk undo/redo or node rename process
-							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
+							const removeCommand = new RemoveConnectionCommand(connectionInfo, this);
+							if (!this.historyStore.currentBulkContainsConnectionCommand(removeCommand)) {
+								this.historyStore.pushCommandToUndo(removeCommand);
+							}
 						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
@@ -2384,7 +2387,10 @@ export default mixins(
 						{ index: connection.__meta?.sourceOutputIndex, node: connection.__meta.sourceNodeName, type: 'main' },
 						{ index: connection.__meta?.targetOutputIndex, node: connection.__meta.targetNodeName, type: 'main' },
 					];
-					this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionData, this));
+					const removeCommand = new RemoveConnectionCommand(connectionData, this);
+					if (!this.historyStore.currentBulkContainsConnectionCommand(removeCommand)) {
+						this.historyStore.pushCommandToUndo(removeCommand);
+					}
 				}
 			},
 			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false, trackHistory = false) {
@@ -2602,7 +2608,9 @@ export default mixins(
 					return;
 				}
 
-				this.historyStore.startRecordingUndo();
+				if (trackHistory) {
+					this.historyStore.startRecordingUndo();
+				}
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes: string[] = [];
@@ -2695,10 +2703,12 @@ export default mixins(
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
 
-					const recordingTimeout = waitForNewConnection ? 100 : 0;
-					setTimeout(() => {
-						this.historyStore.stopRecordingUndo();
-					}, recordingTimeout);
+					if (trackHistory) {
+						const recordingTimeout = waitForNewConnection ? 100 : 0;
+						setTimeout(() => {
+							this.historyStore.stopRecordingUndo();
+						}, recordingTimeout);
+					}
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {

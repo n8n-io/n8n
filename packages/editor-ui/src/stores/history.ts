@@ -1,4 +1,4 @@
-import { useWorkflowsStore } from './workflows';
+import { AddConnectionCommand, COMMANDS, RemoveConnectionCommand } from './../models/history';
 import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/models/history";
 import { STORES } from "@/constants";
 import { HistoryState } from "@/Interface";
@@ -13,6 +13,25 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		currentBulkAction: null,
 		bulkInProgress: false,
 	}),
+	getters: {
+		currentBulkContainsConnectionCommand() {
+			return (command: AddConnectionCommand): boolean => {
+				if (this.currentBulkAction) {
+					const existing = this.currentBulkAction.commands.find(c =>
+						(c instanceof AddConnectionCommand || c instanceof RemoveConnectionCommand) &&
+						c.name === command.name &&
+						c.connectionData[0].node === command.connectionData[0].node &&
+						c.connectionData[1].node === command.connectionData[1].node &&
+						c.connectionData[0].index === command.connectionData[0].index &&
+						c.connectionData[1].index === command.connectionData[1].index,
+					);
+					console.log(existing);
+					return existing !== undefined;
+				}
+				return false;
+			};
+		},
+	},
 	actions: {
 		popUndoableToUndo(): Undoable | undefined {
 			if (this.undoStack.length > 0) {
