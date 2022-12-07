@@ -101,5 +101,14 @@ export class WorkflowPage extends BasePage {
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
 		},
+		hitUndo: () => {
+			cy.get('body').type('{meta}', { release: false }).type('z');
+		},
+		hitRedo: () => {
+			cy.get('body').
+			type('{meta}', { release: false }).
+			type('{shift}', { release: false }).
+			type('z');
+		},
 	};
 }

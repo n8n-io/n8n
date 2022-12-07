@@ -1,9 +1,7 @@
+import { CODE_NODE, MANUAL_TRIGGER_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
-const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
-const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
-const CODE_NODE = 'Code'
 const TEST_WF_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
 
 const WorkflowPage = new WorkflowPageClass();
