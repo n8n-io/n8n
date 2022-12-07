@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { FindOneOptions } from 'typeorm';
+import { FindOneOptions, FindManyOptions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
@@ -15,9 +15,21 @@ import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
 export async function getCredentials(
-	credentialId: number | string,
+	credentialId?: number | string,
 ): Promise<ICredentialsDb | undefined> {
 	return Db.collections.Credentials.findOne(credentialId);
+}
+
+export async function getAllCredentials(
+	options: FindManyOptions<ICredentialsDb>
+): Promise<ICredentialsDb[]> {
+	return Db.collections.Credentials.find(options)
+}
+
+export async function countCredentials(
+	options: FindManyOptions<ICredentialsDb>
+): Promise<number> {
+	return Db.collections.Credentials.count(options)
 }
 
 export async function getSharedCredentials(

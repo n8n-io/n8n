@@ -1,18 +1,23 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import express from 'express';
 
+import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { CredentialRequest } from '@/requests';
-import { CredentialTypeRequest } from '../../../types';
-import { authorize } from '../../shared/middlewares/global.middleware';
+import { CredentialTypeRequest, CredentialRequest as CredentialPublicRequest } from '../../../types';
+import { FindManyOptions } from 'typeorm';
+import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';
 
 import {
 	createCredential,
 	encryptCredential,
 	getCredentials,
+	getAllCredentials,
+	countCredentials,
 	getSharedCredentials,
 	removeCredential,
 	sanitizeCredentials,
@@ -99,6 +104,31 @@ export = {
 				.filter((property) => property.type !== 'hidden');
 
 			return res.json(toJsonSchema(schema));
+		},
+	],
+	getCredentials: [
+		authorize(['owner', 'member']),
+		validCursor,
+		async (req: CredentialPublicRequest.GetAll, res: express.Response): Promise<express.Response> => {
+			const { offset = 0, limit = 100} = req.query;
+			// TODO - what if the user is not the instance owner
+
+			const query: FindManyOptions<ICredentialsDb> = {
+				skip: offset,
+				take: limit,
+			}
+
+			const credentials = <CredentialsEntity[]>(await getAllCredentials(query));
+			const count : number = await countCredentials(query);
+
+			return res.json({
+				data: sanitizeCredentials(credentials),
+				nextCursor: encodeNextCursor({
+					offset,
+					limit,
+					numberOfTotalRecords: count,
+				}),
+			});
 		},
 	],
 };

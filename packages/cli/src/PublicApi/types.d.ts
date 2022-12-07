@@ -131,7 +131,8 @@ export declare namespace UserRequest {
 }
 
 export declare namespace CredentialRequest {
-	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {}>;
+	type Create = AuthenticatedRequest<{}, {}, { type: string; name: string; data: IDataObject }, {} >;
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { limit?: number; cursor?: string; offset?: number; } >;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

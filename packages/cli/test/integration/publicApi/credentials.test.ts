@@ -5,7 +5,7 @@ import { UserSettings } from 'n8n-core';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { randomApiKey, randomName, randomString } from '../shared/random';
+import { randomCredentialPayload, randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
 import * as testDb from '../shared/testDb';
@@ -19,6 +19,20 @@ let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 jest.mock('@/telemetry');
+
+function validatePublicCredentialData(credential: CredentialsEntity) {
+	expect(typeof credential.id).toBe('number');
+	expect(typeof credential.name).toBe('string');
+	expect(typeof credential.type).toBe('string');
+	expect(typeof credential.createdAt).toBe('string');
+	expect(typeof credential.updatedAt).toBe('string');
+	expect(credential.data).toBeUndefined();
+	expect(credential.nodesAccess).toBeUndefined();
+	// @ts-ignore
+	expect(credential.ownedBy).toBeUndefined();
+	// @ts-ignore
+	expect(credential.sharedWith).toBeUndefined();
+}
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
@@ -357,6 +371,40 @@ test('GET /credentials/schema/:credentialType should retrieve credential type', 
 	expect(properties.accessToken.type).toBe('string');
 	expect(required).toEqual(expect.arrayContaining(['server', 'user', 'accessToken']));
 	expect(response.statusCode).toBe(200);
+});
+
+test('GET /credentials should return all creds for owner', async () => {
+	const [owner, member] = await Promise.all([
+		testDb.createUser({ globalRole: globalOwnerRole }),
+		testDb.createUser({ globalRole: globalMemberRole }),
+	]);
+
+	const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
+		saveCredential(randomCredentialPayload(), { user: owner }),
+		saveCredential(randomCredentialPayload(), { user: member }),
+	]);
+
+	let ownerShell = await testDb.createUserShell(globalOwnerRole);
+	ownerShell = await testDb.addApiKey(ownerShell);
+
+	const authOwnerAgent = utils.createAgent(app, {
+		apiPath: 'public',
+		version: 1,
+		auth: true,
+		user: ownerShell,
+	});
+
+	const response = await authOwnerAgent.get('/credentials');
+
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data.length).toBe(2); // owner retrieved owner cred and member cred
+
+	const savedCredentialsIds = [savedOwnerCredentialId, savedMemberCredentialId];
+	response.body.data.forEach((credential: CredentialsEntity) => {
+		validatePublicCredentialData(credential);
+		expect(credential.data).toBeUndefined();
+		expect(savedCredentialsIds.includes(Number(credential.id))).toBe(true);
+	});
 });
 
 const credentialPayload = (): CredentialPayload => ({
