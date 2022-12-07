@@ -75,9 +75,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['email'],
@@ -91,9 +88,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'HTML',
 		name: 'html',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['email'],
@@ -221,9 +215,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['email'],
@@ -449,9 +440,6 @@ export const emailFields: INodeProperties[] = [
 		displayName: 'Variables (JSON)',
 		name: 'variablesJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['email'],

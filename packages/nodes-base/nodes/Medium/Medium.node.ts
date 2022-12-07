@@ -182,9 +182,6 @@ export class Medium implements INodeType {
 				default: '',
 				placeholder: 'My open source contribution',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['create'],
