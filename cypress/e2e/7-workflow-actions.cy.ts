@@ -92,8 +92,12 @@ describe('Workflow Actions', () => {
 	it('should copy nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE);
-		cy.get('body').type('{meta}', { release: false }).type('a');
-		cy.get('body').type('{meta}', { release: false }).type('c');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+
+		cy.get("#node-creator").should('not.exist');
+		cy.get('body').type('{meta}', { release: false }).wait(100).type('a')
+		cy.get('.jtk-drag-selected').should('have.length', 2);
+		cy.get('body').type('{meta}', { release: false }).wait(100).type('c');
 		WorkflowPage.getters.successToast().should('exist');
 	});
 

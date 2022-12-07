@@ -14,7 +14,7 @@ export class CredentialsModal extends BasePage {
 		name: () => cy.getByTestId('credential-name'),
 		nameInput: () => cy.getByTestId('credential-name').find('input'),
 		// Saving of the credentials takes a while on the CI so we need to increase the timeout
-		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 15000 }),
+		saveButton: () => cy.getByTestId('credential-save-button', { timeout: 5000 }),
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 	};
 	actions = {
