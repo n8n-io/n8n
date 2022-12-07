@@ -20,11 +20,11 @@
 						@input="onInput"
 						@change="anonymizeAuditMessagesChanged"
 						>
-							Anonymize user fields
+							{{$locale.baseText("settings.logstreaming.tab.events.anonymize")}}
 							<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 								<n8n-icon icon="question-circle" size="small" />
 								<template #content>
-									Fields containing personal information like name or email are anonymized
+									{{$locale.baseText("settings.logstreaming.tab.events.anonymize.info")}}
 								</template>
 							</n8n-tooltip>
 					</checkbox>
@@ -39,7 +39,6 @@
 						@change="onCheckboxChecked(event.name, $event)">
 								{{ event.label }}
 								<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
-									<!-- <n8n-icon icon="question-circle" size="small" /> -->
 									<template #content>
 										{{event.name}}
 									</template>
@@ -107,7 +106,6 @@
 
 .eventList {
   height: auto;
-	max-height: 300px;
 	overflow-y: auto;
   padding: 0;
   margin: 0;

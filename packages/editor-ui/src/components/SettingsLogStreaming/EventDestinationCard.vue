@@ -5,7 +5,7 @@
 			<template #header>
 				<div @click="onClick">
 					<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
-						{{ nodeParameters.label }}
+						{{ destination.label }}
 					</n8n-heading>
 					<div :class="$style.cardDescription">
 						<n8n-text color="text-light" size="small">

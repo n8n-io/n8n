@@ -9,8 +9,8 @@
 		width="50%"
 		minWidth="750px"
 		maxWidth="900px"
-		minHeight="650px"
-		maxHeight="650px"
+		:minHeight="isTypeAbstract ? '300px' : '650px'"
+		:maxHeight="isTypeAbstract ? '300px' : '650px'"
 	>
 	<template #header>
 		<template v-if="isTypeAbstract">
@@ -30,15 +30,8 @@
 					/>
 				</div>
 				<div :class="$style.destinationActions">
-					<SaveButton
-						:saved="(unchanged && hasOnceBeenSaved)"
-						:disabled="(isTypeAbstract || unchanged)"
-						:savingLabel="$locale.baseText('settings.logstreaming.saving')"
-						@click="saveDestination"
-						data-test-id="credential-save-button"
-					/>
 					<n8n-icon-button
-						v-if="nodeParameters"
+						v-if="(nodeParameters && hasOnceBeenSaved)"
 						:title="$locale.baseText('settings.logstreaming.delete')"
 						icon="trash"
 						size="medium"
@@ -48,6 +41,14 @@
 						@click="removeThis"
 						data-test-id="credential-delete-button"
 					/>
+					<SaveButton
+						:saved="(unchanged && hasOnceBeenSaved)"
+						:disabled="(isTypeAbstract || unchanged)"
+						:savingLabel="$locale.baseText('settings.logstreaming.saving')"
+						@click="saveDestination"
+						data-test-id="credential-save-button"
+					/>
+
 				</div>
 			</div>
 			<hr />
@@ -55,6 +56,32 @@
 	</template>
 	<template #content>
 		<div :class="$style.container">
+			<template v-if="isTypeAbstract">
+				<n8n-input-label
+						:class="$style.typeSelector"
+						:label="$locale.baseText('settings.logstreaming.selecttype')"
+						:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
+						:bold="false"
+						size="small"
+						:underline="false"
+					>
+					<n8n-select
+						:value="typeSelectValue"
+						:placeholder="typeSelectPlaceholder"
+						@change="onTypeSelectInput"
+						name="name"
+						ref="inputRef"
+					>
+						<n8n-option
+							v-for="option in typeSelectOptions || []"
+							:key="option.value"
+							:value="option.value"
+							:label="$locale.baseText(option.label)"
+						/>
+					</n8n-select>
+				</n8n-input-label>
+			</template>
+			<template v-else>
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
 				</div>
@@ -129,8 +156,9 @@
 						</div>
 					</template>
 				</div>
-			</div>
-		</template>
+			</template>
+		</div>
+	</template>
 	</Modal>
 </template>
 
@@ -410,6 +438,11 @@ export default mixins(
 
 <style lang="scss" module>
 .labelMargins {
+	margin-bottom: 1em;
+	margin-top: 1em;
+}
+.typeSelector {
+	width: 100%;
 	margin-bottom: 1em;
 	margin-top: 1em;
 }

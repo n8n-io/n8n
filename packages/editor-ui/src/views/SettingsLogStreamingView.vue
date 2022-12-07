@@ -1,17 +1,21 @@
 <template>
-	<page-view-layout>
-		<template #aside>
+	<div>
+	<!-- <page-view-layout> -->
+		<!-- <template #aside> -->
+
 			<div :class="$style.header">
 				<div :class="[$style['heading-wrapper'], 'mb-xs']">
 					<n8n-heading size="2xlarge">
 						{{ $locale.baseText(`settings.logstreaming.heading`) }}
 					</n8n-heading>
+					<strong>&nbsp;&nbsp;&nbsp;&nbsp;License (dev)&nbsp;</strong>
+					<el-switch v-model="fakeLicense" size="large" />
 				</div>
 			</div>
-			<div>
+			<!-- <div>
 				<strong>License&nbsp;</strong>
 				<el-switch v-model="fakeLicense" size="large" />
-			</div>
+			</div> -->
 			<template v-if="(isLicensed() && storeHasItems())">
 				<div class="mt-xs mb-l">
 					<n8n-button size="large"  @click="addDestination">
@@ -19,7 +23,7 @@
 					</n8n-button>
 				</div>
 			</template>
-		</template>
+		<!-- </template> -->
 
 		<template v-if="isLicensed()">
 			<template v-if="storeHasItems()">
@@ -74,7 +78,8 @@
 				</n8n-action-box>
 			</div>
 		</template>
-	</page-view-layout>
+	<!-- </page-view-layout> -->
+	</div>
 </template>
 
 <script lang="ts">

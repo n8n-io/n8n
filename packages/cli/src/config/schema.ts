@@ -1052,7 +1052,7 @@ export const schema = {
 			keepLogCount: {
 				doc: 'How many event log files to keep.',
 				format: Number,
-				default: 10,
+				default: 3,
 				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
 			},
 			maxFileSizeInKB: {

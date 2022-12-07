@@ -1,22 +1,6 @@
 import { INodeProperties } from "n8n-workflow";
 
 export const webhookModalDescription = [
-	// {
-	// 	displayName: 'Enabled',
-	// 	name: 'enabled',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	noDataExpression: true,
-	// 	description: 'Whether events are actually sent to the destination',
-	// },
-	// {
-	// 	displayName: 'Label',
-	// 	name: 'label',
-	// 	type: 'string',
-	// 	default: 'Webhook Endpoint',
-	// 	noDataExpression: true,
-	// 	description: 'Custom label',
-	// },
 	{
 		displayName: 'Method',
 		name: 'method',
@@ -48,30 +32,30 @@ export const webhookModalDescription = [
 		placeholder: 'http://example.com/index.html',
 		description: 'The URL to make the request to',
 	},
-	{
-		displayName: 'Authentication',
-		name: 'authentication',
-		noDataExpression: true,
-		type: 'options',
-		options: [
-			{
-				name: 'None',
-				value: 'none',
-			},
-			// {
-			// 	name: 'Predefined Credential Type',
-			// 	value: 'predefinedCredentialType',
-			// 	description:
-			// 		"We've already implemented auth for many services so that you don't have to set it up manually",
-			// },
-			{
-				name: 'Generic Credential Type',
-				value: 'genericCredentialType',
-				description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
-			},
-		],
-		default: 'none',
-	},
+	// {
+	// 	displayName: 'Authentication',
+	// 	name: 'authentication',
+	// 	noDataExpression: true,
+	// 	type: 'options',
+	// 	options: [
+	// 		{
+	// 			name: 'None',
+	// 			value: 'none',
+	// 		},
+	// 		// {
+	// 		// 	name: 'Predefined Credential Type',
+	// 		// 	value: 'predefinedCredentialType',
+	// 		// 	description:
+	// 		// 		"We've already implemented auth for many services so that you don't have to set it up manually",
+	// 		// },
+	// 		{
+	// 			name: 'Generic Credential Type',
+	// 			value: 'genericCredentialType',
+	// 			description: 'Fully customizable. Choose between basic, header, OAuth2, etc.',
+	// 		},
+	// 	],
+	// 	default: 'none',
+	// },
 	// {
 	// 	displayName: 'Credential Type',
 	// 	name: 'nodeCredentialType',
@@ -430,22 +414,6 @@ export const webhookModalDescription = [
 ] as INodeProperties[];
 
 export const syslogModalDescription = [
-				// {
-				// 	displayName: 'Enabled',
-				// 	name: 'enabled',
-				// 	type: 'boolean',
-				// 	default: false,
-				// 	noDataExpression: true,
-				// 	description: 'Whether events are actually sent to the destination',
-				// },
-				// {
-				// 	displayName: 'Label',
-				// 	name: 'label',
-				// 	type: 'string',
-				// 	default: 'Syslog Server',
-				// 	noDataExpression: true,
-				// 	description: 'Custom label',
-				// },
 				{
 					displayName: 'Host',
 					name: 'host',
@@ -515,22 +483,6 @@ export const syslogModalDescription = [
 			] as INodeProperties[];
 
 export const sentryModalDescription = [
-	// {
-	// 	displayName: 'Enabled',
-	// 	name: 'enabled',
-	// 	type: 'boolean',
-	// 	default: false,
-	// 	noDataExpression: true,
-	// 	description: 'Whether events are actually sent to the destination',
-	// },
-	// {
-	// 	displayName: 'Label',
-	// 	name: 'label',
-	// 	type: 'string',
-	// 	default: 'Sentry DSN',
-	// 	noDataExpression: true,
-	// 	description: 'Custom label',
-	// },
 	{
 		displayName: 'DSN',
 		name: 'dsn',
@@ -539,12 +491,12 @@ export const sentryModalDescription = [
 		noDataExpression: true,
 		description: 'Your Sentry DSN Client Key',
 	},
-	{
-		displayName: 'Send Payload',
-		name: 'sendPayload',
-		type: 'boolean',
-		default: true,
-		noDataExpression: true,
-		description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
-	},
+	// {
+	// 	displayName: 'Send Payload',
+	// 	name: 'sendPayload',
+	// 	type: 'boolean',
+	// 	default: true,
+	// 	noDataExpression: true,
+	// 	description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
+	// },
 ] as INodeProperties[];

@@ -9,12 +9,19 @@ import axios, { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import {
+	deepCopy,
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	IOAuth2Options,
+	IWorkflowExecuteAdditionalData,
 	jsonParse,
+	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
+	OAuth2GrantType,
 } from 'n8n-workflow';
 import { CredentialsHelper } from '../../CredentialsHelper';
 import {
@@ -23,9 +30,15 @@ import {
 	requestOAuth2,
 	requestWithAuthentication,
 	NodeExecuteFunctions,
+	IResponseError,
 } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
 import config from '../../config';
+import clientOAuth1, { Token } from 'oauth-1.0a';
+import clientOAuth2 from 'client-oauth2';
+import { getClientCredentialsToken } from 'n8n-core/src/OAuth2Helper';
+import get from 'lodash.get';
+import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -211,7 +224,7 @@ export class MessageEventBusDestinationWebhook
 		// Get parameters defined in the UI
 		if (sendHeaders && this.headerParameters.parameters) {
 			if (specifyHeaders === 'keypair') {
-				this.axiosRequestOptions.headers = this.headerParameters.parameters.reduce(
+				this.axiosRequestOptions.headers = await this.headerParameters.parameters.reduce(
 					parametersToKeyValue,
 					Promise.resolve({}),
 				);
@@ -336,45 +349,50 @@ export class MessageEventBusDestinationWebhook
 
 		// if (this.authentication === 'genericCredentialType' || this.authentication === 'none') {
 
-		if (oAuth1Api || oAuth2Api) {
-			let authRequestPromise;
-			const authRequestOptions = {
-				headers: this.axiosRequestOptions.headers,
-				method: this.axiosRequestOptions.method,
-				uri: this.axiosRequestOptions.url,
-				gzip: true,
-				rejectUnauthorized: !this.options.allowUnauthorizedCerts || false,
-				followRedirect: this.options.redirect?.followRedirects ?? false,
-			};
-			if (oAuth1Api) {
-				const requestOAuth1Request = requestOAuth1.call(
-					NodeExecuteFunctions,
-					'oAuth1Api',
-					authRequestOptions,
-				);
-				requestOAuth1Request.catch(() => {});
-				authRequestPromise = requestOAuth1Request;
-			} else if (oAuth2Api) {
-				const requestOAuth2Request = requestOAuth2.call(
-					NodeExecuteFunctions,
-					'oAuth2Api',
-					authRequestOptions,
-					{
-						tokenType: 'Bearer',
-					},
-				);
-				requestOAuth2Request.catch(() => {});
-				authRequestPromise = requestOAuth2Request;
-			} else {
-				// bearerAuth, queryAuth, headerAuth, digestAuth, none
-				// const request = this.helpers.request(requestOptions);
-				// authRequestPromise = axios.request(requestOptions);
-				// authRequestPromise.catch(() => {});
-			}
-		}
+		let authRequestPromise;
+		// TODO:
+		// if (oAuth1Api || oAuth2Api) {
+		// 	const authRequestOptions = {
+		// 		headers: this.axiosRequestOptions.headers,
+		// 		method: this.axiosRequestOptions.method,
+		// 		uri: this.axiosRequestOptions.url,
+		// 		gzip: true,
+		// 		rejectUnauthorized: !this.options.allowUnauthorizedCerts || false,
+		// 		followRedirect: this.options.redirect?.followRedirects ?? false,
+		// 	};
+		// 	if (oAuth1Api) {
+		// 		const requestOAuth1Request = requestOAuth1.call(
+		// 			NodeExecuteFunctions,
+		// 			'oAuth1Api',
+		// 			authRequestOptions,
+		// 		);
+		// 		requestOAuth1Request.catch((error: any) => {
+		// 			console.error(error);
+		// 		});
+		// 		authRequestPromise = requestOAuth1Request;
+		// 	} else if (oAuth2Api) {
+		// 		const requestOAuth2Request = requestOAuth2.call(
+		// 			NodeExecuteFunctions,
+		// 			'oAuth2Api',
+		// 			authRequestOptions,
+		// 			{
+		// 				tokenType: 'Bearer',
+		// 			},
+		// 		);
+		// 		requestOAuth2Request.catch((error: any) => {
+		// 			console.error(error);
+		// 		});
+		// 		authRequestPromise = requestOAuth2Request;
+		// 	} else {
+		// 		// bearerAuth, queryAuth, headerAuth, digestAuth, none
+		// 		// const request = this.helpers.request(requestOptions);
+		// 		// authRequestPromise = axios.request(requestOptions);
+		// 		// authRequestPromise.catch(() => {});
+		// 	}
+		// }
 
-		// Add credentials if any are set
 		if (httpBasicAuth) {
+			// Add credentials if any are set
 			this.axiosRequestOptions.auth = {
 				username: httpBasicAuth.user as string,
 				password: httpBasicAuth.password as string,
@@ -392,24 +410,185 @@ export class MessageEventBusDestinationWebhook
 			};
 		}
 
-		const requestPromise: Promise<AxiosResponse> = axios.request(this.axiosRequestOptions);
-		requestPromise.catch(() => {});
-		const requestResponse = await requestPromise;
-
-		if (this.anonymizeAuditMessages) {
-			msg = msg.anonymize();
-		}
-
-		if (this.responseCodeMustMatch) {
-			if (requestResponse.status === this.expectedStatusCode) {
-				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-				return true;
-			} else {
-				return false;
+		try {
+			if (authRequestPromise) {
+				const authRequestResponse = await authRequestPromise;
 			}
-		}
 
-		await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-		return true;
+			const requestResponse = await axios.request(this.axiosRequestOptions);
+
+			if (this.anonymizeAuditMessages) {
+				msg = msg.anonymize();
+			}
+
+			if (this.responseCodeMustMatch) {
+				if (requestResponse.status === this.expectedStatusCode) {
+					await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+					return true;
+				} else {
+					return false;
+				}
+			}
+
+			await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+			return true;
+		} catch (error) {
+			console.error(error);
+		}
+		return false;
 	}
+
+	// async requestOAuth2(
+	// 	credentials: ICredentialDataDecryptedObject,
+	// 	requestOptions: AxiosRequestConfig,
+	// 	additionalData: IWorkflowExecuteAdditionalData,
+	// 	oAuth2Options?: IOAuth2Options,
+	// ) {
+	// 	const credentialsType: string = 'oAuth2Api';
+	// 	const oauthRequestOptions = deepCopy(this.axiosRequestOptions);
+	// 	// const credentials = await this.getCredentials(credentialsType);
+
+	// 	// Only the OAuth2 with authorization code grant needs connection
+	// 	if (
+	// 		credentials.grantType === OAuth2GrantType.authorizationCode &&
+	// 		credentials.oauthTokenData === undefined
+	// 	) {
+	// 		throw new Error('OAuth credentials not connected!');
+	// 	}
+
+	// 	const oAuthClient = new clientOAuth2({
+	// 		clientId: credentials.clientId as string,
+	// 		clientSecret: credentials.clientSecret as string,
+	// 		accessTokenUri: credentials.accessTokenUrl as string,
+	// 		scopes: (credentials.scope as string).split(' '),
+	// 	});
+
+	// 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+
+	// 	// if it's the first time using the credentials, get the access token and save it into the DB.
+	// 	if (
+	// 		credentials.grantType === OAuth2GrantType.clientCredentials &&
+	// 		oauthTokenData === undefined
+	// 	) {
+	// 		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
+
+	// 		const nodeCredentials = this.credentials[credentialsType];
+
+	// 		// Save the refreshed token
+	// 		await additionalData.credentialsHelper.updateCredentials(
+	// 			nodeCredentials,
+	// 			credentialsType,
+	// 			Object.assign(credentials, { oauthTokenData: data }),
+	// 		);
+
+	// 		oauthTokenData = data;
+	// 	}
+
+	// 	const token = oAuthClient.createToken(
+	// 		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken,
+	// 		oauthTokenData.refreshToken,
+	// 		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	// 		oauthTokenData,
+	// 	);
+	// 	// Signs the request by adding authorization headers or query parameters depending
+	// 	// on the token-type used.
+	// 	const newRequestOptions = token.sign(requestOptions as unknown as clientOAuth2.RequestObject);
+	// 	const newRequestHeaders = (newRequestOptions.headers = newRequestOptions.headers ?? {});
+	// 	// If keep bearer is false remove the it from the authorization header
+	// 	if (
+	// 		oAuth2Options?.keepBearer === false &&
+	// 		typeof newRequestHeaders.Authorization === 'string'
+	// 	) {
+	// 		newRequestHeaders.Authorization = newRequestHeaders.Authorization.split(' ')[1];
+	// 	}
+
+	// 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+	// 		Object.assign(newRequestHeaders, {
+	// 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+	// 		});
+	// 	}
+
+	// 	const requestResponse = await axios.request(this.axiosRequestOptions);
+
+	// 	return this.helpers.request!(newRequestOptions).catch(async (error: IResponseError) => {
+	// 		const statusCodeReturned =
+	// 			oAuth2Options?.tokenExpiredStatusCode === undefined
+	// 				? 401
+	// 				: oAuth2Options?.tokenExpiredStatusCode;
+
+	// 		if (error.statusCode === statusCodeReturned) {
+	// 			// Token is probably not valid anymore. So try refresh it.
+
+	// 			const tokenRefreshOptions: IDataObject = {};
+
+	// 			if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
+	// 				const body: IDataObject = {
+	// 					client_id: credentials.clientId,
+	// 					client_secret: credentials.clientSecret,
+	// 				};
+	// 				tokenRefreshOptions.body = body;
+	// 				// Override authorization property so the credentials are not included in it
+	// 				tokenRefreshOptions.headers = {
+	// 					Authorization: '',
+	// 				};
+	// 			}
+
+	// 			LoggerProxy.debug(
+	// 				`OAuth2 token for "${credentialsType}" used by node "${this.label}" expired. Should revalidate.`,
+	// 			);
+
+	// 			let newToken;
+
+	// 			// if it's OAuth2 with client credentials grant type, get a new token
+	// 			// instead of refreshing it.
+	// 			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
+	// 				newToken = await getClientCredentialsToken(token.client, credentials);
+	// 			} else {
+	// 				newToken = await token.refresh(tokenRefreshOptions);
+	// 			}
+
+	// 			LoggerProxy.debug(
+	// 				`OAuth2 token for "${credentialsType}" used by node "${this.label}" has been renewed.`,
+	// 			);
+
+	// 			credentials.oauthTokenData = newToken.data;
+
+	// 			// Find the credentials
+	// 			if (!this.credentials?.[credentialsType]) {
+	// 				throw new Error(
+	// 					`The node "${this.label}" does not have credentials of type "${credentialsType}"!`,
+	// 				);
+	// 			}
+	// 			const nodeCredentials = this.credentials[credentialsType];
+
+	// 			// Save the refreshed token
+	// 			await additionalData.credentialsHelper.updateCredentials(
+	// 				nodeCredentials,
+	// 				credentialsType,
+	// 				credentials as unknown as ICredentialDataDecryptedObject,
+	// 			);
+
+	// 			LoggerProxy.debug(
+	// 				`OAuth2 token for "${credentialsType}" used by node "${this.label}" has been saved to database successfully.`,
+	// 			);
+
+	// 			// Make the request again with the new token
+	// 			const newRequestOptions = newToken.sign(
+	// 				requestOptions as unknown as clientOAuth2.RequestObject,
+	// 			);
+	// 			newRequestOptions.headers = newRequestOptions.headers ?? {};
+
+	// 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
+	// 				Object.assign(newRequestOptions.headers, {
+	// 					[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
+	// 				});
+	// 			}
+
+	// 			return this.helpers.request!(newRequestOptions);
+	// 		}
+
+	// 		// Unknown error so simply throw it
+	// 		throw error;
+	// 	});
+	// }
 }

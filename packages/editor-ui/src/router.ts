@@ -518,7 +518,7 @@ const router = new Router({
 						settingsView: SettingsLogStreamingView,
 					},
 					meta: {
-						fullWidthPage: true,
+						fullWidthPage: false,
 						telemetry: {
 							pageCategory: 'settings',
 							getProperties(route: Route) {
