@@ -79,18 +79,19 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
-import { hasExpressionMapping } from '@/utils';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 
-import type { Resolvable, Segment } from './ExpressionEditorModal/types';
+import { telemetryUtils } from '@/mixins/telemetryUtils';
+import type { Segment } from '@/types/expressions';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
 	debounceHelper,
+	telemetryUtils,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -213,33 +214,11 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
-				const errorResolvables = resolvables.filter(r => r.error);
-
-				const exposeErrorProperties = (error: Error) => {
-					return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
-						// @ts-ignore
-						return acc[key] = error[key], acc;
-					}, {});
-				};
-
-				const telemetryPayload = {
-					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
-					workflow_id: this.workflowsStore.workflowId,
-					source: this.eventSource,
-					session_id: this.ndvStore.sessionId,
-					has_parameter: this.value.includes('$parameter'),
-					has_mapping: hasExpressionMapping(this.value),
-					node_type: this.ndvStore.activeNode?.type ?? '',
-					handlebar_count: resolvables.length,
-					handlebar_error_count: errorResolvables.length,
-					full_errors: errorResolvables.map(errorResolvable => {
-						return errorResolvable.fullError
-							? { ...exposeErrorProperties(errorResolvable.fullError), stack: errorResolvable.fullError.stack }
-							: null;
-					}),
-					short_errors: errorResolvables.map(r => r.resolved ?? null),
-				};
+				const telemetryPayload = this.createExpressionTelemetryPayload(
+					this.segments,
+					this.value,
+					this.eventSource,
+				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);

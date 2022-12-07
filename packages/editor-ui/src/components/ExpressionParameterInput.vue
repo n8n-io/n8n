@@ -59,11 +59,13 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
 import { useNDVStore } from '@/stores/ndv';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
+import { telemetryUtils } from '@/mixins/telemetryUtils';
 import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
@@ -71,7 +73,7 @@ import type { TargetItem } from '@/Interface';
 
 Vue.component('expression-function-icon', ExpressionFunctionIcon);
 
-export default Vue.extend({
+export default mixins(telemetryUtils).extend({
 	name: 'expression-parameter-input',
 	components: {
 		InlineExpressionEditorInput,
@@ -142,6 +144,10 @@ export default Vue.extend({
 			const oldPaneWidth = this.paneWidth;
 			this.paneWidth = this.getPaneWidth();
 			if (oldPaneWidth !== this.paneWidth) return;
+
+			const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value, ''); // @TODO: eventSource
+
+			this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 
 			this.isFocused = false;
 		},
