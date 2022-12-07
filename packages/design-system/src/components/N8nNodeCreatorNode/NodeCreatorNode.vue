@@ -19,7 +19,7 @@
 					<template #content>
 						<slot name="tooltip" />
 					</template>
-					<n8n-icon icon="cube" />
+					<n8n-icon :class="$style.tooltipIcon" icon="cube" />
 				</n8n-tooltip>
 			</div>
 			<p :class="$style.description" v-if="description" v-text="description" />
@@ -80,6 +80,9 @@ defineEmits<{
 	cursor: pointer;
 	background: transparent;
 	border: none;
+}
+.tooltipIcon {
+	margin-left: var(--spacing-3xs);
 }
 .panelArrow {
 	font-size: var(--font-size-2xs);

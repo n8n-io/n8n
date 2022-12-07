@@ -235,7 +235,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 	},
 	getters: {
 		visibleNodesWithActions(): INodeTypeDescription[] {
-			const startTime = performance.now();
 			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
 			const nodesWithActions = nodes.map((node) => {
 				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
@@ -251,17 +250,14 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 				return node;
 			});
-			const endTime = performance.now();
-			console.log("Generating visible Nodes took:" + (endTime - startTime).toFixed(3) + " milliseconds");
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
-			const startTime = performance.now();
 			const mergedNodes = this.visibleNodesWithActions.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
 
 				const clonedNode = deepCopy(node);
 				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
-				const actions = filterSinglePlaceholderAction((node.actions || []));
+				const actions = node.actions || [];
 				// Do not merge core nodes
 				const normalizedName = isCoreNode ? node.name : node.name.toLowerCase().replace('trigger', '');
 				const existingNode = acc[normalizedName];
@@ -271,10 +267,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 				if(!isCoreNode) acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
 
+				acc[normalizedName].actions = filterSinglePlaceholderAction(acc[normalizedName].actions || []);
 				return acc;
 			}, {});
-			const endTime = performance.now();
-			console.log("Merged visible Nodes took:" + (endTime - startTime).toFixed(3) + " milliseconds");
 			return Object.values(mergedNodes);
 		},
 		getActionNodeTypes: () => (action: IUpdateInformation): string[] => {

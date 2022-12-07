@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.noResults">
+	<div :class="{[$style.noResults]: true, [$style.iconless]: !showIcon}">
 		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
@@ -65,9 +65,9 @@ defineProps<Props>();
 	}
 }
 
-.action, .request {
+.action p, .request p {
 	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-compact);
+	line-height: var(--font-line-height-xloose);
 }
 
 .request {

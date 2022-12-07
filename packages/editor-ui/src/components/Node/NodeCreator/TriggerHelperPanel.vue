@@ -28,7 +28,7 @@
 				<i />
 			</template>
 			<template #noResultsAction  v-if="isActionsActive">
-				<p v-if="containsAPIAction" v-html="customAPICallHint" class="clickable" @click.stop="addHttpNode" />
+				<p v-if="containsAPIAction" v-html="getCustomAPICallHintLocale('apiCallNoResult')" class="clickable" @click.stop="addHttpNode" />
 				<p v-else v-text="$locale.baseText('nodeCreator.noResults.noMatchingActions')"/>
 			</template>
 
@@ -42,7 +42,7 @@
 			</template>
 			<template #footer v-if="(activeNodeActions && containsAPIAction)">
 				<slot name="footer" />
-				<p v-html="customAPICallHint" class="clickable" @click.stop="addHttpNode" />
+				<p v-html="getCustomAPICallHintLocale('apiCall')" class="clickable" @click.stop="addHttpNode" />
 			</template>
 		</categorized-items>
 	</div>
@@ -186,11 +186,6 @@ const containsAPIAction = computed(() => state.latestNodeData?.properties.some((
 
 const computedCategorizedItems = computed(() => getCategorizedList(computedCategoriesWithNodes.value, true));
 
-const customAPICallHint = computed<string>(() => {
-	const nodeNameTitle  = state.activeNodeActions?.displayName as string;
-	return instance?.proxy.$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle }}) || '';
-});
-
 const nodeAppSubcategory = computed<(SubcategoryCreateElement | undefined)>(() => {
 	if(!state.activeNodeActions) return undefined;
 
@@ -266,6 +261,15 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 	}));
 });
 
+function getCustomAPICallHintLocale(key: string) {
+	if(!state.activeNodeActions) return '';
+
+	const nodeNameTitle  = state.activeNodeActions.displayName;
+	return instance?.proxy.$locale.baseText(
+		`nodeCreator.actionsList.${key}` as BaseTextKey,
+		{ interpolate: { nodeNameTitle }},
+	);
+}
 // The nodes.json doesn't contain API CALL option so we need to fetch the node detail
 // to determine if need to render the API CALL hint
 async function fechNodeDetails() {

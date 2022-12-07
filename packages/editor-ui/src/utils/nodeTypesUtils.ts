@@ -58,7 +58,6 @@ const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescri
 };
 
 export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[], uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY): ICategoriesWithNodes => {
-	const startTime = performance.now();
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) => a.displayName > b.displayName? 1 : -1);
 	const result =  sorted.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
@@ -89,8 +88,6 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 		},
 		{},
 	);
-	const endTime = performance.now();
-	console.log(`getCategoriesWithNodes took ${endTime - startTime} milliseconds.`);
 	return result;
 };
 
@@ -107,7 +104,6 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 };
 
 export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes, categoryIsExpanded = false): INodeCreateElement[] => {
-	const startTime = performance.now();
 	const categories = getCategories(categoriesWithNodes);
 
 	const result = categories.reduce(
@@ -171,8 +167,6 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes, ca
 		},
 		[],
 	);
-	const endTime = performance.now();
-	console.log(`getCategorizedList took ${endTime - startTime} milliseconds.`);
 	return result;
 };
 

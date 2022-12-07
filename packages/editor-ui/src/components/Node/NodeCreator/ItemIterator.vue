@@ -61,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { INodeCreateElement, CategoryCreateElement } from '@/Interface';
+import { INodeCreateElement, CategoryCreateElement, NodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
@@ -76,7 +76,7 @@ export interface Props {
 	activeIndex?: number;
 	disabled?: boolean;
 	lazyRender?: boolean;
-	withActionsGetter?: Function;
+	withActionsGetter?: (element: NodeCreateElement) => boolean;
 	enableGlobalCategoriesCounter?: boolean;
 }
 
@@ -93,7 +93,6 @@ const emit = defineEmits<{
 const state = reactive({
 	renderedItems: [] as INodeCreateElement[],
 	renderAnimationRequest: 0,
-	renderStartTime: 0,
 });
 const iteratorItems = ref<HTMLElement[]>([]);
 
@@ -120,9 +119,8 @@ function getCategoryCount(item: CategoryCreateElement) {
 		return accu;
 	}, 0);
 	return count;
-// console.log("🚀 ~ file: ItemIterator.vue:103 ~ getCategoryCount ~ item", item);
-// return 2;
 }
+
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
@@ -134,9 +132,6 @@ function renderItems() {
 	if (state.renderedItems.length < props.elements.length) {
 		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 10));
 		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
-	} else {
-		const endTime = performance.now();
-		console.log('rendered in', endTime - state.renderStartTime, 'ms');
 	}
 }
 
@@ -158,7 +153,6 @@ function leave(el: HTMLElement) {
 }
 
 onMounted(() => {
-	state.renderStartTime = performance.now();
 	renderItems();
 });
 
@@ -178,7 +172,6 @@ watch(() => props.activeIndex, async () => {
 watch(() => props.elements, async () => {
 	window.cancelAnimationFrame(state.renderAnimationRequest);
 	state.renderedItems = [];
-	state.renderStartTime = performance.now();
 	renderItems();
 });
 
@@ -220,7 +213,11 @@ const { renderedItems } = toRefs(state);
 		margin-bottom: var(--spacing-2xl);
 	}
 }
-
+.action {
+	&:last-of-type {
+		margin-bottom: var(--spacing-s);
+	}
+}
 .node + .category {
 	margin-top: var(--spacing-s);
 }

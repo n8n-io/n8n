@@ -106,12 +106,12 @@ import camelcase from 'lodash.camelcase';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-
+import { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { INodeCreateElement, ISubcategoryItemProps, ICategoryItemProps, ICategoriesWithNodes, SubcategoryCreateElement } from '@/Interface';
+import { INodeCreateElement, ISubcategoryItemProps, ICategoryItemProps, ICategoriesWithNodes, SubcategoryCreateElement, NodeCreateElement } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType  } from '@/utils';
@@ -128,7 +128,7 @@ export interface Props {
 	enableGlobalCategoriesCounter?: boolean;
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
-	withActionsGetter?: Function;
+	withActionsGetter?: (element: NodeCreateElement) => boolean;
 	searchItems?: INodeCreateElement[];
 	excludedSubcategories?: string[];
 	firstLevelItems?: INodeCreateElement[];
@@ -153,6 +153,7 @@ const emit = defineEmits<{
 	(event: 'onSubcategorySelected', value: INodeCreateElement): void,
 	(event: 'nodeTypeSelected', value: string[]): void,
 	(event: 'actionSelected', value: INodeCreateElement): void,
+	(event: 'actionsOpen', value: INodeTypeDescription): void,
 }>();
 
 const instance = getCurrentInstance();
@@ -422,14 +423,18 @@ function selected(element: INodeCreateElement) {
   const typeHandler = {
     category: () => onCategorySelected(element.category),
     subcategory: () => onSubcategorySelected(element),
-		node: () => onNodeSelected(element),
+		node: () => onNodeSelected(element as NodeCreateElement),
 		action: () => onActionSelected(element),
   };
 
   typeHandler[element.type]();
 }
 
-function onNodeSelected(element: INodeCreateElement) {
+function onNodeSelected(element: NodeCreateElement) {
+	if(props.withActionsGetter && props.withActionsGetter(element) === true) {
+		emit('actionsOpen', element.properties.nodeType);
+		return;
+	}
 	emit('nodeTypeSelected', [element.key]);
 }
 
@@ -584,12 +589,11 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 .footer {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
-	margin: 0 var(--spacing-xs);
-	padding: var(--spacing-s) 0;
+	margin: 0 var(--spacing-xs) 0;
+	padding: var(--spacing-4xs) 0;
 	line-height: var(--font-line-height-regular);
 	border-top: 1px solid #DBDFE7;
 	z-index: 1;
-	// Prevent double borders when the last category is collapsed
 	margin-top: -1px;
 }
 .subcategoryHeader {
