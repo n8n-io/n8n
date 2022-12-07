@@ -9,7 +9,10 @@
 				<div v-if="$slots.title || title" :class="$style.title">
 					<slot name="title">{{ title }}</slot>
 				</div>
-				<div v-if="$slots.default || description" :class="$style.description">
+				<div
+					v-if="$slots.default || description"
+					:class="{ [$style.description]: true, [$style.hasTitle]: $slots.title || title }"
+				>
 					<slot>{{ description }}</slot>
 				</div>
 			</div>
@@ -231,7 +234,10 @@ const alertBoxClassNames = computed(() => {
 
 .description {
 	font-size: $alert-description-font-size;
-	margin: 5px 0 0 0;
+
+	&.hasTitle {
+		margin: 5px 0 0 0;
+	}
 }
 
 .aside {

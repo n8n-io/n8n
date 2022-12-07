@@ -17,6 +17,13 @@
 				</template>
 			</i18n>
 		</div>
+		<n8n-alert :background="false">
+			{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}
+		</n8n-alert>
+		<div :class="$style.buttons">
+			<n8n-button type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
+			<n8n-button size="large">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</n8n-button>
+		</div>
 	</div>
 </template>
 <script lang="ts" setup>
@@ -50,6 +57,22 @@ const usageAndPlanStore = useUsageAndPlanStore();
 	.count {
 		text-transform: lowercase;
 		font-size: var(--font-size-s);
+	}
+}
+
+[role="alert"] {
+	padding-left: 0;
+	padding-right: 0;
+	line-height: 18px;
+}
+
+.buttons {
+	display: flex;
+	justify-content: flex-end;
+	padding: var(--spacing-xl) 0 0;
+
+	button {
+		margin-left: var(--spacing-xs);
 	}
 }
 </style>
