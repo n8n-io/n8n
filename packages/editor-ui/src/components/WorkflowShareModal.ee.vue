@@ -199,10 +199,10 @@ export default mixins(
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
-							resolve(this.workflowsStore.workflowId);
+							resolve(this.workflow.id);
 						});
 					} else {
-						resolve(this.workflowsStore.workflowId);
+						resolve(this.workflow.id);
 					}
 				});
 			};
