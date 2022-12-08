@@ -999,11 +999,6 @@ export default mixins(
 					}
 
 					this.setFocus();
-
-					// setTimeout(() => {
-					// 	this.expressionEditDialogVisible = true;
-					// 	this.trackExpressionEditOpen();
-					// }, 375);
 				} else if (command === 'removeExpression') {
 					let value: NodeParameterValueType = this.expressionEvaluated;
 
