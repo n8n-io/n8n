@@ -1449,9 +1449,6 @@ export class Github implements INodeType {
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -1491,9 +1488,6 @@ export class Github implements INodeType {
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['update'],

@@ -267,9 +267,6 @@ export function getFilters(
 			displayName: 'Filters (String)',
 			name: 'filterString',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: resources,

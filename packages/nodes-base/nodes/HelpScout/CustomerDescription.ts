@@ -143,9 +143,6 @@ export const customerFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'background',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -651,9 +648,6 @@ export const customerFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/customers/list/#query">Examples</a>',
@@ -768,9 +762,6 @@ export const customerFields: INodeProperties[] = [
 				displayName: 'Notes',
 				name: 'background',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
