@@ -132,7 +132,6 @@ describe('Events', () => {
 
 		test('should not send metrics for updated entries', async () => {
 			// Call the function with the id that causes insert to fail, ensure update is called *and* metrics aren't sent
-			const mockedError = jest.spyOn(console, 'error');
 			const workflow = {
 				id: '-1',
 				name: '',
@@ -148,9 +147,7 @@ describe('Events', () => {
 				mode: 'internal' as WorkflowExecuteMode,
 				startedAt: new Date(),
 			};
-			mockedError.mockClear();
 			await workflowExecutionCompleted(workflow, runData);
-			expect(mockedError).toBeCalled();
 			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 	});

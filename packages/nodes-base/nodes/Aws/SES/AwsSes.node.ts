@@ -143,9 +143,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Template Content',
 				name: 'templateContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['customVerificationEmail'],
@@ -307,9 +304,6 @@ export class AwsSes implements INodeType {
 						displayName: 'Template Content',
 						name: 'templateContent',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						description:
 							'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 						default: '',
@@ -407,9 +401,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['email'],

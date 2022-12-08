@@ -126,6 +126,10 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+			return {}; // incoming connection has pinned data, so stub context object
+		}
+
 		if (!that.runExecutionData?.executionData) {
 			throw new ExpressionError(
 				`The workflow hasn't been executed yet, so you can't reference any context data`,
@@ -332,7 +336,7 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(`connect ${that.activeNodeName} to ${nodeName}`, {
+					throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 					});
@@ -569,7 +573,39 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					return that.nodeDataGetter(name.toString());
+					const nodeName = name.toString();
+
+					if (that.workflow.getNode(nodeName) === null) {
+						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+
+					if (
+						nodeName !== that.activeNodeName &&
+						!that.runExecutionData?.resultData.runData?.hasOwnProperty(nodeName)
+					) {
+						throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+
+					if (
+						nodeName !== that.activeNodeName &&
+						!that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName, 'main')
+					) {
+						throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+
+					return that.nodeDataGetter(nodeName);
 				},
 			},
 		);
