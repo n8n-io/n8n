@@ -216,6 +216,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	async mounted() {
+		if (!this.isLDAPFeatureEnabled) return;
 		await this.getLdapConfig();
 	},
 	computed: {
