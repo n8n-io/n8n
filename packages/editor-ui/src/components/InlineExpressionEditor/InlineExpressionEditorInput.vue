@@ -8,6 +8,9 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
+
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -45,6 +48,22 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				},
 				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
 			});
+		},
+		ndvInputData() {
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.value,
+				},
+				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
+			});
+		},
+	},
+	computed: {
+		...mapStores(useNDVStore),
+		ndvInputData(): object {
+			return this.ndvStore.ndvInputData;
 		},
 	},
 	mounted() {
