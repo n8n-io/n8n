@@ -94,9 +94,6 @@ export default mixins(telemetryUtils).extend({
 			type: Boolean,
 			default: false,
 		},
-		/**
-		 * Whether the prepend section has right-angle borders. Only for record locator.
-		 */
 		isForRecordLocator: {
 			type: Boolean,
 			default: false,
