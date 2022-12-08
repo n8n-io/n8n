@@ -94,6 +94,7 @@ describe('Node Creator', () => {
 	})
 
 	it('should add manual trigger node', () => {
+		cy.get('.el-loading-mask').should('not.exist');
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
 
