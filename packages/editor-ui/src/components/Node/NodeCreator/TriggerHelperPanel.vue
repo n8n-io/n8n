@@ -165,7 +165,6 @@ const emit = defineEmits({
 const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
-	showMergedActions: false,
 	activeNodeActions: null as INodeTypeDescription | null,
 	latestNodeData: null as INodeTypeDescription | null,
 });
@@ -352,10 +351,6 @@ function trackActionsView() {
 	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
-onMounted(() => {
-	const isLocal = window.location.href.includes('localhost');
-	state.showMergedActions = isLocal || window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
-});
 
 const { isRoot, activeNodeActions } = toRefs(state);
 </script>
