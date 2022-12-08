@@ -307,8 +307,19 @@ export class CredentialsService {
 		credential: CredentialsEntity,
 	): ICredentialDataDecryptedObject {
 		const copiedData = deepCopy(data);
+
 		const credTypes = CredentialTypes();
-		const credType = credTypes.getByName(credential.type);
+		let credType: ICredentialType;
+		try {
+			credType = credTypes.getByName(credential.type);
+		} catch {
+			// This _should_ only happen when testing. If it does happen in
+			// production it means it's either a mangled credential or a
+			// credential for a removed community node. Either way, there's
+			// no way to know what to redact.
+			return data;
+		}
+
 		const getExtendedProps = (type: ICredentialType) => {
 			const props: INodeProperties[] = [];
 			for (const e of type.extends ?? []) {
@@ -336,6 +347,7 @@ export class CredentialsService {
 				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
 			}
 		}
+
 		return copiedData;
 	}
 
