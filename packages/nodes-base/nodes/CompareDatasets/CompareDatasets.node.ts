@@ -133,6 +133,14 @@ export class CompareDatasets implements INodeType {
 							"Fields that shouldn't be included when checking whether two items are the same",
 					},
 					{
+						displayName: 'Fuzzy Compare',
+						name: 'fuzzyCompare',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+					},
+					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
