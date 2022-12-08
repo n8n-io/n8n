@@ -37,16 +37,14 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
-			try {
-				this.editor?.dispatch({
-					changes: {
-						from: 0,
-						to: this.editor.state.doc.length,
-						insert: newValue,
-					},
-					selection: { anchor: this.cursorPosition, head: this.cursorPosition },
-				});
-			} catch (_) {} // @TODO ignore range error from dropping on prepopulated field
+			this.editor?.dispatch({
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: newValue,
+				},
+				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
+			});
 		},
 	},
 	mounted() {
@@ -65,11 +63,8 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
-				const plaintexts = this.plaintextSegments;
-				const resolvables = this.resolvableSegments;
-
-				highlighter.removeColor(this.editor, plaintexts);
-				highlighter.addColor(this.editor, resolvables);
+				highlighter.removeColor(this.editor, this.plaintextSegments);
+				highlighter.addColor(this.editor, this.resolvableSegments);
 
 				this.cursorPosition = viewUpdate.view.state.selection.ranges[0].from;
 
