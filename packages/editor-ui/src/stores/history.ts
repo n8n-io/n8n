@@ -40,7 +40,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 
 			return undefined;
 		},
-		pushCommandToUndo(undoable: Command, clearRedo = false): void {
+		pushCommandToUndo(undoable: Command, clearRedo = true): void {
 			if (!this.bulkInProgress) {
 				if (this.currentBulkAction) {
 					this.currentBulkAction.commands.push(undoable);
@@ -54,7 +54,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				}
 			}
 		},
-		pushBulkCommandToUndo(undoable: BulkCommand, clearRedo = false): void {
+		pushBulkCommandToUndo(undoable: BulkCommand, clearRedo = true): void {
 			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
 			if (clearRedo) {

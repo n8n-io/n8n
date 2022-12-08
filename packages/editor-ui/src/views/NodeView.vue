@@ -1202,7 +1202,7 @@ export default mixins(
 					this.onNodeMoved(node);
 
 					if (recordHistory && oldPosition[0] !== node.position[0] || oldPosition[1] !== node.position[1]) {
-						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this));
+						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this), recordHistory);
 					}
 				}
 			},
@@ -3365,7 +3365,9 @@ export default mixins(
 				this.suspendRecordingDetachedConnections = false;
 			},
 			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.suspendRecordingDetachedConnections = true;
 				this.__addConnection(connection, true);
+				this.suspendRecordingDetachedConnections = false;
 			},
 			async onRevertNameChange({ currentName, newName }: { currentName: string, newName: string }) {
 				await this.renameNode(newName, currentName);
