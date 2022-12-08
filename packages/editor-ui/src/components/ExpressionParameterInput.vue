@@ -125,6 +125,8 @@ export default mixins(telemetryUtils).extend({
 			this.isFocused = true;
 
 			this.paneWidth = this.getPaneWidth();
+
+			this.$emit('focus');
 		},
 		getPaneWidth() {
 			const key = `${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`;
@@ -145,6 +147,8 @@ export default mixins(telemetryUtils).extend({
 			this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 
 			this.isFocused = false;
+
+			this.$emit('blur');
 		},
 		onChange({ value, segments }: { value: string; segments: Segment[] }) {
 			if (this.isDragging) return;

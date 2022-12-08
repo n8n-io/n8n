@@ -41,6 +41,8 @@
 				:isReadOnly="isReadOnly"
 				@valueChanged="expressionUpdated"
 				@openerClick="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
 				ref="inputField"
 			/>
 			<div
@@ -493,6 +495,8 @@ export default mixins(
 					return '';
 				}
 
+				// console.log('[pi] this.value', this.value);
+
 				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
 				if (typeof value === 'string' && value.startsWith('=')) {
 					return value.slice(1);
@@ -886,6 +890,7 @@ export default mixins(
 				this.$emit('drop', data);
 			},
 			setFocus () {
+				console.log('setFocus called');
 				if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
 					return;
