@@ -5,7 +5,6 @@
 			<n8n-heading size="large">
 				{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: { plan: usageAndPlanStore.planName } }) }}
 			</n8n-heading>
-			<n8n-button size="large" text>{{ $locale.baseText('settings.usageAndPlan.refresh') }}</n8n-button>
 		</div>
 		<div :class="[$style.spacedFlex, $style.quota]">
 			<n8n-text size="medium" color="text-light">{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}</n8n-text>
@@ -22,7 +21,9 @@
 		</n8n-alert>
 		<div :class="$style.buttons">
 			<n8n-button type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
-			<n8n-button size="large">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</n8n-button>
+			<n8n-button size="large">
+				<a href="#">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
+			</n8n-button>
 		</div>
 	</div>
 </template>
@@ -73,6 +74,14 @@ const usageAndPlanStore = useUsageAndPlanStore();
 
 	button {
 		margin-left: var(--spacing-xs);
+
+		a {
+			display: inline-block;
+			color: inherit;
+			text-decoration: none;
+			padding: var(--spacing-xs) var(--spacing-m);
+			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
+		}
 	}
 }
 </style>

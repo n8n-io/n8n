@@ -1116,7 +1116,6 @@
 	"settings.version": "Version",
 	"settings.usageAndPlan.title": "Usage and plan",
 	"settings.usageAndPlan.plan": "You’re on the {plan} plan",
-	"settings.usageAndPlan.refresh": "Refresh to see changes to your plan",
 	"settings.usageAndPlan.activeWorkflows": "Active workflows",
 	"settings.usageAndPlan.activeWorkflows.count": "{count} of {limit}",
 	"settings.usageAndPlan.activeWorkflows.hint": "If an active workflow contains multiple triggers, each will count as an active workflow. For example, 1 active workflow with 3 triggers will count as 3 active workflows.",

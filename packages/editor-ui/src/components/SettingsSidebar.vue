@@ -107,7 +107,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.usageAndPlan.title'),
 					position: 'top',
 					available: this.canAccessUsageAndPlan(),
-					activateOnRouteNames: [ VIEWS.USAGE_AND_PLAN ],
+					activateOnRouteNames: [ VIEWS.USAGE ],
 				},
 			);
 
@@ -131,7 +131,7 @@ export default mixins(
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
 		canAccessUsageAndPlan(): boolean {
-			return this.canUserAccessRouteByName(VIEWS.USAGE_AND_PLAN);
+			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
@@ -167,8 +167,8 @@ export default mixins(
 					}
 					break;
 				case 'settings-usage-and-plan':
-					if (this.$router.currentRoute.name !== VIEWS.USAGE_AND_PLAN) {
-						this.$router.push({ name: VIEWS.USAGE_AND_PLAN });
+					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
+						this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				default:
