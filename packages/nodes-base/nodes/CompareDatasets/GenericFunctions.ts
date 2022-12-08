@@ -236,8 +236,27 @@ export function findMatches(
 				entryFromInput1 = omit(entryFromInput1, skipFields);
 				entryFromInput2 = omit(entryFromInput2, skipFields);
 			}
-			if (isEntriesEqual(entryFromInput1, entryFromInput2)) {
-				if (!entryCopy) entryCopy = match;
+
+			let isItemsEqual = true;
+			if (options.fuzzyCompare) {
+				for (const key of Object.keys(entryFromInput1)) {
+					if (!isEntriesEqual(entryFromInput1[key], entryFromInput2[key])) {
+						isItemsEqual = false;
+						break;
+					}
+				}
+			} else {
+				isItemsEqual = isEntriesEqual(entryFromInput1, entryFromInput2);
+			}
+
+			if (isItemsEqual) {
+				if (!entryCopy) {
+					if (options.fuzzyCompare && options.resolve === 'preferInput2') {
+						entryCopy = match;
+					} else {
+						entryCopy = entryMatches.entry;
+					}
+				}
 			} else {
 				switch (options.resolve) {
 					case 'preferInput1':
@@ -325,16 +344,21 @@ export function checkInput(
 
 const fuzzyCompare =
 	(options: IDataObject) =>
-	<T, U>(entry1: T, entry2: U) => {
+	<T, U>(item1: T, item2: U) => {
 		//Fuzzy compare is disabled, so we do strict comparison
-		if (!options.fuzzyCompare) return isEqual(entry1, entry2);
+		if (!options.fuzzyCompare) return isEqual(item1, item2);
 
 		//Both types are the same, so we do strict comparison
-		if (typeof entry1 === typeof entry2) return isEqual(entry1, entry2);
+		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
+			return isEqual(item1, item2);
+		}
+
+		//Null, empty strings, empty arrays all treated as the same
+		if (isFalsy(item1) && isFalsy(item2)) return true;
 
 		//If the types are different, we are using the ‘prefer input from A/B’ field to decide which type to use. If that field isn’t set, use input A
-		const [item1, item2] =
-			(options.preferWhenMix as string) !== 'input2' ? [entry1, entry2] : [entry2, entry1];
+		// const [item1, item2] =
+		// 	(options.resolve as string) !== 'preferInput2' ? [entry1, entry2] : [entry2, entry1];
 
 		//Compare numbers and strings representing that number
 		if (typeof item1 === 'number' && typeof item2 === 'string') {
@@ -360,10 +384,20 @@ const fuzzyCompare =
 			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
 		}
 
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
+			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
+		}
+
 		//Compare booleans and the numbers/string 0 and 1
 		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
 			if (item1 === true && item2 === 1) return true;
 			if (item1 === false && item2 === 0) return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
+			if (item2 === true && item1 === 1) return true;
+			if (item2 === false && item1 === 0) return true;
 		}
 
 		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
@@ -371,8 +405,10 @@ const fuzzyCompare =
 			if (item1 === false && item2 === '0') return true;
 		}
 
-		//Null, empty strings, empty arrays all treated as the same
-		if (isFalsy(item1) && isFalsy(item2)) return true;
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1 === '1') return true;
+			if (item2 === false && item1 === '0') return true;
+		}
 
 		return isEqual(item1, item2);
 	};
