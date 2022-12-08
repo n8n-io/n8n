@@ -42,7 +42,7 @@
 			</template>
 			<template #footer v-if="(activeNodeActions && containsAPIAction)">
 				<slot name="footer" />
-				<p v-html="getCustomAPICallHintLocale('apiCall')" class="clickable" @click.stop="addHttpNode" />
+				<span v-html="getCustomAPICallHintLocale('apiCall')" class="clickable" @click.stop="addHttpNode" />
 			</template>
 		</categorized-items>
 	</div>
