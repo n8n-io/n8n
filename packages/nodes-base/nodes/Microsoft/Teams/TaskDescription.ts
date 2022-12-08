@@ -204,16 +204,44 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				displayName: 'Assigned To Name',
 				name: 'assignedTo',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getMembers',
-					loadOptionsDependsOn: ['groupId'],
-				},
-				default: '',
-				description:
-					'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Member',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Member...',
+						typeOptions: {
+							searchListMethod: 'getMembers',
+							// missing searchListDependsOn: ['groupId'],
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+									errorMessage: 'Not a valid Microsoft Teams Team ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+						},
+					},
+				],
+				description: 'Who the task should be assigned to',
 			},
 			{
 				displayName: 'Due Date Time',
@@ -359,15 +387,43 @@ export const taskFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Member Name or ID',
+		displayName: 'Member Name',
 		name: 'memberId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getMembers',
-			loadOptionsDependsOn: ['groupId'],
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Member',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Member...',
+				typeOptions: {
+					searchListMethod: 'getMembers',
+					// missing searchListDependsOn: ['groupId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
@@ -375,7 +431,6 @@ export const taskFields: INodeProperties[] = [
 				tasksFor: ['member'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Plan',
@@ -474,16 +529,44 @@ export const taskFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Assigned To Name or ID',
+				displayName: 'Assigned To Name',
 				name: 'assignedTo',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getMembers',
-					loadOptionsDependsOn: ['groupId'],
-				},
-				default: '',
-				description:
-					'Who the task should be assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Member',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Member...',
+						typeOptions: {
+							searchListMethod: 'getMembers',
+							// missing searchListDependsOn: ['groupId'],
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '7e2f1174-e8ee-4859-b8b1-a8d1cc63d276',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+									errorMessage: 'Not a valid Microsoft Teams Team ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+						},
+					},
+				],
+				description: 'Who the task should be assigned to',
 			},
 			{
 				displayName: 'Bucket Name or ID',
