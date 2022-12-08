@@ -557,8 +557,8 @@ const router = new Router({
 					},
 				},
 				{
-					path: 'usage-and-plan',
-					name: VIEWS.USAGE_AND_PLAN,
+					path: 'usage',
+					name: VIEWS.USAGE,
 					components: {
 						settingsView: settingsUsageAndPlanView,
 					},
@@ -567,16 +567,13 @@ const router = new Router({
 							pageCategory: 'settings',
 							getProperties(route: Route) {
 								return {
-									feature: 'usage-and-plan',
+									feature: 'usage',
 								};
 							},
 						},
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
-							},
-							deny: {
-								role: [ROLE.Default],
 							},
 						},
 					},
