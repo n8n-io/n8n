@@ -1,9 +1,10 @@
 <template>
 	<n8n-card
 		:class="$style.cardLink"
+		@click="onClick"
 	>
 			<template #header>
-				<div @click="onClick">
+				<div>
 					<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
 						{{ destination.label }}
 					</n8n-heading>
@@ -26,6 +27,7 @@
 					</div>
 
 					<el-switch
+						class="mr-s"
 						:value="nodeParameters.enabled"
 						@change="onEnabledSwitched($event, destination.id)"
 						:title="nodeParameters.enabled ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
@@ -114,8 +116,12 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onClick() {
-			this.$emit('edit', this.destination.id);
+		async onClick(event?: PointerEvent) {
+			if (event && event.target && 'className' in event.target && event.target['className'] === 'el-switch__core') {
+					event.stopPropagation();
+			} else {
+				this.$emit('edit', this.destination.id);
+			}
 		},
 		onEnabledSwitched(state: boolean, destinationId: string) {
 			this.nodeParameters.enabled = state;

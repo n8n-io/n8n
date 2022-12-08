@@ -17,7 +17,7 @@ import {
 	EventMessageWorkflowOptions,
 	EventMessageWorkflow,
 } from '../EventMessageClasses/EventMessageWorkflow';
-import { getLicense } from '../../License';
+import { isLogStreamingEnabled } from '../MessageEventBusHelper';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -112,11 +112,16 @@ class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	isLogStreamingEnabled(): boolean {
+	isEnabledForUser(): boolean {
 		// TODO: REMOVE BEFORE RELEASE
-		console.log(`LogStreaming License: ${getLicense().isLogStreamingEnabled().toString()}`);
-		return true;
-		return getLicense().isLogStreamingEnabled();
+		if (process.env.NODE_ENV !== 'production') {
+			console.log(
+				`isLogStreamingEnabled() | actual: ${isLogStreamingEnabled().toString()} | dev: true`,
+			);
+			return true;
+		} else {
+			return isLogStreamingEnabled();
+		}
 	}
 
 	async addDestination(destination: MessageEventBusDestination) {
@@ -193,7 +198,7 @@ class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		// if there are no set up destinations, immediately mark the event as sent
-		if (!this.isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {
+		if (!this.isEnabledForUser() || Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {

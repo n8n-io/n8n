@@ -6,16 +6,15 @@
 		:scrollable="true"
 		:center="true"
 		:loading="loading"
-		width="50%"
-		minWidth="750px"
-		maxWidth="900px"
-		:minHeight="isTypeAbstract ? '300px' : '650px'"
+		:minWidth="isTypeAbstract ? '460px' : '70%'"
+		:maxWidth="isTypeAbstract ? '460px' : '70%'"
+		:minHeight="isTypeAbstract ? '160px' : '650px'"
 		:maxHeight="isTypeAbstract ? '300px' : '650px'"
 	>
 	<template #header>
 		<template v-if="isTypeAbstract">
-			<div :class="$style.header">
-				<h2>Create new log streaming destination</h2>
+			<div :class="$style.headerCreate">
+				<span>Add new destination</span>
 			</div>
 		</template>
 		<template v-else>
@@ -62,7 +61,7 @@
 						:label="$locale.baseText('settings.logstreaming.selecttype')"
 						:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
 						:bold="false"
-						size="small"
+						size="medium"
 						:underline="false"
 					>
 					<n8n-select
@@ -70,7 +69,7 @@
 						:placeholder="typeSelectPlaceholder"
 						@change="onTypeSelectInput"
 						name="name"
-						ref="inputRef"
+						ref="typeSelectRef"
 					>
 						<n8n-option
 							v-for="option in typeSelectOptions || []"
@@ -79,77 +78,59 @@
 							:label="$locale.baseText(option.label)"
 						/>
 					</n8n-select>
+					<div class="mt-m text-right">
+						<n8n-button size="large"  @click="onContinueAddClicked">
+							{{ $locale.baseText(`settings.logstreaming.continue`) }}
+						</n8n-button>
+					</div>
 				</n8n-input-label>
 			</template>
 			<template v-else>
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
 				</div>
-				<!-- <div :class="$style.tabbar">
-					<n8n-tabs :options="tabItems" :value="activeTab" @input="onTabSelect" />
-				</div> -->
 				<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
-					<template v-if="isTypeAbstract">
-						<n8n-input-label
-								:class="$style.labelMargins"
-								:label="$locale.baseText('settings.logstreaming.selecttype')"
-								:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
-								:bold="false"
-								size="small"
-								:underline="false"
-							>
-						<n8n-select
-							:value="typeSelectValue"
-							:placeholder="typeSelectPlaceholder"
-							@change="onTypeSelectInput"
-							name="name"
-							ref="inputRef"
-						>
-							<n8n-option
-								v-for="option in typeSelectOptions || []"
-								:key="option.value"
-								:value="option.value"
-								:label="$locale.baseText(option.label)"
-							/>
-						</n8n-select>
-					</n8n-input-label>
+					<template v-if="isTypeWebhook">
+						<parameter-input-list
+							:parameters="webhookDescription"
+							:hideDelete="true"
+							:nodeValues="nodeParameters"
+							:isReadOnly="false"
+							path=""
+							@valueChanged="valueChanged"
+						/>
 					</template>
-					<template v-else>
-						<template v-if="isTypeWebhook">
-							<parameter-input-list
-								:parameters="webhookDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="false"
-								path=""
-								@valueChanged="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSyslog">
-							<parameter-input-list
-								:parameters="syslogDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="false"
-								path=""
-								@valueChanged="valueChanged"
-							/>
-						</template>
-						<template v-else-if="isTypeSentry">
-							<parameter-input-list
-								:parameters="sentryDescription"
-								:hideDelete="true"
-								:nodeValues="nodeParameters"
-								:isReadOnly="false"
-								path=""
-								@valueChanged="valueChanged"
-							/>
-						</template>
+					<template v-else-if="isTypeSyslog">
+						<parameter-input-list
+							:parameters="syslogDescription"
+							:hideDelete="true"
+							:nodeValues="nodeParameters"
+							:isReadOnly="false"
+							path=""
+							@valueChanged="valueChanged"
+						/>
+					</template>
+					<template v-else-if="isTypeSentry">
+						<parameter-input-list
+							:parameters="sentryDescription"
+							:hideDelete="true"
+							:nodeValues="nodeParameters"
+							:isReadOnly="false"
+							path=""
+							@valueChanged="valueChanged"
+						/>
 					</template>
 				</div>
 				<div v-if="activeTab === 'events'" :class="$style.mainContent">
 					<template>
 						<div class="">
+							<n8n-input-label
+						class="mb-m mt-m"
+						:label="$locale.baseText('settings.logstreaming.tab.events.title')"
+						:bold="true"
+						size="medium"
+						:underline="false"
+					/>
 							<event-selection
 								class=""
 								:destinationId="destination.id"
@@ -352,9 +333,11 @@ export default mixins(
 			this.nodeParameters = options;
 		},
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
-			this.onInput();
+			this.typeSelectValue = destinationType;
+		},
+		onContinueAddClicked() {
 			let newDestination;
-			switch(destinationType) {
+			switch(this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
 					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), { id: this.destination.id });
 					break;
@@ -503,6 +486,12 @@ export default mixins(
 	display: flex;
 	min-height: 61px;
 }
+
+.headerCreate {
+	display: flex;
+	font-size: 20px;
+}
+
 
 .container {
 	display: flex;

@@ -284,7 +284,7 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
-		if (!eventBus.isLogStreamingEnabled()) return false;
+		if (!eventBus.isEnabledForUser()) return false;
 
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();

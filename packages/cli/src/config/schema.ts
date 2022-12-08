@@ -884,6 +884,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			logStreaming: {
+				format: Boolean,
+				default: false,
+			},
 		},
 		// This is a temporary flag (acting as feature toggle)
 		// Will be removed when feature goes live

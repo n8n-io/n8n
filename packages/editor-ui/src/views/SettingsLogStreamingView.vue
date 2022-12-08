@@ -9,13 +9,6 @@
 				<el-switch v-model="fakeLicense" size="large" />
 			</div>
 		</div>
-		<template v-if="(isLicensed() && storeHasItems())">
-			<div class="mt-xs mb-l">
-				<n8n-button size="large"  @click="addDestination">
-					{{ $locale.baseText(`settings.logstreaming.add`) }}
-				</n8n-button>
-			</div>
-		</template>
 		<template v-if="isLicensed()">
 			<template v-if="storeHasItems()">
 				<el-row :gutter="10" v-for="item in sortedItemKeysByLabel" :key="item.key" :class="$style.destinationItem">
@@ -28,6 +21,11 @@
 						/>
 					</el-col>
 				</el-row>
+				<div class="mt-m text-right">
+					<n8n-button size="large"  @click="addDestination">
+						{{ $locale.baseText(`settings.logstreaming.add`) }}
+					</n8n-button>
+				</div>
 			</template>
 			<template v-else>
 				<div v-if="$locale.baseText('settings.logstreaming.infoTextEnterprise')" class="mb-l">
