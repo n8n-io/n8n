@@ -1,12 +1,10 @@
 <template>
 	<div>
 		<n8n-heading size="2xlarge">{{ $locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
-		<div :class="[$style.spacedFlex, $style.title]">
-			<n8n-heading size="large">
-				{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: { plan: usageAndPlanStore.planName } }) }}
-			</n8n-heading>
-		</div>
-		<div :class="[$style.spacedFlex, $style.quota]">
+		<n8n-heading :class="$style.title" size="large">
+			{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: { plan: usageAndPlanStore.planName } }) }}
+		</n8n-heading>
+		<div :class="$style.quota">
 			<n8n-text size="medium" color="text-light">{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}</n8n-text>
 			<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
 				<template #count>{{ usageAndPlanStore.executionCount }}</template>
@@ -42,13 +40,14 @@ const usageAndPlanStore = useUsageAndPlanStore();
 }
 
 .title {
+	display: block;
 	padding: var(--spacing-2xl) 0 var(--spacing-m);
-	button {
-		padding: 0;
-	}
 }
 
 .quota {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	height: 54px;
 	padding: 0 var(--spacing-s);
 	margin: 0 0 var(--spacing-xs);
@@ -78,5 +77,9 @@ const usageAndPlanStore = useUsageAndPlanStore();
 			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
 		}
 	}
+}
+
+div[class*="info"] span {
+	line-height: 1.4;
 }
 </style>
