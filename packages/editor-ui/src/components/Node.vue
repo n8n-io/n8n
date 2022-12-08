@@ -105,7 +105,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import {
-IDataObject,
+	IDataObject,
 	INodeTypeDescription,
 	ITaskData,
 	NodeHelpers,
@@ -455,10 +455,11 @@ export default mixins(
 				: nodeSubtitle;
 		},
 		disableNode () {
-			const nodeData = this.data as INodeUi;
-			this.disableNodes([nodeData]);
-			this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(nodeData.name, !nodeData.disabled, nodeData.disabled === true, this));
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+			if (this.data !== null) {
+				this.disableNodes([this.data]);
+				this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(this.data.name, !this.data.disabled, this.data.disabled === true, this));
+				this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+			}
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');

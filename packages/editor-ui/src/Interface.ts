@@ -35,7 +35,6 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
-	IConnection,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import {ICredentialsDb} from "n8n";
