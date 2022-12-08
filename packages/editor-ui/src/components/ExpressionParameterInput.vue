@@ -132,10 +132,10 @@ export default mixins(telemetryUtils).extend({
 			return parseFloat(window.localStorage.getItem(key) ?? '0');
 		},
 		onBlur() {
-			// prevent defocus after dragging
+			// prevent defocus on dragging
 			if (this.isDragging) return;
 
-			// prevent defocus after resizing
+			// prevent defocus on resizing
 			const oldPaneWidth = this.paneWidth;
 			this.paneWidth = this.getPaneWidth();
 			if (oldPaneWidth !== this.paneWidth) return;
