@@ -4,7 +4,7 @@ import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-import { ResponseHelper } from '..';
+import { ILicensePostResponse, ILicenseReadResponse, ResponseHelper } from '..';
 import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
 import { LicenseRequest } from '@/requests';
@@ -25,7 +25,7 @@ licenseController.use((req, res, next) => {
 });
 
 // Helper for getting the basic license data that we want to return
-async function getLicenseData() {
+async function getLicenseData(): Promise<ILicenseReadResponse> {
 	const triggerCount = await LicenseService.getActiveTriggerCount();
 	const license = getLicense();
 	const mainPlan = license.getMainPlan();
@@ -34,13 +34,13 @@ async function getLicenseData() {
 		usage: {
 			executions: {
 				value: triggerCount,
-				limit: license.getFeatureValue('quota:activeWorkflows') ?? -1,
+				limit: (license.getFeatureValue('quota:activeWorkflows') ?? -1) as number,
 				warningThreshold: 0.8,
 			},
 		},
 		license: {
 			planId: mainPlan?.productId ?? '',
-			planName: license.getFeatureValue('planName') ?? 'Community',
+			planName: (license.getFeatureValue('planName') ?? 'Community') as string,
 		},
 	};
 }
@@ -51,7 +51,7 @@ async function getLicenseData() {
  */
 licenseController.get(
 	'/',
-	ResponseHelper.send(async () => {
+	ResponseHelper.send(async (): Promise<ILicenseReadResponse> => {
 		return getLicenseData();
 	}),
 );
@@ -62,7 +62,7 @@ licenseController.get(
  */
 licenseController.post(
 	'/activate',
-	ResponseHelper.send(async (req: LicenseRequest.Activate) => {
+	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
 		// First ensure that the requesting user is the instance owner
 		if (!isInstanceOwner(req.user)) {
 			LoggerProxy.info('Non-owner attempted to activate a license', {
@@ -95,7 +95,7 @@ licenseController.post(
  */
 licenseController.post(
 	'/renew',
-	ResponseHelper.send(async (req: LicenseRequest.Renew) => {
+	ResponseHelper.send(async (req: LicenseRequest.Renew): Promise<ILicensePostResponse> => {
 		// First ensure that the requesting user is the instance owner
 		if (!isInstanceOwner(req.user)) {
 			LoggerProxy.info('Non-owner attempted to renew a license', {
