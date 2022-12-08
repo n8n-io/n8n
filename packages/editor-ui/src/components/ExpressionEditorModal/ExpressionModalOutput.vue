@@ -8,7 +8,7 @@ import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { EXPRESSION_EDITOR_THEME_OUTPUT } from './theme';
+import { outputTheme } from './theme';
 
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 
@@ -38,7 +38,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		const extensions = [
-		EXPRESSION_EDITOR_THEME_OUTPUT,
+			outputTheme(),
 			EditorState.readOnly.of(true),
 			EditorView.lineWrapping,
 		];

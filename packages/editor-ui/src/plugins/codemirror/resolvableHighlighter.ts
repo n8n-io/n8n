@@ -1,10 +1,13 @@
 import { EditorView, Decoration, DecorationSet } from '@codemirror/view';
 import { StateField, StateEffect } from '@codemirror/state';
+import { tags } from '@lezer/highlight';
+import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
+
 import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/types/expressions';
 
 // @TODO: Clean up and document
 
-export const SYNTAX_HIGHLIGHTING_CSS_CLASSES = {
+const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
 	invalidResolvable: 'cm-invalid-resolvable',
 	brokenResolvable: 'cm-broken-resolvable',
@@ -12,11 +15,11 @@ export const SYNTAX_HIGHLIGHTING_CSS_CLASSES = {
 };
 
 export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
-	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable]: {
+	['.' + cssClasses.validResolvable]: {
 		color: '#29a568',
 		backgroundColor: '#e1f3d8',
 	},
-	['.' + SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable]: {
+	['.' + cssClasses.invalidResolvable]: {
 		color: '#f45959',
 		backgroundColor: '#fef0f0',
 	},
@@ -40,8 +43,8 @@ const stateEffects = {
 };
 
 const marks = {
-	valid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.validResolvable }),
-	invalid: Decoration.mark({ class: SYNTAX_HIGHLIGHTING_CSS_CLASSES.invalidResolvable }),
+	valid: Decoration.mark({ class: cssClasses.validResolvable }),
+	invalid: Decoration.mark({ class: cssClasses.invalidResolvable }),
 };
 
 const coloringField = StateField.define<DecorationSet>({
@@ -110,8 +113,25 @@ function removeColor(view: EditorView, segments: Plaintext[]) {
 	view.dispatch({ effects });
 }
 
+const resolvableStyle = syntaxHighlighting(
+	HighlightStyle.define([
+		{
+			tag: tags.content,
+			class: cssClasses.plaintext,
+		},
+		{
+			tag: tags.className,
+			class: cssClasses.brokenResolvable,
+		},
+		/**
+		 * CSS classes for valid and invalid resolvables
+		 * dynamically applied based on state fields
+		 */
+	]),
+);
+
 export const highlighter = {
 	addColor,
 	removeColor,
-	SYNTAX_HIGHLIGHTING_CSS_CLASSES,
+	resolvableStyle,
 };

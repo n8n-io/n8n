@@ -12,8 +12,8 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
-import { doubleBraceHandler } from '../../plugins/codemirror/doubleBraceHandler';
-import { EXPRESSION_EDITOR_THEME_INPUT } from './theme';
+import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
+import { inputTheme } from './theme';
 
 import type { IVariableItemSelected } from '@/Interface';
 
@@ -34,7 +34,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	mounted() {
 		const extensions = [
-			EXPRESSION_EDITOR_THEME_INPUT,
+			inputTheme(),
 			n8nLanguageSupport(),
 			history(),
 			doubleBraceHandler(),
