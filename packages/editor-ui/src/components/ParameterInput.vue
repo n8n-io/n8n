@@ -979,6 +979,8 @@ export default mixins(
 
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
+				} else if (command === 'openExpression') {
+					// this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
@@ -987,8 +989,14 @@ export default mixins(
 							this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
 						}
 					}
+					else if (
+						this.parameter.type === 'number' &&
+						(!this.value || this.value === '[Object: null]')
+					) {
+						this.valueChanged('={{ 0 }}');
+					}
 					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-						this.valueChanged(`={{${this.value}}}`);
+						this.valueChanged(`={{ ${this.value} }}`);
 					}
 					else {
 						this.valueChanged(`=${this.value}`);
