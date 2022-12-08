@@ -54,7 +54,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				setTimeout(() => {
 					this.$emit('change', {
 						value: this.unresolvedExpression,
-						segments: this.getDisplayableSegments,
+						segments: this.displayableSegments,
 					});
 				}, this.evaluationDelay);
 			}),
@@ -78,7 +78,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 
 		this.$emit('change', {
 			value: this.unresolvedExpression,
-			segments: this.getDisplayableSegments,
+			segments: this.displayableSegments,
 		});
 	},
 	destroyed() {

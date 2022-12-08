@@ -27,7 +27,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			setTimeout(() => {
 				this.$emit('change', {
 					value: this.unresolvedExpression,
-					segments: this.getDisplayableSegments,
+					segments: this.displayableSegments,
 				});
 			});
 		},
@@ -136,7 +136,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		 *   - `1,2,3` when part of the result
 		 *   - `[Array: [1, 2, 3]]` when the entire result
 		 */
-		getDisplayableSegments(): Segment[] {
+		displayableSegments(): Segment[] {
 			return this.segments
 				.map((s) => {
 					if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
