@@ -732,7 +732,6 @@ $--mode-selector-width: 92px;
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	// --input-background-color: var(--color-secondary-tint-2);
 	--input-border-style: dashed;
 }
 
@@ -777,11 +776,11 @@ $--mode-selector-width: 92px;
 }
 
 .openResourceLink {
-	width: 25px !important; // @TODO: Better idea?
+	width: 25px !important;
 	margin-left: var(--spacing-2xs);
 }
 
 .parameter-issues {
-	width: 25px !important; // @TODO: Better idea?
+	width: 25px !important;
 }
 </style>

@@ -19,7 +19,7 @@ export const telemetryUtils = Vue.extend({
 		 * $input.last().
 		 *
 		 * $json['field'].
-		 * $json["field'].
+		 * $json["field"].
 		 * $json.field'.
 		 *
 		 * $('nodeName').all().

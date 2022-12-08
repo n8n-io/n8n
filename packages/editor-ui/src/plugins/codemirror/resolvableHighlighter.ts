@@ -5,7 +5,7 @@ import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 
 import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/types/expressions';
 
-// @TODO: Clean up and document
+// @TODO: Document
 
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',

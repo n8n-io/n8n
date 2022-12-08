@@ -709,10 +709,6 @@ export default mixins(
 					classes['parameter-value-container'] = true;
 				}
 
-				if (this.isValueExpression || this.forceShowExpression) {
-					classes['expression'] = true;
-				}
-
 				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight) && !this.isValueExpression) {
 					classes['has-issues'] = true;
 				}
@@ -1150,20 +1146,8 @@ export default mixins(
 	background-color: #f0f0f0;
 }
 
-.expression {
-	// textarea, input {
-	// 	cursor: pointer !important;
-	// }
-
-	// --input-border-color: var(--color-secondary-tint-1);
-	// --input-background-color: var(--color-secondary-tint-3);
-	// --input-font-color: var(--color-secondary);
-}
-
-
 .droppable {
 	--input-border-color: var(--color-secondary);
-	// --input-background-color: var(--color-secondary-tint-3);
 	--input-border-style: dashed;
 
 	textarea, input, .cm-editor {
