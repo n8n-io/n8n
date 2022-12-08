@@ -1,15 +1,24 @@
 import { NodeCreator } from '../pages/features/node-creator';
 import { INodeTypeDescription } from '../../packages/workflow';
 import CustomNodeFixture from '../fixtures/Custom_node.json';
+import {DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD} from "../constants";
+import {randFirstName, randLastName} from "@ngneat/falso";
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	before(() => {
-		cy.task('db:reset');
-	})
+		cy.resetAll();
+		cy.setup({ email, firstName, lastName, password });
+	});
 
 	beforeEach(() => {
+		cy.signin({ email, password });
+
 		cy.intercept('GET', '/types/nodes.json', (req) => {
 			// Delete caching headers so that we can intercept the request
 			['etag', 'if-none-match', 'if-modified-since'].forEach(header => {delete req.headers[header]});
@@ -21,7 +30,8 @@ describe('Node Creator', () => {
 				nodes.push(CustomNodeFixture as INodeTypeDescription);
 				res.send(nodes)
 			})
-		}).as('nodesIntercept')
+		}).as('nodesIntercept');
+
 		cy.visit(nodeCreatorFeature.url);
 	});
 
@@ -87,7 +97,6 @@ describe('Node Creator', () => {
 		// TODO: Replace once we have canvas feature utils
 		cy.get('div').contains("On clicking 'execute'").should('exist');
 	})
-
 	it('check if non-core nodes are rendered', () => {
 		cy.wait('@nodesIntercept').then((interception) => {
 			const nodes = interception.response?.body as INodeTypeDescription[];
@@ -104,9 +113,18 @@ describe('Node Creator', () => {
 				nodeCreatorFeature.actions.toggleCategory(category)
 
 				// Check if all nodes are present
-				categorizedNodes[category].forEach((node: INodeTypeDescription) => {
-					if(node.hidden) return;
-					nodeCreatorFeature.getters.categorizedItems().contains(node.displayName).should('exist');
+				nodeCreatorFeature.getters.nodeItemName().then($elements => {
+					const visibleNodes: string[] = [];
+					$elements.each((_, element) => {
+						visibleNodes.push(element.textContent?.trim() || '');
+					})
+					const visibleCategoryNodes = (categorizedNodes[category] as INodeTypeDescription[])
+						.filter(node => !node.hidden)
+						.map(node => node.displayName?.trim());
+
+					cy.wrap(visibleCategoryNodes).each((categoryNode: string) => {
+						expect(visibleNodes).to.include(categoryNode);
+					});
 				})
 
 				nodeCreatorFeature.actions.toggleCategory(category)

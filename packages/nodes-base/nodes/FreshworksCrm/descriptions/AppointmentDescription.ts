@@ -260,7 +260,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map((tz) => ({ name: tz, value: tz })),
+				options: tz.names().map((timeZone) => ({ name: timeZone, value: timeZone })),
 			},
 		],
 	},
@@ -576,7 +576,7 @@ export const appointmentFields: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description: 'Timezone that the appointment is scheduled in',
-				options: tz.names().map((tz) => ({ name: tz, value: tz })),
+				options: tz.names().map((timeZone) => ({ name: timeZone, value: timeZone })),
 			},
 			{
 				displayName: 'Title',

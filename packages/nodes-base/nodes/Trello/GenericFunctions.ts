@@ -14,7 +14,6 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query = query || {};
 
@@ -35,7 +34,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query.limit = 30;
 

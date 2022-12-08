@@ -41,8 +41,8 @@ abstract class ResponseError extends Error {
 }
 
 export class BadRequestError extends ResponseError {
-	constructor(message: string) {
-		super(message, 400);
+	constructor(message: string, errorCode?: number) {
+		super(message, 400, errorCode);
 	}
 }
 
@@ -133,7 +133,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 
 	const response: ErrorResponse = {
 		code: 0,
-		message: 'Unknown error',
+		message: error.message ?? 'Unknown error',
 	};
 
 	if (error instanceof ResponseError) {
@@ -141,7 +141,6 @@ export function sendErrorResponse(res: Response, error: Error) {
 			console.error(picocolors.red(error.httpStatusCode), error.message);
 		}
 
-		response.message = error.message;
 		httpStatusCode = error.httpStatusCode;
 
 		if (error.errorCode) {

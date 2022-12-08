@@ -534,13 +534,13 @@ export class CiscoWebexTrigger implements INodeType {
 				};
 
 				if (filters.ownedBy) {
-					body['ownedBy'] = filters.ownedBy as string;
+					body.ownedBy = filters.ownedBy as string;
 				}
 
-				body['secret'] = secret;
+				body.secret = secret;
 
 				if (filter.length) {
-					body['filter'] = filter.join('&');
+					body.filter = filter.join('&');
 				}
 
 				const responseData = await webexApiRequest.call(this, 'POST', endpoint, body);

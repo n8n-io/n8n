@@ -60,9 +60,6 @@ export class QuestDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -214,7 +211,7 @@ export class QuestDb implements INodeType {
 		let returnItems: INodeExecutionData[] = [];
 
 		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -256,7 +253,7 @@ export class QuestDb implements INodeType {
 
 			returnItems = this.helpers.returnJsonArray(insertData);
 		} else {
-			await pgp.end();
+			pgp.end();
 			throw new NodeOperationError(
 				this.getNode(),
 				`The operation "${operation}" is not supported!`,
@@ -264,7 +261,7 @@ export class QuestDb implements INodeType {
 		}
 
 		// Close the connection
-		await pgp.end();
+		pgp.end();
 
 		return this.prepareOutputData(returnItems);
 	}

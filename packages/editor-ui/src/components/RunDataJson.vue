@@ -16,7 +16,6 @@
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
-			ref="draggable"
 		>
 			<template #preview="{ canDrop, el }">
 				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
@@ -47,7 +46,19 @@
 					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
-						<span>{{ getContent(node.content) }}</span>
+						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
+						<span
+							v-else
+							data-target="mappable"
+							:data-value="getJsonParameterPath(node.path)"
+							:data-name="getListItemName(node.path)"
+							:data-path="node.path"
+							:data-depth="node.level"
+							:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>{{ getContent(node.content) }}</span>
 					</template>
 				</vue-json-pretty>
 			</template>
@@ -80,9 +91,6 @@ export default mixins(externalHooks).extend({
 	props: {
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string; },
-		},
-		currentOutputIndex: {
-			type: Number,
 		},
 		sessionId: {
 			type: String,
@@ -197,6 +205,9 @@ export default mixins(externalHooks).extend({
 		getContent(value: unknown): string {
 			return isString(value) ? `"${ value }"` : JSON.stringify(value);
 		},
+		getListItemName(path: string): string {
+			return path.replace(/^(\["?\d"?]\.?)/g, '');
+		},
 	},
 });
 </script>
@@ -214,7 +225,6 @@ export default mixins(externalHooks).extend({
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
 	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 
 	&:hover {
 		/* Shows .actionsGroup element from <run-data-json-actions /> child component */
@@ -240,7 +250,10 @@ export default mixins(externalHooks).extend({
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	display: flex;
+	height: 24px;
+	align-items: center;
+	padding: 0 var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
