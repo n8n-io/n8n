@@ -2,7 +2,6 @@
 	<div
 		:class="{
 			[$style.creatorNode]: true,
-			[$style.padingless]: padingless,
 			[$style.hasAction]: !showActionArrow,
 		}"
 		v-on="$listeners"
@@ -41,7 +40,6 @@ export interface Props {
 	isTrigger?: boolean;
 	description?: string;
 	title: string;
-	padingless?: boolean;
 	showActionArrow?: boolean;
 }
 
@@ -58,12 +56,10 @@ defineEmits<{
 	align-items: center;
 	cursor: pointer;
 	z-index: 1;
+	padding: 11px 8px 11px 0;
 
 	&.hasAction {
 		user-select: none;
-	}
-	&:not(&.padingless) {
-		padding: 11px 8px 11px 0;
 	}
 }
 .creatorNode:hover .panelIcon {
@@ -100,10 +96,6 @@ defineEmits<{
 		max-width: 25px;
 	}
 }
-.test {
-	width: 1px;
-	height: 1px;
-}
 .name {
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
@@ -119,10 +111,6 @@ defineEmits<{
 
 .triggerIcon {
 	margin-left: var(--spacing-2xs);
-}
-
-.tooltip {
-	vertical-align: top;
 }
 </style>
 

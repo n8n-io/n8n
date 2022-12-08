@@ -274,7 +274,7 @@ function getCustomAPICallHintLocale(key: string) {
 }
 // The nodes.json doesn't contain API CALL option so we need to fetch the node detail
 // to determine if need to render the API CALL hint
-async function fechNodeDetails() {
+async function fetchNodeDetails() {
 	if(!state.activeNodeActions) return;
 
 	const { getNodesInformation } = useNodeTypesStore();
@@ -292,7 +292,7 @@ async function fechNodeDetails() {
 function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 	state.activeNodeActions = nodeType;
 	setShowTabs(false);
-	fechNodeDetails();
+	fetchNodeDetails();
 
 	if(nodeType) trackActionsView();
 }
