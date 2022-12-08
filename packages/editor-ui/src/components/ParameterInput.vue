@@ -882,13 +882,6 @@ export default mixins(
 				this.expressionEditDialogVisible = true;
 				this.trackExpressionEditOpen();
 			},
-			openExpressionEdit() {
-				// if (this.isValueExpression) {
-				// 	this.expressionEditDialogVisible = true;
-				// 	this.trackExpressionEditOpen();
-				// 	return;
-				// }
-			},
 			onBlur () {
 				this.$emit('blur');
 				this.isFocused = false;
