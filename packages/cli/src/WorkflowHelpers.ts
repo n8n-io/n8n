@@ -580,9 +580,11 @@ export function validateWorkflowCredentialUsage(
 			nodeName: node.name,
 			nodeId: node.id,
 		});
+		const disabledFlag = newWorkflowVersion.nodes[nodeIdx].disabled;
 		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
 			(previousNode) => previousNode.id === node.id,
-		)!;
+		) as INode;
+		newWorkflowVersion.nodes[nodeIdx].disabled = disabledFlag;
 	});
 
 	return newWorkflowVersion;
