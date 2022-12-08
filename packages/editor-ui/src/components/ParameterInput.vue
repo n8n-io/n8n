@@ -109,7 +109,7 @@
 					<template #suffix>
 						<div class="expand-input-icon-container">
 							<font-awesome-icon
-								v-if="!isReadOnly"
+								v-if="!isReadOnly && !isSecretParameter"
 								icon="expand-alt"
 								class="edit-window-button clickable"
 								:title="$locale.baseText('parameterInput.openEditWindow')"
@@ -745,6 +745,9 @@ export default mixins(
 			},
 			isResourceLocatorParameter (): boolean {
 				return this.parameter.type === 'resourceLocator';
+			},
+			isSecretParameter (): boolean {
+				return this.getArgument('password') === true;
 			},
 		},
 		methods: {
