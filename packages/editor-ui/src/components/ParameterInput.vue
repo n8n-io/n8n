@@ -890,7 +890,6 @@ export default mixins(
 				this.$emit('drop', data);
 			},
 			setFocus () {
-				console.log('setFocus called');
 				if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
 					return;
