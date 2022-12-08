@@ -1248,15 +1248,15 @@ export default mixins(
 	right: 0;
 }
 
-// @TODO: Dedup with expression-editor-modal-opener
+// @TODO_TECH_DEBT(N8N-5860): Deduplicate with expression-editor-modal-opener
 .textarea-modal-opener {
 	position: absolute;
 	right: 0;
 	bottom: 0;
 	background-color: white;
-	padding: 3px; // intentionally hardcoded
-	border: var(--border-base);
+	padding: 3px;
 	line-height: 9px;
+	border: var(--border-base);
 	border-top-left-radius: var(--border-radius-base);
 	border-bottom-right-radius: var(--border-radius-base);
 	cursor: pointer;

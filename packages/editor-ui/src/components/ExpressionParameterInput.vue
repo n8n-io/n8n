@@ -195,13 +195,13 @@ export default mixins(telemetryUtils).extend({
 	cursor: pointer;
 }
 
-// @TODO: Dedup with textarea-modal-opener
+// @TODO_TECH_DEBT(N8N-5860): Deduplicate with textarea-modal-opener
 .expression-editor-modal-opener {
 	position: absolute;
 	right: 0;
 	bottom: 0;
 	background-color: white;
-	padding: 3px; // intentionally hardcoded
+	padding: 3px;
 	line-height: 9px;
 	border: var(--border-base);
 	border-top-left-radius: var(--border-radius-base);
