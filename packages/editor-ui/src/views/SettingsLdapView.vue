@@ -5,10 +5,18 @@
 					{{ $locale.baseText('settings.ldap') }}
 				</n8n-heading>
 			</div>
+
+			<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right">
+				<div>
+					LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP
+interface like Active Directory, Okta and Jumpcloud.
+				</div>
+				<br>
+			</n8n-info-tip>
 			<n8n-action-box
 				:description="$locale.baseText('settings.ldap.disabled.description')"
 				:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-				@click="openDocsPage"
+				@click="onContactUsClick"
 			>
 				<template #heading>
 					<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
@@ -220,8 +228,12 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		openDocsPage(event: MouseEvent): void {
-			window.open('https://n8n.io/pricing/', '_blank');
+		onContactUsClick(event: MouseEvent): void {
+			let contactEmail = 'hello@n8n.io';
+			if (this.settingsStore.isCloudDeployment) {
+				contactEmail = 'support@n8n.io ';
+			}
+			location.href = `mailto:${contactEmail}`;
 		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
