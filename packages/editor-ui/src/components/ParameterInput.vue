@@ -983,8 +983,6 @@ export default mixins(
 
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
-				} else if (command === 'openExpression') {
-					// this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
