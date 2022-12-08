@@ -13,7 +13,7 @@ import { outputTheme } from './theme';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 
 export default Vue.extend({
-	name: 'expression-modal-output',
+	name: 'ExpressionEditorModalOutput',
 	props: {
 		segments: {
 			type: Array as PropType<Segment[]>,

@@ -18,7 +18,7 @@ import { inputTheme } from './theme';
 import type { IVariableItemSelected } from '@/Interface';
 
 export default mixins(expressionManager, workflowHelpers).extend({
-	name: 'expression-modal-input',
+	name: 'ExpressionEditorModalInput',
 	props: {
 		value: {
 			type: String,

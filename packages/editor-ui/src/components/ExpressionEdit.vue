@@ -36,7 +36,7 @@
 							</div>
 						</div>
 						<div class="expression-editor ph-no-capture">
-							<expression-modal-input
+							<ExpressionEditorModalInput
 								:value="value"
 								:isReadOnly="isReadOnly"
 								@change="valueChanged"
@@ -51,7 +51,7 @@
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
-							<expression-modal-output
+							<ExpressionEditorModalOutput
 								:segments="segments"
 								ref="expressionResult"
 								data-test-id="expression-modal-output"
@@ -67,8 +67,8 @@
 </template>
 
 <script lang="ts">
-import ExpressionModalInput from '@/components/ExpressionEditorModal/ExpressionModalInput.vue';
-import ExpressionModalOutput from '@/components/ExpressionEditorModal/ExpressionModalOutput.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
@@ -102,8 +102,8 @@ export default mixins(
 		'eventSource',
 	],
 	components: {
-		ExpressionModalInput,
-		ExpressionModalOutput,
+		ExpressionEditorModalInput,
+		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
 	data () {

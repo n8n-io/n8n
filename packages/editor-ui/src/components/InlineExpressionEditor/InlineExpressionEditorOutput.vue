@@ -13,7 +13,7 @@ import { outputTheme } from './theme';
 import type { Plaintext, Resolved, Segment } from '@/types/expressions';
 
 export default Vue.extend({
-	name: 'inline-expression-editor-output',
+	name: 'InlineExpressionEditorOutput',
 	props: {
 		segments: {
 			type: Array as PropType<Segment[]>,

@@ -78,7 +78,7 @@
 								}"
 								@keydown.stop="onKeyDown"
 							>
-								<expression-parameter-input
+								<ExpressionParameterInput
 									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
 									isForRecordLocator

@@ -8,9 +8,9 @@
 					{ [$style['squared']]: isForRecordLocator },
 				]"
 			>
-				<expression-function-icon />
+				<ExpressionFunctionIcon />
 			</div>
-			<inline-expression-editor-input
+			<InlineExpressionEditorInput
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
@@ -34,7 +34,7 @@
 				{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 			</n8n-text>
 			<n8n-text :class="$style.body">
-				<inline-expression-editor-output
+				<InlineExpressionEditorOutput
 					:value="value"
 					:isReadOnly="isReadOnly"
 					:segments="segments"
@@ -71,10 +71,10 @@ import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
-Vue.component('expression-function-icon', ExpressionFunctionIcon);
+Vue.component('ExpressionFunctionIcon', ExpressionFunctionIcon);
 
 export default mixins(telemetryUtils).extend({
-	name: 'expression-parameter-input',
+	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,
 		InlineExpressionEditorOutput,

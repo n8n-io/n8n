@@ -34,7 +34,7 @@
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
-			<expression-parameter-input
+			<ExpressionParameterInput
 				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
