@@ -42,9 +42,9 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import { useWorkflowsStore } from '@/stores/workflows';
 
 export interface Props {
 	nodeType: INodeTypeDescription;
@@ -117,13 +117,14 @@ function onDragStart(event: DragEvent): void {
 
 	const { pageX: x, pageY: y } = event;
 
-
-
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = "copy";
 		event.dataTransfer.dropEffect = "copy";
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
-		event.dataTransfer.setData('nodeTypeName', props.nodeType.name);
+		event.dataTransfer.setData(
+			'nodeTypeName',
+			useNodeCreatorStore().getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+		);
 	}
 
 	state.dragging = true;
