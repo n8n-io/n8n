@@ -1,7 +1,7 @@
 import { normalizeItems } from 'n8n-core';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject, SUPPORTED_ITEM_KEYS } from './utils';
+import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 
 const { python, builtins } = require('pythonia');
 
@@ -9,17 +9,18 @@ import type {
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
-	IWorkflowDataProxyData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 // export class SandboxPython extends NodeVM {
 export class SandboxPython {
 	private code = '';
+
 	private itemIndex: number | undefined = undefined;
 
 	// private context: ReturnType<typeof getSandboxContextPython>;
 	private nodeMode: CodeNodeMode;
+
 	private workflowMode: WorkflowExecuteMode;
 
 	constructor(
@@ -128,11 +129,11 @@ responseCallback(cleanup_proxy_data(main()))
 
 				if (
 					executionResult.some((item) =>
-						Object.keys(item).find((key) => SUPPORTED_ITEM_KEYS.has(key)),
+						Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
 					)
 				) {
 					Object.keys(item).forEach((key) => {
-						if (SUPPORTED_ITEM_KEYS.has(key)) return;
+						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 
 						throw new ValidationError({
 							message: `Unknown top-level item key: ${key}`,
