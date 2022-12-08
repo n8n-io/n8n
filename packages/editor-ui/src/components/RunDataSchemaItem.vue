@@ -211,7 +211,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		span {
 			color: var(--color-primary);
 			border-color: var(--color-primary-tint-1);
-			background: var(--color-primary-tint-3);
+			background-color: var(--color-primary-tint-3);
 
 			svg {
 				path {
