@@ -2074,9 +2074,7 @@ export default mixins(
 							// Ff connection being detached by user, save this in history
 							// but skip if it's detached as a side effect of bulk undo/redo or node rename process
 							const removeCommand = new RemoveConnectionCommand(connectionInfo, this);
-							if (!this.historyStore.currentBulkContainsConnectionCommand(removeCommand)) {
-								this.historyStore.pushCommandToUndo(removeCommand);
-							}
+							this.historyStore.pushCommandToUndo(removeCommand);
 						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
@@ -2388,9 +2386,7 @@ export default mixins(
 						{ index: connection.__meta?.targetOutputIndex, node: connection.__meta.targetNodeName, type: 'main' },
 					];
 					const removeCommand = new RemoveConnectionCommand(connectionData, this);
-					if (!this.historyStore.currentBulkContainsConnectionCommand(removeCommand)) {
-						this.historyStore.pushCommandToUndo(removeCommand);
-					}
+					this.historyStore.pushCommandToUndo(removeCommand);
 				}
 			},
 			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false, trackHistory = false) {

@@ -34,6 +34,7 @@ export abstract class Command extends Undoable {
 		this.eventBus = eventBus;
 	}
 	abstract getReverseCommand(): Command;
+	abstract isEqualTo(anotherCommand: Command): boolean;
 	abstract revert(): Promise<void>;
 }
 
@@ -67,6 +68,17 @@ export class MoveNodeCommand extends Command {
 		);
 	}
 
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof MoveNodeCommand &&
+			anotherCommand.nodeName === this.nodeName &&
+			anotherCommand.oldPosition[0] === this.oldPosition[0] &&
+			anotherCommand.oldPosition[1] === this.oldPosition[1] &&
+			anotherCommand.newPosition[0] === this.newPosition[0] &&
+			anotherCommand.newPosition[1] === this.newPosition[1]
+		);
+	}
+
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
 			this.eventBus.$root.$emit('nodeMove', { nodeName: this.nodeName, position: this.oldPosition });
@@ -85,6 +97,13 @@ export class AddNodeCommand extends Command {
 
 	getReverseCommand(): Command {
 		return new RemoveNodeCommand(this.node, this.eventBus);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof AddNodeCommand &&
+			anotherCommand.node.name === this.node.name
+		);
 	}
 
 	async revert(): Promise<void> {
@@ -107,6 +126,13 @@ export class RemoveNodeCommand extends Command {
 		return new AddNodeCommand(this.node, this.eventBus);
 	}
 
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof AddNodeCommand &&
+			anotherCommand.node.name === this.node.name
+		);
+	}
+
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
 			this.eventBus.$root.$emit('revertRemoveNode', { node: this.node });
@@ -127,6 +153,16 @@ export class AddConnectionCommand extends Command {
 		return new RemoveConnectionCommand(this.connectionData, this.eventBus);
 	}
 
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof AddConnectionCommand &&
+			anotherCommand.connectionData[0].node === this.connectionData[0].node &&
+			anotherCommand.connectionData[1].node === this.connectionData[1].node &&
+			anotherCommand.connectionData[0].index === this.connectionData[0].index &&
+			anotherCommand.connectionData[1].index === this.connectionData[1].index
+		);
+	}
+
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
 			this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
@@ -145,6 +181,16 @@ export class RemoveConnectionCommand extends Command {
 
 	getReverseCommand(): Command {
 			return new AddConnectionCommand(this.connectionData, this.eventBus);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof RemoveConnectionCommand &&
+			anotherCommand.connectionData[0].node === this.connectionData[0].node &&
+			anotherCommand.connectionData[1].node === this.connectionData[1].node &&
+			anotherCommand.connectionData[0].index === this.connectionData[0].index &&
+			anotherCommand.connectionData[1].index === this.connectionData[1].index
+		);
 	}
 
 	async revert(): Promise<void> {
@@ -173,6 +219,13 @@ export class EnableNodeToggleCommand extends Command {
 			return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState, this.eventBus);
 	}
 
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof EnableNodeToggleCommand &&
+			anotherCommand.nodeName === this.nodeName
+		);
+	}
+
 	async revert(): Promise<void> {
 		return new Promise<void>(resolve => {
 			this.eventBus.$root.$emit('enableNodeToggle', { nodeName: this.nodeName, isDisabled: this.oldState });
@@ -193,6 +246,14 @@ export class RenameNodeCommand extends Command {
 
 	getReverseCommand(): Command {
 			return new RenameNodeCommand(this.newName, this.currentName, this.eventBus);
+	}
+
+	isEqualTo(anotherCommand: Command): boolean {
+		return (
+			anotherCommand instanceof RenameNodeCommand &&
+			anotherCommand.currentName === this.currentName &&
+			anotherCommand.newName === this.newName
+		);
 	}
 
 	async revert(): Promise<void> {
