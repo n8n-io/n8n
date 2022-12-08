@@ -112,7 +112,7 @@ export default mixins(telemetryUtils).extend({
 			return this.ndvStore.isDraggableDragging;
 		},
 		currentNodePaneType(): string {
-			return this.ndvStore.getCurrentNodePaneType;
+			return this.ndvStore.currentNodePaneType;
 		},
 	},
 	methods: {

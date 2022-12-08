@@ -105,9 +105,6 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		isDNVDataEmpty() {
 			return (panel: 'input' | 'output'): boolean => this[panel].data.isEmpty;
 		},
-		getCurrentNodePaneType(): string {
-			return this.currentNodePaneType;
-		},
 	},
 	actions: {
 		setInputNodeName(name: string | undefined): void {
