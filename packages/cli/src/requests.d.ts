@@ -347,4 +347,5 @@ export declare namespace CurlHelper {
 
 export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Renew = AuthenticatedRequest<>;
 }

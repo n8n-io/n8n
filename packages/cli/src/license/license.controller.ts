@@ -45,6 +45,10 @@ async function getLicenseData() {
 	};
 }
 
+/**
+ * GET /license
+ * Get the license data, usable by everyone
+ */
 licenseController.get(
 	'/',
 	ResponseHelper.send(async () => {
@@ -71,6 +75,39 @@ licenseController.post(
 		const license = getLicense();
 		try {
 			await license.activate(req.body.activationKey, true);
+		} catch (e) {
+			if (e instanceof Error) {
+				throw new ResponseHelper.BadRequestError(e.message);
+			}
+		}
+
+		// Return the read data, plus the management JWT
+		return {
+			managementToken: license.getManagementJWT(),
+			...(await getLicenseData()),
+		};
+	}),
+);
+
+/**
+ * POST /license/renew
+ * Only usable by instance owner, renews a license
+ */
+licenseController.post(
+	'/renew',
+	ResponseHelper.send(async (req: LicenseRequest.Renew) => {
+		// First ensure that the requesting user is the instance owner
+		if (!isInstanceOwner(req.user)) {
+			LoggerProxy.info('Non-owner attempted to renew a license', {
+				userId: req.user.id,
+			});
+			throw new ResponseHelper.NotFoundError('Only an instance owner may renew a license');
+		}
+
+		// Call the license manager activate function and tell it to throw an error
+		const license = getLicense();
+		try {
+			await license.renew(true);
 		} catch (e) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);

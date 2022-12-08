@@ -87,7 +87,7 @@ export class License {
 		}
 	}
 
-	async renew() {
+	async renew(throwError = false) {
 		if (!this.manager) {
 			return;
 		}
@@ -97,6 +97,9 @@ export class License {
 		} catch (e) {
 			if (e instanceof Error) {
 				this.logger.error('Could not renew license', e);
+				if (throwError) {
+					throw e;
+				}
 			}
 		}
 	}
