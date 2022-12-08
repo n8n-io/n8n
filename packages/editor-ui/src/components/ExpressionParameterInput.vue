@@ -265,8 +265,6 @@ export default mixins(telemetryUtils).extend({
 		padding-top: 0;
 		padding-left: var(--spacing-2xs);
 		color: var(--color-text-dark);
-		// max-height: 80px;
-		// padding-bottom: 14px;
 	}
 
 	.footer {
