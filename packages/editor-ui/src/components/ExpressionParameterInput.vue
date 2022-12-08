@@ -145,7 +145,7 @@ export default mixins(telemetryUtils).extend({
 			this.paneWidth = this.getPaneWidth();
 			if (oldPaneWidth !== this.paneWidth) return;
 
-			const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value, ''); // @TODO: eventSource
+			const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value, 'ndv');
 
 			this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 

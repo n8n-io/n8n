@@ -45,16 +45,17 @@ export const telemetryUtils = Vue.extend({
 
 			return regex.test(resolvable);
 		},
+		exposeErrorProperties(error: Error) {
+			return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
+				// @ts-ignore
+				acc[key] = error[key];
+
+				return acc;
+			}, {});
+		},
 		createExpressionTelemetryPayload(segments: Segment[], value: string, eventSource: string) {
 			const resolvableSegments = segments.filter((s): s is Resolvable => s.kind === 'resolvable');
 			const errorResolvables = resolvableSegments.filter((r) => r.error);
-
-			const exposeErrorProperties = (error: Error) => {
-				return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
-					// @ts-ignore
-					return (acc[key] = error[key]), acc;
-				}, {});
-			};
 
 			return {
 				empty_expression: value === '=' || value === '={{}}' || !value,
@@ -67,15 +68,15 @@ export const telemetryUtils = Vue.extend({
 				node_type: this.ndvStore.activeNode?.type ?? '',
 				handlebar_count: resolvableSegments.length,
 				handlebar_error_count: errorResolvables.length,
+				short_errors: errorResolvables.map((r) => r.resolved ?? null),
 				full_errors: errorResolvables.map((errorResolvable) => {
 					return errorResolvable.fullError
 						? {
-								...exposeErrorProperties(errorResolvable.fullError),
+								...this.exposeErrorProperties(errorResolvable.fullError),
 								stack: errorResolvable.fullError.stack,
-						  }
+							}
 						: null;
 				}),
-				short_errors: errorResolvables.map((r) => r.resolved ?? null),
 			};
 		},
 	},
