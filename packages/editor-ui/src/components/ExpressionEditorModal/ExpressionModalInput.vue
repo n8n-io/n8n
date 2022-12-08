@@ -94,13 +94,13 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			const { doc, selection } = this.editor.state;
 			const { head } = selection.main;
 
-			const beforeIsBraced = doc.toString().slice(0, head).includes(OPEN_MARKER);
-			const afterIsBraced = doc.toString().slice(head, doc.length).includes(CLOSE_MARKER);
+			const isInsideResolvable =
+				doc.toString().slice(0, head).includes(OPEN_MARKER) &&
+				doc.toString().slice(head, doc.length).includes(CLOSE_MARKER);
 
-			const insert =
-				beforeIsBraced && afterIsBraced
-					? variable
-					: [OPEN_MARKER, variable, CLOSE_MARKER].join(' ');
+			const insert = isInsideResolvable
+				? variable
+				: [OPEN_MARKER, variable, CLOSE_MARKER].join(' ');
 
 			this.editor.dispatch({
 				changes: {
