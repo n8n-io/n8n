@@ -312,7 +312,7 @@ function addHttpNode() {
 		},
 	} as IUpdateInformation;
 
-	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
+	emit('nodeTypeSelected', [MANUAL_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
 	setAddedNodeActionParameters(updateData, telemetry, false);
 
 	const app_identifier = state.activeNodeActions?.name;
