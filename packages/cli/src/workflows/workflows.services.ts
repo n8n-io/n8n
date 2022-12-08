@@ -353,7 +353,7 @@ export class WorkflowsService {
 				updatedWorkflow.active = false;
 
 				// Now return the original error for UI to display
-				throw error;
+				throw new ResponseHelper.BadRequestError((error as Error).message);
 			}
 		}
 

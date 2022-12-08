@@ -800,6 +800,7 @@ export class ActiveWorkflowRunner {
 
 			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated([
 				'n8n-nodes-base.start',
+				'n8n-nodes-base.manualTrigger',
 			]);
 			if (!canBeActivated) {
 				Logger.error(`Unable to activate workflow "${workflowData.name}"`);
