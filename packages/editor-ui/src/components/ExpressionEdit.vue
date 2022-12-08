@@ -214,11 +214,7 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				const telemetryPayload = this.createExpressionTelemetryPayload(
-					this.segments,
-					this.value,
-					this.eventSource,
-				);
+				const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);

@@ -53,7 +53,7 @@ export const telemetryUtils = Vue.extend({
 				return acc;
 			}, {});
 		},
-		createExpressionTelemetryPayload(segments: Segment[], value: string, eventSource: string) {
+		createExpressionTelemetryPayload(segments: Segment[], value: string, eventSource = 'ndv') {
 			const resolvableSegments = segments.filter((s): s is Resolvable => s.kind === 'resolvable');
 			const errorResolvables = resolvableSegments.filter((r) => r.error);
 
