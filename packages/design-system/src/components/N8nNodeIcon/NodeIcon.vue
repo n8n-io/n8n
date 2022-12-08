@@ -2,9 +2,9 @@
 	<div class="n8n-node-icon">
 		<div
 			:class="{
-				[$style['node-icon-wrapper']]: true,
-				[$style['circle']]: this.circle,
-				[$style['disabled']]: this.disabled,
+				[$style.nodeIconWrapper]: true,
+				[$style.circle]: circle,
+				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
 			v-on="$listeners"
@@ -13,20 +13,20 @@
 			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
 				<div v-if="type !== 'unknown'" :class="$style['icon']">
-					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
 				</div>
-				<div v-else :class="$style['node-icon-placeholder']">
+				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
 					?
 				</div>
 			</n8n-tooltip>
 			<template v-else>
-				<div v-if="type !== 'unknown'" :class="$style['icon']">
-					<img v-if="type === 'file'" :src="src" :class="$style['node-icon-image']" />
+				<div v-if="type !== 'unknown'" :class="$style.icon">
+					<img v-if="type === 'file'" :src="src" :class="$style.nodeIconImage" />
 					<font-awesome-icon v-else :icon="name" :style="fontStyleData" />
 				</div>
-				<div v-else :class="$style['node-icon-placeholder']">
+				<div v-else :class="$style.nodeIconPlaceholder">
 					{{ nodeTypeName ? nodeTypeName.charAt(0) : '?' }}
 					?
 				</div>
@@ -102,7 +102,7 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.node-icon-wrapper {
+.nodeIconWrapper {
 	width: 26px;
 	height: 26px;
 	border-radius: var(--border-radius-small);
@@ -121,13 +121,12 @@ export default Vue.extend({
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	pointer-events: none;
 }
-
-.node-icon-placeholder {
+.nodeIconPlaceholder {
 	text-align: center;
 }
-
-.node-icon-image {
+.nodeIconImage {
 	width: 100%;
 	max-width: 100%;
 	max-height: 100%;

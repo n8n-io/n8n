@@ -170,6 +170,7 @@ const { dragging, draggableDataTransfer } = toRefs(state);
 	--trigger-icon-border-color: #{$trigger-icon-border-color};
 	margin-left: 15px;
 	margin-right: 12px;
+	user-select: none;
 }
 
 .communityNodeIcon {
