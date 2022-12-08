@@ -81,7 +81,7 @@
 								<expression-parameter-input
 									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
-									squarePrependSection
+									isForRecordLocator
 									@valueChanged="onInputChange"
 									@openerClick="$emit('openerClick')"
 									ref="input"

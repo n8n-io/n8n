@@ -5,7 +5,7 @@
 				:class="[
 					$style['prepend-section'],
 					'el-input-group__prepend',
-					{ [$style['squared']]: squarePrependSection },
+					{ [$style['squared']]: isForRecordLocator },
 				]"
 			>
 				<expression-function-icon />
@@ -14,7 +14,7 @@
 				:value="value"
 				:isReadOnly="isReadOnly"
 				:targetItem="hoveringItem"
-				:isSingleLine="squarePrependSection"
+				:isSingleLine="isForRecordLocator"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
@@ -97,7 +97,7 @@ export default mixins(telemetryUtils).extend({
 		/**
 		 * Whether the prepend section has right-angle borders. Only for record locator.
 		 */
-		squarePrependSection: {
+		isForRecordLocator: {
 			type: Boolean,
 			default: false,
 		},
