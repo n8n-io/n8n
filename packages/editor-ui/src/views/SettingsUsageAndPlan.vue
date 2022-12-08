@@ -16,9 +16,9 @@
 				</template>
 			</i18n>
 		</div>
-		<n8n-alert :background="false">
+		<n8n-info-tip>
 			{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}
-		</n8n-alert>
+		</n8n-info-tip>
 		<div :class="$style.buttons">
 			<n8n-button type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
 			<n8n-button size="large">
@@ -51,6 +51,7 @@ const usageAndPlanStore = useUsageAndPlanStore();
 .quota {
 	height: 54px;
 	padding: 0 var(--spacing-s);
+	margin: 0 0 var(--spacing-xs);
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-light-grey);
@@ -59,12 +60,6 @@ const usageAndPlanStore = useUsageAndPlanStore();
 		text-transform: lowercase;
 		font-size: var(--font-size-s);
 	}
-}
-
-[role="alert"] {
-	padding-left: 0;
-	padding-right: 0;
-	line-height: 18px;
 }
 
 .buttons {
