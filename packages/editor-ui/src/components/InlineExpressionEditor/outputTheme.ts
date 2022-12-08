@@ -30,7 +30,7 @@ export const EXPRESSION_EDITOR_THEME = [
 			// lineHeight: '0.875rem',
 		},
 		'.cm-content': {
-			fontFamily: 'var(--font-family)',
+			fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
 			// height: '220px',
 			// padding: '12px', // var(--spacing-xs)
 			color: 'var(--input-font-color, var(--color-text-dark))',
