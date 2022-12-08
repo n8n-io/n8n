@@ -890,12 +890,6 @@ export default mixins(
 				this.$emit('drop', data);
 			},
 			setFocus () {
-				// if (this.isValueExpression) {
-				// 	this.expressionEditDialogVisible = true;
-				// 	this.trackExpressionEditOpen();
-				// 	return;
-				// }
-
 				if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
 					return;
