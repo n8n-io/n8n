@@ -1,5 +1,5 @@
-import { createPinia, setActivePinia } from "pinia";
-import { useUsageAndPlanStore } from "@/stores/usageAndPlan";
+import { createPinia, setActivePinia } from 'pinia';
+import { useUsageStore } from '@/stores/usage';
 
 
 describe('Usage and plan store', () => {
@@ -17,7 +17,7 @@ describe('Usage and plan store', () => {
 		[-1, 99, .8, false],
 		[-1, 99, .1, false],
 	])('should check if workflow usage is close to limit', (limit, value, warningThreshold, expectation) => {
-		const store = useUsageAndPlanStore();
+		const store = useUsageStore();
 		store.setData({
 			usage: {
 				executions: {

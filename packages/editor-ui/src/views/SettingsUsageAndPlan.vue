@@ -1,16 +1,28 @@
+<script lang="ts" setup>
+import { onMounted } from 'vue';
+import { useUsageStore } from '@/stores/usage';
+
+const usageStore = useUsageStore();
+
+onMounted(() => {
+	usageStore.getData();
+});
+
+</script>
+
 <template>
-	<div>
+	<div  v-if="!usageStore.isLoading">
 		<n8n-heading size="2xlarge">{{ $locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-heading :class="$style.title" size="large">
-			{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: { plan: usageAndPlanStore.planName } }) }}
+			{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: {plan: usageStore.planName } } ) }}
 		</n8n-heading>
 		<div :class="$style.quota">
 			<n8n-text size="medium" color="text-light">{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}</n8n-text>
 			<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
-				<template #count>{{ usageAndPlanStore.executionCount }}</template>
+				<template #count>{{ usageStore.executionCount }}</template>
 				<template #limit>
-					<span v-if="usageAndPlanStore.executionLimit < 0">{{ $locale.baseText('_reusableBaseText.unlimited') }}</span>
-					<span v-else>{{ usageAndPlanStore.executionLimit }}</span>
+					<span v-if="usageStore.executionLimit < 0">{{ $locale.baseText('_reusableBaseText.unlimited') }}</span>
+					<span v-else>{{ usageStore.executionLimit }}</span>
 				</template>
 			</i18n>
 		</div>
@@ -25,12 +37,6 @@
 		</div>
 	</div>
 </template>
-<script lang="ts" setup>
-import { useUsageAndPlanStore } from "@/stores/usageAndPlan";
-
-const usageAndPlanStore = useUsageAndPlanStore();
-
-</script>
 
 <style lang="scss" module>
 .spacedFlex {
