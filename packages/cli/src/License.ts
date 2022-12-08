@@ -65,7 +65,7 @@ export class License {
 		}
 	}
 
-	async activate(activationKey: string, throwError = false): Promise<void> {
+	async activate(activationKey: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
@@ -74,34 +74,15 @@ export class License {
 			return;
 		}
 
-		try {
-			await this.manager.activate(activationKey);
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not activate license', e);
-				if (throwError) {
-					// Throw error up to the API
-					throw e;
-				}
-			}
-		}
+		await this.manager.activate(activationKey);
 	}
 
-	async renew(throwError = false) {
+	async renew() {
 		if (!this.manager) {
 			return;
 		}
 
-		try {
-			await this.manager.renew();
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not renew license', e);
-				if (throwError) {
-					throw e;
-				}
-			}
-		}
+		await this.manager.renew();
 	}
 
 	isFeatureEnabled(feature: string): boolean {

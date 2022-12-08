@@ -399,7 +399,11 @@ class App {
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await license.activate(activationKey);
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e);
+			}
 		}
 	}
 

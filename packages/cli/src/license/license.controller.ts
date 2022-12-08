@@ -74,7 +74,7 @@ licenseController.post(
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
-			await license.activate(req.body.activationKey, true);
+			await license.activate(req.body.activationKey);
 		} catch (e) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
@@ -107,7 +107,7 @@ licenseController.post(
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
-			await license.renew(true);
+			await license.renew();
 		} catch (e) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
