@@ -112,7 +112,7 @@ export class License {
 		return this.manager.getFeatureValue(feature, requireValidCert);
 	}
 
-	getManagementJWT(): string {
+	getManagementJwt(): string {
 		if (!this.manager) {
 			return '';
 		}

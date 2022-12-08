@@ -83,7 +83,7 @@ licenseController.post(
 
 		// Return the read data, plus the management JWT
 		return {
-			managementToken: license.getManagementJWT(),
+			managementToken: license.getManagementJwt(),
 			...(await getLicenseData()),
 		};
 	}),
@@ -116,7 +116,7 @@ licenseController.post(
 
 		// Return the read data, plus the management JWT
 		return {
-			managementToken: license.getManagementJWT(),
+			managementToken: license.getManagementJwt(),
 			...(await getLicenseData()),
 		};
 	}),
