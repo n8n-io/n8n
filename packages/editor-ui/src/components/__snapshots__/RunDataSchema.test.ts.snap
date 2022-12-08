@@ -12,7 +12,7 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
         class="_schema_1w572_1"
       >
         <div
-          class="_item_eg159_1"
+          class="_item_1bip5_1"
         >
           <!---->
           <!---->
@@ -23,18 +23,18 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
           />
           <!---->
           <div
-            class="_sub_eg159_14"
+            class="_sub_1bip5_14"
           >
             <div
-              class="_item_eg159_1"
+              class="_item_1bip5_1"
               style="transition-delay: 0s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_1bip5_51 _mappable_1bip5_70"
                 title="string"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_1bip5_89"
                   data-depth="1"
                   data-name="name"
                   data-path="[\\"name\\"]"
@@ -54,7 +54,7 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                 </span>
               </div>
               <span
-                class="_text_eg159_100"
+                class="_text_1bip5_100"
               >
                 John
               </span>
@@ -67,15 +67,15 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
               <!---->
             </div>
             <div
-              class="_item_eg159_1"
+              class="_item_1bip5_1"
               style="transition-delay: 0.033s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_1bip5_51 _mappable_1bip5_70"
                 title="number"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_1bip5_89"
                   data-depth="1"
                   data-name="age"
                   data-path="[\\"age\\"]"
@@ -95,7 +95,7 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                 </span>
               </div>
               <span
-                class="_text_eg159_100"
+                class="_text_1bip5_100"
               >
                 22
               </span>
@@ -108,15 +108,15 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
               <!---->
             </div>
             <div
-              class="_item_eg159_1"
+              class="_item_1bip5_1"
               style="transition-delay: 0.066s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_1bip5_51 _mappable_1bip5_70"
                 title="array"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_1bip5_89"
                   data-depth="1"
                   data-name="hobbies"
                   data-path="[\\"hobbies\\"]"
@@ -142,7 +142,7 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                 type="checkbox"
               />
               <label
-                class="_toggle_eg159_20"
+                class="_toggle_1bip5_20"
                 for="array-0-2"
               >
                 <font-awesome-icon-stub
@@ -150,18 +150,18 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                 />
               </label>
               <div
-                class="_sub_eg159_14"
+                class="_sub_1bip5_14"
               >
                 <div
-                  class="_item_eg159_1"
+                  class="_item_1bip5_1"
                   style="transition-delay: 0s;"
                 >
                   <div
-                    class="_pill_eg159_51 _mappable_eg159_70"
+                    class="_pill_1bip5_51 _mappable_1bip5_70"
                     title="string"
                   >
                     <span
-                      class="_label_eg159_89"
+                      class="_label_1bip5_89"
                       data-depth="2"
                       data-name="string[0]"
                       data-path="[\\"hobbies\\"][0]"
@@ -176,14 +176,14 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_eg159_94"
+                        class="_arrayIndex_1bip5_94"
                       >
                         [0]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_eg159_100"
+                    class="_text_1bip5_100"
                   >
                     surfing
                   </span>
@@ -196,15 +196,15 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                   <!---->
                 </div>
                 <div
-                  class="_item_eg159_1"
+                  class="_item_1bip5_1"
                   style="transition-delay: 0.033s;"
                 >
                   <div
-                    class="_pill_eg159_51 _mappable_eg159_70"
+                    class="_pill_1bip5_51 _mappable_1bip5_70"
                     title="string"
                   >
                     <span
-                      class="_label_eg159_89"
+                      class="_label_1bip5_89"
                       data-depth="2"
                       data-name="string[1]"
                       data-path="[\\"hobbies\\"][1]"
@@ -219,14 +219,14 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_eg159_94"
+                        class="_arrayIndex_1bip5_94"
                       >
                         [1]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_eg159_100"
+                    class="_text_1bip5_100"
                   >
                     traveling
                   </span>
