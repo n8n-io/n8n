@@ -5,8 +5,6 @@ import { syntaxHighlighting, HighlightStyle } from '@codemirror/language';
 
 import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from '@/types/expressions';
 
-// @TODO: Document
-
 const cssClasses = {
 	validResolvable: 'cm-valid-resolvable',
 	invalidResolvable: 'cm-invalid-resolvable',
@@ -14,19 +12,24 @@ const cssClasses = {
 	plaintext: 'cm-plaintext',
 };
 
-export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
+const resolvablesTheme = EditorView.theme({
 	['.' + cssClasses.validResolvable]: {
-		color: '#29a568',
-		backgroundColor: '#e1f3d8',
+		color: 'var(--color-valid-resolvable-foreground)',
+		backgroundColor: 'var(--color-valid-resolvable-background)',
 	},
 	['.' + cssClasses.invalidResolvable]: {
-		color: '#f45959',
-		backgroundColor: '#fef0f0',
+		color: 'var(--color-invalid-resolvable-foreground)',
+		backgroundColor: 'var(--color-invalid-resolvable-background)',
 	},
 });
 
-const stateEffects = {
-	addColor: StateEffect.define<ColoringStateEffect.Value>({
+const marks = {
+	valid: Decoration.mark({ class: cssClasses.validResolvable }),
+	invalid: Decoration.mark({ class: cssClasses.invalidResolvable }),
+};
+
+const coloringStateEffects = {
+	addColorEffect: StateEffect.define<ColoringStateEffect.Value>({
 		map: ({ from, to, kind, error }, change) => ({
 			from: change.mapPos(from),
 			to: change.mapPos(to),
@@ -34,7 +37,7 @@ const stateEffects = {
 			error,
 		}),
 	}),
-	removeColor: StateEffect.define<{ from: number; to: number }>({
+	removeColorEffect: StateEffect.define<ColoringStateEffect.Value>({
 		map: ({ from, to }, change) => ({
 			from: change.mapPos(from),
 			to: change.mapPos(to),
@@ -42,27 +45,23 @@ const stateEffects = {
 	}),
 };
 
-const marks = {
-	valid: Decoration.mark({ class: cssClasses.validResolvable }),
-	invalid: Decoration.mark({ class: cssClasses.invalidResolvable }),
-};
-
-const coloringField = StateField.define<DecorationSet>({
+const coloringStateField = StateField.define<DecorationSet>({
 	provide: (stateField) => EditorView.decorations.from(stateField),
 	create() {
 		return Decoration.none;
 	},
 	update(colorings, transaction) {
+		// map ranges onto tx ranges to adjust positions to new document
 		colorings = colorings.map(transaction.changes);
 
 		for (const txEffect of transaction.effects) {
-			if (txEffect.is(stateEffects.removeColor)) {
+			if (txEffect.is(coloringStateEffects.removeColorEffect)) {
 				colorings = colorings.update({
 					filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
 				});
 			}
 
-			if (txEffect.is(stateEffects.addColor)) {
+			if (txEffect.is(coloringStateEffects.addColorEffect)) {
 				colorings = colorings.update({
 					filter: (from, to) => txEffect.value.from !== from && txEffect.value.to !== to,
 				});
@@ -83,15 +82,13 @@ const coloringField = StateField.define<DecorationSet>({
 
 function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to, kind, error }) =>
-		stateEffects.addColor.of({ from, to, kind, error }),
+		coloringStateEffects.addColorEffect.of({ from, to, kind, error }),
 	);
 
 	if (effects.length === 0) return;
 
-	if (!view.state.field(coloringField, false)) {
-		effects.push(
-			StateEffect.appendConfig.of([coloringField, DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME]),
-		);
+	if (!view.state.field(coloringStateField, false)) {
+		effects.push(StateEffect.appendConfig.of([coloringStateField, resolvablesTheme]));
 	}
 
 	view.dispatch({ effects });
@@ -99,15 +96,13 @@ function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
 
 function removeColor(view: EditorView, segments: Plaintext[]) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to }) =>
-		stateEffects.removeColor.of({ from, to }),
+		coloringStateEffects.removeColorEffect.of({ from, to }),
 	);
 
 	if (effects.length === 0) return;
 
-	if (!view.state.field(coloringField, false)) {
-		effects.push(
-			StateEffect.appendConfig.of([coloringField, DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME]),
-		);
+	if (!view.state.field(coloringStateField, false)) {
+		effects.push(StateEffect.appendConfig.of([coloringStateField, resolvablesTheme]));
 	}
 
 	view.dispatch({ effects });
