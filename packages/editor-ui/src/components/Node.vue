@@ -401,16 +401,12 @@ export default mixins(
 		}
 	},
 	mounted() {
-		this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
 		this.setSubtitle();
 		if (this.nodeRunData) {
 			setTimeout(() => {
 				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
 			}, 0);
 		}
-	},
-	destroyed() {
-		this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
 	},
 	data () {
 		return {
@@ -423,22 +419,6 @@ export default mixins(
 		};
 	},
 	methods: {
-		onRevertEnableToggle({ nodeName, isDisabled }: { nodeName: string, isDisabled: boolean }) {
-			const node: INodeUi|null = this.data;
-			if (node && nodeName === node.name) {
-				const updateInformation = {
-					name: node.name,
-					properties: {
-						disabled: isDisabled,
-					} as IDataObject,
-				} as INodeUpdatePropertiesInformation;
-
-				this.workflowsStore.updateNodeProperties(updateInformation);
-				this.workflowsStore.clearNodeExecutionData(node.name);
-				this.updateNodeParameterIssues(node);
-				this.updateNodeCredentialIssues(node);
-			}
-		},
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
 			if (!this.isTriggerNode || this.isManualTypeNode || this.isScheduledGroup || dataItemsCount === 0) return;
 

@@ -1119,7 +1119,7 @@ export default mixins(
 				if (!this.editAllowedCheck()) {
 					return;
 				}
-				this.disableNodes(this.uiStore.getSelectedNodes);
+				this.disableNodes(this.uiStore.getSelectedNodes, true);
 			},
 
 			deleteSelectedNodes() {
@@ -3372,6 +3372,12 @@ export default mixins(
 			async onRevertNameChange({ currentName, newName }: { currentName: string, newName: string }) {
 				await this.renameNode(newName, currentName);
 			},
+			onRevertEnableToggle({ nodeName, isDisabled }: { nodeName: string, isDisabled: boolean }) {
+				const node = this.workflowsStore.getNodeByName(nodeName);
+				if (node) {
+					this.disableNodes([node]);
+				}
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3480,6 +3486,7 @@ export default mixins(
 			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$on('revertRenameNode', this.onRevertNameChange);
+			this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3501,6 +3508,7 @@ export default mixins(
 			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
 			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
 			this.$root.$off('revertRenameNode', this.onRevertNameChange);
+			this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
