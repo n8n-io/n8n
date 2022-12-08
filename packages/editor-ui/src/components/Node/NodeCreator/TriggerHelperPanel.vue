@@ -180,7 +180,7 @@ const {
 } = useNodeCreatorStore();
 
 const telemetry = instance?.proxy.$telemetry;
-const { categorizedItems: allNodes } = useNodeTypesStore();
+const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(() => state.latestNodeData?.properties.some((p) => p.options?.find((o) => o.name === CUSTOM_API_CALL_NAME)) === true);
 
 const computedCategorizedItems = computed(() => getCategorizedList(computedCategoriesWithNodes.value, true));
@@ -218,9 +218,12 @@ const filteredMergedAppNodes = computed(() => {
 	];
 
 	if(isAppEventSubcategory.value) return mergedAppNodes.filter(node => {
+		const isRegularNode = !isTriggerNode(node.name);
 		const isStickyNode = node.name === STICKY_NODE_TYPE;
 		const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.name);
+		const hasActions = (node.actions || []).length > 0;
 
+		if(isRegularNode && !hasActions) return false;
 		return !isCoreNode && !isStickyNode;
 	});
 
