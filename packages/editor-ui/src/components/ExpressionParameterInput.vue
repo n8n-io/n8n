@@ -84,6 +84,7 @@ export default mixins(telemetryUtils).extend({
 			isFocused: false,
 			segments: [] as Segment[],
 			paneWidth: -1,
+			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
 	props: {
@@ -101,9 +102,6 @@ export default mixins(telemetryUtils).extend({
 	},
 	computed: {
 		...mapStores(useNDVStore),
-		expressionsDocsUrl(): string {
-			return EXPRESSIONS_DOCS_URL;
-		},
 		hoveringItemNumber(): number {
 			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
