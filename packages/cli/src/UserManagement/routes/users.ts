@@ -348,7 +348,7 @@ export function usersNamespace(this: N8nApp): void {
 			await issueCookie(res, updatedUser);
 
 			void InternalHooksManager.getInstance().onUserSignup({
-				user: invitee,
+				user: updatedUser,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -527,7 +527,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!result?.success) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user: req.user,
+					user: reinvitee,
 					message_type: 'Resend invite',
 					public_api: false,
 				});
@@ -540,7 +540,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserReinvite({
-				user: req.user,
+				user: reinvitee,
 				target_user_id: reinvitee.id,
 				public_api: false,
 			});

@@ -82,12 +82,12 @@
 				</n8n-input-label>
 			</template>
 			<template v-else>
-				<!-- <div :class="$style.sidebar">
+				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
-				</div> -->
-				<div :class="$style.tabbar">
-					<n8n-tabs :options="tabItems" :value="activeTab" @input="onTabSelect" />
 				</div>
+				<!-- <div :class="$style.tabbar">
+					<n8n-tabs :options="tabItems" :value="activeTab" @input="onTabSelect" />
+				</div> -->
 				<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
 					<template v-if="isTypeAbstract">
 						<n8n-input-label
@@ -477,8 +477,9 @@ export default mixins(
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding: 1em;
-	padding-bottom: 50px;
+	padding-left: 1em;
+	padding-right: 1em;
+	padding-bottom: 2em;
 }
 
 .sidebar {
@@ -506,7 +507,6 @@ export default mixins(
 .container {
 	display: flex;
 	height: 100%;
-	flex-direction: column;
 }
 
 .destinationInfo {

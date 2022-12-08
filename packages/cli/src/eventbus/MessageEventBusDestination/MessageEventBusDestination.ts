@@ -28,12 +28,15 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 
 	credentials: INodeCredentials = {};
 
+	anonymizeAuditMessages: boolean;
+
 	constructor(options: MessageEventBusDestinationOptions) {
 		this.id = options.id ?? uuid();
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
 		this.label = options.label ?? 'Log Destination';
 		this.enabled = options.enabled ?? false;
 		this.subscribedEvents = options.subscribedEvents ?? [];
+		this.anonymizeAuditMessages = options.anonymizeAuditMessages ?? false;
 		if (options.credentials) this.credentials = options.credentials;
 		LoggerProxy.debug(`${this.__type}(${this.id}) event destination constructed`);
 	}
@@ -104,6 +107,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			label: this.label,
 			enabled: this.enabled,
 			subscribedEvents: this.subscribedEvents,
+			anonymizeAuditMessages: this.anonymizeAuditMessages,
 		};
 	}
 

@@ -39,8 +39,6 @@ export class MessageEventBusDestinationSyslog
 
 	eol: string;
 
-	anonymizeAuditMessages?: boolean;
-
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
@@ -53,8 +51,6 @@ export class MessageEventBusDestinationSyslog
 		this.app_name = options.app_name ?? 'n8n';
 		this.eol = options.eol ?? '\n';
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
-		if (options.anonymizeAuditMessages)
-			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 
 		this.client = syslog.createClient(this.host, {
 			appName: this.app_name,

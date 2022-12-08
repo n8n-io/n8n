@@ -30,8 +30,6 @@ export class MessageEventBusDestinationSentry
 
 	sendPayload: boolean;
 
-	anonymizeAuditMessages?: boolean;
-
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -40,8 +38,6 @@ export class MessageEventBusDestinationSentry
 		this.dsn = options.dsn;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.tracesSampleRate) this.tracesSampleRate = options.tracesSampleRate;
-		if (options.anonymizeAuditMessages)
-			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 		const { ENVIRONMENT: environment } = process.env;
 
 		GenericHelpers.getVersions()

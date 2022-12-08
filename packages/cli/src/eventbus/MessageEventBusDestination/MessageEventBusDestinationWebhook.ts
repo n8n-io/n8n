@@ -92,8 +92,6 @@ export class MessageEventBusDestinationWebhook
 
 	axiosRequestOptions: AxiosRequestConfig;
 
-	anonymizeAuditMessages?: boolean;
-
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
 		this.url = options.url;
@@ -115,8 +113,6 @@ export class MessageEventBusDestinationWebhook
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
-		if (options.anonymizeAuditMessages)
-			this.anonymizeAuditMessages = options.anonymizeAuditMessages;
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -289,8 +285,13 @@ export class MessageEventBusDestinationWebhook
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
 		if (!eventBus.isLogStreamingEnabled()) return false;
+
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
+
+		if (this.anonymizeAuditMessages) {
+			msg = msg.anonymize();
+		}
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
 			if (this.sendPayload) {
@@ -416,10 +417,6 @@ export class MessageEventBusDestinationWebhook
 			}
 
 			const requestResponse = await axios.request(this.axiosRequestOptions);
-
-			if (this.anonymizeAuditMessages) {
-				msg = msg.anonymize();
-			}
 
 			if (this.responseCodeMustMatch) {
 				if (requestResponse.status === this.expectedStatusCode) {

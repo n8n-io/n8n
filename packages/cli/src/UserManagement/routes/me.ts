@@ -65,7 +65,7 @@ export function meNamespace(this: N8nApp): void {
 
 				const updatedkeys = Object.keys(req.body);
 				void InternalHooksManager.getInstance().onUserUpdate({
-					user: req.user,
+					user,
 					fields_changed: updatedkeys,
 				});
 				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
@@ -106,7 +106,7 @@ export function meNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user: req.user,
+				user,
 				fields_changed: ['password'],
 			});
 

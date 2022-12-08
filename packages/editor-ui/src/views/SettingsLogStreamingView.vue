@@ -1,39 +1,30 @@
 <template>
 	<div>
-	<!-- <page-view-layout> -->
-		<!-- <template #aside> -->
-
-			<div :class="$style.header">
-				<div :class="[$style['heading-wrapper'], 'mb-xs']">
-					<n8n-heading size="2xlarge">
-						{{ $locale.baseText(`settings.logstreaming.heading`) }}
-					</n8n-heading>
-					<strong>&nbsp;&nbsp;&nbsp;&nbsp;License (dev)&nbsp;</strong>
-					<el-switch v-model="fakeLicense" size="large" />
-				</div>
-			</div>
-			<!-- <div>
-				<strong>License&nbsp;</strong>
+		<div :class="$style.header">
+			<div class="mb-2xl">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText(`settings.logstreaming.heading`) }}
+				</n8n-heading>
+				<strong>&nbsp;&nbsp;&nbsp;&nbsp;License (dev)&nbsp;</strong>
 				<el-switch v-model="fakeLicense" size="large" />
-			</div> -->
-			<template v-if="(isLicensed() && storeHasItems())">
-				<div class="mt-xs mb-l">
-					<n8n-button size="large"  @click="addDestination">
-						{{ $locale.baseText(`settings.logstreaming.add`) }}
-					</n8n-button>
-				</div>
-			</template>
-		<!-- </template> -->
-
+			</div>
+		</div>
+		<template v-if="(isLicensed() && storeHasItems())">
+			<div class="mt-xs mb-l">
+				<n8n-button size="large"  @click="addDestination">
+					{{ $locale.baseText(`settings.logstreaming.add`) }}
+				</n8n-button>
+			</div>
+		</template>
 		<template v-if="isLicensed()">
 			<template v-if="storeHasItems()">
-				<el-row :gutter="10" v-for="(value, propertyName) in logStreamingStore.items" :key="propertyName" :class="$style.destinationItem">
+				<el-row :gutter="10" v-for="item in sortedItemKeysByLabel" :key="item.key" :class="$style.destinationItem">
 					<el-col>
 						<event-destination-card
-							:destination="value.destination"
+							:destination="logStreamingStore.items[item.key].destination"
 							:eventBus="eventBus"
-							@remove="onRemove(value.destination.id)"
-							@edit="onEdit(value.destination.id)"
+							@remove="onRemove(logStreamingStore.items[item.key].destination.id)"
+							@edit="onEdit(logStreamingStore.items[item.key].destination.id)"
 						/>
 					</el-col>
 				</el-row>
@@ -45,7 +36,7 @@
 						<span v-html="$locale.baseText('settings.logstreaming.infoTextEnterprise')"></span>
 					</template>
 				</n8n-info-tip>
-			</div>
+				</div>
 			<div :class="$style.actionBoxContainer">
 				<n8n-action-box
 					:description="$locale.baseText(`settings.logstreaming.addFirst`)"
@@ -78,7 +69,6 @@
 				</n8n-action-box>
 			</div>
 		</template>
-	<!-- </page-view-layout> -->
 	</div>
 </template>
 
@@ -156,6 +146,13 @@ export default mixins(
 			useUIStore,
 			useCredentialsStore,
 		),
+		sortedItemKeysByLabel() {
+			const sortedKeys: { label: string, key: string }[] = [];
+			for (const [key, value] of Object.entries(this.logStreamingStore.items)) {
+				sortedKeys.push({ key, label: value.destination.label ?? 'Destination' });
+			}
+			return sortedKeys.sort((a, b) => a.label.localeCompare(b.label));
+		},
 	},
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
@@ -226,7 +223,8 @@ export default mixins(
 <style lang="scss" module>
 .header {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
+	align-items: flex-start;
 	white-space: nowrap;
 
 	*:first-child {
