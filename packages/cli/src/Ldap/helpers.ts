@@ -179,6 +179,8 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 		throw new Error(message);
 	}
 
+	LdapManager.updateConfig({ ...config });
+
 	config.bindingAdminPassword = await encryptPassword(config.bindingAdminPassword);
 
 	if (!config.loginEnabled) {
@@ -195,7 +197,6 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 	}
 
 	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
-	LdapManager.updateConfig(config);
 	setGlobalLdapConfigVariables(config);
 };
 /**
