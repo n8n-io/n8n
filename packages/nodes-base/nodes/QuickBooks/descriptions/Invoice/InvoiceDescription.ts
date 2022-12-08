@@ -106,9 +106,6 @@ export const invoiceFields: INodeProperties[] = [
 				description: 'Textual description of the line item',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Detail Type',
@@ -298,9 +295,6 @@ export const invoiceFields: INodeProperties[] = [
 				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
 				description:
 					'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 		displayOptions: {
