@@ -2,6 +2,7 @@ import { eventEmitter } from './EventEmitter';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
+export * from './gc';
 export * from './ActiveWorkflows';
 export * from './ActiveWebhooks';
 export * from './BinaryDataManager';

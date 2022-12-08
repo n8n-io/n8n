@@ -33,12 +33,14 @@ import {
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { currentMemory, gc } from './gc';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -710,6 +712,7 @@ export class WorkflowExecute {
 		let nodeSuccessData: INodeExecutionData[][] | null | undefined;
 		let runIndex: number;
 		let startTime: number;
+		let startMemory: number;
 		let taskData: ITaskData;
 
 		if (this.runExecutionData.startData === undefined) {
@@ -889,6 +892,7 @@ export class WorkflowExecute {
 					}
 
 					startTime = new Date().getTime();
+					startMemory = currentMemory();
 
 					let maxTries = 1;
 					if (executionData.node.retryOnFail === true) {
@@ -957,6 +961,23 @@ export class WorkflowExecute {
 								node: executionNode.name,
 								workflowId: workflow.id,
 							});
+
+							const usedMem = currentMemory() - startMemory;
+							if (usedMem > 5) {
+								gc();
+								await sleep(usedMem * 50);
+								const current = currentMemory();
+								const retained = current - startMemory;
+								const recovered = usedMem - retained;
+								const duration = Date.now() - startTime;
+								console.log(
+									'Node: %s (%s). Duration: %d. Memory: %s',
+									executionNode.name,
+									executionNode.type,
+									duration,
+									[usedMem, retained, recovered, current].join(';'),
+								);
+							}
 
 							if (nodeSuccessData) {
 								// Check if the output data contains pairedItem data
