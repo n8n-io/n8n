@@ -65,7 +65,7 @@ export class License {
 		}
 	}
 
-	async activate(activationKey: string): Promise<void> {
+	async activate(activationKey: string, throwError = false): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
@@ -79,6 +79,10 @@ export class License {
 		} catch (e) {
 			if (e instanceof Error) {
 				this.logger.error('Could not activate license', e);
+				if (throwError) {
+					// Throw error up to the API
+					throw e;
+				}
 			}
 		}
 	}
@@ -122,6 +126,13 @@ export class License {
 		}
 
 		return this.manager.getFeatureValue(feature, requireValidCert);
+	}
+
+	getManagementJWT(): string {
+		if (!this.manager) {
+			return '';
+		}
+		return this.manager.getManagementJwt();
 	}
 
 	/**
