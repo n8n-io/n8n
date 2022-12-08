@@ -10,6 +10,8 @@
 			 	v-click-outside="onClickOutside"
 			 	@dragover="onDragOver"
 			 	@drop="onDrop"
+				@mousedown="onMouseDown"
+				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
 				<main-panel
@@ -29,7 +31,6 @@ import { INodeCreateElement } from '@/Interface';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { useUIStore } from '@/stores/ui';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
@@ -46,6 +47,7 @@ const emit = defineEmits<{
 const nodeCreatorStore = useNodeCreatorStore();
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
+	mousedownInsideEvent: null as MouseEvent | null,
 });
 
 const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
@@ -71,9 +73,30 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 });
 
 function onClickOutside (event: Event) {
+	// We need to prevent cases where user would click inside the node creator
+	// and try to drag undraggable element. In that case the click event would
+	// be fired and the node creator would be closed. So we stop that if we detect
+	// that the click event originated from inside the node creator. And fire click even on the
+	// original target.
+	if(state.mousedownInsideEvent) {
+		const clickEvent = new MouseEvent('click', {
+			bubbles: true,
+			cancelable: true,
+		});
+		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
+		state.mousedownInsideEvent = null;
+		return;
+	};
+
 	if (event.type === 'click') {
 		emit('closeNodeCreator');
 	}
+}
+function onMouseUp() {
+	state.mousedownInsideEvent = null;
+}
+function onMouseDown(event: MouseEvent) {
+	state.mousedownInsideEvent = event;
 }
 function onDragOver(event: DragEvent) {
 	event.preventDefault();

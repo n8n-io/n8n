@@ -41,7 +41,7 @@ export interface Props {
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const { getActionData, getActionNodeTypes, setAddedNodeActionParameters } = useNodeCreatorStore();
+const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } = useNodeCreatorStore();
 
 const state = reactive({
 	dragging: false,
@@ -82,7 +82,7 @@ function onDragStart(event: DragEvent): void {
 		event.dataTransfer.effectAllowed = "copy";
 		event.dataTransfer.dropEffect = "copy";
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
-		event.dataTransfer.setData('nodeTypeName', getActionNodeTypes(actionData.value).join(','));
+		event.dataTransfer.setData('nodeTypeName', getNodeTypesWithManualTrigger(actionData.value?.key).join(','));
 
 		state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry);
 		document.body.addEventListener("dragend", onDragEnd);

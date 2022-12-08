@@ -272,15 +272,16 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			}, {});
 			return Object.values(mergedNodes);
 		},
-		getActionNodeTypes: () => (action: IUpdateInformation): string[] => {
+		getNodeTypesWithManualTrigger: () => (nodeType?: string): string[] => {
+			if(!nodeType) return [];
+
 			const { workflowTriggerNodes } = useWorkflowsStore();
-			const actionKey = action.key as string;
-			const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
+			const isTriggerAction = nodeType.toLocaleLowerCase().includes('trigger');
 			const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 
 			const nodeTypes = !isTriggerAction && !workflowContainsTrigger
-				? [MANUAL_TRIGGER_NODE_TYPE, actionKey]
-				: [actionKey];
+				? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
+				: [nodeType];
 
 			return nodeTypes;
 		},

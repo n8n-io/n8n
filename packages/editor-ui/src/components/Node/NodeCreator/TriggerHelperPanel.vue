@@ -19,7 +19,7 @@
 			ref="categorizedItemsRef"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
-			@nodeTypeSelected="$listeners.nodeTypeSelected"
+			@nodeTypeSelected="onNodeTypeSelected"
 			@actionsOpen="setActiveActionsNodeType"
 			@actionSelected="onActionSelected"
 		>
@@ -175,7 +175,7 @@ const {
 	mergedAppNodes,
 	setShowTabs,
 	getActionData,
-	getActionNodeTypes,
+	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
 
@@ -263,6 +263,9 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 	}));
 });
 
+function onNodeTypeSelected(nodeTypes: string[]) {
+	emit("nodeTypeSelected", nodeTypes.length === 1 ? getNodeTypesWithManualTrigger(nodeTypes[0]) : nodeTypes);
+}
 function getCustomAPICallHintLocale(key: string) {
 	if(!state.activeNodeActions) return '';
 
@@ -300,7 +303,7 @@ function setActiveActionsNodeType(nodeType: INodeTypeDescription | null) {
 function onActionSelected(actionCreateElement: INodeCreateElement) {
 	const action = (actionCreateElement.properties as IActionItemProps).nodeType;
 	const actionUpdateData = getActionData(action);
-	emit('nodeTypeSelected', getActionNodeTypes(actionUpdateData));
+	emit('nodeTypeSelected', getNodeTypesWithManualTrigger(actionUpdateData.key));
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
 function addHttpNode() {
