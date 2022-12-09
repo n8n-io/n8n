@@ -619,6 +619,8 @@ export const messageFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								placeholder: '1663233118.856619',
+								description:
+									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
 							},
 							{
 								displayName: 'Reply to thread',
@@ -888,6 +890,30 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
+		displayName: 'Send message to',
+		name: 'select',
+		type: 'options',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['delete'],
+			},
+		},
+		options: [
+			{
+				name: 'Channel',
+				value: 'channel',
+			},
+			{
+				name: 'User',
+				value: 'user',
+			},
+		],
+		default: '',
+		placeholder: 'Select...',
+	},
+	{
 		name: 'channelId',
 		displayName: 'Channel',
 		type: 'resourceLocator',
@@ -938,14 +964,61 @@ export const messageFields: INodeProperties[] = [
 				},
 			},
 		],
-		required: true,
 		displayOptions: {
 			show: {
-				resource: ['message'],
 				operation: ['delete'],
+				resource: ['message'],
+				select: ['channel'],
 			},
 		},
-		description: 'The Slack channel to delete the message from',
+		required: true,
+		description: 'The Slack channel to send to',
+	},
+	{
+		name: 'user',
+		displayName: 'User',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a user...',
+		displayOptions: {
+			show: {
+				operation: ['delete'],
+				resource: ['message'],
+				select: ['user'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Slack User ID',
+						},
+					},
+				],
+				placeholder: 'U123AB45JGM',
+			},
+			{
+				displayName: 'By username',
+				name: 'username',
+				type: 'string',
+				placeholder: '@username',
+			},
+		],
 	},
 	{
 		displayName: 'Message Timestamp',

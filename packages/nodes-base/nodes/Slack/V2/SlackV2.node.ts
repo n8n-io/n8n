@@ -985,15 +985,22 @@ export class SlackV2 implements INodeType {
 					}
 					//https://api.slack.com/methods/chat.delete
 					if (operation === 'delete') {
-						const channel = this.getNodeParameter(
-							'channelId',
-							i,
-							{},
-							{ extractValue: true },
-						) as string;
+						const select = this.getNodeParameter('select', i) as string;
+						let target =
+							select === 'channel'
+								? (this.getNodeParameter('channelId', i, undefined, {
+										extractValue: true,
+								  }) as string)
+								: (this.getNodeParameter('user', i, undefined, {
+										extractValue: true,
+								  }) as string);
+						// @ts-ignore
+						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
+							target = target.slice(0, 1) === '@' ? target : `@${target}`;
+						}
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
 						const body: IDataObject = {
-							channel,
+							channel: target,
 							ts: timestamp,
 						};
 						// Add all the other options to the request
