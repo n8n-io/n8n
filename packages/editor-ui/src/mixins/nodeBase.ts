@@ -284,12 +284,14 @@ export const nodeBase = mixins(
 							moveNodes.push(this.data);
 						}
 
+						if(moveNodes.length > 1) {
+							this.historyStore.startRecordingUndo();
+						}
 						// This does for some reason just get called once for the node that got clicked
 						// even though "start" and "drag" gets called for all. So lets do for now
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
 						let newNodePosition: XYPosition;
-						this.historyStore.startRecordingUndo();
 						moveNodes.forEach((node: INodeUi) => {
 							const element = document.getElementById(node.id);
 							if (element === null) {
@@ -312,10 +314,12 @@ export const nodeBase = mixins(
 							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
 								this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition, this));
 								this.workflowsStore.updateNodeProperties(updateInformation);
+								this.$emit('moved', node);
 							}
 						});
-						this.historyStore.stopRecordingUndo();
-						this.$emit('moved', node);
+						if(moveNodes.length > 1) {
+							this.historyStore.stopRecordingUndo();
+						}
 					}
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',

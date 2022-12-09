@@ -2698,14 +2698,13 @@ export default mixins(
 					if (trackHistory) {
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
-
-					if (trackHistory) {
-						const recordingTimeout = waitForNewConnection ? 100 : 0;
-						setTimeout(() => {
-							this.historyStore.stopRecordingUndo();
-						}, recordingTimeout);
-					}
 				}, 0); // allow other events to finish like drag stop
+				if (trackHistory) {
+					const recordingTimeout = waitForNewConnection ? 100 : 0;
+					setTimeout(() => {
+						this.historyStore.stopRecordingUndo();
+					}, recordingTimeout);
+				}
 			},
 			valueChanged(parameterData: IUpdateInformation) {
 				if (parameterData.name === 'name' && parameterData.oldValue) {
