@@ -673,7 +673,7 @@ export const messageFields: INodeProperties[] = [
 						values: [
 							{
 								name: 'user',
-								displayName: 'User',
+								displayName: 'User to send',
 								type: 'resourceLocator',
 								default: { mode: 'list', value: '' },
 								placeholder: 'Select a user...',
@@ -715,7 +715,7 @@ export const messageFields: INodeProperties[] = [
 								name: 'ephemeral',
 								type: 'boolean',
 								default: true,
-								description: 'Whether to send a temmporary, ephemeral message',
+								description: 'Whether to send a temporary, ephemeral message',
 							},
 						],
 					},
