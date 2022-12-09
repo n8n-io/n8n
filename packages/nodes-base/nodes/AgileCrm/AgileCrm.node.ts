@@ -41,7 +41,7 @@ export class AgileCrm implements INodeType {
 		version: 1,
 		description: 'Consume Agile CRM API',
 		defaults: {
-			name: 'AgileCRM',
+			name: 'Agile CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
