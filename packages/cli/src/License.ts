@@ -127,7 +127,8 @@ export class License {
 			return undefined;
 		}
 
-		const entitlements = this.manager.getCurrentEntitlements();
+		const entitlements = this.getCurrentEntitlements();
+		console.log(entitlements);
 		if (!entitlements.length) {
 			return undefined;
 		}
