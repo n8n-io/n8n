@@ -6,7 +6,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from "@/stores/settings";
 import { useUsersStore } from "@/stores/users";
 
-const SUBSCRIPTION_APP_URL = 'https://n8n-io.github.io/subscription-app';
+const SUBSCRIPTION_APP_URL = 'https://subscription.n8n.io';
 const DEFAULT_PLAN_ID = 'community';
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
