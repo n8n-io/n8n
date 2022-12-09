@@ -1136,7 +1136,7 @@ export default mixins(
 				});
 				this.historyStore.startRecordingUndo();
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName, true, true);
+					this.removeNode(nodeName, true, false);
 				});
 				setTimeout(() => {
 					this.historyStore.stopRecordingUndo();
@@ -2610,7 +2610,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string, trackHistory = false, trackBulk = false) {
+			removeNode(nodeName: string, trackHistory = false, trackBulk = true) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2620,7 +2620,7 @@ export default mixins(
 					return;
 				}
 
-				if (trackHistory && !trackBulk) {
+				if (trackHistory && trackBulk) {
 					this.historyStore.startRecordingUndo();
 				}
 
@@ -2715,7 +2715,7 @@ export default mixins(
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
 				}, 0); // allow other events to finish like drag stop
-				if (trackHistory && !trackBulk) {
+				if (trackHistory && trackBulk) {
 					const recordingTimeout = waitForNewConnection ? 100 : 0;
 					setTimeout(() => {
 						this.historyStore.stopRecordingUndo();
