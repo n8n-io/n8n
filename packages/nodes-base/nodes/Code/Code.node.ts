@@ -155,8 +155,10 @@ export class Code implements INodeType {
 				try {
 					items = (await sandbox.runCode(context, pythonCode)) as INodeExecutionData[];
 				} catch (error) {
-					sandbox.close();
-					if (!this.continueOnFail()) return Promise.reject(error);
+					if (!this.continueOnFail()) {
+						sandbox.close();
+						return Promise.reject(error);
+					}
 					items = [{ json: { error: error.message } }];
 				}
 				sandbox.close();

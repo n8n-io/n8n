@@ -580,11 +580,6 @@ export class WorkflowDataProxy {
 					const nodeName = name.toString();
 
 					if (that.workflow.getNode(nodeName) === null) {
-						// TODO: Change later. For now make it work for with Python.
-						if (['constructor', 'ffid', 'toJSON', 'r'].includes(nodeName)) {
-							return Reflect.get(target, name, receiver);
-						}
-
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,

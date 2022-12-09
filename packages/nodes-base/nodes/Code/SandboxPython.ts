@@ -23,12 +23,7 @@ export class SandboxPython {
 
 	private workflowMode: WorkflowExecuteMode;
 
-	constructor(
-		// context: ReturnType<typeof getSandboxContextPython>,
-		workflowMode: WorkflowExecuteMode,
-		nodeMode: CodeNodeMode,
-	) {
-		// this.context = context;
+	constructor(workflowMode: WorkflowExecuteMode, nodeMode: CodeNodeMode) {
 		this.nodeMode = nodeMode;
 		this.workflowMode = workflowMode;
 	}
@@ -39,6 +34,22 @@ export class SandboxPython {
 
 	async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
 		const runCode = `
+# Because of a bug in pythonia do we have to wrap it to make it work
+def _(node_name):
+  def get_subfunction(key):
+    def tempFunction(*args):
+      return _WRAPPER(node_name, key, args)
+    return tempFunction
+  return {
+    "all": get_subfunction("all"),
+    "context": _WRAPPER(node_name, "context"),
+    "first": get_subfunction("first"),
+    "item": _WRAPPER(node_name, "item"),
+    "itemMatching": get_subfunction("itemMatching"),
+    "last": get_subfunction("last"),
+    "pairedItem": get_subfunction("pairedItem"),
+    "params": _WRAPPER(node_name, "params"),
+  }
 def cleanup_proxy_data(data):
   if getattr(data, '__module__', None) == 'proxy':
     return data.valueOf()
@@ -229,15 +240,18 @@ export function getSandboxContextPython(
 		_getNodeParameter: this.getNodeParameter,
 		_getWorkflowStaticData: this.getWorkflowStaticData,
 		helpers: this.helpers,
-
-		_: item.$,
+		_WRAPPER: (nodeName: string, key: string, methodArguments: unknown[] = []) => {
+			if (['context', 'item', 'params'].includes(key)) {
+				return item.$(nodeName)[key];
+			}
+			return item.$(nodeName)[key].call(this, ...methodArguments);
+		},
 		_execution: item.$execution,
 		_input: item.$input,
 		_item: this.getWorkflowDataProxy,
 		_itemIndex: item.$itemIndex,
 		_jmesPath: item.$jmesPath,
 		_mode: item.$mode,
-		_node: item.$node,
 		_now: item.$now,
 		_parameter: item.$parameter,
 		_prevNode: item.$prevNode,
