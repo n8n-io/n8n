@@ -38,7 +38,6 @@ import {
 	INodeActionTypeDescription,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
-import {ICredentialsDb} from "n8n";
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/src/types';
