@@ -9,7 +9,8 @@ export class WorkflowPage extends BasePage {
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () => this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
-		workflowTagElements: () => this.getters.workflowTagsContainer().find('span.tags').children(),
+		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		firstWorkflowTagElement: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
 		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
@@ -22,7 +23,6 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
 		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-
 		successToast: () => cy.get('.el-notification__title'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
@@ -34,7 +34,6 @@ export class WorkflowPage extends BasePage {
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
-		canvasNodes: () => cy.getByTestId('canvas-node'),
 	};
 	actions = {
 		visit: () => {
@@ -45,12 +44,14 @@ export class WorkflowPage extends BasePage {
 		addInitialNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
-			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.get('body').type('{esc}');
 		},
 		addNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.nodeCreatorPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
-			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.get('body').type('{esc}');
 		},
 		openNodeNdv: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();

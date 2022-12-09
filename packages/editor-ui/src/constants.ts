@@ -7,6 +7,7 @@ export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]'
 
 // parameter input
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
@@ -79,10 +80,12 @@ export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
+export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
@@ -139,6 +142,7 @@ export const PIN_DATA_NODE_TYPES_DENYLIST = [
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+export const RECOMMENDED_CATEGORY = 'Recommended';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {

@@ -186,9 +186,6 @@ export const submissionFields: INodeProperties[] = [
 		name: 'filterJson',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			// alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['submission'],

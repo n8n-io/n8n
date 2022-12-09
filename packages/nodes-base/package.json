@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.203.0",
+  "version": "0.204.1",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -751,7 +751,7 @@
     "@types/xml2js": "^0.4.3",
     "eslint-plugin-n8n-nodes-base": "^1.11.1",
     "gulp": "^4.0.0",
-    "n8n-workflow": "~0.127.0"
+    "n8n-workflow": "~0.128.1"
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
@@ -790,7 +790,7 @@
     "mqtt": "4.2.6",
     "mssql": "^8.1.2",
     "mysql2": "~2.3.0",
-    "n8n-core": "~0.145.0",
+    "n8n-core": "~0.146.1",
     "node-html-markdown": "^1.1.3",
     "node-ssh": "^12.0.0",
     "nodemailer": "^6.7.1",

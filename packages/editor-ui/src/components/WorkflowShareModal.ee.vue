@@ -232,10 +232,45 @@ export default mixins(
 			const user = this.usersStore.getUserById(userId)!;
 			const isNewSharee = !(this.workflow.sharedWith || []).find((sharee) => sharee.id === userId);
 
+			const isLastUserWithAccessToCredentialsById = (this.workflow.usedCredentials || [])
+				.reduce<Record<string, boolean>>((acc, credential) => {
+					if (!credential.id || !credential.ownedBy || !credential.sharedWith || !this.workflow.sharedWith) {
+						return acc;
+					}
+
+					// if is credential owner, and no credential sharees have access to workflow  => NOT OK
+					// if is credential owner, and credential sharees have access to workflow => OK
+
+					// if is credential sharee, and no credential sharees have access to workflow or owner does not have access to workflow => NOT OK
+					// if is credential sharee, and credential owner has access to workflow => OK
+					// if is credential sharee, and other credential sharees have access to workflow => OK
+
+					let isLastUserWithAccess = false;
+
+					const isCredentialOwner = credential.ownedBy.id === user.id;
+					const isCredentialSharee = !!credential.sharedWith.find((sharee) => sharee.id === user.id);
+
+					if (isCredentialOwner) {
+						isLastUserWithAccess = !credential.sharedWith.some((sharee) => {
+							return this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === sharee.id);
+						});
+					} else if (isCredentialSharee) {
+						isLastUserWithAccess = !credential.sharedWith.some((sharee) => {
+							return this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === sharee.id);
+						}) && !this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === credential.ownedBy!.id);
+					}
+
+					acc[credential.id] = isLastUserWithAccess;
+
+					return acc;
+				}, {});
+
+			const isLastUserWithAccessToCredentials = Object.values(isLastUserWithAccessToCredentialsById).some((value) => value);
+
 			let confirm = true;
 			if (!isNewSharee) {
 				confirm = await this.confirmMessage(
-					this.$locale.baseText('workflows.shareModal.list.delete.confirm.message', {
+					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.${isLastUserWithAccessToCredentials ? 'lastUserWithAccessToCredentials.' : ''}message`, {
 						interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 					}),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', { interpolate: { name: user.fullName } }),

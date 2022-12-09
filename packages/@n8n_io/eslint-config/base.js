@@ -130,6 +130,13 @@ const config = (module.exports = {
 		'no-void': ['error', { allowAsStatement: true }],
 
 		/**
+		 * https://eslint.org/docs/latest/rules/indent
+		 *
+		 * Delegated to Prettier.
+		 */
+		indent: 'off',
+
+		/**
 		 * https://eslint.org/docs/latest/rules/sort-imports
 		 */
 		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821

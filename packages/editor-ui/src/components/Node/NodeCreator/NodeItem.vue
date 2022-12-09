@@ -1,206 +1,180 @@
 <template>
-	<div
-		draggable
+	<!-- Node Item is draggable only if it doesn't contain actions -->
+	<n8n-node-creator-node
+		:draggable="!showActionArrow"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		:class="{[$style['node-item']]: true}"
+		@click.stop="onClick"
+		:class="$style.nodeItem"
+		:description="allowActions ? undefined : description"
+		:title="displayName"
+		:isTrigger="!allowActions && isTriggerNode"
+		:show-action-arrow="showActionArrow"
 	>
-		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
-		<div>
-			<div :class="$style.details">
-				<span :class="$style.name" data-test-id="node-item-name">
-					{{ $locale.headerText({
-							key: `headers.${shortNodeType}.displayName`,
-							fallback: nodeType.displayName,
-						})
-					}}
-				</span>
-				<span v-if="isTrigger" :class="$style['trigger-icon']">
-					<trigger-icon />
-				</span>
-				<n8n-tooltip v-if="isCommunityNode" placement="top" data-test-id="node-item-community-tooltip">
-					<template #content>
-						<div
-							:class="$style['community-node-icon']"
-							v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
-							@click="onCommunityNodeTooltipClick"
-						>
-						</div>
-					</template>
-					<n8n-icon icon="cube" />
-				</n8n-tooltip>
-			</div>
-			<div :class="$style.description">
-				{{ $locale.headerText({
-						key: `headers.${shortNodeType}.description`,
-						fallback: nodeType.description,
-					})
-				}}
-			</div>
+		<template #icon>
+			<node-icon :nodeType="nodeType" />
+		</template>
 
-			<div :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
-			<transition name="node-item-transition">
-				<div
-					:class="$style.draggable"
-					:style="draggableStyle"
-					ref="draggable"
-					v-show="dragging"
-				>
-					<node-icon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
-				</div>
-			</transition>
-		</div>
-	</div>
+		<template #tooltip v-if="isCommunityNode">
+			<p
+				:class="$style.communityNodeIcon"
+				v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+				@click="onCommunityNodeTooltipClick"
+			/>
+		</template>
+		<template #dragContent>
+			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
+			<div
+				:class="$style.draggable"
+				:style="draggableStyle"
+				v-show="dragging"
+			>
+				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			</div>
+		</template>
+	</n8n-node-creator-node>
 </template>
 
-<script lang="ts">
-
-import Vue, { PropType } from 'vue';
+<script setup lang="ts">
+import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { isCommunityPackageName } from '@/utils';
 import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
+import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import TriggerIcon from '@/components/TriggerIcon.vue';
 
-Vue.component('node-icon', NodeIcon);
-Vue.component('trigger-icon', TriggerIcon);
+export interface Props {
+	nodeType: INodeTypeDescription;
+	active?: boolean;
+	allowActions?: boolean;
+}
 
-export default Vue.extend({
-	name: 'NodeItem',
-	props: {
-		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
-		},
-		active: {
-			type: Boolean,
-		},
-	},
-	data() {
-		return {
-			dragging: false,
-			draggablePosition: {
-				x: -100,
-				y: -100,
-			},
-			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-		};
-	},
-	computed: {
-		shortNodeType(): string {
-			return this.$locale.shortNodeType(this.nodeType.name);
-		},
-		isTrigger (): boolean {
-			return this.nodeType.group.includes('trigger');
-		},
-		draggableStyle(): { top: string; left: string; } {
-			return {
-				top: `${this.draggablePosition.y}px`,
-				left: `${this.draggablePosition.x}px`,
-			};
-		},
-		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.nodeType.name);
-		},
-	},
-	methods: {
-		onDragStart(event: DragEvent): void {
-			/**
-			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-			 * All browsers attach the correct page coordinates to the "dragover" event.
-			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-			 */
-			document.body.addEventListener("dragover", this.onDragOver);
-			const { pageX: x, pageY: y } = event;
-
-			this.$emit('dragstart', event);
-
-			if (event.dataTransfer) {
-				event.dataTransfer.effectAllowed = "copy";
-				event.dataTransfer.dropEffect = "copy";
-				event.dataTransfer.setData('nodeTypeName', this.nodeType.name);
-				event.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
-			}
-
-			this.dragging = true;
-			this.draggablePosition = { x, y };
-		},
-		onDragOver(event: DragEvent): void {
-			if (!this.dragging || event.pageX === 0 && event.pageY === 0) {
-				return;
-			}
-
-			const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
-
-			this.draggablePosition = { x, y };
-		},
-		onDragEnd(event: DragEvent): void {
-			document.body.removeEventListener("dragover", this.onDragOver);
-			this.$emit('dragend', event);
-
-			this.dragging = false;
-			setTimeout(() => {
-				this.draggablePosition = { x: -100, y: -100 };
-			}, 300);
-		},
-		onCommunityNodeTooltipClick(event: MouseEvent) {
-			if ((event.target as Element).localName === 'a') {
-				this.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
-			}
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	active: false,
+	allowActions: false,
 });
-</script>
 
+const emit = defineEmits<{
+	(event: 'dragstart', $e: DragEvent): void,
+	(event: 'dragend', $e: DragEvent): void,
+	(event: 'nodeTypeSelected', value: string[]): void,
+	(event: 'actionsOpen', value: INodeTypeDescription): void,
+}>();
+
+const instance = getCurrentInstance();
+const state = reactive({
+	dragging: false,
+	draggablePosition: {
+		x: -100,
+		y: -100,
+	},
+	draggableDataTransfer: null as Element | null,
+});
+const description = computed<string>(() => {
+	return instance?.proxy.$locale.headerText({
+		key: `headers.${shortNodeType.value}.description`,
+		fallback: props.nodeType.description,
+	}) as string;
+});
+const showActionArrow = computed(() => props.allowActions && hasActions.value);
+
+const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
+
+const shortNodeType = computed<string>(() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '');
+
+const draggableStyle = computed<{ top: string; left: string; }>(() => ({
+	top: `${state.draggablePosition.y}px`,
+	left: `${state.draggablePosition.x}px`,
+}));
+
+const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
+
+const displayName = computed<any>(() => {
+	const displayName = props.nodeType.displayName.trimEnd();
+
+	return instance?.proxy.$locale.headerText({
+		key: `headers.${shortNodeType}.displayName`,
+		fallback: props.allowActions ? displayName.replace('Trigger', '') : displayName,
+	});
+});
+
+const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
+
+function onClick() {
+	if(hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
+	else emit('nodeTypeSelected', [props.nodeType.name]);
+}
+function onDragStart(event: DragEvent): void {
+	/**
+	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+	 * All browsers attach the correct page coordinates to the "dragover" event.
+	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+	 */
+	document.body.addEventListener("dragover", onDragOver);
+
+	const { pageX: x, pageY: y } = event;
+
+	if (event.dataTransfer) {
+		event.dataTransfer.effectAllowed = "copy";
+		event.dataTransfer.dropEffect = "copy";
+		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
+		event.dataTransfer.setData(
+			'nodeTypeName',
+			useNodeCreatorStore().getNodeTypesWithManualTrigger(props.nodeType.name).join(','),
+		);
+	}
+
+	state.dragging = true;
+	state.draggablePosition = { x, y };
+	emit('dragstart', event);
+}
+
+function onDragOver(event: DragEvent): void {
+	if (!state.dragging || event.pageX === 0 && event.pageY === 0) {
+		return;
+	}
+
+	const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
+
+	state.draggablePosition = { x, y };
+}
+
+function onDragEnd(event: DragEvent): void {
+	document.body.removeEventListener("dragover", onDragOver);
+
+	emit('dragend', event);
+
+	state.dragging = false;
+	setTimeout(() => {
+		state.draggablePosition = { x: -100, y: -100 };
+	}, 300);
+}
+
+function onCommunityNodeTooltipClick(event: MouseEvent) {
+	if ((event.target as Element).localName === 'a') {
+		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
+	}
+}
+
+
+defineExpose({
+	onClick,
+});
+const { dragging, draggableDataTransfer } = toRefs(state);
+</script>
 <style lang="scss" module>
-.node-item {
-	padding: 11px 8px 11px 0;
+.nodeItem {
+	--trigger-icon-background-color: #{$trigger-icon-background-color};
+	--trigger-icon-border-color: #{$trigger-icon-border-color};
 	margin-left: 15px;
 	margin-right: 12px;
-	display: flex;
-	cursor: grab;
+	user-select: none;
 }
 
-.details {
-	align-items: center;
-}
-
-.node-icon {
-	min-width: 26px;
-	max-width: 26px;
-	margin-right: 15px;
-}
-
-.name {
-	font-weight: var(--font-weight-bold);
-	font-size: 14px;
-	line-height: 18px;
-	margin-right: 5px;
-}
-
-.packageName {
-	margin-right: 5px;
-}
-
-.description {
-	margin-top: 2px;
-	font-size: var(--font-size-2xs);
-	line-height: 16px;
-	font-weight: 400;
-	color: $node-creator-description-color;
-}
-
-.trigger-icon {
-	height: 16px;
-	width: 16px;
-	display: inline-block;
-	margin-right: var(--spacing-3xs);
-	vertical-align: middle;
-}
-
-.community-node-icon {
+.communityNodeIcon {
 	vertical-align: top;
 }
 
@@ -218,29 +192,8 @@ export default Vue.extend({
 	align-items: center;
 }
 
-.draggable-data-transfer {
+.draggableDataTransfer {
 	width: 1px;
 	height: 1px;
-}
-</style>
-
-<style lang="scss" scoped>
-.node-item-transition {
-	&-enter-active,
-	&-leave-active {
-		transition-property: opacity, transform;
-		transition-duration: 300ms;
-		transition-timing-function: ease;
-	}
-
-	&-enter,
-	&-leave-to {
-		opacity: 0;
-		transform: scale(0);
-	}
-}
-
-.el-tooltip svg {
-	color: var(--color-foreground-xdark);
 }
 </style>

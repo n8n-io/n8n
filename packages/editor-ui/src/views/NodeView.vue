@@ -160,7 +160,7 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { mouseSelect } from '@/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { restApi } from '@/mixins/restApi';
-import { globalLinkActions } from '@/mixins/globalLinkActions';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
 import { newVersions } from '@/mixins/newVersions';
@@ -256,7 +256,6 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
-	globalLinkActions,
 	debounceHelper,
 )
 	.extend({
@@ -270,6 +269,14 @@ export default mixins(
 			CanvasAddButton,
 			NodeCreation,
 			CanvasControls,
+		},
+		setup() {
+			const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+
+			return {
+				registerCustomAction,
+				unregisterCustomAction,
+			};
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -326,7 +333,6 @@ export default mixins(
 			},
 			nodeViewScale(newScale) {
 				const element = this.$refs.nodeView as HTMLDivElement;
-
 				if(element) {
 					element.style.transform = `scale(${newScale})`;
 				}
@@ -397,8 +403,9 @@ export default mixins(
 				useSettingsStore,
 				useTemplatesStore,
 				useUIStore,
-				useUsersStore,
 				useWorkflowsStore,
+				useUsersStore,
+				useNodeCreatorStore,
 				useWorkflowsEEStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
@@ -675,12 +682,10 @@ export default mixins(
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
-				this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
-				this.nodeCreatorStore.showScrim = true;
+				this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
+				this.nodeCreatorStore.setShowScrim(true);
 				this.onToggleNodeCreator({ source, createNodeActive: true });
-				this.$nextTick(() => {
-					this.nodeCreatorStore.showTabs = false;
-				});
+				this.$nextTick(() => this.nodeCreatorStore.setShowTabs(false));
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
@@ -1486,17 +1491,25 @@ export default mixins(
 					return;
 				}
 
-				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
-				if (nodeTypeName) {
+				const nodeTypeNames = event.dataTransfer.getData('nodeTypeName').split(',');
+
+				if (nodeTypeNames) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
 
-					this.addNode(nodeTypeName, {
-						position: [
-							mousePosition[0] - NodeViewUtils.NODE_SIZE / 2,
-							mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
-						],
-						dragAndDrop: true,
+					const nodesToAdd = nodeTypeNames.map((nodeTypeName: string, index: number) => {
+
+						return {
+							nodeTypeName,
+							position: [
+								// If adding more than one node, offset the X position
+								(mousePosition[0] - NodeViewUtils.NODE_SIZE / 2) + (NodeViewUtils.NODE_SIZE * (index * 2)),
+								mousePosition[1] - NodeViewUtils.NODE_SIZE / 2,
+							] as XYPosition,
+							dragAndDrop: true,
+						};
 					});
+
+					this.onAddNode(nodesToAdd, true);
 					this.createNodeActive = false;
 				}
 			},
@@ -1608,7 +1621,7 @@ export default mixins(
 				return newNodeData;
 			},
 
-			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
 				const nodeTypeData: INodeTypeDescription | null = this.nodeTypesStore.getNodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1665,7 +1678,6 @@ export default mixins(
 						}
 
 						// If a node is active then add the new node directly after the current one
-						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 						newNodeData.position = NodeViewUtils.getNewNodePosition(
 							this.nodes,
 							[lastSelectedNode.position[0] + NodeViewUtils.PUSH_NODES_OFFSET, lastSelectedNode.position[1] + yOffset],
@@ -1718,9 +1730,12 @@ export default mixins(
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
-				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
-				});
+				const preventDetailOpen = window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
+				if(showDetail && !preventDetailOpen) {
+					setTimeout(() => {
+						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
+					});
+				}
 
 				return newNodeData;
 			},
@@ -1756,7 +1771,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -1765,7 +1780,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName, options);
+				const newNodeData = await this.injectNode(nodeTypeName, options, showDetail);
 				if (!newNodeData) {
 					return;
 				}
@@ -3234,16 +3249,39 @@ export default mixins(
 				if (createNodeActive === this.createNodeActive) return;
 
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) {
-					this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
-				}
+				if (!this.containsTrigger) this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
 
 				this.createNodeActive = createNodeActive;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
-				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.workflowsStore.workflowId });
+
+				const mode = this.nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER ? 'trigger' : 'default';
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, mode, createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, mode, createNodeActive, workflow_id: this.workflowsStore.workflowId });
 			},
-			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
-				this.addNode(nodeTypeName, { position });
+			onAddNode(nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>, dragAndDrop: boolean) {
+				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
+					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0);
+					if(index === 0) return;
+					// If there's more than one node, we want to connect them
+					// this has to be done in mutation subscriber to make sure both nodes already
+					// exist
+					const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
+						if(name === 'addNode' && args[0].type === nodeTypeName) {
+							after(() => {
+								const lastAddedNode = this.nodes[this.nodes.length - 1];
+								const previouslyAddedNode = this.nodes[this.nodes.length - 2];
+
+								this.$nextTick(() => this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0));
+
+								// Position the added node to the right side of the previsouly added one
+								lastAddedNode.position = [
+									previouslyAddedNode.position[0] + (NodeViewUtils.NODE_SIZE * 2),
+									previouslyAddedNode.position[1],
+								];
+								actionWatcher();
+							});
+						}
+					});
+				});
 			},
 			async saveCurrentWorkflowExternal(callback: () => void) {
 				await this.saveCurrentWorkflow();

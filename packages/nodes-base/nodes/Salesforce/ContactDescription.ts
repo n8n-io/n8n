@@ -980,9 +980,6 @@ export const contactFields: INodeProperties[] = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{
