@@ -45,11 +45,13 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
+import { historyHelper } from '@/mixins/history';
 
 export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
+	historyHelper,
 ).extend({
 	name: 'App',
 	components: {
@@ -191,7 +193,6 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
-		// TODO: Un-comment once front-end hooks are updated to work with pinia store
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {

@@ -41,7 +41,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -64,7 +64,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -233,7 +233,9 @@ import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getAccountAge, getNodeViewTab } from '@/utils';
+import { getAccountAge, getConnectionInfo, getNodeViewTab } from '@/utils';
+import { useHistoryStore } from '@/stores/history';
+import { AddConnectionCommand, AddNodeCommand, MoveNodeCommand, RemoveConnectionCommand, RemoveNodeCommand, RenameNodeCommand } from '@/models/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -347,7 +349,8 @@ export default mixins(
 					next();
 					return;
 				}
-
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
 					const confirmModal = await this.confirmModal(
@@ -407,6 +410,7 @@ export default mixins(
 				useUsersStore,
 				useNodeCreatorStore,
 				useWorkflowsEEStore,
+				useHistoryStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -545,6 +549,10 @@ export default mixins(
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
 				isProductionExecutionPreview: false,
+				// jsplumb automatically deletes all loose connections which is in turn recorded
+				// in undo history as a user action.
+				// This should prevent automatically removed connections from populating undo stack
+				suspendRecordingDetachedConnections: false,
 			};
 		},
 		beforeDestroy() {
@@ -1117,7 +1125,7 @@ export default mixins(
 				if (!this.editAllowedCheck()) {
 					return;
 				}
-				this.disableNodes(this.uiStore.getSelectedNodes);
+				this.disableNodes(this.uiStore.getSelectedNodes, true);
 			},
 
 			deleteSelectedNodes() {
@@ -1127,9 +1135,13 @@ export default mixins(
 				const nodesToDelete: string[] = this.uiStore.getSelectedNodes.map((node: INodeUi) => {
 					return node.name;
 				});
+				this.historyStore.startRecordingUndo();
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName);
+					this.removeNode(nodeName, true, false);
 				});
+				setTimeout(() => {
+					this.historyStore.stopRecordingUndo();
+				}, 200);
 			},
 
 			selectAllNodes() {
@@ -1173,12 +1185,13 @@ export default mixins(
 				this.nodeSelectedByName(lastSelectedNode.name);
 			},
 
-			pushDownstreamNodes(sourceNodeName: string, margin: number) {
+			pushDownstreamNodes(sourceNodeName: string, margin: number, recordHistory = false) {
 				const sourceNode = this.workflowsStore.nodesByName[sourceNodeName];
 				const workflow = this.getCurrentWorkflow();
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+					const oldPosition = node.position;
 
 					if (node.position[0] < sourceNode.position[0]) {
 						continue;
@@ -1193,6 +1206,10 @@ export default mixins(
 
 					this.workflowsStore.updateNodeProperties(updateInformation);
 					this.onNodeMoved(node);
+
+					if (recordHistory && oldPosition[0] !== node.position[0] || oldPosition[1] !== node.position[1]) {
+						this.historyStore.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, node.position, this), recordHistory);
+					}
 				}
 			},
 
@@ -1621,7 +1638,7 @@ export default mixins(
 				return newNodeData;
 			},
 
-			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true, trackHistory = false) {
 				const nodeTypeData: INodeTypeDescription | null = this.nodeTypesStore.getNodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1653,7 +1670,7 @@ export default mixins(
 					if (lastSelectedConnection) { // set when injecting into a connection
 						const [diffX] = NodeViewUtils.getConnectorLengths(lastSelectedConnection);
 						if (diffX <= NodeViewUtils.MAX_X_TO_PUSH_DOWNSTREAM_NODES) {
-							this.pushDownstreamNodes(lastSelectedNode.name, NodeViewUtils.PUSH_NODES_OFFSET);
+							this.pushDownstreamNodes(lastSelectedNode.name, NodeViewUtils.PUSH_NODES_OFFSET, trackHistory);
 						}
 					}
 
@@ -1706,7 +1723,7 @@ export default mixins(
 					newNodeData.webhookId = uuid();
 				}
 
-				await this.addNodes([newNodeData]);
+				await this.addNodes([newNodeData], undefined, trackHistory);
 
 				this.uiStore.stateIsDirty = true;
 
@@ -1728,13 +1745,15 @@ export default mixins(
 				}
 
 				// Automatically deselect all nodes and select the current one and also active
-				// current node
-				this.deselectAllNodes();
-				const preventDetailOpen = window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
-				if(showDetail && !preventDetailOpen) {
-					setTimeout(() => {
-						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
-					});
+				// current node. But only if it's added manually by the user (not by undo/redo mechanism)
+				if(trackHistory) {
+					this.deselectAllNodes();
+					const preventDetailOpen = window.posthog?.getFeatureFlag && window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
+					if(showDetail && !preventDetailOpen) {
+						setTimeout(() => {
+							this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
+						});
+					}
 				}
 
 				return newNodeData;
@@ -1751,7 +1770,7 @@ export default mixins(
 
 				return undefined;
 			},
-			connectTwoNodes(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number) {
+			connectTwoNodes(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number, trackHistory = false) {
 				if (this.getConnection(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex)) {
 					return;
 				}
@@ -1771,7 +1790,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -1780,7 +1799,9 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.uiStore.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName, options, showDetail);
+				this.historyStore.startRecordingUndo();
+
+				const newNodeData = await this.injectNode(nodeTypeName, options, showDetail, trackHistory);
 				if (!newNodeData) {
 					return;
 				}
@@ -1792,16 +1813,17 @@ export default mixins(
 					await Vue.nextTick();
 
 					if (lastSelectedConnection && lastSelectedConnection.__meta) {
-						this.__deleteJSPlumbConnection(lastSelectedConnection);
+						this.__deleteJSPlumbConnection(lastSelectedConnection, trackHistory);
 
 						const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 						const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-						this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
+						this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex, trackHistory);
 					}
 
 					// Connect active node to the newly created one
-					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
+					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, trackHistory);
 				}
+				this.historyStore.stopRecordingUndo();
 			},
 			initNodeView() {
 				this.instance.importDefaults({
@@ -1847,7 +1869,7 @@ export default mixins(
 								const sourceNodeName = sourceNode.name;
 								const outputIndex = connection.getParameters().index;
 
-								this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+								this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 								this.pullConnActiveNodeName = null;
 							}
 							return;
@@ -1988,21 +2010,26 @@ export default mixins(
 
 						NodeViewUtils.moveBackInputLabelPosition(info.targetEndpoint);
 
+						const connectionData: [IConnection, IConnection] = [
+							{
+								node: sourceNodeName,
+								type: sourceInfo.type,
+								index: sourceInfo.index,
+							},
+							{
+								node: targetNodeName,
+								type: targetInfo.type,
+								index: targetInfo.index,
+							},
+						];
+
 						this.workflowsStore.addConnection({
-							connection: [
-								{
-									node: sourceNodeName,
-									type: sourceInfo.type,
-									index: sourceInfo.index,
-								},
-								{
-									node: targetNodeName,
-									type: targetInfo.type,
-									index: targetInfo.index,
-								},
-							],
+							connection: connectionData,
 							setStateDirty: true,
 						});
+						if (!this.suspendRecordingDetachedConnections) {
+							this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
+						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}
@@ -2040,19 +2067,31 @@ export default mixins(
 					}
 				});
 
-				this.instance.bind('connectionDetached', (info) => {
+				this.instance.bind('connectionDetached', async (info) => {
 					try {
+						const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
 						info.connection.removeOverlays();
-						this.__removeConnectionByConnectionInfo(info, false);
+						this.__removeConnectionByConnectionInfo(info, false, false);
 
 						if (this.pullConnActiveNodeName) { // establish new connection when dragging connection from one node to another
+							this.historyStore.startRecordingUndo();
 							const sourceNode = this.workflowsStore.getNodeById(info.connection.sourceId);
 							const sourceNodeName = sourceNode.name;
 							const outputIndex = info.connection.getParameters().index;
 
-							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
+							if (connectionInfo) {
+								this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
+							}
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
+							await this.$nextTick();
+							this.historyStore.stopRecordingUndo();
+						} else if (!this.historyStore.bulkInProgress && !this.suspendRecordingDetachedConnections && connectionInfo) {
+							// Ff connection being detached by user, save this in history
+							// but skip if it's detached as a side effect of bulk undo/redo or node rename process
+							const removeCommand = new RemoveConnectionCommand(connectionInfo, this);
+							this.historyStore.pushCommandToUndo(removeCommand);
 						}
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
@@ -2180,6 +2219,7 @@ export default mixins(
 					}
 				}
 				this.uiStore.nodeViewInitialized = true;
+				this.historyStore.reset();
 				this.workflowsStore.activeWorkflowExecution = null;
 				this.stopLoading();
 			}),
@@ -2246,6 +2286,7 @@ export default mixins(
 						await this.newWorkflow();
 					}
 				}
+				this.historyStore.reset();
 				this.uiStore.nodeViewInitialized = true;
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
@@ -2313,23 +2354,38 @@ export default mixins(
 			},
 			__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection) {
-					const sourceId = this.workflowsStore.getNodeByName(connection[0].node);
-					const targetId = this.workflowsStore.getNodeByName(connection[1].node);
+					const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
+					const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
+
+					if (!sourceNode || !targetNode) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: sourceId,
-						target: targetId,
+						source: sourceNode.id,
+						target: targetNode.id,
 					});
 
 					// @ts-ignore
 					connections.forEach((connectionInstance) => {
-						this.__deleteJSPlumbConnection(connectionInstance);
+						if (connectionInstance.__meta) {
+							// Only delete connections from specific indexes (if it can be determined by meta)
+							if (
+								connectionInstance.__meta.sourceOutputIndex === connection[0].index &&
+								connectionInstance.__meta.targetOutputIndex === connection[1].index
+							) {
+								this.__deleteJSPlumbConnection(connectionInstance);
+							}
+						} else {
+							this.__deleteJSPlumbConnection(connectionInstance);
+						}
 					});
 				}
 
 				this.workflowsStore.removeConnection({ connection });
 			},
-			__deleteJSPlumbConnection(connection: Connection) {
+			__deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
 				// Make sure to remove the overlay else after the second move
 				// it visibly stays behind free floating without a connection.
 				connection.removeOverlays();
@@ -2341,31 +2397,24 @@ export default mixins(
 					const endpoints = this.instance.getEndpoints(sourceEndpoint.elementId);
 					endpoints.forEach((endpoint: Endpoint) => endpoint.repaint()); // repaint both circle and plus endpoint
 				}
+				if (trackHistory && connection.__meta) {
+					const connectionData: [IConnection, IConnection] = [
+						{ index: connection.__meta?.sourceOutputIndex, node: connection.__meta.sourceNodeName, type: 'main' },
+						{ index: connection.__meta?.targetOutputIndex, node: connection.__meta.targetNodeName, type: 'main' },
+					];
+					const removeCommand = new RemoveConnectionCommand(connectionData, this);
+					this.historyStore.pushCommandToUndo(removeCommand);
+				}
 			},
-			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false) {
-				const sourceInfo = info.sourceEndpoint.getParameters();
-				const sourceNode = this.workflowsStore.getNodeById(sourceInfo.nodeId);
-				const targetInfo = info.targetEndpoint.getParameters();
-				const targetNode = this.workflowsStore.getNodeById(targetInfo.nodeId);
+			__removeConnectionByConnectionInfo(info: OnConnectionBindInfo, removeVisualConnection = false, trackHistory = false) {
+				const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 
-				if (sourceNode && targetNode) {
-					const connectionInfo = [
-						{
-							node: sourceNode.name,
-							type: sourceInfo.type,
-							index: sourceInfo.index,
-						},
-						{
-							node: targetNode.name,
-							type: targetInfo.type,
-							index: targetInfo.index,
-						},
-					] as [IConnection, IConnection];
-
+				if (connectionInfo) {
 					if (removeVisualConnection) {
-						this.__deleteJSPlumbConnection(info.connection);
+						this.__deleteJSPlumbConnection(info.connection, trackHistory);
+					} else if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
 					}
-
 					this.workflowsStore.removeConnection({ connection: connectionInfo });
 				}
 			},
@@ -2414,7 +2463,7 @@ export default mixins(
 						);
 					}
 
-					await this.addNodes([newNodeData]);
+					await this.addNodes([newNodeData], [], true);
 
 					const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
 					if (pinData) {
@@ -2562,7 +2611,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string) {
+			removeNode(nodeName: string, trackHistory = false, trackBulk = true) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2570,6 +2619,10 @@ export default mixins(
 				const node = this.workflowsStore.getNodeByName(nodeName);
 				if (!node) {
 					return;
+				}
+
+				if (trackHistory && trackBulk) {
+					this.historyStore.startRecordingUndo();
 				}
 
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
@@ -2625,7 +2678,7 @@ export default mixins(
 							const targetNodeOuputIndex = conn2.__meta.targetOutputIndex;
 
 							setTimeout(() => {
-								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex);
+								this.connectTwoNodes(sourceNodeName, sourceNodeOutputIndex, targetNodeName, targetNodeOuputIndex, trackHistory);
 
 								if (waitForNewConnection) {
 									this.instance.setSuspendDrawing(false, true);
@@ -2659,7 +2712,16 @@ export default mixins(
 
 					// Remove node from selected index if found in it
 					this.uiStore.removeNodeFromSelection(node);
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
+					}
 				}, 0); // allow other events to finish like drag stop
+				if (trackHistory && trackBulk) {
+					const recordingTimeout = waitForNewConnection ? 100 : 0;
+					setTimeout(() => {
+						this.historyStore.stopRecordingUndo();
+					}, recordingTimeout);
+				}
 			},
 			valueChanged(parameterData: IUpdateInformation) {
 				if (parameterData.name === 'name' && parameterData.oldValue) {
@@ -2694,12 +2756,17 @@ export default mixins(
 
 					const promptResponse = await promptResponsePromise as MessageBoxInputData;
 
-					this.renameNode(currentName, promptResponse.value);
+					this.renameNode(currentName, promptResponse.value, true);
 				} catch (e) { }
 			},
-			async renameNode(currentName: string, newName: string) {
+			async renameNode(currentName: string, newName: string, trackHistory=false) {
 				if (currentName === newName) {
 					return;
+				}
+
+				this.suspendRecordingDetachedConnections = true;
+				if (trackHistory) {
+					this.historyStore.startRecordingUndo();
 				}
 
 				const activeNodeName = this.activeNode && this.activeNode.name;
@@ -2717,6 +2784,10 @@ export default mixins(
 				const workflow = this.getCurrentWorkflow(true);
 				workflow.renameNode(currentName, newName);
 
+				if (trackHistory) {
+					this.historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, this));
+				}
+
 				// Update also last selected node and execution data
 				this.workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
 
@@ -2730,7 +2801,7 @@ export default mixins(
 				await Vue.nextTick();
 
 				// Add the new updated nodes
-				await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode);
+				await this.addNodes(Object.values(workflow.nodes), workflow.connectionsBySourceNode, false);
 
 				// Make sure that the node is selected again
 				this.deselectAllNodes();
@@ -2740,6 +2811,11 @@ export default mixins(
 					this.ndvStore.activeNodeName = newName;
 					this.renamingActive = false;
 				}
+
+				if (trackHistory) {
+					this.historyStore.stopRecordingUndo();
+				}
+				this.suspendRecordingDetachedConnections = false;
 			},
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
@@ -2802,7 +2878,7 @@ export default mixins(
 					}
 				});
 			},
-			async addNodes(nodes: INodeUi[], connections?: IConnections) {
+			async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
 				if (!nodes || !nodes.length) {
 					return;
 				}
@@ -2859,6 +2935,9 @@ export default mixins(
 					}
 
 					this.workflowsStore.addNode(node);
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new AddNodeCommand(node, this));
+					}
 				});
 
 				// Wait for the node to be rendered
@@ -3012,7 +3091,9 @@ export default mixins(
 				}
 
 				// Add the nodes with the changed node names, expressions and connections
-				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
+				this.historyStore.startRecordingUndo();
+				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode, true);
+				this.historyStore.stopRecordingUndo();
 
 				this.uiStore.stateIsDirty = true;
 
@@ -3259,7 +3340,7 @@ export default mixins(
 			},
 			onAddNode(nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>, dragAndDrop: boolean) {
 				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
-					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0);
+					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0, true);
 					if(index === 0) return;
 					// If there's more than one node, we want to connect them
 					// this has to be done in mutation subscriber to make sure both nodes already
@@ -3286,6 +3367,51 @@ export default mixins(
 			async saveCurrentWorkflowExternal(callback: () => void) {
 				await this.saveCurrentWorkflow();
 				callback?.();
+			},
+			setSuspendRecordingDetachedConnections(suspend: boolean) {
+				this.suspendRecordingDetachedConnections = suspend;
+			},
+			onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
+				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
+				setTimeout(() => {
+					const node = this.workflowsStore.getNodeByName(nodeName);
+					if (node) {
+						this.instance.repaintEverything();
+						this.onNodeMoved(node);
+					}
+				}, 0);
+			},
+			onRevertAddNode({node}: {node: INodeUi}): void {
+				this.removeNode(node.name, false);
+			},
+			async onRevertRemoveNode({node}: {node: INodeUi}): Promise<void> {
+				const prevNode = this.workflowsStore.workflow.nodes.find(n => n.id === node.id);
+				if (prevNode) {
+					return;
+				}
+				// For some reason, returning node to canvas with old id
+				// makes it's endpoint to render at wrong position
+				node.id = uuid();
+				await this.addNodes([node]);
+			},
+			onRevertAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.suspendRecordingDetachedConnections = true;
+				this.__removeConnection(connection, true);
+				this.suspendRecordingDetachedConnections = false;
+			},
+			async onRevertRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.suspendRecordingDetachedConnections = true;
+				this.__addConnection(connection, true);
+				this.suspendRecordingDetachedConnections = false;
+			},
+			async onRevertNameChange({ currentName, newName }: { currentName: string, newName: string }) {
+				await this.renameNode(newName, currentName);
+			},
+			onRevertEnableToggle({ nodeName, isDisabled }: { nodeName: string, isDisabled: boolean }) {
+				const node = this.workflowsStore.getNodeByName(nodeName);
+				if (node) {
+					this.disableNodes([node]);
+				}
 			},
 		},
 		async mounted() {
@@ -3389,6 +3515,13 @@ export default mixins(
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$on('nodeMove', this.onMoveNode);
+			this.$root.$on('revertAddNode', this.onRevertAddNode);
+			this.$root.$on('revertRemoveNode', this.onRevertRemoveNode);
+			this.$root.$on('revertAddConnection', this.onRevertAddConnection);
+			this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
+			this.$root.$on('revertRenameNode', this.onRevertNameChange);
+			this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3404,11 +3537,17 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$off('nodeMove', this.onMoveNode);
+			this.$root.$off('revertAddNode', this.onRevertAddNode);
+			this.$root.$off('revertRemoveNode', this.onRevertRemoveNode);
+			this.$root.$off('revertAddConnection', this.onRevertAddConnection);
+			this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
+			this.$root.$off('revertRenameNode', this.onRevertNameChange);
+			this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
