@@ -416,12 +416,12 @@ export class MoveBinaryData implements INodeType {
 				}
 
 				if (options.dataIsBase64 !== true) {
-					if (options.useRawData !== true) {
+					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
 
 					value = iconv
-						.encode(value as string, encoding, { addBOM: options.addBOM as boolean })
+						.encode(value, encoding, { addBOM: options.addBOM as boolean })
 						.toString(BINARY_ENCODING);
 				}
 
