@@ -16,12 +16,13 @@ export class NodeCreator extends BasePage {
 		creatorItem: () => cy.getByTestId('item-iterator-item'),
 		communityNodeTooltip: () => cy.getByTestId('node-item-community-tooltip'),
 		noResults: () => cy.getByTestId('categorized-no-results'),
-		nodeItemName: () => cy.getByTestId('node-item-name'),
+		nodeItemName: () => cy.getByTestId('node-creator-item-name'),
 		activeSubcategory: () => cy.getByTestId('categorized-items-subcategory'),
 		expandedCategories: () => this.getters.creatorItem().find('>div').filter('.active').invoke('text'),
 	};
 	actions = {
 		openNodeCreator: () => {
+			cy.get('.el-loading-mask').should('not.exist');
 			this.getters.plusButton().click();
 			this.getters.nodeCreator().should('be.visible')
 		},

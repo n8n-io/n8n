@@ -21,7 +21,7 @@ import {
 	IWorkflowsMap,
 	WorkflowsState,
 } from "@/Interface";
-import {defineStore} from "pinia";
+import { defineStore } from "pinia";
 import {
 	deepCopy,
 	IConnection,
@@ -40,7 +40,7 @@ import {
 } from 'n8n-workflow';
 import Vue from "vue";
 
-import {useRootStore} from "./n8nRootStore";
+import { useRootStore } from "./n8nRootStore";
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -50,7 +50,7 @@ import {
 } from "@/api/workflows";
 import {useUIStore} from "./ui";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-import {isJsonKeyObject, getPairedItemsMapping, stringSizeInBytes} from "@/utils";
+import {isJsonKeyObject, getPairedItemsMapping, stringSizeInBytes, isObjectLiteral} from "@/utils";
 import {useNDVStore} from "./ndv";
 import {useNodeTypesStore} from "./nodeTypes";
 import {useWorkflowsEEStore} from "@/stores/workflows.ee";
@@ -720,7 +720,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(node, updateInformation.key, updateInformation.value);
 		},
 
-		setNodeParameters(updateInformation: IUpdateInformation): void {
+		setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 			// Find the node that should be updated
 			const node = this.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -732,12 +732,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
-			Vue.set(node, 'parameters', updateInformation.value);
+			const newParameters = !!append && isObjectLiteral(updateInformation.value)
+				? {...node.parameters, ...updateInformation.value }
+				: updateInformation.value;
+
+			Vue.set(node, 'parameters', newParameters);
 
 			if (!this.nodeMetadata[node.name]) {
 				Vue.set(this.nodeMetadata, node.name, {});
 			}
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
+		},
+
+		setLastNodeParameters(updateInformation: IUpdateInformation) {
+			const latestNode = this.workflow.nodes.findLast((node) => node.type === updateInformation.key) as INodeUi;
+
+			if(latestNode) this.setNodeParameters({...updateInformation, name: latestNode.name}, true);
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {

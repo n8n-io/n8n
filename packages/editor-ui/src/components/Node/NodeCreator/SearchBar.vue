@@ -5,12 +5,14 @@
 		</div>
 		<div :class="$style.text">
 			<input
-				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
-				ref="input"
+				:placeholder="placeholder"
 				:value="value"
 				@input="onInput"
 				:class="$style.input"
+				ref="inputRef"
+				autofocus
 				data-test-id="node-creator-search-bar"
+				tabindex="0"
 			/>
 		</div>
 		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
@@ -21,50 +23,56 @@
 	</div>
 </template>
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
-
+<script setup lang="ts">
+import Vue, { onMounted, reactive, toRefs, onBeforeUnmount  } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 
-export default mixins(externalHooks).extend({
-	name: "SearchBar",
-	props: {
-		value: {
-			type: String,
-		},
-		eventBus: {
-			type: Object as PropType<Vue>,
-		},
-	},
-	mounted() {
-		if (this.eventBus) {
-			this.eventBus.$on("focus", this.focus);
-		}
-		setTimeout(this.focus, 0);
+export interface Props {
+	placeholder: string;
+	value: string;
+	eventBus?: Vue;
+}
 
-		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
-	},
-	methods: {
-		focus() {
-			const input = this.$refs.input as HTMLInputElement;
-			if (input) {
-				input.focus();
-			}
-		},
-		onInput(event: InputEvent) {
-			const input = event.target as HTMLInputElement;
-			this.$emit("input", input.value);
-		},
-		clear() {
-			this.$emit("input", "");
-		},
-	},
-	beforeDestroy() {
-		if (this.eventBus) {
-			this.eventBus.$off("focus", this.focus);
-		}
-	},
+withDefaults(defineProps<Props>(), {
+	placeholder: '',
+	value: '',
+});
+
+const emit = defineEmits<{
+	(event: 'input', value: string): void,
+}>();
+
+const { $externalHooks } = new externalHooks();
+
+const state = reactive({
+	inputRef: null as HTMLInputElement | null,
+});
+
+function focus() {
+	state.inputRef?.focus();
+}
+
+function onInput(event: Event) {
+	const input = event.target as HTMLInputElement;
+	emit("input", input.value);
+}
+
+function clear() {
+	emit("input", "");
+}
+
+onMounted(() => {
+	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.inputRef });
+	setTimeout(focus, 0);
+});
+
+onBeforeUnmount(() => {
+	state.inputRef?.remove();
+});
+
+const { inputRef } = toRefs(state);
+defineExpose({
+	focus,
 });
 </script>
 
@@ -74,7 +82,7 @@ export default mixins(externalHooks).extend({
 	height: 40px;
 	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
-	margin: var(--spacing-s);
+	margin: var(--search-margin, var(--spacing-s));
 	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
