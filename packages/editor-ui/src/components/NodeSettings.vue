@@ -816,6 +816,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.openPanel = 'settings';
 			});
 		}
+
+		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 });
 </script>

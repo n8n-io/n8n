@@ -10,7 +10,7 @@ export class SplitInBatches implements INodeType {
 		version: 1,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
-			name: 'SplitInBatches',
+			name: 'Split In Batches',
 			color: '#007755',
 		},
 		inputs: ['main'],

@@ -9,7 +9,7 @@ import Vue from "vue";
 import { useCredentialsStore } from "./credentials";
 import { useRootStore } from "./n8nRootStore";
 import { useUsersStore } from "./users";
-
+import { useNodeCreatorStore } from './nodeCreator';
 function getNodeVersions(nodeType: INodeTypeDescription) {
 	return Array.isArray(nodeType.version) ? nodeType.version : [nodeType.version];
 }
@@ -79,17 +79,21 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				}
 
 				for (const version of newNodeVersions) {
+					// Node exists with the same name
 					if (acc[newNodeType.name]) {
-						acc[newNodeType.name][version] = newNodeType;
+						acc[newNodeType.name][version] = Object.assign(acc[newNodeType.name][version] ?? {}, newNodeType);
 					} else {
-						acc[newNodeType.name] = { [version]: newNodeType };
+						acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, { [version]: newNodeType });
 					}
 				}
 
 				return acc;
 			}, { ...this.nodeTypes });
-
 			Vue.set(this, 'nodeTypes', nodeTypes);
+
+			// Trigger compute of mergedAppNodes getter so it's ready when user opens the node creator
+			// tslint:disable-next-line: no-unused-expression
+			useNodeCreatorStore().mergedAppNodes;
 		},
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
@@ -97,7 +101,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 				this.nodeTypes,
 			);
 		},
-		async getNodesInformation(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
+		async getNodesInformation(nodeInfos: INodeTypeNameVersion[], replace = true): Promise<INodeTypeDescription[]> {
 			const rootStore = useRootStore();
 			const nodesInformation = await getNodesInformation(rootStore.getRestApiContext, nodeInfos);
 
@@ -111,7 +115,9 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 					);
 				}
 			});
-			this.setNodeTypes(nodesInformation);
+			if(replace) this.setNodeTypes(nodesInformation);
+
+			return nodesInformation;
 		},
 		async getFullNodesProperties(nodesToBeFetched: INodeTypeNameVersion[]): Promise<void> {
 			const credentialsStore = useCredentialsStore();
