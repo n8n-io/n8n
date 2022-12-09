@@ -4,7 +4,12 @@ import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-import { ILicensePostResponse, ILicenseReadResponse, ResponseHelper } from '..';
+import {
+	ILicensePostResponse,
+	ILicenseReadResponse,
+	InternalHooksManager,
+	ResponseHelper,
+} from '..';
 import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
 import { LicenseRequest } from '@/requests';
@@ -101,6 +106,7 @@ licenseController.post(
 			LoggerProxy.info('Non-owner attempted to renew a license', {
 				userId: req.user.id,
 			});
+			await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
 			throw new ResponseHelper.NotFoundError('Only an instance owner may renew a license');
 		}
 
@@ -109,12 +115,14 @@ licenseController.post(
 		try {
 			await license.renew();
 		} catch (e) {
+			await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
 			}
 		}
 
 		// Return the read data, plus the management JWT
+		await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
 		return {
 			managementToken: license.getManagementJwt(),
 			...(await getLicenseData()),
