@@ -10,6 +10,7 @@ export class WorkflowPage extends BasePage {
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
 		workflowTagsInput: () => this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
 		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
+		firstWorkflowTagElement: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
 		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
@@ -43,12 +44,14 @@ export class WorkflowPage extends BasePage {
 		addInitialNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
-			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.get('body').type('{esc}');
 		},
 		addNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.nodeCreatorPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
-			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+			this.getters.nodeCreatorSearchBar().type('{enter}');
+			cy.get('body').type('{esc}');
 		},
 		openNodeNdv: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();

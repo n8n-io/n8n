@@ -5,9 +5,8 @@
 	>
 		<div class="main-panel">
 			<trigger-helper-panel
-				v-if="selectedType === TRIGGER_NODE_FILTER"
-				:searchItems="searchItems"
-				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
+				v-if="nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
 				<template #header>
 					<type-selector/>
@@ -15,10 +14,15 @@
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
+				enable-global-categories-counter
+				:categorizedItems="categorizedItems"
+				:categoriesWithNodes="categoriesWithNodes"
 				:searchItems="searchItems"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
-				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
+				:allItems="categorizedItems"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
+				@actionsOpen="() => {}"
 			>
 				<template #header>
 					<type-selector />
@@ -28,73 +32,58 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { PropType } from 'vue';
+<script setup lang="ts">
+import { watch, getCurrentInstance, onMounted, onUnmounted } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(externalHooks).extend({
-	name: 'NodeCreateList',
-	components: {
-		TriggerHelperPanel,
-		CategorizedItems,
-		TypeSelector,
-	},
-	props: {
-		searchItems: {
-			type: Array as PropType<INodeCreateElement[] | null>,
-		},
-	},
-	data() {
-		return {
-			CORE_NODES_CATEGORY,
-			TRIGGER_NODE_FILTER,
-			ALL_NODE_FILTER,
-			OTHER_TRIGGER_NODES_SUBCATEGORY,
-		};
-	},
-	computed: {
-		...mapStores(
-			useNodeCreatorStore,
-			useWorkflowsStore,
-		),
-		selectedType(): string {
-			return this.nodeCreatorStore.selectedType;
-		},
-	},
-	watch: {
-		selectedType(newValue, oldValue) {
-			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
-				oldValue,
-				newValue,
-			});
-			this.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
-				old_filter: oldValue,
-				new_filter: newValue,
-				workflow_id: this.workflowsStore.workflowId,
-			});
-		},
-	},
-	mounted() {
-		this.$externalHooks().run('nodeCreateList.mounted');
-		// Make sure tabs are visible on mount
-		this.nodeCreatorStore.showTabs = true;
-	},
-	destroyed() {
-		this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
-		this.$externalHooks().run('nodeCreateList.destroyed');
-		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.workflowsStore.workflowId });
-	},
+export interface Props {
+	searchItems?: INodeCreateElement[];
+}
+
+withDefaults(defineProps<Props>(), {
+	searchItems: () => [],
 });
+
+const instance = getCurrentInstance();
+const { $externalHooks } = new externalHooks();
+const { workflowId } = useWorkflowsStore();
+const nodeCreatorStore = useNodeCreatorStore();
+const { categorizedItems, categoriesWithNodes } = useNodeTypesStore();
+
+watch(() => nodeCreatorStore.selectedType, (newValue, oldValue) => {
+	$externalHooks().run('nodeCreateList.selectedTypeChanged', {
+		oldValue,
+		newValue,
+	});
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
+		old_filter: oldValue,
+		new_filter: newValue,
+		workflow_id: workflowId,
+	});
+});
+
+onMounted(() => {
+	$externalHooks().run('nodeCreateList.mounted');
+	// Make sure tabs are visible on mount
+	nodeCreatorStore.setShowTabs(true);
+});
+
+onUnmounted(() => {
+	nodeCreatorStore.setSelectedType(ALL_NODE_FILTER);
+	$externalHooks().run('nodeCreateList.destroyed');
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: workflowId });
+});
+
 </script>
+
 <style lang="scss" scoped>
 .container {
 	height: 100%;
