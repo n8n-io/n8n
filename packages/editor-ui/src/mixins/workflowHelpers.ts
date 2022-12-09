@@ -67,6 +67,7 @@ import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import {useUsersStore} from "@/stores/users";
+import {ICredentialMap, ICredentialsResponse, IUsedCredential} from "@/Interface";
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -927,6 +928,24 @@ export const workflowHelpers = mixins(
 				}
 
 				return true;
+			},
+
+			removeForeignCredentialsFromWorkflow(workflow: IWorkflowData | IWorkflowDataUpdate, usableCredentials: ICredentialsResponse[]): void {
+			 	workflow.nodes.forEach((node: INode) => {
+					if (!node.credentials) {
+						return;
+					}
+
+					node.credentials = Object.entries(node.credentials)
+						.reduce<INodeCredentials>((acc, [credentialType, credential]) => {
+							const isUsableCredential = usableCredentials.some((ownCredential) => `${ownCredential.id}` === `${credential.id}`);
+							if (credential.id && isUsableCredential) {
+								acc[credentialType] = node.credentials![credentialType];
+							}
+
+							return acc;
+						}, {});
+				});
 			},
 		},
 	});
