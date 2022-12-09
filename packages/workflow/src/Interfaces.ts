@@ -1369,6 +1369,12 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
+export interface INodeActionTypeDescription extends INodeTypeDescription {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1407,6 +1413,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	actions?: INodeActionTypeDescription[];
 }
 
 export interface INodeHookDescription {
