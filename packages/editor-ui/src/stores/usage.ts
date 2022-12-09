@@ -2,7 +2,7 @@ import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { useRoute } from 'vue-router/composables';
 import { UsageState } from '@/Interface';
-import {activateLicenseKey, getLicense, renewLicense} from '@/api/usage';
+import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from "@/stores/settings";
 import { useUsersStore } from "@/stores/users";
