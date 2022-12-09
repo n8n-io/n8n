@@ -235,9 +235,6 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 			},

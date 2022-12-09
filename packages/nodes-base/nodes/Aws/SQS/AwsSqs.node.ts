@@ -108,9 +108,6 @@ export class AwsSqs implements INodeType {
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Message to send to the queue',
 			},

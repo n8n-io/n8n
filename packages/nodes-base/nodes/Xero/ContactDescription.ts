@@ -479,9 +479,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Where',
 				name: 'where',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				placeholder: 'EmailAddress!=null&&EmailAddress.StartsWith("boom")',
 				default: '',
 				description:

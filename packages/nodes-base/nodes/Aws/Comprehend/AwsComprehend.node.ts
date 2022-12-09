@@ -133,9 +133,6 @@ export class AwsComprehend implements INodeType {
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -175,9 +172,6 @@ export class AwsComprehend implements INodeType {
 						displayName: 'Endpoint Arn',
 						name: 'endpointArn',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'The Amazon Resource Name of an endpoint that is associated with a custom entity recognition model',

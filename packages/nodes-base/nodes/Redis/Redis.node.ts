@@ -404,9 +404,6 @@ export class Redis implements INodeType {
 						operation: ['publish'],
 					},
 				},
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				required: true,
 				description: 'Data to publish',
@@ -435,9 +432,6 @@ export class Redis implements INodeType {
 					show: {
 						operation: ['push'],
 					},
-				},
-				typeOptions: {
-					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				required: true,

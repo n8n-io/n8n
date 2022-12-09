@@ -90,7 +90,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.6.0
+      '@n8n_io/license-sdk': ^1.6.1
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -206,7 +206,7 @@ importers:
       shelljs: ^0.8.5
       source-map-support: ^0.5.21
       sqlite3: ^5.1.2
-      sse-channel: ^3.1.1
+      sse-channel: ^4.0.0
       supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
@@ -221,7 +221,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.6.0
+      '@n8n_io/license-sdk': 1.6.1
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -296,7 +296,7 @@ importers:
       shelljs: 0.8.5
       source-map-support: 0.5.21
       sqlite3: 5.1.2
-      sse-channel: 3.1.1
+      sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
       threads: 1.7.0
@@ -519,6 +519,7 @@ importers:
       '@types/express': ^4.17.6
       '@types/file-saver': ^2.0.1
       '@types/jsonpath': ^0.2.0
+      '@types/lodash-es': ^4.17.6
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
@@ -633,6 +634,7 @@ importers:
       '@types/express': 4.17.14
       '@types/file-saver': 2.0.5
       '@types/jsonpath': 0.2.0
+      '@types/lodash-es': 4.17.6
       '@types/lodash.camelcase': 4.3.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
@@ -3347,8 +3349,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.6.0:
-    resolution: {integrity: sha512-e3VJZr1LcJibZsy3cF3LLTjKux14bKmAhkl4ArrHjhqwPYUXZtx2vc6u8FbnkR/TdeHlwxSIQfNmTNXlmcOY9A==}
+  /@n8n_io/license-sdk/1.6.1:
+    resolution: {integrity: sha512-cVFs67ydYScRyuxaPTXEyrIz8JcpwyE9vYWWtkbNNsW9OOjYAqd5wg3hcurctrtg3Tn7gsu+9E3P5LQBH2F7lg==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3
@@ -5784,6 +5786,12 @@ packages:
     resolution: {integrity: sha512-3YxO7RHRrmtYNX6Rhkr97bnXHrF1Ckfo4axENWLcBXWi+8B1WsNbqPqe5Eg6TA5survjAWWvLTu1KQesuLHVgQ==}
     dev: true
 
+  /@types/lodash-es/4.17.6:
+    resolution: {integrity: sha512-R+zTeVUKDdfoRxpAryaQNRKk3105Rrgx2CFRClIgRGaqDTdjsm8h6IYA8ir584W3ePzkZfst5xIgDwYrlh9HLg==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
   /@types/lodash.camelcase/4.3.7:
     resolution: {integrity: sha512-Nfi6jpo9vuEOSIJP+mpbTezKyEt75DQlbwjiDvs/JctWkbnHDoyQo5lWqdvgNiJmVUjcmkfvlrvSEgJYvurOKg==}
     dependencies:
@@ -6918,14 +6926,6 @@ packages:
     dependencies:
       mime-types: 2.1.35
       negotiator: 0.6.3
-
-  /access-control/1.0.1:
-    resolution: {integrity: sha512-H5aqjkogmFxfaOrfn/e42vyspHVXuJ8er63KuljJXpOyJ1ZO/U5CrHfO8BLKIy2w7mBM02L5quL0vbfQqrGQbA==}
-    dependencies:
-      millisecond: 0.1.2
-      setheader: 1.0.2
-      vary: 1.1.2
-    dev: false
 
   /acorn-globals/6.0.0:
     resolution: {integrity: sha512-ZQl7LOWaF5ePqqcX4hLuv/bLXYQNfNWw2c0/yX/TsPRKamzHcTGQnlCjHT3TsmkOUVEPS3crCxiPfdzE/Trlhg==}
@@ -9021,10 +9021,6 @@ packages:
     resolution: {integrity: sha512-3tlv/dIP7FWvj3BsbHrGLJ6l/oKh1O3TcgBqMn+yyCagOxc23fyzDS6HypQbgxWbkpDnf52p1LuR4eWDQ/K9WQ==}
     dev: true
 
-  /colornames/1.1.1:
-    resolution: {integrity: sha512-/pyV40IrsdulWv+wFPmERh9k/mjsPZ64yUMDmWrtj/k1nmgrzzIENWKdaVKyBbvFdQWqkcaRxr+polCo3VMe7A==}
-    dev: false
-
   /colorspace/1.1.4:
     resolution: {integrity: sha512-BgvKJiuVu1igBUF2kEjRCZXol6wiiGbY5ipL/oVPwm0BL9sIpMIzM8IK7vwuxIIzOXMV3Ey5w+vxhm0rR/TN8w==}
     dependencies:
@@ -10165,14 +10161,6 @@ packages:
       wrappy: 1.0.2
     dev: true
 
-  /diagnostics/1.1.1:
-    resolution: {integrity: sha512-8wn1PmdunLJ9Tqbx+Fx/ZEuHfJf4NKSN2ZBj7SJC/OWRWha843+WsTjqMe1B5E3p28jqBlp+mJ2fPVxPyNgYKQ==}
-    dependencies:
-      colorspace: 1.1.4
-      enabled: 1.0.2
-      kuler: 1.0.1
-    dev: false
-
   /diff-sequences/28.1.1:
     resolution: {integrity: sha512-FU0iFaH/E23a+a718l8Qa/19bF9p06kgE0KipMOMadwa3SjnaElKzPaUC0vnibs6/B/9ni97s61mcejk8W1fQw==}
     engines: {node: ^12.13.0 || ^14.15.0 || ^16.10.0 || >=17.0.0}
@@ -10459,12 +10447,6 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
-  /enabled/1.0.2:
-    resolution: {integrity: sha512-nnzgVSpB35qKrUN8358SjO1bYAmxoThECTWw9s3J0x5G8A9hokKHVDFzBjVpCoSryo6MhN8woVyascN5jheaNA==}
-    dependencies:
-      env-variable: 0.0.6
-    dev: false
-
   /enabled/2.0.0:
     resolution: {integrity: sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ==}
     dev: false
@@ -10535,10 +10517,6 @@ packages:
     engines: {node: '>=6'}
     dev: false
     optional: true
-
-  /env-variable/0.0.6:
-    resolution: {integrity: sha512-bHz59NlBbtS0NhftmR8+ExBEekE7br0e01jw+kk0NDro7TtZzBYZ5ScGPs3OmwnpyfHTHOtr1Y6uedCdrIldtg==}
-    dev: false
 
   /err-code/2.0.3:
     resolution: {integrity: sha512-2bmlRpNKBxT/CRmPOlyISQpNj+qSeYvcym/uT0Jx2bMOlKLtSy1ZmLuVxSEKKyor/N5yhvp/ZiG1oE3DEYMSFA==}
@@ -14772,12 +14750,6 @@ packages:
     engines: {node: '>= 8'}
     dev: true
 
-  /kuler/1.0.1:
-    resolution: {integrity: sha512-J9nVUucG1p/skKul6DU3PUZrhs0LPulNaeUOox0IyXDi8S4CztTHs1gQphhuZmzXG7VOQSf6NJfKuzteQLv9gQ==}
-    dependencies:
-      colornames: 1.1.1
-    dev: false
-
   /kuler/2.0.0:
     resolution: {integrity: sha512-Xq9nH7KlWZmXAtodXDDRE7vs6DU1gTU8zYDHDiWLSip45Egwq3plLHzPn27NgvzL2r1LMPC1vdqh98sQxtqj4A==}
     dev: false
@@ -15620,10 +15592,6 @@ packages:
       bn.js: 4.12.0
       brorand: 1.1.0
     dev: true
-
-  /millisecond/0.1.2:
-    resolution: {integrity: sha512-BJ8XtxY+woL+5TkP6uS6XvOArm0JVrX2otkgtWZseHpIax0oOOPW3cnwhOjRqbEJg7YRO/BDF7fO/PTWNT3T9Q==}
-    dev: false
 
   /mime-db/1.52.0:
     resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
@@ -19017,12 +18985,6 @@ packages:
       split-string: 3.1.0
     dev: true
 
-  /setheader/1.0.2:
-    resolution: {integrity: sha512-A704nIwzqGed0CnJZIqDE+0udMPS839ocgf1R9OJ8aq8vw4U980HWeNaD9ec8VnmBni9lyGEWDedOWXT/C5kxA==}
-    dependencies:
-      diagnostics: 1.1.1
-    dev: false
-
   /setimmediate/1.0.5:
     resolution: {integrity: sha512-MATJdZp8sLqDl/68LfQmbP8zKPLQNV6BIZoIgrscFDQ+RsvK/BxeDQOgyxKKoh0y/8h3BqVFnCqQ/gd+reiIXA==}
     dev: true
@@ -19441,11 +19403,8 @@ packages:
     engines: {node: '>= 0.6'}
     dev: false
 
-  /sse-channel/3.1.1:
-    resolution: {integrity: sha512-vgf4QFh60vlAMX0vGJpn6S+7gTO3ckRn7xq4DOgQGcgDs7ULBkaQFQxy4b3vj/umyk0ydhGu7i4A1nHQc5HcYw==}
-    dependencies:
-      access-control: 1.0.1
-      lodash: 4.17.21
+  /sse-channel/4.0.0:
+    resolution: {integrity: sha512-I539Tc0gyDTQ2QCSg4v78Flxo/UbqR9x7JoyPcqaPtwo+qzeOw/fF+aPSbk0xTvBQAAAZk7Dlkc8K1bum5GUnw==}
     dev: false
 
   /ssf/0.11.2:

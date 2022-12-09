@@ -18,7 +18,7 @@ export class NotionTrigger implements INodeType {
 		description: 'Starts the workflow when Notion events occur',
 		subtitle: '={{$parameter["event"]}}',
 		defaults: {
-			name: 'Notion Trigger',
+			name: 'Notion Trigger (Beta)',
 		},
 		credentials: [
 			{
