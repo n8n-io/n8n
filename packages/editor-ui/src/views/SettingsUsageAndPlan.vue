@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted} from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router/composables';
 import { useUsageStore } from '@/stores/usage';
 
@@ -7,6 +7,13 @@ const usageStore = useUsageStore();
 const route = useRoute();
 
 const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
+const activationKeyModal = ref(false);
+const activationKey = ref('');
+
+const onLicenseActivation = () => {
+	activationKeyModal.value = false;
+	usageStore.activateLicense(activationKey.value);
+};
 
 onMounted(async () => {
 	if(route.query.activationKey) {
@@ -46,7 +53,9 @@ onMounted(async () => {
 			</i18n>
 		</n8n-info-tip>
 		<div :class="$style.buttons">
-			<n8n-button v-if="usageStore.canUserActivateLicense" type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
+			<n8n-button @click="activationKeyModal = !activationKeyModal" v-if="usageStore.canUserActivateLicense" type="secondary" size="large">
+				{{ $locale.baseText('settings.usageAndPlan.button.activation') }}
+			</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" size="large">
 				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
@@ -54,6 +63,25 @@ onMounted(async () => {
 				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
 		</div>
+		<el-dialog
+			:visible.sync="activationKeyModal"
+			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+		>
+			<template #default>
+				<n8n-input
+					v-model="activationKey"
+					:placeholder="$locale.baseText('settings.usageAndPlan.dialog.activation.label')"
+				/>
+			</template>
+			<template #footer>
+				<n8n-button @click="activationKeyModal = false" size="large" type="secondary">
+					{{ $locale.baseText('_reusableBaseText.cancel') }}
+				</n8n-button>
+				<n8n-button @click="onLicenseActivation" size="large">
+					{{ $locale.baseText('_reusableBaseText.activate') }}
+				</n8n-button>
+			</template>
+		</el-dialog>
 	</div>
 </template>
 
@@ -107,5 +135,15 @@ onMounted(async () => {
 div[class*="info"] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
+}
+</style>
+
+<style lang="scss" scoped>
+:deep(.el-dialog) {
+	.el-dialog__footer {
+		button {
+			margin-left: var(--spacing-xs);
+		}
+	}
 }
 </style>
