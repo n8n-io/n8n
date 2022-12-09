@@ -2051,7 +2051,7 @@ export default mixins(
 					}
 				});
 
-				this.instance.bind('connectionDetached', (info) => {
+				this.instance.bind('connectionDetached', async (info) => {
 					try {
 						const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 						NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
@@ -2069,6 +2069,7 @@ export default mixins(
 							}
 							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 							this.pullConnActiveNodeName = null;
+							await this.$nextTick();
 							this.historyStore.stopRecordingUndo();
 						} else if (!this.historyStore.bulkInProgress && !this.suspendRecordingDetachedConnections && connectionInfo) {
 							// Ff connection being detached by user, save this in history
