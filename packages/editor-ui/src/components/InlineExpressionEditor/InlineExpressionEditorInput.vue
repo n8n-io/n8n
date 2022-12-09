@@ -43,7 +43,8 @@ export default mixins(expressionManager, workflowHelpers).extend({
 
 			if (range !== undefined && range.from !== range.to) return;
 
-			this.editor?.dispatch({
+			try {
+				this.editor?.dispatch({
 				changes: {
 					from: 0,
 					to: this.editor.state.doc.length,
@@ -51,6 +52,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				},
 				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
 			});
+			} catch (_) {} // ignore selection out of range error on drop
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
