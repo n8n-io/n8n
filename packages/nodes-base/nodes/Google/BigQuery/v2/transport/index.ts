@@ -1,23 +1,20 @@
 import { OptionsWithUri } from 'request';
+import moment from 'moment-timezone';
+import * as jwt from 'jsonwebtoken';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-
 import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import * as jwt from 'jsonwebtoken';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
 		0,
@@ -72,9 +69,9 @@ export async function googleApiRequestAllItems(
 	method: string,
 	endpoint: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -135,16 +132,4 @@ async function getAccessToken(
 	};
 
 	return this.helpers.request!(options);
-}
-
-export function simplify(rows: IDataObject[], fields: string[]) {
-	const results = [];
-	for (const row of rows) {
-		const record: IDataObject = {};
-		for (const [index, field] of fields.entries()) {
-			record[field] = (row.f as IDataObject[])[index].v;
-		}
-		results.push(record);
-	}
-	return results;
 }
