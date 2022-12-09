@@ -1,6 +1,5 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
-import { useRoute } from 'vue-router/composables';
 import { UsageState } from '@/Interface';
 import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -32,7 +31,6 @@ export const useUsageStore = defineStore('usage', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
-	const route = useRoute();
 
 	const state = reactive<UsageState>(DEFAULT_STATE);
 
@@ -85,7 +83,7 @@ export const useUsageStore = defineStore('usage', () => {
 		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  state.data.usage.executions.value / state.data.usage.executions.limit >= state.data.usage.executions.warningThreshold),
 		instanceId: computed(() => settingsStore.settings.instanceId),
 		managementToken: computed(() => state.data.managementToken),
-		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceId=${settingsStore.settings.instanceId}&callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`),
+		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceId=${settingsStore.settings.instanceId}`),
 		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${state.data.managementToken}`),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 	};

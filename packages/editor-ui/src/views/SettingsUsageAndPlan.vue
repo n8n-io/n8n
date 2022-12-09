@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { onMounted } from 'vue';
+import { computed, onMounted} from 'vue';
 import { useRoute } from 'vue-router/composables';
 import { useUsageStore } from '@/stores/usage';
 
 const usageStore = useUsageStore();
 const route = useRoute();
+
+const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
 
 onMounted(async () => {
 	if(route.query.activationKey) {
@@ -45,7 +47,7 @@ onMounted(async () => {
 				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
 			<n8n-button v-else size="large">
-				<a :href="usageStore.viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
+				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
 		</div>
 	</div>
