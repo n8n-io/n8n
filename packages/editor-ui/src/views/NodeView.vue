@@ -3339,7 +3339,7 @@ export default mixins(
 			},
 			onAddNode(nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>, dragAndDrop: boolean) {
 				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
-					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0);
+					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0, true);
 					if(index === 0) return;
 					// If there's more than one node, we want to connect them
 					// this has to be done in mutation subscriber to make sure both nodes already
