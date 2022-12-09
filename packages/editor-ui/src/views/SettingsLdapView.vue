@@ -150,12 +150,15 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import humanizeDuration from 'humanize-duration';
-import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
+import { rowCallbackParams, cellCallbackParams, ElTable } from 'element-ui/types/table';
 import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
+import { getLdapSynchronizations } from '@/api/ldap';
+import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
+import { ElTableColumn } from 'element-ui/types/table-column';
 
 type FormValues = {
 	loginEnabled: boolean;
@@ -230,11 +233,8 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		onContactUsClick(event: MouseEvent): void {
-			let contactEmail = 'hello@n8n.io';
-			if (this.settingsStore.isCloudDeployment) {
-				contactEmail = 'support@n8n.io ';
-			}
-			location.href = `mailto:${contactEmail}`;
+			const email = (this.settingsStore.isCloudDeployment) ? N8N_CONTACT_EMAIL : N8N_SALES_EMAIL;
+			location.href = `mailto:${email}`;
 		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
