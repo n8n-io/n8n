@@ -15,7 +15,7 @@ export const tweetOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create or reply to a Tweet',
+				description: 'Create, quote, or reply to a Tweet',
 				action: 'Create a Tweet',
 			},
 			{
@@ -95,7 +95,7 @@ export const tweetFields: INodeProperties[] = [
 								type: 'string',
 								// required: true,
 								description: 'The location latitude',
-								placeholder: '52.516278',
+								placeholder: 'e.g. 52.516278',
 								default: '',
 							},
 							{
@@ -104,7 +104,7 @@ export const tweetFields: INodeProperties[] = [
 								type: 'string',
 								// required: true,
 								description: 'The location longitude',
-								placeholder: '13.377926',
+								placeholder: 'e.g. 13.377926',
 								default: '',
 							},
 						],
@@ -116,11 +116,10 @@ export const tweetFields: INodeProperties[] = [
 				name: 'attachments',
 				type: 'string',
 				default: '',
-				// hint: 'The name of the input field containing the binary file data to be processed',
-				hint: 'Name of the input field containing the binary file data',
+				hint: 'The name of the input field containing the binary file data to be attached',
 				// required: true,
 				// default: 'data',
-				placeholder: 'data',
+				placeholder: 'e.g. data',
 				description:
 					'Name of the binary properties which contain data that should be added to the tweet as an attachment. Multiple attachments should be comma-separated. You may include up to 4 photos or 1 animated GIF or 1 video in a Tweet',
 			},
@@ -138,7 +137,7 @@ export const tweetFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						validation: [],
-						placeholder: '1187836157394112513',
+						placeholder: 'e.g. 1187836157394112513',
 						url: '',
 					},
 					{
@@ -146,7 +145,7 @@ export const tweetFields: INodeProperties[] = [
 						name: 'url',
 						type: 'string',
 						validation: [],
-						placeholder: 'https://twitter.com/n8n_io/status/1187836157394112513',
+						placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
 						url: '',
 					},
 				],
@@ -164,7 +163,7 @@ export const tweetFields: INodeProperties[] = [
 						name: 'id',
 						type: 'string',
 						validation: [],
-						placeholder: '1187836157394112513',
+						placeholder: 'e.g. 1187836157394112513',
 						url: '',
 					},
 					{
@@ -172,7 +171,7 @@ export const tweetFields: INodeProperties[] = [
 						name: 'url',
 						type: 'string',
 						validation: [],
-						placeholder: 'https://twitter.com/n8n_io/status/1187836157394112513',
+						placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
 						url: '',
 					},
 				],
@@ -202,7 +201,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				validation: [],
-				placeholder: '1187836157394112513',
+				placeholder: 'e.g. 1187836157394112513',
 				url: '',
 			},
 			{
@@ -210,7 +209,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				validation: [],
-				placeholder: 'https://twitter.com/n8n_io/status/1187836157394112513',
+				placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
 				url: '',
 			},
 		],
@@ -229,7 +228,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		placeholder: 'automation',
+		placeholder: 'e.g. automation',
 		displayOptions: {
 			show: {
 				operation: ['search'],
@@ -255,7 +254,7 @@ export const tweetFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'Maximum number of Tweets to return. Too many results may slow down the query',
+		description: 'Max number of results to return',
 	},
 	{
 		displayName: 'Options',
@@ -289,20 +288,18 @@ export const tweetFields: INodeProperties[] = [
 				default: 'recent',
 			},
 			{
-				displayName: 'Time End',
-				name: 'endtime',
-				type: 'dateTime',
-				default: '',
-				description:
-					'The newest, most recent date to which the Tweets will be provided. Tweets after that date will not be returned.',
-			},
-			{
-				displayName: 'Time Start',
+				displayName: 'After',
 				name: 'starttime',
 				type: 'dateTime',
 				default: '',
-				description:
-					'The oldest date (from most recent seven days) from which the Tweets will be provided. Tweets before that date will not be returned.',
+				description: 'Tweets before this date will not be returned',
+			},
+			{
+				displayName: 'Before',
+				name: 'endtime',
+				type: 'dateTime',
+				default: '',
+				description: 'Tweets after this date will not be returned',
 			},
 			{
 				displayName: 'Tweet Fields',
@@ -424,7 +421,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				validation: [],
-				placeholder: '1187836157394112513',
+				placeholder: 'e.g. 1187836157394112513',
 				url: '',
 			},
 			{
@@ -432,7 +429,7 @@ export const tweetFields: INodeProperties[] = [
 				name: 'url',
 				type: 'string',
 				validation: [],
-				placeholder: 'https://twitter.com/n8n_io/status/1187836157394112513',
+				placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
 				url: '',
 			},
 		],

@@ -46,7 +46,7 @@ export const userFields: INodeProperties[] = [
 				name: 'username',
 				type: 'string',
 				validation: [],
-				placeholder: 'n8n',
+				placeholder: 'e.g. n8n',
 				url: '',
 			},
 			{
@@ -54,7 +54,7 @@ export const userFields: INodeProperties[] = [
 				name: 'id',
 				type: 'string',
 				validation: [],
-				placeholder: '1068479892537384960',
+				placeholder: 'e.g. 1068479892537384960',
 				url: '',
 			},
 		],
