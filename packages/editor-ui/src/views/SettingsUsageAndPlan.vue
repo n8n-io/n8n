@@ -65,6 +65,7 @@ onMounted(async () => {
 		</div>
 		<el-dialog
 			:visible.sync="activationKeyModal"
+			width="640px"
 			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 		>
 			<template #default>
