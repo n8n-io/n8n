@@ -1,4 +1,4 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, jsonParse } from 'n8n-workflow';
 import { difference, get, intersection, isEmpty, isEqual, isNull, omit, set, union } from 'lodash';
 
 type PairToMatch = {
@@ -356,10 +356,6 @@ const fuzzyCompare =
 		//Null, empty strings, empty arrays all treated as the same
 		if (isFalsy(item1) && isFalsy(item2)) return true;
 
-		//If the types are different, we are using the ‘prefer input from A/B’ field to decide which type to use. If that field isn’t set, use input A
-		// const [item1, item2] =
-		// 	(options.resolve as string) !== 'preferInput2' ? [entry1, entry2] : [entry2, entry1];
-
 		//Compare numbers and strings representing that number
 		if (typeof item1 === 'number' && typeof item2 === 'string') {
 			return item1.toString() === item2;
@@ -370,12 +366,30 @@ const fuzzyCompare =
 		}
 
 		//Compare objects/arrays and their stringified version
-		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
-			return isEqual(JSON.stringify(item1), item2);
+		const parseStringAndCompareToArray = (str: string, arr: IDataObject[]) => {
+			try {
+				const parsedArray = jsonParse(str);
+				return isEqual(parsedArray, arr);
+			} catch (error) {
+				return false;
+			}
+		};
+		if (
+			!isNull(item1) &&
+			typeof item1 === 'object' &&
+			Array.isArray(item1) &&
+			typeof item2 === 'string'
+		) {
+			return parseStringAndCompareToArray(item2, item1 as IDataObject[]);
 		}
 
-		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
-			return isEqual(item1, JSON.stringify(item2));
+		if (
+			!isNull(item2) &&
+			typeof item1 === 'string' &&
+			typeof item2 === 'object' &&
+			Array.isArray(item2)
+		) {
+			return parseStringAndCompareToArray(item1, item2 as IDataObject[]);
 		}
 
 		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
