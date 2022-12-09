@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture" />
+	<div ref="root" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">
@@ -37,16 +37,11 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		const extensions = [
-			outputTheme(),
-			EditorState.readOnly.of(true),
-			EditorView.lineWrapping,
-		];
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
 				doc: this.resolvedExpression,
-				extensions,
+				extensions: [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping],
 			}),
 		});
 	},

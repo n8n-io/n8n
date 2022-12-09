@@ -51,8 +51,7 @@ const coloringStateField = StateField.define<DecorationSet>({
 		return Decoration.none;
 	},
 	update(colorings, transaction) {
-		// map ranges onto tx ranges to adjust positions to new document
-		colorings = colorings.map(transaction.changes);
+		colorings = colorings.map(transaction.changes); // recalculate positions for new doc
 
 		for (const txEffect of transaction.effects) {
 			if (txEffect.is(coloringStateEffects.removeColorEffect)) {

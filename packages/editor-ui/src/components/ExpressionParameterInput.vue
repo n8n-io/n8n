@@ -25,7 +25,7 @@
 				icon="external-link-alt"
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
-				@click="$emit('openerClick')"
+				@click="$emit('modalOpenerClick')"
 			/>
 		</div>
 
@@ -48,7 +48,13 @@
 				<n8n-text size="small" compact>
 					{{ $locale.baseText('parameterInput.isJavaScript') }}
 				</n8n-text>
-				<n8n-link :class="$style['learn-more']" size="small" underline theme="text" :to="expressionsDocsUrl">
+				<n8n-link
+					:class="$style['learn-more']"
+					size="small"
+					underline
+					theme="text"
+					:to="expressionsDocsUrl"
+				>
 					{{ $locale.baseText('parameterInput.learnMore') }}
 				</n8n-link>
 			</div>
@@ -129,22 +135,23 @@ export default mixins(telemetryUtils).extend({
 			this.$emit('focus');
 		},
 		getPaneWidth() {
-			const key = `${LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH}_${this.currentNodePaneType}`;
+			const key = [LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, this.currentNodePaneType].join('_');
 
 			return parseFloat(window.localStorage.getItem(key) ?? '0');
 		},
 		onBlur() {
-			// prevent defocus on dragging
-			if (this.isDragging) return;
+			if (this.isDragging) return; // prevent blur on dragging
 
-			// prevent defocus on resizing
 			const oldPaneWidth = this.paneWidth;
+
 			this.paneWidth = this.getPaneWidth();
-			if (oldPaneWidth !== this.paneWidth) return;
 
-			const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value);
+			if (oldPaneWidth !== this.paneWidth) return; // prevent blur on resizing
 
-			this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+			this.$telemetry.track(
+				'User closed Expression Editor',
+				this.createExpressionTelemetryPayload(this.segments, this.value),
+			);
 
 			this.isFocused = false;
 
@@ -155,8 +162,7 @@ export default mixins(telemetryUtils).extend({
 
 			this.segments = segments;
 
-			// prevent marking output as stale when only hovering item changed
-			if (value === '=' + this.value) return;
+			if (value === '=' + this.value) return; // prevent report on change of target item
 
 			this.$emit('valueChanged', value);
 		},
@@ -174,8 +180,6 @@ export default mixins(telemetryUtils).extend({
 		flex-direction: row;
 		display: inline-table;
 		width: 100%;
-		border-collapse: separate;
-		border-spacing: 0;
 	}
 
 	.prepend-section {
@@ -188,10 +192,6 @@ export default mixins(telemetryUtils).extend({
 	.squared {
 		border-radius: 0;
 	}
-}
-
-.pointer {
-	cursor: pointer;
 }
 
 // @TODO_TECH_DEBT(N8N-5860): Deduplicate with textarea-modal-opener
@@ -223,7 +223,7 @@ export default mixins(telemetryUtils).extend({
 	border-bottom-left-radius: 0;
 }
 
-/* cm-editor */
+// .cm-editor - not directly selectable due to CSS module
 .focused > div > div {
 	border-color: var(--color-secondary);
 }
@@ -262,7 +262,6 @@ export default mixins(telemetryUtils).extend({
 		font-weight: var(--font-weight-bold);
 		padding-left: var(--spacing-2xs);
 		padding-top: var(--spacing-2xs);
-		padding-bottom: var(--spacing-3xs);
 	}
 
 	.body {
@@ -282,7 +281,7 @@ export default mixins(telemetryUtils).extend({
 		.expression-syntax-example {
 			display: inline-block;
 			font-size: var(--font-size-2xs);
-			height: 16px;
+			height: var(--font-size-m);
 			background-color: #f0f0f0;
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);

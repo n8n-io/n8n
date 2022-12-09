@@ -3,7 +3,7 @@ import { parseMixed } from '@lezer/common';
 import { parser as jsParser } from '@lezer/javascript';
 import { parserWithMetaData as n8nParser } from './n8nLanguagePack';
 
-// @TODO: Add lang pack generation
+// @TODO(ADO-68): Add lang pack generation after release
 
 const parserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {

@@ -2,13 +2,13 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { syntaxTree } from '@codemirror/language';
 
-import { workflowHelpers } from './workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 
-import type { TargetItem } from '@/Interface';
-import type { RawSegment, Segment, Plaintext, Resolvable } from '@/types/expressions';
-import type { EditorView } from '@codemirror/view';
 import type { PropType } from 'vue';
+import type { EditorView } from '@codemirror/view';
+import type { TargetItem } from '@/Interface';
+import type { Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -129,10 +129,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		 * - `null` (from `NaN`)
 		 *
 		 * Exceptionally, for two segments, display differs based on context:
-		 * - Date displayed as
+		 * - Date is displayed as
 		 *   - `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
 		 *   - `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result
-		 * - Non-empty array displayed as
+		 * - Non-empty array is displayed as
 		 *   - `1,2,3` when part of the result
 		 *   - `[Array: [1, 2, 3]]` when the entire result
 		 */

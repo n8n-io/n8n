@@ -66,7 +66,7 @@
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="isValueExpression ? [26, 4] : [4, 4]"
+						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -83,7 +83,7 @@
 									:value="expressionDisplayValue"
 									isForRecordLocator
 									@valueChanged="onInputChange"
-									@openerClick="$emit('openerClick')"
+									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
 								/>
 								<n8n-input

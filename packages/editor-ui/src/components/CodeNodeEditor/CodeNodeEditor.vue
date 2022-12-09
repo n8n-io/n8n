@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" class="ph-no-capture" />
+	<div ref="codeNodeEditor" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">

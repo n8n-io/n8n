@@ -83,8 +83,8 @@ import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
-
 import { telemetryUtils } from '@/mixins/telemetryUtils';
+
 import type { Segment } from '@/types/expressions';
 
 export default mixins(

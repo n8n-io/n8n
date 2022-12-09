@@ -24,7 +24,7 @@
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
-				:stickyOffset="isValueExpression ? [26, 4] : [3, 3]"
+				:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
 				@drop="onDrop"
 			>
 				<template #default="{ droppable, activeDrop }">

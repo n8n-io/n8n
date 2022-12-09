@@ -11,7 +11,8 @@ export const telemetryUtils = Vue.extend({
 	},
 	methods: {
 		/**
-		 * Whether the resolvable is transforming data from another node.
+		 * Whether the resolvable is transforming data from another node,
+		 * i.e. operating on `$input()`, `$json`, `$()` or `$node[]`.
 		 *
 		 * ```
 		 * $input.all().
@@ -47,29 +48,26 @@ export const telemetryUtils = Vue.extend({
 		},
 		exposeErrorProperties(error: Error) {
 			return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
-				// @ts-ignore
-				acc[key] = error[key];
-
-				return acc;
+				return acc[key] = error[key as keyof Error], acc;
 			}, {});
 		},
 		createExpressionTelemetryPayload(segments: Segment[], value: string, eventSource = 'ndv') {
-			const resolvableSegments = segments.filter((s): s is Resolvable => s.kind === 'resolvable');
-			const errorResolvables = resolvableSegments.filter((r) => r.error);
+			const resolvables = segments.filter((s): s is Resolvable => s.kind === 'resolvable');
+			const erroringResolvables = resolvables.filter((r) => r.error);
 
 			return {
 				empty_expression: value === '=' || value === '={{}}' || !value,
 				workflow_id: this.workflowsStore.workflowId,
 				source: eventSource,
 				session_id: this.ndvStore.sessionId,
-				is_transforming_data: resolvableSegments.some((r) => this.isTransformingData(r.resolvable)),
+				is_transforming_data: resolvables.some((r) => this.isTransformingData(r.resolvable)),
 				has_parameter: value.includes('$parameter'),
 				has_mapping: hasExpressionMapping(value),
 				node_type: this.ndvStore.activeNode?.type ?? '',
-				handlebar_count: resolvableSegments.length,
-				handlebar_error_count: errorResolvables.length,
-				short_errors: errorResolvables.map((r) => r.resolved ?? null),
-				full_errors: errorResolvables.map((errorResolvable) => {
+				handlebar_count: resolvables.length,
+				handlebar_error_count: erroringResolvables.length,
+				short_errors: erroringResolvables.map((r) => r.resolved ?? null),
+				full_errors: erroringResolvables.map((errorResolvable) => {
 					return errorResolvable.fullError
 						? {
 								...this.exposeErrorProperties(errorResolvable.fullError),

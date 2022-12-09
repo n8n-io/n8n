@@ -29,7 +29,7 @@
 				:node="node"
 				:path="path"
 				@input="valueChanged"
-				@openerClick="openExpressionEditorModal"
+				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
@@ -40,7 +40,7 @@
 				:title="displayTitle"
 				:isReadOnly="isReadOnly"
 				@valueChanged="expressionUpdated"
-				@openerClick="openExpressionEditorModal"
+				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 				ref="inputField"
@@ -94,7 +94,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
-					class="input-with-expander-icon"
+					class="input-with-opener"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
@@ -114,7 +114,10 @@
 							icon="external-link-alt"
 							size="xsmall"
 							class="edit-window-button textarea-modal-opener"
-							:class="{ focused: isFocused, invalid: !isFocused && getIssues.length && !isValueExpression }"
+							:class="{
+								focused: isFocused,
+								invalid: !isFocused && getIssues.length > 0 && !isValueExpression
+							}"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
 							@focus="setFocus"
@@ -495,8 +498,6 @@ export default mixins(
 					return '';
 				}
 
-				// console.log('[pi] this.value', this.value);
-
 				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
 				if (typeof value === 'string' && value.startsWith('=')) {
 					return value.slice(1);
@@ -713,7 +714,12 @@ export default mixins(
 					classes['parameter-value-container'] = true;
 				}
 
-				if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight) && !this.isValueExpression) {
+				if (
+					!this.droppable &&
+					!this.activeDrop &&
+					(this.getIssues.length > 0 || this.errorHighlight) &&
+					!this.isValueExpression
+				) {
 					classes['has-issues'] = true;
 				}
 
@@ -983,8 +989,6 @@ export default mixins(
 
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
-				} else if (command === 'openExpression') {
-					// this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
@@ -1220,7 +1224,7 @@ export default mixins(
 	align-items: center;
 }
 
-.input-with-expander-icon > .el-input__suffix {
+.input-with-opener > .el-input__suffix {
 	right: 0;
 }
 

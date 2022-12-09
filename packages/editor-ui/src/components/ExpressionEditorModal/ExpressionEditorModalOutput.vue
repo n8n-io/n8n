@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture" />
+	<div ref="root" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">

@@ -4,16 +4,15 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
-import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
-
-import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { expressionManager } from '@/mixins/expressionManager';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { expressionManager } from '@/mixins/expressionManager';
+import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
 import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
 import { inputTheme } from './theme';
