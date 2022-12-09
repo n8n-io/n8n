@@ -38,6 +38,7 @@ import {
 	INodeActionTypeDescription,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/src/types';
 
@@ -164,7 +165,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
-		[key: string]: IDataObject;
+		[key: string]: IDataObject | XYPosition;
 	};
 }
 
@@ -1317,6 +1318,12 @@ export interface CurlToJSONResponse {
 	"parameters.sendBody": boolean;
 }
 
+export interface HistoryState {
+	redoStack: Undoable[];
+	undoStack: Undoable[];
+	currentBulkAction: BulkCommand | null;
+	bulkInProgress: boolean;
+}
 export type Basic = string | number | boolean;
 export type Primitives = Basic | bigint | symbol;
 
