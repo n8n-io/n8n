@@ -24,9 +24,6 @@ export const messagePostDescription: MessageProperties = [
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -229,9 +226,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Author Icon',
 				name: 'author_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear for the user',
 			},
@@ -239,9 +233,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Author Link',
 				name: 'author_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link for the author',
 			},
@@ -263,9 +254,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Fallback Text',
 				name: 'fallback',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Required plain-text summary of the attachment',
 			},
@@ -313,9 +301,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text of footer to add',
 			},
@@ -323,9 +308,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Footer Icon',
 				name: 'footer_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear next to footer',
 			},
@@ -333,9 +315,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Image URL',
 				name: 'image_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of image',
 			},
@@ -343,9 +322,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Pretext',
 				name: 'pretext',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text which appears before the message block',
 			},
@@ -353,9 +329,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text to send',
 			},
@@ -363,9 +336,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Thumbnail URL',
 				name: 'thumb_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of thumbnail',
 			},
@@ -373,9 +343,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Title of the message',
 			},
@@ -383,9 +350,6 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Title Link',
 				name: 'title_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link of the title',
 			},

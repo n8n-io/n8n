@@ -25,6 +25,7 @@ import N8nLoading from '../components/N8nLoading';
 import N8nMarkdown from '../components/N8nMarkdown';
 import N8nMenu from '../components/N8nMenu';
 import N8nMenuItem from '../components/N8nMenuItem';
+import N8nNodeCreatorNode from '../components/N8nNodeCreatorNode';
 import N8nNodeIcon from '../components/N8nNodeIcon';
 import N8nNotice from '../components/N8nNotice';
 import N8nOption from '../components/N8nOption';
@@ -73,6 +74,7 @@ export default {
 		app.component('n8n-markdown', N8nMarkdown);
 		app.component('n8n-menu', N8nMenu);
 		app.component('n8n-menu-item', N8nMenuItem);
+		app.component('n8n-node-creator-node', N8nNodeCreatorNode);
 		app.component('n8n-node-icon', N8nNodeIcon);
 		app.component('n8n-notice', N8nNotice);
 		app.component('n8n-option', N8nOption);

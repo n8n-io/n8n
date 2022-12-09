@@ -621,7 +621,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					const updateInformation: IUpdateInformation = {
 						name: node.name,
 						value: nodeParameters,
-					} as IUpdateInformation;
+					};
 
 					this.workflowsStore.setNodeParameters(updateInformation);
 
@@ -822,6 +822,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.openPanel = 'settings';
 			});
 		}
+
+		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 });
 </script>

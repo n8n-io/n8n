@@ -434,8 +434,10 @@ export const nodeHelpers = mixins(
 				return returnData;
 			},
 
-			disableNodes(nodes: INodeUi[]) {
-				this.historyStore.startRecordingUndo();
+			disableNodes(nodes: INodeUi[], trackHistory = false) {
+				if (trackHistory) {
+					this.historyStore.startRecordingUndo();
+				}
 				for (const node of nodes) {
 					const oldState = node.disabled;
 					// Toggle disabled flag
@@ -452,9 +454,13 @@ export const nodeHelpers = mixins(
 					this.workflowsStore.clearNodeExecutionData(node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
-					this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this));
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this));
+					}
 				}
-				this.historyStore.stopRecordingUndo();
+				if (trackHistory) {
+					this.historyStore.stopRecordingUndo();
+				}
 			},
 			// @ts-ignore
 			getNodeSubtitle (data, nodeType, workflow): string | undefined {
