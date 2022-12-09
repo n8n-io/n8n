@@ -291,6 +291,7 @@ export const messageFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['post'],
@@ -305,6 +306,7 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Blocks',
 		name: 'blocksUi',
 		type: 'string',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['post'],
@@ -559,7 +561,7 @@ export const messageFields: INodeProperties[] = [
 										value: 'image',
 									},
 									{
-										name: 'Emoji',
+										name: 'Emoji Code',
 										value: 'emoji',
 									},
 								],
@@ -567,7 +569,7 @@ export const messageFields: INodeProperties[] = [
 								placeholder: 'Select a type…',
 							},
 							{
-								displayName: 'Emoji',
+								displayName: 'Emoji Code',
 								name: 'icon_emoji',
 								type: 'string',
 								default: '',
@@ -576,7 +578,8 @@ export const messageFields: INodeProperties[] = [
 										profilePhotoType: ['emoji'],
 									},
 								},
-								description: 'Only used if sending message as a bot',
+								description:
+									'Only used if sending message as a bot. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
 							},
 							{
 								displayName: 'Image URL',

@@ -112,7 +112,7 @@ export const reactionFields: INodeProperties[] = [
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Emoji',
+		displayName: 'Emoji code',
 		name: 'name',
 		type: 'string',
 		required: true,
@@ -123,7 +123,8 @@ export const reactionFields: INodeProperties[] = [
 				operation: ['add', 'remove'],
 			},
 		},
-		description: 'Emoji to use for the message reaction',
+		description:
+			'Emoji code to use for the message reaction. Use emoji codes like +1, not an actual emoji like 👍. <a target="_blank" href=" https://www.webfx.com/tools/emoji-cheat-sheet/">List of common emoji codes</a>',
 		placeholder: '+1',
 	},
 ];
