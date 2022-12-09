@@ -84,16 +84,16 @@ export default Vue.extend({
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
-			this.$emit('addNode', {
+			this.$emit('addNode', [{
 				nodeTypeName: STICKY_NODE_TYPE,
 				position,
-			});
+			}]);
 		},
 		closeNodeCreator() {
 			this.$emit('toggleNodeCreator', { createNodeActive: false });
 		},
-		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit('addNode', { nodeTypeName });
+		nodeTypeSelected(nodeTypeNames: string[]) {
+			this.$emit('addNode', nodeTypeNames.map(nodeTypeName => ({ nodeTypeName })));
 			this.closeNodeCreator();
 		},
 	},

@@ -34,7 +34,7 @@ export class CiscoWebex implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Cisco Webex API',
 		defaults: {
-			name: 'Webex',
+			name: 'Webex by Cisco',
 		},
 		credentials: [
 			{

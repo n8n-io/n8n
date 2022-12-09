@@ -39,6 +39,7 @@ import {
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
+	ISourceData,
 	ITaskDataConnections,
 	ITriggerFunctions,
 	IWebhookData,
@@ -2320,6 +2321,13 @@ export function getExecuteFunctions(
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
+			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
+				if (executeData?.source === null) {
+					// Should never happen as n8n sets it automatically
+					throw new Error('Source data is missing!');
+				}
+				return executeData.source[inputName][inputIndex];
+			},
 			getNodeParameter: (
 				parameterName: string,
 				itemIndex: number,
@@ -2579,6 +2587,13 @@ export function getExecuteSingleFunctions(
 				}
 
 				return allItems[itemIndex];
+			},
+			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
+				if (executeData?.source === null) {
+					// Should never happen as n8n sets it automatically
+					throw new Error('Source data is missing!');
+				}
+				return executeData.source[inputName][inputIndex] as ISourceData;
 			},
 			getItemIndex() {
 				return itemIndex;
