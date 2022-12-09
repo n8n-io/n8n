@@ -1061,7 +1061,7 @@ export default mixins(
 			},
 			isViewable (index: number, key: string): boolean {
 				const { fileType }: IBinaryData = this.binaryData[index][key];
-				return !!fileType && ['image', 'video'].includes(fileType);
+				return !!fileType && ['image', 'video', 'text'].includes(fileType);
 			},
 			isDownloadable (index: number, key: string): boolean {
 				const { mimeType, fileName }: IBinaryData = this.binaryData[index][key];
