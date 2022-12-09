@@ -665,7 +665,7 @@ export const messageFields: INodeProperties[] = [
 					},
 				},
 				placeholder: 'Send as Ephemeral Message',
-				description: 'Whether to send a temmporary, ephemeral message',
+				description: 'Whether to send a temporary, ephemeral message',
 				options: [
 					{
 						displayName: 'Send as Ephemeral Message',
