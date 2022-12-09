@@ -40,6 +40,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
+			const range = this.editor?.state.selection.ranges[0];
+
+			if (range !== undefined && range.from !== range.to) return;
+
 			this.editor?.dispatch({
 				changes: {
 					from: 0,
@@ -56,7 +60,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 					to: this.editor.state.doc.length,
 					insert: this.value,
 				},
-				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
+			});
+
+			setTimeout(() => {
+				this.editor?.contentDOM.blur();
 			});
 		},
 	},
@@ -105,10 +112,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		});
 
 		highlighter.addColor(this.editor, this.resolvableSegments);
-
-		this.editor.dispatch({
-			selection: { anchor: this.editor.state.doc.length },
-		});
 
 		this.$emit('change', {
 			value: this.unresolvedExpression,

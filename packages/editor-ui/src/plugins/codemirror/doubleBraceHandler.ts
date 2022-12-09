@@ -22,9 +22,14 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 
 	view.dispatch(transaction);
 
-	// customization to rearrange spacing and cursor for expression
+	/**
+	 * Customizations to inject whitespace and braces
+	 * for resolvable setup and completion
+	 */
 
 	const cursor = view.state.selection.main.head;
+
+	// inject whitespace and second brace on completion: {| } -> {{ | }}
 
 	const isSecondBraceForNewExpression =
 		view.state.sliceDoc(cursor - 2, cursor) === '{{' &&
@@ -39,12 +44,29 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 		return true;
 	}
 
+	// inject whitespace on setup: empty -> {| }
+
 	const isFirstBraceForNewExpression =
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
 	if (isFirstBraceForNewExpression) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
+
+		return true;
+	}
+
+	// when selected, surround with whitespaces on completion: {{abc}} -> {{ abc }}
+
+	const doc = view.state.doc.toString();
+	const openMarkerIndex = doc.lastIndexOf('{', cursor);
+	const closeMarkerIndex = doc.indexOf('}}', cursor);
+
+	if (openMarkerIndex !== -1 && closeMarkerIndex !== -1) {
+		view.dispatch(
+			{ changes: { from: openMarkerIndex + 1, insert: ' ' } },
+			{ changes: { from: closeMarkerIndex, insert: ' ' } },
+		);
 
 		return true;
 	}
