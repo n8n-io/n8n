@@ -36,8 +36,8 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { restApi } from '@/mixins/restApi';
-import { globalLinkActions } from '@/mixins/globalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -51,7 +51,6 @@ export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
-	globalLinkActions,
 	historyHelper,
 ).extend({
 	name: 'App',
@@ -59,6 +58,13 @@ export default mixins(
 		LoadingView,
 		Telemetry,
 		Modals,
+	},
+	setup() {
+		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+		return {
+			registerCustomAction,
+			unregisterCustomAction,
+		};
 	},
 	computed: {
 		...mapStores(

@@ -74,7 +74,6 @@ export class Mailgun implements INodeType {
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',

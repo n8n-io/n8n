@@ -110,6 +110,19 @@ export class ExecutionsService {
 		return { count, estimated: false };
 	}
 
+	static massageFilters(filter: IDataObject): void {
+		if (filter) {
+			if (filter.waitTill === true) {
+				filter.waitTill = Not(IsNull());
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+			} else if (filter.finished === false) {
+				filter.waitTill = IsNull();
+			} else {
+				delete filter.waitTill;
+			}
+		}
+	}
+
 	static async getExecutionsList(req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
@@ -215,19 +228,14 @@ export class ExecutionsService {
 			.take(limit)
 			.where(findWhere);
 
+		const countFilter = deepCopy(filter ?? {});
+
 		if (filter) {
-			if (filter.waitTill === true) {
-				filter.waitTill = Not(IsNull());
-				// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-			} else if (filter.finished === false) {
-				filter.waitTill = IsNull();
-			} else {
-				delete filter.waitTill;
-			}
+			this.massageFilters(filter as IDataObject);
 			query = query.andWhere(filter);
 		}
 
-		const countFilter = deepCopy(filter ?? {});
+		this.massageFilters(countFilter as IDataObject);
 		countFilter.id = Not(In(executingWorkflowIds));
 
 		const executions = await query.getMany();
