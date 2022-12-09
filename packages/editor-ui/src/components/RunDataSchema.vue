@@ -139,7 +139,8 @@ const onDragEnd = (el: HTMLElement) => {
 	span span {
 		color: var(--color-success);
 		border-color: var(--color-success-light);
-		background-color: var(--color-success-tint-3); // @TODO: var does not exist
+		// background-color: var(--color-success-tint-3); // @TODO: var does not exist
+		background-color: white;
 	}
 }
 
