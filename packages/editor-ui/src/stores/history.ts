@@ -28,7 +28,6 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 					if (!alreadyIn) {
 						this.currentBulkAction.commands.push(undoable);
 					}
-					return;
 				} else {
 					this.undoStack.push(undoable);
 				}
