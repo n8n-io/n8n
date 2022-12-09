@@ -349,7 +349,8 @@ export default mixins(
 					next();
 					return;
 				}
-
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
 					const confirmModal = await this.confirmModal(
@@ -3547,7 +3548,6 @@ export default mixins(
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
