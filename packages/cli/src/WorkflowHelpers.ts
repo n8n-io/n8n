@@ -558,15 +558,16 @@ export function validateWorkflowCredentialUsage(
 
 	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 		if (isTamperingAttempt(node.id)) {
-			Logger.info('Blocked workflow update due to tampering attempt', {
+			Logger.verbose('Blocked workflow update due to tampering attempt', {
 				nodeType: node.type,
 				nodeName: node.name,
 				nodeId: node.id,
 				nodeCredentials: node.credentials,
 			});
 			// Node is new, so this is probably a tampering attempt. Throw an error
-			throw new Error(
-				'Workflow contains new nodes with credentials the user does not have access to',
+			throw new NodeOperationError(
+				node,
+				`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share it with you.`,
 			);
 		}
 		// Replace the node with the previous version of the node

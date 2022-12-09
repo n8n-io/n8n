@@ -212,7 +212,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to update a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});

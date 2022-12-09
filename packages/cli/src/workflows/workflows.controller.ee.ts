@@ -94,7 +94,7 @@ EEWorkflowController.get(
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError(
-				'It looks like you cannot access this workflow. Ask the owner to share it with you.',
+				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
 
