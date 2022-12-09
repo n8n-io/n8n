@@ -90,7 +90,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.6.0
+      '@n8n_io/license-sdk': ^1.6.1
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -208,7 +208,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.6.0
+      '@n8n_io/license-sdk': 1.6.1
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -493,6 +493,7 @@ importers:
       '@types/express': ^4.17.6
       '@types/file-saver': ^2.0.1
       '@types/jsonpath': ^0.2.0
+      '@types/lodash-es': ^4.17.6
       '@types/lodash.camelcase': ^4.3.6
       '@types/lodash.get': ^4.4.6
       '@types/lodash.set': ^4.3.6
@@ -607,6 +608,7 @@ importers:
       '@types/express': 4.17.14
       '@types/file-saver': 2.0.5
       '@types/jsonpath': 0.2.0
+      '@types/lodash-es': 4.17.6
       '@types/lodash.camelcase': 4.3.7
       '@types/lodash.get': 4.4.7
       '@types/lodash.set': 4.3.7
@@ -3317,8 +3319,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.6.0:
-    resolution: {integrity: sha512-e3VJZr1LcJibZsy3cF3LLTjKux14bKmAhkl4ArrHjhqwPYUXZtx2vc6u8FbnkR/TdeHlwxSIQfNmTNXlmcOY9A==}
+  /@n8n_io/license-sdk/1.6.1:
+    resolution: {integrity: sha512-cVFs67ydYScRyuxaPTXEyrIz8JcpwyE9vYWWtkbNNsW9OOjYAqd5wg3hcurctrtg3Tn7gsu+9E3P5LQBH2F7lg==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3
@@ -5741,6 +5743,12 @@ packages:
 
   /@types/localtunnel/1.9.0:
     resolution: {integrity: sha512-3YxO7RHRrmtYNX6Rhkr97bnXHrF1Ckfo4axENWLcBXWi+8B1WsNbqPqe5Eg6TA5survjAWWvLTu1KQesuLHVgQ==}
+    dev: true
+
+  /@types/lodash-es/4.17.6:
+    resolution: {integrity: sha512-R+zTeVUKDdfoRxpAryaQNRKk3105Rrgx2CFRClIgRGaqDTdjsm8h6IYA8ir584W3ePzkZfst5xIgDwYrlh9HLg==}
+    dependencies:
+      '@types/lodash': 4.14.186
     dev: true
 
   /@types/lodash.camelcase/4.3.7:

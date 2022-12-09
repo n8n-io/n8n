@@ -1,3 +1,5 @@
+import { EnableNodeToggleCommand } from './../models/history';
+import { useHistoryStore } from '@/stores/history';
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 	CUSTOM_API_CALL_KEY,
@@ -51,6 +53,7 @@ export const nodeHelpers = mixins(
 		computed: {
 			...mapStores(
 				useCredentialsStore,
+				useHistoryStore,
 				useNodeTypesStore,
 				useSettingsStore,
 				useWorkflowsStore,
@@ -431,13 +434,17 @@ export const nodeHelpers = mixins(
 				return returnData;
 			},
 
-			disableNodes(nodes: INodeUi[]) {
+			disableNodes(nodes: INodeUi[], trackHistory = false) {
+				if (trackHistory) {
+					this.historyStore.startRecordingUndo();
+				}
 				for (const node of nodes) {
+					const oldState = node.disabled;
 					// Toggle disabled flag
 					const updateInformation = {
 						name: node.name,
 						properties: {
-							disabled: !node.disabled,
+							disabled: !oldState,
 						} as IDataObject,
 					} as INodeUpdatePropertiesInformation;
 
@@ -447,6 +454,12 @@ export const nodeHelpers = mixins(
 					this.workflowsStore.clearNodeExecutionData(node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
+					if (trackHistory) {
+						this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this));
+					}
+				}
+				if (trackHistory) {
+					this.historyStore.stopRecordingUndo();
 				}
 			},
 			// @ts-ignore

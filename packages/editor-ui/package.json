@@ -86,6 +86,7 @@
     "@types/express": "^4.17.6",
     "@types/file-saver": "^2.0.1",
     "@types/jsonpath": "^0.2.0",
+    "@types/lodash-es": "^4.17.6",
     "@types/lodash.camelcase": "^4.3.6",
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
