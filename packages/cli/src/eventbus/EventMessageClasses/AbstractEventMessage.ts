@@ -96,9 +96,6 @@ export abstract class AbstractEventMessage {
 	 */
 	constructor(options: AbstractEventMessageOptions) {
 		this.setOptionsOrDefault(options);
-		if (options.anonymize) {
-			this.anonymize();
-		}
 	}
 
 	// abstract serialize(): EventMessageSerialized;
@@ -106,17 +103,6 @@ export abstract class AbstractEventMessage {
 	abstract setPayload(payload: AbstractEventPayload): this;
 
 	anonymize(): this {
-		// if (this.payload) {
-		// 	for (const key of Object.keys(this.payload)) {
-		// 		if (key.startsWith('_')) {
-		// 			if (typeof this.payload[key] === 'string') {
-		// 				this.payload[key] = '*';
-		// 			} else {
-		// 				this.payload[key] = undefined;
-		// 			}
-		// 		}
-		// 	}
-		// }
 		this.payload = modifyUnderscoredKeys(this.payload, (input) => '*');
 		return this;
 	}

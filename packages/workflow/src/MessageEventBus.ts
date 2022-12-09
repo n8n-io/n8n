@@ -10,13 +10,13 @@ export enum EventMessageTypeNames {
 	user = '$$EventMessageUser',
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
+	node = '$$EventMessageNode',
 }
 
 export enum MessageEventBusDestinationTypeNames {
 	abstract = '$$AbstractMessageEventBusDestination',
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
-	// redis = '$$MessageEventBusDestinationRedis',
 	syslog = '$$MessageEventBusDestinationSyslog',
 }
 

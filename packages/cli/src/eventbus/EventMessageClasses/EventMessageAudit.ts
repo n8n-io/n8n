@@ -54,6 +54,9 @@ export class EventMessageAudit extends AbstractEventMessage {
 	constructor(options: EventMessageAuditOptions) {
 		super(options);
 		if (options.payload) this.setPayload(options.payload);
+		if (options.anonymize) {
+			this.anonymize();
+		}
 	}
 
 	setPayload(payload: EventPayloadAudit): this {

@@ -43,6 +43,9 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 	constructor(options: EventMessageWorkflowOptions) {
 		super(options);
 		if (options.payload) this.setPayload(options.payload);
+		if (options.anonymize) {
+			this.anonymize();
+		}
 	}
 
 	setPayload(payload: EventPayloadWorkflow): this {

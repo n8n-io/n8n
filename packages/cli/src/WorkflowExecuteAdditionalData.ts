@@ -483,22 +483,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	return {
 		nodeExecuteBefore: [],
 		nodeExecuteAfter: [],
-		workflowExecuteBefore: [
-			async function (
-				this: WorkflowHooks,
-				workflow: Workflow,
-				data: IRunExecutionData,
-			): Promise<void> {
-				await eventBus.sendWorkflowEvent({
-					eventName: 'n8n.workflow.started',
-					payload: {
-						execution_id: this.executionId,
-						workflow_id: this.workflowData.id,
-					},
-				});
-				return;
-			},
-		],
+		workflowExecuteBefore: [],
 		workflowExecuteAfter: [
 			async function (
 				this: WorkflowHooks,
@@ -986,6 +971,8 @@ async function executeWorkflow(
 				: await ActiveExecutions.getInstance().add(runData);
 	}
 
+	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 	let data;
 	try {
 		await PermissionChecker.check(workflow, additionalData.userId);
@@ -1078,12 +1065,8 @@ async function executeWorkflow(
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
-	void InternalHooksManager.getInstance().onWorkflowPostExecute(
-		executionId,
-		workflowData,
-		data,
-		additionalData.userId,
-	);
+
+	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
@@ -1225,6 +1208,27 @@ export function getWorkflowHooksWorkerMain(
 	// So to avoid confusion, we are removing other hooks.
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
+
+	hookFunctions.nodeExecuteBefore.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
+	hookFunctions.nodeExecuteAfter.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodePostExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -1255,6 +1259,29 @@ export function getWorkflowHooksMain(
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 	}
+
+	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];
+	hookFunctions.nodeExecuteBefore?.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
+	if (!hookFunctions.nodeExecuteAfter) hookFunctions.nodeExecuteAfter = [];
+	hookFunctions.nodeExecuteAfter.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodePostExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
 		sessionId: data.sessionId,

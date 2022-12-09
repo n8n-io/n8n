@@ -25,6 +25,9 @@ export class EventMessageGeneric extends AbstractEventMessage {
 	constructor(options: EventMessageGenericOptions) {
 		super(options);
 		if (options.payload) this.setPayload(options.payload);
+		if (options.anonymize) {
+			this.anonymize();
+		}
 	}
 
 	setPayload(payload: EventPayloadGeneric): this {

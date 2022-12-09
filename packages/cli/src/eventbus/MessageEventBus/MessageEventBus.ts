@@ -18,6 +18,7 @@ import {
 	EventMessageWorkflow,
 } from '../EventMessageClasses/EventMessageWorkflow';
 import { isLogStreamingEnabled } from '../MessageEventBusHelper';
+import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -232,6 +233,10 @@ class MessageEventBus extends EventEmitter {
 
 	async sendWorkflowEvent(options: EventMessageWorkflowOptions) {
 		await this.send(new EventMessageWorkflow(options));
+	}
+
+	async sendNodeEvent(options: EventMessageNodeOptions) {
+		await this.send(new EventMessageNode(options));
 	}
 }
 

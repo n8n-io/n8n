@@ -1,12 +1,14 @@
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
+	INode,
 	INodesGraphResult,
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
 	JsonValue,
 	TelemetryHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import {
@@ -16,6 +18,7 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 	IExecutionTrackProperties,
+	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import { eventBus } from './eventbus';
@@ -110,10 +113,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.created',
 				payload: {
-					user_id: userId,
-					workflow_id: workflow.id,
-					workflow_name: workflow.name,
-					public_api: publicApi,
+					userId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					publicApi,
 				},
 			}),
 			this.telemetry.track('User created workflow', {
@@ -131,9 +134,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.deleted',
 				payload: {
-					user_id: userId,
-					workflow_id: workflowId,
-					public_api: publicApi,
+					userId,
+					workflowId,
+					publicApi,
 				},
 			}),
 			this.telemetry.track('User deleted workflow', {
@@ -156,10 +159,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.updated',
 				payload: {
-					user_id: userId,
-					workflow_id: workflow.id,
-					workflow_name: workflow.name,
-					public_api: publicApi,
+					userId,
+					workflowId: workflow.id,
+					workflowName: workflow.name,
+					publicApi,
 				},
 			}),
 			this.telemetry.track(
@@ -176,6 +179,63 @@ export class InternalHooksClass implements IInternalHooksClass {
 				},
 				{ withPostHog: true },
 			),
+		]).catch((error) => console.log(error));
+		return;
+	}
+
+	async onNodeBeforeExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		nodeName: string,
+	): Promise<void> {
+		Promise.all([
+			eventBus.sendNodeEvent({
+				eventName: 'n8n.node.started',
+				payload: {
+					executionId,
+					nodeName,
+					workflowId: workflow.id?.toString(),
+					workflowName: workflow.name,
+				},
+			}),
+		]).catch((error) => console.log(error));
+		return;
+	}
+
+	async onNodePostExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		nodeName: string,
+	): Promise<void> {
+		Promise.all([
+			eventBus.sendNodeEvent({
+				eventName: 'n8n.node.finished',
+				payload: {
+					executionId,
+					nodeName,
+					workflowId: workflow.id?.toString(),
+					workflowName: workflow.name,
+				},
+			}),
+		]).catch((error) => console.log(error));
+		return;
+	}
+
+	async onWorkflowBeforeExecute(
+		executionId: string,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<void> {
+		Promise.all([
+			eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.started',
+				payload: {
+					executionId,
+					userId: data.userId,
+					workflowId: data.workflowData.id?.toString(),
+					isManual: data.executionMode === 'manual',
+					workflowName: data.workflowData.name,
+				},
+			}),
 		]).catch((error) => console.log(error));
 		return;
 	}
@@ -305,9 +365,10 @@ export class InternalHooksClass implements IInternalHooksClass {
 				eventName: 'n8n.workflow.finished',
 				payload: {
 					success: properties.success,
-					user_id: properties.user_id,
-					workflow_id: properties.workflow_id,
-					is_manual: properties.is_manual,
+					userId: properties.user_id,
+					workflowId: properties.workflow_id,
+					isManual: properties.is_manual,
+					workflowName: workflow.name,
 				},
 			}),
 			...promises,

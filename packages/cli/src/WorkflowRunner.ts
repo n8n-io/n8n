@@ -137,6 +137,8 @@ export class WorkflowRunner {
 		const executionsProcess = config.getEnv('executions.process');
 		const executionsMode = config.getEnv('executions.mode');
 
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', data);
+
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible

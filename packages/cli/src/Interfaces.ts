@@ -19,6 +19,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	INode,
 } from 'n8n-workflow';
 
 import { WorkflowExecute } from 'n8n-core';
@@ -371,12 +372,19 @@ export interface IInternalHooksClass {
 	onWorkflowCreated(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
 	onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void>;
 	onWorkflowSaved(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
+	onWorkflowBeforeExecute(executionId: string, data: IWorkflowExecutionDataProcess): Promise<void>;
 	onWorkflowPostExecute(
 		executionId: string,
 		workflow: IWorkflowBase,
 		runData?: IRun,
 		userId?: string,
 	): Promise<void>;
+	onNodeBeforeExecute(
+		executionId: string,
+		workflow: IWorkflowBase,
+		nodeName: string,
+	): Promise<void>;
+	onNodePostExecute(executionId: string, workflow: IWorkflowBase, nodeName: string): Promise<void>;
 	onUserDeletion(userDeletionData: {
 		user: User;
 		telemetryData: ITelemetryUserDeletionData;

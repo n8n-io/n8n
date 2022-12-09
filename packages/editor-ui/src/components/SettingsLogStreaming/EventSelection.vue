@@ -11,6 +11,12 @@
 					@input="onInput"
 					@change="onCheckboxChecked(group.name, $event)">
 						<strong>{{groupLabelName(group.name)}}</strong>
+						<n8n-tooltip v-if="groupLabelInfo(group.name)" placement="top" :popper-class="$style.tooltipPopper" class="ml-xs">
+							<n8n-icon icon="question-circle" size="small" />
+							<template #content>
+								{{groupLabelInfo(group.name)}}
+							</template>
+						</n8n-tooltip>
 				</checkbox>
 				<checkbox
 					v-if="group.name === 'n8n.audit'"
@@ -93,6 +99,12 @@
 			},
 			groupLabelName(t: string): string {
 				return this.$locale.baseText(`settings.logstreaming.eventGroup.${t}` as BaseTextKey) ?? t;
+			},
+			groupLabelInfo(t: string): string | undefined {
+				const labelInfo = `settings.logstreaming.eventGroup.${t}.info`;
+				const infoText = this.$locale.baseText(labelInfo as BaseTextKey);
+				if (infoText === labelInfo || infoText === '') return;
+				return infoText;
 			},
 		},
   };
