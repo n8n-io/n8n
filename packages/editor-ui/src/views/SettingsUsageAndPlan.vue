@@ -48,7 +48,7 @@ onMounted(async () => {
 		<n8n-info-tip>
 			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
 				<template #link>
-					<a href="#" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
+					<a href="https://n8n.io/contact" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
 				</template>
 			</i18n>
 		</n8n-info-tip>
