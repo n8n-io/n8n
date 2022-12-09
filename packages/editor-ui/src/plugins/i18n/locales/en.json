@@ -375,7 +375,7 @@
 	"duplicateWorkflowDialog.chooseOrCreateATag": "Choose or create a tag",
 	"duplicateWorkflowDialog.duplicateWorkflow": "Duplicate Workflow",
 	"duplicateWorkflowDialog.enterWorkflowName": "Enter workflow name",
-	"duplicateWorkflowDialog.save": "@:_reusableBaseText.save",
+	"duplicateWorkflowDialog.save": "Duplicate",
 	"duplicateWorkflowDialog.errors.missingName.title": "Name missing",
 	"duplicateWorkflowDialog.errors.missingName.message": "Please enter a name.",
 	"duplicateWorkflowDialog.errors.forbidden.title": "Duplicate workflow failed",

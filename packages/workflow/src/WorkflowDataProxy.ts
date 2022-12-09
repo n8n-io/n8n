@@ -710,6 +710,10 @@ export class WorkflowDataProxy {
 
 			let sourceData: ISourceData | null = incomingSourceData;
 
+			if (pairedItem.sourceOverwrite) {
+				sourceData = pairedItem.sourceOverwrite;
+			}
+
 			if (typeof pairedItem === 'number') {
 				pairedItem = {
 					item: pairedItem,
@@ -871,6 +875,10 @@ export class WorkflowDataProxy {
 
 				nodeBeforeLast = sourceData.previousNode;
 				sourceData = taskData.source[pairedItem.input || 0] || null;
+
+				if (pairedItem.sourceOverwrite) {
+					sourceData = pairedItem.sourceOverwrite;
+				}
 			}
 
 			if (sourceData === null) {
