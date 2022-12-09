@@ -1,11 +1,21 @@
 <script lang="ts" setup>
 import { onMounted } from 'vue';
+import { useRoute } from 'vue-router/composables';
 import { useUsageStore } from '@/stores/usage';
 
 const usageStore = useUsageStore();
+const route = useRoute();
 
-onMounted(() => {
-	usageStore.getData();
+onMounted(async () => {
+	if(route.query.activationKey) {
+		await usageStore.activateLicense(route.query.activationKey as string);
+	}
+
+	if(usageStore.canUserActivateLicense) {
+		await usageStore.refreshLicenseManagementToken();
+	} else {
+		await usageStore.getData();
+	}
 });
 
 </script>
@@ -30,7 +40,7 @@ onMounted(() => {
 			{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}
 		</n8n-info-tip>
 		<div :class="$style.buttons">
-			<n8n-button type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
+			<n8n-button v-if="usageStore.canUserActivateLicense" type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" size="large">
 				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>

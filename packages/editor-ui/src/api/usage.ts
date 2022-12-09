@@ -5,7 +5,7 @@ export const getLicense = (context: IRestApiContext): Promise<{data: UsageState[
 	return makeRestApiRequest(context, 'GET', '/license');
 };
 
-export const activateLicense = (context: IRestApiContext, data: { activationKey: string }): Promise<{data: UsageState['data']}> => {
+export const activateLicenseKey = (context: IRestApiContext, data: { activationKey: string }): Promise<{data: UsageState['data']}> => {
 	return makeRestApiRequest(context, 'POST', '/license/activate', data);
 };
 

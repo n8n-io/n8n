@@ -47,6 +47,13 @@ export const PERMISSIONS: IUserPermissions = {
 			},
 		},
 	},
+	USAGE: {
+		CAN_ACTIVATE_LICENSE: {
+			allow: {
+				role: [ROLE.Owner],
+			},
+		},
+	},
 };
 
 /**
