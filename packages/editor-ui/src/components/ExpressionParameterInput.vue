@@ -48,7 +48,7 @@
 				<n8n-text size="small" compact>
 					{{ $locale.baseText('parameterInput.isJavaScript') }}
 				</n8n-text>
-				<n8n-link size="small" compact underline theme="text" :to="expressionsDocsUrl">
+				<n8n-link :class="$style['learn-more']" size="small" underline theme="text" :to="expressionsDocsUrl">
 					{{ $locale.baseText('parameterInput.learnMore') }}
 				</n8n-link>
 			</div>
@@ -242,7 +242,7 @@ export default mixins(telemetryUtils).extend({
 	display: flex;
 	flex-direction: column;
 	position: absolute;
-	z-index: 1;
+	z-index: 2; // cover tooltips
 	background: white;
 	border: var(--border-base);
 	border-top: none;
@@ -276,7 +276,7 @@ export default mixins(telemetryUtils).extend({
 		padding: var(--spacing-4xs);
 		padding-left: var(--spacing-2xs);
 		padding-top: 0;
-		line-height: var(--font-line-height-regular) !important;
+		line-height: var(--font-line-height-regular);
 		color: var(--color-text-base);
 
 		.expression-syntax-example {
@@ -286,6 +286,11 @@ export default mixins(telemetryUtils).extend({
 			background-color: #f0f0f0;
 			margin-left: var(--spacing-5xs);
 			margin-right: var(--spacing-5xs);
+		}
+
+		.learn-more {
+			line-height: 1;
+			white-space: nowrap;
 		}
 	}
 }
