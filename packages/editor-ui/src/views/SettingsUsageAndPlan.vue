@@ -31,8 +31,11 @@ onMounted(() => {
 		</n8n-info-tip>
 		<div :class="$style.buttons">
 			<n8n-button type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
-			<n8n-button size="large">
-				<a href="#">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
+			<n8n-button v-if="usageStore.managementToken" size="large">
+				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
+			</n8n-button>
+			<n8n-button v-else size="large">
+				<a :href="usageStore.viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
 		</div>
 	</div>

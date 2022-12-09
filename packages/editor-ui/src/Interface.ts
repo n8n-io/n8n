@@ -1323,5 +1323,6 @@ export type UsageState = {
 			planId: string, // community
 			planName: string, // defaults to Community
 		},
+		managementToken?: string,
 	}
 };
