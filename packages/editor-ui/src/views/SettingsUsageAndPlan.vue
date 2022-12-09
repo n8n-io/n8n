@@ -39,7 +39,11 @@ onMounted(async () => {
 			</i18n>
 		</div>
 		<n8n-info-tip>
-			{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}
+			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
+				<template #link>
+					<a href="#" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
+				</template>
+			</i18n>
 		</n8n-info-tip>
 		<div :class="$style.buttons">
 			<n8n-button v-if="usageStore.canUserActivateLicense" type="secondary" size="large">{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</n8n-button>
@@ -100,7 +104,8 @@ onMounted(async () => {
 	}
 }
 
-div[class*="info"] span {
+div[class*="info"] > span > span:last-child {
 	line-height: 1.4;
+	padding: 0 0 0 var(--spacing-4xs);
 }
 </style>
