@@ -555,7 +555,7 @@ export const messageFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
-										name: 'Image',
+										name: 'Image URL',
 										value: 'image',
 									},
 									{
@@ -576,11 +576,10 @@ export const messageFields: INodeProperties[] = [
 										profilePhotoType: ['emoji'],
 									},
 								},
-								description:
-									'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
+								description: 'Only used if sending message as a bot',
 							},
 							{
-								displayName: 'Image',
+								displayName: 'Image URL',
 								name: 'icon_url',
 								type: 'string',
 								default: '',
@@ -589,7 +588,7 @@ export const messageFields: INodeProperties[] = [
 										profilePhotoType: ['image'],
 									},
 								},
-								description: 'URL to an image to use as the icon for this message',
+								description: 'Only used if sending message as a bot',
 							},
 						],
 					},
