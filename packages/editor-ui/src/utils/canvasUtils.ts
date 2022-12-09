@@ -1,5 +1,8 @@
 import { MAIN_HEADER_TABS, VIEWS } from "@/constants";
 import { IZoomConfig } from "@/Interface";
+import { useWorkflowsStore } from "@/stores/workflows";
+import { OnConnectionBindInfo } from "jsplumb";
+import { IConnection } from "n8n-workflow";
 import { Route } from "vue-router";
 
 /*
@@ -86,6 +89,29 @@ export const getNodeViewTab = (route: Route): string|null => {
 		if (executionTabRoutes.includes(route.name || '')) {
 			return MAIN_HEADER_TABS.EXECUTIONS;
 		}
+	}
+	return null;
+};
+
+export const getConnectionInfo = (connection: OnConnectionBindInfo): [IConnection, IConnection] | null => {
+	const sourceInfo = connection.sourceEndpoint.getParameters();
+	const targetInfo = connection.targetEndpoint.getParameters();
+	const sourceNode = useWorkflowsStore().getNodeById(sourceInfo.nodeId);
+	const targetNode = useWorkflowsStore().getNodeById(targetInfo.nodeId);
+
+	if (sourceNode && targetNode) {
+		return[
+			{
+				node: sourceNode.name,
+				type: sourceInfo.type,
+				index: sourceInfo.index,
+			},
+			{
+				node: targetNode.name,
+				type: targetInfo.type,
+				index: targetInfo.index,
+			},
+		];
 	}
 	return null;
 };
