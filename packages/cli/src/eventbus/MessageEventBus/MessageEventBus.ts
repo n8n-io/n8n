@@ -112,18 +112,6 @@ class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	isEnabledForUser(): boolean {
-		// TODO: REMOVE BEFORE RELEASE
-		if (process.env.NODE_ENV !== 'production') {
-			console.log(
-				`isLogStreamingEnabled() | actual: ${isLogStreamingEnabled().toString()} | dev: true`,
-			);
-			return true;
-		} else {
-			return isLogStreamingEnabled();
-		}
-	}
-
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
 		this.destinations[destination.getId()] = destination;
@@ -198,7 +186,7 @@ class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		// if there are no set up destinations, immediately mark the event as sent
-		if (!this.isEnabledForUser() || Object.keys(this.destinations).length === 0) {
+		if (!isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {

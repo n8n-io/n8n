@@ -163,6 +163,7 @@ import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { getLicense } from '@/License';
+import { isLogStreamingEnabled } from './eventbus/MessageEventBusHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -388,6 +389,7 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
+			logStreaming: isLogStreamingEnabled(),
 			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
@@ -1558,6 +1560,9 @@ class App {
 			}
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
+
+			// TODO: REMOVE BEFORE RELEASE
+			config.set('enterprise.features.logStreaming', true);
 
 			// NOTE: subscribe to emitters and generate eventMessages from them
 			// eventEmitter.on('nodeFetchedData', (workflowId: string, node: INode) => {});

@@ -10,6 +10,7 @@ import {
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination';
+import { isLogStreamingEnabled } from '../MessageEventBusHelper';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -69,10 +70,10 @@ export class MessageEventBusDestinationSyslog
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
-		if (!eventBus.isEnabledForUser()) return false;
+		if (!isLogStreamingEnabled()) return false;
 		if (!this.hasSubscribedToEvent(msg)) return false;
 		try {
-			if (this.anonymizeAuditMessages) {
+			if (this.anonymizeAuditMessages || msg.anonymize) {
 				msg = msg.anonymize();
 			}
 			this.client.log(

@@ -39,6 +39,7 @@ import clientOAuth2 from 'client-oauth2';
 import { getClientCredentialsToken } from 'n8n-core/src/OAuth2Helper';
 import get from 'lodash.get';
 import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
+import { isLogStreamingEnabled } from '../MessageEventBusHelper';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -284,12 +285,12 @@ export class MessageEventBusDestinationWebhook
 	}
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
-		if (!eventBus.isEnabledForUser()) return false;
+		if (!isLogStreamingEnabled()) return false;
 
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 
-		if (this.anonymizeAuditMessages) {
+		if (this.anonymizeAuditMessages || msg.anonymize) {
 			msg = msg.anonymize();
 		}
 

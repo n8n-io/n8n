@@ -331,6 +331,7 @@ export default mixins(
 			this.ndvStore.activeNodeName = options.id ?? 'thisshouldnothappen';
 			this.workflowsStore.addNode(destinationToFakeINodeUi(options));
 			this.nodeParameters = options;
+			this.logStreamingStore.items[this.destination.id].destination = options;
 		},
 		onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
 			this.typeSelectValue = destinationType;
@@ -349,11 +350,11 @@ export default mixins(
 					break;
 			}
 			if (newDestination) {
+				this.headerLabel = newDestination?.label ?? this.headerLabel;
 				this.setupNode(newDestination);
 			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {
-			console.log(parameterData);
 			this.unchanged = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
 			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
@@ -388,6 +389,7 @@ export default mixins(
 				name: this.node.name,
 				properties: { parameters: this.nodeParameters as unknown as IDataObject },
 			});
+			this.logStreamingStore.updateDestination(this.nodeParameters);
 		},
 		async removeThis() {
 			const deleteConfirmed = await this.confirmMessage(
@@ -425,7 +427,7 @@ export default mixins(
 			await saveDestinationToDb(this.restApi(), this.nodeParameters);
 			this.hasOnceBeenSaved = true;
 			this.unchanged = true;
-			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
+			this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
 			this.uiStore.stateIsDirty = false;
 		},
 	},

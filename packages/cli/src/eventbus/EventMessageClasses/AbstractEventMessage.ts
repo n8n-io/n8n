@@ -96,6 +96,9 @@ export abstract class AbstractEventMessage {
 	 */
 	constructor(options: AbstractEventMessageOptions) {
 		this.setOptionsOrDefault(options);
+		if (options.anonymize) {
+			this.anonymize();
+		}
 	}
 
 	// abstract serialize(): EventMessageSerialized;

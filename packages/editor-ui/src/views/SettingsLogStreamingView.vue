@@ -5,19 +5,27 @@
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText(`settings.logstreaming.heading`) }}
 				</n8n-heading>
-				<strong>&nbsp;&nbsp;&nbsp;&nbsp;License (dev)&nbsp;</strong>
-				<el-switch v-model="fakeLicense" size="large" />
+				<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License (dev)&nbsp;</strong>
+				<el-switch v-model="disableLicense" size="large" />
 			</div>
 		</div>
 		<template v-if="isLicensed()">
+			<div class="mb-l">
+					<n8n-info-tip theme="info" type="note">
+						<template>
+							<span v-html="$locale.baseText('settings.logstreaming.infoTextEnterprise')"></span><br />
+							<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+						</template>
+					</n8n-info-tip>
+				</div>
 			<template v-if="storeHasItems()">
 				<el-row :gutter="10" v-for="item in sortedItemKeysByLabel" :key="item.key" :class="$style.destinationItem">
-					<el-col>
+					<el-col v-if="logStreamingStore.items[item.key]?.destination">
 						<event-destination-card
-							:destination="logStreamingStore.items[item.key].destination"
+							:destination="logStreamingStore.items[item.key]?.destination"
 							:eventBus="eventBus"
-							@remove="onRemove(logStreamingStore.items[item.key].destination.id)"
-							@edit="onEdit(logStreamingStore.items[item.key].destination.id)"
+							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
+							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</el-col>
 				</el-row>
@@ -28,12 +36,12 @@
 				</div>
 			</template>
 			<template v-else>
-				<div v-if="$locale.baseText('settings.logstreaming.infoTextEnterprise')" class="mb-l">
-				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.logstreaming.infoTextEnterprise')"></span>
-					</template>
-				</n8n-info-tip>
+				<div class="mb-l">
+					<n8n-info-tip theme="info" type="note">
+						<template>
+							<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+						</template>
+					</n8n-info-tip>
 				</div>
 			<div :class="$style.actionBoxContainer">
 				<n8n-action-box
@@ -58,11 +66,11 @@
 			</div>
 			<div :class="$style.actionBoxContainer">
 				<n8n-action-box
-					:description="$locale.baseText('fakeDoor.settings.logging.actionBox.description')"
-					:buttonText="$locale.baseText('fakeDoor.actionBox.button.label')"
+					:description="$locale.baseText('settings.logstreaming.actionBox.description')"
+					:buttonText="$locale.baseText('settings.logstreaming.actionBox.button')"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText('fakeDoor.settings.logging.actionBox.title')"/>
+						<span v-html="$locale.baseText('settings.logstreaming.actionBox.title')"/>
 					</template>
 				</n8n-action-box>
 			</div>
@@ -99,7 +107,7 @@ export default mixins(
 		return {
 			eventBus: new Vue(),
 			destinations: Array<MessageEventBusDestinationOptions>,
-			fakeLicense: false,
+			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
 		};
 	},
@@ -114,16 +122,14 @@ export default mixins(
 
 		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
 		this.logStreamingStore.$onAction(({name, after})=>{
-			if (name==='removeDestination') {
+			if (name==='removeDestination' || name==='updateDestination') {
 				after(async () => {
-					// await this.getDestinationDataFromREST();
 					this.$forceUpdate();
-    		});
+				});
 			}
 		});
-
 		// refresh when a modal closes
-		this.eventBus.$on('destinationWasUpdated', async () => {
+		this.eventBus.$on('destinationWasSaved', async () => {
 			this.$forceUpdate();
 		});
 		// listen to remove emission
@@ -147,7 +153,7 @@ export default mixins(
 		sortedItemKeysByLabel() {
 			const sortedKeys: { label: string, key: string }[] = [];
 			for (const [key, value] of Object.entries(this.logStreamingStore.items)) {
-				sortedKeys.push({ key, label: value.destination.label ?? 'Destination' });
+				sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
 			}
 			return sortedKeys.sort((a, b) => a.label.localeCompare(b.label));
 		},
@@ -176,7 +182,8 @@ export default mixins(
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
 		},
 		isLicensed(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming) || this.fakeLicense;
+			if (this.disableLicense === true) return false;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
 		},
 		async addDestination() {
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);

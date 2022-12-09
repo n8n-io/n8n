@@ -11,6 +11,7 @@ import {
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
 import { GenericHelpers } from '../..';
+import { isLogStreamingEnabled } from '../MessageEventBusHelper';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -54,8 +55,11 @@ export class MessageEventBusDestinationSentry
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
-		if (!eventBus.isEnabledForUser()) return false;
+		if (!isLogStreamingEnabled()) return false;
 		try {
+			if (this.anonymizeAuditMessages || msg.anonymize) {
+				msg = msg.anonymize();
+			}
 			let sentryResult = '';
 			Sentry.withScope((scope: Sentry.Scope) => {
 				scope.setLevel(

@@ -1,4 +1,4 @@
-import { MessageEventBusDestinationOptions } from "n8n-workflow";
+import { deepCopy, MessageEventBusDestinationOptions } from "n8n-workflow";
 import { defineStore } from "pinia";
 
 export interface EventSelectionItem {
@@ -57,6 +57,8 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 					if (destination.id && destination.id in this.items) {
 						state.items[destination.id].destination = destination;
 					}
+					// to trigger refresh
+					state.items = deepCopy(state.items);
 				});
 		},
 		removeDestination(destinationId: string) {
