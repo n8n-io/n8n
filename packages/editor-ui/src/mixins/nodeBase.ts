@@ -13,6 +13,8 @@ import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getStyleTokenValue } from "@/utils";
+import { useHistoryStore } from "@/stores/history";
+import { MoveNodeCommand } from "@/models/history";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -33,6 +35,7 @@ export const nodeBase = mixins(
 			useNodeTypesStore,
 			useUIStore,
 			useWorkflowsStore,
+			useHistoryStore,
 		),
 		data (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
@@ -281,6 +284,9 @@ export const nodeBase = mixins(
 							moveNodes.push(this.data);
 						}
 
+						if(moveNodes.length > 1) {
+							this.historyStore.startRecordingUndo();
+						}
 						// This does for some reason just get called once for the node that got clicked
 						// even though "start" and "drag" gets called for all. So lets do for now
 						// some dirty DOM query to get the new positions till I have more time to
@@ -304,11 +310,16 @@ export const nodeBase = mixins(
 									position: newNodePosition,
 								},
 							};
-
-							this.workflowsStore.updateNodeProperties(updateInformation);
+							const oldPosition = node.position;
+							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
+								this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition, this));
+								this.workflowsStore.updateNodeProperties(updateInformation);
+								this.$emit('moved', node);
+							}
 						});
-
-						this.$emit('moved', node);
+						if(moveNodes.length > 1) {
+							this.historyStore.stopRecordingUndo();
+						}
 					}
 				},
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
