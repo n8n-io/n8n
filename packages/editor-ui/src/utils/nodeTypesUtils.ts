@@ -1,5 +1,6 @@
 import {
 	CORE_NODES_CATEGORY,
+	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -13,7 +14,7 @@ import {
 	MAPPING_PARAMS,
 } from '@/constants';
 import { INodeCreateElement, ICategoriesWithNodes, INodeUi, ITemplatesNode, INodeItemProps } from '@/Interface';
-import { IDataObject, INodeExecutionData, INodeProperties, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeProperties, INodeTypeDescription, INodeActionTypeDescription, NodeParameterValueType } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 
 /*
@@ -25,7 +26,7 @@ const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
-const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {
+const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription | INodeActionTypeDescription, category: string, subcategory: string) => {
 	if (!accu[category]) {
 		accu[category] = {};
 	}
@@ -44,7 +45,7 @@ const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescri
 		accu[category][subcategory].regularCount++;
 	}
 	accu[category][subcategory].nodes.push({
-		type: 'node',
+		type: nodeType.actionKey ? 'action' : 'node' ,
 		key: `${category}_${nodeType.name}`,
 		category,
 		properties: {
@@ -56,30 +57,25 @@ const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescri
 	});
 };
 
-export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[]): ICategoriesWithNodes => {
+export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[], uncategorizedSubcategory = UNCATEGORIZED_SUBCATEGORY): ICategoriesWithNodes => {
 	const sorted = [...nodeTypes].sort((a: INodeTypeDescription, b: INodeTypeDescription) => a.displayName > b.displayName? 1 : -1);
-	return sorted.reduce(
+	const result =  sorted.reduce(
 		(accu: ICategoriesWithNodes, nodeType: INodeTypeDescription) => {
 			if (personalizedNodeTypes.includes(nodeType.name)) {
-				addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY);
+				addNodeToCategory(accu, nodeType, PERSONALIZED_CATEGORY, uncategorizedSubcategory);
 			}
 
 			if (!nodeType.codex || !nodeType.codex.categories) {
-				addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY);
+				addNodeToCategory(accu, nodeType, UNCATEGORIZED_CATEGORY, uncategorizedSubcategory);
 				return accu;
 			}
 
 			nodeType.codex.categories.forEach((_category: string) => {
 				const category = _category.trim();
-				const subcategories =
-					nodeType.codex &&
-					nodeType.codex.subcategories &&
-					nodeType.codex.subcategories[category]
-					? nodeType.codex.subcategories[category]
-					: null;
+				const subcategories = nodeType?.codex?.subcategories?.[category] ?? null;
 
 				if(subcategories === null || subcategories.length === 0) {
-					addNodeToCategory(accu, nodeType, category, UNCATEGORIZED_SUBCATEGORY);
+					addNodeToCategory(accu, nodeType, category, uncategorizedSubcategory);
 					return;
 				}
 
@@ -92,10 +88,11 @@ export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], person
 		},
 		{},
 	);
+	return result;
 };
 
 const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
-	const excludeFromSort = [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, UNCATEGORIZED_CATEGORY, PERSONALIZED_CATEGORY];
+	const excludeFromSort = [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, UNCATEGORIZED_CATEGORY, PERSONALIZED_CATEGORY, RECOMMENDED_CATEGORY];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter(
 		(category: string) =>
@@ -103,13 +100,13 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 	);
 	sorted.sort();
 
-	return [CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, PERSONALIZED_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
+	return [RECOMMENDED_CATEGORY, CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, PERSONALIZED_CATEGORY, ...sorted, UNCATEGORIZED_CATEGORY];
 };
 
-export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): INodeCreateElement[] => {
+export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes, categoryIsExpanded = false): INodeCreateElement[] => {
 	const categories = getCategories(categoriesWithNodes);
 
-	return categories.reduce(
+	const result = categories.reduce(
 		(accu: INodeCreateElement[], category: string) => {
 			if (!categoriesWithNodes[category]) {
 				return accu;
@@ -120,7 +117,7 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 				key: category,
 				category,
 				properties: {
-					expanded: false,
+					expanded: categoryIsExpanded,
 				},
 			};
 
@@ -170,6 +167,7 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 		},
 		[],
 	);
+	return result;
 };
 
 export function getAppNameFromCredType(name: string) {

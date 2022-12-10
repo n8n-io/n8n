@@ -619,6 +619,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
@@ -654,6 +655,7 @@ export interface IExecuteSingleFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -926,6 +928,7 @@ export interface IBinaryKeyData {
 export interface IPairedItemData {
 	item: number;
 	input?: number; // If undefined "0" gets used
+	sourceOverwrite?: ISourceData;
 }
 
 export interface INodeExecutionData {
@@ -1369,6 +1372,12 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
+export interface INodeActionTypeDescription extends INodeTypeDescription {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1407,6 +1416,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	actions?: INodeActionTypeDescription[];
 }
 
 export interface INodeHookDescription {
