@@ -366,30 +366,12 @@ const fuzzyCompare =
 		}
 
 		//Compare objects/arrays and their stringified version
-		const parseStringAndCompareToArray = (str: string, arr: IDataObject[]) => {
-			try {
-				const parsedArray = jsonParse(str);
-				return isEqual(parsedArray, arr);
-			} catch (error) {
-				return false;
-			}
-		};
-		if (
-			!isNull(item1) &&
-			typeof item1 === 'object' &&
-			Array.isArray(item1) &&
-			typeof item2 === 'string'
-		) {
-			return parseStringAndCompareToArray(item2, item1 as IDataObject[]);
+		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
+			return parseStringAndCompareToObject(item2, item1 as IDataObject);
 		}
 
-		if (
-			!isNull(item2) &&
-			typeof item1 === 'string' &&
-			typeof item2 === 'object' &&
-			Array.isArray(item2)
-		) {
-			return parseStringAndCompareToArray(item1, item2 as IDataObject[]);
+		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
+			return parseStringAndCompareToObject(item1, item2 as IDataObject);
 		}
 
 		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
@@ -426,6 +408,15 @@ const fuzzyCompare =
 
 		return isEqual(item1, item2);
 	};
+
+const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
+	try {
+		const parsedArray = jsonParse(str);
+		return isEqual(parsedArray, arr);
+	} catch (error) {
+		return false;
+	}
+};
 
 function isFalsy<T>(value: T) {
 	if (isNull(value)) return true;

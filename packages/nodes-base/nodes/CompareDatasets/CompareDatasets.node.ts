@@ -19,6 +19,13 @@ export class CompareDatasets implements INodeType {
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [
 			{
+				displayName:
+					'Items from different branches are paired together when the fields below match. Once paired, the rest of the fields are compared to determine whether the items are the same or different',
+				name: 'infoBox',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Fields to Match',
 				name: 'mergeByFields',
 				type: 'fixedCollection',
