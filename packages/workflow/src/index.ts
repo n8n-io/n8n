@@ -27,9 +27,3 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 } from './type-guards';
-
-declare module 'http' {
-	export interface IncomingMessage {
-		rawBody: Buffer;
-	}
-}
