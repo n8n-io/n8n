@@ -15,9 +15,3 @@ export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { eventEmitter, NodeExecuteFunctions, UserSettings };
-
-declare module 'http' {
-	export interface IncomingMessage {
-		rawBody: Buffer;
-	}
-}

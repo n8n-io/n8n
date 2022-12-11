@@ -4,6 +4,9 @@ import type * as express from 'express';
 import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
+
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
 import type { WorkflowHooks } from './WorkflowHooks';
@@ -621,12 +624,52 @@ export type ICredentialTestFunction = (
 
 export interface ICredentialTestFunctions {
 	helpers: {
-		[key: string]: (...args: any[]) => any;
+		request: RequestPromiseAPI;
 	};
 }
 
-interface FunctionsBase {
-	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
+export interface JSONHelperFunctions {
+	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+}
+
+export interface BinaryHelperFunctions {
+	prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
+	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
+	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+}
+
+export interface RequestHelperFunctions {
+	request(uriOrObject: string | IDataObject | any, options?: IDataObject): Promise<any>;
+	requestWithAuthentication(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUri | RequestPromiseOptions,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any>;
+
+	httpRequest(requestOptions: IHttpRequestOptions): Promise<any>;
+	httpRequestWithAuthentication(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: IHttpRequestOptions,
+		additionalCredentialOptions?: IAdditionalCredentialOptions,
+	): Promise<any>;
+
+	requestOAuth1(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUrl | RequestPromiseOptions,
+	): Promise<any>;
+	requestOAuth2(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		requestOptions: OptionsWithUri | RequestPromiseOptions,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
+}
+
+export interface FunctionsBase {
+	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
 	getWorkflowStaticData(type: string): IDataObject;
@@ -635,24 +678,6 @@ interface FunctionsBase {
 
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
-
-	helpers: {
-		httpRequest(
-			requestOptions: IHttpRequestOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		requestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: any,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<any>;
-		httpRequestWithAuthentication(
-			this: IAllExecuteFunctions,
-			credentialsType: string,
-			requestOptions: IHttpRequestOptions,
-			additionalCredentialOptions?: IAdditionalCredentialOptions,
-		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-	} & Record<string, (...args: any[]) => any>; // TODO: remove this and define all valid methods in each interface
 }
 
 type BaseExecutionFunctions = RequiredProps<FunctionsBase, 'getMode'> & {
@@ -678,6 +703,18 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
+
+		helpers: RequestHelperFunctions &
+			BinaryHelperFunctions &
+			JSONHelperFunctions & {
+				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
+				constructExecutionMetaData(
+					inputData: INodeExecutionData[],
+					options: { itemData: IPairedItemData | IPairedItemData[] },
+				): NodeExecutionWithMetadata[];
+
+				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
+			};
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -688,6 +725,11 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+
+	helpers: RequestHelperFunctions &
+		BinaryHelperFunctions & {
+			getBinaryDataBuffer(propertyName: string, inputIndex?: number): Promise<Buffer>;
+		};
 }
 
 export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
@@ -708,18 +750,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
-}
-
-export interface IHookFunctions
-	extends RequiredProps<FunctionsBase, 'getMode' | 'getActivationMode'> {
-	getNodeWebhookUrl: (name: string) => string | undefined;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
-	getWebhookDescription(name: string): IWebhookDescription | undefined;
-	getWebhookName(): string;
+	helpers: RequestHelperFunctions;
 }
 
 export interface IPollFunctions
@@ -735,6 +766,7 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
 }
 
 export interface ITriggerFunctions
@@ -750,6 +782,20 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
+}
+
+export interface IHookFunctions
+	extends RequiredProps<FunctionsBase, 'getMode' | 'getActivationMode'> {
+	getWebhookName(): string;
+	getWebhookDescription(name: string): IWebhookDescription | undefined;
+	getNodeWebhookUrl: (name: string) => string | undefined;
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
+	helpers: RequestHelperFunctions;
 }
 
 export interface IWebhookFunctions extends RequiredProps<FunctionsBase, 'getMode'> {
@@ -770,6 +816,7 @@ export interface IWebhookFunctions extends RequiredProps<FunctionsBase, 'getMode
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
