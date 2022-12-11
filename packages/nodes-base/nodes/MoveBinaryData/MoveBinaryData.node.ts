@@ -1,4 +1,5 @@
 import { get, set, unset } from 'lodash';
+import prettyBytes from 'pretty-bytes';
 
 import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
@@ -12,6 +13,7 @@ import {
 	INodeTypeDescription,
 	jsonParse,
 	NodeOperationError,
+	fileTypeFromMimeType,
 } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
@@ -415,20 +417,26 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
+				const mimeType = (options.mimeType as string) || 'application/json';
+				const convertedValue: IBinaryData = {
+					data: '',
+					mimeType,
+					fileType: fileTypeFromMimeType(mimeType),
+				};
+
 				if (options.dataIsBase64 !== true) {
-					if (options.useRawData !== true) {
+					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
 
-					value = iconv
-						.encode(value as string, encoding, { addBOM: options.addBOM as boolean })
-						.toString(BINARY_ENCODING);
-				}
+					convertedValue.fileSize = prettyBytes(value.length);
 
-				const convertedValue: IBinaryData = {
-					data: value as string,
-					mimeType: (options.mimeType as string) || 'application/json',
-				};
+					convertedValue.data = iconv
+						.encode(value, encoding, { addBOM: options.addBOM as boolean })
+						.toString(BINARY_ENCODING);
+				} else {
+					convertedValue.data = value as unknown as string;
+				}
 
 				if (options.fileName) {
 					convertedValue.fileName = options.fileName as string;

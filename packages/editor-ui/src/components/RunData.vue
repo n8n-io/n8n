@@ -1060,15 +1060,15 @@ export default mixins(
 				this.updateNodesExecutionIssues();
 			},
 			isViewable (index: number, key: string): boolean {
-				const { fileType }: IBinaryData = this.binaryData[index][key];
-				return !!fileType && ['image', 'video'].includes(fileType);
+				const { fileType } = this.binaryData[index][key];
+				return !!fileType && ['image', 'video', 'text', 'json'].includes(fileType);
 			},
 			isDownloadable (index: number, key: string): boolean {
-				const { mimeType, fileName }: IBinaryData = this.binaryData[index][key];
+				const { mimeType, fileName } = this.binaryData[index][key];
 				return !!(mimeType && fileName);
 			},
 			async downloadBinaryData (index: number, key: string) {
-				const { id, data, fileName, fileExtension, mimeType }: IBinaryData = this.binaryData[index][key];
+				const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 				if(id) {
 					const url = this.restApi().getBinaryUrl(id);
