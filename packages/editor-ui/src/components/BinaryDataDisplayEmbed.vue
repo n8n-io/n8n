@@ -11,6 +11,12 @@
 				<source :src="embedSource" :type="binaryData.mimeType">
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
+			<vue-json-pretty
+				v-else-if="binaryData.fileType === 'json'"
+				:data="jsonData"
+				:deep="3"
+				:showLength="true"
+			/>
 			<embed v-else :src="embedSource" class="binary-data" :class="embedClass()"/>
 		</span>
 	</span>
@@ -19,38 +25,56 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/mixins/restApi';
-import type { IBinaryData } from 'n8n-workflow';
+import { IBinaryData, jsonParse } from 'n8n-workflow';
+import type { PropType } from 'vue';
+import VueJsonPretty from 'vue-json-pretty';
 
 export default mixins(
 	restApi,
 )
 	.extend({
 		name: 'BinaryDataDisplayEmbed',
-		props: [
-			'binaryData', // IBinaryData
-		],
+		components: {
+			VueJsonPretty,
+		},
+		props: {
+			binaryData: {
+				type: Object as PropType<IBinaryData>,
+				required: true,
+			},
+		},
 		data() {
 			return {
 				isLoading: true,
 				embedSource: '',
 				error: false,
+				jsonData: '',
 			};
 		},
 		async mounted() {
 			const id = this.binaryData?.id;
+			const isJSONData = this.binaryData.fileType === 'json';
+
 			if(!id) {
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
-				this.isLoading = false;
-				return;
+				if (isJSONData) {
+					this.jsonData = jsonParse(atob(this.binaryData.data));
+				} else {
+					this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
+				}
+			} else {
+				try {
+					const binaryUrl = this.restApi().getBinaryUrl(id);
+					if (isJSONData) {
+						this.jsonData = await (await fetch(binaryUrl)).json();
+					} else {
+						this.embedSource = binaryUrl;
+					}
+				} catch (e) {
+					this.error = true;
+				}
 			}
 
-			try {
-				this.embedSource = this.restApi().getBinaryUrl(id);
-				this.isLoading = false;
-			} catch (e) {
-				this.isLoading = false;
-				this.error = true;
-			}
+			this.isLoading = false;
 		},
 		methods: {
 			embedClass(): string[] {
