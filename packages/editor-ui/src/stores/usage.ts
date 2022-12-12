@@ -11,7 +11,7 @@ const DEFAULT_PLAN_ID = 'community';
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
 	loading: true,
-	error: null,
+	error: {},
 	data: {
 		usage: {
 			executions: {
@@ -38,10 +38,10 @@ export const useUsageStore = defineStore('usage', () => {
 		state.data = data;
 	};
 
-	const getData = async () => {
+	const getLicenseInfo = async () => {
 		state.loading = true;
 		try {
-			const { data } = await getLicense(rootStore.getRestApiContext);
+			const data = await getLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
 			state.error = error;
@@ -52,7 +52,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const activateLicense = async (activationKey: string) => {
 		state.loading = true;
 		try {
-			const { data } = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
+			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
 			setData(data);
 		} catch (error) {
 			state.error = error;
@@ -63,16 +63,16 @@ export const useUsageStore = defineStore('usage', () => {
 	const refreshLicenseManagementToken = async () => {
 		state.loading = true;
 		try {
-			const { data } = await renewLicense(rootStore.getRestApiContext);
+			const data = await renewLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
-			state.error = error;
+			getLicenseInfo();
 		}
 		state.loading = false;
 	};
 
 	return {
-		getData,
+		getLicenseInfo,
 		setData,
 		activateLicense,
 		refreshLicenseManagementToken,
@@ -83,8 +83,9 @@ export const useUsageStore = defineStore('usage', () => {
 		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  state.data.usage.executions.value / state.data.usage.executions.limit >= state.data.usage.executions.warningThreshold),
 		instanceId: computed(() => settingsStore.settings.instanceId),
 		managementToken: computed(() => state.data.managementToken),
-		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceId=${settingsStore.settings.instanceId}`),
+		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceid=${settingsStore.settings.instanceId}`),
 		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${state.data.managementToken}`),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
+		error: computed(() => state.error),
 	};
 });

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router/composables';
+import { Notification } from "element-ui";
 import { useUsageStore } from '@/stores/usage';
 
 const usageStore = useUsageStore();
@@ -23,7 +24,17 @@ onMounted(async () => {
 	if(usageStore.canUserActivateLicense) {
 		await usageStore.refreshLicenseManagementToken();
 	} else {
-		await usageStore.getData();
+		await usageStore.getLicenseInfo();
+	}
+});
+
+watch(() => usageStore.error, (error: Partial<Error>) => {
+	if(error?.message) {
+		Notification.error({
+			title: 'Error',
+			message: error.message,
+			position: 'bottom-right'
+		});
 	}
 });
 

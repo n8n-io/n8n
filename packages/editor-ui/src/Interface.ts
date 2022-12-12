@@ -1344,7 +1344,7 @@ export type Schema = { type: SchemaType, key?: string, value: string | Schema[],
 
 export type UsageState = {
 	loading: boolean;
-	error: Error | null;
+	error: Partial<Error>;
 	data: {
 		usage: {
 			executions: {
