@@ -103,6 +103,29 @@ describe('Undo/Redo', () => {
 		console.log(WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 740px; top: 360px;'));
 	});
 
+	it('should undo/redo deleting a connection by pressing delete button', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
+		cy.get('.connection-actions .delete').click();
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should undo/redo deleting a connection by moving it away', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', 0, -100);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.nodeConnections().should('have.length', 0)
+	});
+
 	it('should undo/redo deleting whole workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
