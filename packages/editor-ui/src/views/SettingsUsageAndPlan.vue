@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router/composables';
 import { Notification } from "element-ui";
 import { useUsageStore } from '@/stores/usage';
+import { UsageState } from "@/Interface";
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -28,11 +29,21 @@ onMounted(async () => {
 	}
 });
 
-watch(() => usageStore.error, (error: Partial<Error>) => {
+watch(() => usageStore.error, (error: UsageState['error']) => {
 	if(error?.message) {
 		Notification.error({
 			title: 'Error',
 			message: error.message,
+			position: 'bottom-right',
+		});
+	}
+});
+
+watch(() => usageStore.success, (success: UsageState['success']) => {
+	if(success?.title && success?.message) {
+		Notification.success({
+			title: success.title,
+			message: success.message,
 			position: 'bottom-right',
 		});
 	}

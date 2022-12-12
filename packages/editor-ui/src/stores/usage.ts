@@ -5,6 +5,7 @@ import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from "@/stores/settings";
 import { useUsersStore } from "@/stores/users";
+import { i18n } from '@/plugins/i18n';
 
 const SUBSCRIPTION_APP_URL = 'https://subscription.n8n.io';
 const DEFAULT_PLAN_ID = 'community';
@@ -12,6 +13,7 @@ const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
 	loading: true,
 	error: {},
+	success: {},
 	data: {
 		usage: {
 			executions: {
@@ -54,6 +56,10 @@ export const useUsageStore = defineStore('usage', () => {
 		try {
 			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
 			setData(data);
+			state.success = {
+				title: i18n.baseText('settings.usageAndPlan.activation.success.title'),
+				message: i18n.baseText('settings.usageAndPlan.activation.success.message', { interpolate: { planName: state.data.license.planName || DEFAULT_PLAN_NAME } } ),
+			};
 		} catch (error) {
 			state.error = error;
 		}
@@ -87,5 +93,6 @@ export const useUsageStore = defineStore('usage', () => {
 		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${state.data.managementToken}`),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		error: computed(() => state.error),
+		success: computed(() => state.success),
 	};
 });
