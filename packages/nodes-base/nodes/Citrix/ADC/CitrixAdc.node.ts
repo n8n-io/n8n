@@ -61,8 +61,8 @@ export class CitrixAdc implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData: IDataObject | IDataObject[] = {};
 
 		for (let i = 0; i < items.length; i++) {
@@ -70,7 +70,7 @@ export class CitrixAdc implements INodeType {
 				if (resource === 'file') {
 					if (operation === 'upload') {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 						const options = this.getNodeParameter('options', i);
 						const endpoint = `/config/systemfile`;
 
@@ -119,7 +119,7 @@ export class CitrixAdc implements INodeType {
 					if (operation === 'download') {
 						const fileName = this.getNodeParameter('fileName', i) as string;
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						const endpoint = `/config/systemfile?args=filename:${fileName},filelocation:${encodeURIComponent(
 							fileLocation,
@@ -152,11 +152,7 @@ export class CitrixAdc implements INodeType {
 							'certificateRequestFileName',
 							i,
 						) as string;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						let body: IDataObject = {
 							reqfile: certificateRequestFileName,

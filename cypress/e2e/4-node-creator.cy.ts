@@ -71,10 +71,19 @@ describe('Node Creator', () => {
 		.should('contain.text', 'We didn\'t make that... yet');
 
 		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 1);
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('this node totally does not exist');
+		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear()
+		nodeCreatorFeature.getters.getCreatorItem('On App Event').click();
+
+		nodeCreatorFeature.getters.searchBar().find('input').clear().type('edit image');
 		nodeCreatorFeature.getters.creatorItem().should('have.length', 0);
 		nodeCreatorFeature.getters.noResults()
 		.should('exist')
-		.should('contain.text', 'To see results, click here');
+		.should('contain.text', 'To see all results, click here');
 
 		nodeCreatorFeature.getters.noResults().contains('click here').click();
 		nodeCreatorFeature.getters.nodeCreatorTabs().should('exist');
@@ -85,6 +94,7 @@ describe('Node Creator', () => {
 	})
 
 	it('should add manual trigger node', () => {
+		cy.get('.el-loading-mask').should('not.exist');
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
 
@@ -95,7 +105,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.nodeCreator().should('not.exist');
 
 		// TODO: Replace once we have canvas feature utils
-		cy.get('div').contains("On clicking 'execute'").should('exist');
+		cy.get('div').contains("Add first step").should('exist');
 	})
 	it('check if non-core nodes are rendered', () => {
 		cy.wait('@nodesIntercept').then((interception) => {
@@ -144,7 +154,7 @@ describe('Node Creator', () => {
 			nodeCreatorFeature.getters.getCreatorItem(customCategory).should('exist');
 
 			nodeCreatorFeature.actions.toggleCategory(customCategory);
-			nodeCreatorFeature.getters.getCreatorItem(customNode).findChildByTestId('node-item-community-tooltip').should('exist');
+			nodeCreatorFeature.getters.getCreatorItem(customNode).findChildByTestId('node-creator-item-tooltip').should('exist');
 			nodeCreatorFeature.getters.getCreatorItem(customNode).contains(customNodeDescription).should('exist');
 			nodeCreatorFeature.actions.selectNode(customNode);
 

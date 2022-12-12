@@ -128,3 +128,27 @@ Cypress.Commands.add('resetAll', () => {
 Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });
+
+Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
+	if(Cypress.isBrowser('chrome')) {
+		cy.wrap(Cypress.automation('remote:debugger:protocol', {
+			command: 'Browser.grantPermissions',
+			params: {
+				permissions,
+				origin: window.location.origin,
+			},
+		}));
+	}
+});
+Cypress.Commands.add('readClipboard', () => cy.window().its('navigator.clipboard').invoke('readText'));
+Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
+	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
+	cy.wrap(selector).then($destination => {
+		const pasteEvent = Object.assign(new Event('paste', { bubbles: true, cancelable: true }), {
+		clipboardData: {
+			getData: () => pastePayload
+		}
+		});
+		$destination[0].dispatchEvent(pasteEvent);
+	});
+});

@@ -72,8 +72,8 @@ export class Box implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'file') {
@@ -174,7 +174,7 @@ export class Box implements INodeType {
 						const query = this.getNodeParameter('query', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const timezone = this.getTimezone();
+						const tz = this.getTimezone();
 						qs.type = 'file';
 						qs.query = query;
 						Object.assign(qs, additionalFields);
@@ -187,9 +187,9 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment
-									.tz(createdRangeValues.from, timezone)
-									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								const from = moment.tz(createdRangeValues.from, tz).format();
+								const to = moment.tz(createdRangeValues.to, tz).format();
+								qs.created_at_range = `${from},${to}`;
 							}
 							delete qs.createdRangeUi;
 						}
@@ -198,9 +198,9 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment
-									.tz(updateRangeValues.from, timezone)
-									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
+									.tz(updateRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}
@@ -226,7 +226,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
@@ -254,12 +254,12 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by.login = this.getNodeParameter('email', i) as string;
 							} else {
-								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+								body.accessible_by.id = this.getNodeParameter('userId', i) as string;
 							}
 						} else {
-							body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
@@ -273,10 +273,10 @@ export class Box implements INodeType {
 						const attributes: IDataObject = {};
 
 						if (parentId !== '') {
-							attributes['parent'] = { id: parentId };
+							attributes.parent = { id: parentId };
 						} else {
 							// if not parent defined save it on the root directory
-							attributes['parent'] = { id: 0 };
+							attributes.parent = { id: 0 };
 						}
 
 						if (isBinaryData) {
@@ -304,11 +304,11 @@ export class Box implements INodeType {
 
 							const body: IDataObject = {};
 
-							attributes['name'] = fileName || binaryData.fileName;
+							attributes.name = fileName || binaryData.fileName;
 
-							body['attributes'] = JSON.stringify(attributes);
+							body.attributes = JSON.stringify(attributes);
 
-							body['file'] = {
+							body.file = {
 								value: binaryDataBuffer,
 								options: {
 									filename: binaryData.fileName,
@@ -335,13 +335,13 @@ export class Box implements INodeType {
 								});
 							}
 
-							attributes['name'] = fileName;
+							attributes.name = fileName;
 
 							const body: IDataObject = {};
 
-							body['attributes'] = JSON.stringify(attributes);
+							body.attributes = JSON.stringify(attributes);
 
-							body['file'] = {
+							body.file = {
 								value: Buffer.from(content),
 								options: {
 									filename: fileName,
@@ -408,7 +408,7 @@ export class Box implements INodeType {
 						const query = this.getNodeParameter('query', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const timezone = this.getTimezone();
+						const tz = this.getTimezone();
 						qs.type = 'folder';
 						qs.query = query;
 						Object.assign(qs, additionalFields);
@@ -421,9 +421,9 @@ export class Box implements INodeType {
 							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
 								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment
-									.tz(createdRangeValues.from, timezone)
-									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								qs.created_at_range = `${moment.tz(createdRangeValues.from, tz).format()},${moment
+									.tz(createdRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.createdRangeUi;
 						}
@@ -432,9 +432,9 @@ export class Box implements INodeType {
 							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
 								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment
-									.tz(updateRangeValues.from, timezone)
-									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment.tz(updateRangeValues.from, tz).format()},${moment
+									.tz(updateRangeValues.to, tz)
+									.format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}
@@ -460,7 +460,7 @@ export class Box implements INodeType {
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i);
-						// tslint:disable-next-line: no-any
+
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
@@ -488,12 +488,12 @@ export class Box implements INodeType {
 						if (accessibleBy === 'user') {
 							const useEmail = this.getNodeParameter('useEmail', i) as boolean;
 							if (useEmail) {
-								body.accessible_by['login'] = this.getNodeParameter('email', i) as string;
+								body.accessible_by.login = this.getNodeParameter('email', i) as string;
 							} else {
-								body.accessible_by['id'] = this.getNodeParameter('userId', i) as string;
+								body.accessible_by.id = this.getNodeParameter('userId', i) as string;
 							}
 						} else {
-							body.accessible_by['id'] = this.getNodeParameter('groupId', i) as string;
+							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);

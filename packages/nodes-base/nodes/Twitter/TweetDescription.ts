@@ -49,11 +49,10 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		default: '', // Default value (no placeholder)
-		typeOptions: {
-			alwaysOpenEditWindow: false,
+        typeOptions: {
 			rows: 2, // Text area rows
 		},
+		default: '', // Default value (no placeholder)
 		required: true,
 		displayOptions: {
 			show: {
@@ -223,9 +222,6 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Search Term',
 		name: 'searchText',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: false,
-		},
 		required: true,
 		default: '',
 		placeholder: 'e.g. automation',

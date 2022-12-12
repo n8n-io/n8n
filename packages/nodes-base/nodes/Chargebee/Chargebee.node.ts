@@ -462,8 +462,8 @@ export class Chargebee implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				_item = items[i];
-				const resource = this.getNodeParameter('resource', i) as string;
-				const operation = this.getNodeParameter('operation', i) as string;
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 
 				let requestMethod = 'GET';
 				let endpoint = '';
@@ -596,7 +596,7 @@ export class Chargebee implements INodeType {
 				let responseData;
 
 				try {
-					responseData = await this.helpers.request!(options);
+					responseData = await this.helpers.request(options);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}

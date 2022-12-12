@@ -258,7 +258,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -742,7 +741,6 @@ export class Asana implements INodeType {
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -841,7 +839,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -929,9 +926,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -947,9 +941,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -1911,8 +1902,8 @@ export class Asana implements INodeType {
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod: IHttpRequestMethods = 'GET';
@@ -2009,7 +2000,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2021,7 +2012,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2097,7 +2088,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + this.getNodeParameter('id', i);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
@@ -2315,7 +2306,7 @@ export class Asana implements INodeType {
 
 						endpoint = `/projects/${projectId}`;
 
-						asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = { success: true };
 					}

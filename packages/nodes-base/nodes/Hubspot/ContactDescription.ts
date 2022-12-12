@@ -336,9 +336,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Membership Note',
 				name: 'membershipNote',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: "The notes relating to the contact's content membership",
 			},
@@ -346,9 +343,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'A default property to be used for any message or comments a contact may want to leave on a form',
@@ -572,7 +566,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
@@ -683,7 +677,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',
@@ -812,7 +806,7 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'List Memberships',
-				name: 'listMerberships',
+				name: 'listMemberships',
 				type: 'boolean',
 				default: true,
 				description: 'Whether current list memberships should be fetched for the contact',

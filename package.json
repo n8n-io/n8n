@@ -1,13 +1,13 @@
 {
   "name": "n8n",
-  "version": "0.204.0",
+  "version": "0.207.0",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=16.9",
-    "pnpm": ">=7.5"
+    "pnpm": ">=7.18"
   },
-  "packageManager": "pnpm@7.14.2",
+  "packageManager": "pnpm@7.18.1",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
@@ -53,14 +53,10 @@
     "supertest": "^6.2.2",
     "ts-jest": "^29.0.3",
     "tsc-watch": "^5.0.3",
-    "turbo": "1.5.5",
+    "turbo": "1.6.3",
     "typescript": "^4.8.4"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "quill@2.0.0-dev.4": "patches/quill@2.0.0-dev.4.patch",
-      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
-    },
     "onlyBuiltDependencies": [
       "sqlite3",
       "vue-demi"

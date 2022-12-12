@@ -8,12 +8,11 @@ export async function mindeeApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
 	option = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const resource = this.getNodeParameter('resource', 0) as string;
+	const resource = this.getNodeParameter('resource', 0);
 
 	let service;
 
@@ -68,9 +67,9 @@ export function cleanDataPreviousApiVersions(predictions: IDataObject[]) {
 			};
 		} else if (key === 'locale') {
 			//@ts-ignore
-			newData['currency'] = data.currency;
+			newData.currency = data.currency;
 			//@ts-ignore
-			newData['locale'] = data.value;
+			newData.locale = data.value;
 		} else {
 			newData[key] =
 				//@ts-ignore
@@ -85,9 +84,9 @@ export function cleanData(document: IDataObject) {
 	// @ts-ignore
 	const prediction = document.inference.prediction as IDataObject;
 	const newData: IDataObject = {};
-	newData['id'] = document.id;
-	newData['name'] = document.name;
-	newData['number_of_pages'] = document.n_pages;
+	newData.id = document.id;
+	newData.name = document.name;
+	newData.number_of_pages = document.n_pages;
 	for (const key of Object.keys(prediction)) {
 		const data = prediction[key] as IDataObject | IDataObject[];
 
@@ -98,9 +97,9 @@ export function cleanData(document: IDataObject) {
 			};
 		} else if (key === 'locale') {
 			//@ts-ignore
-			newData['currency'] = data.currency;
+			newData.currency = data.currency;
 			//@ts-ignore
-			newData['locale'] = data.value;
+			newData.locale = data.value;
 		} else {
 			newData[key] =
 				//@ts-ignore

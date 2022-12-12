@@ -1,5 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	deepCopy,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	IPairedItemData,
+} from 'n8n-workflow';
 
 export class SplitInBatches implements INodeType {
 	description: INodeTypeDescription = {
@@ -10,7 +16,7 @@ export class SplitInBatches implements INodeType {
 		version: 1,
 		description: 'Split data into batches and iterate over each batch',
 		defaults: {
-			name: 'SplitInBatches',
+			name: 'Split In Batches',
 			color: '#007755',
 		},
 		inputs: ['main'],
@@ -64,23 +70,61 @@ export class SplitInBatches implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		if (nodeContext.items === undefined || options.reset === true) {
 			// Is the first time the node runs
 
+			const sourceData = this.getInputSourceData();
+
 			nodeContext.currentRunIndex = 0;
 			nodeContext.maxRunIndex = Math.ceil(items.length / batchSize);
+			nodeContext.sourceData = deepCopy(sourceData);
 
 			// Get the items which should be returned
 			returnItems.push.apply(returnItems, items.splice(0, batchSize));
 
 			// Set the other items to be saved in the context to return at later runs
-			nodeContext.items = items;
+			nodeContext.items = [...items];
 		} else {
 			// The node has been called before. So return the next batch of items.
 			nodeContext.currentRunIndex += 1;
 			returnItems.push.apply(returnItems, nodeContext.items.splice(0, batchSize));
+
+			const addSourceOverwrite = (pairedItem: IPairedItemData | number): IPairedItemData => {
+				if (typeof pairedItem === 'number') {
+					return {
+						item: pairedItem,
+						sourceOverwrite: nodeContext.sourceData,
+					};
+				}
+
+				return {
+					...pairedItem,
+					sourceOverwrite: nodeContext.sourceData,
+				};
+			};
+
+			function getPairedItemInformation(
+				item: INodeExecutionData,
+			): IPairedItemData | IPairedItemData[] {
+				if (item.pairedItem === undefined) {
+					return {
+						item: 0,
+						sourceOverwrite: nodeContext.sourceData,
+					};
+				}
+
+				if (Array.isArray(item.pairedItem)) {
+					return item.pairedItem.map(addSourceOverwrite);
+				}
+
+				return addSourceOverwrite(item.pairedItem);
+			}
+
+			returnItems.map((item) => {
+				item.pairedItem = getPairedItemInformation(item);
+			});
 		}
 
 		nodeContext.noItemsLeft = nodeContext.items.length === 0;
@@ -90,12 +134,6 @@ export class SplitInBatches implements INodeType {
 			return null;
 		}
 
-		returnItems.map((item, index) => {
-			item.pairedItem = {
-				item: index,
-			};
-		});
-
-		return this.prepareOutputData(returnItems);
+		return [returnItems];
 	}
 }

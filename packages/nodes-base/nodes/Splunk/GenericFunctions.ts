@@ -48,7 +48,7 @@ export async function splunkApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options).then(parseXml);
+		return this.helpers.request!(options).then(parseXml);
 	} catch (error) {
 		if (error?.cause?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
@@ -69,7 +69,7 @@ export async function splunkApiRequest(
 //                 utils
 // ----------------------------------------
 
-export function parseXml(xml: string) {
+export async function parseXml(xml: string) {
 	return new Promise((resolve, reject) => {
 		parseString(xml, { explicitArray: false }, (error, result) => {
 			error ? reject(error) : resolve(result);

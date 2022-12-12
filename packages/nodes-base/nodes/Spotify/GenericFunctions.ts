@@ -17,7 +17,6 @@ export async function spotifyApiRequest(
 	body: object,
 	query?: object,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -48,7 +47,6 @@ export async function spotifyApiRequestAllItems(
 	endpoint: string,
 	body: object,
 	query?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -67,7 +65,7 @@ export async function spotifyApiRequestAllItems(
 			return returnData;
 		}
 	} while (
-		(responseData['next'] !== null && responseData['next'] !== undefined) ||
+		(responseData.next !== null && responseData.next !== undefined) ||
 		(responseData[propertyName.split('.')[0]].next !== null &&
 			responseData[propertyName.split('.')[0]].next !== undefined)
 	);

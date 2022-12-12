@@ -397,9 +397,6 @@ export const channelFields: INodeProperties[] = [
 										displayName: 'Keywords',
 										name: 'keywords',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										placeholder: 'tech,news',
 										description:
 											'Keywords associated with your channel. The value is a space-separated list of strings.',

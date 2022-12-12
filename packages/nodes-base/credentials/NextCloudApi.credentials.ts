@@ -8,8 +8,11 @@ import {
 
 export class NextCloudApi implements ICredentialType {
 	name = 'nextCloudApi';
+
 	displayName = 'NextCloud API';
+
 	documentationUrl = 'nextCloud';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Web DAV URL',
@@ -32,6 +35,7 @@ export class NextCloudApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -42,6 +46,7 @@ export class NextCloudApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: "={{$credentials.webDavUrl.replace('/remote.php/webdav', '')}}",
