@@ -1,7 +1,7 @@
 import startCase from 'lodash.startCase';
 import { defineStore } from "pinia";
 import { INodePropertyCollection, INodePropertyOptions, IDataObject, INodeProperties, INodeTypeDescription, deepCopy, INodeParameters, INodeActionTypeDescription } from 'n8n-workflow';
-import { STORES, MANUAL_TRIGGER_NODE_TYPE, CORE_NODES_CATEGORY, CALENDLY_TRIGGER_NODE_TYPE, TRIGGER_NODE_FILTER } from "@/constants";
+import { STORES, MANUAL_TRIGGER_NODE_TYPE, CORE_NODES_CATEGORY, CALENDLY_TRIGGER_NODE_TYPE, TRIGGER_NODE_FILTER, WEBHOOK_NODE_TYPE } from "@/constants";
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
@@ -276,11 +276,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			if(!nodeType) return [];
 
 			const { workflowTriggerNodes } = useWorkflowsStore();
-			const isTriggerAction = nodeType.toLocaleLowerCase().includes('trigger');
+			const isTrigger = nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
 			const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 			const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
 
-			const nodeTypes = !isTriggerAction && !workflowContainsTrigger && isTriggerPanel
+			const nodeTypes = !isTrigger && !workflowContainsTrigger && isTriggerPanel
 				? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
 				: [nodeType];
 
