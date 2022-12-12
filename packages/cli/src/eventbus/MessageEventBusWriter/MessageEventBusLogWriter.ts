@@ -103,7 +103,7 @@ export class MessageEventBusLogWriter {
 		if (this.#worker) {
 			// Thread.events(this.#worker).subscribe((event) => {});
 			Thread.errors(this.#worker).subscribe(async (error) => {
-				console.debug('Thread errors:', error);
+				console.error('Event Bus Log Writer thread error:', error);
 				await MessageEventBusLogWriter.#instance.#startThread();
 			});
 			return true;

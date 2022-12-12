@@ -1,14 +1,11 @@
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
-	INode,
 	INodesGraphResult,
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
-	JsonValue,
 	TelemetryHelpers,
-	Workflow,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import {
@@ -371,6 +368,27 @@ export class InternalHooksClass implements IInternalHooksClass {
 					workflowName: workflow.name,
 				},
 			}),
+			properties.success
+				? eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.success',
+						payload: {
+							success: properties.success,
+							userId: properties.user_id,
+							workflowId: properties.workflow_id,
+							isManual: properties.is_manual,
+							workflowName: workflow.name,
+						},
+				  })
+				: eventBus.sendWorkflowEvent({
+						eventName: 'n8n.workflow.failed',
+						payload: {
+							success: properties.success,
+							userId: properties.user_id,
+							workflowId: properties.workflow_id,
+							isManual: properties.is_manual,
+							workflowName: workflow.name,
+						},
+				  }),
 			...promises,
 			BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId),
 			this.telemetry.trackWorkflowExecution(properties),

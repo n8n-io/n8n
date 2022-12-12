@@ -1547,17 +1547,6 @@ class App {
 
 			// TODO: REMOVE BEFORE RELEASE
 			config.set('enterprise.features.logStreaming', true);
-
-			// NOTE: subscribe to emitters and generate eventMessages from them
-			// eventEmitter.on('nodeFetchedData', (workflowId: string, node: INode) => {});
-			// eventEmitter.on(
-			// 	'workflowExecutionCompleted',
-			// 	(workflowData: IWorkflowBase, fullRunData: IRun) => {},
-			// );
-			// something.subscribe('event', (event)=>eventBus.send(new EventMessage({
-			// 	eventName: event.name,
-			// 	payload: event,
-			// }) ))
 		}
 
 		// ----------------------------------------

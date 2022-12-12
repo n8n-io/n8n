@@ -13,7 +13,6 @@
 			<div class="mb-l">
 					<n8n-info-tip theme="info" type="note">
 						<template>
-							<span v-html="$locale.baseText('settings.logstreaming.infoTextEnterprise')"></span><br />
 							<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
 						</template>
 					</n8n-info-tip>
@@ -36,24 +35,16 @@
 				</div>
 			</template>
 			<template v-else>
-				<div class="mb-l">
-					<n8n-info-tip theme="info" type="note">
-						<template>
-							<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+				<div :class="$style.actionBoxContainer">
+					<n8n-action-box
+						:buttonText="$locale.baseText(`settings.logstreaming.add`)"
+						@click="addDestination"
+					>
+						<template #heading>
+							<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)"/>
 						</template>
-					</n8n-info-tip>
+					</n8n-action-box>
 				</div>
-			<div :class="$style.actionBoxContainer">
-				<n8n-action-box
-					:description="$locale.baseText(`settings.logstreaming.addFirst`)"
-					:buttonText="$locale.baseText(`settings.logstreaming.add`)"
-					@click="addDestination"
-				>
-					<template #heading>
-						<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)"/>
-					</template>
-				</n8n-action-box>
-			</div>
 			</template>
 		</template>
 		<template v-else>
@@ -68,6 +59,7 @@
 				<n8n-action-box
 					:description="$locale.baseText('settings.logstreaming.actionBox.description')"
 					:buttonText="$locale.baseText('settings.logstreaming.actionBox.button')"
+					@click="onContactUsClicked"
 				>
 					<template #heading>
 						<span v-html="$locale.baseText('settings.logstreaming.actionBox.title')"/>
@@ -151,7 +143,7 @@ export default mixins(
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
-			const sortedKeys: { label: string, key: string }[] = [];
+			const sortedKeys: Array<{ label: string, key: string }> = [];
 			for (const [key, value] of Object.entries(this.logStreamingStore.items)) {
 				sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
 			}
@@ -177,6 +169,10 @@ export default mixins(
 				}
 			}
 			this.$forceUpdate();
+		},
+		onContactUsClicked() {
+				window.open('mailto:sales@n8n.io', '_blank');
+				this.$telemetry.track('user clicked contact us button', {feature: EnterpriseEditionFeature.LogStreaming});
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;

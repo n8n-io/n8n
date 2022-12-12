@@ -10,7 +10,7 @@
 					</n8n-heading>
 					<div :class="$style.cardDescription">
 						<n8n-text color="text-light" size="small">
-							<span>{{$locale.baseText('settings.logstreaming.type')}}: {{$locale.baseText(typeLabelName)}}</span>
+							<span>{{$locale.baseText(typeLabelName)}}</span>
 						</n8n-text>
 					</div>
 				</div>

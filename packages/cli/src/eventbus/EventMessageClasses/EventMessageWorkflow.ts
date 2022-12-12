@@ -6,7 +6,10 @@ import { AbstractEventPayload } from './AbstractEventPayload';
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
 	'n8n.workflow.finished',
+	'n8n.workflow.success',
+	'n8n.workflow.failed',
 	'n8n.workflow.error',
+	'n8n.workflow.state.unknown',
 	'n8n.workflow.shared',
 	'n8n.workflow.executed',
 ] as const;

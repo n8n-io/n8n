@@ -184,6 +184,11 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 	const eventNameArray = Array.from(dottedList.values());
 
 	const groups: Set<string> = new Set<string>();
+
+	// since a Set returns iteration items on the order they were added, we can make sure workflow and nodes come first
+	groups.add('n8n.workflow');
+	groups.add('n8n.node');
+
 	for (const eventName of eventNameArray) {
 		const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
 		if (matches && matches?.length > 0) {
@@ -212,13 +217,7 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 			};
 			collection.children.push(subCollection);
 		}
-		// force Workflow group at the beginning of array
-		if (group === 'n8n.workflow') {
-			result.unshift(collection);
-		}
-		else {
 		result.push(collection);
-		}
 	}
 	return result;
 }
