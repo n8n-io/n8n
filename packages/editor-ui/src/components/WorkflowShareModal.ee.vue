@@ -282,9 +282,9 @@ export default mixins(
 			const isLastUserWithAccessToCredentials = Object.values(isLastUserWithAccessToCredentialsById).some((value) => value);
 
 			let confirm = true;
-			if (!isNewSharee) {
+			if (!isNewSharee && isLastUserWithAccessToCredentials) {
 				confirm = await this.confirmMessage(
-					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.${isLastUserWithAccessToCredentials ? 'lastUserWithAccessToCredentials.' : ''}message`, {
+					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message`, {
 						interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 					}),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', { interpolate: { name: user.fullName } }),
