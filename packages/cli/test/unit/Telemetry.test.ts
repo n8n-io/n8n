@@ -1,5 +1,6 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
+import * as testDb from '../integration/shared/testDb';
 
 jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {
@@ -18,7 +19,7 @@ describe('Telemetry', () => {
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		startPulseSpy = jest
 			.spyOn(Telemetry.prototype as any, 'startPulse')
 			.mockImplementation(() => {});
@@ -26,6 +27,7 @@ describe('Telemetry', () => {
 		jest.setSystemTime(testDateTime);
 		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
+		await testDb.init();
 	});
 
 	afterAll(() => {

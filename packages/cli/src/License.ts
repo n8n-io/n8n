@@ -128,7 +128,6 @@ export class License {
 		}
 
 		const entitlements = this.getCurrentEntitlements();
-		console.log(entitlements);
 		if (!entitlements.length) {
 			return undefined;
 		}
