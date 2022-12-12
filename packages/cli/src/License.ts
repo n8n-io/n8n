@@ -138,6 +138,15 @@ export class License {
 				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
 		);
 	}
+
+	// Helper functions for computed data
+	getTriggerLimit(): number {
+		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+	}
+
+	getPlanName(): string {
+		return (this.getFeatureValue('planName') ?? 'Community') as string;
+	}
 }
 
 let licenseInstance: License | undefined;

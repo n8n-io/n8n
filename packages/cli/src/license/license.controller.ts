@@ -39,13 +39,13 @@ async function getLicenseData(): Promise<ILicenseReadResponse> {
 		usage: {
 			executions: {
 				value: triggerCount,
-				limit: (license.getFeatureValue('quota:activeWorkflows') ?? -1) as number,
+				limit: license.getTriggerLimit(),
 				warningThreshold: 0.8,
 			},
 		},
 		license: {
 			planId: mainPlan?.productId ?? '',
-			planName: (license.getFeatureValue('planName') ?? 'Community') as string,
+			planName: license.getPlanName(),
 		},
 	};
 }
