@@ -75,6 +75,34 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
+	it('should undo/redo deleting node between to connected nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.actions.zoomToFit();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+	});
+
+	it('should undo/redo moving nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
+		console.log(WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 740px; top: 360px;'));
+		WorkflowPage.actions.hitUndo();
+		console.log(WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 640px; top: 260px;'));
+		WorkflowPage.actions.hitRedo();
+		console.log(WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 740px; top: 360px;'));
+	});
+
 	it('should undo/redo deleting whole workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
