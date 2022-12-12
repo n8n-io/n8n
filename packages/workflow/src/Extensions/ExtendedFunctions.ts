@@ -35,10 +35,19 @@ const average = (...args: number[]) => {
 	return aAverage(args);
 };
 
+const not = (value: unknown): boolean => {
+	return !value;
+};
+
 export const extendedFunctions = {
 	min,
 	max,
+	not,
 	average,
 	numberList,
 	zip,
+	$min: min,
+	$max: max,
+	$average: average,
+	$not: not,
 };

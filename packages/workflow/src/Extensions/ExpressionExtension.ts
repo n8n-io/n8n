@@ -41,6 +41,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(arrayExtensions.functions),
 		...Object.keys(objectExtensions.functions),
 		...Object.keys(genericExtensions),
+		'$if',
 	]),
 );
 
@@ -108,6 +109,40 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const ast = parse(expression);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		visit(ast, {
+			visitIdentifier(path) {
+				this.traverse(path);
+				if (path.node.name === '$if') {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const callPath: any = findParent(path, (p) => p.value?.type === 'CallExpression');
+					if (!callPath || callPath.value?.type !== 'CallExpression') {
+						return;
+					}
+
+					if (callPath.node.arguments.length < 2) {
+						throw new ExpressionExtensionError(
+							'$if requires at least 2 parameters: test, value_if_true[, and value_if_false]',
+						);
+					}
+
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const test = callPath.node.arguments[0];
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const consequent = callPath.node.arguments[1];
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const alternative =
+						callPath.node.arguments[2] === undefined
+							? types.builders.booleanLiteral(false)
+							: callPath.node.arguments[2];
+
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument
+					callPath.replace(types.builders.conditionalExpression(test, consequent, alternative));
+				}
+			},
+		});
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {
 			visitIdentifier(path) {
