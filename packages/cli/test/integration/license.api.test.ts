@@ -10,7 +10,7 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import { License } from '@/License';
 
 jest.mock('@/telemetry');
-jest.mock('@n8n_io/license-sdk', );
+jest.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
@@ -97,8 +97,10 @@ test('POST /license/activate does not work for regular users', async () => {
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
+	console.log(response);
+
 	expect(response.statusCode).toBe(403);
-	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_MESSAGE);
+	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
 });
 
 test('POST /license/activate errors out properly', async () => {
@@ -133,7 +135,7 @@ test('POST /license/renew does not work for regular users', async () => {
 	const response = await authAgent(userShell).post('/license/renew');
 
 	expect(response.statusCode).toBe(403);
-	expect(response.body.message).toBe(NON_OWNER_RENEW_MESSAGE);
+	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
 });
 
 test('POST /license/renew errors out properly', async () => {
@@ -182,7 +184,6 @@ const DEFAULT_POST_RESPONSE: { data: ILicensePostResponse } = {
 	},
 };
 
-const NON_OWNER_ACTIVATE_MESSAGE = 'Only an instance owner may activate a license';
-const NON_OWNER_RENEW_MESSAGE = 'Only an instance owner may renew a license';
+const NON_OWNER_ACTIVATE_RENEW_MESSAGE = 'Only an instance owner may activate or renew a license';
 const INVALID_ACIVATION_KEY_MESSAGE = 'Invalid activation key';
 const RENEW_ERROR_MESSAGE = 'Something went wrong when trying to renew license';

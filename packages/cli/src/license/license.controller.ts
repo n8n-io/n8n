@@ -40,11 +40,13 @@ licenseController.use((req: AuthenticatedRequest, res, next) => {
 			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
 				userId: req.user.id,
 			});
-			next(
+			ResponseHelper.sendErrorResponse(
+				res,
 				new ResponseHelper.UnauthorizedError(
 					'Only an instance owner may activate or renew a license',
 				),
 			);
+			return;
 		}
 	}
 	next();
