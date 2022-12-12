@@ -1,3 +1,4 @@
+import { MAIN_HEADER_TABS } from './../constants';
 import { useNDVStore } from '@/stores/ndv';
 import { BulkCommand, Undoable } from '@/models/history';
 import { useHistoryStore } from '@/stores/history';
@@ -9,6 +10,7 @@ import { Command } from '@/models/history';
 import { debounceHelper } from '@/mixins/debounce';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import Vue from 'vue';
+import { getNodeViewTab } from '@/utils';
 
 const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
@@ -32,7 +34,9 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 	},
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
-			if (event.repeat) return;
+			const currentNodeViewTab = getNodeViewTab(this.$route);
+
+			if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
 			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
 				event.preventDefault();
 				if (!this.isNDVOpen) {

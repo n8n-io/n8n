@@ -349,7 +349,8 @@ export default mixins(
 					next();
 					return;
 				}
-
+				// Make sure workflow id is empty when leaving the editor
+				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
 					const confirmModal = await this.confirmModal(
@@ -1136,7 +1137,7 @@ export default mixins(
 				});
 				this.historyStore.startRecordingUndo();
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName, true, true);
+					this.removeNode(nodeName, true, false);
 				});
 				setTimeout(() => {
 					this.historyStore.stopRecordingUndo();
@@ -2610,7 +2611,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string, trackHistory = false, partOfBulkDelete = false) {
+			removeNode(nodeName: string, trackHistory = false, trackBulk = true) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2620,7 +2621,7 @@ export default mixins(
 					return;
 				}
 
-				if (trackHistory && !partOfBulkDelete) {
+				if (trackHistory && trackBulk) {
 					this.historyStore.startRecordingUndo();
 				}
 
@@ -2715,7 +2716,7 @@ export default mixins(
 						this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
 					}
 				}, 0); // allow other events to finish like drag stop
-				if (trackHistory && !partOfBulkDelete) {
+				if (trackHistory && trackBulk) {
 					const recordingTimeout = waitForNewConnection ? 100 : 0;
 					setTimeout(() => {
 						this.historyStore.stopRecordingUndo();
@@ -3547,7 +3548,6 @@ export default mixins(
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
-			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 		},
 		destroyed() {
 			this.resetWorkspace();
