@@ -26,6 +26,7 @@
 				size="xsmall"
 				:class="$style['expression-editor-modal-opener']"
 				@click="$emit('modalOpenerClick')"
+				data-test-id="expander"
 			/>
 		</div>
 

@@ -20,6 +20,7 @@
 				{ label: $locale.baseText('parameterInput.fixed'), value: 'fixed'},
 				{ label: $locale.baseText('parameterInput.expression'), value: 'expression'},
 			]"
+			data-test-id="expression-parameter-option"
 		/>
 	</div>
 </template>
