@@ -724,6 +724,7 @@
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
 	"nodeCredentials.issues": "Issues",
 	"nodeCredentials.selectCredential": "Select Credential",
+	"nodeCredentials.selectedCredentialUnavailable": "{name} (unavailable)",
 	"nodeCredentials.showMessage.message": "Nodes that used credential \"{oldCredentialName}\" have been updated to use \"{newCredentialName}\"",
 	"nodeCredentials.showMessage.title": "Node credential updated",
 	"nodeCredentials.updateCredential": "Update Credential",
