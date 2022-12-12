@@ -797,6 +797,7 @@
     "pdf-parse": "^1.1.1",
     "pg": "^8.3.0",
     "pg-promise": "^10.5.8",
+    "pretty-bytes": "^5.6.0",
     "promise-ftp": "^1.3.5",
     "redis": "^3.1.1",
     "request": "^2.88.2",

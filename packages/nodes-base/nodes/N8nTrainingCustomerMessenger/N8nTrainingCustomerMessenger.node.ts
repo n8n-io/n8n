@@ -11,7 +11,7 @@ export class N8nTrainingCustomerMessenger implements INodeType {
 		version: 1,
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Messenger',
+			name: 'Customer Messenger (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

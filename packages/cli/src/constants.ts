@@ -42,8 +42,8 @@ export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 
 export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 
-export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000;
-export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 180000;
+export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
+export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 

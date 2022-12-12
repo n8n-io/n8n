@@ -7,6 +7,7 @@ COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.
 COPY scripts ./scripts
 COPY packages ./packages
 
+RUN apk add --update libc6-compat
 RUN corepack enable && corepack prepare --activate
 RUN chown -R node:node .
 USER node

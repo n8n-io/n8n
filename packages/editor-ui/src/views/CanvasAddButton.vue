@@ -1,6 +1,6 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container" data-test-id="canvas-add-button">
-		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
+	<div :class="$style.container" :style="containerCssVars" ref="container"  data-test-id="canvas-add-button">
+		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="nodeCreatorStore.showScrim" :popper-class="$style.tooltip" :open-delay="700">
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -12,38 +12,23 @@
 	</div>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 import { XYPosition } from '@/Interface';
-import { mapStores } from 'pinia';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
-export default Vue.extend({
-	name: 'CanvasAddButton',
-	props: {
-		showTooltip: {
-			type: Boolean,
-		},
-		position: {
-			type: Array,
-		},
-	},
-	computed: {
-		...mapStores(
-			useNodeCreatorStore,
-		),
-		containerCssVars(): Record<string, string> {
-			const position = this.position as XYPosition;
-			return {
-				'--trigger-placeholder-left-position': `${position[0]}px`,
-				'--trigger-placeholder-top-position': `${position[1]}px`,
-			};
-		},
-		isScrimActive(): boolean {
-			return this.nodeCreatorStore.showScrim;
-		},
-	},
-});
+export interface Props {
+	showTooltip: boolean;
+	position: XYPosition;
+}
+
+const props = defineProps<Props>();
+
+const nodeCreatorStore = useNodeCreatorStore();
+const containerCssVars = computed(() => ({
+	'--trigger-placeholder-left-position': `${props.position[0]}px`,
+	'--trigger-placeholder-top-position': `${props.position[1]}px`,
+}));
 </script>
 
 <style lang="scss" module>
