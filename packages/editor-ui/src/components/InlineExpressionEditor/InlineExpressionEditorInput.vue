@@ -45,14 +45,16 @@ export default mixins(expressionManager, workflowHelpers).extend({
 
 			try {
 				this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: newValue,
-				},
-				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
-			});
-			} catch (_) {} // ignore selection out of range error on drop
+					changes: {
+						from: 0,
+						to: this.editor.state.doc.length,
+						insert: newValue,
+					},
+					selection: { anchor: this.cursorPosition, head: this.cursorPosition },
+				});
+			} catch (_) {
+				// ignore out-of-range selection error on drop
+			}
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
