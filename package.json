@@ -5,9 +5,9 @@
   "homepage": "https://n8n.io",
   "engines": {
     "node": ">=16.9",
-    "pnpm": ">=7.5"
+    "pnpm": ">=7.18"
   },
-  "packageManager": "pnpm@7.14.2",
+  "packageManager": "pnpm@7.18.1",
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
@@ -53,7 +53,7 @@
     "supertest": "^6.2.2",
     "ts-jest": "^29.0.3",
     "tsc-watch": "^5.0.3",
-    "turbo": "1.5.5",
+    "turbo": "1.6.3",
     "typescript": "^4.8.4"
   },
   "pnpm": {
