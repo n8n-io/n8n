@@ -1415,6 +1415,8 @@
 	"workflows.shareModal.notAvailable.button": "Explore n8n cloud",
 	"workflows.shareModal.isDefaultUser.description": "You first need to set up your owner account to enable workflow sharing features.",
 	"workflows.shareModal.isDefaultUser.button": "Go to settings",
+	"workflows.shareModal.info.sharee": "Only {workflowOwnerName} can change who this workflow is shared with",
+	"workflows.shareModal.info.sharee.fallback": "the owner",
 	"workflows.roles.editor": "Editor",
 	"workflows.concurrentChanges.confirmMessage.title": "Workflow was edited by someone else",
 	"workflows.concurrentChanges.confirmMessage.message": "Another user made <strong>an edit</strong> to this workflow since you last saved it. Do you want to overwrite their changes?",
