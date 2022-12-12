@@ -52,7 +52,7 @@ licenseController.post(
 			LoggerProxy.info('Non-owner attempted to activate a license', {
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.NotFoundError('Only an instance owner may activate a license');
+			throw new ResponseHelper.UnauthorizedError('Only an instance owner may activate a license');
 		}
 
 		// Call the license manager activate function and tell it to throw an error
@@ -86,7 +86,7 @@ licenseController.post(
 				userId: req.user.id,
 			});
 			await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
-			throw new ResponseHelper.NotFoundError('Only an instance owner may renew a license');
+			throw new ResponseHelper.UnauthorizedError('Only an instance owner may renew a license');
 		}
 
 		// Call the license manager activate function and tell it to throw an error

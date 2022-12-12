@@ -97,7 +97,7 @@ test('POST /license/activate does not work for regular users', async () => {
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
-	expect(response.statusCode).toBe(404);
+	expect(response.statusCode).toBe(403);
 	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_MESSAGE);
 });
 
@@ -132,7 +132,7 @@ test('POST /license/renew does not work for regular users', async () => {
 
 	const response = await authAgent(userShell).post('/license/renew');
 
-	expect(response.statusCode).toBe(404);
+	expect(response.statusCode).toBe(403);
 	expect(response.body.message).toBe(NON_OWNER_RENEW_MESSAGE);
 });
 
