@@ -32,9 +32,9 @@ const schema = computed<Schema>(() => {
 	return getSchema(mergeDeep([head, ...tail, head]));
 });
 
-const isDataEmpty = (): boolean => {
+const isDataEmpty = computed(() => {
 	return isEmpty(props.data);
-};
+});
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
