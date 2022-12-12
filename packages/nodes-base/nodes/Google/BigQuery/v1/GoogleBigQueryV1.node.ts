@@ -244,7 +244,7 @@ export class GoogleBigQueryV1 implements INodeType {
 						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
 						{},
 					);
-					fields = schema.fields.map((field: IDataObject) => field.name);
+					fields = (schema.fields || []).map((field: IDataObject) => field.name);
 				}
 
 				for (let i = 0; i < length; i++) {

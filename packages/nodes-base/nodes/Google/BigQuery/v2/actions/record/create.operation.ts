@@ -5,62 +5,6 @@ import { googleApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Project Name or ID',
-		name: 'projectId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the project to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Dataset Name or ID',
-		name: 'datasetId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatasets',
-			loadOptionsDependsOn: ['projectId'],
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the dataset to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Table Name or ID',
-		name: 'tableId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['projectId', 'datasetId'],
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the table to create the record in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',

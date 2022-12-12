@@ -68,17 +68,17 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: IDataObject = {},
 	query: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.maxResults = 100;
+	query.maxResults = 10000;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
+
 		query.pageToken = responseData.pageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');

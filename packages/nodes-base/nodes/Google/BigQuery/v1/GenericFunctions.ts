@@ -78,7 +78,7 @@ export async function googleApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.maxResults = 100;
+	query.maxResults = 10000;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);

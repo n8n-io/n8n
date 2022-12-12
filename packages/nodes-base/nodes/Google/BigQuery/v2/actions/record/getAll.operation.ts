@@ -5,62 +5,6 @@ import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Project Name or ID',
-		name: 'projectId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Dataset Name or ID',
-		name: 'datasetId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getDatasets',
-			loadOptionsDependsOn: ['projectId'],
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Table Name or ID',
-		name: 'tableId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['projectId', 'datasetId'],
-		},
-		required: true,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['record'],
-			},
-		},
-		default: '',
-		description:
-			'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -150,7 +94,19 @@ export async function execute(
 			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
 			{},
 		);
-		fields = schema.fields.map((field: IDataObject) => field.name);
+
+		// console.log(JSON.stringify(schema, null, 2));
+
+		const extractFields = (entry: IDataObject): string | IDataObject => {
+			const name = entry.name as string;
+			const entryFields = entry.fields as IDataObject[];
+			if (!entryFields) {
+				return name;
+			}
+			return { [name]: entryFields.map(extractFields) };
+		};
+
+		fields = (schema.fields || []).map((field: IDataObject) => extractFields(field));
 	}
 
 	const qs: IDataObject = {};
@@ -184,6 +140,10 @@ export async function execute(
 
 	if (!returnAll) {
 		responseData = responseData.rows;
+	}
+
+	if (!responseData?.length) {
+		return [];
 	}
 	responseData = simple ? simplify(responseData, fields) : responseData;
 

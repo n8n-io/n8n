@@ -31,6 +31,62 @@ export const description: INodeProperties[] = [
 		],
 		default: 'create',
 	},
+	{
+		displayName: 'Project Name or ID',
+		name: 'projectId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getProjects',
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create', 'getAll'],
+				resource: ['record'],
+			},
+		},
+		default: '',
+		description:
+			'ID of the project to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Dataset Name or ID',
+		name: 'datasetId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDatasets',
+			loadOptionsDependsOn: ['projectId'],
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create', 'getAll'],
+				resource: ['record'],
+			},
+		},
+		default: '',
+		description:
+			'ID of the dataset to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Table Name or ID',
+		name: 'tableId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getTables',
+			loadOptionsDependsOn: ['projectId', 'datasetId'],
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['create', 'getAll'],
+				resource: ['record'],
+			},
+		},
+		default: '',
+		description:
+			'ID of the table to retrieve all rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
 	...create.description,
 	...getAll.description,
 ];
