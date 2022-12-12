@@ -255,7 +255,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1w572_1"
+    class="_schemaWrapper_1gs78_1"
   >
     <div />
   </div>
