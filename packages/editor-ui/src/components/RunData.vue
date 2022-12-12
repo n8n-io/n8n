@@ -250,7 +250,7 @@
 			/>
 
 			<run-data-schema
-				v-else-if="hasNodeRun && displayMode === 'schema' && jsonData?.length > 0"
+				v-else-if="hasNodeRun && displayMode === 'schema'"
 				:data="jsonData"
 				:mappingEnabled="mappingEnabled"
 				:distanceFromActive="distanceFromActive"
