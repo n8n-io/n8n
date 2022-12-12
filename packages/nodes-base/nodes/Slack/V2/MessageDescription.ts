@@ -735,7 +735,7 @@ export const messageFields: INodeProperties[] = [
 					},
 				},
 				default: true,
-				description: 'Whether to send a temmporary, ephemeral message',
+				description: 'Whether to send a temporary, ephemeral message',
 			},
 			{
 				displayName: 'Send as User',
@@ -893,7 +893,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Send message to',
+		displayName: 'Delete message from',
 		name: 'select',
 		type: 'options',
 		required: true,
@@ -975,7 +975,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'The Slack channel to send to',
+		description: 'The Slack channel to delete the message from',
 	},
 	{
 		name: 'user',
