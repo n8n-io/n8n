@@ -1,6 +1,6 @@
 // Vitest Snapshot v1
 
-exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
+exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 <div>
   <div
     class="_schemaWrapper_1w572_1"
@@ -248,6 +248,16 @@ exports[`RunDataJsonSchema.vue > renders json schema properly 1`] = `
         data-v-d4e6e290=""
       />
     </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
+<div>
+  <div
+    class="_schemaWrapper_1w572_1"
+  >
+    <div />
   </div>
 </div>
 `;
