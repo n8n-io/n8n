@@ -20,9 +20,7 @@ const onLicenseActivation = () => {
 onMounted(async () => {
 	if(route.query.key) {
 		await usageStore.activateLicense(route.query.key as string);
-	}
-
-	if(usageStore.canUserActivateLicense) {
+	} else if(usageStore.canUserActivateLicense) {
 		await usageStore.refreshLicenseManagementToken();
 	} else {
 		await usageStore.getLicenseInfo();
