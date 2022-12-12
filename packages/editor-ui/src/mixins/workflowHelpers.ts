@@ -67,7 +67,8 @@ import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import {useUsersStore} from "@/stores/users";
-import {ICredentialMap, ICredentialsResponse, IUsedCredential} from "@/Interface";
+import {ICredentialsResponse} from "@/Interface";
+import {format, format as timeAgo} from 'timeago.js';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -749,8 +750,14 @@ export const workflowHelpers = mixins(
 					this.uiStore.removeActiveAction('workflowSaving');
 
 					if (error.errorCode === 100) {
+						const url = this.$router.resolve({ name: VIEWS.WORKFLOW, params: { name: currentWorkflow }}).href;
+
 						const overwrite = await this.confirmMessage(
-							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
+							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
+								interpolate: {
+									url,
+								},
+							}),
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
 							null,
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
