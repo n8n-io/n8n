@@ -14,6 +14,9 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
+				<n8n-info-tip v-if="!workflowPermissions.isOwner" :bold="false" class="mb-s" >
+					{{ $locale.baseText('workflows.shareModal.info.sharee', { interpolate: { workflowOwnerName } }) }}
+				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
@@ -186,6 +189,9 @@ export default mixins(
 		workflowPermissions(): IPermissions {
 			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
 		},
+		workflowOwnerName(): string {
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
+		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) === true;
 		},
@@ -282,9 +288,9 @@ export default mixins(
 			const isLastUserWithAccessToCredentials = Object.values(isLastUserWithAccessToCredentialsById).some((value) => value);
 
 			let confirm = true;
-			if (!isNewSharee) {
+			if (!isNewSharee && isLastUserWithAccessToCredentials) {
 				confirm = await this.confirmMessage(
-					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.${isLastUserWithAccessToCredentials ? 'lastUserWithAccessToCredentials.' : ''}message`, {
+					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message`, {
 						interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 					}),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', { interpolate: { name: user.fullName } }),

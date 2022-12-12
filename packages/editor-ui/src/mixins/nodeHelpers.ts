@@ -343,7 +343,8 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (!this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+							const isCredentialUsedInWorkflow = this.workflowsStore.usedCredentials?.[selectedCredentials.id as string];
+							if (!isCredentialUsedInWorkflow) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
 							}
 						}

@@ -81,7 +81,7 @@ export default mixins(
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(this.credentialId);
+			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
 		},
 	},
 	methods: {
