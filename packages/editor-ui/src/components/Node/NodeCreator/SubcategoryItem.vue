@@ -56,6 +56,7 @@ export default Vue.extend({
 .subcategory {
 	display: flex;
 	padding: 11px 16px 11px 30px;
+	user-select: none;
 }
 
 .subcategoryWithIcon {

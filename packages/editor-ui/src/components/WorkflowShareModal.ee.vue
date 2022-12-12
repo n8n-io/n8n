@@ -8,7 +8,12 @@
 		:beforeClose="onCloseModal"
 	>
 		<template #content>
-			<div :class="$style.container">
+			<div v-if="isDefaultUser" :class="$style.container">
+				<n8n-text>
+					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
+				</n8n-text>
+			</div>
+			<div v-else :class="$style.container">
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
@@ -62,7 +67,12 @@
 		</template>
 
 		<template #footer>
-			<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
+			<div v-if="isDefaultUser" :class="$style.actionButtons">
+				<n8n-button @click="goToUsersSettings">
+					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
+				</n8n-button>
+			</div>
+			<enterprise-edition v-else :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
 				<n8n-text
 					v-show="isDirty"
 					color="text-light"
@@ -102,6 +112,7 @@ import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
 import {IUser, IWorkflowDb, NestedRecord} from "@/Interface";
@@ -145,6 +156,9 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useWorkflowsEEStore),
+		isDefaultUser(): boolean {
+			return this.usersStore.isDefaultUser;
+		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -312,6 +326,10 @@ export default mixins(
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();
+		},
+		goToUsersSettings() {
+			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.modalBus.$emit('close');
 		},
 	},
 	mounted() {

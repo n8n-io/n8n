@@ -1,3 +1,5 @@
+import { BinaryFileType } from './Interfaces';
+
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
@@ -64,3 +66,11 @@ export const sleep = async (ms: number): Promise<void> =>
 	new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
+
+export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
+	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('text/')) return 'text';
+	return;
+}
