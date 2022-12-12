@@ -248,6 +248,7 @@
 	"credentialEdit.credentialConfig.clickToCopy": "Click To Copy",
 	"credentialEdit.credentialConfig.connectionTestedSuccessfully": "Connection tested successfully",
 	"credentialEdit.credentialConfig.couldntConnectWithTheseSettings": "Couldn’t connect with these settings",
+	"credentialEdit.credentialConfig.couldntConnectWithTheseSettings.sharee": "Problem with connection settings. {owner} may be able to fix this",
 	"credentialEdit.credentialConfig.needHelpFillingOutTheseFields": "Need help filling out these fields?",
 	"credentialEdit.credentialConfig.oAuthRedirectUrl": "OAuth Redirect URL",
 	"credentialEdit.credentialConfig.openDocs": "Open docs",
