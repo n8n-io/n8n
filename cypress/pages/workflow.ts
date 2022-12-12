@@ -37,6 +37,7 @@ export class WorkflowPage extends BasePage {
 		nodeConnections: () => cy.get('.jtk-connector'),
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
+		disabledNodes: () => cy.get('.node-box.disabled'),
 	};
 	actions = {
 		visit: () => {

@@ -126,6 +126,42 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 0)
 	});
 
+	it('should undo/redo disabling a node using disable button', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().find('[data-test-id="disable-node-button"]').click({ force: true });
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+	});
+
+	it('should undo/redo disabling a node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{meta}', { release: false }).type('d');
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+	});
+
+	it('should undo/redo disabling multiple nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.get('body').type('{esc}');
+		cy.get('body').type('{meta}', { release: false }).type('a');
+		cy.get('body').type('{meta}', { release: false }).type('d');
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 0);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+	});
+
 	it('should undo/redo deleting whole workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
