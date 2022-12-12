@@ -29,7 +29,7 @@
 					<n8n-select
 						:value="getSelectedId(credentialTypeDescription.name)"
 						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
-						:placeholder="issues.length && getSelectedName(credentialTypeDescription.name) ? getSelectedName(credentialTypeDescription.name) : $locale.baseText('nodeCredentials.selectCredential')"
+						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
 						size="small"
 					>
 						<n8n-option
@@ -187,6 +187,11 @@ export default mixins(
 		},
 		getSelectedName(type: string) {
 			return this.selected?.[type]?.name;
+		},
+		getSelectPlaceholder(type: string, issues: string[]) {
+			return issues.length && this.getSelectedName(type)
+				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', { interpolate: { name: this.getSelectedName(type) } })
+				: this.$locale.baseText('nodeCredentials.selectCredential');
 		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;
