@@ -886,7 +886,7 @@ export const schema = {
 			},
 			ldap: {
 				format: Boolean,
-				default: true,
+				default: false,
 			},
 		},
 		// This is a temporary flag (acting as feature toggle)
