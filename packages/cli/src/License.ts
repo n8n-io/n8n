@@ -1,4 +1,4 @@
-import { LicenseManager, TLicenseContainerStr } from '@n8n_io/license-sdk';
+import { LicenseManager, TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
 import { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
@@ -74,13 +74,7 @@ export class License {
 			return;
 		}
 
-		try {
-			await this.manager.activate(activationKey);
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not activate license', e);
-			}
-		}
+		await this.manager.activate(activationKey);
 	}
 
 	async renew() {
@@ -88,13 +82,7 @@ export class License {
 			return;
 		}
 
-		try {
-			await this.manager.renew();
-		} catch (e) {
-			if (e instanceof Error) {
-				this.logger.error('Could not renew license', e);
-			}
-		}
+		await this.manager.renew();
 	}
 
 	isFeatureEnabled(feature: string): boolean {
@@ -107,6 +95,47 @@ export class License {
 
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+	}
+
+	getCurrentEntitlements() {
+		return this.manager?.getCurrentEntitlements() ?? [];
+	}
+
+	getFeatureValue(
+		feature: string,
+		requireValidCert?: boolean,
+	): undefined | boolean | number | string {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		return this.manager.getFeatureValue(feature, requireValidCert);
+	}
+
+	getManagementJWT(): string {
+		if (!this.manager) {
+			return '';
+		}
+		return this.manager.getManagementJwt();
+	}
+
+	/**
+	 * Helper function to get the main plan for a license
+	 */
+	getMainPlan(): TEntitlement | undefined {
+		if (!this.manager) {
+			return undefined;
+		}
+
+		const entitlements = this.manager.getCurrentEntitlements();
+		if (!entitlements.length) {
+			return undefined;
+		}
+
+		return entitlements.find(
+			(entitlement) =>
+				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
+		);
 	}
 }
 

@@ -159,6 +159,7 @@ import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
 import { corsMiddleware } from './middlewares/cors';
+import { licenseController } from './license/license.controller';
 
 require('body-parser-xml')(bodyParser);
 
@@ -400,7 +401,11 @@ class App {
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await license.activate(activationKey);
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e);
+			}
 		}
 	}
 
@@ -795,6 +800,11 @@ class App {
 		// Workflow Statistics
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
+
+		// ----------------------------------------
+		// License
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
 
 		// ----------------------------------------
 		// Tags

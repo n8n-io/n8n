@@ -750,3 +750,25 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 }
+
+// ----------------------------------
+//               license
+// ----------------------------------
+
+export interface ILicenseReadResponse {
+	usage: {
+		executions: {
+			limit: number;
+			value: number;
+			warningThreshold: number;
+		};
+	};
+	license: {
+		planId: string;
+		planName: string;
+	};
+}
+
+export interface ILicensePostResponse extends ILicenseReadResponse {
+	managementToken: string;
+}

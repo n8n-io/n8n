@@ -99,6 +99,9 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 
 	@Column({ length: 36 })
 	versionId: string;
+
+	@Column()
+	triggerCount: number;
 }
 
 /**
