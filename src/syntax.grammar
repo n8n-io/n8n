@@ -1,0 +1,23 @@
+@top Program { entity* }
+
+entity { Plaintext | Resolvable | BrokenResolvable }
+
+@tokens {
+  Plaintext { ![{] Plaintext? | "{" (@eof | ![{] Plaintext?) }
+
+  BrokenResolvable { "{{" ![}]* "}"? }
+
+  OpenMarker[closedBy="CloseMarker"] { "{{" }
+
+  CloseMarker[openedBy="OpenMarker"] { "}}" }
+
+  Resolvable {
+    OpenMarker resolvableChar* CloseMarker
+  }
+
+  resolvableChar { @asciiLetter | @digit | @whitespace | $[()\[\]{<>~`!@#$%^&*\-\_+=|\\;:'",./?] | "}" ![}] | "\\}}" }
+
+  @precedence { BrokenResolvable, Resolvable }
+}
+
+@detectDelim
