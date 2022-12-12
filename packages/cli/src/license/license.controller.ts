@@ -29,27 +29,6 @@ licenseController.use((req, res, next) => {
 	next();
 });
 
-// Helper for getting the basic license data that we want to return
-async function getLicenseData(): Promise<ILicenseReadResponse> {
-	const triggerCount = await LicenseService.getActiveTriggerCount();
-	const license = getLicense();
-	const mainPlan = license.getMainPlan();
-
-	return {
-		usage: {
-			executions: {
-				value: triggerCount,
-				limit: license.getTriggerLimit(),
-				warningThreshold: 0.8,
-			},
-		},
-		license: {
-			planId: mainPlan?.productId ?? '',
-			planName: license.getPlanName(),
-		},
-	};
-}
-
 /**
  * GET /license
  * Get the license data, usable by everyone
@@ -57,7 +36,7 @@ async function getLicenseData(): Promise<ILicenseReadResponse> {
 licenseController.get(
 	'/',
 	ResponseHelper.send(async (): Promise<ILicenseReadResponse> => {
-		return getLicenseData();
+		return LicenseService.getLicenseData();
 	}),
 );
 
@@ -89,7 +68,7 @@ licenseController.post(
 		// Return the read data, plus the management JWT
 		return {
 			managementToken: license.getManagementJwt(),
-			...(await getLicenseData()),
+			...(await LicenseService.getLicenseData()),
 		};
 	}),
 );
@@ -125,7 +104,7 @@ licenseController.post(
 		await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
 		return {
 			managementToken: license.getManagementJwt(),
-			...(await getLicenseData()),
+			...(await LicenseService.getLicenseData()),
 		};
 	}),
 );
