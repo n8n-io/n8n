@@ -125,8 +125,10 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			try {
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+					const { createdAt, updatedAt, usedCredentials, ...workflow } = await this.restApi().getWorkflow(this.data.id);
 					workflowToUpdate = workflow;
+
+					this.removeForeignCredentialsFromWorkflow(workflowToUpdate, this.credentialsStore.allCredentials);
 				}
 
 				const saved = await this.saveAsNewWorkflow({

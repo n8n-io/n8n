@@ -12,7 +12,6 @@ import { useSettingsStore } from "@/stores/settings";
 import { useRootStore } from "@/stores/n8nRootStore";
 
 export class Telemetry {
-
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 
@@ -153,7 +152,20 @@ export class Telemetry {
 					break;
 				case 'nodeCreateList.onCategoryExpanded':
 					properties.is_subcategory = false;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					this.track('User viewed node category', properties);
+					break;
+				case 'nodeCreateList.onViewActions':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User viewed node actions', properties);
+					break;
+				case 'nodeCreateList.onActionsCustmAPIClicked':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User clicked custom API from node actions', properties);
+					break;
+				case 'nodeCreateList.addAction':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User added action', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
 					const selectedProperties = (properties.selected as IDataObject).properties as IDataObject;
@@ -161,6 +173,7 @@ export class Telemetry {
 						properties.category_name = selectedProperties.subcategory;
 					}
 					properties.is_subcategory = true;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					delete properties.selected;
 					this.track('User viewed node category', properties);
 					break;

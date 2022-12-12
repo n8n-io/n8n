@@ -25,7 +25,7 @@ export class AwsSnsTrigger implements INodeType {
 		version: 1,
 		description: 'Handle AWS SNS events via webhooks',
 		defaults: {
-			name: 'AWS-SNS-Trigger',
+			name: 'AWS SNS Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
