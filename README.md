@@ -19,10 +19,10 @@ npm i @codemirror/language @lezer/common @lezer/javascript
 Set up language support:
 
 ```js
-import { LRLanguage, LanguageSupport } from '@codemirror/language';
+import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
+import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { parser as jsParser } from '@lezer/javascript';
-import { parserWithMetaData as n8nParser } from './n8nLanguagePack';
 
 const n8nPlusJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
