@@ -17,7 +17,7 @@
 			>
 				<div v-if="readonly || isReadOnly">
 					<n8n-input
-						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
+						:value="getSelectedName(credentialTypeDescription.name)"
 						disabled
 						size="small"
 					/>
@@ -26,7 +26,12 @@
 					v-else
 					:class="issues.length ? $style.hasIssues : $style.input"
 				>
-					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
+					<n8n-select
+						:value="getSelectedId(credentialTypeDescription.name)"
+						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
+						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
+						size="small"
+					>
 						<n8n-option
 							v-for="(item) in getCredentialOptions(credentialTypeDescription.name)"
 							:key="item.id"
@@ -179,6 +184,14 @@ export default mixins(
 				return this.selected[type].id;
 			}
 			return undefined;
+		},
+		getSelectedName(type: string) {
+			return this.selected?.[type]?.name;
+		},
+		getSelectPlaceholder(type: string, issues: string[]) {
+			return issues.length && this.getSelectedName(type)
+				? this.$locale.baseText('nodeCredentials.selectedCredentialUnavailable', { interpolate: { name: this.getSelectedName(type) } })
+				: this.$locale.baseText('nodeCredentials.selectCredential');
 		},
 		credentialInputWrapperStyle (credentialType: string) {
 			let deductWidth = 0;

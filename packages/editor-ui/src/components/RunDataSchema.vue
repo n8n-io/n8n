@@ -8,7 +8,7 @@ import { useWebhooksStore } from "@/stores/webhooks";
 import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 import { IDataObject } from "n8n-workflow";
-import { getSchema, mergeDeep } from "@/utils";
+import { getSchema, isEmpty, mergeDeep } from "@/utils";
 
 type Props = {
 	data: IDataObject[]
@@ -30,6 +30,10 @@ const webhooksStore = useWebhooksStore();
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
 	return getSchema(mergeDeep([head, ...tail, head]));
+});
+
+const isDataEmpty = computed(() => {
+	return isEmpty(props.data);
 });
 
 const onDragStart = (el: HTMLElement) => {
@@ -67,7 +71,9 @@ const onDragEnd = (el: HTMLElement) => {
 
 <template>
 	<div :class="$style.schemaWrapper">
+		<div v-if="isDataEmpty" />
 		<draggable
+			v-else
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
