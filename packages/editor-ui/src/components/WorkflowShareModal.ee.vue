@@ -14,6 +14,9 @@
 				</n8n-text>
 			</div>
 			<div v-else :class="$style.container">
+				<n8n-info-tip v-if="!workflowPermissions.isOwner" :bold="false" class="mb-s" >
+					{{ $locale.baseText('workflows.shareModal.info.sharee', { interpolate: { workflowOwnerName } }) }}
+				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
@@ -185,6 +188,9 @@ export default mixins(
 		},
 		workflowPermissions(): IPermissions {
 			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+		},
+		workflowOwnerName(): string {
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) === true;
