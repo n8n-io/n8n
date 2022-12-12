@@ -17,8 +17,8 @@ const onLicenseActivation = () => {
 };
 
 onMounted(async () => {
-	if(route.query.activationKey) {
-		await usageStore.activateLicense(route.query.activationKey as string);
+	if(route.query.key) {
+		await usageStore.activateLicense(route.query.key as string);
 	}
 
 	if(usageStore.canUserActivateLicense) {
@@ -33,7 +33,7 @@ watch(() => usageStore.error, (error: Partial<Error>) => {
 		Notification.error({
 			title: 'Error',
 			message: error.message,
-			position: 'bottom-right'
+			position: 'bottom-right',
 		});
 	}
 });
