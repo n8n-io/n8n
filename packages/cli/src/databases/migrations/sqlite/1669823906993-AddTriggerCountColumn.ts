@@ -1,7 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import config from '@/config';
-import { INode } from 'n8n-workflow';
 
 export class AddTriggerCountColumn1669823906993 implements MigrationInterface {
 	name = 'AddTriggerCountColumn1669823906993';
