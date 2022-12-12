@@ -103,7 +103,7 @@ export class Telemetry {
 			plan_name_current: getLicense().getPlanName(),
 			quota: getLicense().getTriggerLimit(),
 			usage: await LicenseService.getActiveTriggerCount(),
-		}
+		};
 		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);
 	}

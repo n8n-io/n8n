@@ -1,6 +1,13 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
-import * as testDb from '../integration/shared/testDb';
+
+jest.mock('@/license/License.service', () => {
+	return {
+		LicenseService: {
+			getActiveTriggerCount: () => 0,
+		},
+	};
+});
 
 jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {
@@ -12,14 +19,14 @@ jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() 
 
 describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
-	const spyTrack = jest.spyOn(Telemetry.prototype, 'track');
+	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
 	let telemetry: Telemetry;
 	const n8nVersion = '0.0.0';
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 
-	beforeAll(async () => {
+	beforeAll(() => {
 		startPulseSpy = jest
 			.spyOn(Telemetry.prototype as any, 'startPulse')
 			.mockImplementation(() => {});
@@ -27,7 +34,6 @@ describe('Telemetry', () => {
 		jest.setSystemTime(testDateTime);
 		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
-		await testDb.init();
 	});
 
 	afterAll(() => {
@@ -268,7 +274,7 @@ describe('Telemetry', () => {
 
 		beforeEach(() => {
 			fakeJestSystemTime(testDateTime);
-			pulseSpy = jest.spyOn(Telemetry.prototype as any, 'pulse');
+			pulseSpy = jest.spyOn(Telemetry.prototype as any, 'pulse').mockName('pulseSpy');
 		});
 
 		afterEach(() => {
