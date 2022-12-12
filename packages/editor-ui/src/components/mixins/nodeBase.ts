@@ -94,10 +94,10 @@ export const nodeBase = mixins(
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					paintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					hoverPaintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-primary'),
+					// paintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					// hoverPaintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					source: false,
-					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
+					target: true, //!this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						nodeId: this.nodeId,
 						type: inputName,
@@ -167,7 +167,7 @@ export const nodeBase = mixins(
 						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
 						anchor: anchorPosition,
 						maxConnections: -1,
-						endpoint: 'N8nPlus',
+						endpoint: 'Dot',
 						// paintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
 						// hoverPaintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 						source: true,
@@ -178,17 +178,17 @@ export const nodeBase = mixins(
 							type: inputName,
 							index,
 						},
-						paintStyle: {
-							outlineStroke: 'none',
-							// hover: false,
-							showOutputLabel: nodeTypeData.outputs.length === 1,
-							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'small',
-							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
-						},
-						hoverPaintStyle: {
-							outlineStroke: 'none',
-							hover: true, // hack to distinguish hover state
-						},
+						// paintStyle: {
+						// 	outlineStroke: 'none',
+						// 	// hover: false,
+						// 	showOutputLabel: nodeTypeData.outputs.length === 1,
+						// 	size: nodeTypeData.outputs.length >= 3 ? 'small' : 'small',
+						// 	hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+						// },
+						// hoverPaintStyle: {
+						// 	outlineStroke: 'none',
+						// 	hover: true, // hack to distinguish hover state
+						// },
 						// cssClass: 'dot-output-endpoint',
 						dragAllowedWhenFull: false,
 						// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],

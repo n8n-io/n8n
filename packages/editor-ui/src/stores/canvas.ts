@@ -13,8 +13,8 @@ import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { newInstance as newJsPlumbInstance } from "@jsplumb/browser-ui";
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
-
-import { EndpointFactory } from '@jsplumb/core';
+import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
+import { EndpointFactory, Connectors } from '@jsplumb/core';
 
 // import '@/plugins/N8nCustomConnectorType';
 // import '@/plugins/PlusEndpointType';
@@ -39,7 +39,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 
-
+	Connectors.register(N8nConnector.type, N8nConnector);
 	N8nPlusEndpointRenderer.register();
 	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
 
@@ -130,6 +130,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	function initInstance(container: Element) {
 		newInstance.value = newJsPlumbInstance({
 			container,
+			connector: N8nConnector.type,
 			dragOptions: {
 				// drag(params) {
 				// 		console.log("🚀 ~ file: NodeView.vue:3314 ~ drag ~ params", params);
