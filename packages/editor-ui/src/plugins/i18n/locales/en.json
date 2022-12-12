@@ -1402,7 +1402,7 @@
 	"workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message": "<strong>This might cause the workflow to stop working:</strong> {name} is the only user with access to credentials used in this workflow, those credentials will also be removed from {workflow}.",
 	"workflows.shareModal.list.delete.confirm.confirmButtonText": "Remove access",
 	"workflows.shareModal.list.delete.confirm.cancelButtonText": "Cancel",
-	"workflows.shareModal.onSave.success.title": "Workflow sharing settings have been saved",
+	"workflows.shareModal.onSave.success.title": "Sharing updated",
 	"workflows.shareModal.onSave.error.title": "There was a problem saving sharing settings",
 	"workflows.shareModal.saveBeforeClose.title": "Save sharing changes?",
 	"workflows.shareModal.saveBeforeClose.message": "You have unsaved changes. Do you want to save them before closing?",
