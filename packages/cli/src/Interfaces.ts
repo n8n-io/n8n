@@ -680,6 +680,7 @@ export interface IWorkflowExecutionDataProcess {
 	startNodes?: string[];
 	workflowData: IWorkflowBase;
 	userId: string;
+	partialTestNode?: string;
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
