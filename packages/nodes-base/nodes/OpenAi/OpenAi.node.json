@@ -1,0 +1,8 @@
+{
+	"node": "n8n-nodes-base.openAi",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Ai"],
+	"alias": ["Codex", "Darwin", "OpenAi", "chatGPT"],
+	"resources": {}
+}
