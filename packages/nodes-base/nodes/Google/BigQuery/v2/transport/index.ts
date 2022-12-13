@@ -3,7 +3,7 @@ import moment from 'moment-timezone';
 import * as jwt from 'jsonwebtoken';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -59,7 +59,9 @@ export async function googleApiRequest(
 			error.statusCode = '401';
 		}
 
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw new NodeApiError(this.getNode(), error, {
+			message: error?.error?.error?.message || error.message,
+		});
 	}
 }
 

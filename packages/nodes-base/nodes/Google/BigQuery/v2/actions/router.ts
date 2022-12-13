@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleBigQuery } from './node.type';
 
 import * as record from './record/Record.resource';
@@ -37,7 +37,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+			throw error;
 		}
 	}
 

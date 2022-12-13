@@ -44,3 +44,12 @@ export function simplify(rows: IDataObject[], fields: Array<string | IDataObject
 	}
 	return results;
 }
+
+export function extractSchemaFields(entry: IDataObject): string | IDataObject {
+	const name = entry.name as string;
+	const entryFields = entry.fields as IDataObject[];
+	if (!entryFields) {
+		return name;
+	}
+	return { [name]: entryFields.map(extractSchemaFields) };
+}

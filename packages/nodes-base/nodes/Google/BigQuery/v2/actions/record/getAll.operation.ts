@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { simplify } from '../../helpers/utils';
+import { extractSchemaFields, simplify } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -86,65 +86,87 @@ export async function execute(
 	const simple = this.getNodeParameter('simple', index) as boolean;
 
 	let fields;
-
-	if (simple) {
-		const { schema } = await googleApiRequest.call(
-			this,
-			'GET',
-			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
-			{},
-		);
-
-		// console.log(JSON.stringify(schema, null, 2));
-
-		const extractFields = (entry: IDataObject): string | IDataObject => {
-			const name = entry.name as string;
-			const entryFields = entry.fields as IDataObject[];
-			if (!entryFields) {
-				return name;
-			}
-			return { [name]: entryFields.map(extractFields) };
-		};
-
-		fields = (schema.fields || []).map((field: IDataObject) => extractFields(field));
-	}
-
 	const qs: IDataObject = {};
 
-	const options = this.getNodeParameter('options', index);
-	Object.assign(qs, options);
+	try {
+		if (simple) {
+			const { schema } = await googleApiRequest.call(
+				this,
+				'GET',
+				`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+				{},
+			);
+
+			// console.log(JSON.stringify(schema, null, 2));
+
+			fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
+		}
+
+		const options = this.getNodeParameter('options', index);
+		Object.assign(qs, options);
+
+		if (qs.selectedFields) {
+			fields = (qs.selectedFields as string).split(',').map((field: string) => field.trim());
+		}
+
+		if (returnAll) {
+			responseData = await googleApiRequestAllItems.call(
+				this,
+				'rows',
+				'GET',
+				`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+				{},
+				qs,
+			);
+		} else {
+			qs.maxResults = this.getNodeParameter('limit', index);
+			responseData = await googleApiRequest.call(
+				this,
+				'GET',
+				`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
+				{},
+				qs,
+			);
+		}
+		if (!returnAll) {
+			responseData = responseData.rows;
+		}
+
+		if (!responseData?.length) {
+			return [];
+		}
+	} catch (error) {
+		if (error.message.includes('EXTERNAL')) {
+			const limit = this.getNodeParameter('limit', index, 0);
+
+			const query = `SELECT * FROM [${projectId}:${datasetId}.${tableId}]${
+				limit ? ' LIMIT ' + limit : ''
+			};`;
+
+			const { rows, schema } = await googleApiRequest.call(
+				this,
+				'POST',
+				`/v2/projects/${projectId}/queries`,
+				{ query },
+			);
+			fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
+			responseData = rows;
+		} else {
+			throw error;
+		}
+	}
 
 	if (qs.selectedFields) {
-		fields = (qs.selectedFields as string).split(',');
+		const parseField = (field: string): string | IDataObject => {
+			if (!field.includes('.')) {
+				return field;
+			}
+			const [rootField, ...rest] = field.split('.');
+			return { [rootField]: [parseField(rest.join('.'))] };
+		};
+		fields = (fields as string[]).map((field: string) => parseField(field));
 	}
 
-	if (returnAll) {
-		responseData = await googleApiRequestAllItems.call(
-			this,
-			'rows',
-			'GET',
-			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-			{},
-			qs,
-		);
-	} else {
-		qs.maxResults = this.getNodeParameter('limit', index);
-		responseData = await googleApiRequest.call(
-			this,
-			'GET',
-			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/data`,
-			{},
-			qs,
-		);
-	}
-
-	if (!returnAll) {
-		responseData = responseData.rows;
-	}
-
-	if (!responseData?.length) {
-		return [];
-	}
 	responseData = simple ? simplify(responseData, fields) : responseData;
 
 	const executionData = this.helpers.constructExecutionMetaData(
