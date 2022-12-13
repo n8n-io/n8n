@@ -313,6 +313,7 @@ class WorkflowRunnerProcess {
 				additionalData,
 				this.data.executionMode,
 				this.data.executionData,
+				inputData.partialTestNode,
 			);
 			return this.workflowExecute.processRunExecutionData(this.workflow);
 		}

@@ -51,6 +51,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import * as TestWebhooks from '@/TestWebhooks';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -135,6 +136,12 @@ export class WorkflowRunner {
 	): Promise<string> {
 		const executionsProcess = config.getEnv('executions.process');
 		const executionsMode = config.getEnv('executions.mode');
+
+		const testWebhooks = TestWebhooks.getInstance();
+
+		data.partialTestNode = testWebhooks.partialTestNode;
+
+		delete testWebhooks.partialTestNode;
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
