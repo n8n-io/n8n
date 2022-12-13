@@ -38,6 +38,8 @@ export class WorkflowPage extends BasePage {
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
+		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
+		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 	};
 	actions = {
 		visit: () => {

@@ -2,6 +2,9 @@ import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
+// Suite-specific constants
+const CODE_NODE_NEW_NAME = 'Something else';
+
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Undo/Redo', () => {
@@ -92,6 +95,21 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
+	it('should undo/redo deleting whole workflow', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.get('body').type('{esc}');
+		cy.get('body').type('{meta}', { release: false }).type('a');
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
 	it('should undo/redo moving nodes', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
@@ -162,18 +180,37 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 	});
 
-	it('should undo/redo deleting whole workflow', () => {
+	it('should undo/redo renaming node using NDV', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		WorkflowPage.getters.nodeNameContainerNDV().click();
+		WorkflowPage.getters.nodeRenameInput().should('be.visible');
+		WorkflowPage.getters.nodeRenameInput().type('{selectall}');
+		WorkflowPage.getters.nodeRenameInput().type(CODE_NODE_NEW_NAME);
+		cy.get('body').type('{enter}');
 		cy.get('body').type('{esc}');
-		cy.get('body').type('{meta}', { release: false }).type('a');
-		cy.get('body').type('{backspace}');
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 		WorkflowPage.actions.hitUndo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
-		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+		cy.get('body').type('{esc}');
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).should('exist');
 		WorkflowPage.actions.hitRedo();
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
-		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+		cy.get('body').type('{esc}');
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NEW_NAME).should('exist');
+	});
+
+	it('should undo/redo renaming node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').trigger("keydown", { key: "F2" });
+		cy.get('body').type(CODE_NODE_NEW_NAME);
+		cy.get('body').type('{enter}');
+		WorkflowPage.actions.hitUndo();
+		cy.get('body').type('{esc}');
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).should('exist');
+		WorkflowPage.actions.hitRedo();
+		cy.get('body').type('{esc}');
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NEW_NAME).should('exist');
 	});
 });
