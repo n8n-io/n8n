@@ -22,7 +22,7 @@ export class NodeCreator extends BasePage {
 	};
 	actions = {
 		openNodeCreator: () => {
-			cy.get('.el-loading-mask').should('not.exist');
+			cy.waitForLoad();
 			this.getters.plusButton().click();
 			this.getters.nodeCreator().should('be.visible')
 		},
