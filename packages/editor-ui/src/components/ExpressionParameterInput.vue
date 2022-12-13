@@ -78,13 +78,12 @@ import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
 
-Vue.component('ExpressionFunctionIcon', ExpressionFunctionIcon);
-
 export default Vue.extend({
 	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,
 		InlineExpressionEditorOutput,
+		ExpressionFunctionIcon,
 	},
 	data() {
 		return {
