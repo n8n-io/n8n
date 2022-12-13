@@ -66,13 +66,13 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
 
 import { useNDVStore } from '@/stores/ndv';
+import { useWorkflowsStore } from '@/stores/workflows';
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
-import { telemetryUtils } from '@/mixins/telemetryUtils';
+import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
@@ -80,7 +80,7 @@ import type { TargetItem } from '@/Interface';
 
 Vue.component('ExpressionFunctionIcon', ExpressionFunctionIcon);
 
-export default mixins(telemetryUtils).extend({
+export default Vue.extend({
 	name: 'ExpressionParameterInput',
 	components: {
 		InlineExpressionEditorInput,
@@ -108,7 +108,7 @@ export default mixins(telemetryUtils).extend({
 		},
 	},
 	computed: {
-		...mapStores(useNDVStore),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItemNumber(): number {
 			return (this.hoveringItem?.itemIndex ?? 0) + 1;
 		},
@@ -149,14 +149,23 @@ export default mixins(telemetryUtils).extend({
 
 			if (oldPaneWidth !== this.paneWidth) return; // prevent blur on resizing
 
-			this.$telemetry.track(
-				'User closed Expression Editor',
-				this.createExpressionTelemetryPayload(this.segments, this.value),
-			);
+			const wasFocused = this.isFocused;
 
 			this.isFocused = false;
 
 			this.$emit('blur');
+
+			if (wasFocused) {
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.value,
+					this.workflowsStore.workflowId,
+					this.ndvStore.sessionId,
+					this.ndvStore.activeNode?.type ?? '',
+				);
+
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+			}
 		},
 		onChange({ value, segments }: { value: string; segments: Segment[] }) {
 			if (this.isDragging) return;

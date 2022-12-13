@@ -83,7 +83,7 @@ import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
-import { telemetryUtils } from '@/mixins/telemetryUtils';
+import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
 import type { Segment } from '@/types/expressions';
 
@@ -91,7 +91,6 @@ export default mixins(
 	externalHooks,
 	genericHelpers,
 	debounceHelper,
-	telemetryUtils,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -214,7 +213,13 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				const telemetryPayload = this.createExpressionTelemetryPayload(this.segments, this.value);
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.value,
+					this.workflowsStore.workflowId,
+					this.ndvStore.sessionId,
+					this.ndvStore.activeNode?.type ?? '',
+				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
