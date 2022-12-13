@@ -79,7 +79,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
-		<input :id="subKey" type="checkbox" checked />
+		<input v-if="level > 0 && isSchemaValueArray" :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
 		</label>

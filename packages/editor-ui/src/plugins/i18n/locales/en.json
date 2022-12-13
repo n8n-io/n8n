@@ -371,6 +371,7 @@
 	"dataMapping.tableView.tableColumnsExceeded": "Some columns are hidden",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip": "Your data has more than {columnLimit} columns so some are hidden. Switch to {link} to see all data.",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip.link": "JSON view",
+	"dataMapping.schemaView.emptyData": "No data to show - item(s) exist, but they’re empty",
 	"displayWithChange.cancelEdit": "Cancel Edit",
 	"displayWithChange.clickToChange": "Click to Change",
 	"displayWithChange.setValue": "Set Value",
