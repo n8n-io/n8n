@@ -1,35 +1,44 @@
 <template>
 	<div :class="$style.container">
-		<n8n-info-tip :bold="false" class="mb-s">
-			<template v-if="credentialPermissions.isOwner">
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
-			</template>
-			<template v-else>
-				{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { credentialOwnerName } }) }}
-			</template>
-		</n8n-info-tip>
-		<n8n-info-tip :bold="false" v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner">
-			{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
-		</n8n-info-tip>
-		<n8n-user-select
-			v-if="credentialPermissions.updateSharing"
-			size="large"
-			:users="usersList"
-			:currentUserId="usersStore.currentUser.id"
-			:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
-			@input="onAddSharee"
-		>
-			<template #prefix>
-				<n8n-icon icon="search" />
-			</template>
-		</n8n-user-select>
-		<n8n-users-list
-			:users="sharedWithList"
-			:currentUserId="usersStore.currentUser.id"
-			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
-			:readonly="!credentialPermissions.updateSharing"
-			@delete="onRemoveSharee"
-		/>
+		<div v-if="isDefaultUser">
+			<n8n-action-box
+				:description="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')"
+				:buttonText="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
+				@click="goToUsersSettings"
+			/>
+		</div>
+		<div v-else>
+			<n8n-info-tip :bold="false" class="mb-s">
+				<template v-if="credentialPermissions.isOwner">
+					{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
+				</template>
+				<template v-else>
+					{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { credentialOwnerName } }) }}
+				</template>
+			</n8n-info-tip>
+			<n8n-info-tip :bold="false" v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner">
+				{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
+			</n8n-info-tip>
+			<n8n-user-select
+				v-if="credentialPermissions.updateSharing"
+				size="large"
+				:users="usersList"
+				:currentUserId="usersStore.currentUser.id"
+				:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
+				@input="onAddSharee"
+			>
+				<template #prefix>
+					<n8n-icon icon="search" />
+				</template>
+			</n8n-user-select>
+			<n8n-users-list
+				:users="sharedWithList"
+				:currentUserId="usersStore.currentUser.id"
+				:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
+				:readonly="!credentialPermissions.updateSharing"
+				@delete="onRemoveSharee"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -40,17 +49,21 @@ import {showMessage} from "@/mixins/showMessage";
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useCredentialsStore } from "@/stores/credentials";
+import {VIEWS} from "@/constants";
 
 export default mixins(
 	showMessage,
 ).extend({
 	name: 'CredentialSharing',
-	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
+	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions', 'modalBus'],
 	computed: {
 		...mapStores(
 			useCredentialsStore,
 			useUsersStore,
 		),
+		isDefaultUser(): boolean {
+			return this.usersStore.isDefaultUser;
+		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -68,7 +81,7 @@ export default mixins(
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(this.credentialId);
+			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
 		},
 	},
 	methods: {
@@ -97,6 +110,10 @@ export default mixins(
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();
+		},
+		goToUsersSettings() {
+			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.modalBus.$emit('close');
 		},
 	},
 	mounted() {

@@ -315,7 +315,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	versionId: string;
-	usedCredentials?: Array<Partial<ICredentialsResponse>>;
+	usedCredentials?: IUsedCredential[];
 }
 
 // Identical to cli.Interfaces.ts
