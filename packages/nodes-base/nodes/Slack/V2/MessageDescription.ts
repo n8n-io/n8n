@@ -300,7 +300,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			"The message text to post. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'.",
+			'The message text to post. Supports <a href="https://api.slack.com/reference/surfaces/formatting">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
 		displayName: 'Blocks',
@@ -843,7 +843,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting/'>markdown</a> by default - this can be disabled in 'Options'.",
+			'The message text to update. Supports <a href="https://api.slack.com/reference/surfaces/formatting/">markdown</a> by default - this can be disabled in "Options".',
 	},
 	{
 		displayName: 'Update Fields',
