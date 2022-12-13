@@ -99,9 +99,9 @@ export const reactionFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
-		type: 'string',
 		required: true,
-		default: '',
+		type: 'number',
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: ['reaction'],

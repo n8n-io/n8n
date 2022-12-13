@@ -108,9 +108,9 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
-		type: 'string',
 		required: true,
-		default: '',
+		type: 'number',
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -474,8 +474,8 @@ export const messageFields: INodeProperties[] = [
 			{
 				displayName: 'Message Timestamp',
 				name: 'ts',
-				type: 'dateTime',
-				default: '',
+				type: 'number',
+				default: undefined,
 				description: 'Timestamp of the message to post.',
 				placeholder: '1663233118.856619',
 			},
@@ -619,8 +619,8 @@ export const messageFields: INodeProperties[] = [
 							{
 								displayName: 'Message timestamp to reply to',
 								name: 'thread_ts',
-								type: 'string',
-								default: '',
+								type: 'number',
+								default: undefined,
 								placeholder: '1663233118.856619',
 								description:
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
@@ -819,9 +819,9 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'ts',
-		type: 'string',
 		required: true,
-		default: '',
+		type: 'number',
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: ['message'],
@@ -1026,9 +1026,9 @@ export const messageFields: INodeProperties[] = [
 	{
 		displayName: 'Message Timestamp',
 		name: 'timestamp',
-		type: 'string',
 		required: true,
-		default: '',
+		type: 'number',
+		default: undefined,
 		displayOptions: {
 			show: {
 				resource: ['message'],
