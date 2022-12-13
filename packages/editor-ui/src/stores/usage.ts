@@ -7,6 +7,14 @@ import { useSettingsStore } from "@/stores/settings";
 import { useUsersStore } from "@/stores/users";
 import { i18n } from '@/plugins/i18n';
 
+export type UsageTelemetry = {
+	instance_id: string
+	action: 'view_plans' | 'add_activation_key' | 'contact_us'
+	plan_name_current: string
+	usage: number
+	quota: number
+};
+
 const SUBSCRIPTION_APP_URL = 'https://subscription.n8n.io';
 const DEFAULT_PLAN_ID = 'community';
 const DEFAULT_PLAN_NAME = 'Community';
@@ -77,22 +85,35 @@ export const useUsageStore = defineStore('usage', () => {
 		state.loading = false;
 	};
 
+	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
+	const executionLimit = computed(() => state.data.usage.executions.limit);
+	const executionCount = computed(() => state.data.usage.executions.value);
+	const instanceId = computed(() => settingsStore.settings.instanceId);
+	const managementToken = computed(() => state.data.managementToken);
+
 	return {
 		getLicenseInfo,
 		setData,
 		activateLicense,
 		refreshLicenseManagementToken,
-		isLoading: computed(() => state.loading),
-		planName: computed(() => state.data.license.planName || DEFAULT_PLAN_NAME),
-		executionLimit: computed(() => state.data.usage.executions.limit),
-		executionCount: computed(() => state.data.usage.executions.value),
-		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  state.data.usage.executions.value / state.data.usage.executions.limit >= state.data.usage.executions.warningThreshold),
-		instanceId: computed(() => settingsStore.settings.instanceId),
-		managementToken: computed(() => state.data.managementToken),
-		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceid=${settingsStore.settings.instanceId}`),
-		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${state.data.managementToken}`),
+		planName,
+		executionLimit,
+		executionCount,
+		instanceId,
+		managementToken,
+		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  executionCount.value / executionLimit.value >= state.data.usage.executions.warningThreshold),
+		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceid=${instanceId.value}`),
+		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${managementToken.value}`),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
+		isLoading: computed(() => state.loading),
 		error: computed(() => state.error),
 		success: computed(() => state.success),
+		telemetryPayload: computed<UsageTelemetry>(() => ({
+			instance_id: instanceId.value,
+			action: 'view_plans',
+			plan_name_current: planName.value,
+			usage: executionCount.value,
+			quota: executionLimit.value,
+		})),
 	};
 });

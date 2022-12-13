@@ -2,8 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router/composables';
 import { Notification } from "element-ui";
-import { useUsageStore } from '@/stores/usage';
+import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { UsageState } from "@/Interface";
+import { telemetry } from "@/plugins/telemetry";
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -47,6 +48,26 @@ watch(() => usageStore.success, (success: UsageState['success']) => {
 	}
 });
 
+const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
+	const telemetryPayload = usageStore.telemetryPayload;
+	telemetryPayload.action = action;
+	console.log(telemetryPayload);
+	telemetry.track('User clicked button on usage page', telemetryPayload);
+};
+
+const onContactUs = () => {
+	sendUsageTelemetry('contact_us');
+};
+
+const onAddActivationKey = () => {
+	activationKeyModal.value = true;
+	sendUsageTelemetry('add_activation_key');
+};
+
+const onViewPlans = () => {
+	sendUsageTelemetry('view_plans');
+};
+
 </script>
 
 <template>
@@ -68,37 +89,37 @@ watch(() => usageStore.success, (success: UsageState['success']) => {
 		<n8n-info-tip>
 			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
 				<template #link>
-					<a href="https://n8n.io/contact" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
+					<a @click="onContactUs" href="https://n8n.io/contact" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
 				</template>
 			</i18n>
 		</n8n-info-tip>
 		<div :class="$style.buttons">
-			<n8n-button @click="activationKeyModal = !activationKeyModal" v-if="usageStore.canUserActivateLicense" type="secondary" size="large">
-				{{ $locale.baseText('settings.usageAndPlan.button.activation') }}
-			</n8n-button>
-			<n8n-button v-if="usageStore.managementToken" size="large">
+			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="primary" size="large" text :label="$locale.baseText('settings.usageAndPlan.button.activation')" />
+			<n8n-button v-if="usageStore.managementToken" @click="onViewPlans" size="large">
 				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
-			<n8n-button v-else size="large">
+			<n8n-button v-else @click="onViewPlans" size="large">
 				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
 		</div>
 		<el-dialog
 			:visible.sync="activationKeyModal"
-			width="640px"
+			width="480px"
+			top="26vh"
 			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 		>
 			<template #default>
 				<n8n-input
 					v-model="activationKey"
+					size="medium"
 					:placeholder="$locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 				/>
 			</template>
 			<template #footer>
-				<n8n-button @click="activationKeyModal = false" size="large" type="secondary">
+				<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
 					{{ $locale.baseText('_reusableBaseText.cancel') }}
 				</n8n-button>
-				<n8n-button @click="onLicenseActivation" size="large">
+				<n8n-button @click="onLicenseActivation" size="medium">
 					{{ $locale.baseText('_reusableBaseText.activate') }}
 				</n8n-button>
 			</template>
