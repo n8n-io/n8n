@@ -3,13 +3,13 @@
 exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1wosl_1"
+    class="_schemaWrapper_1x7h2_1"
   >
     <div
       class=""
     >
       <div
-        class="_schema_1wosl_1"
+        class="_schema_1x7h2_1"
       >
         <div
           class="_item_eg159_1"
@@ -235,39 +235,26 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1wosl_1"
+    class="_schemaWrapper_1x7h2_1"
   >
     <div
-      class="n8n-alert"
-      role="alert"
+      class="n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12"
     >
-      <div
-        class="_content_1qxmg_213"
+      <span
+        class="_iconText_3egb8_28"
       >
         <span
-          class="_icon_1qxmg_209"
+          class="n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5"
         >
-          <span
-            class="n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5"
-          >
-            <font-awesome-icon-stub
-              class="_medium_1pnjy_9"
-              icon="info-circle"
-            />
-          </span>
+          <font-awesome-icon-stub
+            class="_medium_1pnjy_9"
+            icon="info-circle"
+          />
         </span>
-        <div
-          class="_text_1qxmg_225"
-        >
-          <!---->
-          <div
-            class="_description_1qxmg_236"
-          >
-            No data to show - item(s) exist, but they’re empty
-          </div>
-        </div>
-      </div>
-      <!---->
+        <span>
+          No data to show - item(s) exist, but they’re empty
+        </span>
+      </span>
     </div>
   </div>
 </div>

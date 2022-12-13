@@ -72,7 +72,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 <template>
 	<div :class="$style.schemaWrapper">
-		<n8n-alert v-if="isDataEmpty" :background="false" :description="i18n.baseText('dataMapping.schemaView.emptyData')" />
+		<n8n-info-tip v-if="isDataEmpty">{{ i18n.baseText('dataMapping.schemaView.emptyData') }}</n8n-info-tip>
 		<draggable
 			v-else
 			type="mapping"
@@ -116,7 +116,7 @@ const onDragEnd = (el: HTMLElement) => {
 	width: 100%;
 	background-color: var(--color-background-base);
 
-	div[class*="alert"] {
+	> div[class*="info"] {
 		padding: 0 var(--spacing-s);
 	}
 }
