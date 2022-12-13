@@ -37,7 +37,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 			const currentNodeViewTab = getNodeViewTab(this.$route);
 
 			if (event.repeat || currentNodeViewTab !== MAIN_HEADER_TABS.WORKFLOW) return;
-			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
+			if (this.isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z') {
 				event.preventDefault();
 				if (!this.isNDVOpen) {
 					if (event.shiftKey) {
