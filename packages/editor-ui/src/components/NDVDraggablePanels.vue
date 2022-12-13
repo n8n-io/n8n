@@ -239,6 +239,9 @@ export default mixins(debounceHelper).extend({
 
 			this.setPositions(this.mainPanelDimensions.relativeLeft);
 		},
+		currentNodePaneType(newValue) {
+			this.ndvStore.setCurrentNodePaneType(newValue);
+		},
 	},
 	methods: {
 		getInitialLeftPosition(width: number) {
