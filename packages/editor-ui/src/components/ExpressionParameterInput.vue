@@ -233,8 +233,7 @@ export default Vue.extend({
 	border-bottom-left-radius: 0;
 }
 
-// .cm-editor - not directly selectable due to CSS module
-.focused > div > div {
+.focused :global(.cm-editor) {
 	border-color: var(--color-secondary);
 }
 
