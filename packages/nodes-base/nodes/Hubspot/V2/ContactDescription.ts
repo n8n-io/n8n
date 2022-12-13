@@ -1041,14 +1041,58 @@ export const contactFields: INodeProperties[] = [
 										description:
 											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 										typeOptions: {
-											loadOptionsMethod: 'getContactProperties',
+											loadOptionsMethod: 'getContactPropertiesWithType',
 										},
 										default: '',
+									},
+									{
+										displayName: 'Type',
+										name: 'type',
+										type: 'hidden',
+										default: '={{$parameter["&propertyName"].split("|")[1]}}',
 									},
 									{
 										displayName: 'Operator',
 										name: 'operator',
 										type: 'options',
+										displayOptions: {
+											hide: {
+												type: ['number'],
+											},
+										},
+										options: [
+											{
+												name: 'Contains Exactly',
+												value: 'CONTAINS_TOKEN',
+											},
+											{
+												name: 'Equal',
+												value: 'EQ',
+											},
+											{
+												name: 'Is Known',
+												value: 'HAS_PROPERTY',
+											},
+											{
+												name: 'Is Unknown',
+												value: 'NOT_HAS_PROPERTY',
+											},
+											{
+												name: 'Not Equal',
+												value: 'NEQ',
+											},
+										],
+										default: 'EQ',
+									},
+									{
+										displayName: 'Operator',
+										name: 'operator',
+										type: 'options',
+										displayOptions: {
+											show: {
+												type: ['number'],
+											},
+										},
 										options: [
 											{
 												name: 'Contains Exactly',

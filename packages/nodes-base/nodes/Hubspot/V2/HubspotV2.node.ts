@@ -336,7 +336,6 @@ export class HubspotV2 implements INodeType {
 				}
 				return returnData;
 			},
-
 			// Get all the contact properties to display them to user so that he can
 			// select them easily
 			async getContactProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -349,6 +348,26 @@ export class HubspotV2 implements INodeType {
 					returnData.push({
 						name: propertyName,
 						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the contact properties to display them to user so that he can
+			// select them easily
+			async getContactPropertiesWithType(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/contacts/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					const propertyType = property.type;
+					returnData.push({
+						name: propertyName,
+						// Hacky way to get the property type need to be parsed to be use in the api
+						value: `${propertyId}|${propertyType}`,
 					});
 				}
 				return returnData;
@@ -660,6 +679,26 @@ export class HubspotV2 implements INodeType {
 					returnData.push({
 						name: propertyName,
 						value: propertyId,
+					});
+				}
+				return returnData;
+			},
+			// Get all the deal properties to display them to user so that he can
+			// select them easily
+			async getDealPropertiesWithType(
+				this: ILoadOptionsFunctions,
+			): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const endpoint = '/properties/v2/deals/properties';
+				const properties = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				for (const property of properties) {
+					const propertyName = property.label;
+					const propertyId = property.name;
+					const propertyType = property.type;
+					returnData.push({
+						name: propertyName,
+						// Hacky way to get the property type need to be parsed to be use in the api
+						value: `${propertyId}|${propertyType}`,
 					});
 				}
 				return returnData;
@@ -1562,28 +1601,26 @@ export class HubspotV2 implements INodeType {
 								],
 							};
 
-							if (filtersGroupsUi) {
+							if (filtersGroupsUi && filtersGroupsUi.filterGroupsValues) {
 								const filterGroupValues = (filtersGroupsUi as IDataObject)
 									.filterGroupsValues as IDataObject[];
-								if (filterGroupValues) {
-									body.filterGroups = [];
-									for (const filterGroupValue of filterGroupValues) {
-										if (filterGroupValue.filtersUi) {
-											const filterValues = (filterGroupValue.filtersUi as IDataObject)
-												.filterValues as IDataObject[];
-											if (filterValues) {
-												//@ts-ignore
-												body.filterGroups.push({ filters: filterValues });
-											}
+								body.filterGroups = [];
+								for (const filterGroupValue of filterGroupValues) {
+									if (filterGroupValue.filtersUi) {
+										const filterValues = (filterGroupValue.filtersUi as IDataObject)
+											.filterValues as IDataObject[];
+										for (const filter of filterValues) {
+											delete filter.type;
+											// Hacky way to get the filter value as we concat the values with a | and the type
+											filter.propertyName = filter.propertyName?.toString().split('|')[0];
+											//@ts-ignore
 										}
+										(body.filterGroups as IDataObject[]).push({ filters: filterValues });
 									}
-									//@ts-ignore
-									if (body.filterGroups.length > 3) {
-										throw new NodeOperationError(
-											this.getNode(),
-											'You can only have 3 filter groups',
-										);
-									}
+								}
+								//@ts-ignore
+								if (body.filterGroups.length > 3) {
+									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
 								}
 							}
 
@@ -2442,21 +2479,25 @@ export class HubspotV2 implements INodeType {
 								],
 							};
 
-							if (filtersGroupsUi) {
+							if (filtersGroupsUi && filtersGroupsUi.filterGroupsValues) {
 								const filterGroupValues = (filtersGroupsUi as IDataObject)
 									.filterGroupsValues as IDataObject[];
-								if (filterGroupValues) {
-									body.filterGroups = [];
-									for (const filterGroupValue of filterGroupValues) {
-										if (filterGroupValue.filtersUi) {
-											const filterValues = (filterGroupValue.filtersUi as IDataObject)
-												.filterValues as IDataObject[];
-											if (filterValues) {
-												//@ts-ignore
-												body.filterGroups.push({ filters: filterValues });
-											}
+								body.filterGroups = [];
+								for (const filterGroupValue of filterGroupValues) {
+									if (filterGroupValue.filtersUi) {
+										const filterValues = (filterGroupValue.filtersUi as IDataObject)
+											.filterValues as IDataObject[];
+										for (const filter of filterValues) {
+											delete filter.type;
+											// Hacky way to get the filter value as we concat the values with a | and the type
+											filter.propertyName = filter.propertyName?.toString().split('|')[0];
 										}
+										(body.filterGroups as IDataObject[]).push({ filters: filterValues });
 									}
+								}
+								//@ts-ignore
+								if (body.filterGroups.length > 3) {
+									throw new NodeOperationError(this.getNode(), 'You can only have 3 filter groups');
 								}
 							}
 
