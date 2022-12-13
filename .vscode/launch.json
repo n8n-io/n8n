@@ -20,7 +20,8 @@
 			"type": "node",
 			"env": {
 				// "N8N_PORT": "5679",
-			}
+			},
+			"killBehavior": "polite"
 		},
 		{
 			"name": "Debug CLI tests",
