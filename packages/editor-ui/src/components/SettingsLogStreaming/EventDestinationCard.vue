@@ -1,6 +1,7 @@
 <template>
 	<n8n-card
 		:class="$style.cardLink"
+		data-test-id="destination-card"
 		@click="onClick"
 	>
 			<template #header>
@@ -17,7 +18,7 @@
 			</template>
 			<template #append>
 				<div :class="$style.cardActions">
-					<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
+					<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
 						<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
 							{{ $locale.baseText('workflowActivator.active') }}
 						</n8n-text>

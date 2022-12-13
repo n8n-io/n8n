@@ -5,8 +5,10 @@
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText(`settings.logstreaming.heading`) }}
 				</n8n-heading>
-				<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License (dev)&nbsp;</strong>
-				<el-switch v-model="disableLicense" size="large" />
+				<template v-if="environment!=='production'">
+					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{environment}})&nbsp;</strong>
+					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
+				</template>
 			</div>
 		</div>
 		<template v-if="isLicensed()">
@@ -35,7 +37,7 @@
 				</div>
 			</template>
 			<template v-else>
-				<div :class="$style.actionBoxContainer">
+				<div :class="$style.actionBoxContainer" data-test-id="action-box-licensed">
 					<n8n-action-box
 						:buttonText="$locale.baseText(`settings.logstreaming.add`)"
 						@click="addDestination"
@@ -55,7 +57,7 @@
 					</template>
 				</n8n-info-tip>
 			</div>
-			<div :class="$style.actionBoxContainer">
+			<div :class="$style.actionBoxContainer" data-test-id="action-box-unlicensed">
 				<n8n-action-box
 					:description="$locale.baseText('settings.logstreaming.actionBox.description')"
 					:buttonText="$locale.baseText('settings.logstreaming.actionBox.button')"
@@ -148,6 +150,9 @@ export default mixins(
 				sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
 			}
 			return sortedKeys.sort((a, b) => a.label.localeCompare(b.label));
+		},
+		environment() {
+			return process.env.NODE_ENV;
 		},
 	},
 	methods: {

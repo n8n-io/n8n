@@ -10,6 +10,7 @@
 		:maxWidth="isTypeAbstract ? '460px' : '70%'"
 		:minHeight="isTypeAbstract ? '160px' : '650px'"
 		:maxHeight="isTypeAbstract ? '300px' : '650px'"
+		data-test-id="destination-modal"
 	>
 	<template #header>
 		<template v-if="isTypeAbstract">
@@ -22,9 +23,10 @@
 				<div :class="$style.destinationInfo">
 					<InlineNameEdit
 						:name="headerLabel"
-						:subtitle="!isTypeAbstract ? $locale.baseText('settings.logstreaming.type') + ':' + $locale.baseText(typeLabelName) : 'Select type'"
+						:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
 						:readonly="isTypeAbstract"
 						type="Credential"
+						data-test-id="subtitle-showing-type"
 						@input="onLabelChange"
 					/>
 				</div>
@@ -38,16 +40,15 @@
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="removeThis"
-						data-test-id="credential-delete-button"
+						data-test-id="destination-delete-button"
 					/>
 					<SaveButton
 						:saved="(unchanged && hasOnceBeenSaved)"
 						:disabled="(isTypeAbstract || unchanged)"
 						:savingLabel="$locale.baseText('settings.logstreaming.saving')"
 						@click="saveDestination"
-						data-test-id="credential-save-button"
+						data-test-id="destination-save-button"
 					/>
-
 				</div>
 			</div>
 			<hr />
@@ -68,6 +69,7 @@
 						:value="typeSelectValue"
 						:placeholder="typeSelectPlaceholder"
 						@change="onTypeSelectInput"
+						data-test-id="select-destination-type"
 						name="name"
 						ref="typeSelectRef"
 					>
@@ -79,7 +81,12 @@
 						/>
 					</n8n-select>
 					<div class="mt-m text-right">
-						<n8n-button size="large"  @click="onContinueAddClicked">
+						<n8n-button
+							size="large"
+							@click="onContinueAddClicked"
+							data-test-id="select-destination-button"
+							:disabled="!typeSelectValue"
+						>
 							{{ $locale.baseText(`settings.logstreaming.continue`) }}
 						</n8n-button>
 					</div>

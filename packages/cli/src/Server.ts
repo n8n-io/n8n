@@ -1545,8 +1545,10 @@ class App {
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
-			// TODO: REMOVE BEFORE RELEASE
-			config.set('enterprise.features.logStreaming', true);
+			// TODO: REMOVE BEFORE RELEASE?
+			if (process.env.NODE_ENV !== 'production' || process.env.E2E_TESTS === 'true') {
+				config.set('enterprise.features.logStreaming', true);
+			}
 		}
 
 		// ----------------------------------------
