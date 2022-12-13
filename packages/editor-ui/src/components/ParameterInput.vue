@@ -1228,7 +1228,6 @@ export default mixins(
 	right: 0;
 }
 
-// @TODO_TECH_DEBT(N8N-5860): Deduplicate with expression-editor-modal-opener
 .textarea-modal-opener {
 	position: absolute;
 	right: 0;
