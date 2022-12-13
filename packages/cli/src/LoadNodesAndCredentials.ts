@@ -323,25 +323,21 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		this.types.credentials = this.types.credentials.concat(types.credentials);
 
 		// Copy over all icons and set `iconUrl` for the frontend
-		const iconPromises: Array<Promise<void>> = [];
-		for (const node of types.nodes) {
-			if (node.icon?.startsWith('file:')) {
-				const icon = node.icon.substring(5);
-				const iconUrl = `icons/nodes/${node.name}${path.extname(icon)}`;
-				delete node.icon;
-				node.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
-		for (const credential of types.credentials) {
-			if (credential.icon?.startsWith('file:')) {
-				const icon = credential.icon.substring(5);
-				const iconUrl = `icons/credentials/${credential.name}${path.extname(icon)}`;
-				delete credential.icon;
-				credential.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
+		const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
+			typesArr.map((type) => {
+				if (!type.icon?.startsWith('file:')) return;
+				const icon = type.icon.substring(5);
+				const iconUrl = `icons/${typeName}/${type.name}${path.extname(icon)}`;
+				delete type.icon;
+				type.iconUrl = iconUrl;
+				const source = path.join(dir, icon);
+				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
+				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
+					copyFile(source, destination),
+				);
+			}),
+		);
+
 		await Promise.all(iconPromises);
 
 		// Nodes and credentials that have been loaded immediately

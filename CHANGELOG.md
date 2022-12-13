@@ -1,3 +1,34 @@
+# [0.207.0](https://github.com/n8n-io/n8n/compare/n8n@0.206.1...n8n@0.207.0) (2022-12-12)
+
+
+### Bug Fixes
+
+* **core:** Remove `nodeGetter` checks ([#4883](https://github.com/n8n-io/n8n/issues/4883)) ([07b2f76](https://github.com/n8n-io/n8n/commit/07b2f7678cc409840328da8f2e0b6f064fab10d8))
+* **editor:** Avoid adding manual trigger node when webhook node is added ([#4887](https://github.com/n8n-io/n8n/issues/4887)) ([b689d2d](https://github.com/n8n-io/n8n/commit/b689d2d7c28eb90c8979aba5bbc2f75867289505))
+* **editor:** Fix credential sharing issues handler when no matching id or name ([#4879](https://github.com/n8n-io/n8n/issues/4879)) ([1cce8ea](https://github.com/n8n-io/n8n/commit/1cce8eaf16a4394b4241572641427011287a7dc2))
+* **editor:** Fix for broken tab navigation ([#4881](https://github.com/n8n-io/n8n/issues/4881)) ([983c544](https://github.com/n8n-io/n8n/commit/983c5447c512651db96fbc57f2934c019dd3bf20))
+* **editor:** Schema view shows checkbox in case of empty data ([#4889](https://github.com/n8n-io/n8n/issues/4889)) ([b0c158c](https://github.com/n8n-io/n8n/commit/b0c158c64fa7df7da7fefb6ee24223ce650318b2))
+* Increase workflow reactivation max timeout to 1 day ([#4869](https://github.com/n8n-io/n8n/issues/4869)) ([593354b](https://github.com/n8n-io/n8n/commit/593354b6d89b577182873ef621c2c86c5415ef48))
+* Issue listing executions with Postgres ([#4856](https://github.com/n8n-io/n8n/issues/4856)) ([5156328](https://github.com/n8n-io/n8n/commit/5156328c34f384e292e9cfaebe72ad0666b02af6))
+* **Move Binary Data Node:** Stringify objects before encoding them in MoveBinaryData ([#4882](https://github.com/n8n-io/n8n/issues/4882)) ([3b969d2](https://github.com/n8n-io/n8n/commit/3b969d2cd11e2bff3402cdc5e8825b105b453630))
+* Remove foreign credentials when copying nodes or duplicating workflow ([#4880](https://github.com/n8n-io/n8n/issues/4880)) ([7d2e2ee](https://github.com/n8n-io/n8n/commit/7d2e2ee0f74fbe98c0e69ec1383e13af8b8cc035))
+* **Split In Batches Node:** Fix issue with pairedItem ([#4873](https://github.com/n8n-io/n8n/issues/4873)) ([38d7300](https://github.com/n8n-io/n8n/commit/38d7300d2a8168643a75f0c4fff108949f25ca15))
+* Stop returning `UNKNOWN ERROR` in the response if an actual error message is available ([#4859](https://github.com/n8n-io/n8n/issues/4859)) ([4cb4c5e](https://github.com/n8n-io/n8n/commit/4cb4c5e8188fd930312e3bf720472af35731a968))
+* Update duplicate action ([#4858](https://github.com/n8n-io/n8n/issues/4858)) ([19e0e96](https://github.com/n8n-io/n8n/commit/19e0e962710070d4517b20b8c8b2b57392f2100a))
+* Upgrade sse-channel to mitigate CVE-2019-10744 ([#4835](https://github.com/n8n-io/n8n/issues/4835)) ([7e1a13f](https://github.com/n8n-io/n8n/commit/7e1a13f9b2cc110343f3dc1f26c9a0703eeee588))
+* Use license-sdk v1.6.1 ([#4872](https://github.com/n8n-io/n8n/issues/4872)) ([ebad81a](https://github.com/n8n-io/n8n/commit/ebad81a68beb787cd0146e2439872ae369c81aa5))
+
+
+### Features
+
+* Add sharing permissions info for workflow sharees ([#4892](https://github.com/n8n-io/n8n/issues/4892)) ([c013245](https://github.com/n8n-io/n8n/commit/c013245db726bf7e2a880ac538631c53450a6471))
+* **editor:** Add undo/redo support for canvas actions ([#4787](https://github.com/n8n-io/n8n/issues/4787)) ([b2aba48](https://github.com/n8n-io/n8n/commit/b2aba48dfe441225c36ba1626aa6f8eb4f1a8173))
+* **editor:** Node creator actions ([#4696](https://github.com/n8n-io/n8n/issues/4696)) ([79fe57d](https://github.com/n8n-io/n8n/commit/79fe57dad8093b27651ce82164d6e7a0f08f9e43))
+* Handle sharing features when user skips owner setup ([#4850](https://github.com/n8n-io/n8n/issues/4850)) ([6f1b78d](https://github.com/n8n-io/n8n/commit/6f1b78df9877666212d9b01818155e30c2caba0f))
+* Update credential test error message for sharees ([#4864](https://github.com/n8n-io/n8n/issues/4864)) ([4765d76](https://github.com/n8n-io/n8n/commit/4765d767e361608a6349d08f7116dedc2a0e7e35))
+
+
+
 ## [0.206.1](https://github.com/n8n-io/n8n/compare/n8n@0.206.0...n8n@0.206.1) (2022-12-07)
 
 
