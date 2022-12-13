@@ -213,4 +213,27 @@ describe('Undo/Redo', () => {
 		cy.get('body').type('{esc}');
 		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NEW_NAME).should('exist');
 	});
+
+	it('should undo/redo duplicating a node', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().find('[data-test-id="duplicate-node-button"]').click({ force: true });
+		WorkflowPage.actions.hitUndo();
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.actions.hitRedo();
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+	});
+
+	it('should undo/redo pasting nodes', () => {
+		cy.fixture('Test_workflow-actions_paste-data.json').then(data => {
+			cy.get('body').paste(JSON.stringify(data));
+			WorkflowPage.actions.zoomToFit();
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+			WorkflowPage.actions.hitUndo();
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
+			WorkflowPage.actions.hitRedo();
+			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		});
+	});
+
 });
