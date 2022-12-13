@@ -61,7 +61,7 @@ jobs:
       - name: Test E2E
         run: |
           pnpm cypress:install
-          pnpm test:e2e:all
+          pnpm test:e2e:smoke
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
