@@ -46,8 +46,8 @@ export const userFields: INodeProperties[] = [
 	/*                                user:info                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'user',
 		displayName: 'User',
+		name: 'user',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a user...',
@@ -124,8 +124,8 @@ export const userFields: INodeProperties[] = [
 	/*                                user:getPresence                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'user',
 		displayName: 'User',
+		name: 'user',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a user...',

@@ -37,8 +37,8 @@ export const reactionOperations: INodeProperties[] = [
 
 export const reactionFields: INodeProperties[] = [
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -108,11 +108,11 @@ export const reactionFields: INodeProperties[] = [
 				operation: ['add', 'get', 'remove'],
 			},
 		},
-		description: 'Timestamp of the message to add, get or remove.',
+		description: 'Timestamp of the message to add, get or remove',
 		placeholder: '1663233118.856619',
 	},
 	{
-		displayName: 'Emoji code',
+		displayName: 'Emoji Code',
 		name: 'name',
 		type: 'string',
 		required: true,

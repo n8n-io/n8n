@@ -2,13 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IOAuth2Options,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IOAuth2Options, NodeOperationError } from 'n8n-workflow';
 
 import _ from 'lodash';
 
@@ -46,11 +40,15 @@ export async function slackApiRequest(
 		property: 'authed_user.access_token',
 	};
 
-	let response: any; // tslint:disable-line:no-any
 	const credentialType = authenticationMethod === 'accessToken' ? 'slackApi' : 'slackOAuth2Api';
-	response = await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-		oauth2: oAuth2Options,
-	});
+	const response = await this.helpers.requestWithAuthentication.call(
+		this,
+		credentialType,
+		options,
+		{
+			oauth2: oAuth2Options,
+		},
+	);
 
 	if (response.ok === false) {
 		if (response.error === 'paid_teams_only') {
@@ -108,12 +106,10 @@ export async function slackApiRequestAllItems(
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData.response_metadata !== undefined &&
-			responseData.response_metadata.next_cursor !== undefined &&
+		(responseData.response_metadata?.next_cursor !== undefined &&
 			responseData.response_metadata.next_cursor !== '' &&
 			responseData.response_metadata.next_cursor !== null) ||
-		(responseData.paging !== undefined &&
-			responseData.paging.pages !== undefined &&
+		(responseData.paging?.pages !== undefined &&
 			responseData.paging.page !== undefined &&
 			responseData.paging.page < responseData.paging.pages)
 	);

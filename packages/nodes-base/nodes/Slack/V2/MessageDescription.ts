@@ -47,8 +47,8 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:getPermalink
 	/* ----------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -117,7 +117,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['getPermalink'],
 			},
 		},
-		description: 'Timestamp of the message to message.',
+		description: 'Timestamp of the message to message',
 		placeholder: '1663233118.856619',
 	},
 
@@ -125,7 +125,7 @@ export const messageFields: INodeProperties[] = [
 	/*                          message:post                                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Send message to',
+		displayName: 'Send Message To',
 		name: 'select',
 		type: 'options',
 		required: true,
@@ -149,8 +149,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Select...',
 	},
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -210,8 +210,8 @@ export const messageFields: INodeProperties[] = [
 		description: 'The Slack channel to send to',
 	},
 	{
-		name: 'user',
 		displayName: 'User',
+		name: 'user',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a user...',
@@ -300,7 +300,7 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			"The message text to post. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
+			"The message text to post. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'.",
 	},
 	{
 		displayName: 'Blocks',
@@ -476,7 +476,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'ts',
 				type: 'number',
 				default: undefined,
-				description: 'Timestamp of the message to post.',
+				description: 'Timestamp of the message to post',
 				placeholder: '1663233118.856619',
 			},
 			{
@@ -552,7 +552,7 @@ export const messageFields: INodeProperties[] = [
 						displayName: 'Add Bot Profile Photo',
 						values: [
 							{
-								displayName: 'Profile photo type',
+								displayName: 'Profile Photo Type',
 								name: 'profilePhotoType',
 								type: 'options',
 								options: [
@@ -598,7 +598,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Link User and Channel names',
+				displayName: 'Link User and Channel Names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
@@ -617,7 +617,7 @@ export const messageFields: INodeProperties[] = [
 						name: 'replyValues',
 						values: [
 							{
-								displayName: 'Message timestamp to reply to',
+								displayName: 'Message Timestamp to Reply To',
 								name: 'thread_ts',
 								type: 'number',
 								default: undefined,
@@ -626,7 +626,7 @@ export const messageFields: INodeProperties[] = [
 									'Message timestamps are included in output data of Slack nodes, abbreviated to ts',
 							},
 							{
-								displayName: 'Reply to thread',
+								displayName: 'Reply to Thread',
 								name: 'reply_broadcast',
 								type: 'boolean',
 								default: false,
@@ -638,7 +638,7 @@ export const messageFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Use markdown?',
+				displayName: 'Use Markdown?',
 				name: 'mrkdwn',
 				type: 'boolean',
 				default: true,
@@ -676,8 +676,8 @@ export const messageFields: INodeProperties[] = [
 						name: 'ephemeralValues',
 						values: [
 							{
+								displayName: 'User to Send',
 								name: 'user',
-								displayName: 'User to send',
 								type: 'resourceLocator',
 								default: { mode: 'list', value: '' },
 								placeholder: 'Select a user...',
@@ -757,8 +757,8 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:update                          */
 	/* ----------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -828,7 +828,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		description: 'Timestamp of the message to update.',
+		description: 'Timestamp of the message to update',
 		placeholder: '1663233118.856619',
 	},
 	{
@@ -843,10 +843,10 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
+			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting/'>markdown</a> by default - this can be disabled in 'Options'.",
 	},
 	{
-		displayName: 'Options',
+		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
 		placeholder: 'Add Option',
@@ -859,7 +859,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Link User and Channel names',
+				displayName: 'Link User and Channel Names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
@@ -893,7 +893,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:delete
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Delete message from',
+		displayName: 'Delete Message From',
 		name: 'select',
 		type: 'options',
 		required: true,
@@ -917,8 +917,8 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'Select...',
 	},
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -978,8 +978,8 @@ export const messageFields: INodeProperties[] = [
 		description: 'The Slack channel to delete the message from',
 	},
 	{
-		name: 'user',
 		displayName: 'User',
+		name: 'user',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a user...',
@@ -1035,7 +1035,7 @@ export const messageFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		description: 'Timestamp of the message to delete.',
+		description: 'Timestamp of the message to delete',
 		placeholder: '1663233118.856619',
 	},
 
@@ -1043,7 +1043,7 @@ export const messageFields: INodeProperties[] = [
 	/*                                 message:search
 	/* ----------------------------------------------------------------------- */
 	{
-		displayName: 'Search query',
+		displayName: 'Search Query',
 		name: 'query',
 		type: 'string',
 		description: 'The text to search for within messages',
@@ -1057,9 +1057,9 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Sort by',
+		displayName: 'Sort By',
 		name: 'sort',
-		description: 'How search results should be sorted. You can sort by',
+		description: 'How search results should be sorted. You can sort by.',
 		type: 'options',
 		displayOptions: {
 			show: {
@@ -1124,13 +1124,14 @@ export const messageFields: INodeProperties[] = [
 				operation: ['search'],
 			},
 		},
-		required: false,
 		options: [
 			{
-				name: 'searchChannel',
 				displayName: 'Search in Channel',
+				name: 'searchChannel',
 				type: 'multiOptions',
-				default: '',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				default: [],
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					loadOptionsMethod: 'getChannelsName',

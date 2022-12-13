@@ -40,7 +40,7 @@ export const starFields: INodeProperties[] = [
 	/*                                star:add                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Item to add star',
+		displayName: 'Item to Add Star',
 		name: 'target',
 		type: 'options',
 		required: true,
@@ -65,8 +65,8 @@ export const starFields: INodeProperties[] = [
 		],
 	},
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -150,7 +150,7 @@ export const starFields: INodeProperties[] = [
 				target: ['message'],
 			},
 		},
-		description: 'Timestamp of the message to add.',
+		description: 'Timestamp of the message to add',
 		placeholder: '1663233118.856619',
 	},
 	{
@@ -224,7 +224,7 @@ export const starFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'number',
 				default: undefined,
-				description: 'Timestamp of the message to delete.',
+				description: 'Timestamp of the message to delete',
 				placeholder: '1663233118.856619',
 			},
 		],

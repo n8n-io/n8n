@@ -124,8 +124,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:archive                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -186,8 +186,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:close                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -286,15 +286,15 @@ export const channelFields: INodeProperties[] = [
 			},
 		],
 		description:
-			'Whether to create a Public or a Private Slack channel. <a href="https://slack.com/help/articles/360017938993-What-is-a-channel">More info</a>',
+			'Whether to create a Public or a Private Slack channel. <a href="https://slack.com/help/articles/360017938993-What-is-a-channel">More info</a>.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                 channel:invite                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -375,8 +375,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -460,8 +460,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:kick                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -541,8 +541,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:join                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -689,8 +689,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:history                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -821,8 +821,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:leave                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -885,8 +885,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                  channel:member                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		description: 'The Slack channel to get the members from',
@@ -1039,8 +1039,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:rename                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -1117,8 +1117,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:replies                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -1188,7 +1188,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: 'Timestamp of the message to reply.',
+		description: 'Timestamp of the message to reply',
 		placeholder: '1663233118.856619',
 	},
 	{
@@ -1264,8 +1264,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:setPurpose                          */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -1342,8 +1342,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:setTopic                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
@@ -1419,8 +1419,8 @@ export const channelFields: INodeProperties[] = [
 	/*                                channel:unarchive                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		name: 'channelId',
 		displayName: 'Channel',
+		name: 'channelId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
