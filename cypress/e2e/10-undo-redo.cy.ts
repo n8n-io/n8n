@@ -99,6 +99,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
+		cy.get('body').type('{esc}');
 		cy.get('body').type('{meta}', { release: false }).type('a');
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
@@ -171,6 +172,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
+		cy.get('body').type('{esc}');
 		cy.get('body').type('{meta}', { release: false }).type('a');
 		cy.get('body').type('{meta}', { release: false }).type('d');
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
@@ -204,6 +206,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		cy.get('body').trigger("keydown", { key: "F2" });
+		cy.get('.rename-prompt').should('be.visible');
 		cy.get('body').type(CODE_NODE_NEW_NAME);
 		cy.get('body').type('{enter}');
 		WorkflowPage.actions.hitUndo();
