@@ -12,6 +12,7 @@ describe('Undo/Redo', () => {
 		cy.resetAll();
 		cy.skipSetup();
 		WorkflowPage.actions.visit();
+		cy.waitForLoad();
 	});
 
 	it('should undo/redo adding nodes', () => {
