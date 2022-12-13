@@ -51,6 +51,7 @@ export class WorkflowExecute {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		runExecutionData?: IRunExecutionData,
+		partialTestNode?: string,
 	) {
 		this.additionalData = additionalData;
 		this.mode = mode;
@@ -67,6 +68,10 @@ export class WorkflowExecute {
 				waitingExecutionSource: {},
 			},
 		};
+
+		if (partialTestNode) {
+			this.runExecutionData.startData = { runNodeFilter: [partialTestNode] };
+		}
 	}
 
 	/**
