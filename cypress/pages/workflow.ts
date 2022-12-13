@@ -38,8 +38,7 @@ export class WorkflowPage extends BasePage {
 	actions = {
 		visit: () => {
 			cy.visit(this.url);
-			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
-			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
+			cy.waitForLoad();
 		},
 		addInitialNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.canvasPlusButton().click();
@@ -98,6 +97,9 @@ export class WorkflowPage extends BasePage {
 				this.getters.workflowTagsInput().type('{enter}');
 			});
 			cy.get('body').type('{enter}');
+			// For a brief moment the Element UI tag component shows the tags as(+X) string
+			// so we need to wait for it to disappear
+			this.getters.workflowTagsContainer().should('not.contain', `+${tags.length}`);
 		},
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
