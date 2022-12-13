@@ -326,6 +326,23 @@ export class ServiceNow implements INodeType {
 				}
 				return sortData(returnData);
 			},
+			async getCompany(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = {
+					sysparm_fields: 'sys_id,name',
+				};
+				const response = await serviceNowRequestAllItems.call(this, 'GET', '/now/table/core_company', {}, qs);
+
+				for (const column of response) {
+					if (column.name) {
+						returnData.push({
+							name: column.name,
+							value: column.sys_id,
+						});
+					}
+				}
+				return sortData(returnData);
+			},
 			async getUserRoles(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs = {
