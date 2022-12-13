@@ -1,8 +1,32 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import path from 'path';
-import * as core from 'n8n-core';
+import convict from 'convict';
+import { UserSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+convict.addFormat({
+	name: 'nodes-list',
+	// @ts-ignore
+	validate(values: string[], { env }: { env: string }): void {
+		try {
+			if (!Array.isArray(values)) {
+				throw new Error();
+			}
+
+			for (const value of values) {
+				if (typeof value !== 'string') {
+					throw new Error();
+				}
+			}
+		} catch (error) {
+			throw new TypeError(`${env} is not a valid Array of strings.`);
+		}
+	},
+	coerce(rawValue: string): string[] {
+		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
+	},
+});
 
 export const schema = {
 	database: {
@@ -580,9 +604,9 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
-		skipWebhoooksDeregistrationOnShutdown: {
+		skipWebhooksDeregistrationOnShutdown: {
 			/**
-			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
 			 * We don't have to worry about startup as it always
@@ -716,47 +740,14 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: function check(rawValue: string): void {
-				if (rawValue === '') {
-					return;
-				}
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
-				}
-			},
+			format: 'nodes-list',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: function check(rawValue: string): void {
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
-				}
-			},
-			default: '[]',
+			format: 'nodes-list',
+			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {
@@ -804,7 +795,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -861,7 +852,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
@@ -985,6 +976,39 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
+		},
+	},
+
+	license: {
+		serverUrl: {
+			format: String,
+			default: 'https://license.n8n.io/v1',
+			env: 'N8N_LICENSE_SERVER_URL',
+			doc: 'License server url to retrieve license.',
+		},
+		autoRenewEnabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
+			doc: 'Whether autorenew for licenses is enabled.',
+		},
+		autoRenewOffset: {
+			format: Number,
+			default: 60 * 60 * 72, // 72 hours
+			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
+			doc: 'How many seconds before expiry a license should get automatically renewed. ',
+		},
+		activationKey: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_ACTIVATION_KEY',
+			doc: 'Activation key to initialize license',
+		},
+		tenantId: {
+			format: Number,
+			default: 1,
+			env: 'N8N_LICENSE_TENANT_ID',
+			doc: 'Tenant id used by the license manager',
 		},
 	},
 };

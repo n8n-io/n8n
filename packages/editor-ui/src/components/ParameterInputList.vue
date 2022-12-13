@@ -111,7 +111,7 @@ import {
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
 

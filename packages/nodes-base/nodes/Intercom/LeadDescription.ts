@@ -1,6 +1,6 @@
 import { INodeProperties } from 'n8n-workflow';
 
-export const leadOpeations: INodeProperties[] = [
+export const leadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',

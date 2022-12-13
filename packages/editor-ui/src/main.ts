@@ -18,7 +18,7 @@ import "@fontsource/open-sans/latin-700.css";
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from './components/mixins/externalHooks';
+import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 

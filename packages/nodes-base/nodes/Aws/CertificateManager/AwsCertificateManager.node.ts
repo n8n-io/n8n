@@ -51,8 +51,8 @@ export class AwsCertificateManager implements INodeType {
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'certificate') {
@@ -104,29 +104,30 @@ export class AwsCertificateManager implements INodeType {
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const options = this.getNodeParameter('options', i);
 
-						const body: { Includes: IDataObject; CertificateStatuses: string[]; MaxItems: number } = {
-							CertificateStatuses: [],
-							Includes: {},
-							MaxItems: 0,
-						};
+						const body: { Includes: IDataObject; CertificateStatuses: string[]; MaxItems: number } =
+							{
+								CertificateStatuses: [],
+								Includes: {},
+								MaxItems: 0,
+							};
 
 						if (options.certificateStatuses) {
 							body.CertificateStatuses = options.certificateStatuses as string[];
 						}
 
 						if (options.certificateStatuses) {
-							body.Includes['extendedKeyUsage'] = options.extendedKeyUsage as string[];
+							body.Includes.extendedKeyUsage = options.extendedKeyUsage as string[];
 						}
 
 						if (options.keyTypes) {
-							body.Includes['keyTypes'] = options.keyTypes as string[];
+							body.Includes.keyTypes = options.keyTypes as string[];
 						}
 
 						if (options.keyUsage) {
-							body.Includes['keyUsage'] = options.keyUsage as string[];
+							body.Includes.keyUsage = options.keyUsage as string[];
 						}
 
 						if (returnAll) {
@@ -144,7 +145,7 @@ export class AwsCertificateManager implements INodeType {
 								},
 							);
 						} else {
-							body.MaxItems = this.getNodeParameter('limit', 0) as number;
+							body.MaxItems = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestREST.call(
 								this,
 								`acm`,

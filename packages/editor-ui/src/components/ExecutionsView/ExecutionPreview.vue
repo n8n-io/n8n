@@ -46,14 +46,16 @@
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item command="current-workflow">
-							{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</el-dropdown-item>
-						<el-dropdown-item command="original-workflow">
-							{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item command="current-workflow">
+								{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+							</el-dropdown-item>
+							<el-dropdown-item command="original-workflow">
+								{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
 				</el-dropdown>
 				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
 			</div>
@@ -64,18 +66,19 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '../mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
-import { VIEWS } from '../../constants';
+import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import ElDropdown from 'element-ui/lib/dropdown';
+import { Dropdown as ElDropdown } from 'element-ui';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
+		ElDropdown,
 		WorkflowPreview,
 	},
 	data() {

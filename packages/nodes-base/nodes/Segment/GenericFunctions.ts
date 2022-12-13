@@ -17,11 +17,10 @@ export async function segmentApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -36,5 +35,5 @@ export async function segmentApiRequest(
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
 }

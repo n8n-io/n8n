@@ -1,6 +1,6 @@
 {
   "name": "n8n-design-system",
-  "version": "0.43.0",
+  "version": "0.47.0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
   "author": {
@@ -15,13 +15,13 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc --emitDeclarationOnly",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:dev": "vitest",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
-    "format": "prettier **/**.{js,ts,vue,css,scss,mdx,html} --write .",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint --ext .js,.ts,.vue src",
     "lintfix": "eslint --ext .js,.ts,.vue src --fix"
   },
@@ -69,12 +69,12 @@
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.7",
-    "vue-tsc": "^0.34.8",
+    "vue-tsc": "^0.35.0",
     "vue2-boring-avatars": "0.3.4",
     "webpack": "^4.46.0"
   },
   "dependencies": {
-    "element-ui": "~2.15.7",
+    "element-ui": "~2.15.12",
     "sanitize-html": "2.7.0",
     "vue2-boring-avatars": "0.3.4"
   }

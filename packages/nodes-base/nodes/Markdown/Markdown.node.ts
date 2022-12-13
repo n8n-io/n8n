@@ -67,9 +67,6 @@ export class Markdown implements INodeType {
 				displayName: 'Markdown',
 				name: 'markdown',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						mode: ['markdownToHtml'],
@@ -541,7 +538,7 @@ export class Markdown implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (mode === 'htmlToMarkdown') {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
 
 					const textReplaceOption = this.getNodeParameter(
@@ -598,7 +595,7 @@ export class Markdown implements INodeType {
 				if (mode === 'markdownToHtml') {
 					const markdown = this.getNodeParameter('markdown', i) as string;
 					const destinationKey = this.getNodeParameter('destinationKey', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const converter = new Converter();
 

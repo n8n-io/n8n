@@ -32,7 +32,7 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'microsoftToDoOAuth2Api', options);
+		return this.helpers.requestOAuth2.call(this, 'microsoftToDoOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -50,13 +50,13 @@ export async function microsoftApiRequestAllItems(
 
 	let responseData;
 	let uri: string | undefined;
-	query['$top'] = 100;
+	query.$top = 100;
 
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = responseData['@odata.nextLink'];
-		if (uri && uri.includes('$top')) {
-			delete query['$top'];
+		if (uri?.includes('$top')) {
+			delete query.$top;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData['@odata.nextLink'] !== undefined);
@@ -75,14 +75,14 @@ export async function microsoftApiRequestAllItemsSkip(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query['$top'] = 100;
-	query['$skip'] = 0;
+	query.$top = 100;
+	query.$skip = 0;
 
 	do {
 		responseData = await microsoftApiRequest.call(this, method, endpoint, body, query);
-		query['$skip'] += query['$top'];
+		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['value'].length !== 0);
+	} while (responseData.value.length !== 0);
 
 	return returnData;
 }

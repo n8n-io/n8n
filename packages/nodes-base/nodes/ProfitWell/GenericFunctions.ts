@@ -13,12 +13,11 @@ export async function profitWellApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('profitWellApi');
@@ -66,7 +65,7 @@ export function simplifyMontlyMetrics(responseData: {
 	for (const key of Object.keys(responseData)) {
 		for (const [index] of responseData[key].entries()) {
 			data[key] = responseData[key][index].value;
-			data['date'] = responseData[key][index].date;
+			data.date = responseData[key][index].date;
 		}
 	}
 	return data;

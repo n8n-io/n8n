@@ -103,7 +103,6 @@ const stubCalculators = {
 };
 
 export class N8nConnector extends AbstractConnector {
-
 	static type = "N8nConnector";
 	type = N8nConnector.type;
 
@@ -126,6 +125,8 @@ export class N8nConnector extends AbstractConnector {
 	// stub: number;
 
 	constructor(public connection: Connection, params: N8nConnectorOptions) {
+		console.log('Hello from');
+
 		super(connection, params);
 		params = params || {};
 		this.majorAnchor = params.curviness || 150;
@@ -426,13 +427,10 @@ export class N8nConnector extends AbstractConnector {
 	};
 
 	_computeBezier(paintInfo: PaintGeometry, p:N8nConnectorOptions) {
-		const sp = p.sourcePos,
-		tp = p.targetPos,
-		_w = Math.abs(sp.curX - tp.curX) - p.targetGap,
-		_h = Math.abs(sp.curY - tp.curY);
-
-		console.log("🚀 ~ file: N8nCustomConnector.ts:429 ~ N8nConnector ~ _computeBezier ~ sp", sp);
-		// let _CP, _CP2;
+		const sp = p.sourcePos;
+		const tp = p.targetPos;
+		const _w = Math.abs(sp.curX - tp.curX) - this.targetGap;
+		const _h = Math.abs(sp.curY - tp.curY);
 		const _sx = sp.curX < tp.curX ? _w : 0;
 		const _sy = sp.curY < tp.curY ? _h : 0;
 		const _tx = sp.curX < tp.curX ? 0 : _w;
@@ -444,6 +442,7 @@ export class N8nConnector extends AbstractConnector {
 		else {
 			this.majorAnchor = paintInfo.xSpan * this.curvinessCoeffient + this.zBezierOffset;
 		}
+		console.log("🚀 ~ file: N8nCustomConnector.ts:447 ~ N8nConnector ~ _computeBezier ~ this.majorAnchor ", this.majorAnchor, this.minorAnchor );
 
 		const _CP = this._findControlPoint(
 			{x: _sx, y: _sy},
@@ -452,6 +451,7 @@ export class N8nConnector extends AbstractConnector {
 			paintInfo.so,
 			paintInfo.to,
 		);
+		console.log("🚀 ~ file: N8nCustomConnector.ts:456 ~ N8nConnector ~ _computeBezier ~ _CP", _CP, {_sx, _sy});
 		const _CP2 = this._findControlPoint(
 			{x: _tx, y: _ty},
 			tp,
@@ -459,6 +459,7 @@ export class N8nConnector extends AbstractConnector {
 			paintInfo.to,
 			paintInfo.so,
 		);
+		console.log("🚀 ~ file: N8nCustomConnector.ts:464 ~ N8nConnector ~ _computeBezier ~ _CP2", _CP2);
 
 		this._addSegment(BezierSegment, {
 			x1: _sx, y1: _sy, x2: _tx, y2: _ty,

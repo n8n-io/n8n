@@ -21,7 +21,6 @@ export async function awsApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const requestOptions = {
 		qs: {
@@ -40,7 +39,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	return this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -53,7 +52,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -83,7 +81,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -121,7 +118,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

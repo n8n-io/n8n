@@ -56,6 +56,7 @@ export default Vue.extend({
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			let iconType = 'unknown';
 			if (nodeType) {
+				if (nodeType.iconUrl) return 'file';
 				if ((nodeType as IVersionNode).iconData) {
 					iconType = (nodeType as IVersionNode).iconData.type;
 				} else if (nodeType.icon) {
@@ -73,7 +74,7 @@ export default Vue.extend({
 		},
 		iconSource () : NodeIconSource {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const restUrl = this.rootStore.getRestUrl;
+			const baseUrl = this.rootStore.getBaseUrl;
 			const iconSource = {} as NodeIconSource;
 
 			if (nodeType) {
@@ -84,11 +85,14 @@ export default Vue.extend({
 						fileBuffer: (nodeType as IVersionNode).iconData.fileBuffer,
 					};
 				}
+				if (nodeType.iconUrl) {
+					return { path: baseUrl + nodeType.iconUrl };
+				}
 				// Otherwise, extract it from icon prop
 				if (nodeType.icon) {
 					const [type, path] = nodeType.icon.split(':');
 					if (type === 'file') {
-						iconSource.path = `${restUrl}/node-icon/${nodeType.name}`;
+						throw new Error(`Unexpected icon: ${nodeType.icon}`);
 					} else {
 						iconSource.icon = path;
 					}

@@ -24,17 +24,19 @@
 				type="mapping"
 				:disabled="isDropDisabled"
 				:sticky="true"
-				:stickyOffset="4"
+				:stickyOffset="3"
 				@drop="onDrop"
 			>
-				<template v-slot="{ droppable, activeDrop }">
+				<template #default="{ droppable, activeDrop }">
 					<n8n-tooltip
 						placement="left"
 						:manual="true"
 						:value="showMappingTooltip"
 						:buttons="dataMappingTooltipButtons"
 					>
-						<span slot="content" v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+						<template #content>
+							<span v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+						</template>
 						<parameter-input-wrapper
 							ref="param"
 							:parameter="parameter"
@@ -71,13 +73,11 @@ import {
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from '@/components/helpers';
+import { hasExpressionMapping, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { hasOnlyListMode } from '@/components/ResourceLocator/helpers';
 import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
-import { isResourceLocatorValue } from '@/typeGuards';
 import { BaseTextKey } from "@/plugins/i18n";
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
@@ -98,6 +98,7 @@ export default mixins(
 				menuExpanded: false,
 				forceShowExpression: false,
 				dataMappingTooltipButtons: [] as IN8nButton[],
+				mappingTooltipEnabled: false,
 			};
 		},
 		props: {
@@ -165,18 +166,22 @@ export default mixins(
 				return this.ndvStore.inputPanelDisplayMode;
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.mappingTooltipEnabled && this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
 			onFocus() {
 				this.focused = true;
+				setTimeout(() => {
+					this.mappingTooltipEnabled = true;
+				}, 500);
 				if (!this.parameter.noDataExpression) {
 					this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
+				this.mappingTooltipEnabled = false;
 				if (!this.parameter.noDataExpression) {
 					this.ndvStore.setMappableNDVInputFocus('');
 				}

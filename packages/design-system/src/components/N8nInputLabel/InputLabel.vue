@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-on="$listeners">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -12,7 +12,7 @@
 			}"
 		>
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
+				<n8n-text :bold="bold" :size="size" :compact="compact" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -23,7 +23,9 @@
 			>
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
-					<div slot="content" v-html="addTargetBlank(tooltipText)" />
+					<template #content>
+						<div v-html="addTargetBlank(tooltipText)" />
+					</template>
 				</n8n-tooltip>
 			</span>
 			<div
@@ -55,6 +57,10 @@ export default Vue.extend({
 		N8nTooltip,
 	},
 	props: {
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 		color: {
 			type: String,
 		},

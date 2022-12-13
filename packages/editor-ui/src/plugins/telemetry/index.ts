@@ -6,24 +6,12 @@ import {
 } from 'n8n-workflow';
 import { Route } from "vue-router";
 
-import type { INodeCreateElement, IRootState } from "@/Interface";
+import type { INodeCreateElement } from "@/Interface";
 import type { IUserNodesPanelSession } from "./telemetry.types";
 import { useSettingsStore } from "@/stores/settings";
 import { useRootStore } from "@/stores/n8nRootStore";
 
-export function TelemetryPlugin(vue: typeof _Vue): void {
-	const telemetry = new Telemetry();
-
-	Object.defineProperty(vue, '$telemetry', {
-		get() { return telemetry; },
-	});
-	Object.defineProperty(vue.prototype, '$telemetry', {
-		get() { return telemetry; },
-	});
-}
-
 export class Telemetry {
-
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
 
@@ -51,7 +39,7 @@ export class Telemetry {
 			instanceId: string;
 			userId?: string;
 			versionCli: string
-	 },
+		},
 	) {
 		if (!telemetrySettings.enabled || !telemetrySettings.config || this.rudderStack) return;
 
@@ -164,7 +152,20 @@ export class Telemetry {
 					break;
 				case 'nodeCreateList.onCategoryExpanded':
 					properties.is_subcategory = false;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					this.track('User viewed node category', properties);
+					break;
+				case 'nodeCreateList.onViewActions':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User viewed node actions', properties);
+					break;
+				case 'nodeCreateList.onActionsCustmAPIClicked':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User clicked custom API from node actions', properties);
+					break;
+				case 'nodeCreateList.addAction':
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
+					this.track('User added action', properties);
 					break;
 				case 'nodeCreateList.onSubcategorySelected':
 					const selectedProperties = (properties.selected as IDataObject).properties as IDataObject;
@@ -172,6 +173,7 @@ export class Telemetry {
 						properties.category_name = selectedProperties.subcategory;
 					}
 					properties.is_subcategory = true;
+					properties.nodes_panel_session_id = this.userNodesPanelSession.sessionId;
 					delete properties.selected;
 					this.track('User viewed node category', properties);
 					break;
@@ -251,4 +253,15 @@ export class Telemetry {
 		this.rudderStack.loadJS();
 		this.rudderStack.load(key, url, options);
 	}
+}
+
+export const telemetry = new Telemetry();
+
+export function TelemetryPlugin(vue: typeof _Vue): void {
+	Object.defineProperty(vue, '$telemetry', {
+		get() { return telemetry; },
+	});
+	Object.defineProperty(vue.prototype, '$telemetry', {
+		get() { return telemetry; },
+	});
 }

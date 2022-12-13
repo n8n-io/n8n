@@ -71,7 +71,7 @@ nodesController.post(
 		const { name } = req.body;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -79,21 +79,17 @@ nodesController.post(
 		try {
 			parsed = parseNpmPackageName(name);
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				error instanceof Error ? error.message : 'Failed to parse package name',
-				undefined,
-				400,
 			);
 		}
 
 		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				[
 					`Package "${parsed.packageName}" is only a template`,
 					'Please enter an actual package to install',
 				].join('.'),
-				undefined,
-				400,
 			);
 		}
 
@@ -101,23 +97,19 @@ nodesController.post(
 		const hasLoaded = hasPackageLoaded(name);
 
 		if (isInstalled && hasLoaded) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				[
 					`Package "${parsed.packageName}" is already installed`,
 					'To update it, click the corresponding button in the UI',
 				].join('.'),
-				undefined,
-				400,
 			);
 		}
 
 		const packageStatus = await checkNpmPackageStatus(name);
 
 		if (packageStatus.status !== 'OK') {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`Package "${name}" is banned so it cannot be installed`,
-				undefined,
-				400,
 			);
 		}
 
@@ -144,7 +136,7 @@ nodesController.post(
 
 			const clientError = error instanceof Error ? isClientError(error) : false;
 
-			throw new ResponseHelper.ResponseError(message, undefined, clientError ? 400 : 500);
+			throw new ResponseHelper[clientError ? 'BadRequestError' : 'InternalServerError'](message);
 		}
 
 		if (!hasLoaded) removePackageFromMissingList(name);
@@ -228,7 +220,7 @@ nodesController.delete(
 		const { name } = req.query;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		try {
@@ -236,13 +228,13 @@ nodesController.delete(
 		} catch (error) {
 			const message = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			throw new ResponseHelper.ResponseError(message, undefined, 400);
+			throw new ResponseHelper.BadRequestError(message);
 		}
 
 		const installedPackage = await findInstalledPackage(name);
 
 		if (!installedPackage) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NOT_INSTALLED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
@@ -253,7 +245,7 @@ nodesController.delete(
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new ResponseHelper.ResponseError(message, undefined, 500);
+			throw new ResponseHelper.InternalServerError(message);
 		}
 
 		const pushInstance = Push.getInstance();
@@ -288,13 +280,13 @@ nodesController.patch(
 		const { name } = req.body;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		const previouslyInstalledPackage = await findInstalledPackage(name);
 
 		if (!previouslyInstalledPackage) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NOT_INSTALLED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
@@ -345,7 +337,7 @@ nodesController.patch(
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new ResponseHelper.ResponseError(message, undefined, 500);
+			throw new ResponseHelper.InternalServerError(message);
 		}
 	}),
 );

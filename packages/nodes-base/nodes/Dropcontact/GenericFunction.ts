@@ -30,5 +30,5 @@ export async function dropcontactApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'dropcontactApi', options);
 }

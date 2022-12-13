@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftSql implements ICredentialType {
 	name = 'microsoftSql';
+
 	displayName = 'Microsoft SQL';
+
 	documentationUrl = 'microsoftSql';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Server',
@@ -91,7 +94,8 @@ export class MicrosoftSql implements ICredentialType {
 				},
 			],
 			default: '7_4',
-			description: 'The version of TDS to use. If server doesn\'t support specified version, negotiated version is used instead.',
+			description:
+				"The version of TDS to use. If server doesn't support specified version, negotiated version is used instead.",
 		},
 	];
 }

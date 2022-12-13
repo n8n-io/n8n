@@ -285,9 +285,6 @@ export class JiraTrigger implements INodeType {
 						displayName: 'Filter',
 						name: 'filter',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						placeholder: 'Project = JRA AND resolution = Fixed',
 						description:
@@ -420,7 +417,6 @@ export class JiraTrigger implements INodeType {
 					body.excludeBody = additionalFields.excludeBody as boolean;
 				}
 
-				// tslint:disable-next-line: no-any
 				const parameters: any = {};
 
 				if (incomingAuthentication === 'queryAuth') {

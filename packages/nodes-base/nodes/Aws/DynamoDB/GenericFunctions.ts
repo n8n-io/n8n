@@ -16,7 +16,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: object | IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 	const requestOptions = {
@@ -37,9 +36,7 @@ export async function awsApiRequest(
 		);
 	} catch (error) {
 		const errorMessage =
-			(error.response && error.response.body && error.response.body.message) ||
-			(error.response && error.response.body && error.response.body.Message) ||
-			error.message;
+			error.response?.body?.message || error.response?.body?.Message || error.message;
 		if (error.statusCode === 403) {
 			if (errorMessage === 'The security token included in the request is invalid.') {
 				throw new Error('The AWS credentials are not valid!');
@@ -63,7 +60,6 @@ export async function awsApiRequestAllItems(
 	path: string,
 	body?: IRequestBody,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -82,8 +78,7 @@ export async function awsApiRequestAllItems(
 
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	newItem = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;

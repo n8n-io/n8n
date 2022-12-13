@@ -6,6 +6,7 @@
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
+			:isReadOnly="isReadOnly"
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>
@@ -105,15 +106,17 @@
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 				>
-					<div slot="suffix" class="expand-input-icon-container">
-						<font-awesome-icon
-							v-if="!isReadOnly"
-							icon="expand-alt"
-							class="edit-window-button clickable"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</div>
+					<template #suffix>
+						<div class="expand-input-icon-container">
+							<font-awesome-icon
+								v-if="!isReadOnly"
+								icon="expand-alt"
+								class="edit-window-button clickable"
+								:title="$locale.baseText('parameterInput.openEditWindow')"
+								@click="displayEditDialog()"
+							/>
+						</div>
+					</template>
 				</n8n-input>
 			</div>
 
@@ -200,7 +203,7 @@
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
-				<template v-slot:issues-and-options>
+				<template #issues-and-options>
 					<parameter-issues :issues="getIssues" />
 				</template>
 			</credentials-select>
@@ -326,18 +329,17 @@ import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
 import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression } from './helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
@@ -889,7 +891,7 @@ export default mixins(
 					return;
 				}
 
-				if (['json', 'string'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
+				if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
 					return;
 				}
@@ -1163,18 +1165,23 @@ export default mixins(
 
 
 .droppable {
-	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
+	--input-border-color: var(--color-secondary);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: dashed;
+
+	textarea, input {
+		border-width: 1.5px;
+	}
 }
 
 .activeDrop {
 	--input-border-color: var(--color-success);
-	--input-background-color: var(--color-success-tint-2);
+	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: solid;
 
 	textarea, input {
 		cursor: grabbing !important;
+		border-width: 1px;
 	}
 }
 

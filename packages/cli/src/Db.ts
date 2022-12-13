@@ -32,7 +32,7 @@ import {
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-let connection: Connection;
+export let connection: Connection;
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
@@ -178,6 +178,7 @@ export async function init(
 	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
 
 	isInitialized = true;
 

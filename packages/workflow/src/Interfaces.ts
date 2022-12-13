@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable import/no-extraneous-dependencies */
-// eslint-disable-next-line import/no-extraneous-dependencies
 // eslint-disable-next-line max-classes-per-file
-import * as express from 'express';
-import * as FormData from 'form-data';
+import type * as express from 'express';
+import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -29,13 +27,16 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
+export type BinaryFileType = 'text' | 'json' | 'image' | 'video';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
 	mimeType: string;
+	fileType?: BinaryFileType;
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
+	fileSize?: string;
 	id?: string;
 }
 
@@ -180,11 +181,7 @@ export interface IHttpRequestHelper {
 	helpers: { httpRequest: IAllExecuteFunctions['helpers']['httpRequest'] };
 }
 export abstract class ICredentialsHelper {
-	encryptionKey: string;
-
-	constructor(encryptionKey: string) {
-		this.encryptionKey = encryptionKey;
-	}
+	constructor(readonly encryptionKey: string) {}
 
 	abstract getParentTypes(name: string): string[];
 
@@ -311,6 +308,7 @@ export interface ICredentialType {
 	name: string;
 	displayName: string;
 	icon?: string;
+	iconUrl?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -325,10 +323,9 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
-	credentialTypes?: ICredentialTypeData;
-	init(credentialTypes?: ICredentialTypeData): Promise<void>;
-	getAll(): ICredentialType[];
+	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
+	getNodeTypesToTestWith(type: string): string[];
 }
 
 // The way the credentials get saved in the database (data encrypted)
@@ -549,7 +546,70 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 }
 
-export interface IExecuteFunctions {
+namespace ExecuteFunctions {
+	namespace StringReturning {
+		export type NodeParameter = 'binaryProperty' | 'resource' | 'operation';
+	}
+
+	namespace NumberReturning {
+		export type NodeParameter = 'limit';
+	}
+
+	namespace BooleanReturning {
+		export type NodeParameter =
+			| 'binaryData'
+			| 'download'
+			| 'jsonParameters'
+			| 'returnAll'
+			| 'rawData'
+			| 'resolveData';
+	}
+
+	namespace RecordReturning {
+		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
+	}
+
+	export type GetNodeParameterFn = {
+		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
+		getNodeParameter<T extends { resource: string }>(
+			parameterName: 'resource',
+			itemIndex?: number,
+		): T['resource'];
+
+		getNodeParameter(
+			parameterName: StringReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: string,
+			options?: IGetNodeParameterOptions,
+		): string;
+		getNodeParameter(
+			parameterName: RecordReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		): IDataObject;
+		getNodeParameter(
+			parameterName: BooleanReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: boolean,
+			options?: IGetNodeParameterOptions,
+		): boolean;
+		getNodeParameter(
+			parameterName: NumberReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: number,
+			options?: IGetNodeParameterOptions,
+		): number;
+		getNodeParameter(
+			parameterName: string,
+			itemIndex: number,
+			fallbackValue?: any,
+			options?: IGetNodeParameterOptions,
+		): NodeParameterValueType | object;
+	};
+}
+
+export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	executeWorkflow(
@@ -559,19 +619,9 @@ export interface IExecuteFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string, itemIndex?: number): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
+	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter<T extends { resource: string }>(
-		parameterName: 'resource',
-		itemIndex?: number,
-	): T['resource'];
-	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(
-		parameterName: string,
-		itemIndex: number,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
@@ -597,7 +647,7 @@ export interface IExecuteFunctions {
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any;
 	};
-}
+};
 
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
@@ -605,6 +655,7 @@ export interface IExecuteSingleFunctions {
 	getContext(type: string): IContextObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData;
+	getInputSourceData(inputIndex?: number, inputName?: string): ISourceData;
 	getItemIndex(): number;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
@@ -877,6 +928,7 @@ export interface IBinaryKeyData {
 export interface IPairedItemData {
 	item: number;
 	input?: number; // If undefined "0" gets used
+	sourceOverwrite?: ISourceData;
 }
 
 export interface INodeExecutionData {
@@ -966,7 +1018,7 @@ export interface ILoadOptions {
 }
 
 export interface INodePropertyTypeOptions {
-	alwaysOpenEditWindow?: boolean; // Supported by: string
+	alwaysOpenEditWindow?: boolean; // Supported by: json
 	codeAutocomplete?: CodeAutocompleteTypes; // Supported by: string
 	editor?: EditorTypes; // Supported by: string
 	loadOptionsDependsOn?: string[]; // Supported by: options
@@ -1167,7 +1219,6 @@ export interface INodeCredentialTestResult {
 }
 
 export interface INodeCredentialTestRequest {
-	nodeToTestWith?: string; // node name i.e. slack
 	credentials: ICredentialsDecrypted;
 }
 
@@ -1207,7 +1258,7 @@ export interface INodeIssues {
 	[key: string]: undefined | boolean | INodeIssueObjectProperty;
 }
 
-export interface IWorfklowIssues {
+export interface IWorkflowIssues {
 	[key: string]: INodeIssues;
 }
 
@@ -1215,6 +1266,7 @@ export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
+	iconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1320,6 +1372,12 @@ export interface IPostReceiveSort extends IPostReceiveBase {
 	};
 }
 
+export interface INodeActionTypeDescription extends INodeTypeDescription {
+	displayOptions?: IDisplayOptions;
+	values?: IDataObject;
+	actionKey: string;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: INodeParameters;
@@ -1358,6 +1416,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 					inactive: string;
 			  };
 	};
+	actions?: INodeActionTypeDescription[];
 }
 
 export interface INodeHookDescription {
@@ -1431,24 +1490,43 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
-	nodeTypes: INodeTypeData;
-	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): Array<INodeType | IVersionedNodeType>;
-	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
+	getByName(nodeType: string): INodeType | IVersionedNodeType;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType;
 }
 
-export interface ICredentialTypeData {
-	[key: string]: {
-		type: ICredentialType;
-		sourcePath: string;
-	};
+export type LoadingDetails = {
+	className: string;
+	sourcePath: string;
+};
+
+export type CredentialLoadingDetails = LoadingDetails & {
+	nodesToTestWith?: string[];
+};
+
+export type NodeLoadingDetails = LoadingDetails;
+
+export type KnownNodesAndCredentials = {
+	nodes: Record<string, NodeLoadingDetails>;
+	credentials: Record<string, CredentialLoadingDetails>;
+};
+
+export interface LoadedClass<T> {
+	sourcePath: string;
+	type: T;
 }
 
-export interface INodeTypeData {
-	[key: string]: {
-		type: INodeType | IVersionedNodeType;
-		sourcePath: string;
-	};
+type LoadedData<T> = Record<string, LoadedClass<T>>;
+export type ICredentialTypeData = LoadedData<ICredentialType>;
+export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
+
+export type LoadedNodesAndCredentials = {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+};
+
+export interface INodesAndCredentials {
+	known: KnownNodesAndCredentials;
+	loaded: LoadedNodesAndCredentials;
 }
 
 export interface IRun {

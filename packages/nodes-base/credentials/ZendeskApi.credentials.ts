@@ -8,8 +8,11 @@ import {
 
 export class ZendeskApi implements ICredentialType {
 	name = 'zendeskApi';
+
 	displayName = 'Zendesk API';
+
 	documentationUrl = 'zendesk';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',
@@ -33,6 +36,7 @@ export class ZendeskApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
@@ -43,6 +47,7 @@ export class ZendeskApi implements ICredentialType {
 		};
 		return requestOptions;
 	}
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.subdomain}}.zendesk.com/api/v2',

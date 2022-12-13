@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.125.0",
+  "version": "0.129.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -28,10 +28,10 @@
     "dev": "pnpm watch",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier **/**.ts --write",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
-    "watch": "tsc --watch",
+    "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"
   },
@@ -42,6 +42,7 @@
     "@types/express": "^4.17.6",
     "@types/jmespath": "^0.15.0",
     "@types/lodash.get": "^4.4.6",
+    "@types/lodash.isequal": "^4.5.6",
     "@types/lodash.merge": "^4.6.6",
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^2.0.9",

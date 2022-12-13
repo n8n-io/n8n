@@ -4,8 +4,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BitwardenApi implements ICredentialType {
 	name = 'bitwardenApi';
+
 	displayName = 'Bitwarden API';
+
 	documentationUrl = 'bitwarden';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Client ID',

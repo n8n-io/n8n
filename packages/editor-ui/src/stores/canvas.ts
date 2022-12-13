@@ -1,13 +1,16 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
-import { jsPlumb } from 'jsplumb';
 import { v4 as uuid } from 'uuid';
 import normalizeWheel from 'normalize-wheel';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
-import * as CanvasHelpers from '@/views/canvasHelpers';
+import {
+	scaleBigger,
+	scaleReset,
+	scaleSmaller,
+} from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { newInstance as newJsPlumbInstance } from "@jsplumb/browser-ui";
@@ -15,10 +18,12 @@ import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType'
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { EndpointFactory, Connectors } from '@jsplumb/core';
-
+//
 // import '@/plugins/N8nCustomConnectorType';
 // import '@/plugins/PlusEndpointType';
 // import * as jsPlumbBrowserUI from "@jsplumb/browser-ui";
+// import '@/plugins/N8nCustomConnectorType';
+import { DEFAULT_PLACEHOLDER_TRIGGER_BUTTON, getMidCanvasPosition, getNewNodePosition, getZoomToFit, PLACEHOLDER_TRIGGER_NODE_SIZE, CONNECTOR_FLOWCHART_TYPE } from '@/utils/nodeViewUtils';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -27,7 +32,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	console.log('Before');
 	const newInstance = ref<BrowserJsPlumbInstance>();
 	// console.log("🚀 ~ file: canvas.ts ~ line 21 ~ useCanvasStore ~ jsPlumbInstanceNew", jsPlumbInstanceNew);
-	const jsPlumbInstance = jsPlumb.getInstance();
+	// const jsPlumbInstance = jsPlumb.getInstance();
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(
@@ -40,16 +45,16 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 
 	Connectors.register(N8nConnector.type, N8nConnector);
-	N8nPlusEndpointRenderer.register();
-	EndpointFactory.registerHandler(N8nPlusEndpointHandler);
+	// N8nPlusEndpointRenderer.register();
+	// EndpointFactory.registerHandler(N8nPlusEndpointHandler);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
-		const position = CanvasHelpers.getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
+		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
 
-		position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
-		position[1] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+		position[0] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+		position[1] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
 
-		canvasAddButtonPosition.value = CanvasHelpers.getNewNodePosition(nodes.value, position);
+		canvasAddButtonPosition.value = getNewNodePosition(nodes.value, position);
 	};
 
 	const getPlaceholderTriggerNodeUI = (): INodeUi => {
@@ -57,7 +62,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 		return {
 			id: uuid(),
-			...CanvasHelpers.DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
+			...DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
 			position: canvasAddButtonPosition.value,
 		};
 	};
@@ -67,12 +72,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
-		jsPlumbInstance.setZoom(zoomLevel);
+		// jsPlumbInstance.setZoom(zoomLevel);
 		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	const resetZoom = () => {
-		const {scale, offset} = CanvasHelpers.scaleReset({
+		const {scale, offset} = scaleReset({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -80,7 +85,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomIn = () => {
-		const {scale, offset} = CanvasHelpers.scaleBigger({
+		const {scale, offset} = scaleBigger({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -88,7 +93,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomOut = () => {
-		const {scale, offset} = CanvasHelpers.scaleSmaller({
+		const {scale, offset} = scaleSmaller({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -100,7 +105,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		if (!nodes.length) { // some unknown workflow executions
 			return;
 		}
-		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !isDemo.value);
+		const {zoomLevel, offset} = getZoomToFit(nodes, !isDemo.value);
 		setZoomLevel(zoomLevel, offset);
 	};
 
@@ -130,7 +135,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	function initInstance(container: Element) {
 		newInstance.value = newJsPlumbInstance({
 			container,
-			connector: N8nConnector.type,
+			connector: CONNECTOR_FLOWCHART_TYPE,
 			dragOptions: {
 				// drag(params) {
 				// 		console.log("🚀 ~ file: NodeView.vue:3314 ~ drag ~ params", params);

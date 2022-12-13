@@ -122,9 +122,6 @@ export class Sms77 implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['send'],
@@ -266,7 +263,7 @@ export class Sms77 implements INodeType {
 						const from = this.getNodeParameter('from', i) as string;
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							from,
 							to,
@@ -281,7 +278,7 @@ export class Sms77 implements INodeType {
 					if (operation === 'send') {
 						const to = this.getNodeParameter('to', i) as string;
 						const text = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body = {
 							to,
 							text,

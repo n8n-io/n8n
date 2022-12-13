@@ -55,9 +55,6 @@ export const meetingFields: INodeProperties[] = [
 		displayName: 'Topic',
 		name: 'topic',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -84,9 +81,6 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Meeting agenda',
 			},
@@ -491,9 +485,6 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Agenda',
 				name: 'agenda',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Meeting agenda',
 			},

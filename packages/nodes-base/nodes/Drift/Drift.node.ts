@@ -79,15 +79,15 @@ export class Drift implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'contact') {
 					//https://devdocs.drift.com/docs/creating-a-contact
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IContact = {
 							email,
 						};
@@ -105,7 +105,7 @@ export class Drift implements INodeType {
 					//https://devdocs.drift.com/docs/updating-a-contact
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IContact = {};
 						if (updateFields.name) {
 							body.name = updateFields.name as string;

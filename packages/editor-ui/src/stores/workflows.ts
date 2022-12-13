@@ -7,7 +7,6 @@ import {
 	STORES,
 } from "@/constants";
 import {
-	ICredentialMap,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
@@ -22,7 +21,7 @@ import {
 	IWorkflowsMap,
 	WorkflowsState,
 } from "@/Interface";
-import {defineStore} from "pinia";
+import { defineStore } from "pinia";
 import {
 	deepCopy,
 	IConnection,
@@ -41,7 +40,7 @@ import {
 } from 'n8n-workflow';
 import Vue from "vue";
 
-import {useRootStore} from "./n8nRootStore";
+import { useRootStore } from "./n8nRootStore";
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -50,10 +49,8 @@ import {
 	getWorkflows,
 } from "@/api/workflows";
 import {useUIStore} from "./ui";
-import {getPairedItemsMapping} from "@/pairedItemUtils";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-import {isJsonKeyObject} from "@/utils";
-import {stringSizeInBytes} from "@/components/helpers";
+import {isJsonKeyObject, getPairedItemsMapping, stringSizeInBytes, isObjectLiteral} from "@/utils";
 import {useNDVStore} from "./ndv";
 import {useNodeTypesStore} from "./nodeTypes";
 import {useWorkflowsEEStore} from "@/stores/workflows.ee";
@@ -71,7 +68,8 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	settings: {},
 	tags: [],
 	pinData: {},
-	hash: '',
+	versionId: '',
+	usedCredentials: [],
 });
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
@@ -100,8 +98,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowId(): string {
 			return this.workflow.id;
 		},
-		workflowHash(): string | undefined {
-			return this.workflow.hash;
+		workflowVersionId(): string | undefined {
+			return this.workflow.versionId;
 		},
 		workflowSettings() : IWorkflowSettings {
 			if (this.workflow.settings === undefined) {
@@ -150,6 +148,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 				return workflowRunData[nodeName];
 			};
+		},
+		getWorkflowById() {
+			return (id: string): IWorkflowDb => this.workflowsById[id];
 		},
 
 		// Node getters
@@ -272,6 +273,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setUsedCredentials(data: IUsedCredential[]) {
+			this.workflow.usedCredentials = data;
 			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
 				accu[credential.id!] = credential;
 				return accu;
@@ -284,10 +286,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				uiStore.stateIsDirty = true;
 			}
 			this.workflow.name = data.newName;
+
+			if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID && this.workflowsById[this.workflow.id]) {
+				this.workflowsById[this.workflow.id].name = data.newName;
+			}
 		},
 
-		setWorkflowHash(hash: string): void {
-			this.workflow.hash = hash;
+		setWorkflowVersionId(versionId: string): void {
+			this.workflow.versionId = versionId;
 		},
 
 		// replace invalid credentials in workflow
@@ -719,7 +725,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			Vue.set(node, updateInformation.key, updateInformation.value);
 		},
 
-		setNodeParameters(updateInformation: IUpdateInformation): void {
+		setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
 			// Find the node that should be updated
 			const node = this.workflow.nodes.find(node => {
 				return node.name === updateInformation.name;
@@ -731,12 +737,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
-			Vue.set(node, 'parameters', updateInformation.value);
+			const newParameters = !!append && isObjectLiteral(updateInformation.value)
+				? {...node.parameters, ...updateInformation.value }
+				: updateInformation.value;
+
+			Vue.set(node, 'parameters', newParameters);
 
 			if (!this.nodeMetadata[node.name]) {
 				Vue.set(this.nodeMetadata, node.name, {});
 			}
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
+		},
+
+		setLastNodeParameters(updateInformation: IUpdateInformation) {
+			const latestNode = this.workflow.nodes.findLast((node) => node.type === updateInformation.key) as INodeUi;
+
+			if(latestNode) this.setNodeParameters({...updateInformation, name: latestNode.name}, true);
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {

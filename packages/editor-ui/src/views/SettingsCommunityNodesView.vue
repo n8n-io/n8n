@@ -64,7 +64,7 @@ import {
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '@/constants';
 import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { PublicInstalledPackage } from 'n8n-workflow';
 

@@ -221,7 +221,7 @@ export class Mocean implements INodeType {
 
 		let endpoint: string;
 		let operation: string;
-		let requesetMethod: string;
+		let requestMethod: string;
 		let resource: string;
 		let text: string;
 		let dlrUrl: string;
@@ -235,10 +235,10 @@ export class Mocean implements INodeType {
 			body = {};
 			qs = {};
 			try {
-				resource = this.getNodeParameter('resource', itemIndex, '') as string;
-				operation = this.getNodeParameter('operation', itemIndex, '') as string;
+				resource = this.getNodeParameter('resource', itemIndex, '');
+				operation = this.getNodeParameter('operation', itemIndex, '');
 				text = this.getNodeParameter('message', itemIndex, '') as string;
-				requesetMethod = 'POST';
+				requestMethod = 'POST';
 				body['mocean-from'] = this.getNodeParameter('from', itemIndex, '') as string;
 				body['mocean-to'] = this.getNodeParameter('to', itemIndex, '') as string;
 
@@ -271,13 +271,7 @@ export class Mocean implements INodeType {
 				}
 
 				if (operation === 'send') {
-					const responseData = await moceanApiRequest.call(
-						this,
-						requesetMethod,
-						endpoint,
-						body,
-						qs,
-					);
+					const responseData = await moceanApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 					for (const item of responseData[dataKey] as IDataObject[]) {
 						item.type = resource;
