@@ -23,6 +23,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},
+		isDefaultUser(): boolean {
+			return isDefaultUser(this.currentUser);
+		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},

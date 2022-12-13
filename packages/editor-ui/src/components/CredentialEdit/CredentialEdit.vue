@@ -85,6 +85,7 @@
 						:credentialData="credentialData"
 						:credentialId="credentialId"
 						:credentialPermissions="credentialPermissions"
+						:modalBus="modalBus"
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
