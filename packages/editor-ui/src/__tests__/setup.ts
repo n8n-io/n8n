@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import Vue from 'vue';
 import '../plugins';
-import { I18nPlugin } from "@/plugins/i18n";
+import { I18nPlugin } from '@/plugins/i18n';
 
 Vue.config.productionTip = false;
 Vue.config.devtools = false;
