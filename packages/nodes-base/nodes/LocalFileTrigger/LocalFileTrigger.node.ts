@@ -67,6 +67,31 @@ export class LocalFileTrigger implements INodeType {
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
+						triggerOn: ['file'],
+					},
+				},
+				options: [
+					{
+						name: 'File Added',
+						value: 'add',
+						description: 'Triggers whenever a new file was added',
+					},
+					{
+						name: 'File Changed',
+						value: 'change',
+						description: 'Triggers whenever a file was changed',
+					},
+				],
+				required: true,
+				default: ['change'],
+				description: 'The events to listen to',
+			},
+			{
+				displayName: 'Watch for',
+				name: 'events',
+				type: 'multiOptions',
+				displayOptions: {
+					show: {
 						triggerOn: ['folder'],
 					},
 				},
@@ -101,7 +126,6 @@ export class LocalFileTrigger implements INodeType {
 				default: [],
 				description: 'The events to listen to',
 			},
-
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -164,6 +188,27 @@ export class LocalFileTrigger implements INodeType {
 						default: -1,
 						description: 'How deep into the folder structure to watch for changes',
 					},
+					{
+						displayName: 'Ignore Existing Files/Folders',
+						name: 'ignoreInitial',
+						type: 'boolean',
+						default: true,
+						description: 'Whether existing files/folders will emit a trigger event',
+					},
+					{
+						displayName: 'Use Polling',
+						name: 'usePolling',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to use polling for watching, slower but works for network shares',
+					},
+					{
+						displayName: 'Await Write Finish',
+						name: 'awaitWriteFinish',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to wait while file size is changing to avoid partially read',
+					},
 				],
 			},
 		],
@@ -173,23 +218,19 @@ export class LocalFileTrigger implements INodeType {
 		const triggerOn = this.getNodeParameter('triggerOn') as string;
 		const path = this.getNodeParameter('path') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
-
-		let events: string[];
-		if (triggerOn === 'file') {
-			events = ['change'];
-		} else {
-			events = this.getNodeParameter('events', []) as string[];
-		}
+		const events = this.getNodeParameter('events', []) as string[];
 
 		const watcher = watch(path, {
 			ignored: options.ignored === '' ? undefined : options.ignored,
 			persistent: true,
-			ignoreInitial: true,
+			ignoreInitial: options.ignoreInitial as boolean,
 			followSymlinks:
 				options.followSymlinks === undefined ? true : (options.followSymlinks as boolean),
 			depth: [-1, undefined].includes(options.depth as number)
 				? undefined
 				: (options.depth as number),
+			usePolling: options.usePolling as boolean,
+			awaitWriteFinish: options.awaitWriteFinish as boolean,
 		});
 
 		const executeTrigger = (event: string, pathString: string) => {
