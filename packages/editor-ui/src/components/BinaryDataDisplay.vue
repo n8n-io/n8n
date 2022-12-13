@@ -1,5 +1,5 @@
 <template>
-	<div v-if="windowVisible" class="binary-data-window">
+	<div v-if="windowVisible" :class="['binary-data-window', binaryData?.fileType]">
 		<n8n-button
 			@click.stop="closeWindow"
 			size="small"
@@ -97,6 +97,10 @@ export default mixins(
 	background-color: var(--color-background-base);
 	overflow: hidden;
 	text-align: center;
+
+	&.json {
+		overflow: auto;
+	}
 
 	.binary-data-window-wrapper {
 		margin-top: .5em;

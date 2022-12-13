@@ -8,7 +8,15 @@
 		:beforeClose="onCloseModal"
 	>
 		<template #content>
-			<div :class="$style.container">
+			<div v-if="isDefaultUser" :class="$style.container">
+				<n8n-text>
+					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
+				</n8n-text>
+			</div>
+			<div v-else :class="$style.container">
+				<n8n-info-tip v-if="!workflowPermissions.isOwner" :bold="false" class="mb-s" >
+					{{ $locale.baseText('workflows.shareModal.info.sharee', { interpolate: { workflowOwnerName } }) }}
+				</n8n-info-tip>
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
@@ -62,7 +70,12 @@
 		</template>
 
 		<template #footer>
-			<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
+			<div v-if="isDefaultUser" :class="$style.actionButtons">
+				<n8n-button @click="goToUsersSettings">
+					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
+				</n8n-button>
+			</div>
+			<enterprise-edition v-else :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
 				<n8n-text
 					v-show="isDirty"
 					color="text-light"
@@ -102,6 +115,7 @@ import Modal from './Modal.vue';
 import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
 import {IUser, IWorkflowDb, NestedRecord} from "@/Interface";
@@ -145,6 +159,9 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useWorkflowsEEStore),
+		isDefaultUser(): boolean {
+			return this.usersStore.isDefaultUser;
+		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -171,6 +188,9 @@ export default mixins(
 		},
 		workflowPermissions(): IPermissions {
 			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
+		},
+		workflowOwnerName(): string {
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) === true;
@@ -232,10 +252,45 @@ export default mixins(
 			const user = this.usersStore.getUserById(userId)!;
 			const isNewSharee = !(this.workflow.sharedWith || []).find((sharee) => sharee.id === userId);
 
+			const isLastUserWithAccessToCredentialsById = (this.workflow.usedCredentials || [])
+				.reduce<Record<string, boolean>>((acc, credential) => {
+					if (!credential.id || !credential.ownedBy || !credential.sharedWith || !this.workflow.sharedWith) {
+						return acc;
+					}
+
+					// if is credential owner, and no credential sharees have access to workflow  => NOT OK
+					// if is credential owner, and credential sharees have access to workflow => OK
+
+					// if is credential sharee, and no credential sharees have access to workflow or owner does not have access to workflow => NOT OK
+					// if is credential sharee, and credential owner has access to workflow => OK
+					// if is credential sharee, and other credential sharees have access to workflow => OK
+
+					let isLastUserWithAccess = false;
+
+					const isCredentialOwner = credential.ownedBy.id === user.id;
+					const isCredentialSharee = !!credential.sharedWith.find((sharee) => sharee.id === user.id);
+
+					if (isCredentialOwner) {
+						isLastUserWithAccess = !credential.sharedWith.some((sharee) => {
+							return this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === sharee.id);
+						});
+					} else if (isCredentialSharee) {
+						isLastUserWithAccess = !credential.sharedWith.some((sharee) => {
+							return this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === sharee.id);
+						}) && !this.workflow.sharedWith!.find((workflowSharee) => workflowSharee.id === credential.ownedBy!.id);
+					}
+
+					acc[credential.id] = isLastUserWithAccess;
+
+					return acc;
+				}, {});
+
+			const isLastUserWithAccessToCredentials = Object.values(isLastUserWithAccessToCredentialsById).some((value) => value);
+
 			let confirm = true;
-			if (!isNewSharee) {
+			if (!isNewSharee && isLastUserWithAccessToCredentials) {
 				confirm = await this.confirmMessage(
-					this.$locale.baseText('workflows.shareModal.list.delete.confirm.message', {
+					this.$locale.baseText(`workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message`, {
 						interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 					}),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', { interpolate: { name: user.fullName } }),
@@ -277,6 +332,10 @@ export default mixins(
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();
+		},
+		goToUsersSettings() {
+			this.$router.push({ name: VIEWS.USERS_SETTINGS });
+			this.modalBus.$emit('close');
 		},
 	},
 	mounted() {

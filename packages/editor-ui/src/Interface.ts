@@ -35,9 +35,10 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
+	INodeActionTypeDescription,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
-import {ICredentialsDb} from "n8n";
+import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/src/types';
 
@@ -164,7 +165,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
-		[key: string]: IDataObject;
+		[key: string]: IDataObject | XYPosition;
 	};
 }
 
@@ -264,7 +265,7 @@ export interface IWorkflowData {
 	settings?: IWorkflowSettings;
 	tags?: string[];
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowDataUpdate {
@@ -276,7 +277,7 @@ export interface IWorkflowDataUpdate {
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
-	hash?: string;
+	versionId?: string;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -313,8 +314,8 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
-	hash: string;
-	usedCredentials?: Array<Partial<ICredentialsDb>>;
+	versionId: string;
+	usedCredentials?: IUsedCredential[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -809,6 +810,7 @@ export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
+	key?: string;
 	icon?: string;
 	defaults?: INodeParameters;
 	iconData?: {
@@ -823,18 +825,43 @@ export interface INodeItemProps {
 	nodeType: INodeTypeDescription;
 }
 
+export interface IActionItemProps {
+	subcategory: string;
+	nodeType: INodeActionTypeDescription;
+}
+
 export interface ICategoryItemProps {
 	expanded: boolean;
 }
 
-export interface INodeCreateElement {
-	type: 'node' | 'category' | 'subcategory';
+export interface CreateElementBase {
 	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
-	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
 }
+
+export interface NodeCreateElement extends CreateElementBase {
+	type: 'node';
+	properties: INodeItemProps;
+}
+
+export interface CategoryCreateElement extends CreateElementBase {
+	type: 'category';
+	properties: ICategoryItemProps;
+}
+
+export interface SubcategoryCreateElement extends CreateElementBase {
+	type: 'subcategory';
+	properties: ISubcategoryItemProps;
+}
+
+export interface ActionCreateElement extends CreateElementBase {
+	type: 'action';
+	properties: IActionItemProps;
+}
+
+export type INodeCreateElement = NodeCreateElement | CategoryCreateElement | SubcategoryCreateElement | ActionCreateElement;
 
 export interface ICategoriesWithNodes {
 	[category: string]: {
@@ -1026,8 +1053,8 @@ export interface NestedRecord<T> {
 	[key: string]: T | NestedRecord<T>;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
-export type nodePanelType = 'input' | 'output';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -1290,3 +1317,27 @@ export interface CurlToJSONResponse {
 	"parameters.sendQuery": boolean;
 	"parameters.sendBody": boolean;
 }
+
+export interface HistoryState {
+	redoStack: Undoable[];
+	undoStack: Undoable[];
+	currentBulkAction: BulkCommand | null;
+	bulkInProgress: boolean;
+}
+export type Basic = string | number | boolean;
+export type Primitives = Basic | bigint | symbol;
+
+export type Optional<T> = T | undefined | null;
+
+export type SchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'array'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+export type Schema = { type: SchemaType, key?: string, value: string | Schema[], path: string };

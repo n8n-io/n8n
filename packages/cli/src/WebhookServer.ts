@@ -27,6 +27,7 @@ import type { ICustomRequest, IExternalHooksClass, IPackageVersions } from '@/In
 import config from '@/config';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { corsMiddleware } from './middlewares/cors';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -278,18 +279,7 @@ class App {
 			}),
 		);
 
-		if (process.env.NODE_ENV !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header(
-					'Access-Control-Allow-Headers',
-					'Origin, X-Requested-With, Content-Type, Accept, sessionid',
-				);
-				next();
-			});
-		}
+		this.app.use(corsMiddleware);
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {

@@ -613,9 +613,6 @@ export const documentFields: INodeProperties[] = [
 		},
 		description: 'JSON query to execute',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		placeholder:
 			'{"structuredQuery": {"where": {"fieldFilter": {"field": {"fieldPath": "age"},"op": "EQUAL", "value": {"integerValue": 28}}}, "from": [{"collectionId": "users-collection"}]}}',
 	},

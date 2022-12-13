@@ -36,8 +36,8 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { restApi } from '@/mixins/restApi';
-import { globalLinkActions } from '@/mixins/globalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -45,18 +45,26 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
+import { historyHelper } from '@/mixins/history';
 
 export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
-	globalLinkActions,
+	historyHelper,
 ).extend({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
+	},
+	setup() {
+		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+		return {
+			registerCustomAction,
+			unregisterCustomAction,
+		};
 	},
 	computed: {
 		...mapStores(
@@ -185,7 +193,6 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
-		// TODO: Un-comment once front-end hooks are updated to work with pinia store
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {

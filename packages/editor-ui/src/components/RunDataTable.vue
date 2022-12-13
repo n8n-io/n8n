@@ -12,7 +12,7 @@
 					@mouseenter="onMouseEnterCell"
 					@mouseleave="onMouseLeaveCell"
 				>
-					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
+					<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
 				</td>
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
@@ -634,7 +634,10 @@ export default mixins(externalHooks).extend({
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	display: flex;
+	height: 24px;
+	align-items: center;
+	padding: 0 var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
