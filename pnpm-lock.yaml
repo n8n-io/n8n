@@ -171,8 +171,8 @@ importers:
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
       n8n-core: ~0.147.0
-      n8n-editor-ui: ~0.173.0
-      n8n-nodes-base: ~0.205.0
+      n8n-editor-ui: ~0.173.1
+      n8n-nodes-base: ~0.205.1
       n8n-workflow: ~0.129.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
