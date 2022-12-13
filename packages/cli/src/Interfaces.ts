@@ -500,6 +500,7 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		workflowSharing: boolean;
 	};
+	hideUsagePage: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {
