@@ -318,8 +318,8 @@ export const messageFields: INodeProperties[] = [
 			rows: 3,
 		},
 		description:
-			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks.",
-		hint: "Use Blocks to build an interactive message. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks. To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
+		hint: "To create blocks, use <a target='_blank' href='https://app.slack.com/block-kit-builder'>Slack's Block Kit Builder</a>",
 		default: '',
 	},
 	{
