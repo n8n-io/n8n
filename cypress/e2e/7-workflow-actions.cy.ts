@@ -66,9 +66,10 @@ describe('Workflow Actions', () => {
 	it('should add more tags', () => {
 		WorkflowPage.getters.newTagLink().click();
 		WorkflowPage.actions.addTags(TEST_WF_TAGS);
+		WorkflowPage.getters.isWorkflowSaved();
 		WorkflowPage.getters.firstWorkflowTagElement().click();
 		WorkflowPage.actions.addTags(['Another one']);
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length + 1);
+		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length + 2);
 	});
 
 	it('should remove tags by clicking X in tag', () => {
@@ -77,14 +78,14 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.firstWorkflowTagElement().click();
 		WorkflowPage.getters.workflowTagsContainer().find('.el-tag__close').first().click();
 		cy.get('body').type('{enter}');
-		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
+		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 2);
 	});
 
 	it('should remove tags from dropdown', () => {
 		WorkflowPage.getters.newTagLink().click();
 		WorkflowPage.actions.addTags(TEST_WF_TAGS);
 		WorkflowPage.getters.firstWorkflowTagElement().click();
-		WorkflowPage.getters.workflowTagsDropdown().find('li').first().click();
+		WorkflowPage.getters.workflowTagsDropdown().find('li.selected').first().click();
 		cy.get('body').type('{enter}');
 		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
 	});

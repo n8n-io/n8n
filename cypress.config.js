@@ -10,7 +10,7 @@ module.exports = defineConfig({
 	},
 	e2e: {
 		baseUrl: BASE_URL,
-		video: false,
+		// video: true,
 		screenshotOnRunFailure: true,
 		experimentalSessionAndOrigin: true,
 		experimentalInteractiveRunEvents: true,
