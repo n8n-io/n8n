@@ -101,7 +101,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
-		cy.get('body').type('{meta}', { release: false }).type('a');
+		WorkflowPage.actions.selectAll();
 		cy.get('body').type('{backspace}');
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 		WorkflowPage.actions.hitUndo();
@@ -161,7 +161,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
-		cy.get('body').type('{meta}', { release: false }).type('d');
+		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 1);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -174,8 +174,8 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.get('body').type('{esc}');
 		cy.get('body').type('{esc}');
-		cy.get('body').type('{meta}', { release: false }).type('a');
-		cy.get('body').type('{meta}', { release: false }).type('d');
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitDisableNodeShortcut();
 		WorkflowPage.getters.disabledNodes().should('have.length', 2);
 		WorkflowPage.actions.hitUndo();
 		WorkflowPage.getters.disabledNodes().should('have.length', 0);
@@ -249,7 +249,7 @@ describe('Undo/Redo', () => {
 
 			// Disable last node
 			WorkflowPage.getters.canvasNodes().last().click();
-			cy.get('body').type('{meta}', { release: false }).type('d');
+			WorkflowPage.actions.hitDisableNodeShortcut();
 			// Move first one
 			WorkflowPage.getters.canvasNodes().first().click();
 			cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);

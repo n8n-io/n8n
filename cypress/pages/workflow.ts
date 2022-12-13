@@ -111,13 +111,23 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId('zoom-to-fit').click();
 		},
 		hitUndo: () => {
-			cy.get('body').type('{meta}', { release: false }).type('z');
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('z');
 		},
 		hitRedo: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
 			cy.get('body').
-			type('{meta}', { release: false }).
+			type(metaKey, { delay: 500, release: false }).
 			type('{shift}', { release: false }).
 			type('z');
+		},
+		selectAll: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+		},
+		hitDisableNodeShortcut: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('d');
 		},
 	};
 }
