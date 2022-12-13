@@ -149,6 +149,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return workflowRunData[nodeName];
 			};
 		},
+		getWorkflowById() {
+			return (id: string): IWorkflowDb => this.workflowsById[id];
+		},
 
 		// Node getters
 		allConnections() : IConnections {
