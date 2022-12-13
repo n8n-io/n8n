@@ -39,7 +39,7 @@ export async function actionNetworkApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 }
 
 export async function handleListing(
@@ -70,11 +70,11 @@ export async function handleListing(
 			return returnData.slice(0, limit);
 		}
 
-		if (responseData._links && responseData._links.next && responseData._links.next.href) {
+		if (responseData._links?.next?.href) {
 			const queryString = new URLSearchParams(responseData._links.next.href.split('?')[1]);
 			qs.page = queryString.get('page') as string;
 		}
-	} while (responseData._links && responseData._links.next);
+	} while (responseData._links?.next);
 
 	return returnData;
 }
@@ -217,7 +217,7 @@ export const adjustEventPayload = adjustLocation;
 // ----------------------------------------
 
 async function loadResource(this: ILoadOptionsFunctions, resource: string) {
-	return await handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
+	return handleListing.call(this, 'GET', `/${resource}`, {}, {}, { returnAll: true });
 }
 
 export const resourceLoaders = {

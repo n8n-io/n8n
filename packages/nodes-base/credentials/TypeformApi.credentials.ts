@@ -7,8 +7,11 @@ import {
 
 export class TypeformApi implements ICredentialType {
 	name = 'typeformApi';
+
 	displayName = 'Typeform API';
+
 	documentationUrl = 'typeform';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
@@ -18,6 +21,7 @@ export class TypeformApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

@@ -86,7 +86,7 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		})) as IWorkflowDb[];
 
-		if (!config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown')) {
+		if (!config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown')) {
 			// Do not clean up database when skip registration is done.
 			// This flag is set when n8n is running in scaled mode.
 			// Impact is minimal, but for a short while, n8n will stop accepting requests.
@@ -191,10 +191,8 @@ export class ActiveWorkflowRunner {
 	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 		if (this.activeWorkflows === null) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				'The "activeWorkflows" instance did not get initialized yet.',
-				404,
-				404,
 			);
 		}
 
@@ -224,10 +222,8 @@ export class ActiveWorkflowRunner {
 			});
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -252,10 +248,8 @@ export class ActiveWorkflowRunner {
 				}
 			});
 			if (webhook === undefined) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -277,10 +271,8 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`Could not find workflow with id "${webhook.workflowId}"`,
-				404,
-				404,
 			);
 		}
 
@@ -313,7 +305,7 @@ export class ActiveWorkflowRunner {
 		const workflowStartNode = workflow.getNode(webhookData.node);
 
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise((resolve, reject) => {
@@ -409,7 +401,6 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Adds all the webhooks of the workflow
-	 *
 	 */
 	async addWorkflowWebhooks(
 		workflow: Workflow,
@@ -470,7 +461,7 @@ export class ActiveWorkflowRunner {
 			} catch (error) {
 				if (
 					activation === 'init' &&
-					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
+					config.getEnv('endpoints.skipWebhooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
 					// When skipWebhooksDeregistrationOnShutdown is enabled,
@@ -495,7 +486,10 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
+					error = new Error(
+						`The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`,
+						{ cause: error },
+					);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;

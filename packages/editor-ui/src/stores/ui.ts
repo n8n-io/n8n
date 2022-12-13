@@ -161,6 +161,21 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['workflowShareModal'],
 			},
 		],
+		dynamicTranslations: {
+			workflows: {
+				shareModal: {
+					title: 'dynamic.workflows.shareModal.title',
+				},
+				sharing: {
+					unavailable: {
+						description: 'dynamic.workflows.sharing.unavailable.description',
+						action: 'dynamic.workflows.sharing.unavailable.action',
+						button: 'dynamic.workflows.sharing.unavailable.button',
+						linkURL: 'https://n8n.cloud',
+					},
+				},
+			},
+		},
 		draggable: {
 			isDragging: false,
 			type: '',

@@ -54,6 +54,7 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .menu-container {
+	--menu-background: transparent;
 	--menu-padding: 0;
 }
 </style>

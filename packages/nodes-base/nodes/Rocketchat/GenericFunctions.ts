@@ -7,10 +7,9 @@ export async function rocketchatApiRequest(
 	resource: string,
 	method: string,
 	operation: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('rocketchatApi');
 
@@ -24,10 +23,9 @@ export async function rocketchatApiRequest(
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

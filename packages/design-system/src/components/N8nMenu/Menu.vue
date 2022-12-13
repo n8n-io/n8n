@@ -52,7 +52,7 @@
 </template>
 
 <script lang="ts">
-import ElMenu from 'element-ui/lib/menu';
+import { Menu as ElMenu } from 'element-ui';
 import N8nMenuItem from '../N8nMenuItem';
 
 import Vue, { PropType } from 'vue';
@@ -61,7 +61,7 @@ import { IMenuItem } from '../../types';
 export default Vue.extend({
 	name: 'n8n-menu',
 	components: {
-		ElMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElMenu,
 		N8nMenuItem,
 	},
 	data() {
@@ -150,7 +150,7 @@ export default Vue.extend({
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color-background-xlight);
+	background-color: var(--menu-background, var(--color-background-xlight));
 }
 
 .menuContent {

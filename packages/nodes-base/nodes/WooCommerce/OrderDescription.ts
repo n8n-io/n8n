@@ -83,9 +83,6 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerNote',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Note left by customer during checkout',
 			},
 			{
@@ -758,9 +755,6 @@ export const orderFields: INodeProperties[] = [
 				name: 'customerNote',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Note left by customer during checkout',
 			},
 			{

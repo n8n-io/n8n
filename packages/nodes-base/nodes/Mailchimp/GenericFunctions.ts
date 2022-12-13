@@ -13,11 +13,10 @@ export async function mailchimpApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	_headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
@@ -71,10 +70,9 @@ export async function mailchimpApiRequestAllItems(
 	endpoint: string,
 	method: string,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -92,7 +90,6 @@ export async function mailchimpApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

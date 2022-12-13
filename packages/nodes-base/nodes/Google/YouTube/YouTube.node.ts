@@ -189,8 +189,8 @@ export class YouTube implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'channel') {
@@ -383,7 +383,7 @@ export class YouTube implements INodeType {
 					//https://developers.google.com/youtube/v3/docs/channelBanners/insert
 					if (operation === 'uploadBanner') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						let mimeType;
 
@@ -531,7 +531,7 @@ export class YouTube implements INodeType {
 
 						if (options.tags) {
 							//@ts-ignore
-							body.snippet.tags = (options.tags as string).split(',') as string[];
+							body.snippet.tags = (options.tags as string).split(',');
 						}
 
 						if (options.description) {
@@ -578,7 +578,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.privacyStatus) {
@@ -849,7 +849,7 @@ export class YouTube implements INodeType {
 						const title = this.getNodeParameter('title', i) as string;
 						const categoryId = this.getNodeParameter('categoryId', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 						let mimeType;
 
@@ -919,7 +919,7 @@ export class YouTube implements INodeType {
 
 						if (options.tags) {
 							//@ts-ignore
-							data.snippet.tags = (options.tags as string).split(',') as string[];
+							data.snippet.tags = (options.tags as string).split(',');
 						}
 
 						if (options.embeddable) {
@@ -995,7 +995,7 @@ export class YouTube implements INodeType {
 
 						if (updateFields.tags) {
 							//@ts-ignore
-							body.snippet.tags = (updateFields.tags as string).split(',') as string[];
+							body.snippet.tags = (updateFields.tags as string).split(',');
 						}
 
 						if (updateFields.embeddable) {
@@ -1091,7 +1091,7 @@ export class YouTube implements INodeType {
 						);
 						responseData = responseData.items;
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}

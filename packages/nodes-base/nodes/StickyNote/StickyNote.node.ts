@@ -10,7 +10,7 @@ export class StickyNote implements INodeType {
 		version: 1,
 		description: 'Make your workflow easier to understand',
 		defaults: {
-			name: 'Note',
+			name: 'Sticky Note',
 			color: '#FFD233',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -42,7 +42,7 @@ export class StickyNote implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		return this.prepareOutputData(items);
 	}

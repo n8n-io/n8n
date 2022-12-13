@@ -1,0 +1,36 @@
+#!/usr/bin/env node
+
+const { LoggerProxy, NodeHelpers } = require('n8n-workflow');
+const { PackageDirectoryLoader } = require('../dist/DirectoryLoader');
+const { packageDir, writeJSON } = require('./common');
+
+LoggerProxy.init({
+	log: console.log.bind(console),
+	warn: console.warn.bind(console),
+});
+
+(async () => {
+	const loader = new PackageDirectoryLoader(packageDir);
+	await loader.loadAll();
+
+	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
+
+	const nodeTypes = Object.values(loader.nodeTypes)
+		.map((data) => {
+			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
+			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
+			if (applyParameters.length) {
+				nodeType.description.properties.unshift(...applyParameters);
+			}
+			return data.type;
+		})
+		.flatMap((nodeData) => {
+			const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
+			return allNodeTypes.map((element) => element.description);
+		});
+
+	await Promise.all([
+		writeJSON('types/credentials.json', credentialTypes),
+		writeJSON('types/nodes.json', nodeTypes),
+	]);
+})();

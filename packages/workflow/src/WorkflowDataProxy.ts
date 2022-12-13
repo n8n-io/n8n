@@ -126,6 +126,10 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+			return {}; // incoming connection has pinned data, so stub context object
+		}
+
 		if (!that.runExecutionData?.executionData) {
 			throw new ExpressionError(
 				`The workflow hasn't been executed yet, so you can't reference any context data`,
@@ -289,15 +293,12 @@ export class WorkflowDataProxy {
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new ExpressionError(
-						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
-				throw new ExpressionError(`No node called "${nodeName}" in this workflow`, {
+				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -335,13 +336,10 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(
-						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
 				outputIndex = nodeConnection.sourceIndex;
 			}
@@ -383,15 +381,15 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!node) {
-			return undefined;
-		}
-
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
+
+					if (!node) {
+						throw new ExpressionError(`"${nodeName}" node doesn't exist`);
+					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);
@@ -463,8 +461,11 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
-						throw new ExpressionError('Environment variable access got disabled', {
+					if (
+						typeof process === 'undefined' || // env vars are inaccessible to frontend
+						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
+					) {
+						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
 							runIndex: that.runIndex,
@@ -544,7 +545,7 @@ export class WorkflowDataProxy {
 						const value = that.workflow[name as keyof typeof target];
 
 						if (value === undefined && name === 'id') {
-							throw new ExpressionError('Workflow is not saved', {
+							throw new ExpressionError('save workflow to view', {
 								description: `Please save the workflow first to use $workflow`,
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,
@@ -572,7 +573,17 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					return that.nodeDataGetter(name.toString());
+					const nodeName = name.toString();
+
+					if (that.workflow.getNode(nodeName) === null) {
+						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
+							runIndex: that.runIndex,
+							itemIndex: that.itemIndex,
+							failExecution: true,
+						});
+					}
+
+					return that.nodeDataGetter(nodeName);
 				},
 			},
 		);
@@ -676,6 +687,10 @@ export class WorkflowDataProxy {
 			let taskData: ITaskData;
 
 			let sourceData: ISourceData | null = incomingSourceData;
+
+			if (pairedItem.sourceOverwrite) {
+				sourceData = pairedItem.sourceOverwrite;
+			}
 
 			if (typeof pairedItem === 'number') {
 				pairedItem = {
@@ -838,6 +853,10 @@ export class WorkflowDataProxy {
 
 				nodeBeforeLast = sourceData.previousNode;
 				sourceData = taskData.source[pairedItem.input || 0] || null;
+
+				if (pairedItem.sourceOverwrite) {
+					sourceData = pairedItem.sourceOverwrite;
+				}
 			}
 
 			if (sourceData === null) {
@@ -906,7 +925,7 @@ export class WorkflowDataProxy {
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError(`No node called ‘${nodeName}‘`);
+					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
 				return new Proxy(
@@ -1138,17 +1157,14 @@ export class WorkflowDataProxy {
 				return dataProxy.getDataProxy();
 			},
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-				let executionData: INodeExecutionData[];
-
 				if (nodeName === undefined) {
-					executionData = that.connectionInputData;
-				} else {
-					outputIndex = outputIndex || 0;
-					runIndex = runIndex === undefined ? -1 : runIndex;
-					executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
+					nodeName = (that.prevNodeGetter() as { name: string }).name;
 				}
 
-				return executionData;
+				outputIndex = outputIndex || 0;
+				runIndex = runIndex === undefined ? -1 : runIndex;
+
+				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),

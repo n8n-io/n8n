@@ -20,14 +20,15 @@
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		data-test-id="ndv-input-panel"
 		>
 		<template #header>
 			<div :class="$style.titleSection">
-				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
+				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable data-test-id="ndv-input-select">
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
-					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
+					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`" data-test-id="ndv-input-option">
 						{{ truncate(node.name) }}&nbsp;
 						<span v-if="getMultipleNodesText(node.name)">{{ getMultipleNodesText(node.name) }}</span>
 						<span v-else>{{ $locale.baseText('ndv.input.nodeDistance', {adjustToNumber: node.depth}) }}</span>
@@ -74,7 +75,7 @@
 import { INodeUi } from '@/Interface';
 import { IConnectedNode, INodeTypeDescription, Workflow } from 'n8n-workflow';
 import RunData from './RunData.vue';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';

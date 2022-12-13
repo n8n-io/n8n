@@ -30,7 +30,7 @@ export async function addCustomer(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 
@@ -49,8 +49,7 @@ export async function addCustomer(
 		referred_by: referredBy,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	return this.helpers.returnJsonArray(responseData.customer);
 }

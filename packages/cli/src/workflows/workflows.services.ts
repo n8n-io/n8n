@@ -1,6 +1,8 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import pick from 'lodash.pick';
+import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -69,6 +71,11 @@ export class WorkflowsService {
 
 	/**
 	 * Find the pinned trigger to execute the workflow from, if any.
+	 *
+	 * - In a full execution, select the _first_ pinned trigger.
+	 * - In a partial execution,
+	 *   - select the _first_ pinned trigger that leads to the executed node,
+	 *   - else select the executed pinned trigger.
 	 */
 	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
@@ -86,7 +93,22 @@ export class WorkflowsService {
 
 		const [startNodeName] = startNodes;
 
-		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
+		const parentNames = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: workflow.active,
+			nodeTypes: NodeTypes(),
+		}).getParentNodes(startNodeName);
+
+		let checkNodeName = '';
+
+		if (parentNames.length === 0) {
+			checkNodeName = startNodeName;
+		} else {
+			checkNodeName = parentNames.find((pn) => pn === pinnedTriggers[0].name) as string;
+		}
+
+		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
@@ -123,10 +145,8 @@ export class WorkflowsService {
 					userId: user.id,
 					filter,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}
@@ -141,26 +161,27 @@ export class WorkflowsService {
 		}
 
 		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const relations: string[] = [];
 
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: config.get('enterprise.features.sharing') ? [...fields, 'nodes'] : fields,
-			relations: config.get('enterprise.features.sharing')
-				? ['tags', 'shared', 'shared.user', 'shared.role']
-				: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete query.relations;
+		if (!config.getEnv('workflowTagsDisabled')) {
+			relations.push('tags');
 		}
 
-		const workflows = await Db.collections.Workflow.find(
-			Object.assign(query, {
-				where: {
-					id: In(sharedWorkflowIds),
-					...filter,
-				},
-			}),
-		);
+		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
+		if (isSharingEnabled) {
+			relations.push('shared', 'shared.user', 'shared.role');
+		}
+
+		const query: FindManyOptions<WorkflowEntity> = {
+			select: isSharingEnabled ? [...fields, 'nodes', 'versionId'] : fields,
+			relations,
+			where: {
+				id: In(sharedWorkflowIds),
+				...filter,
+			},
+		};
+
+		const workflows = await Db.collections.Workflow.find(query);
 
 		return workflows.map((workflow) => {
 			const { id, ...rest } = workflow;
@@ -195,20 +216,32 @@ export class WorkflowsService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
 		}
 
-		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
-				undefined,
-				400,
+		if (
+			!forceSave &&
+			workflow.versionId !== '' &&
+			workflow.versionId !== shared.workflow.versionId
+		) {
+			throw new ResponseHelper.BadRequestError(
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
+				100,
 			);
 		}
+
+		// Update the workflow's version
+		workflow.versionId = uuid();
+
+		LoggerProxy.verbose(
+			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+			{
+				previousVersionId: shared.workflow.versionId,
+				newVersionId: workflow.versionId,
+			},
+		);
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
@@ -254,9 +287,19 @@ export class WorkflowsService {
 			await validateEntity(workflow);
 		}
 
-		const { hash, ...rest } = workflow;
-
-		await Db.collections.Workflow.update(workflowId, rest);
+		await Db.collections.Workflow.update(
+			workflowId,
+			pick(workflow, [
+				'name',
+				'active',
+				'nodes',
+				'connections',
+				'settings',
+				'staticData',
+				'pinData',
+				'versionId',
+			]),
+		);
 
 		if (tags && !config.getEnv('workflowTagsDisabled')) {
 			const tablePrefix = config.getEnv('database.tablePrefix');
@@ -280,10 +323,8 @@ export class WorkflowsService {
 		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
 
 		if (updatedWorkflow === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				400,
 			);
 		}
 
@@ -306,8 +347,7 @@ export class WorkflowsService {
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				workflow.active = false;
-				await Db.collections.Workflow.update(workflowId, workflow);
+				await Db.collections.Workflow.update(workflowId, { active: false });
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
+import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -15,6 +15,7 @@ import {
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	CredentialLoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -22,11 +23,10 @@ import {
 
 import { WorkflowExecute } from 'n8n-core';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { Url } from 'url';
 
 import type { Request } from 'express';
@@ -39,6 +39,7 @@ import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 
 export interface IActivationError {
 	time: number;
@@ -59,10 +60,7 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: {
-		className: string;
-		sourcePath: string;
-	};
+	[key: string]: CredentialLoadingDetails;
 }
 
 export interface ICredentialsOverwrite {
@@ -82,6 +80,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
+	WorkflowStatistics: Repository<WorkflowStatistics>;
 }
 
 export interface IWebhookDb {
@@ -451,19 +450,6 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
-export interface IN8nNodePackageJson {
-	name: string;
-	version: string;
-	n8n?: {
-		credentials?: string[];
-		nodes?: string[];
-	};
-	author?: {
-		name?: string;
-		email?: string;
-	};
-}
-
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -649,7 +635,7 @@ export interface IResponseCallbackData {
 	responseCode?: number;
 }
 
-export interface ITransferNodeTypes {
+export interface INodesTypeData {
 	[key: string]: {
 		className: string;
 		sourcePath: string;
@@ -697,10 +683,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
-	credentialsOverwrite: ICredentialsOverwrite;
-	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
-	nodeTypeData: ITransferNodeTypes;
 	userId: string;
 }
 
@@ -708,6 +691,24 @@ export interface IWorkflowExecuteProcess {
 	startedAt: Date;
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
+}
+
+export interface IWorkflowStatisticsCounts {
+	productionSuccess: number;
+	productionError: number;
+	manualSuccess: number;
+	manualError: number;
+}
+
+export interface IWorkflowStatisticsDataLoaded {
+	dataLoaded: boolean;
+}
+
+export interface IWorkflowStatisticsTimestamps {
+	productionSuccess: Date | null;
+	productionError: Date | null;
+	manualSuccess: Date | null;
+	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;

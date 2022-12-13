@@ -14,10 +14,9 @@ export async function jenkinsApiRequest(
 	method: string,
 	uri: string,
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
+
 	body: any = '',
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('jenkinsApi');
 	let options: OptionsWithUri = {

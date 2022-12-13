@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import express from 'express';
+import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
@@ -52,6 +53,8 @@ workflowsController.post(
 
 		Object.assign(newWorkflow, req.body);
 
+		newWorkflow.versionId = uuid();
+
 		await validateEntity(newWorkflow);
 
 		await externalHooks.run('workflow.create', [newWorkflow]);
@@ -91,7 +94,7 @@ workflowsController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError('Failed to save workflow');
+			throw new ResponseHelper.InternalServerError('Failed to save workflow');
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
@@ -152,13 +155,11 @@ workflowsController.get(
 	`/from-url`,
 	ResponseHelper.send(async (req: express.Request): Promise<IWorkflowResponse> => {
 		if (req.query.url === undefined) {
-			throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`The parameter "url" is missing!`);
 		}
 		if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`,
-				undefined,
-				400,
 			);
 		}
 		let workflowData: IWorkflowResponse | undefined;
@@ -166,11 +167,7 @@ workflowsController.get(
 			const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
 			workflowData = data;
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				`The URL does not point to valid JSON file!`,
-				undefined,
-				400,
-			);
+			throw new ResponseHelper.BadRequestError(`The URL does not point to valid JSON file!`);
 		}
 
 		// Do a very basic check if it is really a n8n-workflow-json
@@ -182,10 +179,8 @@ workflowsController.get(
 			typeof workflowData.connections !== 'object' ||
 			Array.isArray(workflowData.connections)
 		) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The data in the file does not seem to be a n8n workflow JSON file!`,
-				undefined,
-				400,
 			);
 		}
 
@@ -222,10 +217,8 @@ workflowsController.get(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Could not load the workflow - you can only access workflows owned by you',
 			);
 		}
 
@@ -258,7 +251,7 @@ workflowsController.patch(
 			updateData,
 			workflowId,
 			tags,
-			false,
+			true,
 			['owner'],
 		);
 
@@ -297,10 +290,8 @@ workflowsController.delete(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be deleted.`,
-				undefined,
-				400,
+			throw new ResponseHelper.BadRequestError(
+				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
 

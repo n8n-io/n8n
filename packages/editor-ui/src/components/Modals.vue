@@ -83,7 +83,13 @@
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
-			<WorkflowShareModal />
+			<template #default="{ modalName, active, data }">
+				<WorkflowShareModal
+					:data="data"
+					:isActive="active"
+					:modalName="modalName"
+				/>
+			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">

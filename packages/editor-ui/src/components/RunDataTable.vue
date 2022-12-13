@@ -73,7 +73,10 @@
 							<template #content>
 								<div>
 									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
-										<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+										<template #columnLimit>{{ columnLimit }}</template>
+										<template #link>
+										  <a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+										</template>
 									</i18n>
 								</div>
 							</template>
@@ -158,13 +161,13 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/pairedItemUtils';
+import { getPairedItemId } from '@/utils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
-import { externalHooks } from './mixins/externalHooks';
+import { shorten } from '@/utils';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
@@ -212,6 +215,7 @@ export default mixins(externalHooks).extend({
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimit: MAX_COLUMNS_LIMIT,
 			columnLimitExceeded: false,
 		};
 	},
@@ -630,7 +634,10 @@ export default mixins(externalHooks).extend({
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	display: flex;
+	height: 24px;
+	align-items: center;
+	padding: 0 var(--spacing-4xs);
 	color: var(--color-text-xlight);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);

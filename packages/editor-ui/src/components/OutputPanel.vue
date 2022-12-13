@@ -19,6 +19,7 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
+		data-test-id="ndv-output-panel"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -47,8 +48,8 @@
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning">
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
 					<br>
@@ -85,7 +86,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/components/mixins/pinData";
+import { pinData } from "@/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

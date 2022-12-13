@@ -333,7 +333,7 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.data.sharedWith).toHaveLength(0);
 	});
 
-	test('GET should return workflow with credentials saying owner has access even when not shared', async () => {
+	test('GET should return workflow with credentials saying owner does not have access when not shared', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
@@ -351,7 +351,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				currentUserHasAccess: true, // owner has access to any cred
+				currentUserHasAccess: false, // although owner can see, he does not have access
 			},
 		]);
 
@@ -471,7 +471,7 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
-			'The workflow contains credentials that you do not have access to',
+			'The workflow you are trying to save contains credentials that are not shared with you',
 		);
 	});
 
@@ -536,11 +536,11 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		};
 
 		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
-		const { id, hash } = createResponse.body.data;
+		const { id, versionId } = createResponse.body.data;
 
 		const response = await authAgent(owner).patch(`/workflows/${id}`).send({
 			name: 'new name',
-			hash,
+			versionId,
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -574,12 +574,12 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		};
 
 		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
-		const { id, hash } = createResponse.body.data;
+		const { id, versionId } = createResponse.body.data;
 
 		const response = await authAgent(owner)
 			.patch(`/workflows/${id}`)
 			.send({
-				hash,
+				versionId,
 				nodes: [
 					{
 						id: 'uuid-1234',
@@ -630,12 +630,12 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		};
 
 		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
-		const { id, hash } = createResponse.body.data;
+		const { id, versionId } = createResponse.body.data;
 
 		const response = await authAgent(member)
 			.patch(`/workflows/${id}`)
 			.send({
-				hash,
+				versionId,
 				nodes: [
 					{
 						id: 'uuid-1234',
@@ -714,14 +714,14 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		};
 
 		const createResponse = await authAgent(member1).post('/workflows').send(workflow);
-		const { id, hash } = createResponse.body.data;
+		const { id, versionId } = createResponse.body.data;
 
 		await authAgent(member1)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member2.id] });
 
 		const response = await authAgent(member2).patch(`/workflows/${id}`).send({
-			hash,
+			versionId,
 			nodes: changedNodes,
 		});
 
@@ -738,7 +738,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerHash } = createResponse.body.data;
+		const { id, versionId: ownerVersionId } = createResponse.body.data;
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
@@ -746,22 +746,20 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses and updates workflow name
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		await authAgent(member)
 			.patch(`/workflows/${id}`)
-			.send({ name: 'Update by member', hash: memberHash });
+			.send({ name: 'Update by member', versionId: memberVersionId });
 
 		// owner blocked from updating workflow nodes
 
 		const updateAttemptResponse = await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ nodes: [], hash: ownerHash });
+			.send({ nodes: [], versionId: ownerVersionId });
 
 		expect(updateAttemptResponse.status).toBe(400);
-		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(updateAttemptResponse.body.code).toBe(100);
 	});
 
 	it('should block member updating workflow nodes on interim update by owner', async () => {
@@ -771,13 +769,13 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates, updates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerFirstHash } = createResponse.body.data;
+		const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
 
 		const updateResponse = await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ name: 'Update by owner', hash: ownerFirstHash });
+			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
 
-		const { hash: ownerSecondHash } = updateResponse.body.data;
+		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
@@ -786,24 +784,22 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses workflow
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner re-updates workflow
 
 		await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ name: 'Owner update again', hash: ownerSecondHash });
+			.send({ name: 'Owner update again', versionId: ownerSecondVersionId });
 
 		// member blocked from updating workflow
 
 		const updateAttemptResponse = await authAgent(member)
 			.patch(`/workflows/${id}`)
-			.send({ nodes: [], hash: memberHash });
+			.send({ nodes: [], versionId: memberVersionId });
 
 		expect(updateAttemptResponse.status).toBe(400);
-		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(updateAttemptResponse.body.code).toBe(100);
 	});
 
 	it('should block owner activation on interim activation by member', async () => {
@@ -813,7 +809,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerHash } = createResponse.body.data;
+		const { id, versionId: ownerVersionId } = createResponse.body.data;
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
@@ -821,19 +817,19 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses and activates workflow
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
-		await authAgent(member).patch(`/workflows/${id}`).send({ active: true, hash: memberHash });
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
+		await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, versionId: memberVersionId });
 
 		// owner blocked from activating workflow
 
 		const activationAttemptResponse = await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ active: true, hash: ownerHash });
+			.send({ active: true, versionId: ownerVersionId });
 
 		expect(activationAttemptResponse.status).toBe(400);
-		expect(activationAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(activationAttemptResponse.body.code).toBe(100);
 	});
 
 	it('should block member activation on interim activation by owner', async () => {
@@ -843,12 +839,12 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates, updates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerFirstHash } = createResponse.body.data;
+		const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
 
 		const updateResponse = await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ name: 'Update by owner', hash: ownerFirstHash });
-		const { hash: ownerSecondHash } = updateResponse.body.data;
+			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
+		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
@@ -857,22 +853,22 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses workflow
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner activates workflow
 
-		await authAgent(owner).patch(`/workflows/${id}`).send({ active: true, hash: ownerSecondHash });
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, versionId: ownerSecondVersionId });
 
 		// member blocked from activating workflow
 
 		const updateAttemptResponse = await authAgent(member)
 			.patch(`/workflows/${id}`)
-			.send({ active: true, hash: memberHash });
+			.send({ active: true, versionId: memberVersionId });
 
 		expect(updateAttemptResponse.status).toBe(400);
-		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(updateAttemptResponse.body.code).toBe(100);
 	});
 
 	it('should block member updating workflow settings on interim update by owner', async () => {
@@ -882,7 +878,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerHash } = createResponse.body.data;
+		const { id, versionId: ownerVersionId } = createResponse.body.data;
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
@@ -890,24 +886,22 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses workflow
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner updates workflow name
 
 		await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ name: 'Another name', hash: ownerHash });
+			.send({ name: 'Another name', versionId: ownerVersionId });
 
 		// member blocked from updating workflow settings
 
 		const updateAttemptResponse = await authAgent(member)
 			.patch(`/workflows/${id}`)
-			.send({ settings: { saveManualExecutions: true }, hash: memberHash });
+			.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
 
 		expect(updateAttemptResponse.status).toBe(400);
-		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(updateAttemptResponse.body.code).toBe(100);
 	});
 
 	it('should block member updating workflow name on interim update by owner', async () => {
@@ -917,7 +911,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// owner creates and shares workflow
 
 		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
-		const { id, hash: ownerHash } = createResponse.body.data;
+		const { id, versionId: ownerVersionId } = createResponse.body.data;
 		await authAgent(owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
@@ -925,23 +919,21 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 		// member accesses workflow
 
 		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
-		const { hash: memberHash } = memberGetResponse.body.data;
+		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner updates workflow settings
 
 		await authAgent(owner)
 			.patch(`/workflows/${id}`)
-			.send({ settings: { saveManualExecutions: true }, hash: ownerHash });
+			.send({ settings: { saveManualExecutions: true }, versionId: ownerVersionId });
 
 		// member blocked from updating workflow name
 
 		const updateAttemptResponse = await authAgent(member)
 			.patch(`/workflows/${id}`)
-			.send({ settings: { saveManualExecutions: true }, hash: memberHash });
+			.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
 
 		expect(updateAttemptResponse.status).toBe(400);
-		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
-		);
+		expect(updateAttemptResponse.body.code).toBe(100);
 	});
 });

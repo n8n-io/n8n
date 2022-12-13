@@ -274,7 +274,7 @@ export class Hunter implements INodeType {
 		let responseData;
 		for (let i = 0; i < length; i++) {
 			try {
-				const operation = this.getNodeParameter('operation', 0) as string;
+				const operation = this.getNodeParameter('operation', 0);
 				//https://hunter.io/api-documentation/v2#domain-search
 				if (operation === 'domainSearch') {
 					const returnAll = this.getNodeParameter('returnAll', i);
@@ -304,17 +304,17 @@ export class Hunter implements INodeType {
 
 						// Make sure that the company information is there only once and
 						// the emails are combined underneath it.
-						if (onlyEmails === false) {
+						if (!onlyEmails) {
 							let tempReturnData: IDataObject = {};
 
-							for (let i = 0; i < responseData.length; i++) {
-								if (i === 0) {
-									tempReturnData = responseData[i];
+							for (let index = 0; index < responseData.length; index++) {
+								if (index === 0) {
+									tempReturnData = responseData[index];
 									continue;
 								}
-								((tempReturnData as IDataObject).emails as IDataObject[]).push.apply(
+								(tempReturnData.emails as IDataObject[]).push.apply(
 									tempReturnData.emails,
-									responseData[i].emails,
+									responseData[index].emails,
 								);
 							}
 
@@ -327,7 +327,7 @@ export class Hunter implements INodeType {
 						responseData = responseData.data;
 					}
 
-					if (onlyEmails === true) {
+					if (onlyEmails) {
 						let tempReturnData: IDataObject[] = [];
 
 						if (Array.isArray(responseData)) {

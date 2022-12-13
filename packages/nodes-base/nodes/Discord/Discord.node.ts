@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -29,9 +28,6 @@ export class Discord implements INodeType {
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				required: true,
 				default: '',
 				placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
@@ -42,7 +38,6 @@ export class Discord implements INodeType {
 				type: 'string',
 				typeOptions: {
 					maxValue: 2000,
-					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				placeholder: 'Hello World!',
@@ -128,11 +123,11 @@ export class Discord implements INodeType {
 		if (!webhookUri) throw new NodeOperationError(this.getNode(), 'Webhook uri is required.');
 
 		const items = this.getInputData();
-		const length = items.length as number;
+		const length = items.length;
 		for (let i = 0; i < length; i++) {
 			const body: DiscordWebhook = {};
 
-			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
+			const iterationWebhookUri = this.getNodeParameter('webhookUri', i) as string;
 			body.content = this.getNodeParameter('text', i) as string;
 			const options = this.getNodeParameter('options', i);
 
@@ -216,7 +211,7 @@ export class Discord implements INodeType {
 					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
-					uri: webhookUri,
+					uri: iterationWebhookUri,
 					headers: {
 						'content-type': 'application/json; charset=utf-8',
 					},
@@ -227,7 +222,7 @@ export class Discord implements INodeType {
 					resolveWithFullResponse: true,
 					method: 'POST',
 					body,
-					uri: webhookUri,
+					uri: iterationWebhookUri,
 					headers: {
 						'content-type': 'multipart/form-data; charset=utf-8',
 					},

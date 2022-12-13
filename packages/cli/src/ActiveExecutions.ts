@@ -12,9 +12,8 @@ import {
 	IRun,
 } from 'n8n-workflow';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import * as Db from '@/Db';
 import {

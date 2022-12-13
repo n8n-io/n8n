@@ -31,7 +31,7 @@ export function ownerNamespace(this: N8nApp): void {
 						userId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			if (!email || !validator.isEmail(email)) {
@@ -39,7 +39,7 @@ export function ownerNamespace(this: N8nApp): void {
 					userId,
 					invalidEmail: email,
 				});
-				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid email address');
 			}
 
 			const validPassword = validatePassword(password);
@@ -49,11 +49,7 @@ export function ownerNamespace(this: N8nApp): void {
 					'Request to claim instance ownership failed because of missing first name or last name in payload',
 					{ userId, payload: req.body },
 				);
-				throw new ResponseHelper.ResponseError(
-					'First and last names are mandatory',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('First and last names are mandatory');
 			}
 
 			let owner = await Db.collections.User.findOne(userId, {
@@ -67,7 +63,7 @@ export function ownerNamespace(this: N8nApp): void {
 						userId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			owner = Object.assign(owner, {

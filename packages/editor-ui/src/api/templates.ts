@@ -1,6 +1,6 @@
 import { ITemplatesCategory, ITemplatesCollection, ITemplatesQuery, ITemplatesWorkflow, ITemplatesCollectionResponse, ITemplatesWorkflowResponse, IWorkflowTemplate } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
-import { get } from './helpers';
+import { get } from '@/utils';
 
 function stringifyArray(arr: number[]) {
 	return arr.join(',');

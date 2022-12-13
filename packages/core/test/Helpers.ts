@@ -1,4 +1,4 @@
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -17,6 +17,7 @@ import {
 	INodeTypes,
 	IRun,
 	ITaskData,
+	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeHelpers,
@@ -805,14 +806,8 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
-	getAll(): INodeType[] {
-		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
-	}
-
-	getByName(nodeType: string): INodeType {
-		return this.getByNameAndVersion(nodeType);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return this.nodeTypes[nodeType].type;
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
@@ -825,7 +820,6 @@ let nodeTypesInstance: NodeTypesClass | undefined;
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
-		nodeTypesInstance.init({});
 	}
 
 	return nodeTypesInstance;

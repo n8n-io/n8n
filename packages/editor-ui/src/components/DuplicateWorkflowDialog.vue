@@ -42,11 +42,11 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from "@/constants";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import { showMessage } from "@/components/mixins/showMessage";
+import { workflowHelpers } from "@/mixins/workflowHelpers";
+import { showMessage } from "@/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
-import {restApi} from "@/components/mixins/restApi";
+import {restApi} from "@/mixins/restApi";
 import { mapStores } from "pinia";
 import { useSettingsStore } from "@/stores/settings";
 import { useWorkflowsStore } from "@/stores/workflows";
@@ -125,8 +125,10 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			try {
 				let workflowToUpdate: IWorkflowDataUpdate | undefined;
 				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-					const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+					const { createdAt, updatedAt, usedCredentials, ...workflow } = await this.restApi().getWorkflow(this.data.id);
 					workflowToUpdate = workflow;
+
+					this.removeForeignCredentialsFromWorkflow(workflowToUpdate, this.credentialsStore.allCredentials);
 				}
 
 				const saved = await this.saveAsNewWorkflow({

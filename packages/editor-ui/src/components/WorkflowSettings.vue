@@ -235,10 +235,10 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { restApi } from '@/components/mixins/restApi';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { externalHooks } from '@/mixins/externalHooks';
+import { restApi } from '@/mixins/restApi';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import {
 	ITimeoutHMS,
 	IWorkflowDataUpdate,
@@ -625,11 +625,11 @@ export default mixins(
 			delete data.settings!.maxExecutionTimeout;
 
 			this.isLoading = true;
-			data.hash = this.workflowsStore.workflowHash;
+			data.versionId = this.workflowsStore.workflowVersionId;
 
 			try {
 				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
-				this.workflowsStore.setWorkflowHash(workflow.hash);
+				this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 			} catch (error) {
 				this.$showError(
 					error,

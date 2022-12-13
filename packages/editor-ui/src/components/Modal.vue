@@ -10,6 +10,7 @@
 		:close-on-press-escape="closeOnPressEscape"
 		:style="styles"
 		append-to-body
+		:data-test-id="`${this.$props.name}-modal`"
 	>
 		<template #title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />

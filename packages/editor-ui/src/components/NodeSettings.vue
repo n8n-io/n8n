@@ -10,7 +10,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="executable">
+				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -71,6 +71,10 @@
 			data-test-id="node-parameters"
 			v-if="node && nodeValid"
 		>
+			<n8n-notice
+				v-if="hasForeignCredential"
+				:content="$locale.baseText('nodeSettings.hasForeignCredential', { interpolate: { owner: workflowOwnerName } })"
+			/>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -150,17 +154,20 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useHistoryStore } from '@/stores/history';
+import { RenameNodeCommand } from '@/models/history';
+import useWorkflowsEEStore from "@/stores/workflows.ee";
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -175,13 +182,21 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useHistoryStore,
 			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
+			useWorkflowsEEStore,
 		),
 		isCurlImportModalOpen(): boolean {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
+		},
+		isReadOnly(): boolean {
+			return this.readOnly || this.hasForeignCredential;
+		},
+		isExecutable(): boolean {
+			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
@@ -245,6 +260,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
+		workflowOwnerName(): string {
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
+		},
 	},
 	props: {
 		eventBus: {},
@@ -257,8 +275,13 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
 		},
-		isReadOnly: {
+		readOnly: {
 			type: Boolean,
+			default: false,
+		},
+		hasForeignCredential: {
+			type: Boolean,
+			default: false,
 		},
 		blockUI: {
 			type: Boolean,
@@ -483,6 +506,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
+			if (this.node) {
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+			}
 			// @ts-ignore
 			this.valueChanged({
 				value: name,
@@ -801,6 +827,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.openPanel = 'settings';
 			});
 		}
+
+		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 });
 </script>

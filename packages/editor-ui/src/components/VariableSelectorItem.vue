@@ -43,7 +43,7 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import { externalHooks } from "@/mixins/externalHooks";
 import mixins from 'vue-typed-mixins';
 
 export default mixins(externalHooks).extend({
@@ -53,6 +53,20 @@ export default mixins(externalHooks).extend({
 		'extendAll',
 		'item',
 	],
+	mounted() {
+		if (this.extended) return;
+
+		const shouldAutoExtend = [
+			this.$locale.baseText('variableSelectorItem.currentNode'),
+			this.$locale.baseText('variableSelectorItem.inputData'),
+			this.$locale.baseText('variableSelectorItem.binary'),
+			this.$locale.baseText('variableSelectorItem.json'),
+		].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
+	},
 	computed: {
 		itemAddOperations () {
 			const returnOptions = [

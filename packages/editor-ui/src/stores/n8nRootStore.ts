@@ -26,6 +26,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		instanceId: '',
 	}),
 	getters: {
+		getBaseUrl(): string {
+			return this.baseUrl;
+		},
+
 		getWebhookUrl(): string {
 			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
 		},
@@ -52,7 +56,6 @@ export const useRootStore = defineStore(STORES.ROOT, {
 				sessionId: this.sessionId,
 			};
 		},
-		// TODO: Waiting for nodeTypes store
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */

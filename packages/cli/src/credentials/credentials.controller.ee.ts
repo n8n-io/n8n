@@ -54,7 +54,7 @@ EECredentialsController.get(
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.ResponseError(`Credential ID must be a number.`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`Credential ID must be a number.`);
 		}
 
 		let credential = (await EECredentials.get(
@@ -63,17 +63,15 @@ EECredentialsController.get(
 		)) as CredentialsEntity & CredentialWithSharings;
 
 		if (!credential) {
-			throw new ResponseHelper.ResponseError(
-				`Credential with ID "${credentialId}" could not be found.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
 			);
 		}
 
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
+			throw new ResponseHelper.UnauthorizedError(`Forbidden.`);
 		}
 
 		credential = EECredentials.addOwnerAndSharings(credential);
@@ -108,7 +106,7 @@ EECredentialsController.get(
 EECredentialsController.post(
 	'/test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
-		const { credentials, nodeToTestWith } = req.body;
+		const { credentials } = req.body;
 
 		const encryptionKey = await EECredentials.getEncryptionKey();
 
@@ -117,14 +115,14 @@ EECredentialsController.post(
 		if (!ownsCredential) {
 			const sharing = await EECredentials.getSharing(req.user, credentials.id);
 			if (!sharing) {
-				throw new ResponseHelper.ResponseError(`Forbidden`, undefined, 403);
+				throw new ResponseHelper.UnauthorizedError(`Forbidden`);
 			}
 
 			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
 			Object.assign(credentials, { data: decryptedData });
 		}
 
-		return EECredentials.test(req.user, encryptionKey, credentials, nodeToTestWith);
+		return EECredentials.test(req.user, encryptionKey, credentials);
 	}),
 );
 
@@ -144,13 +142,13 @@ EECredentialsController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.ResponseError('Bad request', undefined, 400);
+			throw new ResponseHelper.BadRequestError('Bad request');
 		}
 
 		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 
 		if (!ownsCredential || !credential) {
-			throw new ResponseHelper.ResponseError('Forbidden', undefined, 403);
+			throw new ResponseHelper.UnauthorizedError('Forbidden');
 		}
 
 		let amountRemoved: number | null = null;
