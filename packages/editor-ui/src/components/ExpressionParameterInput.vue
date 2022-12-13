@@ -193,7 +193,6 @@ export default Vue.extend({
 	}
 }
 
-// @TODO_TECH_DEBT(N8N-5860): Deduplicate with textarea-modal-opener
 .expression-editor-modal-opener {
 	position: absolute;
 	right: 0;
