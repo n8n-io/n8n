@@ -73,7 +73,7 @@ import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/Inl
 import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
-import { EXPRESSIONS_DOCS_URL, LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH } from '@/constants';
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -89,7 +89,6 @@ export default Vue.extend({
 		return {
 			isFocused: false,
 			segments: [] as Segment[],
-			paneWidth: -1,
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
@@ -117,9 +116,6 @@ export default Vue.extend({
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
 		},
-		currentNodePaneType(): string {
-			return this.ndvStore.currentNodePaneType;
-		},
 	},
 	methods: {
 		focus() {
@@ -130,23 +126,17 @@ export default Vue.extend({
 		onFocus() {
 			this.isFocused = true;
 
-			this.paneWidth = this.getPaneWidth();
-
 			this.$emit('focus');
 		},
-		getPaneWidth() {
-			const key = [LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, this.currentNodePaneType].join('_');
+		onBlur(event: FocusEvent) {
+			if (
+				event.target instanceof Element &&
+				Array.from(event.target.classList).some((_class) => _class.includes('resizer'))
+			) {
+				return; // prevent blur on resizing
+			}
 
-			return parseFloat(window.localStorage.getItem(key) ?? '0');
-		},
-		onBlur() {
 			if (this.isDragging) return; // prevent blur on dragging
-
-			const oldPaneWidth = this.paneWidth;
-
-			this.paneWidth = this.getPaneWidth();
-
-			if (oldPaneWidth !== this.paneWidth) return; // prevent blur on resizing
 
 			const wasFocused = this.isFocused;
 

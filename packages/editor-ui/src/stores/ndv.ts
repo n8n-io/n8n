@@ -40,7 +40,6 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 			canDrop: false,
 			stickyPosition: null,
 		},
-		currentNodePaneType: '',
 	}),
 	getters: {
 		activeNode(): INodeUi | null {
@@ -176,9 +175,6 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		},
 		setNDVPanelDataIsEmpty(payload: {panel: 'input' | 'output', isEmpty: boolean}): void {
 			Vue.set(this[payload.panel].data, 'isEmpty', payload.isEmpty);
-		},
-		setCurrentNodePaneType(value: string): void {
-			this.currentNodePaneType = value;
 		},
 	},
 });

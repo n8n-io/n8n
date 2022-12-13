@@ -98,7 +98,6 @@ export default mixins(debounceHelper).extend({
 	},
 	mounted() {
 		this.setTotalWidth();
-		this.ndvStore.setCurrentNodePaneType(this.currentNodePaneType);
 
 		/*
 			Only set(or restore) initial position if `mainPanelDimensions`
@@ -238,9 +237,6 @@ export default mixins(debounceHelper).extend({
 			}
 
 			this.setPositions(this.mainPanelDimensions.relativeLeft);
-		},
-		currentNodePaneType(newValue) {
-			this.ndvStore.setCurrentNodePaneType(newValue);
 		},
 	},
 	methods: {
