@@ -129,6 +129,7 @@ import {useUIStore} from "@/stores/ui";
 import {useUsersStore} from "@/stores/users";
 import {useWorkflowsStore} from "@/stores/workflows";
 import useWorkflowsEEStore from "@/stores/workflows.ee";
+import {ITelemetryTrackProperties} from "n8n-workflow";
 
 export default mixins(
 	showMessage,
@@ -228,8 +229,16 @@ export default mixins(
 			};
 
 			try {
+				const shareesAdded = this.sharedWith.filter((sharee) => !this.workflow.sharedWith?.find((previousSharee) => sharee.id === previousSharee.id));
+				const shareesRemoved = this.workflow.sharedWith?.filter((previousSharee) => !this.sharedWith.find((sharee) => sharee.id === previousSharee.id)) || [];
+
 				const workflowId = await saveWorkflowPromise();
 				await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
+
+				this.trackTelemetry({
+					user_ids_sharees_added: shareesAdded.map((sharee) => sharee.id),
+					sharees_removed: shareesRemoved.length,
+				});
 
 				this.$showMessage({
 					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
@@ -247,6 +256,10 @@ export default mixins(
 			const sharee = { id, firstName, lastName, email };
 
 			this.sharedWith = this.sharedWith.concat(sharee);
+
+			this.trackTelemetry({
+				user_id_sharee: userId,
+			});
 		},
 		async onRemoveSharee(userId: string) {
 			const user = this.usersStore.getUserById(userId)!;
@@ -304,6 +317,11 @@ export default mixins(
 				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
 					return sharee.id !== user.id;
 				});
+
+				this.trackTelemetry({
+					user_id_sharee: userId,
+					warning_orphan_credentials: isLastUserWithAccessToCredentials
+				});
 			}
 		},
 		onRoleAction(user: IUser, action: string) {
@@ -336,6 +354,14 @@ export default mixins(
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.$emit('close');
+		},
+		trackTelemetry(data: ITelemetryTrackProperties) {
+			this.$telemetry.track('User selected sharee to remove', {
+				workflow_id: this.workflow.id,
+				user_id_sharer: this.currentUser?.id,
+				sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+				...data,
+			});
 		},
 	},
 	mounted() {

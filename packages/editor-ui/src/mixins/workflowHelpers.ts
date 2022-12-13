@@ -68,6 +68,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import {useUsersStore} from "@/stores/users";
 import {ICredentialMap, ICredentialsResponse, IUsedCredential} from "@/Interface";
+import {getWorkflowPermissions, IPermissions} from "@/permissions";
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -90,6 +91,9 @@ export const workflowHelpers = mixins(
 				useUsersStore,
 				useUIStore,
 			),
+			workflowPermissions(): IPermissions {
+				return getWorkflowPermissions(this.usersStore.currentUser, this.workflowsStore.workflow);
+			},
 		},
 		methods: {
 			 executeData(parentNode: string[], currentNode: string, inputName: string, runIndex: number): IExecuteData {
@@ -749,6 +753,11 @@ export const workflowHelpers = mixins(
 					this.uiStore.removeActiveAction('workflowSaving');
 
 					if (error.errorCode === 100) {
+						this.$telemetry.track('User attempted to save locked workflow', {
+							workflowId: currentWorkflow,
+							sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
+						});
+
 						const overwrite = await this.confirmMessage(
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
 							this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
