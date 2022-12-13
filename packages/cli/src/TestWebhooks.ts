@@ -32,6 +32,11 @@ export class TestWebhooks {
 
 	private activeWebhooks: ActiveWebhooks | null = null;
 
+	/**
+	 * Node to execute in a partial test webhook execution.
+	 */
+	partialTestNode: string | undefined = undefined;
+
 	constructor() {
 		this.activeWebhooks = new ActiveWebhooks();
 		this.activeWebhooks.testWebhooks = true;
