@@ -81,11 +81,9 @@ const alertBoxClassNames = computed(() => {
 .alert {
 	display: flex;
 	position: relative;
-	min-height: 60px;
 	border-bottom: 1px solid transparent;
 	align-items: center;
 	justify-content: space-between;
-	padding: $alert-padding;
 
 	&.center {
 		justify-content: center;
@@ -202,6 +200,15 @@ const alertBoxClassNames = computed(() => {
 			}
 		}
 	}
+
+	&.background {
+		min-height: 60px;
+		padding: $alert-padding;
+
+		.icon {
+			padding-left: var(--spacing-2xs);
+		}
+	}
 }
 
 .content {
@@ -213,8 +220,7 @@ const alertBoxClassNames = computed(() => {
 	display: inline-flex;
 	color: inherit;
 	align-items: center;
-	padding-left: var(--spacing-2xs);
-	padding-right: var(--spacing-s);
+	padding-right: var(--spacing-2xs);
 }
 
 .text {
@@ -227,11 +233,14 @@ const alertBoxClassNames = computed(() => {
 	font-size: $alert-title-font-size;
 	line-height: 18px;
 	font-weight: bold;
+
+	+ .description {
+		margin-top: var(--spacing-2xs);
+	}
 }
 
 .description {
 	font-size: $alert-description-font-size;
-	margin: 5px 0 0 0;
 }
 
 .aside {

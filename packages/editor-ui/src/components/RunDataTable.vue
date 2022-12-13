@@ -12,7 +12,7 @@
 					@mouseenter="onMouseEnterCell"
 					@mouseleave="onMouseLeaveCell"
 				>
-					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
+					<n8n-alert :background="false" :description="$locale.baseText('runData.emptyItemHint')" />
 				</td>
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
