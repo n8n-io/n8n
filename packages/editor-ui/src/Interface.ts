@@ -1097,7 +1097,7 @@ export interface NDVState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
-	currentNodePaneType: string;
+	currentNodePaneType: 'inputless' | 'dragless' | 'wide' | 'regular';
 }
 
 
