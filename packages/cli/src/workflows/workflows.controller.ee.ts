@@ -73,6 +73,12 @@ EEWorkflowController.put(
 				await EEWorkflows.share(trx, workflow, newShareeIds);
 			}
 		});
+
+		await InternalHooksManager.getInstance().onWorkflowSharingUpdate(
+			workflowId,
+			req.user.id,
+			shareWithIds,
+		);
 	}),
 );
 

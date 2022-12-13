@@ -254,6 +254,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 		]).then(() => {});
 	}
 
+	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
+		const properties: ITelemetryTrackProperties = {
+			workflow_id: workflowId,
+			user_id_sharer: userId,
+			user_id_list: userList,
+		};
+
+		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
+	}
+
 	async onN8nStop(): Promise<void> {
 		const timeoutPromise = new Promise<void>((resolve) => {
 			setTimeout(() => {
