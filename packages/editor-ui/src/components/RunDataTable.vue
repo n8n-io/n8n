@@ -1,6 +1,22 @@
 <template>
 	<div :class="$style.dataDisplay">
-		<n8n-info-tip v-if="tableData.columns && tableData.columns.length === 0">{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
+			<tr>
+				<th :class="$style.emptyCell"></th>
+				<th :class="$style.tableRightMargin"></th>
+			</tr>
+			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+				<td
+					:data-row="index1"
+					:data-col="0"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
+					<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
+				</td>
+				<td :class="$style.tableRightMargin"></td>
+			</tr>
+		</table>
 		<table :class="$style.table" v-else>
 			<thead>
 				<tr>
