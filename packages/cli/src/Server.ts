@@ -158,8 +158,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
-import { corsMiddleware } from './middlewares/cors';
 import { licenseController } from './license/license.controller';
+import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
@@ -797,14 +797,14 @@ class App {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
-		// Workflow Statistics
-		// ----------------------------------------
-		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
-
-		// ----------------------------------------
 		// License
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/license`, licenseController);
+
+		// ----------------------------------------
+		// Workflow Statistics
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
 		// Tags

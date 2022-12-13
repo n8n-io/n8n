@@ -6,6 +6,8 @@ import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
+import { getLicense } from '@/License';
+import { LicenseService } from '@/license/License.service';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -95,7 +97,14 @@ export class Telemetry {
 		});
 
 		this.executionCountsBuffer = {};
-		allPromises.push(this.track('pulse'));
+
+		// License info
+		const pulsePacket = {
+			plan_name_current: getLicense().getPlanName(),
+			quota: getLicense().getTriggerLimit(),
+			usage: await LicenseService.getActiveTriggerCount(),
+		};
+		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);
 	}
 

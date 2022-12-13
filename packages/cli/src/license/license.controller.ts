@@ -4,13 +4,20 @@ import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-import { ILicensePostResponse, ILicenseReadResponse, ResponseHelper } from '..';
+import {
+	ILicensePostResponse,
+	ILicenseReadResponse,
+	InternalHooksManager,
+	ResponseHelper,
+} from '..';
 import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
-import { LicenseRequest } from '@/requests';
+import { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 
 export const licenseController = express.Router();
+
+const OWNER_ROUTES = ['/activate', '/renew'];
 
 /**
  * Initialize Logger if needed
@@ -24,26 +31,26 @@ licenseController.use((req, res, next) => {
 	next();
 });
 
-// Helper for getting the basic license data that we want to return
-async function getLicenseData(): Promise<ILicenseReadResponse> {
-	const triggerCount = await LicenseService.getActiveTriggerCount();
-	const license = getLicense();
-	const mainPlan = license.getMainPlan();
-
-	return {
-		usage: {
-			executions: {
-				value: triggerCount,
-				limit: (license.getFeatureValue('quota:activeWorkflows') ?? -1) as number,
-				warningThreshold: 0.8,
-			},
-		},
-		license: {
-			planId: mainPlan?.productId ?? '',
-			planName: (license.getFeatureValue('planName') ?? 'Community') as string,
-		},
-	};
-}
+/**
+ * Owner checking
+ */
+licenseController.use((req: AuthenticatedRequest, res, next) => {
+	if (OWNER_ROUTES.includes(req.path) && req.user) {
+		if (!isInstanceOwner(req.user)) {
+			LoggerProxy.info('Non-owner attempted to activate or renew a license', {
+				userId: req.user.id,
+			});
+			ResponseHelper.sendErrorResponse(
+				res,
+				new ResponseHelper.UnauthorizedError(
+					'Only an instance owner may activate or renew a license',
+				),
+			);
+			return;
+		}
+	}
+	next();
+});
 
 /**
  * GET /license
@@ -52,7 +59,7 @@ async function getLicenseData(): Promise<ILicenseReadResponse> {
 licenseController.get(
 	'/',
 	ResponseHelper.send(async (): Promise<ILicenseReadResponse> => {
-		return getLicenseData();
+		return LicenseService.getLicenseData();
 	}),
 );
 
@@ -63,14 +70,6 @@ licenseController.get(
 licenseController.post(
 	'/activate',
 	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<ILicensePostResponse> => {
-		// First ensure that the requesting user is the instance owner
-		if (!isInstanceOwner(req.user)) {
-			LoggerProxy.info('Non-owner attempted to activate a license', {
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.NotFoundError('Only an instance owner may activate a license');
-		}
-
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
@@ -83,8 +82,8 @@ licenseController.post(
 
 		// Return the read data, plus the management JWT
 		return {
-			managementToken: license.getManagementJWT(),
-			...(await getLicenseData()),
+			managementToken: license.getManagementJwt(),
+			...(await LicenseService.getLicenseData()),
 		};
 	}),
 );
@@ -95,29 +94,23 @@ licenseController.post(
  */
 licenseController.post(
 	'/renew',
-	ResponseHelper.send(async (req: LicenseRequest.Renew): Promise<ILicensePostResponse> => {
-		// First ensure that the requesting user is the instance owner
-		if (!isInstanceOwner(req.user)) {
-			LoggerProxy.info('Non-owner attempted to renew a license', {
-				userId: req.user.id,
-			});
-			throw new ResponseHelper.NotFoundError('Only an instance owner may renew a license');
-		}
-
+	ResponseHelper.send(async (): Promise<ILicensePostResponse> => {
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
 			await license.renew();
 		} catch (e) {
+			await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
 			}
 		}
 
 		// Return the read data, plus the management JWT
+		await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
 		return {
-			managementToken: license.getManagementJWT(),
-			...(await getLicenseData()),
+			managementToken: license.getManagementJwt(),
+			...(await LicenseService.getLicenseData()),
 		};
 	}),
 );

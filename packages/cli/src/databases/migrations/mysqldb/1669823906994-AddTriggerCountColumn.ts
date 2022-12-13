@@ -2,8 +2,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import config from '@/config';
 
-export class AddTriggerCountColumn1669823906993 implements MigrationInterface {
-	name = 'AddTriggerCountColumn1669823906993';
+export class AddTriggerCountColumn1669823906994 implements MigrationInterface {
+	name = 'AddTriggerCountColumn1669823906994';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
@@ -11,7 +11,7 @@ export class AddTriggerCountColumn1669823906993 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD COLUMN "triggerCount" integer NOT NULL DEFAULT 0`,
+			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN triggerCount integer NOT NULL DEFAULT 0`,
 		);
 		// Table will be populated by n8n startup - see ActiveWorkflowRunner.ts
 
@@ -22,7 +22,7 @@ export class AddTriggerCountColumn1669823906993 implements MigrationInterface {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN "triggerCount"`,
+			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN triggerCount`,
 		);
 	}
 }

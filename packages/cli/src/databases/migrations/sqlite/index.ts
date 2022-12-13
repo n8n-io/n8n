@@ -48,8 +48,8 @@ const sqliteMigrations = [
 	CreateCredentialUsageTable1665484192211,
 	RemoveCredentialUsageTable1665754637024,
 	AddWorkflowVersionIdColumn1669739707124,
-	WorkflowStatistics1664196174000,
 	AddTriggerCountColumn1669823906993,
+	WorkflowStatistics1664196174000,
 ];
 
 export { sqliteMigrations };

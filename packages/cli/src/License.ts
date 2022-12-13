@@ -112,7 +112,7 @@ export class License {
 		return this.manager.getFeatureValue(feature, requireValidCert);
 	}
 
-	getManagementJWT(): string {
+	getManagementJwt(): string {
 		if (!this.manager) {
 			return '';
 		}
@@ -127,7 +127,7 @@ export class License {
 			return undefined;
 		}
 
-		const entitlements = this.manager.getCurrentEntitlements();
+		const entitlements = this.getCurrentEntitlements();
 		if (!entitlements.length) {
 			return undefined;
 		}
@@ -136,6 +136,15 @@ export class License {
 			(entitlement) =>
 				(entitlement.productMetadata.terms as unknown as { isMainPlan: boolean }).isMainPlan,
 		);
+	}
+
+	// Helper functions for computed data
+	getTriggerLimit(): number {
+		return (this.getFeatureValue('quota:activeWorkflows') ?? -1) as number;
+	}
+
+	getPlanName(): string {
+		return (this.getFeatureValue('planName') ?? 'Community') as string;
 	}
 }
 
