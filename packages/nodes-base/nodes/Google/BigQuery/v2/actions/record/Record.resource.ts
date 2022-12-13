@@ -1,8 +1,9 @@
 import { INodeProperties } from 'n8n-workflow';
 import * as create from './create.operation';
 import * as getAll from './getAll.operation';
+import * as query from './query.operation';
 
-export { create, getAll };
+export { create, getAll, query };
 
 export const description: INodeProperties[] = [
 	{
@@ -25,8 +26,14 @@ export const description: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve many records',
+				description: 'Retrieve records from table',
 				action: 'Get many records',
+			},
+			{
+				name: 'Query',
+				value: 'query',
+				description: 'Run a SQL query',
+				action: 'Run a SQL query',
 			},
 		],
 		default: 'create',
@@ -41,7 +48,7 @@ export const description: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['create', 'getAll'],
+				operation: ['create', 'getAll', 'query'],
 				resource: ['record'],
 			},
 		},
@@ -89,4 +96,5 @@ export const description: INodeProperties[] = [
 	},
 	...create.description,
 	...getAll.description,
+	...query.description,
 ];

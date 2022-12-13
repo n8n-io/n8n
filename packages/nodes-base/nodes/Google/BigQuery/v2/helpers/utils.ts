@@ -53,3 +53,11 @@ export function extractSchemaFields(entry: IDataObject): string | IDataObject {
 	}
 	return { [name]: entryFields.map(extractSchemaFields) };
 }
+
+export function parseField(field: string): string | IDataObject {
+	if (!field.includes('.')) {
+		return field;
+	}
+	const [rootField, ...rest] = field.split('.');
+	return { [rootField]: [parseField(rest.join('.'))] };
+}

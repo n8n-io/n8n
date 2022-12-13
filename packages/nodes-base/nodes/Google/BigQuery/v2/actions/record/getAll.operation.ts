@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { extractSchemaFields, simplify } from '../../helpers/utils';
+import { extractSchemaFields, parseField, simplify } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -157,13 +157,6 @@ export async function execute(
 	}
 
 	if (qs.selectedFields) {
-		const parseField = (field: string): string | IDataObject => {
-			if (!field.includes('.')) {
-				return field;
-			}
-			const [rootField, ...rest] = field.split('.');
-			return { [rootField]: [parseField(rest.join('.'))] };
-		};
 		fields = (fields as string[]).map((field: string) => parseField(field));
 	}
 
