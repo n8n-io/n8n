@@ -2976,7 +2976,8 @@ export class HubspotV2 implements INodeType {
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
-				} catch (error) {
+				} catch (errorObject) {
+					const error = errorObject.cause.cause ? errorObject.cause : errorObject;
 					if (
 						error.cause.error.validationResults &&
 						error.cause.error.validationResults[0].error === 'INVALID_EMAIL'

@@ -1141,6 +1141,7 @@ export const contactFields: INodeProperties[] = [
 												operator: ['HAS_PROPERTY', 'NOT_HAS_PROPERTY'],
 											},
 										},
+										required: true,
 										type: 'string',
 										default: '',
 									},
