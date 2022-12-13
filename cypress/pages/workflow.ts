@@ -38,8 +38,7 @@ export class WorkflowPage extends BasePage {
 	actions = {
 		visit: () => {
 			cy.visit(this.url);
-			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
-			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
+			cy.waitForLoad();
 		},
 		addInitialNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.canvasPlusButton().click();

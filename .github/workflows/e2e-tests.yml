@@ -61,7 +61,7 @@ jobs:
       - name: Test E2E
         run: |
           pnpm cypress:install
-          pnpm test:e2e:smoke
+          pnpm test:e2e:all
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -70,7 +70,6 @@ jobs:
           name: cypress-screenshots
           path: |
             cypress/screenshots
-            cypress/videos
           retention-days: 1
 
       - name: Notify Slack on failure
