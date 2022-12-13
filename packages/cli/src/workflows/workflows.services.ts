@@ -397,7 +397,9 @@ export class WorkflowsService {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
-			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
+			const testWebhooks = TestWebhooks.getInstance();
+
+			const needsWebhook = await testWebhooks.needsWebhookData(
 				workflowData,
 				workflow,
 				additionalData,
@@ -406,6 +408,11 @@ export class WorkflowsService {
 				sessionId,
 				destinationNode,
 			);
+
+			if (startNodes?.length === 1) {
+				testWebhooks.partialTestNode = startNodes[0];
+			}
+
 			if (needsWebhook) {
 				return {
 					waitingForWebhook: true,
