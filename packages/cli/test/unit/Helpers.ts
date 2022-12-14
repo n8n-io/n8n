@@ -67,3 +67,5 @@ export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypes
 
 	return nodeTypesInstance;
 }
+
+export const flushPromises = () => Promise.resolve(setImmediate);
