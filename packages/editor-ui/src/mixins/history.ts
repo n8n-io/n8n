@@ -16,12 +16,7 @@ const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 
 export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend({
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useHistoryStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useHistoryStore, useUIStore, useWorkflowsStore),
 		isNDVOpen(): boolean {
 			return this.ndvStore.activeNodeName !== null;
 		},
@@ -41,9 +36,15 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 				event.preventDefault();
 				if (!this.isNDVOpen) {
 					if (event.shiftKey) {
-						this.callDebounced('redo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
+						this.callDebounced('redo', {
+							debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL,
+							trailing: true,
+						});
 					} else {
-						this.callDebounced('undo', { debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL, trailing: true  });
+						this.callDebounced('undo', {
+							debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL,
+							trailing: true,
+						});
 					}
 				} else if (!event.shiftKey) {
 					this.trackUndoAttempt(event);
@@ -98,11 +99,14 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 			}
 			this.trackCommand(command, 'redo');
 		},
-		trackCommand(command: Undoable, type: 'undo'|'redo'): void {
+		trackCommand(command: Undoable, type: 'undo' | 'redo'): void {
 			if (command instanceof Command) {
-				this.$telemetry.track(`User hit ${type}`, { commands_length: 1, commands: [ command.name ] });
+				this.$telemetry.track(`User hit ${type}`, { commands_length: 1, commands: [command.name] });
 			} else if (command instanceof BulkCommand) {
-				this.$telemetry.track(`User hit ${type}`, { commands_length: command.commands.length, commands: command.commands.map(c => c.name) });
+				this.$telemetry.track(`User hit ${type}`, {
+					commands_length: command.commands.length,
+					commands: command.commands.map((c) => c.name),
+				});
 			}
 		},
 		trackUndoAttempt(event: KeyboardEvent) {

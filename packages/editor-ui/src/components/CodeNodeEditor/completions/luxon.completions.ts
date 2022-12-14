@@ -23,13 +23,15 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			});
 
-			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
-				return {
-					label: `${matcher}.${method}()`,
-					type: 'function',
-					info: description,
-				};
-			}));
+			options.push(
+				...this.luxonInstanceMethods().map(([method, description]) => {
+					return {
+						label: `${matcher}.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				}),
+			);
 
 			return {
 				from: preCursor.from,
@@ -55,13 +57,15 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 				};
 			});
 
-			options.push(...this.luxonInstanceMethods().map(([method, description]) => {
-				return {
-					label: `${matcher}.${method}()`,
-					type: 'function',
-					info: description,
-				};
-			}));
+			options.push(
+				...this.luxonInstanceMethods().map(([method, description]) => {
+					return {
+						label: `${matcher}.${method}()`,
+						type: 'function',
+						info: description,
+					};
+				}),
+			);
 
 			return {
 				from: preCursor.from,

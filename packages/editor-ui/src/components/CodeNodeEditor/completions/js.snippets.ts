@@ -1,5 +1,5 @@
 import { snippets } from '@codemirror/lang-javascript';
-import { completeFromList, snippetCompletion } from "@codemirror/autocomplete";
+import { completeFromList, snippetCompletion } from '@codemirror/autocomplete';
 
 /**
  * https://github.com/codemirror/lang-javascript/blob/main/src/snippets.ts
