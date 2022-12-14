@@ -51,7 +51,11 @@
 </template>
 
 <script lang="ts">
-import {EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS} from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	INVITE_USER_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
