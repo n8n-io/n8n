@@ -41,6 +41,7 @@ export class WorkflowPage extends BasePage {
 		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		workflowMenuImportFromURLItem: () => cy.getByTestId('workflow-menu-item-import-from-url'),
+		workflowMenuImportFromFile: () => cy.getByTestId('workflow-menu-item-import-from-file'),
 	};
 	actions = {
 		visit: () => {

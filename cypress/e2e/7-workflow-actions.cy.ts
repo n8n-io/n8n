@@ -125,4 +125,15 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
+	it('should import workflow from file', () => {
+		WorkflowPage.getters.workflowImportInput().selectFile(
+			'cypress/fixtures/Test_workflow-actions_paste-data.json',
+			{ force: true }
+		);
+		cy.waitForLoad();
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+	});
+
 });
