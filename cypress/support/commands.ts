@@ -146,6 +146,7 @@ Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	}
 });
 Cypress.Commands.add('readClipboard', () => cy.window().its('navigator.clipboard').invoke('readText'));
+
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
 	cy.wrap(selector).then($destination => {
@@ -156,4 +157,20 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 		});
 		$destination[0].dispatchEvent(pasteEvent);
 	});
+});
+
+Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+	const element = cy.get(selector);
+	element.should('exist');
+
+	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+
+	element.trigger('mousedown');
+	element.trigger('mousemove', {
+		which: 1,
+		pageX: originalLocation.right + xDiff,
+		pageY: originalLocation.top + yDiff,
+		force: true,
+	});
+	element.trigger('mouseup');
 });

@@ -2,7 +2,9 @@
 	<div :class="$style.container">
 		<div v-if="isDefaultUser">
 			<n8n-action-box
-				:description="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')"
+				:description="
+					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
+				"
 				:buttonText="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.button')"
 				@click="goToUsersSettings"
 			/>
@@ -13,10 +15,17 @@
 					{{ $locale.baseText('credentialEdit.credentialSharing.info.owner') }}
 				</template>
 				<template v-else>
-					{{ $locale.baseText('credentialEdit.credentialSharing.info.sharee', { interpolate: { credentialOwnerName } }) }}
+					{{
+						$locale.baseText('credentialEdit.credentialSharing.info.sharee', {
+							interpolate: { credentialOwnerName },
+						})
+					}}
 				</template>
 			</n8n-info-tip>
-			<n8n-info-tip :bold="false" v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner">
+			<n8n-info-tip
+				:bold="false"
+				v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner"
+			>
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
 			</n8n-info-tip>
 			<n8n-user-select
@@ -43,31 +52,35 @@
 </template>
 
 <script lang="ts">
-import {IUser} from "@/Interface";
-import mixins from "vue-typed-mixins";
-import {showMessage} from "@/mixins/showMessage";
+import { IUser } from '@/Interface';
+import mixins from 'vue-typed-mixins';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
-import { useCredentialsStore } from "@/stores/credentials";
-import {VIEWS} from "@/constants";
+import { useCredentialsStore } from '@/stores/credentials';
+import { VIEWS } from '@/constants';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'CredentialSharing',
-	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions', 'modalBus'],
+	props: [
+		'credential',
+		'credentialId',
+		'credentialData',
+		'sharedWith',
+		'credentialPermissions',
+		'modalBus',
+	],
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUsersStore,
-		),
+		...mapStores(useCredentialsStore, useUsersStore),
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
-				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find((sharee: IUser) => sharee.id === user.id);
+				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find(
+					(sharee: IUser) => sharee.id === user.id,
+				);
 
 				return !isCurrentUser && !isAlreadySharedWithUser;
 			});
@@ -94,17 +107,26 @@ export default mixins(
 
 			if (user) {
 				const confirm = await this.confirmMessage(
-					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', { interpolate: { name: user.fullName || '' } }),
+					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', {
+						interpolate: { name: user.fullName || '' },
+					}),
 					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
 					null,
-					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText'),
-					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText'),
+					this.$locale.baseText(
+						'credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText',
+					),
 				);
 
 				if (confirm) {
-					this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
-						return sharee.id !== user.id;
-					}));
+					this.$emit(
+						'change',
+						this.credentialData.sharedWith.filter((sharee: IUser) => {
+							return sharee.id !== user.id;
+						}),
+					);
 				}
 			}
 		},

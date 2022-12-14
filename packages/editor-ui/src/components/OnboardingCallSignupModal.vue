@@ -15,7 +15,10 @@
 				</n8n-text>
 			</div>
 			<div @keyup.enter="onSignup">
-				<n8n-input v-model="email" :placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')" />
+				<n8n-input
+					v-model="email"
+					:placeholder="$locale.baseText('onboardingCallSignupModal.emailInput.placeholder')"
+				/>
 				<n8n-text v-if="showError" size="small" class="mt-4xs" tag="div" color="danger">
 					{{ $locale.baseText('onboardingCallSignupModal.infoText.emailError') }}
 				</n8n-text>
@@ -47,10 +50,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import {
-	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
-	VALID_EMAIL_REGEX,
-} from '@/constants';
+import { ONBOARDING_CALL_SIGNUP_MODAL_KEY, VALID_EMAIL_REGEX } from '@/constants';
 import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
@@ -58,14 +58,12 @@ import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	components: {
 		Modal,
 	},
 	name: 'OnboardingCallSignupModal',
-	props: [ 'modalName' ],
+	props: ['modalName'],
 	data() {
 		return {
 			email: '',

@@ -1,13 +1,11 @@
-import { PropType } from "vue";
+import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { IJsPlumbInstance, INodeUi, XYPosition } from '@/Interface';
 // import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
@@ -31,7 +29,7 @@ export const nodeBase = mixins(
 		if (this.data !== null) {
 			try {
 				this.__addNode(this.data);
-			} catch(error) {
+			} catch (error) {
 				// This breaks when new nodes are loaded into store but workflow tab is not currently active
 				// Shouldn't affect anything
 			}
@@ -48,8 +46,8 @@ export const nodeBase = mixins(
 		data (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
 		},
-		nodeId (): string {
-			return this.data?.id  || '';
+		nodeId(): string {
+			return this.data?.id || '';
 		},
 	},
 	props: {
@@ -76,7 +74,7 @@ export const nodeBase = mixins(
 		},
 	},
 	methods: {
-		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {
+		__addInputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
 			let index;
 			const indexData: {
@@ -93,7 +91,8 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
+				const anchorPosition =
+					NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: EndpointOptions = {
 					uuid:NodeViewUtils. getInputEndpointUUID(this.nodeId, index),
@@ -163,7 +162,8 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
+				const anchorPosition =
+					NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: EndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
@@ -331,7 +331,7 @@ export const nodeBase = mixins(
 							moveNodes.push(this.data);
 						}
 
-						if(moveNodes.length > 1) {
+						if (moveNodes.length > 1) {
 							this.historyStore.startRecordingUndo();
 						}
 						// This does for some reason just get called once for the node that got clicked
@@ -359,12 +359,14 @@ export const nodeBase = mixins(
 							};
 							const oldPosition = node.position;
 							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
-								this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition, this));
+								this.historyStore.pushCommandToUndo(
+									new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
+								);
 								this.workflowsStore.updateNodeProperties(updateInformation);
 								this.$emit('moved', node);
 							}
 						});
-						if(moveNodes.length > 1) {
+						if (moveNodes.length > 1) {
 							this.historyStore.stopRecordingUndo();
 						}
 					}
@@ -394,11 +396,15 @@ export const nodeBase = mixins(
 				}
 			}
 		},
-		mouseLeftClick (e: MouseEvent) {
+		mouseLeftClick(e: MouseEvent) {
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 			for (let index = 0; index < path.length; index++) {
-				if (path[index].className && typeof path[index].className === 'string' && path[index].className.includes('no-select-on-click')) {
+				if (
+					path[index].className &&
+					typeof path[index].className === 'string' &&
+					path[index].className.includes('no-select-on-click')
+				) {
 					return;
 				}
 			}

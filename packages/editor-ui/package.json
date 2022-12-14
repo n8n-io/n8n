@@ -20,7 +20,7 @@
     "dev": "pnpm serve",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src --fix",
-    "format": "prettier **/**.{ts,vue} --write",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "serve": "cross-env VUE_APP_URL_BASE_API=http://localhost:5678/ vite --host 0.0.0.0 --port 8080 dev",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",

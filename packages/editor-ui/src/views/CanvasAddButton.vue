@@ -1,6 +1,18 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container"  data-test-id="canvas-add-button">
-		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="nodeCreatorStore.showScrim" :popper-class="$style.tooltip" :open-delay="700">
+	<div
+		:class="$style.container"
+		:style="containerCssVars"
+		ref="container"
+		data-test-id="canvas-add-button"
+	>
+		<n8n-tooltip
+			placement="top"
+			:value="showTooltip"
+			manual
+			:disabled="nodeCreatorStore.showScrim"
+			:popper-class="$style.tooltip"
+			:open-delay="700"
+		>
 			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -47,7 +59,7 @@ const containerCssVars = computed(() => ({
 	z-index: 101;
 
 	&:hover .button svg path {
-		fill: var(--color-primary)
+		fill: var(--color-primary);
 	}
 }
 
@@ -65,7 +77,7 @@ const containerCssVars = computed(() => ({
 		width: 26px !important;
 		height: 40px;
 		path {
-			fill: var(--color-foreground-xdark)
+			fill: var(--color-foreground-xdark);
 		}
 	}
 }
@@ -78,7 +90,7 @@ const containerCssVars = computed(() => ({
 	width: max-content;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose	);
+	line-height: var(--font-line-height-xloose);
 	color: var(--color-text-dark);
 	margin-top: var(--spacing-2xs);
 }

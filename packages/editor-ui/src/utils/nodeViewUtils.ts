@@ -30,8 +30,8 @@ export const OVERLAY_RUN_ITEMS_ID = 'run-items-label';
 export const OVERLAY_CONNECTION_ACTIONS_ID = 'connection-actions';
 export const JSPLUMB_FLOWCHART_STUB = 26;
 export const OVERLAY_INPUT_NAME_LABEL = 'input-name-label';
-export const OVERLAY_INPUT_NAME_LABEL_POSITION = [-3, .5];
-export const OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED = [-4.5, .5];
+export const OVERLAY_INPUT_NAME_LABEL_POSITION = [-3, 0.5];
+export const OVERLAY_INPUT_NAME_LABEL_POSITION_MOVED = [-4.5, 0.5];
 export const OVERLAY_OUTPUT_NAME_LABEL = 'output-name-label';
 export const GRID_SIZE = 20;
 
@@ -68,10 +68,7 @@ export const WELCOME_STICKY_NODE = {
 	name: QUICKSTART_NOTE_NAME,
 	type: STICKY_NODE_TYPE,
 	typeVersion: 1,
-	position: [
-		0,
-		0,
-	] as XYPosition,
+	position: [0, 0] as XYPosition,
 	parameters: {
 		height: 300,
 		width: 380,
@@ -154,9 +151,7 @@ export const ANCHOR_POSITIONS: {
 	}
 } = {
 	input: {
-		1: [
-			[0.01, 0.5, -1, 0],
-		],
+		1: [[0.01, 0.5, -1, 0]],
 		2: [
 			[0.01, 0.3, -1, 0],
 			[0.01, 0.7, -1, 0],
@@ -174,29 +169,29 @@ export const ANCHOR_POSITIONS: {
 		],
 	},
 	output: {
-		1: [
-			[.99, 0.5, 1, 0],
-		],
+		1: [[0.99, 0.5, 1, 0]],
 		2: [
-			[.99, 0.3, 1, 0],
-			[.99, 0.7, 1, 0],
+			[0.99, 0.3, 1, 0],
+			[0.99, 0.7, 1, 0],
 		],
 		3: [
-			[.99, 0.25, 1, 0],
-			[.99, 0.5, 1, 0],
-			[.99, 0.75, 1, 0],
+			[0.99, 0.25, 1, 0],
+			[0.99, 0.5, 1, 0],
+			[0.99, 0.75, 1, 0],
 		],
 		4: [
-			[.99, 0.2, 1, 0],
-			[.99, 0.4, 1, 0],
-			[.99, 0.6, 1, 0],
-			[.99, 0.8, 1, 0],
+			[0.99, 0.2, 1, 0],
+			[0.99, 0.4, 1, 0],
+			[0.99, 0.6, 1, 0],
+			[0.99, 0.8, 1, 0],
 		],
 	},
 };
 
-
-export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string): EndpointStyle => ({
+export const getInputEndpointStyle = (
+	nodeTypeData: INodeTypeDescription,
+	color: string,
+): EndpointStyle => ({
 	width: 8,
 	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
 	fill: getStyleTokenValue(color),
@@ -249,34 +244,41 @@ export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 };
 
 export const getWorkflowCorners = (nodes: INodeUi[]): IBounds => {
-	return nodes.reduce((accu: IBounds, node: INodeUi) => {
-		const hasCustomDimensions = [STICKY_NODE_TYPE, PLACEHOLDER_BUTTON].includes(node.type);
-		const xOffset = hasCustomDimensions && isNumber(node.parameters.width) ? node.parameters.width : NODE_SIZE;
-		const yOffset = hasCustomDimensions && isNumber(node.parameters.height) ? node.parameters.height : NODE_SIZE;
+	return nodes.reduce(
+		(accu: IBounds, node: INodeUi) => {
+			const hasCustomDimensions = [STICKY_NODE_TYPE, PLACEHOLDER_BUTTON].includes(node.type);
+			const xOffset =
+				hasCustomDimensions && isNumber(node.parameters.width) ? node.parameters.width : NODE_SIZE;
+			const yOffset =
+				hasCustomDimensions && isNumber(node.parameters.height)
+					? node.parameters.height
+					: NODE_SIZE;
 
-		const x = node.position[0];
-		const y = node.position[1];
+			const x = node.position[0];
+			const y = node.position[1];
 
-		if (x < accu.minX) {
-			accu.minX = x;
-		}
-		if (y < accu.minY) {
-			accu.minY = y;
-		}
-		if ((x + xOffset) > accu.maxX) {
-			accu.maxX = x + xOffset;
-		}
-		if ((y + yOffset) > accu.maxY) {
-			accu.maxY = y + yOffset;
-		}
+			if (x < accu.minX) {
+				accu.minX = x;
+			}
+			if (y < accu.minY) {
+				accu.minY = y;
+			}
+			if (x + xOffset > accu.maxX) {
+				accu.maxX = x + xOffset;
+			}
+			if (y + yOffset > accu.maxY) {
+				accu.maxY = y + yOffset;
+			}
 
-		return accu;
-	}, {
-		minX: nodes[0].position[0],
-		minY: nodes[0].position[1],
-		maxX: nodes[0].position[0],
-		maxY: nodes[0].position[1],
-	});
+			return accu;
+		},
+		{
+			minX: nodes[0].position[0],
+			minY: nodes[0].position[1],
+			maxX: nodes[0].position[0],
+			maxY: nodes[0].position[1],
+		},
+	);
 };
 
 export const getOverlay = (item: Connection | Endpoint, overlayId: string) => {
@@ -311,7 +313,9 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
 	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
-	const targetPosition = targetEndpoint.anchor.lastReturnValue ? targetEndpoint.anchor.lastReturnValue[0] : sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
+	const targetPosition = targetEndpoint.anchor.lastReturnValue
+		? targetEndpoint.anchor.lastReturnValue[0]
+		: sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
 
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
@@ -320,7 +324,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const arrow = getOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 	if (arrow) {
 		arrow.setVisible(isBackwards && isTooLong);
-		arrow.setLocation(hasItemsLabel ? .6: .5);
+		arrow.setLocation(hasItemsLabel ? 0.6 : 0.5);
 	}
 };
 
@@ -342,7 +346,7 @@ const isLoopingBackwards = (connection: Connection) => {
 	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
 	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
 
-	return targetPosition - sourcePosition < (-1 * LOOPBACK_MINIMUM);
+	return targetPosition - sourcePosition < -1 * LOOPBACK_MINIMUM;
 };
 
 export const showOrHideItemsLabel = (connection: Connection) => {
@@ -365,16 +369,14 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 
 	if (diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL) {
 		overlay.setVisible(false);
-	}
-	else {
+	} else {
 		overlay.setVisible(true);
 	}
 	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
 			innerElement.classList.add('floating');
-		}
-		else {
+		} else {
 			innerElement.classList.remove('floating');
 		}
 	}
@@ -392,7 +394,6 @@ export const getIcon = (name: string): string => {
 	return '';
 };
 
-
 const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	if (Math.abs(position1[0] - position2[0]) <= 100) {
 		if (Math.abs(position1[1] - position2[1]) <= 50) {
@@ -403,7 +404,11 @@ const canUsePosition = (position1: XYPosition, position2: XYPosition) => {
 	return true;
 };
 
-export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPosition, movePosition?: XYPosition): XYPosition => {
+export const getNewNodePosition = (
+	nodes: INodeUi[],
+	newPosition: XYPosition,
+	movePosition?: XYPosition,
+): XYPosition => {
 	const targetPosition: XYPosition = [...newPosition];
 
 	targetPosition[0] = closestNumberDivisibleBy(targetPosition[0], GRID_SIZE);
@@ -436,18 +441,30 @@ export const getNewNodePosition = (nodes: INodeUi[], newPosition: XYPosition, mo
 
 export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
 	// @ts-ignore
-	const x = e.pageX !== undefined ? e.pageX : (e.touches && e.touches[0] && e.touches[0].pageX ? e.touches[0].pageX : 0);
+	const x =
+		e.pageX !== undefined
+			? e.pageX
+			: e.touches && e.touches[0] && e.touches[0].pageX
+			? e.touches[0].pageX
+			: 0;
 	// @ts-ignore
-	const y = e.pageY !== undefined ? e.pageY : (e.touches && e.touches[0] && e.touches[0].pageY ? e.touches[0].pageY : 0);
+	const y =
+		e.pageY !== undefined
+			? e.pageY
+			: e.touches && e.touches[0] && e.touches[0].pageY
+			? e.touches[0].pageY
+			: 0;
 
 	return [x, y];
 };
 
-export const getRelativePosition = (x: number, y: number, scale: number, offset: XYPosition): XYPosition => {
-	return [
-		(x - offset[0]) / scale,
-		(y - offset[1]) / scale,
-	];
+export const getRelativePosition = (
+	x: number,
+	y: number,
+	scale: number,
+	offset: XYPosition,
+): XYPosition => {
+	return [(x - offset[0]) / scale, (y - offset[1]) / scale];
 };
 
 export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosition => {
@@ -456,14 +473,19 @@ export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosit
 	return getRelativePosition(editorWidth / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
 };
 
-export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition, executionPreview: boolean) => {
+export const getBackgroundStyles = (
+	scale: number,
+	offsetPosition: XYPosition,
+	executionPreview: boolean,
+) => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
 	const dotPosition = (GRID_SIZE / 2) * scale;
 
 	if (executionPreview) {
 		return {
-			'background-image': 'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+			'background-image':
+				'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
 			'background-size': `${squareSize}px ${squareSize}px`,
 			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
 		};
@@ -503,7 +525,13 @@ export const showConnectionActions = (connection: Connection | null) => {
 };
 
 export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputConnections) => {
-	const outputMap: {[sourceOutputIndex: string]: {[targetNodeName: string]: {[targetInputIndex: string]: {total: number, iterations: number}}}} = {};
+	const outputMap: {
+		[sourceOutputIndex: string]: {
+			[targetNodeName: string]: {
+				[targetInputIndex: string]: { total: number; iterations: number };
+			};
+		};
+	} = {};
 
 	data.forEach((run: ITaskData) => {
 		if (!run.data || !run.data.main) {
@@ -533,25 +561,26 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 				return;
 			}
 
-			nodeConnections[sourceOutputIndex]
-				.map((connection: IConnection) => {
-					const targetNodeName = connection.node;
-					const targetInputIndex = connection.index;
+			nodeConnections[sourceOutputIndex].map((connection: IConnection) => {
+				const targetNodeName = connection.node;
+				const targetInputIndex = connection.index;
 
-					if (!outputMap[sourceOutputIndex][targetNodeName]) {
-						outputMap[sourceOutputIndex][targetNodeName] = {};
-					}
+				if (!outputMap[sourceOutputIndex][targetNodeName]) {
+					outputMap[sourceOutputIndex][targetNodeName] = {};
+				}
 
-					if (!outputMap[sourceOutputIndex][targetNodeName][targetInputIndex]) {
-						outputMap[sourceOutputIndex][targetNodeName][targetInputIndex] = {
-							total: 0,
-							iterations: 0,
-						};
-					}
+				if (!outputMap[sourceOutputIndex][targetNodeName][targetInputIndex]) {
+					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex] = {
+						total: 0,
+						iterations: 0,
+					};
+				}
 
-					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output ? output.length : 0;
-					outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
-				});
+				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].total += output
+					? output.length
+					: 0;
+				outputMap[sourceOutputIndex][targetNodeName][targetInputIndex].iterations += output ? 1 : 0;
+			});
 		});
 	});
 
@@ -567,14 +596,17 @@ export const resetConnection = (connection: Connection) => {
 	}
 };
 
-export const getRunItemsLabel = (output: {total: number, iterations: number}): string => {
+export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {
 	let label = `${output.total}`;
 	label = output.total > 1 ? `${label} items` : `${label} item`;
 	label = output.iterations > 1 ? `${label} total` : label;
 	return label;
 };
 
-export const addConnectionOutputSuccess = (connection: Connection, output: {total: number, iterations: number}) => {
+export const addConnectionOutputSuccess = (
+	connection: Connection,
+	output: { total: number; iterations: number },
+) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
 	// TODO: Success state.
 	// if (connection.canvas) {
@@ -591,7 +623,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 			id: OVERLAY_RUN_ITEMS_ID,
 			label: `<span>${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
-			location: .5,
+			location: 0.5,
 		},
 	});
 
@@ -599,8 +631,7 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 	showOrHideMidpointArrow(connection);
 };
 
-
-const getContentDimensions = (): { editorWidth: number, editorHeight: number } => {
+const getContentDimensions = (): { editorWidth: number; editorHeight: number } => {
 	let contentWidth = window.innerWidth;
 	let contentHeight = window.innerHeight;
 	const nodeViewRoot = document.getElementById('node-view-root');
@@ -616,7 +647,10 @@ const getContentDimensions = (): { editorWidth: number, editorHeight: number } =
 	};
 };
 
-export const getZoomToFit = (nodes: INodeUi[], addFooterPadding = true): {offset: XYPosition, zoomLevel: number} => {
+export const getZoomToFit = (
+	nodes: INodeUi[],
+	addFooterPadding = true,
+): { offset: XYPosition; zoomLevel: number } => {
 	const { minX, minY, maxX, maxY } = getWorkflowCorners(nodes);
 	const { editorWidth, editorHeight } = getContentDimensions();
 	const footerHeight = addFooterPadding ? 200 : 100;
@@ -631,15 +665,18 @@ export const getZoomToFit = (nodes: INodeUi[], addFooterPadding = true): {offset
 
 	const zoomLevel = Math.min(scaleX, scaleY, 1);
 
-	let xOffset = (minX * -1) * zoomLevel; // find top right corner
+	let xOffset = minX * -1 * zoomLevel; // find top right corner
 	xOffset += (editorWidth - (maxX - minX) * zoomLevel) / 2; // add padding to center workflow
 
-	let yOffset = (minY * -1) * zoomLevel; // find top right corner
+	let yOffset = minY * -1 * zoomLevel; // find top right corner
 	yOffset += (editorHeight - (maxY - minY + footerHeight) * zoomLevel) / 2; // add padding to center workflow
 
 	return {
 		zoomLevel,
-		offset: [closestNumberDivisibleBy(xOffset, GRID_SIZE), closestNumberDivisibleBy(yOffset, GRID_SIZE)],
+		offset: [
+			closestNumberDivisibleBy(xOffset, GRID_SIZE),
+			closestNumberDivisibleBy(yOffset, GRID_SIZE),
+		],
 	};
 };
 
@@ -683,7 +720,11 @@ export const moveBackInputLabelPosition = (targetEndpoint: Endpoint) => {
 	}
 };
 
-export const addConnectionActionsOverlay = (connection: Connection, onDelete: Function, onAdd: Function) => {
+export const addConnectionActionsOverlay = (
+	connection: Connection,
+	onDelete: Function,
+	onAdd: Function,
+) => {
 	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
 		return; // avoid free floating actions when moving connection from one node to another
 	}
@@ -691,16 +732,23 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 		type: 'Label',
 		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
-			label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
+			label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon(
+				'trash',
+			)}</div>`,
 			cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
 			visible: false,
 			events: {
 				mousedown: (overlay: Overlay, event: MouseEvent) => {
 					const element = event.target as HTMLElement;
-					if (element.classList.contains('delete') || (element.parentElement && element.parentElement.classList.contains('delete'))) {
+					if (
+						element.classList.contains('delete') ||
+						(element.parentElement && element.parentElement.classList.contains('delete'))
+					) {
 						onDelete();
-					}
-					else if (element.classList.contains('add') || (element.parentElement && element.parentElement.classList.contains('add'))) {
+					} else if (
+						element.classList.contains('add') ||
+						(element.parentElement && element.parentElement.classList.contains('add'))
+					) {
 						onAdd();
 					}
 				},
@@ -726,7 +774,7 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 	nodes.map((node) => {
-		node.position[0] += diffX + (NODE_SIZE * 2);
+		node.position[0] += diffX + NODE_SIZE * 2;
 		node.position[1] += diffY;
 	});
 

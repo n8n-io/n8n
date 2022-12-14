@@ -1,11 +1,11 @@
 import { parsePermissionsTable } from '@/permissions';
-import { IUser } from "@/Interface";
+import { IUser } from '@/Interface';
 
 describe('parsePermissionsTable()', () => {
 	const user: IUser = {
-		id: "1",
-		firstName: "John",
-		lastName: "Doe",
+		id: '1',
+		firstName: 'John',
+		lastName: 'Doe',
 		isDefaultUser: false,
 		isOwner: true,
 		isPending: false,

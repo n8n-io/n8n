@@ -9,7 +9,14 @@
 		<banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
-			:message="$locale.baseText(`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${!credentialPermissions.isOwner ? '.sharee' : ''}`, { interpolate: { owner: credentialOwnerName } })"
+			:message="
+				$locale.baseText(
+					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
+						!credentialPermissions.isOwner ? '.sharee' : ''
+					}`,
+					{ interpolate: { owner: credentialOwnerName } },
+				)
+			"
 			:details="authError"
 			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
 			buttonLoadingLabel="Retrying"
@@ -53,17 +60,22 @@
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
 				:value="oAuthCallbackUrl"
 				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-				:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-				:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+				:hint="
+					$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })
+				"
+				:toastTitle="
+					$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')
+				"
 			/>
 		</template>
-		<enterprise-edition
-			v-else
-			:features="[EnterpriseEditionFeature.Sharing]"
-		>
+		<enterprise-edition v-else :features="[EnterpriseEditionFeature.Sharing]">
 			<div class="ph-no-capture">
 				<n8n-info-tip :bold="false">
-					{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
+					{{
+						$locale.baseText('credentialEdit.credentialEdit.info.sharee', {
+							interpolate: { credentialOwnerName },
+						})
+					}}
 				</n8n-info-tip>
 			</div>
 		</enterprise-edition>
@@ -78,7 +90,12 @@
 		/>
 
 		<OauthButton
-			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.isOwner"
+			v-if="
+				isOAuthType &&
+				requiredPropertiesFilled &&
+				!isOAuthConnected &&
+				credentialPermissions.isOwner
+			"
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
@@ -101,7 +118,7 @@ import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
-import { IPermissions } from "@/permissions";
+import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -127,8 +144,7 @@ export default mixins(restApi).extend({
 		parentTypes: {
 			type: Array,
 		},
-		credentialData: {
-		},
+		credentialData: {},
 		credentialId: {
 			type: [String, Number],
 			default: '',
@@ -182,23 +198,18 @@ export default mixins(restApi).extend({
 		);
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useNDVStore,
-			useRootStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useCredentialsStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
 			}
 
-			const appName = getAppNameFromCredType(
-				(this.credentialType as ICredentialType).displayName,
-			);
+			const appName = getAppNameFromCredType((this.credentialType as ICredentialType).displayName);
 
-			return appName || this.$locale.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+			return (
+				appName ||
+				this.$locale.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo')
+			);
 		},
 		credentialTypeName(): string {
 			return (this.credentialType as ICredentialType).name;
@@ -215,34 +226,44 @@ export default mixins(restApi).extend({
 				return '';
 			}
 
-			if (type.documentationUrl.startsWith('https://') || type.documentationUrl.startsWith('http://')) {
+			if (
+				type.documentationUrl.startsWith('https://') ||
+				type.documentationUrl.startsWith('http://')
+			) {
 				return type.documentationUrl;
 			}
 
-			return isCommunityNode ?
-				'' : // Don't show documentation link for community nodes if the URL is not an absolute path
-				`${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			return isCommunityNode
+				? '' // Don't show documentation link for community nodes if the URL is not an absolute path
+				: `${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
-			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
+			return (
+				this.credentialTypeName === 'googleOAuth2Api' ||
+				this.parentTypes.includes('googleOAuth2Api')
+			);
 		},
 		oAuthCallbackUrl(): string {
 			const oauthType =
-				this.credentialTypeName === 'oAuth2Api' ||
-				this.parentTypes.includes('oAuth2Api')
+				this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
 			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
-			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
+			return (
+				this.isOAuthType &&
+				this.requiredPropertiesFilled &&
+				this.isOAuthConnected &&
+				!this.authError
+			);
 		},
 	},
 	methods: {
-		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
+		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
-		onDocumentationUrlClick (): void {
+		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {
 				docs_link: this.documentationUrl,
 				credential_type: this.credentialTypeName,
@@ -268,5 +289,4 @@ export default mixins(restApi).extend({
 		margin-bottom: var(--spacing-l);
 	}
 }
-
 </style>
