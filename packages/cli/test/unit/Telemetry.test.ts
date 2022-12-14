@@ -287,7 +287,6 @@ describe('Telemetry', () => {
 
 			jest.advanceTimersToNextTimer();
 			await flushPromises();
-			// await Promise.resolve(setImmediate);
 
 			expect(pulseSpy).toBeCalledTimes(1);
 			expect(spyTrack).toHaveBeenCalledTimes(1);
@@ -300,7 +299,6 @@ describe('Telemetry', () => {
 			jest.advanceTimersToNextTimer();
 
 			await flushPromises();
-			// await Promise.resolve();
 
 			expect(pulseSpy).toBeCalledTimes(2);
 			expect(spyTrack).toHaveBeenCalledTimes(2);
@@ -311,7 +309,7 @@ describe('Telemetry', () => {
 			});
 		});
 
-		test.only('should track workflow counts correctly', async () => {
+		test('should track workflow counts correctly', async () => {
 			expect(pulseSpy).toBeCalledTimes(0);
 
 			let execBuffer = telemetry.getCountsBuffer();
