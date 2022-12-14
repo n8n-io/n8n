@@ -38,7 +38,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 	meta: {
 		nodeView?: boolean;
 		templatesEnabled?: boolean;
-		getRedirect?: () => {name: string} | false;
+		getRedirect?: () => { name: string } | false;
 		permissions: IPermissions;
 		telemetry?: {
 			disabled?: true;
@@ -52,7 +52,7 @@ function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return {name: VIEWS.NOT_FOUND};
+		return { name: VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -74,7 +74,8 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect() {
-					const startOnNewWorkflowRouteFlag = window.posthog?.getFeatureFlag?.('start-at-wf-empty-state') === 'test';
+					const startOnNewWorkflowRouteFlag =
+						window.posthog?.getFeatureFlag?.('start-at-wf-empty-state') === 'test';
 					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {
@@ -502,7 +503,7 @@ const router = new Router({
 							},
 							deny: {
 								shouldDeny: () => {
-									const settingsStore =  useSettingsStore();
+									const settingsStore = useSettingsStore();
 									return settingsStore.isPublicApiEnabled === false;
 								},
 							},
