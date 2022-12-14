@@ -9,6 +9,7 @@ import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 import { IDataObject } from "n8n-workflow";
 import { getSchema, isEmpty, mergeDeep } from "@/utils";
+import { i18n } from '@/plugins/i18n';
 
 type Props = {
 	data: IDataObject[]
@@ -71,7 +72,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 <template>
 	<div :class="$style.schemaWrapper">
-		<div v-if="isDataEmpty" />
+		<n8n-info-tip v-if="isDataEmpty">{{ i18n.baseText('dataMapping.schemaView.emptyData') }}</n8n-info-tip>
 		<draggable
 			v-else
 			type="mapping"
@@ -114,6 +115,10 @@ const onDragEnd = (el: HTMLElement) => {
 	height: 100%;
 	width: 100%;
 	background-color: var(--color-background-base);
+
+	> div[class*="info"] {
+		padding: 0 var(--spacing-s);
+	}
 }
 
 .schema {

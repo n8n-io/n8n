@@ -431,7 +431,8 @@ function selected(element: INodeCreateElement) {
 }
 
 function onNodeSelected(element: NodeCreateElement) {
-	if(props.withActionsGetter && props.withActionsGetter(element) === true) {
+	const hasActions = (element.properties.nodeType?.actions?.length || 0) > 0;
+	if(props.withActionsGetter && props.withActionsGetter(element) === true && hasActions) {
 		emit('actionsOpen', element.properties.nodeType);
 		return;
 	}

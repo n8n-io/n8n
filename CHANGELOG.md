@@ -1,3 +1,14 @@
+## [0.207.1](https://github.com/n8n-io/n8n/compare/n8n@0.207.0...n8n@0.207.1) (2022-12-13)
+
+
+### Bug Fixes
+
+* **editor:** Fix undo on Windows and Linux ([#4898](https://github.com/n8n-io/n8n/issues/4898)) ([3fc2d7c](https://github.com/n8n-io/n8n/commit/3fc2d7cc5af54f826a8f0c27cb7860448f92bb77))
+* **editor:** Schema view render empty data ([#4902](https://github.com/n8n-io/n8n/issues/4902)) ([0b6d470](https://github.com/n8n-io/n8n/commit/0b6d47086a27117ceb0a1da107e5fcfbe11e0cd4))
+* Ensure parent directory exists before copying over the icons to generated static directory ([#4865](https://github.com/n8n-io/n8n/issues/4865)) ([91e9a88](https://github.com/n8n-io/n8n/commit/91e9a88e3a83530e1dce2e72b8796da24775dcf2))
+
+
+
 # [0.207.0](https://github.com/n8n-io/n8n/compare/n8n@0.206.1...n8n@0.207.0) (2022-12-12)
 
 
