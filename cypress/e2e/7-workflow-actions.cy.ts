@@ -136,4 +136,32 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
+	it('should update workflow settings', () => {
+		// Open settings dialog
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.getters.workflowMenu().should('be.visible');
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuItemSettings().should('be.visible');
+		WorkflowPage.getters.workflowMenuItemSettings().click();
+		// Change all settings
+		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').should('have.length', 2);
+		WorkflowPage.getters.workflowSettingsErrorWorkflowSelect().find('li').last().click({ force:  true });
+		WorkflowPage.getters.workflowSettingsTimezoneSelect().find('li').should('exist');
+		WorkflowPage.getters.workflowSettingsTimezoneSelect().find('li').eq(1).click({ force: true });
+		WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().find('li').should('have.length', 3);
+		WorkflowPage.getters.workflowSettingsSaveFiledExecutionsSelect().find('li').last().click({ force: true });
+		WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().find('li').should('have.length', 3);
+		WorkflowPage.getters.workflowSettingsSaveSuccessExecutionsSelect().find('li').last().click({ force: true });
+		WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().find('li').should('have.length', 3);
+		WorkflowPage.getters.workflowSettingsSaveManualExecutionsSelect().find('li').last().click({ force: true });
+		WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().find('li').should('have.length', 3);
+		WorkflowPage.getters.workflowSettingsSaveExecutionProgressSelect().find('li').last().click({ force: true });
+		WorkflowPage.getters.workflowSettingsTimeoutWorkflowSwitch().click();
+		WorkflowPage.getters.workflowSettingsTimeoutForm().find('input').first().type('1');
+		// Save settings
+		WorkflowPage.getters.workflowSettingsSaveButton().click();
+		WorkflowPage.getters.workflowSettingsModal().should('not.exist');
+		WorkflowPage.getters.successToast().should('exist');
+	});
+
 });

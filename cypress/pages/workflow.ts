@@ -56,6 +56,8 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveManualExecutionsSelect: () => cy.getByTestId('workflow-settings-save-manual-executions'),
 		workflowSettingsSaveExecutionProgressSelect: () => cy.getByTestId('workflow-settings-save-execution-progress'),
 		workflowSettingsTimeoutWorkflowSwitch: () => cy.getByTestId('workflow-settings-timeout-workflow'),
+		workflowSettingsTimeoutForm: () => cy.getByTestId('workflow-settings-timeout-form'),
+		workflowSettingsSaveButton: () => cy.getByTestId('workflow-settings-save-button').find('button'),
 	};
 	actions = {
 		visit: () => {

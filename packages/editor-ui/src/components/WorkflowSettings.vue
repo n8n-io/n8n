@@ -259,7 +259,7 @@
 						</div>
 					</el-col>
 				</el-row>
-				<div v-if="workflowSettings.executionTimeout > -1">
+				<div v-if="workflowSettings.executionTimeout > -1" data-test-id="workflow-settings-timeout-form">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
@@ -307,7 +307,7 @@
 			</div>
 		</template>
 		<template #footer>
-			<div class="action-buttons">
+			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
