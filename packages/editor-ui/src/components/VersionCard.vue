@@ -1,5 +1,5 @@
 <template>
-	<!-- eslint-disable-next-line vue/no-mutating-props -->
+	<!-- eslint-disable vue/no-mutating-props -->
 	<a
 		v-if="version"
 		:set="(version = version)"

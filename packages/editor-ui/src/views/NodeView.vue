@@ -1497,6 +1497,7 @@ export default mixins(
 		// Imports the given workflow data into the current workflow
 		async importWorkflowData(
 			workflowData: IWorkflowToShare,
+			// eslint-disable-next-line @typescript-eslint/default-param-last
 			importTags = true,
 			source: string,
 		): Promise<void> {

@@ -319,8 +319,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					if (existingNode) existingNode.actions?.push(...actions);
 					else acc[normalizedName] = clonedNode;
 
-					if (!isCoreNode)
+					if (!isCoreNode) {
 						acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
+					}
 
 					acc[normalizedName].actions = filterSinglePlaceholderAction(
 						acc[normalizedName].actions || [],

@@ -124,8 +124,8 @@ import {
 import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
+// tslint:disable-next-line:no-any
 function addIcon(icon: any) {
-	// tslint:disable-line:no-any
 	library.add(icon as IconDefinition);
 }
 

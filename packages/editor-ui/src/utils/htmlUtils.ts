@@ -20,8 +20,9 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			// Allow `allowedAttributes` and all `data-*` attributes
-			if (allowedAttributes.includes(name) || name.startsWith('data-'))
+			if (allowedAttributes.includes(name) || name.startsWith('data-')) {
 				return `${name}="${friendlyAttrValue(value)}"`;
+			}
 
 			return;
 			// Return nothing, means keep the default handling measure

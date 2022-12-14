@@ -1,7 +1,7 @@
 import Vue from 'vue';
 
+// tslint:disable-next-line:no-any
 function broadcast(componentName: string, eventName: string, params: any) {
-	// tslint:disable-line:no-any
 	// @ts-ignore
 	(this as Vue).$children.forEach((child) => {
 		const name = child.$options.name;
@@ -19,8 +19,8 @@ function broadcast(componentName: string, eventName: string, params: any) {
 
 export default Vue.extend({
 	methods: {
+		// tslint:disable-next-line:no-any
 		$dispatch(componentName: string, eventName: string, params: any) {
-			// tslint:disable-line:no-any
 			let parent = this.$parent || this.$root;
 			let name = parent.$options.name;
 
@@ -37,8 +37,8 @@ export default Vue.extend({
 				parent.$emit.apply(parent, [eventName].concat(params));
 			}
 		},
+		// tslint:disable-next-line:no-any
 		$broadcast(componentName: string, eventName: string, params: any) {
-			// tslint:disable-line:no-any
 			broadcast.call(this, componentName, eventName, params);
 		},
 	},

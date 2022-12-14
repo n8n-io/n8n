@@ -8,8 +8,8 @@ export const debounceHelper = Vue.extend({
 		};
 	},
 	methods: {
+		// tslint:disable-next-line:no-any
 		async callDebounced(...inputParameters: any[]): Promise<void> {
-			// tslint:disable-line:no-any
 			const functionName = inputParameters.shift() as string;
 			const { trailing, debounceTime } = inputParameters.shift();
 
