@@ -50,6 +50,11 @@ Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypre
 	return subject.find(`[data-test-id="${childTestId}"]`);
 })
 
+Cypress.Commands.add('waitForLoad', () => {
+	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
+	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+})
+
 Cypress.Commands.add(
 	'signin',
 	({ email, password }) => {
