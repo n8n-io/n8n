@@ -115,15 +115,19 @@ export function compareRevisions(
 
 			// if columnsToWatch is defined, only compare those columns
 			if (columnsToWatch?.length) {
-				const currentRow = columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1]);
-				const previousRow = columnsToWatch.map(
-					(column) => previous[i][columns.indexOf(column) - 1],
-				);
+				const currentRow = current[i]
+					? columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1])
+					: [];
+				const previousRow = previous[i]
+					? columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1])
+					: [];
 
 				if (isEqual(currentRow, previousRow)) continue;
 			} else {
 				if (isEqual(current[i], previous[i])) continue;
 			}
+
+			if (!previous[i] || previous[i].every((cell) => cell === '')) continue;
 
 			diffData.push({
 				rowIndex: i + startRowIndex,
@@ -132,7 +136,7 @@ export function compareRevisions(
 			});
 		}
 
-		if (includeInOutput === 'previousVersion') {
+		if (includeInOutput === 'old') {
 			return arrayOfArraysToJson(
 				diffData.map(({ previous: entry, rowIndex }) =>
 					entry ? [rowIndex, ...entry] : [rowIndex],
@@ -140,7 +144,7 @@ export function compareRevisions(
 				columns,
 			);
 		}
-		if (includeInOutput === 'bothVersions') {
+		if (includeInOutput === 'both') {
 			const previousData = arrayOfArraysToJson(
 				diffData.map(({ previous: entry, rowIndex }) =>
 					entry ? [rowIndex, ...entry] : [rowIndex],
@@ -153,7 +157,26 @@ export function compareRevisions(
 				columns,
 			).map((row) => ({ current: row }));
 
-			return zip(previousData, currentData).map((row) => Object.assign({}, ...row));
+			const differences = currentData.map(({ current: currentRow }, index) => {
+				const { row_number, ...rest } = currentRow;
+				const returnData: IDataObject = {};
+				returnData.row_number = row_number;
+
+				Object.keys(rest).forEach((key) => {
+					const previousValue = previousData[index].previous[key];
+					const currentValue = currentRow[key];
+
+					if (isEqual(previousValue, currentValue)) return;
+
+					returnData[key] = {
+						previous: previousValue,
+						current: currentValue,
+					};
+				});
+				return { differences: returnData };
+			});
+
+			return zip(previousData, currentData, differences).map((row) => Object.assign({}, ...row));
 		}
 
 		return arrayOfArraysToJson(

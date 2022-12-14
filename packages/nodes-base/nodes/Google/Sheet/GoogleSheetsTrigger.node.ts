@@ -184,57 +184,41 @@ export class GoogleSheetsTrigger implements INodeType {
 				displayName: 'Trigger On',
 				name: 'event',
 				type: 'options',
+				description:
+					"It will be triggered also by newly created columns (if the 'Columns to Watch' option is not set)",
 				options: [
 					{
-						name: 'Any Update',
-						value: 'anyUpdate',
-					},
-					{
-						name: 'Column Changes',
-						value: 'columnChanges',
-					},
-					{
-						name: 'Row Added',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Row(s) added',
 						value: 'rowAdded',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Rows(s) updated',
+						value: 'anyUpdate',
 					},
 				],
 				default: 'anyUpdate',
 				required: true,
 			},
 			{
-				displayName: 'Column Names or IDs',
-				name: 'columnsToWatch',
-				type: 'multiOptions',
-				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsDependsOn: ['sheetName.value'],
-					loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
-				},
-				default: [],
-				displayOptions: {
-					show: {
-						event: ['columnChanges'],
-					},
-				},
-			},
-			{
 				displayName: 'Include in Output',
 				name: 'includeInOutput',
 				type: 'options',
-				default: 'currentVersion',
+				default: 'new',
+				description: 'This option will be effective only when automatically executing the workflow',
 				options: [
 					{
-						name: 'Current Version',
-						value: 'currentVersion',
+						name: 'New Version',
+						value: 'new',
 					},
 					{
-						name: 'Previous Version',
-						value: 'previousVersion',
+						name: 'Old Version',
+						value: 'old',
 					},
 					{
 						name: 'Both Versions',
-						value: 'bothVersions',
+						value: 'both',
 					},
 				],
 				displayOptions: {
@@ -250,6 +234,23 @@ export class GoogleSheetsTrigger implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Columns to Watch',
+						name: 'columnsToWatch',
+						type: 'multiOptions',
+						description:
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: ['sheetName.value'],
+							loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
+						},
+						default: [],
+						displayOptions: {
+							show: {
+								'/event': ['anyUpdate'],
+							},
+						},
+					},
 					{
 						displayName: 'Data Location on Sheet',
 						name: 'locationDefine',
@@ -279,10 +280,10 @@ export class GoogleSheetsTrigger implements INodeType {
 										default: 1,
 										description:
 											'Index of the row which contains the keys. The incoming node data is matched to the keys for assignment. The matching is case-sensitive.',
-										hint: 'Relative to the defined range. Row index starts from 1.',
+										hint: 'Row index starts from 1.',
 										displayOptions: {
 											hide: {
-												'/event': ['anyUpdate', 'columnChanges'],
+												'/event': ['anyUpdate'],
 											},
 										},
 									},
@@ -296,10 +297,10 @@ export class GoogleSheetsTrigger implements INodeType {
 										default: 2,
 										description:
 											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
-										hint: 'Relative to the defined range. Row index starts from 1.',
+										hint: 'Row index starts from 1.',
 										displayOptions: {
 											hide: {
-												'/event': ['anyUpdate', 'columnChanges'],
+												'/event': ['anyUpdate'],
 											},
 										},
 									},
@@ -334,7 +335,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							'Determines how values will be rendered in the output. <a href="https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption" target="_blank">More info</a>.',
 						displayOptions: {
 							hide: {
-								'/event': ['anyUpdate', 'columnChanges'],
+								'/event': ['anyUpdate'],
 							},
 						},
 					},
@@ -361,7 +362,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							'Determines how dates should be rendered in the output.  <a href="https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption" target="_blank">More info</a>.',
 						displayOptions: {
 							hide: {
-								'/event': ['anyUpdate', 'columnChanges'],
+								'/event': ['anyUpdate'],
 							},
 						},
 					},
@@ -492,7 +493,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		}
 
-		if (event === 'anyUpdate' || event === 'columnChanges') {
+		if (event === 'anyUpdate') {
 			const sheetRange = locationDefine?.range ? `${sheetName}!${locationDefine.range}` : sheetName;
 
 			const currentData =
@@ -529,21 +530,20 @@ export class GoogleSheetsTrigger implements INodeType {
 					locationDefine?.range as string,
 				) || [];
 
-			const includeInOutput = this.getNodeParameter('includeInOutput', 'currentVersion') as string;
+			const includeInOutput = this.getNodeParameter('includeInOutput', 'new') as string;
 
 			const [rangeFrom, _rangeTo] = range.split(':');
 			const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 			const startRowIndex = +(cellData[2] || 1);
 
 			let returnData;
-			if (event === 'columnChanges') {
-				const columnsToWatch = this.getNodeParameter('columnsToWatch', []) as string[];
+			if (options.columnsToWatch) {
 				returnData = compareRevisions(
 					previousRevisionSheetData,
 					currentData,
 					keyRow,
 					includeInOutput,
-					columnsToWatch,
+					options.columnsToWatch as string[],
 					startRowIndex,
 				);
 			} else {
