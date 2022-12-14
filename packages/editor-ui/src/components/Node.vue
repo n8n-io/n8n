@@ -1,11 +1,28 @@
 <template>
 	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node">
 		<div class="select-background" v-show="isSelected"></div>
-		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
-				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
+		<div
+			:class="{
+				'node-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': isTouchDevice,
+			}"
+			:data-name="data.name"
+			:ref="data.name"
+		>
+			<div
+				:class="nodeClass"
+				:style="nodeStyle"
+				@click.left="onClick"
+				v-touch:start="touchStart"
+				v-touch:end="touchEnd"
+			>
+				<div
+					v-if="!data.disabled"
+					:class="{ 'node-info-icon': true, 'shift-icon': shiftOutputCount }"
+				>
 					<div v-if="hasIssues" class="node-issues">
-						<n8n-tooltip placement="bottom" >
+						<n8n-tooltip placement="bottom">
 							<template #content>
 								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
 							</template>
@@ -35,7 +52,12 @@
 				</div>
 
 				<div class="node-trigger-tooltip__wrapper">
-					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
+					<n8n-tooltip
+						placement="top"
+						manual
+						:value="showTriggerNodeTooltip"
+						popper-class="node-trigger-tooltip__wrapper--item"
+					>
 						<template #content>
 							<div v-text="getTriggerNodeTooltip"></div>
 						</template>
@@ -55,37 +77,65 @@
 					</n8n-tooltip>
 				</div>
 
-				<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" :disabled="this.data.disabled"/>
+				<NodeIcon
+					class="node-icon"
+					:nodeType="nodeType"
+					:size="40"
+					:shrink="false"
+					:disabled="this.data.disabled"
+				/>
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
-
+				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
 					<font-awesome-icon icon="trash" />
 				</div>
-				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
+				<div
+					v-touch:tap="disableNode"
+					class="option"
+					:title="$locale.baseText('node.activateDeactivateNode')"
+					data-test-id="disable-node-button"
+				>
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
+				<div
+					v-touch:tap="duplicateNode"
+					class="option"
+					:title="$locale.baseText('node.duplicateNode')"
+					v-if="isDuplicatable"
+					data-test-id="duplicate-node-button"
+				>
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')">
+				<div
+					v-touch:tap="setNodeActive"
+					class="option touch"
+					:title="$locale.baseText('node.editNode')"
+					data-test-id="activate-node-button"
+				>
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!workflowRunning">
+				<div
+					v-touch:tap="executeNode"
+					class="option"
+					:title="$locale.baseText('node.executeNode')"
+					v-if="!workflowRunning"
+					data-test-id="execute-node-button"
+				>
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
-			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
+			<div
+				:class="{ 'disabled-linethrough': true, success: workflowDataItems > 0 }"
+				v-if="showDisabledLinethrough"
+			></div>
 		</div>
 		<div class="node-description">
 			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
-				<p v-if="data.disabled">
-					({{ $locale.baseText('node.disabled') }})
-				</p>
+				<p v-if="data.disabled">({{ $locale.baseText('node.disabled') }})</p>
 			</div>
 			<div v-if="nodeSubtitle !== undefined" class="node-subtitle" :title="nodeSubtitle">
 				{{ nodeSubtitle }}
@@ -95,21 +145,20 @@
 </template>
 
 <script lang="ts">
-
 import Vue from 'vue';
-import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import {
+	CUSTOM_API_CALL_KEY,
+	LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+	WAIT_TIME_UNLIMITED,
+	MANUAL_TRIGGER_NODE_TYPE,
+} from '@/constants';
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
-import {
-	IDataObject,
-	INodeTypeDescription,
-	ITaskData,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { IDataObject, INodeTypeDescription, ITaskData, NodeHelpers } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TitledList from '@/components/TitledList.vue';
@@ -118,7 +167,12 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import { IExecutionsSummary, INodeUi, INodeUpdatePropertiesInformation, XYPosition } from '@/Interface';
+import {
+	IExecutionsSummary,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	XYPosition,
+} from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -147,33 +201,30 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		showPinnedDataInfo(): boolean {
 			return this.hasPinData && !this.isProductionExecutionPreview;
 		},
 		isDuplicatable(): boolean {
-			if(!this.nodeType) return true;
-			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
+			if (!this.nodeType) return true;
+			return (
+				this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes
+			);
 		},
-		isScheduledGroup (): boolean {
+		isScheduledGroup(): boolean {
 			return this.nodeType?.group.includes('schedule') === true;
 		},
 		nodeRunData(): ITaskData[] {
 			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
-		hasIssues (): boolean {
+		hasIssues(): boolean {
 			if (this.hasPinData) return false;
 			if (this.data.issues !== undefined && Object.keys(this.data.issues).length) {
 				return true;
 			}
 			return false;
 		},
-		workflowDataItems (): number {
+		workflowDataItems(): number {
 			const workflowResultDataNode = this.nodeRunData;
 			if (workflowResultDataNode === null) {
 				return 0;
@@ -184,88 +235,90 @@ export default mixins(
 		canvasOffsetPosition() {
 			return this.uiStore.nodeViewOffsetPosition;
 		},
-		getTriggerNodeTooltip (): string | undefined {
+		getTriggerNodeTooltip(): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
 				const nodeName = this.$locale.shortNodeType(this.nodeType.name);
 				const { eventTriggerDescription } = this.nodeType;
-				return this.$locale.nodeText().eventTriggerDescription(
-					nodeName,
-					eventTriggerDescription || '',
-				);
+				return this.$locale
+					.nodeText()
+					.eventTriggerDescription(nodeName, eventTriggerDescription || '');
 			} else {
-				return this.$locale.baseText(
-					'node.waitingForYouToCreateAnEventIn',
-					{
-						interpolate: {
-							nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
-						},
+				return this.$locale.baseText('node.waitingForYouToCreateAnEventIn', {
+					interpolate: {
+						nodeType: this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '',
 					},
-				);
+				});
 			}
 		},
-		isPollingTypeNode (): boolean {
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isExecuting (): boolean {
+		isExecuting(): boolean {
 			return this.workflowsStore.executingNode === this.data.name;
 		},
-		isSingleActiveTriggerNode (): boolean {
+		isSingleActiveTriggerNode(): boolean {
 			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
 			return nodes.length === 1;
 		},
-		isManualTypeNode (): boolean {
+		isManualTypeNode(): boolean {
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
-		isTriggerNode (): boolean {
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
 		},
-		isTriggerNodeTooltipEmpty () : boolean {
+		isTriggerNodeTooltipEmpty(): boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
 		},
-		isNodeDisabled (): boolean | undefined {
+		isNodeDisabled(): boolean | undefined {
 			return this.node && this.node.disabled;
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | undefined { // same as this.data but reactive..
+		node(): INodeUi | undefined {
+			// same as this.data but reactive..
 			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;
 		},
-		sameTypeNodes (): INodeUi[] {
+		sameTypeNodes(): INodeUi[] {
 			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
-		nodeClass (): object {
+		nodeClass(): object {
 			return {
 				'node-box': true,
 				disabled: this.data.disabled,
 				executing: this.isExecuting,
 			};
 		},
-		nodeIssues (): string[] {
+		nodeIssues(): string[] {
 			if (this.data.issues === undefined) {
 				return [];
 			}
 
 			return NodeHelpers.nodeIssuesToString(this.data.issues, this.data);
 		},
-		nodeDisabledIcon (): string {
+		nodeDisabledIcon(): string {
 			if (this.data.disabled === false) {
 				return 'pause';
 			} else {
 				return 'play';
 			}
 		},
-		position (): XYPosition {
+		position(): XYPosition {
 			return this.node ? this.node.position : [0, 0];
 		},
 		showDisabledLinethrough(): boolean {
-			return !!(this.data.disabled && this.nodeType && this.nodeType.inputs.length === 1 && this.nodeType.outputs.length === 1);
+			return !!(
+				this.data.disabled &&
+				this.nodeType &&
+				this.nodeType.inputs.length === 1 &&
+				this.nodeType.outputs.length === 1
+			);
 		},
-		nodePosition (): object {
+		nodePosition(): object {
 			const returnStyles: {
 				[key: string]: string;
 			} = {
@@ -275,10 +328,10 @@ export default mixins(
 
 			return returnStyles;
 		},
-		shortNodeType (): string {
+		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.data.type);
 		},
-		nodeTitle (): string {
+		nodeTitle(): string {
 			if (this.data.name === 'Start') {
 				return this.$locale.headerText({
 					key: `headers.start.displayName`,
@@ -288,7 +341,7 @@ export default mixins(
 
 			return this.data.name;
 		},
-		waiting (): string | undefined {
+		waiting(): string | undefined {
 			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
 			if (workflowExecution && workflowExecution.waitTill) {
@@ -296,32 +349,30 @@ export default mixins(
 				if (this.name === lastNodeExecuted) {
 					const waitDate = new Date(workflowExecution.waitTill);
 					if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-						return this.$locale.baseText('node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall');
+						return this.$locale.baseText(
+							'node.theNodeIsWaitingIndefinitelyForAnIncomingWebhookCall',
+						);
 					}
-					return this.$locale.baseText(
-						'node.nodeIsWaitingTill',
-						{
-							interpolate: {
-								date: waitDate.toLocaleDateString(),
-								time: waitDate.toLocaleTimeString(),
-						 	},
+					return this.$locale.baseText('node.nodeIsWaitingTill', {
+						interpolate: {
+							date: waitDate.toLocaleDateString(),
+							time: waitDate.toLocaleTimeString(),
 						},
-					);
+					});
 				}
 			}
 
 			return;
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		nodeStyle (): object {
+		nodeStyle(): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
 
 			if (this.data.disabled) {
 				borderColor = getStyleTokenValue('--color-foreground-base');
-			}
-			else if (!this.isExecuting) {
+			} else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
 				} else if (this.waiting || this.showPinnedDataInfo) {
@@ -339,14 +390,18 @@ export default mixins(
 
 			return returnStyles;
 		},
-		isSelected (): boolean {
-			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
+		isSelected(): boolean {
+			return (
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				undefined
+			);
 		},
-		shiftOutputCount (): boolean {
+		shiftOutputCount(): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
 		},
-		shouldShowTriggerTooltip () : boolean {
-			return !!this.node &&
+		shouldShowTriggerTooltip(): boolean {
+			return (
+				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
 				!this.isNodeDisabled &&
@@ -355,9 +410,10 @@ export default mixins(
 				this.isSingleActiveTriggerNode &&
 				!this.isTriggerNodeTooltipEmpty &&
 				!this.hasIssues &&
-				!this.dragging;
+				!this.dragging
+			);
 		},
- 	},
+	},
 	watch: {
 		isActive(newValue, oldValue) {
 			if (!newValue && oldValue) {
@@ -389,11 +445,13 @@ export default mixins(
 			}
 		},
 		nodeRunData(newValue) {
-			this.$emit('run', {name: this.data.name, data: newValue, waiting: !!this.waiting});
+			this.$emit('run', { name: this.data.name, data: newValue, waiting: !!this.waiting });
 		},
 	},
 	created() {
-		const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG);
+		const hasSeenPinDataTooltip = localStorage.getItem(
+			LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG,
+		);
 		if (!hasSeenPinDataTooltip) {
 			this.unwatchWorkflowDataItems = this.$watch('workflowDataItems', (dataItemsCount: number) => {
 				this.showPinDataDiscoveryTooltip(dataItemsCount);
@@ -404,11 +462,15 @@ export default mixins(
 		this.setSubtitle();
 		if (this.nodeRunData) {
 			setTimeout(() => {
-				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+				this.$emit('run', {
+					name: this.data && this.data.name,
+					data: this.nodeRunData,
+					waiting: !!this.waiting,
+				});
 			}, 0);
 		}
 	},
-	data () {
+	data() {
 		return {
 			isTouchActive: false,
 			nodeSubtitle: '',
@@ -420,7 +482,13 @@ export default mixins(
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
-			if (!this.isTriggerNode || this.isManualTypeNode || this.isScheduledGroup || dataItemsCount === 0) return;
+			if (
+				!this.isTriggerNode ||
+				this.isManualTypeNode ||
+				this.isScheduledGroup ||
+				dataItemsCount === 0
+			)
+				return;
 
 			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
@@ -428,33 +496,55 @@ export default mixins(
 			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
-			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
+			const nodeSubtitle =
+				this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
 
-			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY)
-				? ''
-				: nodeSubtitle;
+			this.nodeSubtitle = nodeSubtitle.includes(CUSTOM_API_CALL_KEY) ? '' : nodeSubtitle;
 		},
-		disableNode () {
+		disableNode() {
 			if (this.data !== null) {
 				this.disableNodes([this.data]);
-				this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(this.data.name, !this.data.disabled, this.data.disabled === true, this));
-				this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+				this.historyStore.pushCommandToUndo(
+					new EnableNodeToggleCommand(
+						this.data.name,
+						!this.data.disabled,
+						this.data.disabled === true,
+						this,
+					),
+				);
+				this.$telemetry.track('User clicked node hover button', {
+					node_type: this.data.type,
+					button_name: 'disable',
+					workflow_id: this.workflowsStore.workflowId,
+				});
 			}
 		},
-		executeNode () {
+		executeNode() {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.workflowsStore.workflowId });
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'execute',
+				workflow_id: this.workflowsStore.workflowId,
+			});
 		},
-		deleteNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.workflowsStore.workflowId });
+		deleteNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'delete',
+				workflow_id: this.workflowsStore.workflowId,
+			});
 
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
 			});
 		},
-		duplicateNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.workflowsStore.workflowId });
+		duplicateNode() {
+			this.$telemetry.track('User clicked node hover button', {
+				node_type: this.data.type,
+				button_name: 'duplicate',
+				workflow_id: this.workflowsStore.workflowId,
+			});
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
@@ -474,11 +564,11 @@ export default mixins(
 			}
 		},
 
-		setNodeActive () {
+		setNodeActive() {
 			this.ndvStore.activeNodeName = this.data ? this.data.name : '';
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
-		touchStart () {
+		touchStart() {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
 				this.isTouchActive = true;
 				setTimeout(() => {
@@ -488,11 +578,9 @@ export default mixins(
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" scoped>
-
 .node-wrapper {
 	position: absolute;
 	width: 100px;
@@ -509,7 +597,8 @@ export default mixins(
 		width: 200px;
 		pointer-events: none; // prevent container from being draggable
 
-		.node-name > p { // must be paragraph tag to have two lines in safari
+		.node-name > p {
+			// must be paragraph tag to have two lines in safari
 			text-overflow: ellipsis;
 			display: -webkit-box;
 			-webkit-box-orient: vertical;
@@ -665,7 +754,12 @@ export default mixins(
 
 .select-background {
 	display: block;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
+	background-color: hsla(
+		var(--color-foreground-base-h),
+		var(--color-foreground-base-s),
+		var(--color-foreground-base-l),
+		60%
+	);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	position: absolute;
@@ -703,7 +797,7 @@ export default mixins(
 		&--item {
 			max-width: 160px;
 			position: fixed;
-			z-index: 0!important;
+			z-index: 0 !important;
 		}
 	}
 }
@@ -714,7 +808,7 @@ export default mixins(
 }
 
 .jtk-connector path {
-	transition: stroke .1s ease-in-out;
+	transition: stroke 0.1s ease-in-out;
 }
 
 .jtk-connector.success {
@@ -745,7 +839,8 @@ export default mixins(
 	z-index: 8;
 }
 
-.jtk-drag-active.dot-output-endpoint, .jtk-drag-active.rect-input-endpoint {
+.jtk-drag-active.dot-output-endpoint,
+.jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
 
@@ -760,89 +855,88 @@ export default mixins(
 .drop-add-node-label {
 	z-index: 10;
 }
-
 </style>
 
 <style lang="scss">
-	$--stalklength: 40px;
-	$--box-size-medium: 24px;
-	$--box-size-small: 18px;
+$--stalklength: 40px;
+$--box-size-medium: 24px;
+$--box-size-small: 18px;
 
-	.plus-endpoint {
-		cursor: pointer;
+.plus-endpoint {
+	cursor: pointer;
 
-		.plus-stalk {
-			border-top: 2px solid var(--color-foreground-dark);
-			position: absolute;
-			width: $--stalklength;
-			height: 0;
-			right: 100%;
-			top: calc(50% - 1px);
-			pointer-events: none;
+	.plus-stalk {
+		border-top: 2px solid var(--color-foreground-dark);
+		position: absolute;
+		width: $--stalklength;
+		height: 0;
+		right: 100%;
+		top: calc(50% - 1px);
+		pointer-events: none;
 
-		  .connection-run-items-label {
-				position: relative;
-				width: 100%;
-
-				span {
-					display: none;
-					left: calc(50% + 4px);
-				}
-			}
-		}
-
-		.plus-container {
-			color: var(--color-foreground-xdark);
-			border: 2px solid var(--color-foreground-xdark);
-			background-color: var(--color-background-xlight);
-			border-radius: var(--border-radius-base);
-			height: $--box-size-medium;
-			width: $--box-size-medium;
-
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			font-size: var(--font-size-2xs);
-			position: absolute;
-
-			top: 0;
-			right: 0;
-			pointer-events: none;
-
-			&.small {
-				height: $--box-size-small;
-				width: $--box-size-small;
-				font-size: 8px;
-			}
-
-			.fa-plus {
-				width: 1em;
-			}
-		}
-
-		.drop-hover-message {
-			font-weight: var(--font-weight-bold);
-			font-size: var(--font-size-2xs);
-			line-height: var(--font-line-height-regular);
-			color: var(--color-text-light);
-
-			position: absolute;
-			top: -6px;
-			left: calc(100% + 8px);
-			width: 200px;
-			display: none;
-		}
-
-		&.hidden > * {
-			display: none;
-		}
-
-		&.success .plus-stalk {
-			border-color: var(--color-success-light);
+		.connection-run-items-label {
+			position: relative;
+			width: 100%;
 
 			span {
-				display: inline;
+				display: none;
+				left: calc(50% + 4px);
 			}
 		}
 	}
+
+	.plus-container {
+		color: var(--color-foreground-xdark);
+		border: 2px solid var(--color-foreground-xdark);
+		background-color: var(--color-background-xlight);
+		border-radius: var(--border-radius-base);
+		height: $--box-size-medium;
+		width: $--box-size-medium;
+
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: var(--font-size-2xs);
+		position: absolute;
+
+		top: 0;
+		right: 0;
+		pointer-events: none;
+
+		&.small {
+			height: $--box-size-small;
+			width: $--box-size-small;
+			font-size: 8px;
+		}
+
+		.fa-plus {
+			width: 1em;
+		}
+	}
+
+	.drop-hover-message {
+		font-weight: var(--font-weight-bold);
+		font-size: var(--font-size-2xs);
+		line-height: var(--font-line-height-regular);
+		color: var(--color-text-light);
+
+		position: absolute;
+		top: -6px;
+		left: calc(100% + 8px);
+		width: 200px;
+		display: none;
+	}
+
+	&.hidden > * {
+		display: none;
+	}
+
+	&.success .plus-stalk {
+		border-color: var(--color-success-light);
+
+		span {
+			display: inline;
+		}
+	}
+}
 </style>

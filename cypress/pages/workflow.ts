@@ -34,6 +34,12 @@ export class WorkflowPage extends BasePage {
 
 		nodeViewRoot: () => cy.getByTestId('node-view-root'),
 		copyPasteInput: () => cy.getByTestId('hidden-copy-paste'),
+		nodeConnections: () => cy.get('.jtk-connector'),
+		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
+		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
+		disabledNodes: () => cy.get('.node-box.disabled'),
+		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
+		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 	};
 	actions = {
 		visit: () => {
@@ -103,6 +109,25 @@ export class WorkflowPage extends BasePage {
 		},
 		zoomToFit: () => {
 			cy.getByTestId('zoom-to-fit').click();
+		},
+		hitUndo: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('z');
+		},
+		hitRedo: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').
+			type(metaKey, { delay: 500, release: false }).
+			type('{shift}', { release: false }).
+			type('z');
+		},
+		selectAll: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+		},
+		hitDisableNodeShortcut: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('d');
 		},
 	};
 }
