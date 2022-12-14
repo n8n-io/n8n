@@ -15,6 +15,7 @@ const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&${queryParamCall
 const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
 const activationKeyModal = ref(false);
 const activationKey = ref('');
+const activationKeyInput = ref<HTMLInputElement | null>(null);
 
 const onLicenseActivation = () => {
 	usageStore.activateLicense(activationKey.value).then(() => {
@@ -83,6 +84,10 @@ const onDialogClosed = () => {
 	activationKey.value = '';
 };
 
+const onDialogOpened = () => {
+	activationKeyInput.value?.focus();
+};
+
 </script>
 
 <template>
@@ -126,11 +131,13 @@ const onDialogClosed = () => {
 			width="480px"
 			top="26vh"
 			@closed="onDialogClosed"
+			@opened="onDialogOpened"
 			:visible.sync="activationKeyModal"
 			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 		>
 			<template #default>
 				<n8n-input
+					ref="activationKeyInput"
 					v-model="activationKey"
 					size="medium"
 					:placeholder="$locale.baseText('settings.usageAndPlan.dialog.activation.label')"
@@ -216,6 +223,7 @@ const onDialogClosed = () => {
 		.bar {
 			float: left;
 			height: 100%;
+			max-width: 100%;
 			background: var(--color-secondary);
 			border-radius: 10px;
 			transition: width 0.2s $ease-out-expo;
