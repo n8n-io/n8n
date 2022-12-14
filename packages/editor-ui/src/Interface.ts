@@ -785,7 +785,6 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
-	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

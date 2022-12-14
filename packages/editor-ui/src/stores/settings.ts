@@ -108,9 +108,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isQueueModeEnabled(): boolean {
 			return this.settings.executionMode === 'queue';
 		},
-		isWorkflowSharingEnabled(): boolean {
-			return this.settings.isWorkflowSharingEnabled;
-		},
 		workflowCallerPolicyDefaultOption(): WorkflowCallerPolicyDefaultOption {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
