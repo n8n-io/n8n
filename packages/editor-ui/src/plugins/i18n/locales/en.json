@@ -1401,7 +1401,7 @@
 	"workflows.shareModal.select.placeholder": "Add people",
 	"workflows.shareModal.list.delete": "Remove access",
 	"workflows.shareModal.list.delete.confirm.title": "Remove {name}'s access?",
-	"workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message": "<strong>This might cause the workflow to stop working:</strong> {name} is the only user with access to credentials used in this workflow, those credentials will also be removed from {workflow}.",
+	"workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message": "If you do this, the workflow will lose access to {name}’s credentials. <strong>Nodes that use those credentials will stop working</strong>.",
 	"workflows.shareModal.list.delete.confirm.confirmButtonText": "Remove access",
 	"workflows.shareModal.list.delete.confirm.cancelButtonText": "Cancel",
 	"workflows.shareModal.onSave.success.title": "Sharing updated",
