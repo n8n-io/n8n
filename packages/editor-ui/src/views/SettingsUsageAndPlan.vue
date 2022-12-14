@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router/composables';
+import { useRoute, useRouter } from 'vue-router/composables';
 import { Notification } from "element-ui";
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { UsageState } from "@/Interface";
@@ -8,6 +8,7 @@ import { telemetry } from "@/plugins/telemetry";
 
 const usageStore = useUsageStore();
 const route = useRoute();
+const router = useRouter();
 
 const queryParamCallback = ref<string>(`callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
 const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}`);
@@ -24,7 +25,9 @@ const onLicenseActivation = () => {
 onMounted(async () => {
 	usageStore.setLoading(true);
 	if(route.query.key) {
-		await usageStore.activateLicense(route.query.key as string);
+		await usageStore.activateLicense(route.query.key as string).then(() => {
+			router.replace({ query: {} });
+		});
 	} else if(usageStore.canUserActivateLicense) {
 		await usageStore.refreshLicenseManagementToken();
 	} else {
