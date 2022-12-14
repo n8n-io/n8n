@@ -41,7 +41,7 @@ function fuzzyMatchSimple(pattern: string, target: string): boolean {
  * @returns [boolean, number]       a boolean which tells if pattern was
  *                                  found or not and a search score
  */
-function fuzzyMatch(pattern: string, target: string): {matched: boolean, outScore: number} {
+function fuzzyMatch(pattern: string, target: string): { matched: boolean; outScore: number } {
 	const recursionCount = 0;
 	const recursionLimit = 5;
 	const matches: number[] = [];
@@ -72,17 +72,17 @@ function fuzzyMatchRecursive(
 	nextMatch: number,
 	recursionCount: number,
 	recursionLimit: number,
-): {matched: boolean, outScore: number} {
+): { matched: boolean; outScore: number } {
 	let outScore = 0;
 
 	// Return if recursion limit is reached.
 	if (++recursionCount >= recursionLimit) {
-		return {matched: false, outScore};
+		return { matched: false, outScore };
 	}
 
 	// Return if we reached ends of strings.
 	if (patternCurIndex === pattern.length || targetCurrIndex === target.length) {
-		return {matched: false, outScore};
+		return { matched: false, outScore };
 	}
 
 	// Recursion params
@@ -94,11 +94,9 @@ function fuzzyMatchRecursive(
 	let firstMatch = true;
 	while (patternCurIndex < pattern.length && targetCurrIndex < target.length) {
 		// Match found.
-		if (
-			pattern[patternCurIndex].toLowerCase() === target[targetCurrIndex].toLowerCase()
-		) {
+		if (pattern[patternCurIndex].toLowerCase() === target[targetCurrIndex].toLowerCase()) {
 			if (nextMatch >= maxMatches) {
-				return {matched: false, outScore};
+				return { matched: false, outScore };
 			}
 
 			if (firstMatch && targetMatches) {
@@ -143,10 +141,7 @@ function fuzzyMatchRecursive(
 
 		// Apply leading letter penalty
 		let penalty = LEADING_LETTER_PENALTY * matches[0];
-		penalty =
-			penalty < MAX_LEADING_LETTER_PENALTY
-				? MAX_LEADING_LETTER_PENALTY
-				: penalty;
+		penalty = penalty < MAX_LEADING_LETTER_PENALTY ? MAX_LEADING_LETTER_PENALTY : penalty;
 		outScore += penalty;
 
 		//Apply unmatched penalty
@@ -169,13 +164,10 @@ function fuzzyMatchRecursive(
 				// Camel case
 				const neighbor = target[currIdx - 1];
 				const curr = target[currIdx];
-				if (
-					neighbor !== neighbor.toUpperCase() &&
-					curr !== curr.toLowerCase()
-				) {
+				if (neighbor !== neighbor.toUpperCase() && curr !== curr.toLowerCase()) {
 					outScore += CAMEL_BONUS;
 				}
-				const isNeighbourSeparator = neighbor === "_" || neighbor === " ";
+				const isNeighbourSeparator = neighbor === '_' || neighbor === ' ';
 				if (isNeighbourSeparator) {
 					outScore += SEPARATOR_BONUS;
 				}
@@ -190,15 +182,15 @@ function fuzzyMatchRecursive(
 			// Recursive score is better than "this"
 			matches = [...bestRecursiveMatches];
 			outScore = bestRecursiveScore;
-			return {matched: true, outScore};
+			return { matched: true, outScore };
 		} else if (matched) {
 			// "this" score is better than recursive
-			return {matched: true, outScore};
+			return { matched: true, outScore };
 		} else {
-			return {matched: false, outScore};
+			return { matched: false, outScore };
 		}
 	}
-	return {matched: false, outScore};
+	return { matched: false, outScore };
 }
 
 // prop = 'key'
@@ -219,15 +211,18 @@ function getValue<T extends object>(obj: T, prop: string): unknown {
 	return result;
 }
 
-export function sublimeSearch<T extends object>(filter: string, data: Readonly<T[]>, keys: Array<{key: string, weight: number}>): Array<{score: number, item: T}> {
-	const results = data.reduce((accu: Array<{score: number, item: T}>, item: T) => {
-		let values: Array<{value: string, weight: number}> = [];
-		keys.forEach(({key, weight}) => {
+export function sublimeSearch<T extends object>(
+	filter: string,
+	data: Readonly<T[]>,
+	keys: Array<{ key: string; weight: number }>,
+): Array<{ score: number; item: T }> {
+	const results = data.reduce((accu: Array<{ score: number; item: T }>, item: T) => {
+		let values: Array<{ value: string; weight: number }> = [];
+		keys.forEach(({ key, weight }) => {
 			const value = getValue(item, key);
 			if (Array.isArray(value)) {
-				values = values.concat(value.map((v) => ({value: v, weight})));
-			}
-			else if (typeof value === 'string') {
+				values = values.concat(value.map((v) => ({ value: v, weight })));
+			} else if (typeof value === 'string') {
 				values.push({
 					value,
 					weight,
@@ -236,23 +231,29 @@ export function sublimeSearch<T extends object>(filter: string, data: Readonly<T
 		});
 
 		// for each item, check every key and get maximum score
-		const itemMatch = values.reduce((accu: null | {matched: boolean, outScore: number}, {value, weight}: {value: string, weight: number}) => {
-			if (!fuzzyMatchSimple(filter, value)) {
+		const itemMatch = values.reduce(
+			(
+				accu: null | { matched: boolean; outScore: number },
+				{ value, weight }: { value: string; weight: number },
+			) => {
+				if (!fuzzyMatchSimple(filter, value)) {
+					return accu;
+				}
+
+				const match = fuzzyMatch(filter, value);
+				match.outScore *= weight;
+
+				const { matched, outScore } = match;
+				if (!accu && matched) {
+					return match;
+				}
+				if (matched && accu && outScore > accu.outScore) {
+					return match;
+				}
 				return accu;
-			}
-
-			const match = fuzzyMatch(filter, value);
-			match.outScore *= weight;
-
-			const {matched, outScore} = match;
-			if (!accu && matched) {
-				return match;
-			}
-			if (matched && accu && outScore > accu.outScore) {
-				return match;
-			}
-			return accu;
-		}, null);
+			},
+			null,
+		);
 
 		if (itemMatch) {
 			accu.push({

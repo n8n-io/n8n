@@ -2,7 +2,7 @@ const path = require('path');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = {
-	chainWebpack: config => {
+	chainWebpack: (config) => {
 		config.resolve.symlinks(false);
 		// config.plugins.delete("prefetch"); // enable when language package grows
 	},
@@ -15,9 +15,9 @@ module.exports = {
 			openAnalyzer: false,
 		},
 		i18n: {
-			locale: "en",
-			fallbackLocale: "en",
-			localeDir: "./src/i18n/locales",
+			locale: 'en',
+			fallbackLocale: 'en',
+			localeDir: './src/i18n/locales',
 			enableInSFC: false,
 		},
 	},
@@ -25,13 +25,19 @@ module.exports = {
 		devServer: {
 			disableHostCheck: true,
 		},
-		plugins: [
-			new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] }),
-		],
+		plugins: [new MonacoWebpackPlugin({ languages: ['javascript', 'json', 'typescript'] })],
 		resolve: {
 			alias: {
-				'element-ui/packages/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
-				'element-ui/lib/button': path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.vue'),
+				'element-ui/packages/button': path.resolve(
+					__dirname,
+					'..',
+					'design-system/src/components/N8nButton/overrides/ElButton.vue',
+				),
+				'element-ui/lib/button': path.resolve(
+					__dirname,
+					'..',
+					'design-system/src/components/N8nButton/overrides/ElButton.vue',
+				),
 			},
 		},
 	},

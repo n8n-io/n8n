@@ -1,7 +1,5 @@
 <template>
-	<div
-			v-if="uiStore.isModalOpen(name) || keepAlive"
-	>
+	<div v-if="uiStore.isModalOpen(name) || keepAlive">
 		<slot
 			:modalName="name"
 			:active="uiStore.isModalActive(name)"
@@ -14,12 +12,12 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 import { useUIStore } from '@/stores/ui';
-import { mapStores } from "pinia";
+import { mapStores } from 'pinia';
 
 export default Vue.extend({
-	name: "ModalRoot",
+	name: 'ModalRoot',
 	props: {
 		name: {
 			type: String,
