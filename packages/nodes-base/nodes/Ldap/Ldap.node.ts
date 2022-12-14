@@ -5,6 +5,7 @@ import {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
+	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -138,6 +139,44 @@ export class Ldap implements INodeType {
 				};
 			},
 		},
+		loadOptions: {
+			async getAttributes(this: ILoadOptionsFunctions) {
+				const credentials = await this.getCredentials('ldap');
+				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
+
+				const ldapOptions: ClientOptions = { url };
+				const tlsOptions: IDataObject = {};
+
+				if (credentials.connectionSecurity !== 'none') {
+					tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
+					if (credentials.caCertificate) {
+						tlsOptions.ca = [credentials.caCertificate as string];
+					}
+					if (credentials.connectionSecurity !== 'startTls') {
+						ldapOptions.tlsOptions = tlsOptions;
+					}
+				}
+				const client = new Client(ldapOptions);
+
+				try {
+					if (credentials.connectionSecurity === 'startTls') {
+						await client.startTLS(tlsOptions);
+					}
+					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
+				} catch (error) {
+					console.log(error);
+				}
+
+				const baseDN = this.getNodeParameter('baseDN', 0) as string;
+				const results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
+				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
+				return unique.map((x) => ({
+					name: x,
+					value: x,
+				}));
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -202,7 +241,7 @@ export class Ldap implements INodeType {
 			}
 		}
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
@@ -285,9 +324,9 @@ export class Ldap implements INodeType {
 				} else if (operation === 'search') {
 					const baseDN = this.getNodeParameter('baseDN', itemIndex) as string;
 					let filter = this.getNodeParameter('filter', itemIndex) as string;
-					const returnAll = this.getNodeParameter('returnAll', itemIndex) as boolean;
-					const limit = this.getNodeParameter('limit', itemIndex, 0) as number;
-					const options = this.getNodeParameter('options', itemIndex) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', itemIndex);
+					const limit = this.getNodeParameter('limit', itemIndex, 0);
+					const options = this.getNodeParameter('options', itemIndex);
 					const pageSize = this.getNodeParameter(
 						'options.pageSize',
 						itemIndex,
@@ -309,6 +348,10 @@ export class Ldap implements INodeType {
 
 					if (filter === 'custom') {
 						filter = this.getNodeParameter('customFilter', itemIndex) as string;
+					} else {
+						const searchText = this.getNodeParameter('searchText', itemIndex) as string;
+						const attribute = this.getNodeParameter('attribute', itemIndex) as string;
+						filter = `(&${filter}(${attribute}=${searchText}))`;
 					}
 
 					// Replace escaped filter special chars for ease of use

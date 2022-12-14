@@ -208,8 +208,8 @@ export const ldapFields: INodeProperties[] = [
 		description: 'The distinguished name of the subtree to search in',
 	},
 	{
-		displayName: 'Filter',
-		name: 'filter',
+		displayName: 'Search For',
+		name: 'searchFor',
 		type: 'options',
 		default: '(objectclass=person)',
 		displayOptions: {
@@ -252,6 +252,43 @@ export const ldapFields: INodeProperties[] = [
 			},
 		},
 		description: `Custom LDAP filter. Escape these chars * ( ) \\ with a backslash '\\'.`,
+	},
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+		displayName: 'Attribute',
+		name: 'attribute',
+		type: 'options',
+		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getAttributes',
+		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description: 'Attribute to search for',
+		displayOptions: {
+			show: {
+				operation: ['search'],
+			},
+			hide: {
+				searchFor: ['custom'],
+			},
+		},
+	},
+	{
+		displayName: 'Search Text',
+		name: 'searchText',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				operation: ['search'],
+			},
+			hide: {
+				searchFor: ['custom'],
+			},
+		},
+		description: 'Text to search for, Use * for a wildcard',
 	},
 	{
 		displayName: 'Return All',
