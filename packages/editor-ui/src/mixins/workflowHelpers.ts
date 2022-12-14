@@ -68,7 +68,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import {useUsersStore} from "@/stores/users";
 import {ICredentialsResponse} from "@/Interface";
-import {format, format as timeAgo} from 'timeago.js';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
