@@ -45,6 +45,7 @@
     "jest": "^29.3.1",
     "jest-environment-jsdom": "^29.3.1",
     "jest-mock": "^29.3.1",
+    "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
     "prettier": "^2.3.2",
     "rimraf": "^3.0.2",
