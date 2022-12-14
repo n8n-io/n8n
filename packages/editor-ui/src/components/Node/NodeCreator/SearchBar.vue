@@ -24,7 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import Vue, { onMounted, reactive, toRefs, onBeforeUnmount  } from 'vue';
+import Vue, { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 
 export interface Props {
@@ -39,7 +39,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'input', value: string): void,
+	(event: 'input', value: string): void;
 }>();
 
 const { $externalHooks } = new externalHooks();
@@ -54,11 +54,11 @@ function focus() {
 
 function onInput(event: Event) {
 	const input = event.target as HTMLInputElement;
-	emit("input", input.value);
+	emit('input', input.value);
 }
 
 function clear() {
-	emit("input", "");
+	emit('input', '');
 }
 
 onMounted(() => {
@@ -91,7 +91,7 @@ defineExpose({
 	border-radius: 4px;
 
 	&:focus-within {
-		border-color: var(--color-secondary)
+		border-color: var(--color-secondary);
 	}
 }
 

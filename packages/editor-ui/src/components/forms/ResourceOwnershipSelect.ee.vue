@@ -1,10 +1,10 @@
 <template>
-		<n8n-menu
-			:items="menuItems"
-			mode="tabs"
-			:value="value ? 'owner' : 'all'"
-			@input="onSelectOwner"
-		/>
+	<n8n-menu
+		:items="menuItems"
+		mode="tabs"
+		:value="value ? 'owner' : 'all'"
+		@input="onSelectOwner"
+	/>
 </template>
 
 <script lang="ts">

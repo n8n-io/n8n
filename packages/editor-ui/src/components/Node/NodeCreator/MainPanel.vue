@@ -1,15 +1,12 @@
 <template>
-	<div
-		class="container"
-		ref="mainPanelContainer"
-	>
+	<div class="container" ref="mainPanelContainer">
 		<div class="main-panel">
 			<trigger-helper-panel
 				v-if="nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
 				<template #header>
-					<type-selector/>
+					<type-selector />
 				</template>
 			</trigger-helper-panel>
 			<categorized-items
@@ -36,7 +33,12 @@
 import { watch, getCurrentInstance, onMounted, onUnmounted } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
-import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
+import {
+	ALL_NODE_FILTER,
+	TRIGGER_NODE_FILTER,
+	OTHER_TRIGGER_NODES_SUBCATEGORY,
+	CORE_NODES_CATEGORY,
+} from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
@@ -58,17 +60,20 @@ const { workflowId } = useWorkflowsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const { categorizedItems, categoriesWithNodes } = useNodeTypesStore();
 
-watch(() => nodeCreatorStore.selectedType, (newValue, oldValue) => {
-	$externalHooks().run('nodeCreateList.selectedTypeChanged', {
-		oldValue,
-		newValue,
-	});
-	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
-		old_filter: oldValue,
-		new_filter: newValue,
-		workflow_id: workflowId,
-	});
-});
+watch(
+	() => nodeCreatorStore.selectedType,
+	(newValue, oldValue) => {
+		$externalHooks().run('nodeCreateList.selectedTypeChanged', {
+			oldValue,
+			newValue,
+		});
+		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
+			old_filter: oldValue,
+			new_filter: newValue,
+			workflow_id: workflowId,
+		});
+	},
+);
 
 onMounted(() => {
 	$externalHooks().run('nodeCreateList.mounted');
@@ -79,9 +84,10 @@ onMounted(() => {
 onUnmounted(() => {
 	nodeCreatorStore.setSelectedType(ALL_NODE_FILTER);
 	$externalHooks().run('nodeCreateList.destroyed');
-	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: workflowId });
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', {
+		workflow_id: workflowId,
+	});
 });
-
 </script>
 
 <style lang="scss" scoped>
