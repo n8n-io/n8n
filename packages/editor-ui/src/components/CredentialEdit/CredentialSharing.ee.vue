@@ -30,6 +30,7 @@
 			</n8n-info-tip>
 			<n8n-user-select
 				v-if="credentialPermissions.updateSharing"
+				class="mb-s"
 				size="large"
 				:users="usersList"
 				:currentUserId="usersStore.currentUser.id"
