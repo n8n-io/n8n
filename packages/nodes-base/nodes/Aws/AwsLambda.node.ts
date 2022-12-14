@@ -114,9 +114,6 @@ export class AwsLambda implements INodeType {
 				},
 				default: '',
 				description: 'The JSON that you want to provide to your Lambda function as input',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	};

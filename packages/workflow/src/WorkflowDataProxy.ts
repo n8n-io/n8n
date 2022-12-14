@@ -583,28 +583,6 @@ export class WorkflowDataProxy {
 						});
 					}
 
-					if (
-						nodeName !== that.activeNodeName &&
-						!that.runExecutionData?.resultData.runData?.hasOwnProperty(nodeName)
-					) {
-						throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
-					}
-
-					if (
-						nodeName !== that.activeNodeName &&
-						!that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName, 'main')
-					) {
-						throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
-					}
-
 					return that.nodeDataGetter(nodeName);
 				},
 			},
@@ -709,6 +687,10 @@ export class WorkflowDataProxy {
 			let taskData: ITaskData;
 
 			let sourceData: ISourceData | null = incomingSourceData;
+
+			if (pairedItem.sourceOverwrite) {
+				sourceData = pairedItem.sourceOverwrite;
+			}
 
 			if (typeof pairedItem === 'number') {
 				pairedItem = {
@@ -871,6 +853,10 @@ export class WorkflowDataProxy {
 
 				nodeBeforeLast = sourceData.previousNode;
 				sourceData = taskData.source[pairedItem.input || 0] || null;
+
+				if (pairedItem.sourceOverwrite) {
+					sourceData = pairedItem.sourceOverwrite;
+				}
 			}
 
 			if (sourceData === null) {

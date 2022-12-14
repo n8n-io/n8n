@@ -302,9 +302,6 @@ export function getSearchFilters(
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: [resource],

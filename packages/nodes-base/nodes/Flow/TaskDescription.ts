@@ -135,9 +135,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: "Provide the content for the task's note",
 			},
@@ -315,9 +312,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Note Content',
 				name: 'noteContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: "Provide the content for the task's note",
 			},

@@ -28,9 +28,6 @@ export class Discord implements INodeType {
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				required: true,
 				default: '',
 				placeholder: 'https://discord.com/api/webhooks/ID/TOKEN',
@@ -41,7 +38,6 @@ export class Discord implements INodeType {
 				type: 'string',
 				typeOptions: {
 					maxValue: 2000,
-					alwaysOpenEditWindow: true,
 				},
 				default: '',
 				placeholder: 'Hello World!',

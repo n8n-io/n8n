@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.146.1",
+  "version": "0.147.0",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -53,7 +53,7 @@
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.128.1",
+    "n8n-workflow": "~0.129.0",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",
