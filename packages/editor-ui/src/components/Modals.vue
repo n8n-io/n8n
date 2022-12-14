@@ -2,19 +2,13 @@
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
 			<template #default="{ modalName }">
-				<ContactPromptModal
-					:modalName="modalName"
-				/>
+				<ContactPromptModal :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
 			<template #default="{ modalName, activeId, mode }">
-				<CredentialEdit
-					:modalName="modalName"
-					:mode="mode"
-					:activeId="activeId"
-					/>
+				<CredentialEdit :modalName="modalName" :mode="mode" :activeId="activeId" />
 			</template>
 		</ModalRoot>
 		<ModalRoot :name="ABOUT_MODAL_KEY">
@@ -27,11 +21,7 @@
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<DuplicateWorkflowDialog
-					:data="data"
-					:isActive="active"
-					:modalName="modalName"
-				/>
+				<DuplicateWorkflowDialog :data="data" :isActive="active" :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -49,7 +39,7 @@
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
 			<template #default="{ active }">
-				<ValueSurvey :isActive="active"/>
+				<ValueSurvey :isActive="active" />
 			</template>
 		</ModalRoot>
 
@@ -67,10 +57,7 @@
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
 			<template #default="{ modalName, activeId }">
-				<DeleteUserModal
-					:modalName="modalName"
-					:activeId="activeId"
-				/>
+				<DeleteUserModal :modalName="modalName" :activeId="activeId" />
 			</template>
 		</ModalRoot>
 
@@ -84,11 +71,7 @@
 
 		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
 			<template #default="{ modalName, active, data }">
-				<WorkflowShareModal
-					:data="data"
-					:isActive="active"
-					:modalName="modalName"
-				/>
+				<WorkflowShareModal :data="data" :isActive="active" :modalName="modalName" />
 			</template>
 		</ModalRoot>
 
@@ -113,12 +96,11 @@
 				/>
 			</template>
 		</ModalRoot>
-
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -145,27 +127,27 @@ import {
 import AboutModal from './AboutModal.vue';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import CommunityPackageInstallModal from './CommunityPackageInstallModal.vue';
-import ChangePasswordModal from "./ChangePasswordModal.vue";
+import ChangePasswordModal from './ChangePasswordModal.vue';
 import ContactPromptModal from './ContactPromptModal.vue';
-import CredentialEdit from "./CredentialEdit/CredentialEdit.vue";
-import InviteUsersModal from "./InviteUsersModal.vue";
-import CredentialsSelectModal from "./CredentialsSelectModal.vue";
-import DuplicateWorkflowDialog from "./DuplicateWorkflowDialog.vue";
-import ModalRoot from "./ModalRoot.vue";
+import CredentialEdit from './CredentialEdit/CredentialEdit.vue';
+import InviteUsersModal from './InviteUsersModal.vue';
+import CredentialsSelectModal from './CredentialsSelectModal.vue';
+import DuplicateWorkflowDialog from './DuplicateWorkflowDialog.vue';
+import ModalRoot from './ModalRoot.vue';
 import OnboardingCallSignupModal from './OnboardingCallSignupModal.vue';
-import PersonalizationModal from "./PersonalizationModal.vue";
-import TagsManager from "./TagsManager/TagsManager.vue";
-import UpdatesPanel from "./UpdatesPanel.vue";
-import ValueSurvey from "./ValueSurvey.vue";
-import WorkflowSettings from "./WorkflowSettings.vue";
-import DeleteUserModal from "./DeleteUserModal.vue";
-import ExecutionsList from "./ExecutionsList.vue";
-import ActivationModal from "./ActivationModal.vue";
+import PersonalizationModal from './PersonalizationModal.vue';
+import TagsManager from './TagsManager/TagsManager.vue';
+import UpdatesPanel from './UpdatesPanel.vue';
+import ValueSurvey from './ValueSurvey.vue';
+import WorkflowSettings from './WorkflowSettings.vue';
+import DeleteUserModal from './DeleteUserModal.vue';
+import ExecutionsList from './ExecutionsList.vue';
+import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 
 export default Vue.extend({
-	name: "Modals",
+	name: 'Modals',
 	components: {
 		AboutModal,
 		ActivationModal,

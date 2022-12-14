@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style.noResults]: true, [$style.iconless]: !showIcon}">
+	<div :class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }">
 		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
@@ -14,7 +14,8 @@
 			<p v-text="$locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
 				<n8n-link :to="REQUEST_NODE_FORM_URL">
-					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
+					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span
+					>&nbsp;
 					<span>
 						<font-awesome-icon
 							:class="$style.external"
@@ -27,7 +28,6 @@
 		</div>
 	</div>
 </template>
-
 
 <script setup lang="ts">
 import { REQUEST_NODE_FORM_URL } from '@/constants';
@@ -65,7 +65,8 @@ defineProps<Props>();
 	}
 }
 
-.action p, .request p {
+.action p,
+.request p {
 	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-xloose);
 }
@@ -83,11 +84,10 @@ defineProps<Props>();
 .icon {
 	margin-top: var(--spacing-2xl);
 	min-height: 67px;
-	opacity: .6;
+	opacity: 0.6;
 }
 
 .external {
 	font-size: var(--font-size-2xs);
 }
-
 </style>

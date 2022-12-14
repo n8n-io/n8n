@@ -2,7 +2,7 @@ import { PiniaVuePlugin } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { render, cleanup } from '@testing-library/vue';
 import RunDataJsonSchema from '@/components/RunDataSchema.vue';
-import { STORES } from "@/constants";
+import { STORES } from '@/constants';
 
 describe('RunDataJsonSchema.vue', () => {
 	const renderOptions = {
@@ -34,10 +34,7 @@ describe('RunDataJsonSchema.vue', () => {
 				name: 'Set',
 				type: 'n8n-nodes-base.set',
 				typeVersion: 1,
-				position: [
-					380,
-					1060,
-				],
+				position: [380, 1060],
 				disabled: false,
 			},
 			data: [{}],
@@ -47,19 +44,20 @@ describe('RunDataJsonSchema.vue', () => {
 	beforeEach(cleanup);
 
 	it('renders schema for empty data', () => {
-		const { container } = render(RunDataJsonSchema, renderOptions,
-			vue => {
-				vue.use(PiniaVuePlugin);
-			});
+		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
+			vue.use(PiniaVuePlugin);
+		});
 		expect(container).toMatchSnapshot();
 	});
 
 	it('renders schema for data', () => {
-		renderOptions.props.data = [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }];
-		const { container } = render(RunDataJsonSchema, renderOptions,
-			vue => {
-				vue.use(PiniaVuePlugin);
-			});
+		renderOptions.props.data = [
+			{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] },
+			{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
+		];
+		const { container } = render(RunDataJsonSchema, renderOptions, (vue) => {
+			vue.use(PiniaVuePlugin);
+		});
 		expect(container).toMatchSnapshot();
 	});
 });
