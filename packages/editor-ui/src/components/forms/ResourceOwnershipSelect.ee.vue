@@ -30,15 +30,15 @@ export default Vue.extend({
 		menuItems(): IMenuItem[] {
 			return [
 				{
-					id: 'owner',
-					icon: 'user',
-					label: this.myResourcesLabel,
-					position: 'top',
-				},
-				{
 					id: 'all',
 					icon: 'globe-americas',
 					label: this.allResourcesLabel,
+					position: 'top',
+				},
+				{
+					id: 'owner',
+					icon: 'user',
+					label: this.myResourcesLabel,
 					position: 'top',
 				},
 			];
