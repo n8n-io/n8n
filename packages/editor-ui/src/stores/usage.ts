@@ -15,7 +15,7 @@ export type UsageTelemetry = {
 	quota: number
 };
 
-const SUBSCRIPTION_APP_URL = 'https://subscription.n8n.io';
+const SUBSCRIPTION_APP_URL = 'https://staging-subscription.n8n.io';
 const DEFAULT_PLAN_ID = 'community';
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
