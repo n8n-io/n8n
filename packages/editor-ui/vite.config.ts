@@ -111,7 +111,7 @@ export default mergeConfig(
 		},
 		optimizeDeps: {
 			exclude: [
-				'@jsplumb/browser-ui',
+				// '@jsplumb/browser-ui',
 				// "@jsplumb/common",
 				// "@jsplumb/connector-bezier",
 				// "@jsplumb/core",

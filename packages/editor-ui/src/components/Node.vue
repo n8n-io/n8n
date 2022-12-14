@@ -862,100 +862,44 @@ $--stalklength: 40px;
 $--box-size-medium: 24px;
 $--box-size-small: 18px;
 
-	.plus-svg-circle {
-		z-index: 111;
-		circle {
-			stroke: var(--color-foreground-xdark);
-			stroke-width: 2px;
-			fill: var(--color-foreground-xdark);
-		}
+.plus-svg-circle {
+	z-index: 111;
+	circle {
+		stroke: var(--color-foreground-xdark);
+		stroke-width: 2px;
+		fill: var(--color-foreground-xdark);
+	}
 
-		&:hover {
-			circle {
-				stroke: var(--color-primary);
-				fill: var(--color-primary);
-			}
+	&:hover {
+		circle {
+			stroke: var(--color-primary);
+			fill: var(--color-primary);
 		}
 	}
-	.plus-endpoint {
-		cursor: pointer;
-		z-index: 100;
+}
+.plus-endpoint {
+	cursor: pointer;
+	z-index: 100;
 
-		&:hover .plus-container {
-			color: var(--color-primary);
-			border: 2px solid var(--color-primary);
-		}
-		&:hover .drop-hover-message {
-			display: block;
-		}
-		.plus-stalk {
-			border-top: 2px solid var(--color-foreground-dark);
-			position: absolute;
-			width: $--stalklength;
-			height: 0;
-			right: 100%;
-			top: calc(50% - 1px);
-			pointer-events: none;
+	&:hover .plus-container {
+		color: var(--color-primary);
+		border: 2px solid var(--color-primary);
+	}
+	&:hover .drop-hover-message {
+		display: block;
+	}
+	.plus-stalk {
+		border-top: 2px solid var(--color-foreground-dark);
+		position: absolute;
+		width: $--stalklength;
+		height: 0;
+		right: 100%;
+		top: calc(50% - 1px);
+		pointer-events: none;
 
-		  .connection-run-items-label {
-				position: relative;
-				width: 100%;
-
-				span {
-					display: none;
-					left: calc(50% + 4px);
-				}
-			}
-		}
-
-		.plus-container {
-			color: var(--color-foreground-xdark);
-			border: 2px solid var(--color-foreground-xdark);
-			background-color: var(--color-background-xlight);
-			border-radius: var(--border-radius-base);
-			height: $--box-size-medium;
-			width: $--box-size-medium;
-
-			display: inline-flex;
-			align-items: center;
-			justify-content: center;
-			font-size: var(--font-size-2xs);
-			// position: absolute;
-
-			top: 0;
-			right: 0;
-			pointer-events: none;
-
-			&.small {
-				height: $--box-size-small;
-				width: $--box-size-small;
-				font-size: 8px;
-			}
-
-			.fa-plus {
-				width: 1em;
-			}
-		}
-
-		.drop-hover-message {
-			font-weight: var(--font-weight-bold);
-			font-size: var(--font-size-2xs);
-			line-height: var(--font-line-height-regular);
-			color: var(--color-text-light);
-
-			position: absolute;
-			top: -6px;
-			left: calc(100% + 8px);
-			width: 200px;
-			display: none;
-		}
-
-		&.hidden > * {
-			display: none;
-		}
-
-		&.success .plus-stalk {
-			border-color: var(--color-success-light);
+		.connection-run-items-label {
+			position: relative;
+			width: 100%;
 
 			span {
 				display: none;
@@ -976,7 +920,7 @@ $--box-size-small: 18px;
 		align-items: center;
 		justify-content: center;
 		font-size: var(--font-size-2xs);
-		position: absolute;
+		// position: absolute;
 
 		top: 0;
 		right: 0;
