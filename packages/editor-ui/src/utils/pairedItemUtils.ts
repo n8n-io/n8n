@@ -1,6 +1,6 @@
-import { IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
-import { IExecutionResponse, TargetItem } from "../Interface";
-import { isNotNull } from "@/utils";
+import { IPairedItemData, IRunData, ITaskData } from 'n8n-workflow';
+import { IExecutionResponse, TargetItem } from '../Interface';
+import { isNotNull } from '@/utils';
 
 /*
 	Utility functions that provide shared functionalities used to add paired item support to nodes
@@ -27,7 +27,11 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 		return [];
 	}
 
-	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem) ? item.pairedItem : (typeof item.pairedItem === 'object' ? [item.pairedItem] : [{item: item.pairedItem}]);
+	const pairedItem: IPairedItemData[] = Array.isArray(item.pairedItem)
+		? item.pairedItem
+		: typeof item.pairedItem === 'object'
+		? [item.pairedItem]
+		: [{ item: item.pairedItem }];
 	const sourceItems = pairedItem.map((item) => {
 		const input = item.input || 0;
 		return {
@@ -41,12 +45,18 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	return sourceItems.filter((item): item is TargetItem => isNotNull(item));
 }
 
-function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, pairedItem: IPairedItemData, sources: ITaskData['source']) {
+function addPairing(
+	paths: { [item: string]: string[][] },
+	pairedItemId: string,
+	pairedItem: IPairedItemData,
+	sources: ITaskData['source'],
+) {
 	paths[pairedItemId] = paths[pairedItemId] || [];
 
 	const input = pairedItem.input || 0;
 	const sourceNode = sources[input]?.previousNode;
-	if (!sourceNode) { // trigger nodes for example
+	if (!sourceNode) {
+		// trigger nodes for example
 		paths[pairedItemId].push([pairedItemId]);
 		return;
 	}
@@ -62,7 +72,14 @@ function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, p
 	});
 }
 
-function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, seen: Set<string>, paths: {[item: string]: string[][]}, pinned: Set<string>) {
+function addPairedItemIdsRec(
+	node: string,
+	runIndex: number,
+	runData: IRunData,
+	seen: Set<string>,
+	paths: { [item: string]: string[][] },
+	pinned: Set<string>,
+) {
 	const key = `${node}_r${runIndex}`;
 	if (seen.has(key)) {
 		return;
@@ -86,7 +103,14 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 	const sources = data.source || [];
 	sources.forEach((source) => {
 		if (source?.previousNode) {
-			addPairedItemIdsRec(source.previousNode, source.previousNodeRun ?? 0, runData, seen, paths, pinned);
+			addPairedItemIdsRec(
+				source.previousNode,
+				source.previousNodeRun ?? 0,
+				runData,
+				seen,
+				paths,
+				pinned,
+			);
 		}
 	});
 
@@ -116,13 +140,13 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 				return;
 			}
 
-			addPairing(paths, pairedItemId, {item: pairedItem}, sources);
+			addPairing(paths, pairedItemId, { item: pairedItem }, sources);
 		});
 	});
 }
 
-function getMapping(paths: {[item: string]: string[][]}): {[item: string]: Set<string>} {
-	const mapping: {[itemId: string]: Set<string>} = {};
+function getMapping(paths: { [item: string]: string[][] }): { [item: string]: Set<string> } {
+	const mapping: { [itemId: string]: Set<string> } = {};
 
 	Object.keys(paths).forEach((item) => {
 		paths?.[item]?.forEach((path) => {
@@ -141,7 +165,9 @@ function getMapping(paths: {[item: string]: string[][]}): {[item: string]: Set<s
 	return mapping;
 }
 
-export function getPairedItemsMapping(executionResponse: IExecutionResponse | null): {[itemId: string]: Set<string>} {
+export function getPairedItemsMapping(executionResponse: IExecutionResponse | null): {
+	[itemId: string]: Set<string>;
+} {
 	if (!executionResponse?.data?.resultData?.runData) {
 		return {};
 	}
@@ -151,7 +177,7 @@ export function getPairedItemsMapping(executionResponse: IExecutionResponse | nu
 
 	const pinned = new Set(Object.keys(executionResponse.data.resultData.pinData || {}));
 
-	const paths: {[item: string]: string[][]} = {};
+	const paths: { [item: string]: string[][] } = {};
 	Object.keys(runData).forEach((node) => {
 		runData[node].forEach((_, runIndex: number) => {
 			addPairedItemIdsRec(node, runIndex, runData, seen, paths, pinned);

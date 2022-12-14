@@ -14,10 +14,10 @@ export interface IPinDataContext {
 export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend({
 	computed: {
 		...mapStores(useWorkflowsStore),
-		pinData (): IPinData[string] | undefined {
+		pinData(): IPinData[string] | undefined {
 			return this.node ? this.workflowsStore.pinDataByNodeName(this.node!.name) : undefined;
 		},
-		hasPinData (): boolean {
+		hasPinData(): boolean {
 			return !!this.node && typeof this.pinData !== 'undefined';
 		},
 		isPinDataNodeType(): boolean {
@@ -40,7 +40,7 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 
 				error.message = message.charAt(0).toUpperCase() + message.slice(1);
 				error.message = error.message.replace(
-					'Unexpected token \' in JSON',
+					"Unexpected token ' in JSON",
 					this.$locale.baseText('runData.editOutputInvalid.singleQuote'),
 				);
 
@@ -48,7 +48,8 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 					const position = parseInt(positionMatch[1], 10);
 					const lineBreaksUpToPosition = (data.slice(0, position).match(/\n/g) || []).length;
 
-					error.message = error.message.replace(positionMatchRegEx,
+					error.message = error.message.replace(
+						positionMatchRegEx,
 						this.$locale.baseText('runData.editOutputInvalid.atPosition', {
 							interpolate: {
 								position: `${position}`,
@@ -56,13 +57,11 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 						}),
 					);
 
-					error.message = `${
-						this.$locale.baseText('runData.editOutputInvalid.onLine', {
-							interpolate: {
-								line: `${lineBreaksUpToPosition + 1}`,
-							},
-						})
-					} ${error.message}`;
+					error.message = `${this.$locale.baseText('runData.editOutputInvalid.onLine', {
+						interpolate: {
+							line: `${lineBreaksUpToPosition + 1}`,
+						},
+					})} ${error.message}`;
 				}
 
 				this.$showError(error, title);
@@ -73,7 +72,10 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 		isValidPinDataSize(data: string | object): boolean {
 			if (typeof data === 'object') data = JSON.stringify(data);
 
-			if (this.workflowsStore.pinDataSize + stringSizeInBytes(data) > MAX_WORKFLOW_PINNED_DATA_SIZE) {
+			if (
+				this.workflowsStore.pinDataSize + stringSizeInBytes(data) >
+				MAX_WORKFLOW_PINNED_DATA_SIZE
+			) {
 				this.$showError(
 					new Error(this.$locale.baseText('ndv.pinData.error.tooLarge.description')),
 					this.$locale.baseText('ndv.pinData.error.tooLarge.title'),

@@ -7,22 +7,25 @@
 				</n8n-text>
 			</el-col>
 			<el-col :span="16">
-				<div
-					v-for="node in nodesWithAccess"
-					:key="node.name"
-					:class="$style.valueLabel"
-				>
+				<div v-for="node in nodesWithAccess" :key="node.name" :class="$style.valueLabel">
 					<el-checkbox
 						v-if="credentialPermissions.updateNodeAccess"
-						:label="$locale.headerText({
-							key: `headers.${shortNodeType(node)}.displayName`,
-							fallback: node.displayName,
-						})"
+						:label="
+							$locale.headerText({
+								key: `headers.${shortNodeType(node)}.displayName`,
+								fallback: node.displayName,
+							})
+						"
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
 					<n8n-text v-else>
-						{{ $locale.headerText({ key: `headers.${shortNodeType(node)}.displayName`, fallback: node.displayName })}}
+						{{
+							$locale.headerText({
+								key: `headers.${shortNodeType(node)}.displayName`,
+								fallback: node.displayName,
+							})
+						}}
 					</n8n-text>
 				</div>
 			</el-col>
@@ -34,7 +37,9 @@
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true"><TimeAgo :date="currentCredential.createdAt" :capitalize="true" /></n8n-text>
+				<n8n-text :compact="true"
+					><TimeAgo :date="currentCredential.createdAt" :capitalize="true"
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
@@ -44,7 +49,9 @@
 				</n8n-text>
 			</el-col>
 			<el-col :span="16" :class="$style.valueLabel">
-				<n8n-text :compact="true"><TimeAgo :date="currentCredential.updatedAt" :capitalize="true" /></n8n-text>
+				<n8n-text :compact="true"
+					><TimeAgo :date="currentCredential.updatedAt" :capitalize="true"
+				/></n8n-text>
 			</el-col>
 		</el-row>
 		<el-row v-if="currentCredential">
@@ -106,5 +113,4 @@ export default Vue.extend({
 .valueLabel {
 	font-weight: var(--font-weight-regular);
 }
-
 </style>

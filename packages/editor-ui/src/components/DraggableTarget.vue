@@ -41,9 +41,7 @@ export default Vue.extend({
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-		),
+		...mapStores(useNDVStore),
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
 		},
@@ -64,7 +62,11 @@ export default Vue.extend({
 			if (target && this.isDragging) {
 				const dim = target.getBoundingClientRect();
 
-				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
+				this.hovering =
+					e.clientX >= dim.left &&
+					e.clientX <= dim.right &&
+					e.clientY >= dim.top &&
+					e.clientY <= dim.bottom;
 
 				if (!this.disabled && this.sticky && this.hovering) {
 					const [xOffset, yOffset] = this.stickyOffset;

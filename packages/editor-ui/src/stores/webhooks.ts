@@ -1,27 +1,27 @@
-import { STORES } from "@/constants";
-import {IFakeDoor, INodeUi, IRootState, NestedRecord} from "@/Interface";
-import { IMenuItem } from "n8n-design-system";
-import { IWorkflowSettings } from "n8n-workflow";
-import { defineStore } from "pinia";
-import { useRootStore } from "./n8nRootStore";
-import { useNDVStore } from "./ndv";
-import { useSettingsStore } from "./settings";
-import { useUIStore } from "./ui";
-import { useUsersStore } from "./users";
-import { useWorkflowsStore } from "./workflows";
+import { STORES } from '@/constants';
+import { IFakeDoor, INodeUi, IRootState, NestedRecord } from '@/Interface';
+import { IMenuItem } from 'n8n-design-system';
+import { IWorkflowSettings } from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import { useRootStore } from './n8nRootStore';
+import { useNDVStore } from './ndv';
+import { useSettingsStore } from './settings';
+import { useUIStore } from './ui';
+import { useUsersStore } from './users';
+import { useWorkflowsStore } from './workflows';
 
 export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 	getters: {
 		globalRoleName(): string {
 			return useUsersStore().globalRoleName;
 		},
-		getDynamicTranslations () {
+		getDynamicTranslations() {
 			return useUIStore().dynamicTranslations;
 		},
-		getFakeDoorFeatures () {
+		getFakeDoorFeatures() {
 			return useUIStore().fakeDoorFeatures;
 		},
-		isUserManagementEnabled () {
+		isUserManagementEnabled() {
 			return useSettingsStore().isUserManagementEnabled;
 		},
 		getFakeDoorItems(): IFakeDoor[] {
@@ -48,9 +48,11 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		activeExecutionId(): string {
 			return useWorkflowsStore().activeExecutionId || '';
 		},
-		nodeByName: (state: IRootState) => (nodeName: string): INodeUi | null => {
-			return useWorkflowsStore().getNodeByName(nodeName);
-		},
+		nodeByName:
+			(state: IRootState) =>
+			(nodeName: string): INodeUi | null => {
+				return useWorkflowsStore().getNodeByName(nodeName);
+			},
 		allNodes(): INodeUi[] {
 			return useWorkflowsStore().allNodes;
 		},
@@ -59,7 +61,7 @@ export const useWebhooksStore = defineStore(STORES.WEBHOOKS, {
 		addSidebarMenuItems(menuItems: IMenuItem[]) {
 			const uiStore = useUIStore();
 			const updated = uiStore.sidebarMenuItems.concat(menuItems);
-			uiStore.sidebarMenuItems =  updated;
+			uiStore.sidebarMenuItems = updated;
 		},
 		setFakeDoorFeatures(fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;

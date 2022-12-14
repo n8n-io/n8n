@@ -49,9 +49,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		content(): string {
 			if (!this.editor) return '';
 

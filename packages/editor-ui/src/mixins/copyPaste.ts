@@ -6,7 +6,7 @@ import Vue from 'vue';
 import { debounce } from 'lodash';
 
 export const copyPaste = Vue.extend({
-	data () {
+	data() {
 		return {
 			copyPasteElementsGotCreated: false,
 			hiddenInput: null as null | Element,
@@ -14,7 +14,7 @@ export const copyPaste = Vue.extend({
 			onBeforePaste: null as null | Function,
 		};
 	},
-	mounted () {
+	mounted() {
 		if (this.copyPasteElementsGotCreated === true) {
 			return;
 		}
@@ -49,8 +49,14 @@ export const copyPaste = Vue.extend({
 
 		// Code is mainly from
 		// https://www.lucidchart.com/techblog/2014/12/02/definitive-guide-copying-pasting-javascript/
-		const isSafari = navigator.appVersion.search('Safari') !== -1 && navigator.appVersion.search('Chrome') === -1 && navigator.appVersion.search('CrMo') === -1 && navigator.appVersion.search('CriOS') === -1;
-		const isIe = (navigator.userAgent.toLowerCase().indexOf('msie') !== -1 || navigator.userAgent.toLowerCase().indexOf('trident') !== -1);
+		const isSafari =
+			navigator.appVersion.search('Safari') !== -1 &&
+			navigator.appVersion.search('Chrome') === -1 &&
+			navigator.appVersion.search('CrMo') === -1 &&
+			navigator.appVersion.search('CriOS') === -1;
+		const isIe =
+			navigator.userAgent.toLowerCase().indexOf('msie') !== -1 ||
+			navigator.userAgent.toLowerCase().indexOf('trident') !== -1;
 
 		const hiddenInput = document.createElement('input');
 		hiddenInput.setAttribute('type', 'text');
@@ -69,7 +75,7 @@ export const copyPaste = Vue.extend({
 			ieClipboardDiv.setAttribute('contenteditable', 'true');
 			document.body.append(ieClipboardDiv);
 
-			this.onBeforePaste =  () => {
+			this.onBeforePaste = () => {
 				// @ts-ignore
 				if (hiddenInput.is(':focus')) {
 					this.focusIeClipboardDiv(ieClipboardDiv as HTMLDivElement);
@@ -80,7 +86,7 @@ export const copyPaste = Vue.extend({
 		}
 
 		let userInput = '';
-		const hiddenInputListener = (text: string) => { };
+		const hiddenInputListener = (text: string) => {};
 
 		hiddenInput.addEventListener('input', (e) => {
 			const value = hiddenInput.value;
@@ -91,52 +97,65 @@ export const copyPaste = Vue.extend({
 			// the input event, so we update the input area after the event is done being processed
 			if (isSafari) {
 				hiddenInput.focus();
-				setTimeout(() => { this.focusHiddenArea(hiddenInput); }, 0);
+				setTimeout(() => {
+					this.focusHiddenArea(hiddenInput);
+				}, 0);
 			} else {
 				this.focusHiddenArea(hiddenInput);
 			}
 		});
 
-		this.onPaste = debounce((e) => {
-			const event = 'paste';
-			// Check if the event got emitted from a message box or from something
-			// else which should ignore the copy/paste
-			// @ts-ignore
-			const path = e.path || (e.composedPath && e.composedPath());
-			for (let index = 0; index < path.length; index++) {
-				if (path[index].className && typeof path[index].className === 'string' && (
-					path[index].className.includes('el-message-box') || path[index].className.includes('ignore-key-press')
-				)) {
-					return;
-				}
-			}
-
-			if (ieClipboardDiv !== null) {
-				this.ieClipboardEvent(event, ieClipboardDiv);
-			} else {
-				this.standardClipboardEvent(event, e as ClipboardEvent);
+		this.onPaste = debounce(
+			(e) => {
+				const event = 'paste';
+				// Check if the event got emitted from a message box or from something
+				// else which should ignore the copy/paste
 				// @ts-ignore
-				if (!document.activeElement || (document.activeElement && ['textarea', 'text', 'email', 'password'].indexOf(document.activeElement.type) === -1)) {
-					// That it still allows to paste into text, email, password & textarea-fields we
-					// check if we can identify the active element and if so only
-					// run it if something else is selected.
-					this.focusHiddenArea(hiddenInput);
-					e.preventDefault();
+				const path = e.path || (e.composedPath && e.composedPath());
+				for (let index = 0; index < path.length; index++) {
+					if (
+						path[index].className &&
+						typeof path[index].className === 'string' &&
+						(path[index].className.includes('el-message-box') ||
+							path[index].className.includes('ignore-key-press'))
+					) {
+						return;
+					}
 				}
-			}
-		}, 1000, { leading: true });
+
+				if (ieClipboardDiv !== null) {
+					this.ieClipboardEvent(event, ieClipboardDiv);
+				} else {
+					this.standardClipboardEvent(event, e as ClipboardEvent);
+					// @ts-ignore
+					if (
+						!document.activeElement ||
+						(document.activeElement &&
+							['textarea', 'text', 'email', 'password'].indexOf(document.activeElement.type) === -1)
+					) {
+						// That it still allows to paste into text, email, password & textarea-fields we
+						// check if we can identify the active element and if so only
+						// run it if something else is selected.
+						this.focusHiddenArea(hiddenInput);
+						e.preventDefault();
+					}
+				}
+			},
+			1000,
+			{ leading: true },
+		);
 
 		// Set clipboard event listeners on the document.
 		// @ts-ignore
 		document.addEventListener('paste', this.onPaste);
 	},
 	methods: {
-		receivedCopyPasteData (plainTextData: string, event?: ClipboardEvent): void {
+		receivedCopyPasteData(plainTextData: string, event?: ClipboardEvent): void {
 			// THIS HAS TO BE DEFINED IN COMPONENT!
 		},
 
 		// For every browser except IE, we can easily get and set data on the clipboard
-		standardClipboardEvent (clipboardEventName: string, event: ClipboardEvent) {
+		standardClipboardEvent(clipboardEventName: string, event: ClipboardEvent) {
 			const clipboardData = event.clipboardData;
 			if (clipboardData !== null && clipboardEventName === 'paste') {
 				const clipboardText = clipboardData.getData('text/plain');
@@ -145,7 +164,7 @@ export const copyPaste = Vue.extend({
 		},
 
 		// For IE, we can get/set Text or URL just as we normally would
-		ieClipboardEvent (clipboardEventName: string, ieClipboardDiv: HTMLDivElement) {
+		ieClipboardEvent(clipboardEventName: string, ieClipboardDiv: HTMLDivElement) {
 			// @ts-ignore
 			const clipboardData = window.clipboardData;
 			if (clipboardEventName === 'paste') {
@@ -157,11 +176,11 @@ export const copyPaste = Vue.extend({
 		},
 
 		// Focuses an element to be ready for copy/paste (used exclusively for IE)
-		focusIeClipboardDiv (ieClipboardDiv: HTMLDivElement) {
+		focusIeClipboardDiv(ieClipboardDiv: HTMLDivElement) {
 			ieClipboardDiv.focus();
 			const range = document.createRange();
 			// @ts-ignore
-			range.selectNodeContents((ieClipboardDiv.get(0)));
+			range.selectNodeContents(ieClipboardDiv.get(0));
 			const selection = window.getSelection();
 			if (selection !== null) {
 				selection.removeAllRanges();
@@ -169,7 +188,7 @@ export const copyPaste = Vue.extend({
 			}
 		},
 
-		focusHiddenArea (hiddenInput: HTMLInputElement) {
+		focusHiddenArea(hiddenInput: HTMLInputElement) {
 			// In order to ensure that the browser will fire clipboard events, we always need to have something selected
 			hiddenInput.value = ' ';
 			hiddenInput.focus();
@@ -179,7 +198,7 @@ export const copyPaste = Vue.extend({
 		/**
 		 * Copies given data to clipboard
 		 */
-		copyToClipboard (value: string): void {
+		copyToClipboard(value: string): void {
 			// FROM: https://hackernoon.com/copying-text-to-clipboard-with-javascript-df4d4988697f
 			const element = document.createElement('textarea'); // Create a <textarea> element
 			element.value = value; // Set its value to the string that you want copied
@@ -193,9 +212,10 @@ export const copyPaste = Vue.extend({
 				return;
 			}
 
-			const selected = selection.rangeCount > 0 // Check if there is any content selected previously
-				? selection.getRangeAt(0) // Store selection if found
-				: false; // Mark as false to know no selection existed before
+			const selected =
+				selection.rangeCount > 0 // Check if there is any content selected previously
+					? selection.getRangeAt(0) // Store selection if found
+					: false; // Mark as false to know no selection existed before
 			element.select(); // Select the <textarea> content
 			document.execCommand('copy'); // Copy - only works as a result of a user action (e.g. click events)
 			document.body.removeChild(element); // Remove the <textarea> element
@@ -205,7 +225,6 @@ export const copyPaste = Vue.extend({
 				selection.addRange(selected); // Restore the original selection
 			}
 		},
-
 	},
 	beforeDestroy() {
 		if (this.hiddenInput) {

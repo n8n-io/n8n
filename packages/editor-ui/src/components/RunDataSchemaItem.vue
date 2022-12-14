@@ -1,30 +1,42 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { INodeUi, Schema } from "@/Interface";
-import { checkExhaustive, shorten } from "@/utils";
+import { INodeUi, Schema } from '@/Interface';
+import { checkExhaustive, shorten } from '@/utils';
 
 type Props = {
-	schema: Schema
-	level: number
-	parent: Schema | null
-	subKey: string
-	mappingEnabled: boolean
-	draggingPath: string
-	distanceFromActive: number
-	node: INodeUi | null
-}
+	schema: Schema;
+	level: number;
+	parent: Schema | null;
+	subKey: string;
+	mappingEnabled: boolean;
+	draggingPath: string;
+	distanceFromActive: number;
+	node: INodeUi | null;
+};
 
 const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
-const isFlat = computed(() => props.level === 0 && Array.isArray(props.schema.value) && props.schema.value.every(v => !Array.isArray(v.value)));
-const key = computed((): string | undefined => isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key);
-const schemaName = computed(() => isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
-const text = computed(() => Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0));
+const isFlat = computed(
+	() =>
+		props.level === 0 &&
+		Array.isArray(props.schema.value) &&
+		props.schema.value.every((v) => !Array.isArray(v.value)),
+);
+const key = computed((): string | undefined =>
+	isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key,
+);
+const schemaName = computed(() =>
+	isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key,
+);
+const text = computed(() =>
+	Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0),
+);
 
-const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive === 1 ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
-const transitionDelay = (i:number) => `${i * 0.033}s`;
+const getJsonParameterPath = (path: string): string =>
+	`{{ ${props.distanceFromActive === 1 ? '$json' : `$node["${props.node!.name}"].json`}${path} }}`;
+const transitionDelay = (i: number) => `${i * 0.033}s`;
 
 const getIconBySchemaType = (type: Schema['type']): string => {
 	switch (type) {
@@ -51,13 +63,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 	checkExhaustive(type);
 };
-
 </script>
 
 <template>
 	<div :class="$style.item">
 		<div
-			v-if="level > 0 || level === 0 && !isSchemaValueArray"
+			v-if="level > 0 || (level === 0 && !isSchemaValueArray)"
 			:title="schema.type"
 			:class="{
 				[$style.pill]: true,
@@ -73,9 +84,9 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:data-depth="level"
 				data-target="mappable"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
+				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm" />
 				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
-				<span v-if="key" :class="{[$style.arrayIndex]: isSchemaParentTypeArray}">{{ key }}</span>
+				<span v-if="key" :class="{ [$style.arrayIndex]: isSchemaParentTypeArray }">{{ key }}</span>
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
@@ -83,8 +94,9 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
 		</label>
-		<div v-if="isSchemaValueArray" :class="{[$style.sub]: true, [$style.flat]: isFlat}">
-			<run-data-schema-item v-for="(s, i) in schema.value"
+		<div v-if="isSchemaValueArray" :class="{ [$style.sub]: true, [$style.flat]: isFlat }">
+			<run-data-schema-item
+				v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
@@ -94,7 +106,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 				:draggingPath="draggingPath"
 				:distanceFromActive="distanceFromActive"
 				:node="node"
-				:style="{transitionDelay: transitionDelay(i)}"
+				:style="{ transitionDelay: transitionDelay(i) }"
 			/>
 		</div>
 	</div>

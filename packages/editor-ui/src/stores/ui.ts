@@ -2,7 +2,7 @@ import {
 	applyForOnboardingCall,
 	fetchNextOnboardingPrompt,
 	submitEmailOnSignup,
-} from "@/api/workflow-webhooks";
+} from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -26,8 +26,9 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_SHARE_MODAL_KEY,
-} from "@/constants";
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/constants';
 import {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
@@ -37,12 +38,12 @@ import {
 	IUser,
 	UIState,
 	XYPosition,
-} from "@/Interface";
-import Vue from "vue";
-import { defineStore } from "pinia";
-import { useRootStore } from "./n8nRootStore";
-import { getCurlToJson } from "@/api/curlHelper";
-import { useWorkflowsStore } from "./workflows";
+} from '@/Interface';
+import Vue from 'vue';
+import { defineStore } from 'pinia';
+import { useRootStore } from './n8nRootStore';
+import { getCurlToJson } from '@/api/curlHelper';
+import { useWorkflowsStore } from './workflows';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -202,16 +203,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 			return null;
 		},
-		getCurlCommand() : string|undefined {
+		getCurlCommand(): string | undefined {
 			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
 		},
-		getHttpNodeParameters() : string|undefined {
+		getHttpNodeParameters(): string | undefined {
 			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
-		areExpressionsDisabled() : boolean {
+		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
 		},
-		isVersionsOpen() : boolean {
+		isVersionsOpen(): boolean {
 			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
 		isModalOpen() {
@@ -230,18 +231,24 @@ export const useUIStore = defineStore(STORES.UI, {
 			return (name: string) => this.modals[name].data;
 		},
 		getFakeDoorByLocation() {
-			return (location: IFakeDoorLocation) => this.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+			return (location: IFakeDoorLocation) =>
+				this.fakeDoorFeatures.filter((fakeDoor) => fakeDoor.uiLocations.includes(location));
 		},
 		getFakeDoorById() {
-			return (id: string) => this.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+			return (id: string) =>
+				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
-		isNodeView() : boolean {
-			return [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(this.currentView);
+		isNodeView(): boolean {
+			return [
+				VIEWS.NEW_WORKFLOW.toString(),
+				VIEWS.WORKFLOW.toString(),
+				VIEWS.EXECUTION.toString(),
+			].includes(this.currentView);
 		},
 		isActionActive() {
 			return (action: string) => this.activeActions.includes(action);
 		},
-		getSelectedNodes() : INodeUi[] {
+		getSelectedNodes(): INodeUi[] {
 			const seen = new Set();
 			return this.selectedNodes.filter((node: INodeUi) => {
 				// dedupe for instances when same node is selected in different ways
@@ -265,20 +272,20 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setMode(name: string, mode: string):  void {
+		setMode(name: string, mode: string): void {
 			Vue.set(this.modals[name], 'mode', mode);
 		},
 		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
-		setModalData (payload: { name: string, data: Record<string, unknown> }) {
+		setModalData(payload: { name: string; data: Record<string, unknown> }) {
 			Vue.set(this.modals[payload.name], 'data', payload.data);
 		},
 		openModal(name: string): void {
 			Vue.set(this.modals[name], 'open', true);
 			this.modalStack = [name].concat(this.modalStack);
 		},
-		openModalWithData (payload: { name: string, data: Record<string, unknown> }): void {
+		openModalWithData(payload: { name: string; data: Record<string, unknown> }): void {
 			this.setModalData(payload);
 			this.openModal(payload.name);
 		},
@@ -395,16 +402,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			const updated = this.sidebarMenuItems.concat(menuItems);
 			Vue.set(this, 'sidebarMenuItems', updated);
 		},
-		setCurlCommand (payload: { name: string, command: string }): void {
+		setCurlCommand(payload: { name: string; command: string }): void {
 			Vue.set(this.modals[payload.name], 'curlCommand', payload.command);
 		},
-		setHttpNodeParameters (payload: { name: string, parameters: string }): void {
+		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
 			Vue.set(this.modals[payload.name], 'httpNodeParameters', payload.parameters);
 		},
-		toggleSidebarMenuCollapse (): void {
+		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
 		},
-		async getCurlToJson (curlCommand: string): Promise<CurlToJSONResponse> {
+		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
 			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},
