@@ -1,7 +1,7 @@
 import { INodeUi } from '@/Interface';
 import { IConnection } from 'n8n-workflow';
-import Vue from "vue";
-import { XYPosition } from "../Interface";
+import Vue from 'vue';
+import { XYPosition } from '../Interface';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
@@ -22,13 +22,13 @@ export enum COMMANDS {
 // (0 is usually enough but leaving this just in case)
 const CANVAS_ACTION_TIMEOUT = 10;
 
-export abstract class Undoable { }
+export abstract class Undoable {}
 
 export abstract class Command extends Undoable {
 	readonly name: string;
 	eventBus: Vue;
 
-	constructor (name: string, eventBus: Vue) {
+	constructor(name: string, eventBus: Vue) {
 		super();
 		this.name = name;
 		this.eventBus = eventBus;
@@ -41,7 +41,7 @@ export abstract class Command extends Undoable {
 export class BulkCommand extends Undoable {
 	commands: Command[];
 
-	constructor (commands: Command[]) {
+	constructor(commands: Command[]) {
 		super();
 		this.commands = commands;
 	}
@@ -52,7 +52,7 @@ export class MoveNodeCommand extends Command {
 	oldPosition: XYPosition;
 	newPosition: XYPosition;
 
-	constructor (nodeName: string, oldPosition: XYPosition, newPosition: XYPosition, eventBus: Vue) {
+	constructor(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition, eventBus: Vue) {
 		super(COMMANDS.MOVE_NODE, eventBus);
 		this.nodeName = nodeName;
 		this.newPosition = newPosition;
@@ -60,12 +60,7 @@ export class MoveNodeCommand extends Command {
 	}
 
 	getReverseCommand(): Command {
-		return new MoveNodeCommand(
-			this.nodeName,
-			this.newPosition,
-			this.oldPosition,
-			this.eventBus,
-		);
+		return new MoveNodeCommand(this.nodeName, this.newPosition, this.oldPosition, this.eventBus);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -80,8 +75,11 @@ export class MoveNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
-			this.eventBus.$root.$emit('nodeMove', { nodeName: this.nodeName, position: this.oldPosition });
+		return new Promise<void>((resolve) => {
+			this.eventBus.$root.$emit('nodeMove', {
+				nodeName: this.nodeName,
+				position: this.oldPosition,
+			});
 			resolve();
 		});
 	}
@@ -90,7 +88,7 @@ export class MoveNodeCommand extends Command {
 export class AddNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor (node: INodeUi, eventBus: Vue) {
+	constructor(node: INodeUi, eventBus: Vue) {
 		super(COMMANDS.ADD_NODE, eventBus);
 		this.node = node;
 	}
@@ -100,14 +98,11 @@ export class AddNodeCommand extends Command {
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
-		return (
-			anotherCommand instanceof AddNodeCommand &&
-			anotherCommand.node.name === this.node.name
-		);
+		return anotherCommand instanceof AddNodeCommand && anotherCommand.node.name === this.node.name;
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
+		return new Promise<void>((resolve) => {
 			this.eventBus.$root.$emit('revertAddNode', { node: this.node });
 			resolve();
 		});
@@ -117,7 +112,7 @@ export class AddNodeCommand extends Command {
 export class RemoveNodeCommand extends Command {
 	node: INodeUi;
 
-	constructor (node: INodeUi, eventBus: Vue) {
+	constructor(node: INodeUi, eventBus: Vue) {
 		super(COMMANDS.REMOVE_NODE, eventBus);
 		this.node = node;
 	}
@@ -127,14 +122,11 @@ export class RemoveNodeCommand extends Command {
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
-		return (
-			anotherCommand instanceof AddNodeCommand &&
-			anotherCommand.node.name === this.node.name
-		);
+		return anotherCommand instanceof AddNodeCommand && anotherCommand.node.name === this.node.name;
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
+		return new Promise<void>((resolve) => {
 			this.eventBus.$root.$emit('revertRemoveNode', { node: this.node });
 			resolve();
 		});
@@ -164,7 +156,7 @@ export class AddConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
+		return new Promise<void>((resolve) => {
 			this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
 			resolve();
 		});
@@ -180,7 +172,7 @@ export class RemoveConnectionCommand extends Command {
 	}
 
 	getReverseCommand(): Command {
-			return new AddConnectionCommand(this.connectionData, this.eventBus);
+		return new AddConnectionCommand(this.connectionData, this.eventBus);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -194,7 +186,7 @@ export class RemoveConnectionCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
+		return new Promise<void>((resolve) => {
 			setTimeout(() => {
 				this.eventBus.$root.$emit('revertRemoveConnection', { connection: this.connectionData });
 				resolve();
@@ -216,19 +208,21 @@ export class EnableNodeToggleCommand extends Command {
 	}
 
 	getReverseCommand(): Command {
-			return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState, this.eventBus);
+		return new EnableNodeToggleCommand(this.nodeName, this.newState, this.oldState, this.eventBus);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
 		return (
-			anotherCommand instanceof EnableNodeToggleCommand &&
-			anotherCommand.nodeName === this.nodeName
+			anotherCommand instanceof EnableNodeToggleCommand && anotherCommand.nodeName === this.nodeName
 		);
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
-			this.eventBus.$root.$emit('enableNodeToggle', { nodeName: this.nodeName, isDisabled: this.oldState });
+		return new Promise<void>((resolve) => {
+			this.eventBus.$root.$emit('enableNodeToggle', {
+				nodeName: this.nodeName,
+				isDisabled: this.oldState,
+			});
 			resolve();
 		});
 	}
@@ -245,7 +239,7 @@ export class RenameNodeCommand extends Command {
 	}
 
 	getReverseCommand(): Command {
-			return new RenameNodeCommand(this.newName, this.currentName, this.eventBus);
+		return new RenameNodeCommand(this.newName, this.currentName, this.eventBus);
 	}
 
 	isEqualTo(anotherCommand: Command): boolean {
@@ -257,8 +251,11 @@ export class RenameNodeCommand extends Command {
 	}
 
 	async revert(): Promise<void> {
-		return new Promise<void>(resolve => {
-			this.eventBus.$root.$emit('revertRenameNode', { currentName: this.currentName, newName: this.newName });
+		return new Promise<void>((resolve) => {
+			this.eventBus.$root.$emit('revertRenameNode', {
+				currentName: this.currentName,
+				newName: this.newName,
+			});
 			resolve();
 		});
 	}

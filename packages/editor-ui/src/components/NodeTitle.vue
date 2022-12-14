@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container" @click="onEdit">
+	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
 		<n8n-popover placement="right" width="200" :value="editName" :disabled="readOnly">
 			<div
@@ -8,16 +8,27 @@
 				@keydown.stop
 				@keydown.esc="editName = false"
 			>
-				<n8n-text :bold="true" color="text-base" tag="div"
-					>{{ $locale.baseText('ndv.title.renameNode') }}</n8n-text>
-				<n8n-input ref="input" size="small" v-model="newName" />
+				<n8n-text :bold="true" color="text-base" tag="div">{{
+					$locale.baseText('ndv.title.renameNode')
+				}}</n8n-text>
+				<n8n-input ref="input" size="small" v-model="newName" data-test-id="node-rename-input" />
 				<div :class="$style.editButtons">
-					<n8n-button type="secondary" size="small" @click="editName = false" :label="$locale.baseText('ndv.title.cancel')" />
-					<n8n-button type="primary" size="small" @click="onRename" :label="$locale.baseText('ndv.title.rename')" />
+					<n8n-button
+						type="secondary"
+						size="small"
+						@click="editName = false"
+						:label="$locale.baseText('ndv.title.cancel')"
+					/>
+					<n8n-button
+						type="primary"
+						size="small"
+						@click="onRename"
+						:label="$locale.baseText('ndv.title.rename')"
+					/>
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{[$style.title]: true, [$style.hoverable]: !readOnly}">
+				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: !readOnly }">
 					{{ value }}
 					<div :class="$style.editIconContainer">
 						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />

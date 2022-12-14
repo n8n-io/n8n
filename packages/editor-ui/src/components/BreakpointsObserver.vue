@@ -5,12 +5,7 @@
 </template>
 
 <script lang="ts">
-import {
-	BREAKPOINT_SM,
-	BREAKPOINT_MD,
-	BREAKPOINT_LG,
-	BREAKPOINT_XL,
-} from "@/constants";
+import { BREAKPOINT_SM, BREAKPOINT_MD, BREAKPOINT_LG, BREAKPOINT_XL } from '@/constants';
 
 /**
  * matching element.io https://element.eleme.io/#/en-US/component/layout#col-attributes
@@ -21,34 +16,27 @@ import {
  * xl >= 1920
  */
 
-import mixins from "vue-typed-mixins";
-import { genericHelpers } from "@/mixins/genericHelpers";
-import { debounceHelper } from "@/mixins/debounce";
+import mixins from 'vue-typed-mixins';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { debounceHelper } from '@/mixins/debounce';
 
 export default mixins(genericHelpers, debounceHelper).extend({
-	name: "BreakpointsObserver",
-	props: [
-		"valueXS",
-		"valueXL",
-		"valueLG",
-		"valueMD",
-		"valueSM",
-		"valueDefault",
-	],
+	name: 'BreakpointsObserver',
+	props: ['valueXS', 'valueXL', 'valueLG', 'valueMD', 'valueSM', 'valueDefault'],
 	data() {
 		return {
 			width: window.innerWidth,
 		};
 	},
 	created() {
-		window.addEventListener("resize", this.onResize);
+		window.addEventListener('resize', this.onResize);
 	},
 	beforeDestroy() {
-		window.removeEventListener("resize", this.onResize);
+		window.removeEventListener('resize', this.onResize);
 	},
 	methods: {
 		onResize() {
-			this.callDebounced("onResizeEnd", { debounceTime: 50 });
+			this.callDebounced('onResizeEnd', { debounceTime: 50 });
 		},
 		onResizeEnd() {
 			this.$data.width = window.innerWidth;
@@ -57,24 +45,25 @@ export default mixins(genericHelpers, debounceHelper).extend({
 	computed: {
 		bp(): string {
 			if (this.$data.width < BREAKPOINT_SM) {
-				return "XS";
+				return 'XS';
 			}
 
 			if (this.$data.width >= BREAKPOINT_XL) {
-				return "XL";
+				return 'XL';
 			}
 
 			if (this.$data.width >= BREAKPOINT_LG) {
-				return "LG";
+				return 'LG';
 			}
 
 			if (this.$data.width >= BREAKPOINT_MD) {
-				return "MD";
+				return 'MD';
 			}
 
-			return "SM";
+			return 'SM';
 		},
-		value(): any | undefined { // tslint:disable-line:no-any
+		value(): any | undefined {
+			// tslint:disable-line:no-any
 			if (this.$props.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
 				return this.$props.valueXS;
 			}

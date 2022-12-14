@@ -19,7 +19,11 @@
 		>
 			<template #preview="{ canDrop, el }">
 				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-					{{ $locale.baseText('dataMapping.mapKeyToField', { interpolate: { name: getShortKey(el) } }) }}
+					{{
+						$locale.baseText('dataMapping.mapKeyToField', {
+							interpolate: { name: getShortKey(el) },
+						})
+					}}
 				</div>
 			</template>
 			<template>
@@ -33,17 +37,18 @@
 					class="json-data"
 				>
 					<template #nodeKey="{ node }">
-					<span
-						data-target="mappable"
-						:data-value="getJsonParameterPath(node.path)"
-						:data-name="node.key"
-						:data-path="node.path"
-						:data-depth="node.level"
-						:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-					>"{{ node.key }}"</span>
+						<span
+							data-target="mappable"
+							:data-value="getJsonParameterPath(node.path)"
+							:data-name="node.key"
+							:data-path="node.path"
+							:data-depth="node.level"
+							:class="{
+								[$style.mappable]: mappingEnabled,
+								[$style.dragged]: draggingPath === node.path,
+							}"
+							>"{{ node.key }}"</span
+						>
 					</template>
 					<template #nodeValue="{ node }">
 						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
@@ -55,10 +60,11 @@
 							:data-path="node.path"
 							:data-depth="node.level"
 							:class="{
-							[$style.mappable]: mappingEnabled,
-							[$style.dragged]: draggingPath === node.path,
-						}"
-						>{{ getContent(node.content) }}</span>
+								[$style.mappable]: mappingEnabled,
+								[$style.dragged]: draggingPath === node.path,
+							}"
+							>{{ getContent(node.content) }}</span
+						>
 					</template>
 				</vue-json-pretty>
 			</template>
@@ -67,17 +73,17 @@
 </template>
 
 <script lang="ts">
-import { PropType } from "vue";
-import mixins from "vue-typed-mixins";
+import { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
 import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { IDataObject, INodeExecutionData } from "n8n-workflow";
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from '@/components/Draggable.vue';
 import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
-import { INodeUi } from "@/Interface";
-import { externalHooks } from "@/mixins/externalHooks";
-import { mapStores } from "pinia";
-import { useNDVStore } from "@/stores/ndv";
+import { INodeUi } from '@/Interface';
+import { externalHooks } from '@/mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -90,7 +96,7 @@ export default mixins(externalHooks).extend({
 	},
 	props: {
 		editMode: {
-			type: Object as () => { enabled?: boolean; value?: string; },
+			type: Object as () => { enabled?: boolean; value?: string },
 		},
 		sessionId: {
 			type: String,
@@ -146,9 +152,7 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-		),
+		...mapStores(useNDVStore),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData);
 		},
@@ -170,7 +174,10 @@ export default mixins(externalHooks).extend({
 		},
 		getJsonParameterPath(path: string): string {
 			const convertedPath = convertPath(path);
-			return `{{ ${ convertedPath.replace(/^(\["?\d"?])/, this.distanceFromActive === 1 ? '$json' : `$node["${ this.node!.name }"].json`) } }}`;
+			return `{{ ${convertedPath.replace(
+				/^(\["?\d"?])/,
+				this.distanceFromActive === 1 ? '$json' : `$node["${this.node!.name}"].json`,
+			)} }}`;
 		},
 		onDragStart(el: HTMLElement) {
 			if (el && el.dataset.path) {
@@ -203,7 +210,7 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		getContent(value: unknown): string {
-			return isString(value) ? `"${ value }"` : JSON.stringify(value);
+			return isString(value) ? `"${value}"` : JSON.stringify(value);
 		},
 		getListItemName(path: string): string {
 			return path.replace(/^(\["?\d"?]\.?)/g, '');
@@ -270,7 +277,6 @@ export default mixins(externalHooks).extend({
 	transform: translate(-50%, -100%);
 	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
 }
-
 </style>
 
 <style lang="scss">
@@ -304,27 +310,30 @@ export default mixins(externalHooks).extend({
 	}
 }
 
-
 .vjs-tree .vjs-value-null {
-	&, span {
+	&,
+	span {
 		color: var(--color-json-null);
 	}
 }
 
 .vjs-tree .vjs-value-boolean {
-	&, span {
+	&,
+	span {
 		color: var(--color-json-boolean);
 	}
 }
 
 .vjs-tree .vjs-value-number {
-	&, span {
+	&,
+	span {
 		color: var(--color-json-number);
 	}
 }
 
 .vjs-tree .vjs-value-string {
-	&, span {
+	&,
+	span {
 		color: var(--color-json-string);
 	}
 }

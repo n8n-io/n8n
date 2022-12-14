@@ -1,47 +1,38 @@
-import { PropType } from "vue";
+import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
-import {
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from "@/stores/workflows";
-import { useNodeTypesStore } from "@/stores/nodeTypes";
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
-import { getStyleTokenValue } from "@/utils";
-import { useHistoryStore } from "@/stores/history";
-import { MoveNodeCommand } from "@/models/history";
+import { getStyleTokenValue } from '@/utils';
+import { useHistoryStore } from '@/stores/history';
+import { MoveNodeCommand } from '@/models/history';
 
-export const nodeBase = mixins(
-	deviceSupportHelpers,
-).extend({
-	mounted () {
+export const nodeBase = mixins(deviceSupportHelpers).extend({
+	mounted() {
 		// Initialize the node
 		if (this.data !== null) {
 			try {
 				this.__addNode(this.data);
-			} catch(error) {
+			} catch (error) {
 				// This breaks when new nodes are loaded into store but workflow tab is not currently active
 				// Shouldn't affect anything
 			}
 		}
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useUIStore,
-			useWorkflowsStore,
-			useHistoryStore,
-		),
-		data (): INodeUi | null {
+		...mapStores(useNodeTypesStore, useUIStore, useWorkflowsStore, useHistoryStore),
+		data(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
 		},
-		nodeId (): string {
-			return this.data?.id  || '';
+		nodeId(): string {
+			return this.data?.id || '';
 		},
 	},
 	props: {
@@ -68,7 +59,7 @@ export const nodeBase = mixins(
 		},
 	},
 	methods: {
-		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {
+		__addInputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			// Add Inputs
 			let index;
 			const indexData: {
@@ -85,14 +76,18 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
+				const anchorPosition =
+					NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid:NodeViewUtils. getInputEndpointUUID(this.nodeId, index),
+					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					endpointStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointStyle: NodeViewUtils.getInputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+					),
 					endpointHoverStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: false,
 					isTarget: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
@@ -118,7 +113,7 @@ export const nodeBase = mixins(
 				}
 
 				const endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
-				if(!Array.isArray(endpoint)) {
+				if (!Array.isArray(endpoint)) {
 					endpoint.__meta = {
 						nodeName: node.name,
 						nodeId: this.nodeId,
@@ -155,14 +150,18 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
+				const anchorPosition =
+					NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
-					endpointStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+					),
 					endpointHoverStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: true,
 					isTarget: false,
@@ -174,7 +173,7 @@ export const nodeBase = mixins(
 					},
 					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
-					dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+					dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
 				};
 
 				if (nodeTypeData.outputNames) {
@@ -184,15 +183,15 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
-					if(!Array.isArray(endpoint)) {
-						endpoint.__meta = {
-							nodeName: node.name,
-							nodeId: this.nodeId,
-							index: i,
-							totalEndpoints: nodeTypeData.outputs.length,
-						};
-					}
+				const endpoint = this.instance.addEndpoint(this.nodeId, { ...newEndpointData });
+				if (!Array.isArray(endpoint)) {
+					endpoint.__meta = {
+						nodeName: node.name,
+						nodeId: this.nodeId,
+						index: i,
+						totalEndpoints: nodeTypeData.outputs.length,
+					};
+				}
 
 				if (!this.isReadOnly) {
 					const plusEndpointData: IEndpointOptions = {
@@ -223,11 +222,11 @@ export const nodeBase = mixins(
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
-						dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+						dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
 					};
 
 					const plusEndpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
-					if(!Array.isArray(plusEndpoint)) {
+					if (!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
 							nodeName: node.name,
 							nodeId: this.nodeId,
@@ -284,7 +283,7 @@ export const nodeBase = mixins(
 							moveNodes.push(this.data);
 						}
 
-						if(moveNodes.length > 1) {
+						if (moveNodes.length > 1) {
 							this.historyStore.startRecordingUndo();
 						}
 						// This does for some reason just get called once for the node that got clicked
@@ -312,12 +311,14 @@ export const nodeBase = mixins(
 							};
 							const oldPosition = node.position;
 							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
-								this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition, this));
+								this.historyStore.pushCommandToUndo(
+									new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
+								);
 								this.workflowsStore.updateNodeProperties(updateInformation);
 								this.$emit('moved', node);
 							}
 						});
-						if(moveNodes.length > 1) {
+						if (moveNodes.length > 1) {
 							this.historyStore.stopRecordingUndo();
 						}
 					}
@@ -325,7 +326,7 @@ export const nodeBase = mixins(
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			});
 		},
-		__addNode (node: INodeUi) {
+		__addNode(node: INodeUi) {
 			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
@@ -343,11 +344,15 @@ export const nodeBase = mixins(
 				}
 			}
 		},
-		mouseLeftClick (e: MouseEvent) {
+		mouseLeftClick(e: MouseEvent) {
 			// @ts-ignore
 			const path = e.path || (e.composedPath && e.composedPath());
 			for (let index = 0; index < path.length; index++) {
-				if (path[index].className && typeof path[index].className === 'string' && path[index].className.includes('no-select-on-click')) {
+				if (
+					path[index].className &&
+					typeof path[index].className === 'string' &&
+					path[index].className.includes('no-select-on-click')
+				) {
 					return;
 				}
 			}

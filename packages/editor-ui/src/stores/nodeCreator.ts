@@ -1,7 +1,23 @@
 import startCase from 'lodash.startCase';
-import { defineStore } from "pinia";
-import { INodePropertyCollection, INodePropertyOptions, IDataObject, INodeProperties, INodeTypeDescription, deepCopy, INodeParameters, INodeActionTypeDescription } from 'n8n-workflow';
-import { STORES, MANUAL_TRIGGER_NODE_TYPE, CORE_NODES_CATEGORY, CALENDLY_TRIGGER_NODE_TYPE, TRIGGER_NODE_FILTER, WEBHOOK_NODE_TYPE } from "@/constants";
+import { defineStore } from 'pinia';
+import {
+	INodePropertyCollection,
+	INodePropertyOptions,
+	IDataObject,
+	INodeProperties,
+	INodeTypeDescription,
+	deepCopy,
+	INodeParameters,
+	INodeActionTypeDescription,
+} from 'n8n-workflow';
+import {
+	STORES,
+	MANUAL_TRIGGER_NODE_TYPE,
+	CORE_NODES_CATEGORY,
+	CALENDLY_TRIGGER_NODE_TYPE,
+	TRIGGER_NODE_FILTER,
+	WEBHOOK_NODE_TYPE,
+} from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
 import { CUSTOM_API_CALL_KEY, ALL_NODE_FILTER } from '@/constants';
@@ -12,28 +28,40 @@ import { Telemetry } from '@/plugins/telemetry';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 
-const customNodeActionsParsers: {[key: string]: (matchedProperty: INodeProperties, nodeTypeDescription: INodeTypeDescription) => INodeActionTypeDescription[] | undefined} = {
+const customNodeActionsParsers: {
+	[key: string]: (
+		matchedProperty: INodeProperties,
+		nodeTypeDescription: INodeTypeDescription,
+	) => INodeActionTypeDescription[] | undefined;
+} = {
 	['n8n-nodes-base.hubspotTrigger']: (matchedProperty, nodeTypeDescription) => {
 		const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
 
-		return (collection?.values[0]?.options as INodePropertyOptions[])?.map((categoryItem): INodeActionTypeDescription => ({
-			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
-			actionKey: categoryItem.value as string,
-			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: {event: startCase(categoryItem.name)},
+		return (collection?.values[0]?.options as INodePropertyOptions[])?.map(
+			(categoryItem): INodeActionTypeDescription => ({
+				...getNodeTypeBase(
+					nodeTypeDescription,
+					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+				),
+				actionKey: categoryItem.value as string,
+				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+					interpolate: { event: startCase(categoryItem.name) },
+				}),
+				description: categoryItem.description || '',
+				displayOptions: matchedProperty.displayOptions,
+				values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
 			}),
-			description: categoryItem.description || '',
-			displayOptions: matchedProperty.displayOptions,
-			values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
-		}));
+		);
 	},
 };
 
 function filterSinglePlaceholderAction(actions: INodeActionTypeDescription[]) {
-	return actions.filter((action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
-		const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
-		return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
-	});
+	return actions.filter(
+		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
+			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
+			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
+		},
+	);
 }
 
 function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, category: string) {
@@ -56,11 +84,14 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, category: st
 	};
 }
 
-function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+function operationsCategory(
+	nodeTypeDescription: INodeTypeDescription,
+): INodeActionTypeDescription[] {
 	if (!!nodeTypeDescription.properties.find((property) => property.name === 'resource')) return [];
 
-	const matchedProperty = nodeTypeDescription.properties
-		.find((property) =>property.name?.toLowerCase() === 'operation');
+	const matchedProperty = nodeTypeDescription.properties.find(
+		(property) => property.name?.toLowerCase() === 'operation',
+	);
 
 	if (!matchedProperty || !matchedProperty.options) return [];
 
@@ -69,7 +100,10 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAct
 	);
 
 	const items = filteredOutItems.map((item: INodePropertyOptions) => ({
-		...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.operations')),
+		...getNodeTypeBase(
+			nodeTypeDescription,
+			i18n.baseText('nodeCreator.actionsCategory.operations'),
+		),
 		actionKey: item.value as string,
 		displayName: item.action ?? startCase(item.name),
 		description: item.description ?? '',
@@ -85,7 +119,9 @@ function operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAct
 	return items;
 }
 
-function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+function recommendedCategory(
+	nodeTypeDescription: INodeTypeDescription,
+): INodeActionTypeDescription[] {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
@@ -97,29 +133,40 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAc
 	// Inject placeholder action if no events are available
 	// so user is able to add node to the canvas from the actions panel
 	if (!matchedProperty || !matchedProperty.options) {
-		return [{
-			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
-			actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
-			displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
-				interpolate: {event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd()},
-			}),
-			description: '',
-		}];
+		return [
+			{
+				...getNodeTypeBase(
+					nodeTypeDescription,
+					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+				),
+				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
+				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
+					interpolate: { event: nodeTypeDescription.displayName.replace('Trigger', '').trimEnd() },
+				}),
+				description: '',
+			},
+		];
 	}
 
 	const filteredOutItems = (matchedProperty.options as INodePropertyOptions[]).filter(
 		(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 	);
 
-	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty, nodeTypeDescription);
+	const customParsedItem = customNodeActionsParsers[nodeTypeDescription.name]?.(
+		matchedProperty,
+		nodeTypeDescription,
+	);
 
 	const items =
 		customParsedItem ??
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
-			...getNodeTypeBase(nodeTypeDescription, i18n.baseText('nodeCreator.actionsCategory.recommended')),
+			...getNodeTypeBase(
+				nodeTypeDescription,
+				i18n.baseText('nodeCreator.actionsCategory.recommended'),
+			),
 			actionKey: categoryItem.value as string,
 			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: {event: startCase(categoryItem.name)},
+				interpolate: { event: startCase(categoryItem.name) },
 			}),
 			description: categoryItem.description || '',
 			displayOptions: matchedProperty.displayOptions,
@@ -132,12 +179,16 @@ function recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAc
 	return items;
 }
 
-function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
+function resourceCategories(
+	nodeTypeDescription: INodeTypeDescription,
+): INodeActionTypeDescription[] {
 	const transformedNodes: INodeActionTypeDescription[] = [];
-	const matchedProperties = nodeTypeDescription.properties.filter((property) =>property.displayName?.toLowerCase() === 'resource');
+	const matchedProperties = nodeTypeDescription.properties.filter(
+		(property) => property.displayName?.toLowerCase() === 'resource',
+	);
 
 	matchedProperties.forEach((property) => {
-		(property.options as INodePropertyOptions[] || [])
+		((property.options as INodePropertyOptions[]) || [])
 			.filter((option) => option.value !== CUSTOM_API_CALL_KEY)
 			.forEach((resourceOption, i, options) => {
 				const isSingleResource = options.length === 1;
@@ -152,11 +203,10 @@ function resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAct
 
 				if (!operations?.options) return;
 
-				const items = (operations.options as INodePropertyOptions[] || []).map(
+				const items = ((operations.options as INodePropertyOptions[]) || []).map(
 					(operationOption) => {
 						const displayName =
-							operationOption.action ??
-							`${resourceOption.name} ${startCase(operationOption.name)}`;
+							operationOption.action ?? `${resourceOption.name} ${startCase(operationOption.name)}`;
 
 						// We need to manually populate displayOptions as they are not present in the node description
 						// if the resource has only one option
@@ -208,20 +258,22 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		setFilter(search: string) {
 			this.itemsFilter = search;
 		},
-		setAddedNodeActionParameters (action: IUpdateInformation, telemetry?: Telemetry, track = true) {
+		setAddedNodeActionParameters(action: IUpdateInformation, telemetry?: Telemetry, track = true) {
 			const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
-			const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters }, args }) => {
-				if (name !== 'addNode' || args[0].type !== action.key) return;
-				after(() => {
-					setLastNodeParameters(action);
-					if(track) this.trackActionSelected(action, telemetry);
-					storeWatcher();
-				});
-			});
+			const storeWatcher = onWorkflowStoreAction(
+				({ name, after, store: { setLastNodeParameters }, args }) => {
+					if (name !== 'addNode' || args[0].type !== action.key) return;
+					after(() => {
+						setLastNodeParameters(action);
+						if (track) this.trackActionSelected(action, telemetry);
+						storeWatcher();
+					});
+				},
+			);
 
 			return storeWatcher;
 		},
-		trackActionSelected (action: IUpdateInformation, telemetry?: Telemetry) {
+		trackActionSelected(action: IUpdateInformation, telemetry?: Telemetry) {
 			const { $externalHooks } = new externalHooks();
 
 			const payload = {
@@ -240,7 +292,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
 				// Core nodes shouldn't support actions
 				node.actions = [];
-				if(isCoreNode) return node;
+				if (isCoreNode) return node;
 
 				node.actions.push(
 					...recommendedCategory(node),
@@ -253,54 +305,70 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
-			const mergedNodes = this.visibleNodesWithActions.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
+			const mergedNodes = this.visibleNodesWithActions.reduce(
+				(acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
+					const clonedNode = deepCopy(node);
+					const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
+					const actions = node.actions || [];
+					// Do not merge core nodes
+					const normalizedName = isCoreNode
+						? node.name
+						: node.name.toLowerCase().replace('trigger', '');
+					const existingNode = acc[normalizedName];
 
-				const clonedNode = deepCopy(node);
-				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
-				const actions = node.actions || [];
-				// Do not merge core nodes
-				const normalizedName = isCoreNode ? node.name : node.name.toLowerCase().replace('trigger', '');
-				const existingNode = acc[normalizedName];
+					if (existingNode) existingNode.actions?.push(...actions);
+					else acc[normalizedName] = clonedNode;
 
-				if(existingNode) existingNode.actions?.push(...actions);
-				else acc[normalizedName] = clonedNode;
+					if (!isCoreNode) {
+						acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
+					}
 
-				if(!isCoreNode) acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
-
-				acc[normalizedName].actions = filterSinglePlaceholderAction(acc[normalizedName].actions || []);
-				return acc;
-			}, {});
+					acc[normalizedName].actions = filterSinglePlaceholderAction(
+						acc[normalizedName].actions || [],
+					);
+					return acc;
+				},
+				{},
+			);
 			return Object.values(mergedNodes);
 		},
-		getNodeTypesWithManualTrigger: () => (nodeType?: string): string[] => {
-			if(!nodeType) return [];
+		getNodeTypesWithManualTrigger:
+			() =>
+			(nodeType?: string): string[] => {
+				if (!nodeType) return [];
 
-			const { workflowTriggerNodes } = useWorkflowsStore();
-			const isTrigger = nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
-			const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-			const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
+				const { workflowTriggerNodes } = useWorkflowsStore();
+				const isTrigger =
+					nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
+				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
+				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
 
-			const nodeTypes = !isTrigger && !workflowContainsTrigger && isTriggerPanel
-				? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
-				: [nodeType];
+				const nodeTypes =
+					!isTrigger && !workflowContainsTrigger && isTriggerPanel
+						? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
+						: [nodeType];
 
-			return nodeTypes;
-		},
+				return nodeTypes;
+			},
 
-		getActionData: () => (actionItem: INodeActionTypeDescription): IUpdateInformation => {
-			const displayOptions = actionItem.displayOptions ;
+		getActionData:
+			() =>
+			(actionItem: INodeActionTypeDescription): IUpdateInformation => {
+				const displayOptions = actionItem.displayOptions;
 
-			const displayConditions = Object.keys(displayOptions?.show || {})
-				.reduce((acc: IDataObject, showCondition: string) => {
-					acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
-					return acc;
-				}, {});
+				const displayConditions = Object.keys(displayOptions?.show || {}).reduce(
+					(acc: IDataObject, showCondition: string) => {
+						acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
+						return acc;
+					},
+					{},
+				);
 
-			return {
-				name: actionItem.displayName,
-				key: actionItem.name as string,
-				value: { ...actionItem.values , ...displayConditions} as INodeParameters,
-			};
-		},
+				return {
+					name: actionItem.displayName,
+					key: actionItem.name as string,
+					value: { ...actionItem.values, ...displayConditions } as INodeParameters,
+				};
+			},
 	},
 });

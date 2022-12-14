@@ -38,8 +38,7 @@ export default mixins(showMessage).extend({
 		mode: {
 			type: String,
 			default: 'workflow',
-			validator: (value: string): boolean =>
-				['workflow', 'execution'].includes(value),
+			validator: (value: string): boolean => ['workflow', 'execution'].includes(value),
 		},
 		workflow: {
 			type: Object as () => IWorkflowDb,
@@ -56,8 +55,7 @@ export default mixins(showMessage).extend({
 		loaderType: {
 			type: String,
 			default: 'image',
-			validator: (value: string): boolean =>
-				['image', 'spinner'].includes(value),
+			validator: (value: string): boolean => ['image', 'spinner'].includes(value),
 		},
 	},
 	data() {
@@ -70,16 +68,14 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		showPreview(): boolean {
-			return !this.loading &&
-				(
-					(this.mode === 'workflow' && !!this.workflow) ||
-					(this.mode === 'execution' && !!this.executionId)
-				) &&
-				this.ready;
+			return (
+				!this.loading &&
+				((this.mode === 'workflow' && !!this.workflow) ||
+					(this.mode === 'execution' && !!this.executionId)) &&
+				this.ready
+			);
 		},
 	},
 	methods: {
@@ -154,8 +150,7 @@ export default mixins(showMessage).extend({
 				} else if (json.command === 'error') {
 					this.$emit('close');
 				}
-			} catch (e) {
-			}
+			} catch (e) {}
 		},
 		onDocumentScroll() {
 			if (this.insideIframe) {
@@ -224,8 +219,8 @@ export default mixins(showMessage).extend({
 	color: var(--color-primary);
 	position: absolute;
 	top: 50% !important;
-  -ms-transform: translateY(-50%);
-  transform: translateY(-50%);
+	-ms-transform: translateY(-50%);
+	transform: translateY(-50%);
 }
 
 .imageLoader {
