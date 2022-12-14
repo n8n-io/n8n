@@ -21,11 +21,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useNodeTypesStore,
-			useRootStore,
-		),
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
@@ -38,7 +34,7 @@ export default Vue.extend({
 			return this.rootStore.getBaseUrl + iconUrl;
 		},
 
-		relevantNode(): INodeTypeDescription | null	 {
+		relevantNode(): INodeTypeDescription | null {
 			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
@@ -70,7 +66,7 @@ export default Vue.extend({
 
 			if (type.extends) {
 				let parentCred = null;
-				type.extends.forEach(name => {
+				type.extends.forEach((name) => {
 					parentCred = this.getCredentialWithIcon(name);
 					if (parentCred !== null) return;
 				});

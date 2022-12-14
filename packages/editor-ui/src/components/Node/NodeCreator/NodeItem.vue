@@ -18,17 +18,20 @@
 		<template #tooltip v-if="isCommunityNode">
 			<p
 				:class="$style.communityNodeIcon"
-				v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+				v-html="
+					$locale.baseText('generic.communityNode.tooltip', {
+						interpolate: {
+							packageName: nodeType.name.split('.')[0],
+							docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL,
+						},
+					})
+				"
 				@click="onCommunityNodeTooltipClick"
 			/>
 		</template>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
-			<div
-				:class="$style.draggable"
-				:style="draggableStyle"
-				v-show="dragging"
-			>
+			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
+			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
 				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
 			</div>
 		</template>
@@ -58,10 +61,10 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'dragstart', $e: DragEvent): void,
-	(event: 'dragend', $e: DragEvent): void,
-	(event: 'nodeTypeSelected', value: string[]): void,
-	(event: 'actionsOpen', value: INodeTypeDescription): void,
+	(event: 'dragstart', $e: DragEvent): void;
+	(event: 'dragend', $e: DragEvent): void;
+	(event: 'nodeTypeSelected', value: string[]): void;
+	(event: 'actionsOpen', value: INodeTypeDescription): void;
 }>();
 
 const instance = getCurrentInstance();
@@ -83,9 +86,11 @@ const showActionArrow = computed(() => props.allowActions && hasActions.value);
 
 const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
 
-const shortNodeType = computed<string>(() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '');
+const shortNodeType = computed<string>(
+	() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '',
+);
 
-const draggableStyle = computed<{ top: string; left: string; }>(() => ({
+const draggableStyle = computed<{ top: string; left: string }>(() => ({
 	top: `${state.draggablePosition.y}px`,
 	left: `${state.draggablePosition.x}px`,
 }));
@@ -101,10 +106,12 @@ const displayName = computed<any>(() => {
 	});
 });
 
-const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
+const isTriggerNode = computed<boolean>(() =>
+	props.nodeType.displayName.toLowerCase().includes('trigger'),
+);
 
 function onClick() {
-	if(hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
+	if (hasActions.value && props.allowActions) emit('actionsOpen', props.nodeType);
 	else emit('nodeTypeSelected', [props.nodeType.name]);
 }
 function onDragStart(event: DragEvent): void {
@@ -113,13 +120,13 @@ function onDragStart(event: DragEvent): void {
 	 * All browsers attach the correct page coordinates to the "dragover" event.
 	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
 	 */
-	document.body.addEventListener("dragover", onDragOver);
+	document.body.addEventListener('dragover', onDragOver);
 
 	const { pageX: x, pageY: y } = event;
 
 	if (event.dataTransfer) {
-		event.dataTransfer.effectAllowed = "copy";
-		event.dataTransfer.dropEffect = "copy";
+		event.dataTransfer.effectAllowed = 'copy';
+		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
 		event.dataTransfer.setData(
 			'nodeTypeName',
@@ -133,17 +140,17 @@ function onDragStart(event: DragEvent): void {
 }
 
 function onDragOver(event: DragEvent): void {
-	if (!state.dragging || event.pageX === 0 && event.pageY === 0) {
+	if (!state.dragging || (event.pageX === 0 && event.pageY === 0)) {
 		return;
 	}
 
-	const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
+	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
 	state.draggablePosition = { x, y };
 }
 
 function onDragEnd(event: DragEvent): void {
-	document.body.removeEventListener("dragover", onDragOver);
+	document.body.removeEventListener('dragover', onDragOver);
 
 	emit('dragend', event);
 
@@ -158,7 +165,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
 	}
 }
-
 
 defineExpose({
 	onClick,
