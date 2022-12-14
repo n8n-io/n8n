@@ -25,13 +25,13 @@ export function createExpressionTelemetryPayload(
 		handlebar_count: resolvables.length,
 		handlebar_error_count: erroringResolvables.length,
 		short_errors: erroringResolvables.map((r) => r.resolved ?? null),
-		full_errors: erroringResolvables.map((errorResolvable) => {
-			return errorResolvable.fullError
-				? {
-						...exposeErrorProperties(errorResolvable.fullError),
-						stack: errorResolvable.fullError.stack,
-				  }
-				: null;
+		full_errors: erroringResolvables.map((erroringResolvable) => {
+			if (!erroringResolvable.fullError) return null;
+
+			return {
+				...exposeErrorProperties(erroringResolvable.fullError),
+				stack: erroringResolvable.fullError.stack,
+			};
 		}),
 	};
 }
