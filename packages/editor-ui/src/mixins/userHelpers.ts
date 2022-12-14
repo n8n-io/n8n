@@ -7,7 +7,7 @@ import { Route } from 'vue-router';
 export const userHelpers = Vue.extend({
 	methods: {
 		canUserAccessRouteByName(name: string): boolean {
-			const {route} = this.$router.resolve({name});
+			const { route } = this.$router.resolve({ name });
 
 			return this.canUserAccessRoute(route);
 		},

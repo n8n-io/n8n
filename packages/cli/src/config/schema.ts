@@ -1011,4 +1011,11 @@ export const schema = {
 			doc: 'Tenant id used by the license manager',
 		},
 	},
+
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
+	},
 };
