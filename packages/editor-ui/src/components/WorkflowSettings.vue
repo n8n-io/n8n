@@ -12,7 +12,7 @@
 		:scrollable="true"
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-settings">
+			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
@@ -30,6 +30,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-error-workflow"
 						>
 							<n8n-option
 								v-for="item in workflows"
@@ -108,6 +109,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-timezone"
 						>
 							<n8n-option
 								v-for="timezone of timezones"
@@ -136,6 +138,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-failed-executions"
 						>
 							<n8n-option
 								v-for="option of saveDataErrorExecutionOptions"
@@ -164,6 +167,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-success-executions"
 						>
 							<n8n-option
 								v-for="option of saveDataSuccessExecutionOptions"
@@ -192,6 +196,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-manual-executions"
 						>
 							<n8n-option
 								v-for="option of saveManualOptions"
@@ -220,6 +225,7 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-execution-progress"
 						>
 							<n8n-option
 								v-for="option of saveExecutionProgressOptions"
@@ -248,11 +254,12 @@
 								:value="workflowSettings.executionTimeout > -1"
 								@change="toggleTimeout"
 								active-color="#13ce66"
+								data-test-id="workflow-settings-timeout-workflow"
 							></el-switch>
 						</div>
 					</el-col>
 				</el-row>
-				<div v-if="workflowSettings.executionTimeout > -1">
+				<div v-if="workflowSettings.executionTimeout > -1" data-test-id="workflow-settings-timeout-form">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
@@ -300,7 +307,7 @@
 			</div>
 		</template>
 		<template #footer>
-			<div class="action-buttons">
+			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
