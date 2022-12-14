@@ -1230,7 +1230,10 @@ export default mixins(
 						...data,
 					};
 
+					this.removeForeignCredentialsFromWorkflow(workflowToCopy, this.credentialsStore.allCredentials);
+
 					const nodeData = JSON.stringify(workflowToCopy, null, 2);
+
 					this.copyToClipboard(nodeData);
 					if (data.nodes.length > 0) {
 						if (!isCut) {

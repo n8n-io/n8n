@@ -69,6 +69,7 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	tags: [],
 	pinData: {},
 	versionId: '',
+	usedCredentials: [],
 });
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
@@ -147,6 +148,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 				return workflowRunData[nodeName];
 			};
+		},
+		getWorkflowById() {
+			return (id: string): IWorkflowDb => this.workflowsById[id];
 		},
 
 		// Node getters
@@ -269,6 +273,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setUsedCredentials(data: IUsedCredential[]) {
+			this.workflow.usedCredentials = data;
 			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
 				accu[credential.id!] = credential;
 				return accu;
