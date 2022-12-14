@@ -133,7 +133,7 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { ITelemetryTrackProperties } from "n8n-workflow";
+import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',
@@ -249,8 +249,14 @@ export default mixins(showMessage).extend({
 			};
 
 			try {
-				const shareesAdded = this.sharedWith.filter((sharee) => !this.workflow.sharedWith?.find((previousSharee) => sharee.id === previousSharee.id));
-				const shareesRemoved = this.workflow.sharedWith?.filter((previousSharee) => !this.sharedWith.find((sharee) => sharee.id === previousSharee.id)) || [];
+				const shareesAdded = this.sharedWith.filter(
+					(sharee) =>
+						!this.workflow.sharedWith?.find((previousSharee) => sharee.id === previousSharee.id),
+				);
+				const shareesRemoved =
+					this.workflow.sharedWith?.filter(
+						(previousSharee) => !this.sharedWith.find((sharee) => sharee.id === previousSharee.id),
+					) || [];
 
 				const workflowId = await saveWorkflowPromise();
 				await this.workflowsEEStore.saveWorkflowSharedWith({
@@ -364,7 +370,7 @@ export default mixins(showMessage).extend({
 
 				this.trackTelemetry({
 					user_id_sharee: userId,
-					warning_orphan_credentials: isLastUserWithAccessToCredentials
+					warning_orphan_credentials: isLastUserWithAccessToCredentials,
 				});
 			}
 		},
