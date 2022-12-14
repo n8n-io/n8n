@@ -67,7 +67,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setWorkflowSharedWith(rootStore.getRestApiContext, payload.workflowId, {
 					shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
 				});

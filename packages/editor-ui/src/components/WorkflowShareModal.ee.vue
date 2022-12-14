@@ -25,7 +25,7 @@
 						})
 					}}
 				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -85,7 +85,7 @@
 			</div>
 			<enterprise-edition
 				v-else
-				:features="[EnterpriseEditionFeature.WorkflowSharing]"
+				:features="[EnterpriseEditionFeature.Sharing]"
 				:class="$style.actionButtons"
 			>
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
@@ -209,8 +209,7 @@ export default mixins(showMessage).extend({
 		},
 		isSharingAvailable(): boolean {
 			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) ===
-				true
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) === true
 			);
 		},
 		dynamicTranslations(): NestedRecord<string> {

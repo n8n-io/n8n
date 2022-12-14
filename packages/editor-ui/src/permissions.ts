@@ -92,7 +92,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
 	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
-		EnterpriseEditionFeature.WorkflowSharing,
+		EnterpriseEditionFeature.Sharing,
 	);
 	const isNewWorkflow = workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 
