@@ -42,13 +42,6 @@ describe('RunDataJsonSchema.vue', () => {
 			},
 			data: [{}],
 		},
-		mocks: {
-			$locale: {
-				baseText() {
-					return '';
-				},
-			},
-		},
 	};
 
 	beforeEach(cleanup);
