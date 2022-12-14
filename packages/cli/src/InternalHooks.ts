@@ -17,6 +17,7 @@ import {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
+import { RoleService } from './role/role.service';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -111,6 +112,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 			(note) => note.overlapping,
 		).length;
 
+		let userRole: 'owner' | 'sharee' | undefined = undefined;
+		if (userId) {
+			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+			if (role) {
+				userRole = role.name === 'owner' ? 'owner' : 'sharee';
+			}
+		}
+
 		return this.telemetry.track(
 			'User saved workflow',
 			{
@@ -122,6 +131,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				version_cli: this.versionCli,
 				num_tags: workflow.tags?.length ?? 0,
 				public_api: publicApi,
+				sharing_role: userRole,
 			},
 			{ withPostHog: true },
 		);
@@ -196,6 +206,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
+				let userRole: 'owner' | 'sharee' | undefined = undefined;
+				if (userId) {
+					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+					if (role) {
+						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+					}
+				}
+
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
 					workflow_id: workflow.id.toString(),
@@ -220,6 +238,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 							runData.data.startData?.destinationNode,
 						)?.type,
 						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						sharing_role: userRole,
 					};
 
 					promises.push(
