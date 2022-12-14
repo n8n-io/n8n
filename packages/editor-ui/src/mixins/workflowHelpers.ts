@@ -46,7 +46,7 @@ import {
 	ITag,
 	IUpdateInformation,
 	TargetItem,
-} from '../../Interface';
+} from '../Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { restApi } from '@/mixins/restApi';
@@ -66,9 +66,9 @@ import { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import useWorkflowsEEStore from '@/stores/workflows.ee';
-import { useUsersStore } from '@/stores/users';
-import { ICredentialMap, ICredentialsResponse, IUsedCredential } from '@/Interface';
+import { useWorkflowsEEStore } from "@/stores/workflows.ee";
+import { useUsersStore } from "@/stores/users";
+import { ICredentialsResponse } from '@/Interface';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -481,7 +481,6 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 
 			if (nodeType !== null) {
 				// Node-Type is known so we can save the parameters correctly
-
 				const nodeParameters = NodeHelpers.getNodeParameters(
 					nodeType.properties,
 					node.parameters,
@@ -828,8 +827,14 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				this.uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 100) {
+					const url = this.$router.resolve({ name: VIEWS.WORKFLOW, params: { name: currentWorkflow }}).href;
+
 					const overwrite = await this.confirmMessage(
-						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message'),
+						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.message', {
+							interpolate: {
+								url,
+							},
+						}),
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.title'),
 						null,
 						this.$locale.baseText('workflows.concurrentChanges.confirmMessage.confirmButtonText'),
