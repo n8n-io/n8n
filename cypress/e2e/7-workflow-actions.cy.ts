@@ -114,8 +114,8 @@ describe('Workflow Actions', () => {
 	it('should import workflow from url', () => {
 		WorkflowPage.getters.workflowMenu().should('be.visible');
 		WorkflowPage.getters.workflowMenu().click();
-		WorkflowPage.getters.workflowMenuImportFromURLItem().should('be.visible');
-		WorkflowPage.getters.workflowMenuImportFromURLItem().click();
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().should('be.visible');
+		WorkflowPage.getters.workflowMenuItemImportFromURLItem().click();
 		cy.get('.el-message-box').should('be.visible');
 		cy.get('.el-message-box').find('input').type(IMPORT_WORKFLOW_URL);
 		cy.get('body').type('{enter}');
