@@ -22,7 +22,7 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(useUIStore),
-		featureInfo(): IFakeDoor|undefined {
+		featureInfo(): IFakeDoor | undefined {
 			return this.uiStore.getFakeDoorById(this.featureId);
 		},
 	},

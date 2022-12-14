@@ -1,13 +1,23 @@
 <template>
-	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd" :class="$style.dragContainer">
+	<Draggable
+		type="panel-resize"
+		@drag="onDrag"
+		@dragstart="onDragStart"
+		@dragend="onDragEnd"
+		:class="$style.dragContainer"
+	>
 		<template #default="{ isDragging }">
-			<div
-				:class="{ [$style.dragButton]: true }"
-			>
-				<span v-if="canMoveLeft" :class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }">
+			<div :class="{ [$style.dragButton]: true }">
+				<span
+					v-if="canMoveLeft"
+					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
+				>
 					<font-awesome-icon icon="arrow-left" />
 				</span>
-				<span v-if="canMoveRight" :class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }">
+				<span
+					v-if="canMoveRight"
+					:class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }"
+				>
 					<font-awesome-icon icon="arrow-right" />
 				</span>
 				<div :class="$style.grid">
@@ -32,7 +42,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue from 'vue';
 import Draggable from './Draggable.vue';
 
 export default Vue.extend({
@@ -48,7 +58,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onDrag(e: {x: number, y: number}) {
+		onDrag(e: { x: number; y: number }) {
 			this.$emit('drag', e);
 		},
 		onDragStart() {
@@ -80,7 +90,8 @@ export default Vue.extend({
 	z-index: 3;
 
 	&:hover {
-		.leftArrow, .rightArrow {
+		.leftArrow,
+		.rightArrow {
 			visibility: visible;
 		}
 	}
@@ -131,6 +142,4 @@ export default Vue.extend({
 		}
 	}
 }
-
-
 </style>

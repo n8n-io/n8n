@@ -1,10 +1,13 @@
 <template>
-	<div v-if="items" :class="{[$style.container]: true, ['tab-bar-container']: true, [$style.menuCollapsed]: mainSidebarCollapsed}">
-		<n8n-radio-buttons
-			:value="activeTab"
-			:options="items"
-			@input="onSelect"
-		/>
+	<div
+		v-if="items"
+		:class="{
+			[$style.container]: true,
+			['tab-bar-container']: true,
+			[$style.menuCollapsed]: mainSidebarCollapsed,
+		}"
+	>
+		<n8n-radio-buttons :value="activeTab" :options="items" @input="onSelect" />
 	</div>
 </template>
 
@@ -33,9 +36,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-		),
+		...mapStores(useUIStore),
 		mainSidebarCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
@@ -49,7 +50,6 @@ export default Vue.extend({
 </script>
 
 <style module lang="scss">
-
 .container {
 	position: absolute;
 	top: 47px;

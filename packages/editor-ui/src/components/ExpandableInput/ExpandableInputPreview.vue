@@ -12,13 +12,13 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputBase from "./ExpandableInputBase.vue";
+import Vue from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
 
 export default Vue.extend({
 	components: { ExpandableInputBase },
-	name: "ExpandableInputPreview",
-	props: ["value"],
+	name: 'ExpandableInputPreview',
+	props: ['value'],
 });
 </script>
 
