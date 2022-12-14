@@ -87,6 +87,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
 	const executionLimit = computed(() => state.data.usage.executions.limit);
 	const executionCount = computed(() => state.data.usage.executions.value);
+	const executionPercentage = computed(() => executionCount.value / executionLimit.value * 100);
 	const instanceId = computed(() => settingsStore.settings.instanceId);
 	const managementToken = computed(() => state.data.managementToken);
 	const appVersion = computed(() => settingsStore.settings.versionCli);
@@ -101,6 +102,7 @@ export const useUsageStore = defineStore('usage', () => {
 		planName,
 		executionLimit,
 		executionCount,
+		executionPercentage,
 		instanceId,
 		managementToken,
 		appVersion,

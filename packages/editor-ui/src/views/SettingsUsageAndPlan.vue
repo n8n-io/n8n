@@ -90,13 +90,18 @@ const onDialogClosed = () => {
 		</n8n-heading>
 		<div :class="$style.quota">
 			<n8n-text size="medium" color="text-light">{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}</n8n-text>
-			<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
-				<template #count>{{ usageStore.executionCount }}</template>
-				<template #limit>
-					<span v-if="usageStore.executionLimit < 0">{{ $locale.baseText('_reusableBaseText.unlimited') }}</span>
-					<span v-else>{{ usageStore.executionLimit }}</span>
-				</template>
-			</i18n>
+			<div :class="$style.chart">
+				<span v-if="usageStore.executionLimit > 0" :class="$style.line">
+					<span :class="$style.bar" :style="{ width: `${usageStore.executionPercentage}%` }"></span>
+				</span>
+				<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
+					<template #count>{{ usageStore.executionCount }}</template>
+					<template #limit>
+						<span v-if="usageStore.executionLimit < 0">{{ $locale.baseText('_reusableBaseText.unlimited') }}</span>
+						<span v-else>{{ usageStore.executionLimit }}</span>
+					</template>
+				</i18n>
+			</div>
 		</div>
 		<n8n-info-tip>
 			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
@@ -141,6 +146,8 @@ const onDialogClosed = () => {
 </template>
 
 <style lang="scss" module>
+@import '@/styles/css-animation-helpers.scss';
+
 .spacedFlex {
 	display: flex;
 	justify-content: space-between;
@@ -162,6 +169,7 @@ const onDialogClosed = () => {
 	background: var(--color-background-xlight);
 	border-radius: var(--border-radius-large);
 	border: 1px solid var(--color-light-grey);
+	white-space: nowrap;
 
 	.count {
 		text-transform: lowercase;
@@ -183,6 +191,31 @@ const onDialogClosed = () => {
 			text-decoration: none;
 			padding: var(--spacing-xs) var(--spacing-m);
 			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
+		}
+	}
+}
+
+.chart {
+	display: flex;
+  align-items: center;
+	justify-content: flex-end;
+	flex-grow: 1;
+
+	.line {
+		display: block;
+		height: 10px;
+		width: 100%;
+		max-width: 260px;
+		margin: 0 var(--spacing-m);
+		border-radius: 10px;
+		background: var(--color-background-base);
+
+		.bar {
+			float: left;
+			height: 100%;
+			background: var(--color-secondary);
+			border-radius: 10px;
+			transition: width 0.2s $ease-out-expo;
 		}
 	}
 }
