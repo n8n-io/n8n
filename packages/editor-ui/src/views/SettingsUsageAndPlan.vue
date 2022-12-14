@@ -26,9 +26,7 @@ const onLicenseActivation = () => {
 onMounted(async () => {
 	usageStore.setLoading(true);
 	if(route.query.key) {
-		await usageStore.activateLicense(route.query.key as string).then(() => {
-			router.replace({ query: {} });
-		});
+		await usageStore.activateLicense(route.query.key as string).then(() => router.replace({ query: {} }));
 	} else if(usageStore.canUserActivateLicense) {
 		await usageStore.refreshLicenseManagementToken();
 	} else {
