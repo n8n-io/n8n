@@ -503,6 +503,7 @@ importers:
       '@vitejs/plugin-vue2': ^1.1.2
       axios: ^0.21.1
       c8: ^7.12.0
+      codemirror-lang-n8n-expression: ^0.1.0
       dateformat: ^3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: ^2.1.0
@@ -563,6 +564,7 @@ importers:
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
       axios: 0.21.4
+      codemirror-lang-n8n-expression: 0.1.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: 2.1.0
@@ -8883,6 +8885,19 @@ packages:
     resolution: {integrity: sha512-RpAVKQA5T63xEj6/giIbUEtZwJ4UFIc3ZtvEkiaUERylqe8xb5IvqcgOurZLahv93CLKfxcw5YI+DZcUBRyLXA==}
     engines: {node: '>=0.10.0'}
     dev: true
+
+  /codemirror-lang-n8n-expression/0.1.0_zyklskjzaprvz25ee7sq7godcq:
+    resolution: {integrity: sha512-20ss5p0koTu5bfivr1sBHYs7cpjWT2JhVB5gn7TX9WWPt+v/9p9tEcYSOyL/sm+OFuWh698Cgnmrba4efQnMCQ==}
+    dependencies:
+      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/language': 6.2.1
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/state'
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
 
   /codepage/1.15.0:
     resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
