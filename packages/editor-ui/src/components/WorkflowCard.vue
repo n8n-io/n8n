@@ -207,7 +207,7 @@ export default mixins(showMessage, restApi).extend({
 					data: { id: this.data.id },
 				});
 
-				this.$telemetry.track('User opened sharing modale', {
+				this.$telemetry.track('User opened sharing modal', {
 					workflow_id: this.data.id,
 					user_id_sharer: this.currentUser.id,
 					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',

@@ -312,7 +312,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 				data: { id: this.currentWorkflowId },
 			});
 
-			this.$telemetry.track('User opened sharing modale', {
+			this.$telemetry.track('User opened sharing modal', {
 				workflow_id: this.currentWorkflowId,
 				user_id_sharer: this.currentUser?.id,
 				sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
