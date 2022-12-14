@@ -9,7 +9,9 @@ import { telemetry } from "@/plugins/telemetry";
 const usageStore = useUsageStore();
 const route = useRoute();
 
-const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
+const queryParamCallback = ref<string>(`callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
+const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}`);
+const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
 const activationKeyModal = ref(false);
 const activationKey = ref('');
 
@@ -106,7 +108,7 @@ const onDialogClosed = () => {
 		<div :class="$style.buttons">
 			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="primary" size="large" text :label="$locale.baseText('settings.usageAndPlan.button.activation')" />
 			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
-				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
+				<a :href="managePlanUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
 			<n8n-button v-else @click="onViewPlans" size="large">
 				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>

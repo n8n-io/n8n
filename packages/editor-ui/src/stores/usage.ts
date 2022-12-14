@@ -89,6 +89,8 @@ export const useUsageStore = defineStore('usage', () => {
 	const executionCount = computed(() => state.data.usage.executions.value);
 	const instanceId = computed(() => settingsStore.settings.instanceId);
 	const managementToken = computed(() => state.data.managementToken);
+	const appVersion = computed(() => settingsStore.settings.versionCli);
+	const commonSubscriptionAppUrlQueryParams = computed(() => `instanceid=${instanceId.value}&version=${appVersion.value}`);
 
 	return {
 		setLoading,
@@ -101,9 +103,10 @@ export const useUsageStore = defineStore('usage', () => {
 		executionCount,
 		instanceId,
 		managementToken,
+		appVersion,
 		isCloseToLimit: computed(() => state.data.usage.executions.limit < 0 ? false :  executionCount.value / executionLimit.value >= state.data.usage.executions.warningThreshold),
-		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?instanceid=${instanceId.value}`),
-		managePlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${managementToken.value}`),
+		viewPlansUrl: computed(() => `${SUBSCRIPTION_APP_URL}?${commonSubscriptionAppUrlQueryParams.value}`),
+		managePlanUrl: computed(() => `${SUBSCRIPTION_APP_URL}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
 		error: computed(() => state.error),
