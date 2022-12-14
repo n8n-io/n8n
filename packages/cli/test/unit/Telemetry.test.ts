@@ -1,5 +1,6 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
+import { flushPromises } from './Helpers';
 
 jest.mock('@/license/License.service', () => {
 	return {
@@ -285,7 +286,8 @@ describe('Telemetry', () => {
 			expect(pulseSpy).toBeCalledTimes(0);
 
 			jest.advanceTimersToNextTimer();
-			await Promise.resolve();
+			await flushPromises();
+			// await Promise.resolve(setImmediate);
 
 			expect(pulseSpy).toBeCalledTimes(1);
 			expect(spyTrack).toHaveBeenCalledTimes(1);
@@ -297,7 +299,8 @@ describe('Telemetry', () => {
 
 			jest.advanceTimersToNextTimer();
 
-			await Promise.resolve();
+			await flushPromises();
+			// await Promise.resolve();
 
 			expect(pulseSpy).toBeCalledTimes(2);
 			expect(spyTrack).toHaveBeenCalledTimes(2);
@@ -308,7 +311,7 @@ describe('Telemetry', () => {
 			});
 		});
 
-		test('should track workflow counts correctly', async () => {
+		test.only('should track workflow counts correctly', async () => {
 			expect(pulseSpy).toBeCalledTimes(0);
 
 			let execBuffer = telemetry.getCountsBuffer();
@@ -352,7 +355,7 @@ describe('Telemetry', () => {
 
 			execBuffer = telemetry.getCountsBuffer();
 
-			await Promise.resolve();
+			await flushPromises();
 
 			expect(pulseSpy).toBeCalledTimes(1);
 			expect(spyTrack).toHaveBeenCalledTimes(3);
