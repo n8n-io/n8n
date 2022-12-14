@@ -70,6 +70,10 @@ const onViewPlans = () => {
 	sendUsageTelemetry('view_plans');
 };
 
+const onManagePlan = () => {
+	sendUsageTelemetry('manage_plan');
+};
+
 const onDialogClosed = () => {
 	activationKey.value = '';
 };
@@ -101,7 +105,7 @@ const onDialogClosed = () => {
 		</n8n-info-tip>
 		<div :class="$style.buttons">
 			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="primary" size="large" text :label="$locale.baseText('settings.usageAndPlan.button.activation')" />
-			<n8n-button v-if="usageStore.managementToken" @click="onViewPlans" size="large">
+			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 				<a :href="usageStore.managePlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
 			<n8n-button v-else @click="onViewPlans" size="large">

@@ -9,7 +9,7 @@ import { i18n } from '@/plugins/i18n';
 
 export type UsageTelemetry = {
 	instance_id: string
-	action: 'view_plans' | 'add_activation_key' | 'contact_us'
+	action: 'view_plans' | 'manage_plan' | 'add_activation_key' | 'contact_us'
 	plan_name_current: string
 	usage: number
 	quota: number

@@ -1136,7 +1136,7 @@
 	"settings.usageAndPlan.activeWorkflows.hint": "If an active workflow contains multiple triggers, each will count as an active workflow. For example, 1 active workflow with 3 triggers will count as 3 active workflows. {link} for help regarding your plan.",
 	"settings.usageAndPlan.button.activation": "Enter activation key",
 	"settings.usageAndPlan.button.plans": "View plans",
-	"settings.usageAndPlan.button.manage": "Manage plans",
+	"settings.usageAndPlan.button.manage": "Manage plan",
 	"settings.usageAndPlan.dialog.activation.title": "Enter activation key",
 	"settings.usageAndPlan.dialog.activation.label": "Activation key",
 	"settings.usageAndPlan.activation.success.title": "Successful activation",
