@@ -28,6 +28,7 @@ declare global {
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
 			paste(pastePayload: string): void,
+			drag(selector: string, xDiff: number, yDiff: number): void,
 		}
 	}
 }
