@@ -25,7 +25,23 @@ export async function saveDestinationToDb(restApi: IRestApi, destination: Messag
 			...destination,
 			subscribedEvents: logStreamingStore.getSelectedEvents(destination.id),
 		};
-		await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
+		try {
+			await restApi.makeRestApiRequest('POST', '/eventbus/destination', data);
+		} catch (error) {
+			console.log(error);
+		}
 		logStreamingStore.updateDestination(destination);
+	}
+}
+
+export async function sendTestMessage(restApi: IRestApi, destination: MessageEventBusDestinationOptions) {
+	if (destination.id) {
+		try {
+			const sendResult = await restApi.makeRestApiRequest('GET', '/eventbus/testmessage', { id: destination.id });
+			return sendResult;
+		} catch (error) {
+			console.log(error);
+		}
+		return false;
 	}
 }

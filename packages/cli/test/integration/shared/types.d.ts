@@ -23,6 +23,7 @@ type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
+	| 'eventBus'
 	| 'nodes';
 
 export type CredentialPayload = {

@@ -1,12 +1,12 @@
 import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
-import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
+import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'node:events';
-import config from '../../config';
-import { Db } from '../..';
-import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
+import config from '@/config';
+import { Db } from '@/index';
+import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
 import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import {
@@ -17,8 +17,12 @@ import {
 	EventMessageWorkflowOptions,
 	EventMessageWorkflow,
 } from '../EventMessageClasses/EventMessageWorkflow';
-import { isLogStreamingEnabled } from '../MessageEventBusHelper';
+import { isLogStreamingEnabled } from './MessageEventBusHelper';
 import { EventMessageNode, EventMessageNodeOptions } from '../EventMessageClasses/EventMessageNode';
+import {
+	EventMessageGeneric,
+	eventMessageGenericDestinationTestEvent,
+} from '../EventMessageClasses/EventMessageGeneric';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -173,6 +177,18 @@ class MessageEventBus extends EventEmitter {
 			await this.logWriter.putMessage(msg);
 			await this.#emitMessage(msg);
 		}
+	}
+
+	async testDestination(destinationId: string): Promise<boolean> {
+		const testMessage = new EventMessageGeneric({
+			eventName: eventMessageGenericDestinationTestEvent,
+		});
+		const destination = await this.findDestination(destinationId);
+		if (destination.length > 0) {
+			const sendResult = await this.destinations[destinationId].receiveFromEventBus(testMessage);
+			return sendResult;
+		}
+		return false;
 	}
 
 	async confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {

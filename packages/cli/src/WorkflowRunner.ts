@@ -137,7 +137,7 @@ export class WorkflowRunner {
 		const executionsProcess = config.getEnv('executions.process');
 		const executionsMode = config.getEnv('executions.mode');
 
-		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', data);
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId ?? '', data);
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
@@ -352,18 +352,6 @@ export class WorkflowRunner {
 			workflowExecution
 				.then((fullRunData) => {
 					clearTimeout(executionTimeout);
-					eventBus.sendWorkflowEvent({
-						eventName: 'n8n.workflow.executed',
-						payload: {
-							finished: fullRunData.finished,
-							mode: fullRunData.mode,
-							startedAt: fullRunData.startedAt.toISOString(),
-							stoppedAt: fullRunData.stoppedAt?.toISOString(),
-							lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted,
-							workflow_id: workflow.id,
-							workflow_name: workflow.name,
-						},
-					});
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}

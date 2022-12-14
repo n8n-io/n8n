@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
-import {
-	AbstractEventMessage,
-	// EventMessageSerialized,
-	isEventMessageOptionsWithType,
-} from './AbstractEventMessage';
+import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+
+export const eventMessageGenericDestinationTestEvent = 'n8n.destination.test';
 
 export interface EventPayloadGeneric extends AbstractEventPayload {
 	msg?: string;

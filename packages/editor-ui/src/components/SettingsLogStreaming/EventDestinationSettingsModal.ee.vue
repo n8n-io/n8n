@@ -31,6 +31,17 @@
 					/>
 				</div>
 				<div :class="$style.destinationActions">
+					<n8n-button
+						v-if="(nodeParameters && hasOnceBeenSaved && unchanged)"
+						:icon="(testMessageSent) ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+						:title="(testMessageSent && testMessageResult) ? 'Event sent and returned OK' : 'Event returned with error'"
+						size="medium"
+						type="tertiary"
+						label="Send Test-Event"
+						:disabled="!hasOnceBeenSaved || !unchanged"
+						@click="sendTestEvent"
+						data-test-id="destination-test-button"
+					/>
 					<n8n-icon-button
 						v-if="(nodeParameters && hasOnceBeenSaved)"
 						:title="$locale.baseText('settings.logstreaming.delete')"
@@ -181,12 +192,12 @@ import {LOG_STREAM_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
 import {showMessage} from "@/mixins/showMessage";
 import { useUIStore } from '../../stores/ui';
-import { destinationToFakeINodeUi, saveDestinationToDb } from './Helpers';
-import { webhookModalDescription, sentryModalDescription, syslogModalDescription } from './descriptions';
+import { destinationToFakeINodeUi, saveDestinationToDb, sendTestMessage } from './Helpers.ee';
+import { webhookModalDescription, sentryModalDescription, syslogModalDescription } from './descriptions.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
-import EventSelection from '@/components/SettingsLogStreaming/EventSelection.vue';
+import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
 
 export default mixins(
@@ -231,6 +242,8 @@ export default mixins(
 			syslogDescription: syslogModalDescription,
 			modalBus: new Vue(),
 			headerLabel: this.$props.destination.label,
+			testMessageSent: false,
+			testMessageResult: false,
 			LOG_STREAM_MODAL_KEY,
 		};
 	},
@@ -324,6 +337,7 @@ export default mixins(
 	methods: {
 		onInput() {
 			this.unchanged = false;
+			this.testMessageSent = false;
 		},
 		onTabSelect(tab: string) {
 			this.activeTab = tab;
@@ -363,6 +377,7 @@ export default mixins(
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.unchanged = false;
+			this.testMessageSent = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
 			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
 
@@ -397,6 +412,10 @@ export default mixins(
 				properties: { parameters: this.nodeParameters as unknown as IDataObject },
 			});
 			this.logStreamingStore.updateDestination(this.nodeParameters);
+		},
+		async sendTestEvent() {
+			this.testMessageResult = await sendTestMessage(this.restApi(), this.nodeParameters);
+			this.testMessageSent = true;
 		},
 		async removeThis() {
 			const deleteConfirmed = await this.confirmMessage(
@@ -433,6 +452,7 @@ export default mixins(
 			}
 			await saveDestinationToDb(this.restApi(), this.nodeParameters);
 			this.hasOnceBeenSaved = true;
+			this.testMessageSent = false;
 			this.unchanged = true;
 			this.$props.eventBus.$emit('destinationWasSaved', this.destination.id);
 			this.uiStore.stateIsDirty = false;

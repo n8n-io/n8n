@@ -249,6 +249,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		Settings: 'settings',
 		InstalledPackages: 'installed_packages',
 		InstalledNodes: 'installed_nodes',
+		EventDestinations: 'eventdestinations_entity',
 	}[sourceName];
 }
 

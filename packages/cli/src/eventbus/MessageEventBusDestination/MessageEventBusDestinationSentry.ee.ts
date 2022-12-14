@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestination } from './MessageEventBusDestination';
+import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import {
@@ -11,7 +10,9 @@ import {
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
 import { GenericHelpers } from '../..';
-import { isLogStreamingEnabled } from '../MessageEventBusHelper';
+import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
+import { EventMessageTypes } from '../EventMessageClasses';
+import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -30,6 +31,8 @@ export class MessageEventBusDestinationSentry
 	tracesSampleRate = 1.0;
 
 	sendPayload: boolean;
+
+	sentryInitSuccessful = false;
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
@@ -50,12 +53,21 @@ export class MessageEventBusDestinationSentry
 					release: versions.cli,
 				});
 				console.debug(`MessageEventBusDestinationSentry Broker initialized`);
+				this.sentryInitSuccessful = true;
 			})
-			.catch(() => {});
+			.catch((error) => {
+				this.sentryInitSuccessful = false;
+				console.error(error);
+			});
 	}
 
-	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
-		if (!isLogStreamingEnabled()) return false;
+	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+		let sendResult = false;
+		if (!this.sentryInitSuccessful) return sendResult;
+		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
+			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.hasSubscribedToEvent(msg)) return sendResult;
+		}
 		try {
 			if (this.anonymizeAuditMessages || msg.anonymize) {
 				msg = msg.anonymize();
@@ -76,12 +88,12 @@ export class MessageEventBusDestinationSentry
 			});
 			if (sentryResult) {
 				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-				return true;
+				sendResult = true;
 			}
 		} catch (error) {
 			console.log(error);
 		}
-		return false;
+		return sendResult;
 	}
 
 	serialize(): MessageEventBusDestinationSentryOptions {

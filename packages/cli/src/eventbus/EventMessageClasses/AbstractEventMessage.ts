@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
 import { JsonObject } from 'n8n-workflow';
@@ -11,6 +12,7 @@ function modifyUnderscoredKeys(
 	modifier: (secret: string) => string | undefined,
 ) {
 	const result: { [key: string]: any } = {};
+	if (!input) return input;
 	Object.keys(input).forEach((key) => {
 		if (typeof input[key] === 'string') {
 			if (key.substring(0, 1) === '_') {
@@ -19,14 +21,17 @@ function modifyUnderscoredKeys(
 					result[key] = modifier(input[key]);
 				}
 			} else {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				result[key] = input[key];
 			}
 		} else if (typeof input[key] === 'object') {
 			if (Array.isArray(input[key])) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 				result[key] = input[key].map((item: any) => {
 					if (typeof item === 'object' && !Array.isArray(item)) {
 						return modifyUnderscoredKeys(item, modifier);
 					} else {
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return item;
 					}
 				});
@@ -34,6 +39,7 @@ function modifyUnderscoredKeys(
 				result[key] = modifyUnderscoredKeys(input[key], modifier);
 			}
 		} else {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			result[key] = input[key];
 		}
 	});
@@ -103,7 +109,7 @@ export abstract class AbstractEventMessage {
 	abstract setPayload(payload: AbstractEventPayload): this;
 
 	anonymize(): this {
-		this.payload = modifyUnderscoredKeys(this.payload, (input) => '*');
+		this.payload = modifyUnderscoredKeys(this.payload, () => '*');
 		return this;
 	}
 

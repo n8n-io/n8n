@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import {
@@ -9,8 +8,10 @@ import {
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import { MessageEventBusDestination } from './MessageEventBusDestination';
-import { isLogStreamingEnabled } from '../MessageEventBusHelper';
+import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
+import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
+import { EventMessageTypes } from '../EventMessageClasses';
+import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -69,9 +70,12 @@ export class MessageEventBusDestinationSyslog
 		});
 	}
 
-	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
-		if (!isLogStreamingEnabled()) return false;
-		if (!this.hasSubscribedToEvent(msg)) return false;
+	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
+		let sendResult = false;
+		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
+			if (!isLogStreamingEnabled()) return sendResult;
+			if (!this.hasSubscribedToEvent(msg)) return sendResult;
+		}
 		try {
 			if (this.anonymizeAuditMessages || msg.anonymize) {
 				msg = msg.anonymize();
@@ -88,17 +92,19 @@ export class MessageEventBusDestinationSyslog
 				async (error) => {
 					if (error) {
 						console.log(error);
-						return false;
 					} else {
 						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-						return true;
+						sendResult = true;
 					}
 				},
 			);
 		} catch (error) {
 			console.log(error);
 		}
-		return true;
+		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
+			await new Promise((resolve) => setTimeout(resolve, 500));
+		}
+		return sendResult;
 	}
 
 	serialize(): MessageEventBusDestinationSyslogOptions {

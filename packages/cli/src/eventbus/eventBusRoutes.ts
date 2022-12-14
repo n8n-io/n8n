@@ -16,12 +16,12 @@ import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEvent
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
-} from './MessageEventBusDestination/MessageEventBusDestinationSentry';
+} from './MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
-} from './MessageEventBusDestination/MessageEventBusDestinationSyslog';
-import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
+} from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
 import { eventNamesAll } from './EventMessageClasses';
 import {
 	EventMessageAudit,
@@ -189,10 +189,23 @@ eventBusRouter.post(
 			}
 			if (result) {
 				await result.saveToDb();
+				return result;
 			}
-			return result;
+			throw new BadRequestError(`There was an error adding the destination`);
 		}
 		throw new BadRequestError(`Body is not configuring MessageEventBusDestinationOptions`);
+	}),
+);
+
+eventBusRouter.get(
+	`/testmessage`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		let result = false;
+		if (isWithIdString(req.query)) {
+			result = await eventBus.testDestination(req.query.id);
+		}
+		return result;
 	}),
 );
 

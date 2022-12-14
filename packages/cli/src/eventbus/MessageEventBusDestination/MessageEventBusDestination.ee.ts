@@ -31,7 +31,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	anonymizeAuditMessages: boolean;
 
 	constructor(options: MessageEventBusDestinationOptions) {
-		this.id = options.id ?? uuid();
+		this.id = !options.id || options.id.length !== 36 ? uuid() : options.id;
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
 		this.label = options.label ?? 'Log Destination';
 		this.enabled = options.enabled ?? false;

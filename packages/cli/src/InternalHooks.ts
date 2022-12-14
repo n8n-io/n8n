@@ -358,16 +358,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 		}
 
 		Promise.all([
-			eventBus.sendWorkflowEvent({
-				eventName: 'n8n.workflow.finished',
-				payload: {
-					success: properties.success,
-					userId: properties.user_id,
-					workflowId: properties.workflow_id,
-					isManual: properties.is_manual,
-					workflowName: workflow.name,
-				},
-			}),
 			properties.success
 				? eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',

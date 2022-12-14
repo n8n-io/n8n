@@ -9,7 +9,7 @@ import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
 import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
-import config from '../../config';
+import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';

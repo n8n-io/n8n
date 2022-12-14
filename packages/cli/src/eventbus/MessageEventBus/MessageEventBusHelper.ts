@@ -1,5 +1,5 @@
-import config from '../config';
-import { getLicense } from '../License';
+import config from '@/config';
+import { getLicense } from '@/License';
 
 export function isLogStreamingEnabled(): boolean {
 	const license = getLicense();

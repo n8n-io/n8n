@@ -163,7 +163,7 @@ import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { getLicense } from '@/License';
-import { isLogStreamingEnabled } from './eventbus/MessageEventBusHelper';
+import { isLogStreamingEnabled } from './eventbus/MessageEventBus/MessageEventBusHelper';
 import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);

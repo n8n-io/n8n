@@ -58,7 +58,7 @@ import { restApi } from '@/mixins/restApi';
 import Vue from "vue";
 import { mapStores } from 'pinia';
 import { deepCopy, defaultMessageEventBusDestinationOptions, MessageEventBusDestinationOptions } from 'n8n-workflow';
-import { saveDestinationToDb } from './Helpers';
+import { saveDestinationToDb } from './Helpers.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {

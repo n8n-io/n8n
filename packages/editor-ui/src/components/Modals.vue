@@ -175,7 +175,7 @@ import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.vue';
+import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
 
 export default Vue.extend({
 	name: "Modals",
