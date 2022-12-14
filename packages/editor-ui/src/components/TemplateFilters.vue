@@ -13,9 +13,7 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed
-					? sortedCategories.slice(0, expandLimit)
-					: sortedCategories"
+				v-for="category in collapsed ? sortedCategories.slice(0, expandLimit) : sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
