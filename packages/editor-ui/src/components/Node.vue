@@ -94,6 +94,7 @@
 					v-touch:tap="disableNode"
 					class="option"
 					:title="$locale.baseText('node.activateDeactivateNode')"
+					data-test-id="disable-node-button"
 				>
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
@@ -102,6 +103,7 @@
 					class="option"
 					:title="$locale.baseText('node.duplicateNode')"
 					v-if="isDuplicatable"
+					data-test-id="duplicate-node-button"
 				>
 					<font-awesome-icon icon="clone" />
 				</div>
@@ -109,6 +111,7 @@
 					v-touch:tap="setNodeActive"
 					class="option touch"
 					:title="$locale.baseText('node.editNode')"
+					data-test-id="activate-node-button"
 				>
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
@@ -117,6 +120,7 @@
 					class="option"
 					:title="$locale.baseText('node.executeNode')"
 					v-if="!workflowRunning"
+					data-test-id="execute-node-button"
 				>
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
