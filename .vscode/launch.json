@@ -20,7 +20,9 @@
 			"type": "node",
 			"env": {
 				// "N8N_PORT": "5679",
-			}
+			},
+			"outputCapture": "std",
+			"killBehavior": "polite"
 		},
 		{
 			"name": "Debug CLI tests",
