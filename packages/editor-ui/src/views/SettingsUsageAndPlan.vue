@@ -14,11 +14,13 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 
 const onLicenseActivation = () => {
-	activationKeyModal.value = false;
-	usageStore.activateLicense(activationKey.value);
+	usageStore.activateLicense(activationKey.value).then(() => {
+		activationKeyModal.value = false;
+	});
 };
 
 onMounted(async () => {
+	usageStore.setLoading(true);
 	if(route.query.key) {
 		await usageStore.activateLicense(route.query.key as string);
 	} else if(usageStore.canUserActivateLicense) {
@@ -26,6 +28,7 @@ onMounted(async () => {
 	} else {
 		await usageStore.getLicenseInfo();
 	}
+	usageStore.setLoading(false);
 });
 
 watch(() => usageStore.error, (error: UsageState['error']) => {
@@ -51,7 +54,6 @@ watch(() => usageStore.success, (success: UsageState['success']) => {
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
 	const telemetryPayload = usageStore.telemetryPayload;
 	telemetryPayload.action = action;
-	console.log(telemetryPayload);
 	telemetry.track('User clicked button on usage page', telemetryPayload);
 };
 
@@ -68,10 +70,14 @@ const onViewPlans = () => {
 	sendUsageTelemetry('view_plans');
 };
 
+const onDialogClosed = () => {
+	activationKey.value = '';
+};
+
 </script>
 
 <template>
-	<div  v-if="!usageStore.isLoading">
+	<div v-if="!usageStore.isLoading">
 		<n8n-heading size="2xlarge">{{ $locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-heading :class="$style.title" size="large">
 			{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: {plan: usageStore.planName } } ) }}
@@ -103,9 +109,10 @@ const onViewPlans = () => {
 			</n8n-button>
 		</div>
 		<el-dialog
-			:visible.sync="activationKeyModal"
 			width="480px"
 			top="26vh"
+			@closed="onDialogClosed"
+			:visible.sync="activationKeyModal"
 			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 		>
 			<template #default>

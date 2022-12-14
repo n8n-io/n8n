@@ -44,23 +44,24 @@ export const useUsageStore = defineStore('usage', () => {
 
 	const state = reactive<UsageState>(DEFAULT_STATE);
 
+	const setLoading = (loading: boolean) => {
+		state.loading = loading;
+	};
+
 	const setData = (data: UsageState['data']) => {
 		state.data = data;
 	};
 
 	const getLicenseInfo = async () => {
-		state.loading = true;
 		try {
 			const data = await getLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
 			state.error = error;
 		}
-		state.loading = false;
 	};
 
 	const activateLicense = async (activationKey: string) => {
-		state.loading = true;
 		try {
 			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
 			setData(data);
@@ -70,19 +71,17 @@ export const useUsageStore = defineStore('usage', () => {
 			};
 		} catch (error) {
 			state.error = error;
+			throw Error(error);
 		}
-		state.loading = false;
 	};
 
 	const refreshLicenseManagementToken = async () => {
-		state.loading = true;
 		try {
 			const data = await renewLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
 			getLicenseInfo();
 		}
-		state.loading = false;
 	};
 
 	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
@@ -92,6 +91,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const managementToken = computed(() => state.data.managementToken);
 
 	return {
+		setLoading,
 		getLicenseInfo,
 		setData,
 		activateLicense,
