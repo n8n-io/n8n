@@ -37,12 +37,12 @@ export async function getNodesInformation(
 export async function getNodeParameterOptions(
 	context: IRestApiContext,
 	sendData: {
-		nodeTypeAndVersion: INodeTypeNameVersion,
-		path: string,
-		methodName?: string,
-		loadOptions?: ILoadOptions,
-		currentNodeParameters: INodeParameters,
-		credentials?: INodeCredentials,
+		nodeTypeAndVersion: INodeTypeNameVersion;
+		path: string;
+		methodName?: string;
+		loadOptions?: ILoadOptions;
+		currentNodeParameters: INodeParameters;
+		credentials?: INodeCredentials;
 	},
 ): Promise<INodePropertyOptions[]> {
 	return makeRestApiRequest(context, 'GET', '/node-parameter-options', sendData);
@@ -52,5 +52,10 @@ export async function getResourceLocatorResults(
 	context: IRestApiContext,
 	sendData: IResourceLocatorReqParams,
 ): Promise<INodeListSearchResult> {
-	return makeRestApiRequest(context, 'GET', '/nodes-list-search', sendData as unknown as IDataObject);
+	return makeRestApiRequest(
+		context,
+		'GET',
+		'/nodes-list-search',
+		sendData as unknown as IDataObject,
+	);
 }
