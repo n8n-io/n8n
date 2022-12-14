@@ -40,6 +40,7 @@ export class WorkflowPage extends BasePage {
 		disabledNodes: () => cy.get('.node-box.disabled'),
 		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
+		workflowMenuImportFromURLItem: () => cy.getByTestId('workflow-menu-item-import-from-url'),
 	};
 	actions = {
 		visit: () => {

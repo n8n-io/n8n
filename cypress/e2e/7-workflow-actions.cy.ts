@@ -3,6 +3,7 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
 const TEST_WF_TAGS = ['Tag 1', 'Tag 2', 'Tag 3'];
+const IMPORT_WORKFLOW_URL = 'https://www.jsonkeeper.com/b/FNB0#.json';
 
 const WorkflowPage = new WorkflowPageClass();
 
@@ -108,6 +109,20 @@ describe('Workflow Actions', () => {
 			cy.get('body').paste(JSON.stringify(data));
 			WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 		});
+	});
+
+	it('should import workflow from url', () => {
+		WorkflowPage.getters.workflowMenu().should('be.visible');
+		WorkflowPage.getters.workflowMenu().click();
+		WorkflowPage.getters.workflowMenuImportFromURLItem().should('be.visible');
+		WorkflowPage.getters.workflowMenuImportFromURLItem().click();
+		cy.get('.el-message-box').should('be.visible');
+		cy.get('.el-message-box').find('input').type(IMPORT_WORKFLOW_URL);
+		cy.get('body').type('{enter}');
+		cy.waitForLoad();
+		WorkflowPage.actions.zoomToFit();
+		WorkflowPage.getters.canvasNodes().should('have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
 	});
 
 });
