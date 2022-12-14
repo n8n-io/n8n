@@ -189,7 +189,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid var(--color-foreground-light);
 	border-radius: 4px;
-	background: var(--color-background-xlight);
+	background-color: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-dark);
 
@@ -223,7 +223,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		span {
 			color: var(--color-primary);
 			border-color: var(--color-primary-tint-1);
-			background: var(--color-primary-tint-3);
+			background-color: var(--color-primary-tint-3);
 
 			svg {
 				path {
