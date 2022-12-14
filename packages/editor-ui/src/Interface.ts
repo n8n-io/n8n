@@ -806,6 +806,7 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isWorkflowSharingEnabled: boolean;
+	hideUsagePage: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

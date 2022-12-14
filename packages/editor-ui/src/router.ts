@@ -576,6 +576,12 @@ const router = new Router({
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
 							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.settings.hideUsagePage === true;
+								},
+							},
 						},
 					},
 				},
