@@ -1,13 +1,18 @@
-import { getStyleTokenValue } from "@/utils/htmlUtils";
-import {  isNumber } from "@/utils";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
-import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
+import { getStyleTokenValue } from '@/utils/htmlUtils';
+import { isNumber } from '@/utils';
+import {
+	NODE_OUTPUT_DEFAULT_KEY,
+	START_NODE_TYPE,
+	STICKY_NODE_TYPE,
+	QUICKSTART_NOTE_NAME,
+} from '@/constants';
+import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from '@/Interface';
 // import { AnchorArraySpec, Connection, Overlay, PaintStyle } from "jsplumb";
 import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import { Endpoint, Overlay, Connection } from '@jsplumb/core';
-import { N8nConnector  } from "@/plugins/connectors/N8nCustomConnector";
-import { closestNumberDivisibleBy } from "@/utils";
-import { AnchorArraySpec } from "jsplumb";
+import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
+import { closestNumberDivisibleBy } from '@/utils';
+import { AnchorArraySpec } from 'jsplumb';
 import {
 	IConnection,
 	INode,
@@ -90,7 +95,8 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 			const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
 
 			const outputOverlay = getOverlay(endpoint, OVERLAY_OUTPUT_NAME_LABEL);
-			const labelOffset = outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
+			const labelOffset =
+				outputOverlay && outputOverlay.label && outputOverlay.label.length > 1 ? 10 : 0;
 			const outputsOffset = totalEndpoints > 3 ? 24 : 0; // avoid intersecting plus
 
 			return index * indexOffset + labelOffset + outputsOffset;
@@ -148,7 +154,7 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
 		[key: number]: ArrayAnchorSpec[];
-	}
+	};
 } = {
 	input: {
 		1: [[0.01, 0.5, -1, 0]],

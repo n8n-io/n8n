@@ -9,7 +9,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { newInstance as newJsPlumbInstance } from "@jsplumb/browser-ui";
+import { newInstance as newJsPlumbInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
@@ -19,7 +19,14 @@ import { EndpointFactory, Connectors } from '@jsplumb/core';
 // import '@/plugins/PlusEndpointType';
 // import * as jsPlumbBrowserUI from "@jsplumb/browser-ui";
 // import '@/plugins/N8nCustomConnectorType';
-import { DEFAULT_PLACEHOLDER_TRIGGER_BUTTON, getMidCanvasPosition, getNewNodePosition, getZoomToFit, PLACEHOLDER_TRIGGER_NODE_SIZE, CONNECTOR_FLOWCHART_TYPE } from '@/utils/nodeViewUtils';
+import {
+	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
+	getMidCanvasPosition,
+	getNewNodePosition,
+	getZoomToFit,
+	PLACEHOLDER_TRIGGER_NODE_SIZE,
+	CONNECTOR_FLOWCHART_TYPE,
+} from '@/utils/nodeViewUtils';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -145,7 +152,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				// stop(params) {
 				// 	console.log("🚀 ~ file: NodeView.vue:3314 ~ stop ~ params", params);
 				// },
-				grid: {w: 20, h: 20},
+				grid: { w: 20, h: 20 },
 			},
 		});
 		window.__plumbInstance = () => newInstance.value;

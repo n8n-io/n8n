@@ -1,23 +1,29 @@
 import { registerEndpointRenderer, svg, createElement } from '@jsplumb/browser-ui';
 import { N8nPlusEndpoint } from './N8nPlusEndpointType';
-import { PaintStyle } from "@jsplumb/common";
+import { PaintStyle } from '@jsplumb/common';
 import { isEmpty } from '@jsplumb/util';
-const CIRCLE = "circle";
+const CIRCLE = 'circle';
 const stalkLength = 40;
-
 
 export const register = () => {
 	registerEndpointRenderer<N8nPlusEndpoint>(N8nPlusEndpoint.type, {
 		// TODO `instance` not needed here
 		makeNode: (ep: N8nPlusEndpoint, style: PaintStyle) => {
-			console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:13 ~ register ~ style", style.hoverMessage);
+			console.log(
+				'🚀 ~ file: N8nPlusEndpointRenderer.ts:13 ~ register ~ style',
+				style.hoverMessage,
+			);
 			console.log('Make node');
 			// const svgElement = node.parentNode as SVGElement;
-			const canvas = createElement("div", {
-				display: "block",
-				background: "transparent",
-				position: "absolute",
-			},`${ep.instance.endpointClass} plus-endpoint`);
+			const canvas = createElement(
+				'div',
+				{
+					display: 'block',
+					background: 'transparent',
+					position: 'absolute',
+				},
+				`${ep.instance.endpointClass} plus-endpoint`,
+			);
 
 			canvas.innerHTML = `
 				<div class="plus-stalk">
@@ -45,14 +51,16 @@ export const register = () => {
 				console.log('Proxy click');
 			}
 
-
-			console.log('Make node 2', 	ep.plusElement);
+			console.log('Make node 2', ep.plusElement);
 			const previousEl = ep.endpoint.element.querySelector('.plus-endpoint');
-			console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:51 ~ register ~ previousEl", ep.plusElement);
-			if(previousEl) {
+			console.log(
+				'🚀 ~ file: N8nPlusEndpointRenderer.ts:51 ~ register ~ previousEl',
+				ep.plusElement,
+			);
+			if (previousEl) {
 				previousEl?.remove();
 				ep.instance._removeElement(previousEl);
-				console.log('Make node 3', 	ep.plusElement);
+				console.log('Make node 3', ep.plusElement);
 				console.log('Removing element', ep.plusElement);
 				// ep.plusElement.removeEventListener('click', proxyPlusClick);
 			}
@@ -63,9 +71,9 @@ export const register = () => {
 			// TODO: How to registe the second endpoint as well?
 
 			const svgNode = svg.node(CIRCLE, {
-				"cx": 9,
-				"cy": 9,
-				"r": 8,
+				cx: 9,
+				cy: 9,
+				r: 8,
 			});
 
 			return svgNode;
@@ -73,7 +81,7 @@ export const register = () => {
 
 		updateNode: (ep: N8nPlusEndpoint, node) => {
 			// console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:52 ~ register ~ ep.instance.currentlyDragging", ep.instance.currentlyDragging);
-			if(!ep.instance.currentlyDragging) {
+			if (!ep.instance.currentlyDragging) {
 				// console.log('plusElement, ', ep.plusElement);
 				ep.plusElement.style.top = `${ep.y - 3}px`;
 				ep.plusElement.style.left = `${ep.x + 10 + stalkLength}px`;

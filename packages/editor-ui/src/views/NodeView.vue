@@ -1,148 +1,151 @@
 <template>
-<div :class="$style['content']">
-	<div
-		class="node-view-root do-not-select"
-		id="node-view-root"
-		data-test-id="node-view-root"
-	 	@dragover="onDragOver"
-	 	@drop="onDrop"
-	>
+	<div :class="$style['content']">
 		<div
-			class="node-view-root"
+			class="node-view-root do-not-select"
 			id="node-view-root"
 			data-test-id="node-view-root"
 			@dragover="onDragOver"
 			@drop="onDrop"
 		>
 			<div
-				class="node-view-wrapper"
-				:class="workflowClasses"
-				@touchstart="mouseDown"
-				@touchend="mouseUp"
-				@touchmove="mouseMoveNodeWorkflow"
-				@mousedown="mouseDown"
-				v-touch:tap="touchTap"
-				@mouseup="mouseUp"
-				@wheel="canvasStore.wheelScroll"
+				class="node-view-root"
+				id="node-view-root"
+				data-test-id="node-view-root"
+				@dragover="onDragOver"
+				@drop="onDrop"
 			>
-				<canvas-add-button
-					:style="canvasAddButtonStyle"
-					@click="showTriggerCreator('trigger_placeholder_button')"
-					v-show="showCanvasAddButton"
-					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
-					:position="canvasStore.canvasAddButtonPosition"
-					ref="canvasAddButton"
-					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
-					data-test-id="canvas-add-button"
-				/>
-				<template v-for="nodeData in nodes">
-					<node
-						v-if="nodeData.type !== STICKY_NODE_TYPE"
-						@duplicateNode="duplicateNode"
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
-						@runWorkflow="onRunNode"
-						@moved="onNodeMoved"
-						@run="onNodeRun"
-						:ref="`node-${nodeData.id}`"
-						:key="`${nodeData.id}_node`"
-						:name="nodeData.name"
-						:isReadOnly="isReadOnly"
-						:instance="newInstance"
-						:isActive="!!activeNode && activeNode.name === nodeData.name"
-						:hideActions="pullConnActive"
-						:isProductionExecutionPreview="isProductionExecutionPreview"
-					>
-						<template #custom-tooltip>
-							<span
-								v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
-							/>
-						</template>
-					</node>
-					<sticky
-						v-else
-						@deselectAllNodes="deselectAllNodes"
-						@deselectNode="nodeDeselectedByName"
-						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
-						:key="`${nodeData.id}_sticky`"
-						:name="nodeData.name"
-						:isReadOnly="isReadOnly"
-						:instance="newInstance"
-						:isActive="!!activeNode && activeNode.name === nodeData.name"
-						:nodeViewScale="nodeViewScale"
-						:gridSize="GRID_SIZE"
-						:hideActions="pullConnActive"
-					/>
-				</template>
-			</div>
-			<node-details-view
-				:readOnly="isReadOnly"
-				:renaming="renamingActive"
-				:isProductionExecutionPreview="isProductionExecutionPreview"
-				@valueChanged="valueChanged"
-				@stopExecution="stopExecution"
-			/>
-			<node-creation
-				v-if="!isReadOnly"
-				:create-node-active="createNodeActive"
-				:node-view-scale="nodeViewScale"
-				@toggleNodeCreator="onToggleNodeCreator"
-				@addNode="onAddNode"
-			/>
-			<canvas-controls />
-			<div class="workflow-execute-wrapper" v-if="!isReadOnly">
-				<span
-					@mouseenter="showTriggerMissingToltip(true)"
-					@mouseleave="showTriggerMissingToltip(false)"
-					@click="onRunContainerClick"
+				<div
+					class="node-view-wrapper"
+					:class="workflowClasses"
+					@touchstart="mouseDown"
+					@touchend="mouseUp"
+					@touchmove="mouseMoveNodeWorkflow"
+					@mousedown="mouseDown"
+					v-touch:tap="touchTap"
+					@mouseup="mouseUp"
+					@wheel="canvasStore.wheelScroll"
 				>
-					<n8n-button
-						@click.stop="onRunWorkflow"
-						:loading="workflowRunning"
-						:label="runButtonText"
-						:title="$locale.baseText('nodeView.executesTheWorkflowFromATriggerNode')"
-						size="large"
-						icon="play-circle"
-						type="primary"
-						:disabled="isExecutionDisabled"
+					<canvas-add-button
+						:style="canvasAddButtonStyle"
+						@click="showTriggerCreator('trigger_placeholder_button')"
+						v-show="showCanvasAddButton"
+						:showTooltip="!containsTrigger && showTriggerMissingTooltip"
+						:position="canvasStore.canvasAddButtonPosition"
+						ref="canvasAddButton"
+						@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
+						data-test-id="canvas-add-button"
 					/>
-				</span>
-
-				<n8n-icon-button
-					v-if="workflowRunning === true && !executionWaitingForWebhook"
-					icon="stop"
-					size="large"
-					class="stop-execution"
-					type="secondary"
-					:title="
-						stopExecutionInProgress
-							? $locale.baseText('nodeView.stoppingCurrentExecution')
-							: $locale.baseText('nodeView.stopCurrentExecution')
-					"
-					:loading="stopExecutionInProgress"
-					@click.stop="stopExecution"
+					<template v-for="nodeData in nodes">
+						<node
+							v-if="nodeData.type !== STICKY_NODE_TYPE"
+							@duplicateNode="duplicateNode"
+							@deselectAllNodes="deselectAllNodes"
+							@deselectNode="nodeDeselectedByName"
+							@nodeSelected="nodeSelectedByName"
+							@removeNode="(name) => removeNode(name, true)"
+							@runWorkflow="onRunNode"
+							@moved="onNodeMoved"
+							@run="onNodeRun"
+							:ref="`node-${nodeData.id}`"
+							:key="`${nodeData.id}_node`"
+							:name="nodeData.name"
+							:isReadOnly="isReadOnly"
+							:instance="newInstance"
+							:isActive="!!activeNode && activeNode.name === nodeData.name"
+							:hideActions="pullConnActive"
+							:isProductionExecutionPreview="isProductionExecutionPreview"
+						>
+							<template #custom-tooltip>
+								<span
+									v-text="
+										$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')
+									"
+								/>
+							</template>
+						</node>
+						<sticky
+							v-else
+							@deselectAllNodes="deselectAllNodes"
+							@deselectNode="nodeDeselectedByName"
+							@nodeSelected="nodeSelectedByName"
+							@removeNode="(name) => removeNode(name, true)"
+							:key="`${nodeData.id}_sticky`"
+							:name="nodeData.name"
+							:isReadOnly="isReadOnly"
+							:instance="newInstance"
+							:isActive="!!activeNode && activeNode.name === nodeData.name"
+							:nodeViewScale="nodeViewScale"
+							:gridSize="GRID_SIZE"
+							:hideActions="pullConnActive"
+						/>
+					</template>
+				</div>
+				<node-details-view
+					:readOnly="isReadOnly"
+					:renaming="renamingActive"
+					:isProductionExecutionPreview="isProductionExecutionPreview"
+					@valueChanged="valueChanged"
+					@stopExecution="stopExecution"
 				/>
-
-				<n8n-icon-button
-					v-if="workflowRunning === true && executionWaitingForWebhook === true"
-					class="stop-execution"
-					icon="stop"
-					size="large"
-					:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
-					type="secondary"
-					@click.stop="stopWaitingForWebhook"
+				<node-creation
+					v-if="!isReadOnly"
+					:create-node-active="createNodeActive"
+					:node-view-scale="nodeViewScale"
+					@toggleNodeCreator="onToggleNodeCreator"
+					@addNode="onAddNode"
 				/>
+				<canvas-controls />
+				<div class="workflow-execute-wrapper" v-if="!isReadOnly">
+					<span
+						@mouseenter="showTriggerMissingToltip(true)"
+						@mouseleave="showTriggerMissingToltip(false)"
+						@click="onRunContainerClick"
+					>
+						<n8n-button
+							@click.stop="onRunWorkflow"
+							:loading="workflowRunning"
+							:label="runButtonText"
+							:title="$locale.baseText('nodeView.executesTheWorkflowFromATriggerNode')"
+							size="large"
+							icon="play-circle"
+							type="primary"
+							:disabled="isExecutionDisabled"
+						/>
+					</span>
 
-				<n8n-icon-button
-					v-if="!isReadOnly && workflowExecution && !workflowRunning && !allTriggersDisabled"
-					:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
-					icon="trash"
-					size="large"
-					@click.stop="clearExecutionData"
-				/>
+					<n8n-icon-button
+						v-if="workflowRunning === true && !executionWaitingForWebhook"
+						icon="stop"
+						size="large"
+						class="stop-execution"
+						type="secondary"
+						:title="
+							stopExecutionInProgress
+								? $locale.baseText('nodeView.stoppingCurrentExecution')
+								: $locale.baseText('nodeView.stopCurrentExecution')
+						"
+						:loading="stopExecutionInProgress"
+						@click.stop="stopExecution"
+					/>
+
+					<n8n-icon-button
+						v-if="workflowRunning === true && executionWaitingForWebhook === true"
+						class="stop-execution"
+						icon="stop"
+						size="large"
+						:title="$locale.baseText('nodeView.stopWaitingForWebhookCall')"
+						type="secondary"
+						@click.stop="stopWaitingForWebhook"
+					/>
+
+					<n8n-icon-button
+						v-if="!isReadOnly && workflowExecution && !workflowRunning && !allTriggersDisabled"
+						:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')"
+						icon="trash"
+						size="large"
+						@click.stop="clearExecutionData"
+					/>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -6108,7 +6111,8 @@ export default mixins(
 }
 
 /* Makes sure that when selected with mouse it does not select text */
-.do-not-select *,.jtk-drag-select * {
+.do-not-select *,
+.jtk-drag-select * {
 	-webkit-touch-callout: none;
 	-webkit-user-select: none;
 	-khtml-user-select: none;

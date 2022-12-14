@@ -8,20 +8,18 @@ import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import { useWorkflowsStore } from "@/stores/workflows";
-import { useNodeTypesStore } from "@/stores/nodeTypes";
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 // import { SingleAnchorSpec, EndpointOptions } from '@jsplumb/common';
 import { EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 // import { getStyleTokenValue } from "@/utils";
-import { useHistoryStore } from "@/stores/history";
-import { MoveNodeCommand } from "@/models/history";
-import { useCanvasStore } from "@/stores/canvas";
-export const nodeBase = mixins(
-	deviceSupportHelpers,
-).extend({
-	mounted () {
+import { useHistoryStore } from '@/stores/history';
+import { MoveNodeCommand } from '@/models/history';
+import { useCanvasStore } from '@/stores/canvas';
+export const nodeBase = mixins(deviceSupportHelpers).extend({
+	mounted() {
 		window.__printRefs = () => {
 			console.log('Node base: ', this.$refs);
 		};
@@ -36,14 +34,8 @@ export const nodeBase = mixins(
 		}
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useUIStore,
-			useCanvasStore,
-			useWorkflowsStore,
-			useHistoryStore,
-		),
-		data (): INodeUi | null {
+		...mapStores(useNodeTypesStore, useUIStore, useCanvasStore, useWorkflowsStore, useHistoryStore),
+		data(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
 		},
 		nodeId(): string {
@@ -95,14 +87,14 @@ export const nodeBase = mixins(
 					NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: EndpointOptions = {
-					uuid:NodeViewUtils. getInputEndpointUUID(this.nodeId, index),
+					uuid: NodeViewUtils.getInputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
 					paintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
 					hoverPaintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					source: false,
-					target: true,//!this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
+					target: true, //!this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						nodeId: this.nodeId,
 						type: inputName,
@@ -124,7 +116,10 @@ export const nodeBase = mixins(
 				// 	];
 				// }
 
-				const endpoint = this.instance?.addEndpoint(this.$refs[this.data.name] as Element, newEndpointData);
+				const endpoint = this.instance?.addEndpoint(
+					this.$refs[this.data.name] as Element,
+					newEndpointData,
+				);
 				// if(!Array.isArray(endpoint)) {
 				// 	endpoint.__meta = {
 				// 		nodeName: node.name,
@@ -170,7 +165,10 @@ export const nodeBase = mixins(
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
-					paintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					paintStyle: NodeViewUtils.getOutputEndpointStyle(
+						nodeTypeData,
+						'--color-foreground-xdark',
+					),
 					hoverPaintStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					source: true,
 					target: false,
@@ -192,52 +190,54 @@ export const nodeBase = mixins(
 					];
 				}
 
-					if (nodeTypeData.outputNames) {
-						// Apply output names if they got set
-						newEndpointData.connectorOverlays = [
-							NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]),
-						];
-					}
+				if (nodeTypeData.outputNames) {
+					// Apply output names if they got set
+					newEndpointData.connectorOverlays = [
+						NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]),
+					];
+				}
 
-					const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, {...newEndpointData});
-					if(!Array.isArray(endpoint)) {
-						endpoint.__meta = {
-							nodeName: node.name,
-							nodeId: this.nodeId,
-							index: i,
-							totalEndpoints: nodeTypeData.outputs.length,
-						};
-					}
-					// const plusEndpointData: EndpointOptions = {
-					// 	uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
-					// 	anchor: anchorPosition,
-					// 	maxConnections: -1,
-					// 	endpoint: 'N8nPlus',
-					// 	source: true,
-					// 	target: false,
-					// 	enabled: !this.isReadOnly,
-					// 	paintStyle: {
-					// 		fill: getStyleTokenValue('--color-xdark'),
-					// 		outlineStroke: 'none',
-					// 		// hover: false,
-					// 		// showOutputLabel: nodeTypeData.outputs.length === 1,
-					// 		// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-					// 		// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
-					// 	},
-					// 	hoverPaintStyle: {
-					// 		fill: getStyleTokenValue('--color-primary'),
-					// 		outlineStroke: 'none',
-					// 		// hover: true, // hack to distinguish hover state
-					// 	},
-					// 	parameters: {
-					// 		nodeId: this.nodeId,
-					// 		type: inputName,
-					// 		index,
-					// 	},
-					// 	cssClass: 'plus-draggable-endpoint',
-					// 	dragAllowedWhenFull: false,
-					// 	// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
-					// };
+				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, {
+					...newEndpointData,
+				});
+				if (!Array.isArray(endpoint)) {
+					endpoint.__meta = {
+						nodeName: node.name,
+						nodeId: this.nodeId,
+						index: i,
+						totalEndpoints: nodeTypeData.outputs.length,
+					};
+				}
+				// const plusEndpointData: EndpointOptions = {
+				// 	uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
+				// 	anchor: anchorPosition,
+				// 	maxConnections: -1,
+				// 	endpoint: 'N8nPlus',
+				// 	source: true,
+				// 	target: false,
+				// 	enabled: !this.isReadOnly,
+				// 	paintStyle: {
+				// 		fill: getStyleTokenValue('--color-xdark'),
+				// 		outlineStroke: 'none',
+				// 		// hover: false,
+				// 		// showOutputLabel: nodeTypeData.outputs.length === 1,
+				// 		// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+				// 		// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+				// 	},
+				// 	hoverPaintStyle: {
+				// 		fill: getStyleTokenValue('--color-primary'),
+				// 		outlineStroke: 'none',
+				// 		// hover: true, // hack to distinguish hover state
+				// 	},
+				// 	parameters: {
+				// 		nodeId: this.nodeId,
+				// 		type: inputName,
+				// 		index,
+				// 	},
+				// 	cssClass: 'plus-draggable-endpoint',
+				// 	dragAllowedWhenFull: false,
+				// 	// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+				// };
 
 				if (!this.isReadOnly) {
 					// const plusEndpointData: IEndpointOptions = {
@@ -270,7 +270,6 @@ export const nodeBase = mixins(
 					// 	dragAllowedWhenFull: false,
 					// 	dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 					// };
-
 					// const plusEndpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
 					// if(!Array.isArray(plusEndpoint)) {
 					// 	plusEndpoint.__meta = {
@@ -374,13 +373,10 @@ export const nodeBase = mixins(
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			});
 		},
-		__addNode (node: INodeUi) {
+		__addNode(node: INodeUi) {
 			console.log('Add node');
-			const nodeTypeData = (
-				this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
-				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)
-			) as INodeTypeDescription;
-
+			const nodeTypeData = (this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
+				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)) as INodeTypeDescription;
 
 			console.log('before __addInputEndpoints');
 			this.__addInputEndpoints(node, nodeTypeData);
