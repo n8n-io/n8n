@@ -37,11 +37,7 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		const extensions = [
-			outputTheme(),
-			EditorState.readOnly.of(true),
-			EditorView.lineWrapping,
-		];
+		const extensions = [outputTheme(), EditorState.readOnly.of(true), EditorView.lineWrapping];
 
 		this.editor = new EditorView({
 			parent: this.$refs.root as HTMLDivElement,

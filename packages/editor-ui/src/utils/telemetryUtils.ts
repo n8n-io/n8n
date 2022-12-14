@@ -30,7 +30,7 @@ export function createExpressionTelemetryPayload(
 				? {
 						...exposeErrorProperties(errorResolvable.fullError),
 						stack: errorResolvable.fullError.stack,
-					}
+				  }
 				: null;
 		}),
 	};
