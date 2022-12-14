@@ -19,7 +19,7 @@ module.exports = {
 		'import/no-default-export': 'off',
 		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'indent': 'off',
+		indent: 'off',
 		'prettier/prettier': 'off',
 		'@typescript-eslint/ban-types': 'off',
 		'@typescript-eslint/dot-notation': 'off',

@@ -1,5 +1,5 @@
-import {INodeParameterResourceLocator} from "n8n-workflow";
-import {ICredentialsResponse} from "@/Interface";
+import { INodeParameterResourceLocator } from 'n8n-workflow';
+import { ICredentialsResponse } from '@/Interface';
 
 /*
 	Type guards used in editor-ui project
@@ -21,7 +21,8 @@ export function isValidCredentialResponse(value: unknown): value is ICredentials
 	return typeof value === 'object' && value !== null && 'id' in value;
 }
 
-export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
+export const isObj = (obj: unknown): obj is object =>
+	!!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';

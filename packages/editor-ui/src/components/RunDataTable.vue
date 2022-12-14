@@ -5,7 +5,11 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+			<tr
+				v-for="(row, index1) in tableData.data"
+				:key="index1"
+				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+			>
 				<td
 					:data-row="index1"
 					:data-col="0"
@@ -21,14 +25,10 @@
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip
-							placement="bottom-start"
-							:disabled="!mappingEnabled"
-							:open-delay="1000"
-						>
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :open-delay="1000">
 							<template #content>
 								<div>
-									<img src='/static/data-mapping-gif.gif'/>
+									<img src="/static/data-mapping-gif.gif" />
 									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
 								</div>
 							</template>
@@ -55,7 +55,8 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -75,13 +76,18 @@
 									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
 										<template #columnLimit>{{ columnLimit }}</template>
 										<template #link>
-										  <a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+											<a @click="switchToJsonView">{{
+												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+											}}</a>
 										</template>
 									</i18n>
 								</div>
 							</template>
 							<span>
-								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								<font-awesome-icon
+									:class="$style['warningTooltip']"
+									icon="exclamation-triangle"
+								></font-awesome-icon>
 								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</n8n-tooltip>
@@ -113,7 +119,11 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+					<tr
+						v-for="(row, index1) in tableData.data"
+						:key="index1"
+						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					>
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
@@ -123,7 +133,11 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
+							<span
+								v-if="isSimple(data)"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+								>{{ getValueToRender(data) }}</span
+							>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template #label="{ label, path }">
 									<span
@@ -230,14 +244,11 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItem(): NDVState['hoveringItem'] {
 			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): {[itemId: string]: Set<string>} {
+		pairedItemMappings(): { [itemId: string]: Set<string> } {
 			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
@@ -255,15 +266,30 @@ export default mixins(externalHooks).extend({
 			}
 
 			const itemIndex = this.pageOffset + row;
-			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+			if (
+				itemIndex === 0 &&
+				!this.hoveringItem &&
+				this.hasDefaultHoverState &&
+				this.distanceFromActive === 1
+			) {
 				return true;
 			}
-			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			const itemNodeId = getPairedItemId(
+				this.node.name,
+				this.runIndex || 0,
+				this.outputIndex || 0,
+				itemIndex,
+			);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
 			}
 
-			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			const hoveringItemId = getPairedItemId(
+				this.hoveringItem.nodeName,
+				this.hoveringItem.runIndex,
+				this.hoveringItem.outputIndex,
+				this.hoveringItem.itemIndex,
+			);
 			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
 		},
 		onMouseEnterCell(e: MouseEvent) {
@@ -353,7 +379,8 @@ export default mixins(externalHooks).extend({
 				value === '' ||
 				(Array.isArray(value) && value.length === 0) ||
 				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
-				(value === null || value === undefined)
+				value === null ||
+				value === undefined
 			);
 		},
 		getValueToRender(value: unknown) {
@@ -423,9 +450,12 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return (typeof data !== 'object' || data === null) ||
+			return (
+				typeof data !== 'object' ||
+				data === null ||
 				(Array.isArray(data) && data.length === 0) ||
-				(typeof data === 'object' && Object.keys(data).length === 0);
+				(typeof data === 'object' && Object.keys(data).length === 0)
+			);
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
@@ -447,7 +477,7 @@ export default mixins(externalHooks).extend({
 				entryRows = [];
 				const entryColumns = Object.keys(entry || {});
 
-				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+				if (entryColumns.length > MAX_COLUMNS_LIMIT) {
 					this.columnLimitExceeded = true;
 					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 				} else {
@@ -502,7 +532,7 @@ export default mixins(externalHooks).extend({
 				data: tableData,
 			};
 		},
-		switchToJsonView(){
+		switchToJsonView() {
 			this.$emit('displayModeChange', 'json');
 		},
 	},
@@ -559,11 +589,13 @@ export default mixins(externalHooks).extend({
 		white-space: pre-wrap;
 	}
 
-	td:first-child, td:nth-last-child(2) {
+	td:first-child,
+	td:nth-last-child(2) {
 		position: relative;
 		z-index: 0;
 
-		&:after { // add border without shifting content
+		&:after {
+			// add border without shifting content
 			content: '';
 			position: absolute;
 			height: 100%;
@@ -707,7 +739,8 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	td:first-child:after, td:nth-last-child(2):after {
+	td:first-child:after,
+	td:nth-last-child(2):after {
 		background-color: var(--color-secondary);
 	}
 }
@@ -715,5 +748,4 @@ export default mixins(externalHooks).extend({
 .warningTooltip {
 	color: var(--color-warning);
 }
-
 </style>
