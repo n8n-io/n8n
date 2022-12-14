@@ -204,7 +204,7 @@ export default mixins(
 	data() {
 		return {
 			loading: true,
-			isOwnerSubview: true,
+			isOwnerSubview: false,
 			sortBy: 'lastUpdated',
 			hasFilters: false,
 			resettingFilters: false,
@@ -373,11 +373,6 @@ export default mixins(
 		},
 		sortBy() {
 			this.sendSortingTelemetry();
-		},
-		loading(value) {
-			if (!value && this.subviewResources.length === 0 && this.shouldSwitchToAllSubview) {
-				this.isOwnerSubview = false;
-			}
 		},
 	},
 });
