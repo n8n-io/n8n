@@ -13,6 +13,7 @@ import {
 	Column,
 	Entity,
 	Index,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
@@ -24,6 +25,7 @@ import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import { WorkflowStatistics } from './WorkflowStatistics';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
@@ -77,6 +79,16 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
+
+	@OneToMany(
+		() => WorkflowStatistics,
+		(workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow,
+	)
+	@JoinColumn({ referencedColumnName: 'workflow' })
+	statistics: WorkflowStatistics[];
+
+	@Column({ default: false })
+	dataLoaded: boolean;
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',

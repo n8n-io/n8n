@@ -39,6 +39,7 @@ import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 
 export interface IActivationError {
 	time: number;
@@ -79,6 +80,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
+	WorkflowStatistics: Repository<WorkflowStatistics>;
 }
 
 export interface IWebhookDb {
@@ -498,6 +500,7 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		workflowSharing: boolean;
 	};
+	hideUsagePage: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -689,6 +692,24 @@ export interface IWorkflowExecuteProcess {
 	startedAt: Date;
 	workflow: Workflow;
 	workflowExecute: WorkflowExecute;
+}
+
+export interface IWorkflowStatisticsCounts {
+	productionSuccess: number;
+	productionError: number;
+	manualSuccess: number;
+	manualError: number;
+}
+
+export interface IWorkflowStatisticsDataLoaded {
+	dataLoaded: boolean;
+}
+
+export interface IWorkflowStatisticsTimestamps {
+	productionSuccess: Date | null;
+	productionError: Date | null;
+	manualSuccess: Date | null;
+	manualError: Date | null;
 }
 
 export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;

@@ -50,6 +50,11 @@ Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypre
 	return subject.find(`[data-test-id="${childTestId}"]`);
 })
 
+Cypress.Commands.add('waitForLoad', () => {
+	cy.getByTestId('node-view-loader').should('not.exist', { timeout: 10000 });
+	cy.get('.el-loading-mask').should('not.exist', { timeout: 10000 });
+})
+
 Cypress.Commands.add(
 	'signin',
 	({ email, password }) => {
@@ -129,6 +134,19 @@ Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });
 
+Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
+	if(Cypress.isBrowser('chrome')) {
+		cy.wrap(Cypress.automation('remote:debugger:protocol', {
+			command: 'Browser.grantPermissions',
+			params: {
+				permissions,
+				origin: window.location.origin,
+			},
+		}));
+	}
+});
+Cypress.Commands.add('readClipboard', () => cy.window().its('navigator.clipboard').invoke('readText'));
+
 Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) => {
 	// https://developer.mozilla.org/en-US/docs/Web/API/Element/paste_event
 	cy.wrap(selector).then($destination => {
@@ -139,4 +157,20 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 		});
 		$destination[0].dispatchEvent(pasteEvent);
 	});
+});
+
+Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+	const element = cy.get(selector);
+	element.should('exist');
+
+	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+
+	element.trigger('mousedown');
+	element.trigger('mousemove', {
+		which: 1,
+		pageX: originalLocation.right + xDiff,
+		pageY: originalLocation.top + yDiff,
+		force: true,
+	});
+	element.trigger('mouseup');
 });

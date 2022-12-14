@@ -1,5 +1,5 @@
 <template>
-	<span @keydown.stop class="inline-edit" >
+	<span @keydown.stop class="inline-edit">
 		<span v-if="isEditEnabled">
 			<ExpandableInputEdit
 				:placeholder="placeholder"
@@ -14,21 +14,19 @@
 			/>
 		</span>
 
-		<span @click="onClick" class="preview"  v-else>
-			<ExpandableInputPreview
-				:value="previewValue || value"
-			/>
+		<span @click="onClick" class="preview" v-else>
+			<ExpandableInputPreview :value="previewValue || value" />
 		</span>
 	</span>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputEdit from "@/components/ExpandableInput/ExpandableInputEdit.vue";
-import ExpandableInputPreview from "@/components/ExpandableInput/ExpandableInputPreview.vue";
+import Vue from 'vue';
+import ExpandableInputEdit from '@/components/ExpandableInput/ExpandableInputEdit.vue';
+import ExpandableInputPreview from '@/components/ExpandableInput/ExpandableInputPreview.vue';
 
 export default Vue.extend({
-	name: "InlineTextEdit",
+	name: 'InlineTextEdit',
 	components: { ExpandableInputEdit, ExpandableInputPreview },
 	props: ['isEditEnabled', 'value', 'placeholder', 'maxLength', 'previewValue'],
 	data() {
