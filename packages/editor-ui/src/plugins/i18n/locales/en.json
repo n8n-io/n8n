@@ -1413,8 +1413,6 @@
 	"workflows.shareModal.saveBeforeClose.cancelButtonText": "Close without saving",
 	"workflows.shareModal.save": "Save",
 	"workflows.shareModal.changesHint": "You made changes",
-	"workflows.shareModal.notAvailable": "Sharing workflows with others is currently available only on n8n cloud, our hosted offering.",
-	"workflows.shareModal.notAvailable.button": "Explore n8n cloud",
 	"workflows.shareModal.isDefaultUser.description": "You first need to set up your owner account to enable workflow sharing features.",
 	"workflows.shareModal.isDefaultUser.button": "Go to settings",
 	"workflows.shareModal.info.sharee": "Only {workflowOwnerName} can change who this workflow is shared with",
@@ -1437,11 +1435,11 @@
 	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests",
 	"dynamic.workflows.shareModal.title": "Share '{name}'",
 	"dynamic.workflows.shareModal.title.cloud.upgrade": "Upgrade to add users",
-	"dynamic.workflows.sharing.unavailable.description": "Sharing workflows with others is currently available only on n8n cloud, our hosted offering. {action}",
+	"dynamic.workflows.sharing.unavailable.description": "You can collaborate with others on workflows when you upgrade your plan. {action}",
 	"dynamic.workflows.sharing.unavailable.description.cloud.upgrade": "Sharing is available for Team and Enterprise plans. {action} to unlock more features.",
-	"dynamic.workflows.sharing.unavailable.action": "Explore n8n cloud",
+	"dynamic.workflows.sharing.unavailable.action": "See plans",
 	"dynamic.workflows.sharing.unavailable.action.cloud.upgrade": "Upgrade now",
-	"dynamic.workflows.sharing.unavailable.button": "Explore n8n cloud",
+	"dynamic.workflows.sharing.unavailable.button": "See plans",
 	"dynamic.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
-	"dynamic.workflows.sharing.unavailable.linkUrl": "https://n8n.cloud"
+	"dynamic.workflows.sharing.unavailable.linkUrl": "https://subscription.n8n.io/"
 }
