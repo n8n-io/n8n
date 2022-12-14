@@ -1,7 +1,7 @@
 import dateformat from 'dateformat';
 import { IDataObject, jsonParse } from 'n8n-workflow';
-import { Schema, Optional, Primitives } from "@/Interface";
-import { isObj } from "@/utils/typeGuards";
+import { Schema, Optional, Primitives } from '@/Interface';
+import { isObj } from '@/utils/typeGuards';
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -26,8 +26,8 @@ export function isJsonKeyObject(item: unknown): item is {
 
 export const isEmpty = (value?: unknown): boolean => {
 	if (!value && value !== 0) return true;
-	if(Array.isArray(value)){
-		if(!value.length) return true;
+	if (Array.isArray(value)) {
+		if (!value.length) return true;
 		return value.every(isEmpty);
 	}
 	if (typeof value === 'object') {
@@ -38,7 +38,7 @@ export const isEmpty = (value?: unknown): boolean => {
 
 export const intersection = <T>(...arrays: T[][]): T[] => {
 	const [a, b, ...rest] = arrays;
-	const ab = a.filter(v => b.includes(v));
+	const ab = a.filter((v) => b.includes(v));
 	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
 };
 
@@ -54,11 +54,11 @@ export function abbreviateNumber(num: number) {
 	return Number(scaled.toFixed(1)) + suffix;
 }
 
-export function convertToDisplayDate (epochTime: number) {
+export function convertToDisplayDate(epochTime: number) {
 	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
 }
 
-export function convertToHumanReadableDate (epochTime: number) {
+export function convertToHumanReadableDate(epochTime: number) {
 	return dateformat(epochTime, 'd mmmm, yyyy @ HH:MM Z');
 }
 
@@ -87,19 +87,21 @@ export const convertPath = (path: string): string => {
 	if (inBrackets === null) {
 		inBrackets = [];
 	} else {
-		inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
-			if (item.startsWith('"') && item.endsWith('"')) {
-				return item.slice(1, -1);
-			}
-			return item;
-		});
+		inBrackets = inBrackets
+			.map((item) => item.slice(1, -1))
+			.map((item) => {
+				if (item.startsWith('"') && item.endsWith('"')) {
+					return item.slice(1, -1);
+				}
+				return item;
+			});
 	}
 	const withoutBrackets = path.replace(/\[(.*?)]/g, placeholder);
 	const pathParts = withoutBrackets.split('.');
 	const allParts = [] as string[];
-	pathParts.forEach(part => {
+	pathParts.forEach((part) => {
 		let index = part.indexOf(placeholder);
-		while(index !== -1) {
+		while (index !== -1) {
 			if (index === 0) {
 				allParts.push(inBrackets!.shift() as string);
 				part = part.substr(placeholder.length);
@@ -122,9 +124,8 @@ export const clearJsonKey = (userInput: string | object) => {
 
 	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
-	return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
+	return parsedUserInput.map((item) => (isJsonKeyObject(item) ? item.json : item));
 };
-
 
 // Holds weird date formats that we encounter when working with strings
 // Should be extended as new cases are found
@@ -157,54 +158,59 @@ export const isValidDate = (input: string | number | Date): boolean => {
 	}
 };
 
-export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] => Object.keys(o) as K[];
+export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] =>
+	Object.keys(o) as K[];
 
-export const mergeDeep = <T extends object | Primitives>(sources: T[], options?: Partial<Record<'overwriteArrays' | 'concatArrays', boolean>>): T => sources.reduce((target, source) => {
-	if(Array.isArray(target) && Array.isArray(source)){
-		const tLength = target.length;
-		const sLength = source.length;
+export const mergeDeep = <T extends object | Primitives>(
+	sources: T[],
+	options?: Partial<Record<'overwriteArrays' | 'concatArrays', boolean>>,
+): T =>
+	sources.reduce((target, source) => {
+		if (Array.isArray(target) && Array.isArray(source)) {
+			const tLength = target.length;
+			const sLength = source.length;
 
-		if(tLength === 0 || options?.overwriteArrays) {
+			if (tLength === 0 || options?.overwriteArrays) {
+				return source;
+			}
+
+			if (sLength === 0) {
+				return target;
+			}
+
+			if (options?.concatArrays) {
+				return [...target, ...source];
+			}
+
+			if (tLength === sLength) {
+				return target.map((item, index) => mergeDeep([item, source[index]], options));
+			} else if (tLength < sLength) {
+				return source.map((item, index) => mergeDeep([target[index], item], options));
+			} else {
+				return [...source, ...target.slice(sLength)];
+			}
+		} else if (isObj(target) && isObj(source)) {
+			const targetKeys = getObjectKeys(target);
+			const sourceKeys = getObjectKeys(source);
+			const allKeys = [...new Set([...targetKeys, ...sourceKeys])];
+			const mergedObject = Object.create(Object.prototype);
+			for (const key of allKeys) {
+				if (targetKeys.includes(key) && sourceKeys.includes(key)) {
+					mergedObject[key] = mergeDeep([target[key] as T, source[key] as T], options);
+				} else if (targetKeys.includes(key)) {
+					mergedObject[key] = target[key];
+				} else {
+					mergedObject[key] = source[key];
+				}
+			}
+			return mergedObject;
+		} else {
 			return source;
 		}
-
-		if(sLength === 0) {
-			return target;
-		}
-
-		if(options?.concatArrays) {
-			return [...target, ...source];
-		}
-
-		if(tLength === sLength) {
-			return target.map((item, index) => mergeDeep([item, source[index]], options));
-		} else if(tLength < sLength) {
-			return source.map((item, index) => mergeDeep([target[index], item], options));
-		} else {
-			return [...source, ...target.slice(sLength)];
-		}
-	} else if(isObj(target) && isObj(source)) {
-		const targetKeys = getObjectKeys(target);
-		const sourceKeys = getObjectKeys(source);
-		const allKeys = [...new Set([...targetKeys, ...sourceKeys])];
-		const mergedObject = Object.create(Object.prototype);
-		for (const key of allKeys) {
-			if (targetKeys.includes(key) && sourceKeys.includes(key)) {
-				mergedObject[key] = mergeDeep([target[key] as T, source[key] as T], options);
-			} else if (targetKeys.includes(key)) {
-				mergedObject[key] = target[key];
-			} else {
-				mergedObject[key] = source[key];
-			}
-		}
-		return mergedObject;
-	} else {
-		return source;
-	}
-}, (Array.isArray(sources[0]) ? [] : {}) as T);
+	}, (Array.isArray(sources[0]) ? [] : {}) as T);
 
 export const getSchema = (input: Optional<Primitives | object>, path = ''): Schema => {
-	let schema:Schema = { type: 'undefined', value: 'undefined', path };
+	let schema: Schema = { type: 'undefined', value: 'undefined', path };
 	switch (typeof input) {
 		case 'object':
 			if (input === null) {
@@ -214,22 +220,28 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 			} else if (Array.isArray(input)) {
 				schema = {
 					type: 'array',
-					value: input.map((item, index) => ({key: index.toString(), ...getSchema(item,`${path}[${index}]`)})),
+					value: input.map((item, index) => ({
+						key: index.toString(),
+						...getSchema(item, `${path}[${index}]`),
+					})),
 					path,
 				};
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getSchema(v, path + `["${ k }"]`)})),
+					value: Object.entries(input).map(([k, v]) => ({
+						key: k,
+						...getSchema(v, path + `["${k}"]`),
+					})),
 					path,
 				};
 			}
 			break;
 		case 'function':
-			schema =  { type: 'function', value: ``, path };
+			schema = { type: 'function', value: ``, path };
 			break;
 		default:
-			schema =  { type: typeof input, value: String(input), path };
+			schema = { type: typeof input, value: String(input), path };
 	}
 
 	return schema;

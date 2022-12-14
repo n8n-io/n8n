@@ -31,10 +31,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(
-	workflowRun,
-	pinData,
-).extend({
+export default mixins(workflowRun, pinData).extend({
 	props: {
 		nodeName: {
 			type: String,
@@ -61,41 +58,40 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useWorkflowsStore,
-		),
-		node (): INodeUi | null {
+		...mapStores(useNodeTypesStore, useNDVStore, useWorkflowsStore),
+		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
-		nodeRunning (): boolean {
+		nodeRunning(): boolean {
 			const triggeredNode = this.workflowsStore.executedNode;
 			const executingNode = this.workflowsStore.executingNode;
-			return this.workflowRunning && (executingNode === this.node.name || triggeredNode === this.node.name);
+			return (
+				this.workflowRunning &&
+				(executingNode === this.node.name || triggeredNode === this.node.name)
+			);
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
-		isTriggerNode (): boolean {
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
-		isManualTriggerNode (): boolean {
+		isManualTriggerNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
-		isPollingTypeNode (): boolean {
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isScheduleTrigger (): boolean {
+		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
-		isWebhookNode (): boolean {
+		isWebhookNode(): boolean {
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
 		},
 		isListeningForEvents(): boolean {
@@ -111,10 +107,19 @@ export default mixins(
 			);
 		},
 		isListeningForWorkflowEvents(): boolean {
-			return this.nodeRunning && this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode;
+			return (
+				this.nodeRunning &&
+				this.isTriggerNode &&
+				!this.isScheduleTrigger &&
+				!this.isManualTriggerNode
+			);
 		},
-		hasIssues (): boolean {
-			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
+		hasIssues(): boolean {
+			return Boolean(
+				this.node &&
+					this.node.issues &&
+					(this.node.issues.parameters || this.node.issues.credentials),
+			);
 		},
 		disabledHint(): string {
 			if (this.isListeningForEvents) {
@@ -165,14 +170,11 @@ export default mixins(
 		},
 	},
 	methods: {
-		async stopWaitingForWebhook () {
+		async stopWaitingForWebhook() {
 			try {
 				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'),
-				);
+				this.$showError(error, this.$locale.baseText('ndv.execute.stopWaitingForWebhook.error'));
 				return;
 			}
 		},

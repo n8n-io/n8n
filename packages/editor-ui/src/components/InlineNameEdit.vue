@@ -1,9 +1,6 @@
 <template>
-	<div class='ph-no-capture' :class="$style.container">
-		<span
-			v-if="readonly"
-			:class="$style.headline"
-		>
+	<div class="ph-no-capture" :class="$style.container">
+		<span v-if="readonly" :class="$style.headline">
 			{{ name }}
 		</span>
 		<div
@@ -91,7 +88,6 @@ export default mixins(showMessage).extend({
 });
 </script>
 
-
 <style module lang="scss">
 .container {
 	display: flex;
@@ -146,5 +142,4 @@ export default mixins(showMessage).extend({
 	margin-left: 4px;
 	font-weight: 400;
 }
-
 </style>

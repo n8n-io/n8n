@@ -1,14 +1,41 @@
 <template>
-	<div :class="{ [$style.zoomMenu]: true, [$style.regularZoomMenu]: !isDemo, [$style.demoZoomMenu]: isDemo }">
-		<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
-										 icon="expand"
-										 data-test-id="zoom-to-fit" />
-		<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
-										 icon="search-plus" />
-		<n8n-icon-button @click="zoomOut" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomOut')"
-										 icon="search-minus" />
-		<n8n-icon-button v-if="nodeViewScale !== 1 && !isDemo" @click="resetZoom" type="tertiary" size="large"
-										 :title="$locale.baseText('nodeView.resetZoom')" icon="undo" />
+	<div
+		:class="{
+			[$style.zoomMenu]: true,
+			[$style.regularZoomMenu]: !isDemo,
+			[$style.demoZoomMenu]: isDemo,
+		}"
+	>
+		<n8n-icon-button
+			@click="zoomToFit"
+			type="tertiary"
+			size="large"
+			:title="$locale.baseText('nodeView.zoomToFit')"
+			icon="expand"
+			data-test-id="zoom-to-fit"
+		/>
+		<n8n-icon-button
+			@click="zoomIn"
+			type="tertiary"
+			size="large"
+			:title="$locale.baseText('nodeView.zoomIn')"
+			icon="search-plus"
+		/>
+		<n8n-icon-button
+			@click="zoomOut"
+			type="tertiary"
+			size="large"
+			:title="$locale.baseText('nodeView.zoomOut')"
+			icon="search-minus"
+		/>
+		<n8n-icon-button
+			v-if="nodeViewScale !== 1 && !isDemo"
+			@click="resetZoom"
+			type="tertiary"
+			size="large"
+			:title="$locale.baseText('nodeView.resetZoom')"
+			icon="undo"
+		/>
 	</div>
 </template>
 <script lang="ts" setup>
@@ -17,7 +44,7 @@ import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/stores/canvas';
 
 const canvasStore = useCanvasStore();
-const { zoomToFit, zoomIn, zoomOut, resetZoom  } = canvasStore;
+const { zoomToFit, zoomIn, zoomOut, resetZoom } = canvasStore;
 const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
 
 const keyDown = (e: KeyboardEvent) => {
@@ -26,9 +53,9 @@ const keyDown = (e: KeyboardEvent) => {
 		zoomIn();
 	} else if ((e.key === '_' || e.key === '-') && !isCtrlKeyPressed) {
 		zoomOut();
-	} else if ((e.key === '0') && !isCtrlKeyPressed) {
+	} else if (e.key === '0' && !isCtrlKeyPressed) {
 		resetZoom();
-	} else if ((e.key === '1') && !isCtrlKeyPressed) {
+	} else if (e.key === '1' && !isCtrlKeyPressed) {
 		zoomToFit();
 	}
 };
@@ -40,7 +67,6 @@ onBeforeMount(() => {
 onBeforeUnmount(() => {
 	document.removeEventListener('keydown', keyDown);
 });
-
 </script>
 
 <style lang="scss" module>
@@ -57,8 +83,8 @@ onBeforeUnmount(() => {
 		border: var(--border-base);
 	}
 
-	>* {
-		+* {
+	> * {
+		+ * {
 			margin-left: var(--spacing-3xs);
 		}
 

@@ -1,6 +1,13 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
+		<el-dialog
+			:visible="dialogVisible"
+			custom-class="expression-dialog classic"
+			append-to-body
+			width="80%"
+			:title="$locale.baseText('expressionEdit.editExpression')"
+			:before-close="closeDialog"
+		>
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
@@ -58,10 +65,8 @@
 							/>
 						</div>
 					</div>
-
 				</el-col>
 			</el-row>
-
 		</el-dialog>
 	</div>
 </template>
@@ -87,25 +92,15 @@ import { useNDVStore } from '@/stores/ndv';
 
 import type { Resolvable, Segment } from './ExpressionEditorModal/types';
 
-export default mixins(
-	externalHooks,
-	genericHelpers,
-	debounceHelper,
-).extend({
+export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 	name: 'ExpressionEdit',
-	props: [
-		'dialogVisible',
-		'parameter',
-		'path',
-		'value',
-		'eventSource',
-	],
+	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
 		ExpressionModalInput,
 		ExpressionModalOutput,
 		VariableSelector,
 	},
-	data () {
+	data() {
 		return {
 			displayValue: '',
 			latestValue: '',
@@ -114,13 +109,10 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
-		valueChanged ({ value, segments }: { value: string, segments: Segment[] }, forceUpdate = false) {
+		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
 			this.segments = segments;
 
@@ -132,11 +124,11 @@ export default mixins(
 			}
 		},
 
-		updateDisplayValue () {
+		updateDisplayValue() {
 			this.displayValue = this.latestValue;
 		},
 
-		closeDialog () {
+		closeDialog() {
 			if (this.latestValue !== this.value) {
 				// Handle the close externally as the visible parameter is an external prop
 				// and is so not allowed to be changed here.
@@ -146,9 +138,13 @@ export default mixins(
 			return false;
 		},
 
-		itemSelected (eventData: IVariableItemSelected) {
+		itemSelected(eventData: IVariableItemSelected) {
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+			this.$externalHooks().run('expressionEdit.itemSelected', {
+				parameter: this.parameter,
+				value: this.value,
+				selectedItem: eventData,
+			});
 
 			const trackProperties: {
 				event_version: string;
@@ -162,11 +158,11 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.ndvStore.activeNode? this.ndvStore.activeNode.type : '',
+				node_type_dest: this.ndvStore.activeNode ? this.ndvStore.activeNode.type : '',
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
-				node_name: this.ndvStore.activeNode? this.ndvStore.activeNode.name : '',
+				node_name: this.ndvStore.activeNode ? this.ndvStore.activeNode.name : '',
 			};
 
 			if (eventData.variable) {
@@ -184,47 +180,63 @@ export default mixins(
 
 				if (splitVar[0].startsWith('$node')) {
 					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source = this.workflowsStore.getNodeByName(sourceNodeName)?.type;
-					const nodeConnections: Array<Array<{ node: string }>> = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')) ? true : false;
+					trackProperties.node_type_source =
+						this.workflowsStore.getNodeByName(sourceNodeName)?.type;
+					const nodeConnections: Array<Array<{ node: string }>> =
+						this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
+					trackProperties.is_immediate_input =
+						nodeConnections &&
+						nodeConnections[0] &&
+						!!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')
+							? true
+							: false;
 
 					if (splitVar[1].startsWith('parameter')) {
 						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
 					}
-
 				} else {
 					trackProperties.is_immediate_input = true;
 
-					if(splitVar[0].startsWith('$parameter')) {
+					if (splitVar[0].startsWith('$parameter')) {
 						trackProperties.parameter_name_source = splitVar[0].split('"')[1];
 					}
 				}
 			}
 
-			this.$telemetry.track('User inserted item from Expression Editor variable selector', trackProperties);
+			this.$telemetry.track(
+				'User inserted item from Expression Editor variable selector',
+				trackProperties,
+			);
 		},
 	},
 	watch: {
-		dialogVisible (newValue) {
+		dialogVisible(newValue) {
 			this.displayValue = this.value;
 			this.latestValue = this.value;
 
-			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+			const resolvedExpressionValue =
+				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
+				undefined; // tslint:disable-line:no-any
+			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
+				dialogVisible: newValue,
+				parameter: this.parameter,
+				value: this.value,
+				resolvedExpressionValue,
+			});
 
 			if (!newValue) {
 				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
-				const errorResolvables = resolvables.filter(r => r.error);
+				const errorResolvables = resolvables.filter((r) => r.error);
 
 				const exposeErrorProperties = (error: Error) => {
 					return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
 						// @ts-ignore
-						return acc[key] = error[key], acc;
+						return (acc[key] = error[key]), acc;
 					}, {});
 				};
 
 				const telemetryPayload = {
-					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
+					empty_expression: this.value === '=' || this.value === '={{}}' || !this.value,
 					workflow_id: this.workflowsStore.workflowId,
 					source: this.eventSource,
 					session_id: this.ndvStore.sessionId,
@@ -233,12 +245,15 @@ export default mixins(
 					node_type: this.ndvStore.activeNode?.type ?? '',
 					handlebar_count: resolvables.length,
 					handlebar_error_count: errorResolvables.length,
-					full_errors: errorResolvables.map(errorResolvable => {
+					full_errors: errorResolvables.map((errorResolvable) => {
 						return errorResolvable.fullError
-							? { ...exposeErrorProperties(errorResolvable.fullError), stack: errorResolvable.fullError.stack }
+							? {
+									...exposeErrorProperties(errorResolvable.fullError),
+									stack: errorResolvable.fullError.stack,
+							  }
 							: null;
 					}),
-					short_errors: errorResolvables.map(r => r.resolved ?? null),
+					short_errors: errorResolvables.map((r) => r.resolved ?? null),
 				};
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
@@ -255,7 +270,7 @@ export default mixins(
 	font-weight: bold;
 	padding: 0 0 0.5em 0.2em;
 	display: flex;
-  justify-content: space-between;
+	justify-content: space-between;
 
 	.hint {
 		color: var(--color-text-base);
