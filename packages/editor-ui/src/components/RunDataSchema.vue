@@ -8,7 +8,8 @@ import { useWebhooksStore } from "@/stores/webhooks";
 import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 import { IDataObject } from "n8n-workflow";
-import { getSchema, mergeDeep } from "@/utils";
+import { getSchema, isEmpty, mergeDeep } from "@/utils";
+import { i18n } from '@/plugins/i18n';
 
 type Props = {
 	data: IDataObject[]
@@ -30,6 +31,10 @@ const webhooksStore = useWebhooksStore();
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
 	return getSchema(mergeDeep([head, ...tail, head]));
+});
+
+const isDataEmpty = computed(() => {
+	return isEmpty(props.data);
 });
 
 const onDragStart = (el: HTMLElement) => {
@@ -67,7 +72,9 @@ const onDragEnd = (el: HTMLElement) => {
 
 <template>
 	<div :class="$style.schemaWrapper">
+		<n8n-info-tip v-if="isDataEmpty">{{ i18n.baseText('dataMapping.schemaView.emptyData') }}</n8n-info-tip>
 		<draggable
+			v-else
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
@@ -108,6 +115,10 @@ const onDragEnd = (el: HTMLElement) => {
 	height: 100%;
 	width: 100%;
 	background-color: var(--color-background-base);
+
+	> div[class*="info"] {
+		padding: 0 var(--spacing-s);
+	}
 }
 
 .schema {

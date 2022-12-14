@@ -105,6 +105,7 @@ import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { pinData } from '@/mixins/pinData';
 
 import {
+	IDataObject,
 	INodeTypeDescription,
 	ITaskData,
 	NodeHelpers,
@@ -117,13 +118,14 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
-import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
+import { IExecutionsSummary, INodeUi, INodeUpdatePropertiesInformation, XYPosition } from '@/Interface';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { EnableNodeToggleCommand } from '@/models/history';
 
 export default mixins(
 	externalHooks,
@@ -433,8 +435,11 @@ export default mixins(
 				: nodeSubtitle;
 		},
 		disableNode () {
-			this.disableNodes([this.data]);
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+			if (this.data !== null) {
+				this.disableNodes([this.data]);
+				this.historyStore.pushCommandToUndo(new EnableNodeToggleCommand(this.data.name, !this.data.disabled, this.data.disabled === true, this));
+				this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
+			}
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');

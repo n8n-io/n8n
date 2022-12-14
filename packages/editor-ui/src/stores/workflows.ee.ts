@@ -8,9 +8,20 @@ import {useRootStore} from "@/stores/n8nRootStore";
 import {useSettingsStore} from "@/stores/settings";
 import {defineStore} from "pinia";
 import {useWorkflowsStore} from "@/stores/workflows";
+import {i18n} from "@/plugins/i18n";
 
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	state() { return {}; },
+	getters: {
+		getWorkflowOwnerName() {
+			return (workflowId: string): string => {
+				const workflow = useWorkflowsStore().getWorkflowById(workflowId);
+				return workflow && workflow.ownedBy && workflow.ownedBy.firstName
+					? `${workflow.ownedBy.firstName} ${workflow.ownedBy.lastName} (${workflow.ownedBy.email})`
+					: i18n.baseText('workflows.shareModal.info.sharee.fallback');
+			};
+		},
+	},
 	actions: {
 		setWorkflowOwnedBy(payload: { workflowId: string, ownedBy: Partial<IUser> }): void {
 			const workflowsStore = useWorkflowsStore();

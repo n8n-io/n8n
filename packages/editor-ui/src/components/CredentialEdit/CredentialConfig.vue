@@ -9,7 +9,7 @@
 		<banner
 			v-if="authError && !showValidationWarning"
 			theme="danger"
-			:message="$locale.baseText('credentialEdit.credentialConfig.couldntConnectWithTheseSettings')"
+			:message="$locale.baseText(`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${!credentialPermissions.isOwner ? '.sharee' : ''}`, { interpolate: { owner: credentialOwnerName } })"
 			:details="authError"
 			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.retry')"
 			buttonLoadingLabel="Retrying"
@@ -204,7 +204,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(this.credentialId);
+			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

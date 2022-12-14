@@ -13,6 +13,7 @@ describe('Workflow Actions', () => {
 		cy.resetAll();
 		cy.skipSetup();
 		WorkflowPage.actions.visit();
+		cy.waitForLoad();
 	});
 
 	it('should be able to save on button click', () => {
@@ -66,7 +67,8 @@ describe('Workflow Actions', () => {
 	it('should add more tags', () => {
 		WorkflowPage.getters.newTagLink().click();
 		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.workflowTagElements().first().click();
+		WorkflowPage.getters.isWorkflowSaved();
+		WorkflowPage.getters.firstWorkflowTagElement().click();
 		WorkflowPage.actions.addTags(['Another one']);
 		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length + 1);
 	});
@@ -74,7 +76,7 @@ describe('Workflow Actions', () => {
 	it('should remove tags by clicking X in tag', () => {
 		WorkflowPage.getters.newTagLink().click();
 		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.workflowTagElements().first().click();
+		WorkflowPage.getters.firstWorkflowTagElement().click();
 		WorkflowPage.getters.workflowTagsContainer().find('.el-tag__close').first().click();
 		cy.get('body').type('{enter}');
 		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
@@ -83,17 +85,23 @@ describe('Workflow Actions', () => {
 	it('should remove tags from dropdown', () => {
 		WorkflowPage.getters.newTagLink().click();
 		WorkflowPage.actions.addTags(TEST_WF_TAGS);
-		WorkflowPage.getters.workflowTagElements().first().click();
-		WorkflowPage.getters.workflowTagsDropdown().find('li').first().click();
+		WorkflowPage.getters.firstWorkflowTagElement().click();
+		WorkflowPage.getters.workflowTagsDropdown().find('li.selected').first().click();
 		cy.get('body').type('{enter}');
 		WorkflowPage.getters.workflowTagElements().should('have.length', TEST_WF_TAGS.length - 1);
 	});
 
 	it('should copy nodes', () => {
+		const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE);
-		cy.get('body').type('{meta}', { release: false }).type('a');
-		cy.get('body').type('{meta}', { release: false }).type('c');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+
+		cy.get("#node-creator").should('not.exist');
+		cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+		cy.get('.jtk-drag-selected').should('have.length', 2);
+		cy.get('body').type(metaKey, { delay: 500, release: false }).type('c');
 		WorkflowPage.getters.successToast().should('exist');
 	});
 
