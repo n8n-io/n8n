@@ -24,6 +24,7 @@ importers:
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
       n8n: '*'
+      nock: ^13.2.9
       node-fetch: ^2.6.7
       prettier: ^2.3.2
       rimraf: ^3.0.2
@@ -46,6 +47,7 @@ importers:
       jest: 29.3.1_@types+node@16.11.65
       jest-environment-jsdom: 29.3.1
       jest-mock: 29.3.1
+      nock: 13.2.9
       node-fetch: 2.6.7
       prettier: 2.7.1
       rimraf: 3.0.2
@@ -15909,6 +15911,18 @@ packages:
       lower-case: 2.0.2
       tslib: 2.4.0
 
+  /nock/13.2.9:
+    resolution: {integrity: sha512-1+XfJNYF1cjGB+TKMWi29eZ0b82QOvQs2YoLNzbpWGqFMtRQHTa57osqdGj4FrFPgkO4D4AZinzUJR9VvW3QUA==}
+    engines: {node: '>= 10.13'}
+    dependencies:
+      debug: 4.3.4
+      json-stringify-safe: 5.0.1
+      lodash: 4.17.21
+      propagate: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /node-abort-controller/3.0.1:
     resolution: {integrity: sha512-/ujIVxthRs+7q6hsdjHMaj8hRG9NuWmwrz+JdRwZ14jdFoKSkm+vDsCbF9PLpnSqjaWQJuTmVtcWHNLr+vrOFw==}
     dev: false
@@ -17491,6 +17505,11 @@ packages:
       loose-envify: 1.4.0
       object-assign: 4.1.1
       react-is: 16.13.1
+    dev: true
+
+  /propagate/2.0.1:
+    resolution: {integrity: sha512-vGrhOavPSTz4QVNuBNdcNXePNdNMaO1xj9yBeH1ScQPjk/rhg9sSlCXPhMkFuaNNW/syTvYqsnbIJxMBfRbbag==}
+    engines: {node: '>= 8'}
     dev: true
 
   /property-expr/2.0.5:
