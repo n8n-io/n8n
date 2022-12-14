@@ -18,7 +18,7 @@ export type Resolved = Resolvable;
 
 export namespace ColoringStateEffect {
 	export type Value = {
-		kind: 'plaintext' | 'resolvable';
-		error: boolean;
+		kind?: 'plaintext' | 'resolvable';
+		error?: boolean;
 	} & Range;
 }

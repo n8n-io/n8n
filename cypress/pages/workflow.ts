@@ -62,7 +62,8 @@ export class WorkflowPage extends BasePage {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
 		openExpressionEditor: () => {
-			cy.get('input[value="expression"]').parent('label').click();
+			cy.contains('Expression').invoke('show').click();
+			cy.getByTestId('expander').invoke('show').click();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
