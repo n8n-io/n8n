@@ -62,6 +62,8 @@ export class WorkflowPage extends BasePage {
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
+		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
+		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
 	};
 	actions = {
 		visit: () => {
@@ -83,9 +85,13 @@ export class WorkflowPage extends BasePage {
 		openNodeNdv: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
-		openExpressionEditor: () => {
+		openExpressionEditorModal: () => {
 			cy.contains('Expression').invoke('show').click();
 			cy.getByTestId('expander').invoke('show').click();
+		},
+		openInlineExpressionEditor: () => {
+			cy.contains('Expression').invoke('show').click();
+			this.getters.inlineExpressionEditorInput().click();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
