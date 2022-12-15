@@ -1,7 +1,11 @@
 <template>
 	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
 		<div
-			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
+			:class="{
+				'sticky-default': true,
+				'touch-active': isTouchActive,
+				'is-touch-device': isTouchDevice,
+			}"
 			:style="stickySize"
 		>
 			<div class="select-sticky-background" v-show="isSelected" />
@@ -33,7 +37,7 @@
 			</div>
 
 			<div v-show="showActions" class="sticky-options no-select-on-click">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')" >
+				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
 					<font-awesome-icon icon="trash" />
 				</div>
 			</div>
@@ -50,12 +54,14 @@ import { nodeBase } from '@/mixins/nodeBase';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { getStyleTokenValue, isNumber, isString } from '@/utils';
-import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation, XYPosition } from '@/Interface';
-
 import {
-	IDataObject,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	XYPosition,
+} from '@/Interface';
+
+import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -74,13 +80,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
-		defaultText (): string {
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
+		defaultText(): string {
 			if (!this.nodeType) {
 				return '';
 			}
@@ -89,16 +90,20 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return content && isString(content.default) ? content.default : '';
 		},
-		isSelected (): boolean {
-			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
+		isSelected(): boolean {
+			return (
+				this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !==
+				undefined
+			);
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | null { // same as this.data but reactive..
+		node(): INodeUi | null {
+			// same as this.data but reactive..
 			return this.workflowsStore.getNodeByName(this.name);
 		},
-		position (): XYPosition {
+		position(): XYPosition {
 			if (this.node) {
 				return this.node.position;
 			} else {
@@ -106,10 +111,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			}
 		},
 		height(): number {
-			return this.node && isNumber(this.node.parameters.height)? this.node.parameters.height : 0;
+			return this.node && isNumber(this.node.parameters.height) ? this.node.parameters.height : 0;
 		},
 		width(): number {
-			return this.node && isNumber(this.node.parameters.width)? this.node.parameters.width : 0;
+			return this.node && isNumber(this.node.parameters.width) ? this.node.parameters.width : 0;
 		},
 		stickySize(): object {
 			const returnStyles: {
@@ -121,7 +126,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			return returnStyles;
 		},
-		stickyPosition (): object {
+		stickyPosition(): object {
 			const returnStyles: {
 				[key: string]: string | number;
 			} = {
@@ -135,18 +140,18 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		showActions(): boolean {
 			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
-	data () {
+	data() {
 		return {
 			isResizing: false,
 			isTouchActive: false,
 		};
 	},
 	methods: {
-		deleteNode () {
+		deleteNode() {
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('removeNode', this.data.name);
@@ -155,22 +160,26 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
 				this.ndvStore.activeNodeName = this.node.name;
-			}
-			else if (this.isActive && !edit) {
+			} else if (this.isActive && !edit) {
 				this.ndvStore.activeNodeName = null;
 			}
 		},
-		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
+		onMarkdownClick(link: HTMLAnchorElement, event: Event) {
 			if (link) {
 				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
 				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
-				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
+				const type =
+					isOnboardingNote && isWelcomeVideo
+						? 'welcome_video'
+						: isOnboardingNote && link.getAttribute('href') === '/templates'
+						? 'templates'
+						: 'other';
 
-				this.$telemetry.track('User clicked note link', { type } );
+				this.$telemetry.track('User clicked note link', { type });
 			}
 		},
 		onInputChange(content: string) {
-			this.setParameters({content});
+			this.setParameters({ content });
 		},
 		onResizeStart() {
 			this.isResizing = true;
@@ -181,7 +190,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
 			}
 		},
-		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
+		onResize({ height, width, dX, dY }: { width: number; height: number; dX: number; dY: number }) {
 			if (!this.node) {
 				return;
 			}
@@ -195,7 +204,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			this.isResizing = false;
 			this.__makeInstanceDraggable(this.data);
 		},
-		setParameters(params: {content?: string, height?: number, width?: number}) {
+		setParameters(params: { content?: string; height?: number; width?: number }) {
 			if (this.node) {
 				const nodeParameters = {
 					content: isString(params.content) ? params.content : this.node.parameters.content,
@@ -226,7 +235,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
-		touchStart () {
+		touchStart() {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {
 				this.isTouchActive = true;
 				setTimeout(() => {
@@ -236,7 +245,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" scoped>
@@ -300,7 +308,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 .select-sticky-background {
 	display: block;
 	position: absolute;
-	background-color: hsla(var(--color-foreground-base-h), var(--color-foreground-base-s), var(--color-foreground-base-l), 60%);
+	background-color: hsla(
+		var(--color-foreground-base-h),
+		var(--color-foreground-base-s),
+		var(--color-foreground-base-l),
+		60%
+	);
 	border-radius: var(--border-radius-xlarge);
 	overflow: hidden;
 	height: calc(100% + 16px);

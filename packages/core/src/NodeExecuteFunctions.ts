@@ -64,7 +64,7 @@ import {
 	NodeExecutionWithMetadata,
 	IPairedItemData,
 	deepCopy,
-	BinaryFileType,
+	fileTypeFromMimeType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -834,13 +834,6 @@ export async function getBinaryDataBuffer(
 ): Promise<Buffer> {
 	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
-}
-
-function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
-	if (mimeType.startsWith('image/')) return 'image';
-	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('text/') || mimeType.startsWith('application/json')) return 'text';
-	return;
 }
 
 /**

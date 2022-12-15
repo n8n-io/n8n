@@ -1,14 +1,19 @@
 import vue from '@vitejs/plugin-vue2';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
-import monacoEditorPlugin from "vite-plugin-monaco-editor";
+import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
-import {defineConfig, mergeConfig, PluginOption} from "vite";
+import { defineConfig, mergeConfig, PluginOption } from 'vite';
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import packageJSON from './package.json';
 
 const vendorChunks = ['vue', 'vue-router'];
-const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
+const ignoreChunks = [
+	'vue2-boring-avatars',
+	'vue-template-compiler',
+	'jquery',
+	'@fontsource/open-sans',
+];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
 
@@ -31,10 +36,10 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name => ({
+const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map((name) => ({
 	find: new RegExp(`^lodash.${name}$`, 'i'),
 	replacement: require.resolve(`lodash-es/${name}`),
-}))
+}));
 
 export default mergeConfig(
 	defineConfig({
@@ -43,16 +48,17 @@ export default mergeConfig(
 				targets: ['defaults', 'not IE 11'],
 			}),
 			vue(),
-			...createHtmlPlugin({
+			...(createHtmlPlugin({
 				inject: {
 					data: {
 						BASE_PATH: publicPath,
 					},
 				},
-			}) as PluginOption[],
+			}) as PluginOption[]),
 			monacoEditorPlugin({
 				publicPath: 'assets/monaco-editor',
-				customDistPath: (root: string, buildOutDir: string, base: string) => `${root}/${buildOutDir}/assets/monaco-editor`,
+				customDistPath: (root: string, buildOutDir: string, base: string) =>
+					`${root}/${buildOutDir}/assets/monaco-editor`,
 			}) as PluginOption,
 		],
 		resolve: {
@@ -74,7 +80,11 @@ export default mergeConfig(
 				},
 				{
 					find: /element-ui\/(packages|lib)\/button$/,
-					replacement: path.resolve(__dirname, '..', 'design-system/src/components/N8nButton/overrides/ElButton.ts'),
+					replacement: path.resolve(
+						__dirname,
+						'..',
+						'design-system/src/components/N8nButton/overrides/ElButton.ts',
+					),
 				},
 			],
 		},

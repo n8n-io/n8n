@@ -5,14 +5,9 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useVersionsStore } from '@/stores/versions';
 
-export const newVersions = mixins(
-	showMessage,
-).extend({
+export const newVersions = mixins(showMessage).extend({
 	computed: {
-		...mapStores(
-			useUIStore,
-			useVersionsStore,
-		),
+		...mapStores(useUIStore, useVersionsStore),
 	},
 	methods: {
 		async checkForNewVersions() {

@@ -2,65 +2,108 @@
 	<Modal
 		:name="EXECUTIONS_MODAL_KEY"
 		width="80%"
-		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
+		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${
+			combinedExecutions.length
+		}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
 		:eventBus="modalBus"
 	>
 		<template #content>
-
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
 						{{ $locale.baseText('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="7">
-						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select
+							v-model="filter.workflowId"
+							:placeholder="$locale.baseText('executionsList.selectWorkflow')"
+							size="medium"
+							filterable
+							@change="handleFilterChanged"
+						>
 							<div class="ph-no-capture">
 								<n8n-option
 									v-for="item in workflows"
 									:key="item.id"
 									:label="item.name"
-									:value="item.id">
+									:value="item.id"
+								>
 								</n8n-option>
 							</div>
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
-						<n8n-select v-model="filter.status" :placeholder="$locale.baseText('executionsList.selectStatus')" size="medium" filterable @change="handleFilterChanged">
+						<n8n-select
+							v-model="filter.status"
+							:placeholder="$locale.baseText('executionsList.selectStatus')"
+							size="medium"
+							filterable
+							@change="handleFilterChanged"
+						>
 							<n8n-option
 								v-for="item in statuses"
 								:key="item.id"
 								:label="item.name"
-								:value="item.id">
+								:value="item.id"
+							>
 							</n8n-option>
 						</n8n-select>
 					</el-col>
 					<el-col :span="4" :offset="5" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{
+							$locale.baseText('executionsList.autoRefresh')
+						}}</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
 
 			<div class="selection-options">
 				<span v-if="checkAll === true || isIndeterminate === true">
-					{{ $locale.baseText('executionsList.selected') }}: {{numSelected}} / <span v-if="finishedExecutionsCountEstimated === true">~</span>{{finishedExecutionsCount}}
-					<n8n-icon-button :title="$locale.baseText('executionsList.deleteSelected')" icon="trash" size="mini" @click="handleDeleteSelected" />
+					{{ $locale.baseText('executionsList.selected') }}: {{ numSelected }} /
+					<span v-if="finishedExecutionsCountEstimated === true">~</span
+					>{{ finishedExecutionsCount }}
+					<n8n-icon-button
+						:title="$locale.baseText('executionsList.deleteSelected')"
+						icon="trash"
+						size="mini"
+						@click="handleDeleteSelected"
+					/>
 				</span>
 			</div>
 
-			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
+			<el-table
+				:data="combinedExecutions"
+				stripe
+				v-loading="isDataLoading"
+				:row-class-name="getRowClass"
+			>
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
-					<template #header="scope" >
-						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange" label=" "></el-checkbox>
+					<template #header="scope">
+						<el-checkbox
+							:indeterminate="isIndeterminate"
+							v-model="checkAll"
+							@change="handleCheckAllChange"
+							label=" "
+						></el-checkbox>
 					</template>
 					<template #default="scope">
-						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
+						<el-checkbox
+							v-if="scope.row.stoppedAt !== undefined && scope.row.id"
+							:value="selectedItems[scope.row.id.toString()] || checkAll"
+							@change="handleCheckboxChanged(scope.row.id)"
+							label=" "
+						></el-checkbox>
 					</template>
 				</el-table-column>
-				<el-table-column property="startedAt" :label="$locale.baseText('executionsList.startedAtId')" width="205">
+				<el-table-column
+					property="startedAt"
+					:label="$locale.baseText('executionsList.startedAtId')"
+					width="205"
+				>
 					<template #default="scope">
-						{{convertToDisplayDate(scope.row.startedAt)}}<br />
-						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
+						{{ convertToDisplayDate(scope.row.startedAt) }}<br />
+						<small v-if="scope.row.id">ID: {{ scope.row.id }}</small>
 					</template>
 				</el-table-column>
 				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
@@ -75,16 +118,26 @@
 							({{ $locale.baseText('executionsList.running') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small>{{ $locale.baseText('executionsList.retryOf') }} "{{scope.row.retryOf}}"</small>
+							<br /><small
+								>{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"</small
+							>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small>{{ $locale.baseText('executionsList.successRetry') }} "{{scope.row.retrySuccessId}}"</small>
+							<br /><small
+								>{{ $locale.baseText('executionsList.successRetry') }} "{{
+									scope.row.retrySuccessId
+								}}"</small
+							>
 						</span>
 					</template>
 				</el-table-column>
-				<el-table-column :label="$locale.baseText('executionsList.status')" width="122" align="center">
+				<el-table-column
+					:label="$locale.baseText('executionsList.status')"
+					width="122"
+					align="center"
+				>
 					<template #default="scope" align="center">
-						<n8n-tooltip placement="top" >
+						<n8n-tooltip placement="top">
 							<template #content>
 								<div v-html="statusTooltipText(scope.row)"></div>
 							</template>
@@ -108,8 +161,14 @@
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="retry-button">
 								<n8n-icon-button
-									v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-									:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									v-if="
+										scope.row.stoppedAt !== undefined &&
+										!scope.row.finished &&
+										scope.row.retryOf === undefined &&
+										scope.row.retrySuccessId === undefined &&
+										!scope.row.waitTill
+									"
+									:type="scope.row.stoppedAt === null ? 'warning' : 'danger'"
 									class="ml-3xs"
 									size="mini"
 									:title="$locale.baseText('executionsList.retryExecution')"
@@ -118,35 +177,46 @@
 							</span>
 							<template #dropdown>
 								<el-dropdown-menu>
-									<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
+									<el-dropdown-item :command="{ command: 'currentlySaved', row: scope.row }">
 										{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 									</el-dropdown-item>
-									<el-dropdown-item :command="{command: 'original', row: scope.row}">
+									<el-dropdown-item :command="{ command: 'original', row: scope.row }">
 										{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
 									</el-dropdown-item>
 								</el-dropdown-menu>
 							</template>
 						</el-dropdown>
-
 					</template>
 				</el-table-column>
-				<el-table-column property="mode" :label="$locale.baseText('executionsList.mode')" width="100" align="center">
+				<el-table-column
+					property="mode"
+					:label="$locale.baseText('executionsList.mode')"
+					width="100"
+					align="center"
+				>
 					<template #default="scope">
 						{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
 					</template>
 				</el-table-column>
-				<el-table-column :label="$locale.baseText('executionsList.runningTime')" width="150" align="center">
+				<el-table-column
+					:label="$locale.baseText('executionsList.runningTime')"
+					width="150"
+					align="center"
+				>
 					<template #default="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
-							<execution-time :start-time="scope.row.startedAt"/>
+							<execution-time :start-time="scope.row.startedAt" />
 						</span>
 						<!-- stoppedAt will be null if process crashed -->
-						<span v-else-if="scope.row.stoppedAt === null">
-							--
-						</span>
+						<span v-else-if="scope.row.stoppedAt === null"> -- </span>
 						<span v-else>
-							{{ displayTimer(new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(), true) }}
+							{{
+								displayTimer(
+									new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
+									true,
+								)
+							}}
 						</span>
 					</template>
 				</el-table-column>
@@ -154,18 +224,41 @@
 					<template #default="scope">
 						<div class="actions-container">
 							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-								<n8n-icon-button icon="stop" size="small" :title="$locale.baseText('executionsList.stopExecution')" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />
+								<n8n-icon-button
+									icon="stop"
+									size="small"
+									:title="$locale.baseText('executionsList.stopExecution')"
+									@click.stop="stopExecution(scope.row.id)"
+									:loading="stoppingExecutions.includes(scope.row.id)"
+								/>
 							</span>
-							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id" >
-								<n8n-icon-button icon="folder-open" size="small" :title="$locale.baseText('executionsList.openPastExecution')" @click.stop="(e) => displayExecution(scope.row, e)" />
+							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
+								<n8n-icon-button
+									icon="folder-open"
+									size="small"
+									:title="$locale.baseText('executionsList.openPastExecution')"
+									@click.stop="(e) => displayExecution(scope.row, e)"
+								/>
 							</span>
 						</div>
 					</template>
 				</el-table-column>
 			</el-table>
 
-			<div class="load-more" v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated === true">
-				<n8n-button icon="sync" :title="$locale.baseText('executionsList.loadMore')" :label="$locale.baseText('executionsList.loadMore')" @click="loadMore()" :loading="isDataLoading" />
+			<div
+				class="load-more"
+				v-if="
+					finishedExecutionsCount > finishedExecutions.length ||
+					finishedExecutionsCountEstimated === true
+				"
+			>
+				<n8n-button
+					icon="sync"
+					:title="$locale.baseText('executionsList.loadMore')"
+					:label="$locale.baseText('executionsList.loadMore')"
+					@click="loadMore()"
+					:loading="isDataLoading"
+				/>
 			</div>
 		</template>
 	</Modal>
@@ -194,36 +287,25 @@ import {
 	IWorkflowShortResponse,
 } from '@/Interface';
 
-import {
-	convertToDisplayDate,
-} from '@/utils';
+import { convertToDisplayDate } from '@/utils';
 
-import {
-	IDataObject,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
-import {
-	range as _range,
-} from 'lodash';
+import { range as _range } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-export default mixins(
-	externalHooks,
-	genericHelpers,
-	restApi,
-	showMessage,
-).extend({
+export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'ExecutionsList',
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
 		Modal,
 	},
-	data () {
+	data() {
 		return {
 			finishedExecutions: [] as IExecutionsSummary[],
 			finishedExecutionsCount: 0,
@@ -242,7 +324,7 @@ export default mixins(
 
 			requestItemsPerRequest: 10,
 
-			selectedItems: {} as { [key: string]: boolean; },
+			selectedItems: {} as { [key: string]: boolean },
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
@@ -256,7 +338,9 @@ export default mixins(
 		this.handleAutoRefreshToggle();
 
 		this.$externalHooks().run('executionsList.openDialog');
-		this.$telemetry.track('User opened Executions log', { workflow_id: this.workflowsStore.workflowId });
+		this.$telemetry.track('User opened Executions log', {
+			workflow_id: this.workflowsStore.workflowId,
+		});
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -265,11 +349,8 @@ export default mixins(
 		}
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useWorkflowsStore,
-		),
-		statuses () {
+		...mapStores(useUIStore, useWorkflowsStore),
+		statuses() {
 			return [
 				{
 					id: 'ALL',
@@ -293,10 +374,10 @@ export default mixins(
 				},
 			];
 		},
-		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
+		activeExecutions(): IExecutionsCurrentSummaryExtended[] {
 			return this.workflowsStore.activeExecutions;
 		},
-		combinedExecutions (): IExecutionsSummary[] {
+		combinedExecutions(): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
 
 			if (['ALL', 'running'].includes(this.filter.status)) {
@@ -308,17 +389,17 @@ export default mixins(
 
 			return returnData;
 		},
-		combinedExecutionsCount (): number {
+		combinedExecutionsCount(): number {
 			return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
 		},
-		numSelected (): number {
+		numSelected(): number {
 			if (this.checkAll === true) {
 				return this.finishedExecutionsCount;
 			}
 
 			return Object.keys(this.selectedItems).length;
 		},
-		isIndeterminate (): boolean {
+		isIndeterminate(): boolean {
 			if (this.checkAll === true) {
 				return false;
 			}
@@ -328,14 +409,14 @@ export default mixins(
 			}
 			return false;
 		},
-		workflowFilterCurrent (): IDataObject {
+		workflowFilterCurrent(): IDataObject {
 			const filter: IDataObject = {};
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
 			}
 			return filter;
 		},
-		workflowFilterPast (): IDataObject {
+		workflowFilterPast(): IDataObject {
 			const filter: IDataObject = {};
 			if (this.filter.workflowId !== 'ALL') {
 				filter.workflowId = this.filter.workflowId;
@@ -353,47 +434,53 @@ export default mixins(
 			this.modalBus.$emit('close');
 		},
 		convertToDisplayDate,
-		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
+		displayExecution(execution: IExecutionShortResponse, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } });
+				const route = this.$router.resolve({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: execution.workflowId, executionId: execution.id },
+				});
 				window.open(route.href, '_blank');
 
 				return;
 			}
 
-			this.$router.push({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } }).catch(()=>{});;
+			this.$router
+				.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: execution.workflowId, executionId: execution.id },
+				})
+				.catch(() => {});
 			this.modalBus.$emit('closeAll');
 		},
-		handleAutoRefreshToggle () {
+		handleAutoRefreshToggle() {
 			if (this.autoRefreshInterval) {
 				// Clear any previously existing intervals (if any - there shouldn't)
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
 			}
 
-
 			if (this.autoRefresh) {
 				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
-		handleCheckAllChange () {
+		handleCheckAllChange() {
 			if (this.checkAll === false) {
 				Vue.set(this, 'selectedItems', {});
 			}
 		},
-		handleCheckboxChanged (executionId: string) {
+		handleCheckboxChanged(executionId: string) {
 			if (this.selectedItems[executionId]) {
 				Vue.delete(this.selectedItems, executionId);
 			} else {
 				Vue.set(this.selectedItems, executionId, true);
 			}
 		},
-		async handleDeleteSelected () {
+		async handleDeleteSelected() {
 			const deleteExecutions = await this.confirmMessage(
-				this.$locale.baseText(
-					'executionsList.confirmMessage.message',
-					{ interpolate: { numSelected: this.numSelected.toString() }},
-				),
+				this.$locale.baseText('executionsList.confirmMessage.message', {
+					interpolate: { numSelected: this.numSelected.toString() },
+				}),
 				this.$locale.baseText('executionsList.confirmMessage.headline'),
 				'warning',
 				this.$locale.baseText('executionsList.confirmMessage.confirmButtonText'),
@@ -420,31 +507,40 @@ export default mixins(
 				let removedCurrentlyLoadedExecution = false;
 				let removedActiveExecution = false;
 				const currentWorkflow: string = this.workflowsStore.workflowId;
-				const activeExecution: IExecutionsSummary | null = this.workflowsStore.activeWorkflowExecution;
+				const activeExecution: IExecutionsSummary | null =
+					this.workflowsStore.activeWorkflowExecution;
 				// Also update current workflow executions view if needed
 				for (const selectedId of Object.keys(this.selectedItems)) {
-					const execution: IExecutionsSummary | undefined = this.workflowsStore.getExecutionDataById(selectedId);
+					const execution: IExecutionsSummary | undefined =
+						this.workflowsStore.getExecutionDataById(selectedId);
 					if (execution && execution.workflowId === currentWorkflow) {
 						this.workflowsStore.deleteExecution(execution);
 						removedCurrentlyLoadedExecution = true;
 					}
-					if ((execution !== undefined && activeExecution !== null) && execution.id === activeExecution.id) {
+					if (
+						execution !== undefined &&
+						activeExecution !== null &&
+						execution.id === activeExecution.id
+					) {
 						removedActiveExecution = true;
 					}
 				}
 				// Also update route if needed
 				if (removedCurrentlyLoadedExecution) {
-					const currentWorkflowExecutions: IExecutionsSummary[] = this.workflowsStore.currentWorkflowExecutions;
+					const currentWorkflowExecutions: IExecutionsSummary[] =
+						this.workflowsStore.currentWorkflowExecutions;
 					if (currentWorkflowExecutions.length === 0) {
 						this.workflowsStore.activeWorkflowExecution = null;
 
 						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
 					} else if (removedActiveExecution) {
 						this.workflowsStore.activeWorkflowExecution = currentWorkflowExecutions[0];
-						this.$router.push({
-							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
-						}).catch(()=>{});;
+						this.$router
+							.push({
+								name: VIEWS.EXECUTION_PREVIEW,
+								params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
+							})
+							.catch(() => {});
 					}
 				}
 			} catch (error) {
@@ -468,10 +564,10 @@ export default mixins(
 
 			this.refreshData();
 		},
-		handleFilterChanged () {
+		handleFilterChanged() {
 			this.refreshData();
 		},
-		handleRetryClick (commandData: { command: string, row: IExecutionShortResponse }) {
+		handleRetryClick(commandData: { command: string; row: IExecutionShortResponse }) {
 			let loadWorkflow = false;
 			if (commandData.command === 'currentlySaved') {
 				loadWorkflow = true;
@@ -485,7 +581,7 @@ export default mixins(
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
 		},
-		getRowClass (data: IDataObject): string {
+		getRowClass(data: IDataObject): string {
 			const classes: string[] = [];
 			if ((data.row as IExecutionsSummary).stoppedAt === undefined) {
 				classes.push('currently-running');
@@ -493,7 +589,7 @@ export default mixins(
 
 			return classes.join(' ');
 		},
-		getWorkflowName (workflowId: string): string | undefined {
+		getWorkflowName(workflowId: string): string | undefined {
 			const workflow = this.workflows.find((data) => data.id === workflowId);
 			if (workflow === undefined) {
 				return undefined;
@@ -501,30 +597,40 @@ export default mixins(
 
 			return workflow.name;
 		},
-		async loadActiveExecutions (): Promise<void> {
-			const activeExecutions = await this.restApi().getCurrentExecutions(this.workflowFilterCurrent);
+		async loadActiveExecutions(): Promise<void> {
+			const activeExecutions = await this.restApi().getCurrentExecutions(
+				this.workflowFilterCurrent,
+			);
 			for (const activeExecution of activeExecutions) {
-				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+				if (
+					activeExecution.workflowId !== undefined &&
+					activeExecution.workflowName === undefined
+				) {
 					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
 				}
 			}
 
 			this.workflowsStore.activeExecutions = activeExecutions;
 		},
-		async loadAutoRefresh () : Promise<void> {
+		async loadAutoRefresh(): Promise<void> {
 			const filter = this.workflowFilterPast;
 			// We cannot use firstId here as some executions finish out of order. Let's say
 			// You have execution ids 500 to 505 running.
 			// Suppose 504 finishes before 500, 501, 502 and 503.
 			// iF you use firstId, filtering id >= 504 you won't
 			// ever get ids 500, 501, 502 and 503 when they finish
-			const pastExecutionsPromise: Promise<IExecutionsListResponse> = this.restApi().getPastExecutions(filter, 30);
-			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> = this.restApi().getCurrentExecutions({});
+			const pastExecutionsPromise: Promise<IExecutionsListResponse> =
+				this.restApi().getPastExecutions(filter, 30);
+			const currentExecutionsPromise: Promise<IExecutionsCurrentSummaryExtended[]> =
+				this.restApi().getCurrentExecutions({});
 
 			const results = await Promise.all([pastExecutionsPromise, currentExecutionsPromise]);
 
 			for (const activeExecution of results[1]) {
-				if (activeExecution.workflowId !== undefined && activeExecution.workflowName === undefined) {
+				if (
+					activeExecution.workflowId !== undefined &&
+					activeExecution.workflowName === undefined
+				) {
 					activeExecution.workflowName = this.getWorkflowName(activeExecution.workflowId);
 				}
 			}
@@ -532,10 +638,12 @@ export default mixins(
 			this.workflowsStore.activeExecutions = results[1];
 
 			// execution IDs are typed as string, int conversion is necessary so we can order.
-			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));
+			const alreadyPresentExecutionIds = this.finishedExecutions.map((exec) =>
+				parseInt(exec.id, 10),
+			);
 			let lastId = 0;
 			const gaps = [] as number[];
-			for(let i = results[0].results.length - 1; i >= 0; i--) {
+			for (let i = results[0].results.length - 1; i >= 0; i--) {
 				const currentItem = results[0].results[i];
 				const currentId = parseInt(currentItem.id, 10);
 				if (lastId !== 0 && isNaN(currentId) === false) {
@@ -557,7 +665,10 @@ export default mixins(
 				if (executionIndex !== -1) {
 					// Execution that we received is already present.
 
-					if (this.finishedExecutions[executionIndex].finished === false && currentItem.finished === true) {
+					if (
+						this.finishedExecutions[executionIndex].finished === false &&
+						currentItem.finished === true
+					) {
 						// Concurrency stuff. This might happen if the execution finishes
 						// prior to saving all information to database. Somewhat rare but
 						// With auto refresh and several executions, it happens sometimes.
@@ -580,23 +691,29 @@ export default mixins(
 					this.finishedExecutions.unshift(currentItem);
 				}
 			}
-			this.finishedExecutions = this.finishedExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
+			this.finishedExecutions = this.finishedExecutions.filter(
+				(execution) =>
+					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
+			);
 			this.finishedExecutionsCount = results[0].count;
 			this.finishedExecutionsCountEstimated = results[0].estimated;
 		},
-		async loadFinishedExecutions (): Promise<void> {
+		async loadFinishedExecutions(): Promise<void> {
 			if (this.filter.status === 'running') {
 				this.finishedExecutions = [];
 				this.finishedExecutionsCount = 0;
 				this.finishedExecutionsCountEstimated = false;
 				return;
 			}
-			const data = await this.restApi().getPastExecutions(this.workflowFilterPast, this.requestItemsPerRequest);
+			const data = await this.restApi().getPastExecutions(
+				this.workflowFilterPast,
+				this.requestItemsPerRequest,
+			);
 			this.finishedExecutions = data.results;
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
 		},
-		async loadMore () {
+		async loadMore() {
 			if (this.filter.status === 'running') {
 				return;
 			}
@@ -616,10 +733,7 @@ export default mixins(
 				data = await this.restApi().getPastExecutions(filter, this.requestItemsPerRequest, lastId);
 			} catch (error) {
 				this.isDataLoading = false;
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.loadMore.title'),
-				);
+				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));
 				return;
 			}
 
@@ -634,7 +748,7 @@ export default mixins(
 
 			this.isDataLoading = false;
 		},
-		async loadWorkflows () {
+		async loadWorkflows() {
 			try {
 				const workflows = await this.restApi().getWorkflows();
 				workflows.sort((a, b) => {
@@ -661,7 +775,7 @@ export default mixins(
 				);
 			}
 		},
-		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
+		async retryExecution(execution: IExecutionShortResponse, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
 
 			try {
@@ -689,7 +803,7 @@ export default mixins(
 				this.isDataLoading = false;
 			}
 		},
-		async refreshData () {
+		async refreshData() {
 			this.isDataLoading = true;
 
 			try {
@@ -697,56 +811,58 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.refreshData.title'),
-				);
+				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
 			}
 
 			this.isDataLoading = false;
 		},
-		statusTooltipText (entry: IExecutionsSummary): string {
+		statusTooltipText(entry: IExecutionsSummary): string {
 			if (entry.waitTill) {
 				const waitDate = new Date(entry.waitTill);
 				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-					return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely');
+					return this.$locale.baseText(
+						'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+					);
 				}
 
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowIsWaitingTill',
-					{
-						interpolate: {
-							waitDateDate: waitDate.toLocaleDateString(),
-							waitDateTime: waitDate.toLocaleTimeString(),
-						},
+				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingTill', {
+					interpolate: {
+						waitDateDate: waitDate.toLocaleDateString(),
+						waitDateTime: waitDate.toLocaleTimeString(),
 					},
-				);
+				});
 			} else if (entry.stoppedAt === undefined) {
-				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting');
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting',
+				);
 			} else if (entry.finished === true && entry.retryOf !== undefined) {
 				return this.$locale.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
-					{ interpolate: { entryRetryOf: entry.retryOf }},
+					{ interpolate: { entryRetryOf: entry.retryOf } },
 				);
 			} else if (entry.finished === true) {
-				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful');
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful',
+				);
 			} else if (entry.retryOf !== undefined) {
 				return this.$locale.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
-					{ interpolate: { entryRetryOf: entry.retryOf }},
+					{ interpolate: { entryRetryOf: entry.retryOf } },
 				);
 			} else if (entry.retrySuccessId !== undefined) {
 				return this.$locale.baseText(
 					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
-					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId }},
+					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId } },
 				);
 			} else if (entry.stoppedAt === null) {
-				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning');
+				return this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning',
+				);
 			} else {
 				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionFailed');
 			}
 		},
-		async stopExecution (activeExecutionId: string) {
+		async stopExecution(activeExecutionId: string) {
 			try {
 				// Add it to the list of currently stopping executions that we
 				// can show the user in the UI that it is in progress
@@ -760,10 +876,9 @@ export default mixins(
 
 				this.$showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
-					message: this.$locale.baseText(
-						'executionsList.showMessage.stopExecution.message',
-						{ interpolate: { activeExecutionId } },
-					),
+					message: this.$locale.baseText('executionsList.showMessage.stopExecution.message', {
+						interpolate: { activeExecutionId },
+					}),
 					type: 'success',
 				});
 
@@ -780,7 +895,6 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-
 .autorefresh {
 	padding-right: 0.5em;
 	text-align: right;
@@ -829,7 +943,8 @@ export default mixins(
 		color: var(--color-success);
 	}
 
-	&.running, &.warning {
+	&.running,
+	&.warning {
 		background-color: var(--color-warning-tint-2);
 		color: var(--color-warning);
 	}
@@ -842,11 +957,9 @@ export default mixins(
 .actions-container > * {
 	margin-left: 5px;
 }
-
 </style>
 
 <style lang="scss">
-
 .currently-running {
 	background-color: var(--color-primary-tint-3) !important;
 }
@@ -854,5 +967,4 @@ export default mixins(
 .el-table tr:hover.currently-running td {
 	background-color: var(--color-primary-tint-2) !important;
 }
-
 </style>

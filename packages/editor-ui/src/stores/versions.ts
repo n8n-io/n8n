@@ -1,8 +1,8 @@
-import { getNextVersions } from "@/api/versions";
-import { STORES } from "@/constants";
-import { IVersion, IVersionNotificationSettings, IVersionsState } from "@/Interface";
-import { defineStore } from "pinia";
-import { useRootStore } from "./n8nRootStore";
+import { getNextVersions } from '@/api/versions';
+import { STORES } from '@/constants';
+import { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
+import { defineStore } from 'pinia';
+import { useRootStore } from './n8nRootStore';
 
 export const useVersionsStore = defineStore(STORES.VERSIONS, {
 	state: (): IVersionsState => ({
@@ -26,7 +26,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, {
 		},
 	},
 	actions: {
-		setVersions({versions, currentVersion}: {versions: IVersion[], currentVersion: string}) {
+		setVersions({ versions, currentVersion }: { versions: IVersion[]; currentVersion: string }) {
 			this.nextVersions = versions.filter((version) => version.name !== currentVersion);
 			this.currentVersion = versions.find((version) => version.name === currentVersion);
 		},
@@ -43,8 +43,7 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, {
 					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					this.setVersions({ versions, currentVersion });
 				}
-			} catch (e) {
-			}
+			} catch (e) {}
 		},
 	},
 });

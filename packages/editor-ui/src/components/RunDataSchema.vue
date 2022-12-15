@@ -1,23 +1,24 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
-import { INodeUi, Schema } from "@/Interface";
-import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
+import { INodeUi, Schema } from '@/Interface';
+import RunDataSchemaItem from '@/components/RunDataSchemaItem.vue';
 import Draggable from '@/components/Draggable.vue';
-import { useNDVStore } from "@/stores/ndv";
-import { useWebhooksStore } from "@/stores/webhooks";
-import { runExternalHook } from "@/mixins/externalHooks";
-import { telemetry } from "@/plugins/telemetry";
-import { IDataObject } from "n8n-workflow";
-import { getSchema, mergeDeep } from "@/utils";
+import { useNDVStore } from '@/stores/ndv';
+import { useWebhooksStore } from '@/stores/webhooks';
+import { runExternalHook } from '@/mixins/externalHooks';
+import { telemetry } from '@/plugins/telemetry';
+import { IDataObject } from 'n8n-workflow';
+import { getSchema, isEmpty, mergeDeep } from '@/utils';
+import { i18n } from '@/plugins/i18n';
 
 type Props = {
-	data: IDataObject[]
-	mappingEnabled: boolean
-	distanceFromActive: number
-	runIndex: number
-	totalRuns: number
-	node: INodeUi | null
-}
+	data: IDataObject[];
+	mappingEnabled: boolean;
+	distanceFromActive: number;
+	runIndex: number;
+	totalRuns: number;
+	node: INodeUi | null;
+};
 
 const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
@@ -30,6 +31,10 @@ const webhooksStore = useWebhooksStore();
 const schema = computed<Schema>(() => {
 	const [head, ...tail] = props.data;
 	return getSchema(mergeDeep([head, ...tail, head]));
+});
+
+const isDataEmpty = computed(() => {
+	return isEmpty(props.data);
 });
 
 const onDragStart = (el: HTMLElement) => {
@@ -62,12 +67,15 @@ const onDragEnd = (el: HTMLElement) => {
 		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
-
 </script>
 
 <template>
 	<div :class="$style.schemaWrapper">
+		<n8n-info-tip v-if="isDataEmpty">{{
+			i18n.baseText('dataMapping.schemaView.emptyData')
+		}}</n8n-info-tip>
 		<draggable
+			v-else
 			type="mapping"
 			targetDataKey="mappable"
 			:disabled="!mappingEnabled"
@@ -75,7 +83,11 @@ const onDragEnd = (el: HTMLElement) => {
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
+				<div
+					v-if="el"
+					:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
+					v-html="el.outerHTML"
+				/>
 			</template>
 			<template>
 				<div :class="$style.schema">
@@ -108,6 +120,10 @@ const onDragEnd = (el: HTMLElement) => {
 	height: 100%;
 	width: 100%;
 	background-color: var(--color-background-base);
+
+	> div[class*='info'] {
+		padding: 0 var(--spacing-s);
+	}
 }
 
 .schema {
@@ -139,7 +155,7 @@ const onDragEnd = (el: HTMLElement) => {
 	span span {
 		color: var(--color-success);
 		border-color: var(--color-success-light);
-		background: var(--color-success-tint-3);
+		background-color: white;
 	}
 }
 
@@ -151,7 +167,7 @@ const onDragEnd = (el: HTMLElement) => {
 	span span {
 		color: var(--color-primary);
 		border-color: var(--color-primary-tint-1);
-		background: var(--color-primary-tint-3);
+		background-color: var(--color-primary-tint-3);
 	}
 }
 </style>

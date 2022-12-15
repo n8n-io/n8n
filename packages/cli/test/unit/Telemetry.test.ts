@@ -8,6 +8,7 @@ jest.mock('@/license/License.service', () => {
 		},
 	};
 });
+jest.mock('posthog-node');
 
 jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {

@@ -316,8 +316,10 @@
  *
  */
 (function () {
-	"use strict";
-	var root = window, _jp = root.jsPlumb, _ju = root.jsPlumbUtil;
+	'use strict';
+	var root = window,
+		_jp = root.jsPlumb,
+		_ju = root.jsPlumbUtil;
 
 	var DOMElementEndpoint = function (params) {
 		_jp.jsPlumbUIComponent.apply(this, arguments);
@@ -333,11 +335,11 @@
 	});
 
 	/*
-	* Class: Endpoints.N8nPlus
-	*/
+	 * Class: Endpoints.N8nPlus
+	 */
 	_jp.Endpoints.N8nPlus = function (params) {
 		const _super = _jp.Endpoints.AbstractEndpoint.apply(this, arguments);
-		this.type = "N8nPlus";
+		this.type = 'N8nPlus';
 		this.label = '';
 		this.labelOffset = 0;
 		this.size = 'medium';
@@ -351,13 +353,17 @@
 
 		DOMElementEndpoint.apply(this, arguments);
 
-		var clazz = params.cssClass ? " " + params.cssClass : "";
+		var clazz = params.cssClass ? ' ' + params.cssClass : '';
 
-		this.canvas = _jp.createElement("div", {
-			display: "block",
-			background: "transparent",
-			position: "absolute",
-		}, this._jsPlumb.instance.endpointClass + clazz + ' plus-endpoint');
+		this.canvas = _jp.createElement(
+			'div',
+			{
+				display: 'block',
+				background: 'transparent',
+				position: 'absolute',
+			},
+			this._jsPlumb.instance.endpointClass + clazz + ' plus-endpoint',
+		);
 
 		this.canvas.innerHTML = `
 			<div class="plus-stalk">
@@ -416,9 +422,10 @@
 			const plusConnections = endpoint.connections;
 
 			if (plusConnections.length) {
-				return !!plusConnections.find((conn) => conn && conn.targetId && conn.targetId.startsWith('jsPlumb'));
+				return !!plusConnections.find(
+					(conn) => conn && conn.targetId && conn.targetId.startsWith('jsPlumb'),
+				);
 			}
-
 
 			return false;
 		};
@@ -436,7 +443,12 @@
 			}); // includes connections from other output endpoints like dot
 
 			return !!allConnections.find((connection) => {
-				if (!connection || !connection.endpoints || !connection.endpoints.length || !connection.endpoints[0]) {
+				if (
+					!connection ||
+					!connection.endpoints ||
+					!connection.endpoints.length ||
+					!connection.endpoints[0]
+				) {
 					return false;
 				}
 
@@ -448,8 +460,7 @@
 		this.paint = function (style, anchor) {
 			if (hasEndpointConnections()) {
 				this.canvas.classList.add('hidden');
-			}
-			else {
+			} else {
 				this.canvas.classList.remove('hidden');
 				container.style.color = style.fill;
 				container.style['border-color'] = style.fill;
@@ -472,12 +483,18 @@
 			}
 
 			setTimeout(() => {
-				if (this.label && !this.labelOffset) { // if label is hidden, offset is 0 so recalculate
+				if (this.label && !this.labelOffset) {
+					// if label is hidden, offset is 0 so recalculate
 					this.setSuccessOutput(this.label);
 				}
 			}, 0);
 
-			const defaultPosition = [anchorPoint[0] + stalkLength + this.labelOffset, anchorPoint[1] - boxSize[this.size] / 2, boxSize[this.size], boxSize[this.size]];
+			const defaultPosition = [
+				anchorPoint[0] + stalkLength + this.labelOffset,
+				anchorPoint[1] - boxSize[this.size] / 2,
+				boxSize[this.size],
+				boxSize[this.size],
+			];
 
 			if (isDragging()) {
 				return defaultPosition;
