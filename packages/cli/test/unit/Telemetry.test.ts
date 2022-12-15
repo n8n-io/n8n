@@ -1,6 +1,8 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
 
+jest.mock('posthog-node');
+
 jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {
 		flush: () => {},
