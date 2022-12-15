@@ -601,6 +601,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			Vue.set(this.credentialData, 'sharedWith', sharees);
 			this.hasUnsavedChanges = true;
 		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		onDataChange({ name, value }: { name: string; value: any }) {
 			this.hasUnsavedChanges = true;
 

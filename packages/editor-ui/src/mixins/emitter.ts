@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Vue from 'vue';
 
 function broadcast(componentName: string, eventName: string, params: any) {

@@ -139,6 +139,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
 			this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
@@ -215,6 +216,7 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 			this.latestValue = this.value;
 
 			const resolvedExpressionValue =
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
 				undefined;
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {

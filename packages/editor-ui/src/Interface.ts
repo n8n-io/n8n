@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
 	jsPlumbInstance,

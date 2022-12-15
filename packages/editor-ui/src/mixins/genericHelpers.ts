@@ -6,6 +6,7 @@ import mixins from 'vue-typed-mixins';
 export const genericHelpers = mixins(showMessage).extend({
 	data() {
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			loadingService: null as any | null,
 		};
 	},
