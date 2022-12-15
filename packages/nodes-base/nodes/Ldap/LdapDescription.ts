@@ -24,12 +24,17 @@ export const ldapFields: INodeProperties[] = [
 	//         Compare
 	// ----------------------------------
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Attribute ID',
 		name: 'id',
-		type: 'string',
-		default: '',
-		description: 'The ID of the attribute to compare',
+		type: 'options',
 		required: true,
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getAttributesForDn',
+		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+		description: 'The ID of the attribute to compare',
 		displayOptions: {
 			show: {
 				operation: ['compare'],
@@ -208,37 +213,20 @@ export const ldapFields: INodeProperties[] = [
 		description: 'The distinguished name of the subtree to search in',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Search For',
 		name: 'searchFor',
 		type: 'options',
-		default: '(objectclass=person)',
+		default: [],
+		typeOptions: {
+			loadOptionsMethod: 'getObjectClasses',
+		},
 		displayOptions: {
 			show: {
 				operation: ['search'],
 			},
 		},
-		options: [
-			{
-				name: 'Custom',
-				value: 'custom',
-			},
-			{
-				name: 'Group',
-				value: '(objectclass=group)',
-			},
-			{
-				name: 'OU',
-				value: '(objectclass=organizationalUnit)',
-			},
-			{
-				name: 'Person',
-				value: '(objectclass=person)',
-			},
-			{
-				name: 'User',
-				value: '(objectclass=user)',
-			},
-		],
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description: 'LDAP objects to search for',
 	},
 	{
@@ -248,6 +236,7 @@ export const ldapFields: INodeProperties[] = [
 		default: '(objectclass=*)',
 		displayOptions: {
 			show: {
+				operation: ['search'],
 				searchFor: ['custom'],
 			},
 		},

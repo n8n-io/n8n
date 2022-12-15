@@ -140,6 +140,10 @@ export class Ldap implements INodeType {
 			},
 		},
 		loadOptions: {
+			// get Object Classes
+			// Apply new options to other fields
+			// Build docker image for review
+			// Update Docs for Deb
 			async getAttributes(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
 				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
@@ -170,6 +174,93 @@ export class Ldap implements INodeType {
 
 				const baseDN = this.getNodeParameter('baseDN', 0) as string;
 				const results = await client.search(baseDN, { sizeLimit: 200, paged: false }); // should this size limit be set in credentials?
+				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
+				return unique.map((x) => ({
+					name: x,
+					value: x,
+				}));
+			},
+
+			async getObjectClasses(this: ILoadOptionsFunctions) {
+				const credentials = await this.getCredentials('ldap');
+				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
+
+				const ldapOptions: ClientOptions = { url };
+				const tlsOptions: IDataObject = {};
+
+				if (credentials.connectionSecurity !== 'none') {
+					tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
+					if (credentials.caCertificate) {
+						tlsOptions.ca = [credentials.caCertificate as string];
+					}
+					if (credentials.connectionSecurity !== 'startTls') {
+						ldapOptions.tlsOptions = tlsOptions;
+					}
+				}
+				const client = new Client(ldapOptions);
+
+				try {
+					if (credentials.connectionSecurity === 'startTls') {
+						await client.startTLS(tlsOptions);
+					}
+					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
+				} catch (error) {
+					console.log(error);
+				}
+
+				const baseDN = this.getNodeParameter('baseDN', 0) as string;
+				const results = await client.search(baseDN, { sizeLimit: 10, paged: false }); // should this size limit be set in credentials?
+				const objects = [];
+				for (const entry of results.searchEntries) {
+					if (typeof entry.objectClass === 'string') {
+						objects.push(entry.objectClass);
+					} else {
+						objects.push(...entry.objectClass);
+					}
+				}
+
+				const unique = [...new Set(objects)];
+				unique.push('custom');
+				const result = [];
+				for (const value of unique) {
+					if (value === 'custom') {
+						result.push({ name: 'custom', value: 'custom' });
+					} else result.push({ name: value as string, value: `(objectclass=${value})` });
+				}
+				return result;
+			},
+
+			async getAttributesForDn(this: ILoadOptionsFunctions) {
+				const credentials = await this.getCredentials('ldap');
+				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
+				const url = `${protocol}://${credentials.hostname}:${credentials.port}`;
+
+				const ldapOptions: ClientOptions = { url };
+				const tlsOptions: IDataObject = {};
+
+				if (credentials.connectionSecurity !== 'none') {
+					tlsOptions.rejectUnauthorized = credentials.allowUnauthorizedCerts === false;
+					if (credentials.caCertificate) {
+						tlsOptions.ca = [credentials.caCertificate as string];
+					}
+					if (credentials.connectionSecurity !== 'startTls') {
+						ldapOptions.tlsOptions = tlsOptions;
+					}
+				}
+				const client = new Client(ldapOptions);
+
+				try {
+					if (credentials.connectionSecurity === 'startTls') {
+						await client.startTLS(tlsOptions);
+					}
+					await client.bind(credentials.bindDN as string, credentials.bindPassword as string);
+				} catch (error) {
+					console.log(error);
+				}
+
+				const baseDN = this.getNodeParameter('dn', 0) as string;
+				const results = await client.search(baseDN, { sizeLimit: 1, paged: false });
 				const unique = Object.keys(Object.assign({}, ...results.searchEntries));
 				return unique.map((x) => ({
 					name: x,
