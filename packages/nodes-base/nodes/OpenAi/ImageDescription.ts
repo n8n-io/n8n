@@ -46,7 +46,9 @@ const createOperations: INodeProperties[] = [
 		displayName: 'Prompt',
 		name: 'prompt',
 		type: 'string',
-		placeholder: 'A cute cat eating a dinosaur',
+		placeholder: 'e.g. A cute cat eating a dinosaur',
+		description:
+			'A text description of the desired image(s). The maximum length is 1000 characters.',
 		displayOptions: {
 			show: {
 				resource: ['image'],
@@ -60,6 +62,30 @@ const createOperations: INodeProperties[] = [
 				property: 'prompt',
 			},
 		},
+	},
+	// TODO: replace the boolean with this option
+	{
+		displayName: 'Response Format',
+		name: 'responseFormat',
+		type: 'options',
+		default: 'binaryData',
+		description: 'The format in which the images are returned',
+		displayOptions: { // When this block must be displayed
+			show: {
+				resource: ['image'],
+				operation: ['create'],
+			},
+		},
+		options: [
+			{
+				name: 'Binary Data',
+				value: 'binaryData',
+			},
+			{
+				name: 'Image Url',
+				value: 'imageUrl',
+			},
+		],
 	},
 	{
 		displayName: 'Download Image',
@@ -104,7 +130,7 @@ const createOperations: INodeProperties[] = [
 		default: true,
 	},
 	{
-		displayName: 'Additional Options',
+		displayName: 'Options',
 		name: 'additionalOptions',
 		placeholder: 'Add Option',
 		description: 'Additional fields to add',
