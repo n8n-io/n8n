@@ -1024,25 +1024,11 @@ export const schema = {
 	},
 
 	eventBus: {
-		enabled: {
-			doc: 'Whether event logging is enabled.',
-			format: Boolean,
-			default: true,
-			env: 'N8N_EVENTBUS_ENABLED',
-		},
 		checkUnsentInterval: {
 			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
 			format: Number,
 			default: 0,
 			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
-		},
-		destinations: {
-			loadAtStart: {
-				doc: 'Whether destinations are loaded from Db and initialized at startup.',
-				format: Boolean,
-				default: true,
-				env: 'N8N_EVENTBUS_DESTINATIONS_STARTUP',
-			},
 		},
 		logWriter: {
 			syncFileAccess: {
@@ -1060,7 +1046,7 @@ export const schema = {
 			maxFileSizeInKB: {
 				doc: 'Maximum size of an event log file before a new one is started.',
 				format: Number,
-				default: 102400,
+				default: 102400, // 100MB
 				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
 			},
 			logBaseName: {

@@ -37,7 +37,7 @@ class MessageEventBus extends EventEmitter {
 		[key: string]: MessageEventBusDestination;
 	} = {};
 
-	#pushInteralTimer: NodeJS.Timer;
+	#pushIntervalTimer: NodeJS.Timer;
 
 	constructor() {
 		super();
@@ -66,21 +66,17 @@ class MessageEventBus extends EventEmitter {
 
 		LoggerProxy.debug('Initializing event bus...');
 
-		// Load stored destinations from Db and instantiate them
-		if (config.getEnv('eventBus.destinations.loadAtStart')) {
-			LoggerProxy.debug('Restoring event destinations');
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const savedEventDestinations = await Db.collections.EventDestinations.find({});
-			if (savedEventDestinations.length > 0) {
-				for (const destinationData of savedEventDestinations) {
-					try {
-						const destination = messageEventBusDestinationFromDb(destinationData);
-						if (destination) {
-							await this.addDestination(destination);
-						}
-					} catch (error) {
-						console.log(error);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		const savedEventDestinations = await Db.collections.EventDestinations.find({});
+		if (savedEventDestinations.length > 0) {
+			for (const destinationData of savedEventDestinations) {
+				try {
+					const destination = messageEventBusDestinationFromDb(destinationData);
+					if (destination) {
+						await this.addDestination(destination);
 					}
+				} catch (error) {
+					console.log(error);
 				}
 			}
 		}
@@ -104,15 +100,15 @@ class MessageEventBus extends EventEmitter {
 
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
-			if (this.#pushInteralTimer) {
-				clearInterval(this.#pushInteralTimer);
+			if (this.#pushIntervalTimer) {
+				clearInterval(this.#pushIntervalTimer);
 			}
-			this.#pushInteralTimer = setInterval(async () => {
+			this.#pushIntervalTimer = setInterval(async () => {
 				await this.#trySendingUnsent();
 			}, config.getEnv('eventBus.checkUnsentInterval'));
 		}
 
-		console.debug('MessageEventBus initialized');
+		LoggerProxy.debug('MessageEventBus initialized');
 		this.isInitialized = true;
 	}
 
@@ -200,7 +196,6 @@ class MessageEventBus extends EventEmitter {
 		this.emit('message', msg);
 
 		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
-		console.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		// if there are no set up destinations, immediately mark the event as sent
 		if (!isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {

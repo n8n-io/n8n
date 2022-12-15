@@ -5,6 +5,7 @@ import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import {
+	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationTypeNames,
@@ -52,7 +53,7 @@ export class MessageEventBusDestinationSentry
 					environment,
 					release: versions.cli,
 				});
-				console.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
+				LoggerProxy.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
 				this.sentryInitSuccessful = true;
 			})
 			.catch((error) => {

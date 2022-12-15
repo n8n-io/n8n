@@ -642,7 +642,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					});
 					Promise.all([
 						eventBus.sendWorkflowEvent({
-							eventName: 'n8n.workflow.error',
+							eventName: 'n8n.workflow.execution.error',
 							payload: {
 								// workflowData: this.workflowData,
 								msg: error,

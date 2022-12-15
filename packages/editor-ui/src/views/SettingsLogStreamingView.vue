@@ -5,33 +5,39 @@
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText(`settings.logstreaming.heading`) }}
 				</n8n-heading>
-				<template v-if="environment!=='production'">
-					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{environment}})&nbsp;</strong>
+				<template v-if="environment !== 'production'">
+					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{ environment }})&nbsp;</strong>
 					<el-switch v-model="disableLicense" size="large" data-test-id="disable-license-toggle" />
 				</template>
 			</div>
 		</div>
 		<template v-if="isLicensed()">
 			<div class="mb-l">
-					<n8n-info-tip theme="info" type="note">
-						<template>
-							<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
-						</template>
-					</n8n-info-tip>
-				</div>
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+					</template>
+				</n8n-info-tip>
+			</div>
 			<template v-if="storeHasItems()">
-				<el-row :gutter="10" v-for="item in sortedItemKeysByLabel" :key="item.key" :class="$style.destinationItem">
+				<el-row
+					:gutter="10"
+					v-for="item in sortedItemKeysByLabel"
+					:key="item.key"
+					:class="$style.destinationItem"
+				>
 					<el-col v-if="logStreamingStore.items[item.key]?.destination">
 						<event-destination-card
 							:destination="logStreamingStore.items[item.key]?.destination"
 							:eventBus="eventBus"
+							:isInstanceOwner="isInstanceOwner"
 							@remove="onRemove(logStreamingStore.items[item.key]?.destination?.id)"
 							@edit="onEdit(logStreamingStore.items[item.key]?.destination?.id)"
 						/>
 					</el-col>
 				</el-row>
 				<div class="mt-m text-right">
-					<n8n-button size="large"  @click="addDestination">
+					<n8n-button v-if="isInstanceOwner" size="large" @click="addDestination">
 						{{ $locale.baseText(`settings.logstreaming.add`) }}
 					</n8n-button>
 				</div>
@@ -43,7 +49,7 @@
 						@click="addDestination"
 					>
 						<template #heading>
-							<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)"/>
+							<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)" />
 						</template>
 					</n8n-action-box>
 				</div>
@@ -64,7 +70,7 @@
 					@click="onContactUsClicked"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText('settings.logstreaming.actionBox.title')"/>
+						<span v-html="$locale.baseText('settings.logstreaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>
@@ -73,10 +79,11 @@
 </template>
 
 <script lang="ts">
-import {v4 as uuid} from 'uuid';
+import { v4 as uuid } from 'uuid';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { useWorkflowsStore } from '../stores/workflows';
+import { useUsersStore } from '../stores/users';
 import { useCredentialsStore } from '../stores/credentials';
 import { useLogStreamingStore } from '../stores/logStreamingStore';
 import { useSettingsStore } from '../stores/settings';
@@ -84,13 +91,15 @@ import { useUIStore } from '../stores/ui';
 import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
 import Vue from 'vue';
 import { restApi } from '../mixins/restApi';
-import { deepCopy, defaultMessageEventBusDestinationOptions, MessageEventBusDestinationOptions } from 'n8n-workflow';
-import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
+import {
+	deepCopy,
+	defaultMessageEventBusDestinationOptions,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
+import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 
-export default mixins(
-	restApi,
-).extend({
+export default mixins(restApi).extend({
 	name: 'SettingsLogStreamingView',
 	props: {},
 	components: {
@@ -103,9 +112,11 @@ export default mixins(
 			destinations: Array<MessageEventBusDestinationOptions>,
 			disableLicense: false,
 			allDestinations: [] as MessageEventBusDestinationOptions[],
+			isInstanceOwner: false,
 		};
 	},
 	async mounted() {
+		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		const result = await this.credentialsStore.fetchAllCredentials();
@@ -115,8 +126,8 @@ export default mixins(
 		await this.getDestinationDataFromREST();
 
 		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
-		this.logStreamingStore.$onAction(({name, after})=>{
-			if (name==='removeDestination' || name==='updateDestination') {
+		this.logStreamingStore.$onAction(({ name, after }) => {
+			if (name === 'removeDestination' || name === 'updateDestination') {
 				after(async () => {
 					this.$forceUpdate();
 				});
@@ -132,7 +143,7 @@ export default mixins(
 		});
 		// listen to modal closing and remove nodes from store
 		this.eventBus.$on('closing', async (destinationId: string) => {
-			this.workflowsStore.removeAllNodes({setStateDirty: false, removePinData: true});
+			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 			this.uiStore.stateIsDirty = false;
 		});
 	},
@@ -142,10 +153,11 @@ export default mixins(
 			useLogStreamingStore,
 			useWorkflowsStore,
 			useUIStore,
+			useUsersStore,
 			useCredentialsStore,
 		),
 		sortedItemKeysByLabel() {
-			const sortedKeys: Array<{ label: string, key: string }> = [];
+			const sortedKeys: Array<{ label: string; key: string }> = [];
 			for (const [key, value] of Object.entries(this.logStreamingStore.items)) {
 				sortedKeys.push({ key, label: value.destination?.label ?? 'Destination' });
 			}
@@ -166,7 +178,8 @@ export default mixins(
 					this.logStreamingStore.addEventName(eventName);
 				}
 			}
-			const destinationData: MessageEventBusDestinationOptions[] = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
+			const destinationData: MessageEventBusDestinationOptions[] =
+				await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
 			if (destinationData) {
 				for (const destination of destinationData) {
 					this.logStreamingStore.addDestination(destination);
@@ -176,8 +189,10 @@ export default mixins(
 			this.$forceUpdate();
 		},
 		onContactUsClicked() {
-				window.open('mailto:sales@n8n.io', '_blank');
-				this.$telemetry.track('user clicked contact us button', {feature: EnterpriseEditionFeature.LogStreaming});
+			window.open('mailto:sales@n8n.io', '_blank');
+			this.$telemetry.track('user clicked contact us button', {
+				feature: EnterpriseEditionFeature.LogStreaming,
+			});
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
@@ -201,7 +216,10 @@ export default mixins(
 		},
 		async onRemove(destinationId?: string) {
 			if (!destinationId) return;
-			await this.restApi().makeRestApiRequest('DELETE', `/eventbus/destination?id=${destinationId}`);
+			await this.restApi().makeRestApiRequest(
+				'DELETE',
+				`/eventbus/destination?id=${destinationId}`,
+			);
 			this.logStreamingStore.removeDestination(destinationId);
 			const foundNode = this.workflowsStore.getNodeByName(destinationId);
 			if (foundNode) {
@@ -239,7 +257,6 @@ export default mixins(
 }
 
 .destinationItem {
-	margin-bottom: .5em;
+	margin-bottom: 0.5em;
 }
-
 </style>

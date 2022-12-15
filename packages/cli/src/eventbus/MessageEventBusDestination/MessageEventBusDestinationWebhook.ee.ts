@@ -10,6 +10,7 @@ import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import {
 	jsonParse,
+	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationWebhookOptions,
@@ -97,7 +98,7 @@ export class MessageEventBusDestinationWebhook
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
 
-		console.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
+		LoggerProxy.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {

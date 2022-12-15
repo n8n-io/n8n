@@ -158,7 +158,6 @@ export class Start extends Command {
 			}
 
 			//finally shut down Event Bus
-			console.error('start.ts');
 			await eventBus.close();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);

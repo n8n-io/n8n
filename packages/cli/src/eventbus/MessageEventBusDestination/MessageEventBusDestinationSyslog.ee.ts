@@ -4,6 +4,7 @@
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import {
+	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationTypeNames,
@@ -64,7 +65,7 @@ export class MessageEventBusDestinationSyslog
 					? syslog.Transport.Tcp
 					: syslog.Transport.Udp,
 		});
-		console.debug(`MessageEventBusDestinationSyslog with id ${this.getId()} initialized`);
+		LoggerProxy.debug(`MessageEventBusDestinationSyslog with id ${this.getId()} initialized`);
 		this.client.on('error', function (error) {
 			console.error(error);
 		});

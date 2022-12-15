@@ -1,63 +1,64 @@
 <template>
-	<n8n-card
-		:class="$style.cardLink"
-		data-test-id="destination-card"
-		@click="onClick"
-	>
-			<template #header>
-				<div>
-					<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
-						{{ destination.label }}
-					</n8n-heading>
-					<div :class="$style.cardDescription">
-						<n8n-text color="text-light" size="small">
-							<span>{{$locale.baseText(typeLabelName)}}</span>
-						</n8n-text>
-					</div>
+	<n8n-card :class="$style.cardLink" data-test-id="destination-card" @click="onClick">
+		<template #header>
+			<div>
+				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+					{{ destination.label }}
+				</n8n-heading>
+				<div :class="$style.cardDescription">
+					<n8n-text color="text-light" size="small">
+						<span>{{ $locale.baseText(typeLabelName) }}</span>
+					</n8n-text>
 				</div>
-			</template>
-			<template #append>
-				<div :class="$style.cardActions">
-					<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
-						<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
-							{{ $locale.baseText('workflowActivator.active') }}
-						</n8n-text>
-						<n8n-text v-else color="text-base" size="small" bold>
-							{{ $locale.baseText('workflowActivator.inactive') }}
-						</n8n-text>
-					</div>
-
-					<el-switch
-						class="mr-s"
-						:value="nodeParameters.enabled"
-						@change="onEnabledSwitched($event, destination.id)"
-						:title="nodeParameters.enabled ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
-						active-color="#13ce66"
-						inactive-color="#8899AA"
-						element-loading-spinner="el-icon-loading"
-						data-test-id="workflow-activate-switch"
-					>
-					</el-switch>
-
-					<n8n-action-toggle
-						:actions="actions"
-						theme="dark"
-						@action="onAction"
-					/>
+			</div>
+		</template>
+		<template #append>
+			<div :class="$style.cardActions">
+				<div :class="$style.activeStatusText" data-test-id="destination-activator-status">
+					<n8n-text v-if="nodeParameters.enabled" :color="'success'" size="small" bold>
+						{{ $locale.baseText('workflowActivator.active') }}
+					</n8n-text>
+					<n8n-text v-else color="text-base" size="small" bold>
+						{{ $locale.baseText('workflowActivator.inactive') }}
+					</n8n-text>
 				</div>
-			</template>
+
+				<el-switch
+					class="mr-s"
+					:disabled="!isInstanceOwner"
+					:value="nodeParameters.enabled"
+					@change="onEnabledSwitched($event, destination.id)"
+					:title="
+						nodeParameters.enabled
+							? $locale.baseText('workflowActivator.deactivateWorkflow')
+							: $locale.baseText('workflowActivator.activateWorkflow')
+					"
+					active-color="#13ce66"
+					inactive-color="#8899AA"
+					element-loading-spinner="el-icon-loading"
+					data-test-id="workflow-activate-switch"
+				>
+				</el-switch>
+
+				<n8n-action-toggle :actions="actions" theme="dark" @action="onAction" />
+			</div>
+		</template>
 	</n8n-card>
 </template>
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import {EnterpriseEditionFeature} from '@/constants';
-import {showMessage} from "@/mixins/showMessage";
+import { EnterpriseEditionFeature } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
 import { restApi } from '@/mixins/restApi';
-import Vue from "vue";
+import Vue from 'vue';
 import { mapStores } from 'pinia';
-import { deepCopy, defaultMessageEventBusDestinationOptions, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import {
+	deepCopy,
+	defaultMessageEventBusDestinationOptions,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
 import { saveDestinationToDb } from './Helpers.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 
@@ -66,18 +67,14 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(
-	showMessage,
-	restApi,
-).extend({
+export default mixins(showMessage, restApi).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			nodeParameters: {} as MessageEventBusDestinationOptions,
 		};
 	},
-	components: {
-	},
+	components: {},
 	props: {
 		eventBus: {
 			type: Vue,
@@ -85,32 +82,43 @@ export default mixins(
 		destination: {
 			type: Object,
 			required: true,
-			default: deepCopy(defaultMessageEventBusDestinationOptions) as MessageEventBusDestinationOptions,
+			default: deepCopy(
+				defaultMessageEventBusDestinationOptions,
+			) as MessageEventBusDestinationOptions,
 		},
+		isInstanceOwner: Boolean,
 	},
 	mounted() {
-			this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination);
-			this.eventBus.$on('destinationWasSaved', () => {
-				const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
-				if (updatedDestination) {
-					this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination);
-				}
-			});
-		},
+		this.nodeParameters = Object.assign(
+			deepCopy(defaultMessageEventBusDestinationOptions),
+			this.destination,
+		);
+		this.eventBus.$on('destinationWasSaved', () => {
+			const updatedDestination = this.logStreamingStore.getDestination(this.destination.id);
+			if (updatedDestination) {
+				this.nodeParameters = Object.assign(
+					deepCopy(defaultMessageEventBusDestinationOptions),
+					this.destination,
+				);
+			}
+		});
+	},
 	computed: {
-		...mapStores(
-			useLogStreamingStore,
-		),
-		actions(): Array<{ label: string; value: string; }> {
-			return [
+		...mapStores(useLogStreamingStore),
+		actions(): Array<{ label: string; value: string }> {
+			const actions = [
 				{
 					label: this.$locale.baseText('workflows.item.open'),
 					value: DESTINATION_LIST_ITEM_ACTIONS.OPEN,
 				},
-			].concat([{
-				label: this.$locale.baseText('workflows.item.delete'),
-				value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
-			}]);
+			];
+			if (this.isInstanceOwner) {
+				actions.push({
+					label: this.$locale.baseText('workflows.item.delete'),
+					value: DESTINATION_LIST_ITEM_ACTIONS.DELETE,
+				});
+			}
+			return actions;
 		},
 		typeLabelName(): BaseTextKey {
 			return `settings.logstreaming.${this.destination.__type}` as BaseTextKey;
@@ -118,8 +126,13 @@ export default mixins(
 	},
 	methods: {
 		async onClick(event?: PointerEvent) {
-			if (event && event.target && 'className' in event.target && event.target['className'] === 'el-switch__core') {
-					event.stopPropagation();
+			if (
+				event &&
+				event.target &&
+				'className' in event.target &&
+				event.target['className'] === 'el-switch__core'
+			) {
+				event.stopPropagation();
 			} else {
 				this.$emit('edit', this.destination.id);
 			}
@@ -136,10 +149,9 @@ export default mixins(
 				this.$emit('edit', this.destination.id);
 			} else if (action === DESTINATION_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
-					this.$locale.baseText(
-						'settings.logstreaming.destinationDelete.message',
-						{ interpolate: { destinationName: this.destination.label } },
-					),
+					this.$locale.baseText('settings.logstreaming.destinationDelete.message', {
+						interpolate: { destinationName: this.destination.label },
+					}),
 					this.$locale.baseText('settings.logstreaming.destinationDelete.headline'),
 					'warning',
 					this.$locale.baseText('settings.logstreaming.destinationDelete.confirmButtonText'),
@@ -163,7 +175,7 @@ export default mixins(
 	cursor: pointer;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441C17, 0.1);
+		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
 	}
 }
 

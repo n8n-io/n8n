@@ -3,10 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { ResponseHelper } from '..';
-import {
-	isEventMessageOptions,
-	isEventMessageOptionsWithType,
-} from './EventMessageClasses/AbstractEventMessage';
+import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
 	EventMessageWorkflow,
@@ -34,6 +31,7 @@ import {
 	EventMessageTypeNames,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
+import { User } from '../databases/entities/User';
 
 export const eventBusRouter = express.Router();
 
@@ -118,28 +116,6 @@ eventBusRouter.post(
 	}),
 );
 
-eventBusRouter.post(
-	`/event/addmany/:count`,
-	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		if (isEventMessageOptionsWithType(req.body, EventMessageTypeNames.workflow)) {
-			const count: number = parseInt(req.params.count) ?? 100;
-			for (let i = 0; i < count; i++) {
-				const msg = new EventMessageWorkflow(req.body as EventMessageWorkflowOptions);
-				msg.setPayload({
-					id: i,
-					msg: 'REST test',
-				});
-				await eventBus.send(msg);
-			}
-		} else {
-			throw new BadRequestError(
-				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
-			);
-		}
-	}),
-);
-
 // ----------------------------------------
 // Destinations
 // ----------------------------------------
@@ -163,6 +139,10 @@ eventBusRouter.post(
 	`/destination`,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
+			throw new ResponseHelper.UnauthorizedError('Invalid request');
+		}
+
 		if (isMessageEventBusDestinationOptions(req.body)) {
 			let result;
 			switch (req.body.__type) {
@@ -213,6 +193,9 @@ eventBusRouter.delete(
 	`/destination`,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
+			throw new ResponseHelper.UnauthorizedError('Invalid request');
+		}
 		if (isWithIdString(req.query)) {
 			const result = await eventBus.removeDestination(req.query.id);
 			if (result) {

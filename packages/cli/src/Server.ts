@@ -1539,17 +1539,14 @@ class App {
 		// EventBus Setup
 		// ----------------------------------------
 
-		if (config.getEnv('eventBus.enabled')) {
-			if (!eventBus.isInitialized) {
-				await eventBus.initialize();
-			}
-			// add Event Bus REST endpoints
-			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
+		if (!eventBus.isInitialized) {
+			await eventBus.initialize();
+		}
+		// add Event Bus REST endpoints
+		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
-			// TODO: REMOVE BEFORE RELEASE?
-			if (process.env.NODE_ENV !== 'production' || process.env.E2E_TESTS === 'true') {
-				config.set('enterprise.features.logStreaming', true);
-			}
+		if (process.env.NODE_ENV !== 'production') {
+			config.set('enterprise.features.logStreaming', true);
 		}
 
 		// ----------------------------------------

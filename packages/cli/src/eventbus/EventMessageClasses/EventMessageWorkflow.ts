@@ -7,7 +7,7 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.started',
 	'n8n.workflow.success',
 	'n8n.workflow.failed',
-	'n8n.workflow.error',
+	'n8n.workflow.execution.error',
 ] as const;
 export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
 

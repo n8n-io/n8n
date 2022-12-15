@@ -12,63 +12,69 @@
 		:maxHeight="isTypeAbstract ? '300px' : '650px'"
 		data-test-id="destination-modal"
 	>
-	<template #header>
-		<template v-if="isTypeAbstract">
-			<div :class="$style.headerCreate">
-				<span>Add new destination</span>
-			</div>
-		</template>
-		<template v-else>
-			<div :class="$style.header">
-				<div :class="$style.destinationInfo">
-					<InlineNameEdit
-						:name="headerLabel"
-						:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
-						:readonly="isTypeAbstract"
-						type="Credential"
-						data-test-id="subtitle-showing-type"
-						@input="onLabelChange"
-					/>
-				</div>
-				<div :class="$style.destinationActions">
-					<n8n-button
-						v-if="(nodeParameters && hasOnceBeenSaved && unchanged)"
-						:icon="(testMessageSent) ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
-						:title="(testMessageSent && testMessageResult) ? 'Event sent and returned OK' : 'Event returned with error'"
-						size="medium"
-						type="tertiary"
-						label="Send Test-Event"
-						:disabled="!hasOnceBeenSaved || !unchanged"
-						@click="sendTestEvent"
-						data-test-id="destination-test-button"
-					/>
-					<n8n-icon-button
-						v-if="(nodeParameters && hasOnceBeenSaved)"
-						:title="$locale.baseText('settings.logstreaming.delete')"
-						icon="trash"
-						size="medium"
-						type="tertiary"
-						:disabled="isSaving"
-						:loading="isDeleting"
-						@click="removeThis"
-						data-test-id="destination-delete-button"
-					/>
-					<SaveButton
-						:saved="(unchanged && hasOnceBeenSaved)"
-						:disabled="(isTypeAbstract || unchanged)"
-						:savingLabel="$locale.baseText('settings.logstreaming.saving')"
-						@click="saveDestination"
-						data-test-id="destination-save-button"
-					/>
-				</div>
-			</div>
-			<hr />
-		</template>
-	</template>
-	<template #content>
-		<div :class="$style.container">
+		<template #header>
 			<template v-if="isTypeAbstract">
-				<n8n-input-label
+				<div :class="$style.headerCreate">
+					<span>Add new destination</span>
+				</div>
+			</template>
+			<template v-else>
+				<div :class="$style.header">
+					<div :class="$style.destinationInfo">
+						<InlineNameEdit
+							:name="headerLabel"
+							:subtitle="!isTypeAbstract ? $locale.baseText(typeLabelName) : 'Select type'"
+							:readonly="isTypeAbstract"
+							type="Credential"
+							data-test-id="subtitle-showing-type"
+							@input="onLabelChange"
+						/>
+					</div>
+					<div :class="$style.destinationActions">
+						<n8n-button
+							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
+							:icon="testMessageSent ? (testMessageResult ? 'check' : 'exclamation-triangle') : ''"
+							:title="
+								testMessageSent && testMessageResult
+									? 'Event sent and returned OK'
+									: 'Event returned with error'
+							"
+							size="medium"
+							type="tertiary"
+							label="Send Test-Event"
+							:disabled="!hasOnceBeenSaved || !unchanged"
+							@click="sendTestEvent"
+							data-test-id="destination-test-button"
+						/>
+						<template v-if="isInstanceOwner">
+							<n8n-icon-button
+								v-if="nodeParameters && hasOnceBeenSaved"
+								:title="$locale.baseText('settings.logstreaming.delete')"
+								icon="trash"
+								size="medium"
+								type="tertiary"
+								:disabled="isSaving"
+								:loading="isDeleting"
+								@click="removeThis"
+								data-test-id="destination-delete-button"
+							/>
+							<SaveButton
+								:saved="unchanged && hasOnceBeenSaved"
+								:disabled="isTypeAbstract || unchanged"
+								:savingLabel="$locale.baseText('settings.logstreaming.saving')"
+								@click="saveDestination"
+								data-test-id="destination-save-button"
+							/>
+						</template>
+					</div>
+				</div>
+				<hr />
+			</template>
+		</template>
+		<template #content>
+			<div :class="$style.container">
+				<template v-if="isTypeAbstract">
+					<n8n-input-label
 						:class="$style.typeSelector"
 						:label="$locale.baseText('settings.logstreaming.selecttype')"
 						:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
@@ -76,91 +82,92 @@
 						size="medium"
 						:underline="false"
 					>
-					<n8n-select
-						:value="typeSelectValue"
-						:placeholder="typeSelectPlaceholder"
-						@change="onTypeSelectInput"
-						data-test-id="select-destination-type"
-						name="name"
-						ref="typeSelectRef"
-					>
-						<n8n-option
-							v-for="option in typeSelectOptions || []"
-							:key="option.value"
-							:value="option.value"
-							:label="$locale.baseText(option.label)"
-						/>
-					</n8n-select>
-					<div class="mt-m text-right">
-						<n8n-button
-							size="large"
-							@click="onContinueAddClicked"
-							data-test-id="select-destination-button"
-							:disabled="!typeSelectValue"
+						<n8n-select
+							:value="typeSelectValue"
+							:placeholder="typeSelectPlaceholder"
+							@change="onTypeSelectInput"
+							data-test-id="select-destination-type"
+							name="name"
+							ref="typeSelectRef"
 						>
-							{{ $locale.baseText(`settings.logstreaming.continue`) }}
-						</n8n-button>
-					</div>
-				</n8n-input-label>
-			</template>
-			<template v-else>
-				<div :class="$style.sidebar">
-					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
-				</div>
-				<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
-					<template v-if="isTypeWebhook">
-						<parameter-input-list
-							:parameters="webhookDescription"
-							:hideDelete="true"
-							:nodeValues="nodeParameters"
-							:isReadOnly="false"
-							path=""
-							@valueChanged="valueChanged"
-						/>
-					</template>
-					<template v-else-if="isTypeSyslog">
-						<parameter-input-list
-							:parameters="syslogDescription"
-							:hideDelete="true"
-							:nodeValues="nodeParameters"
-							:isReadOnly="false"
-							path=""
-							@valueChanged="valueChanged"
-						/>
-					</template>
-					<template v-else-if="isTypeSentry">
-						<parameter-input-list
-							:parameters="sentryDescription"
-							:hideDelete="true"
-							:nodeValues="nodeParameters"
-							:isReadOnly="false"
-							path=""
-							@valueChanged="valueChanged"
-						/>
-					</template>
-				</div>
-				<div v-if="activeTab === 'events'" :class="$style.mainContent">
-					<template>
-						<div class="">
-							<n8n-input-label
-						class="mb-m mt-m"
-						:label="$locale.baseText('settings.logstreaming.tab.events.title')"
-						:bold="true"
-						size="medium"
-						:underline="false"
-					/>
-							<event-selection
-								class=""
-								:destinationId="destination.id"
-								@input="onInput"
-								@change="valueChanged"
+							<n8n-option
+								v-for="option in typeSelectOptions || []"
+								:key="option.value"
+								:value="option.value"
+								:label="$locale.baseText(option.label)"
 							/>
+						</n8n-select>
+						<div class="mt-m text-right">
+							<n8n-button
+								size="large"
+								@click="onContinueAddClicked"
+								data-test-id="select-destination-button"
+								:disabled="!typeSelectValue"
+							>
+								{{ $locale.baseText(`settings.logstreaming.continue`) }}
+							</n8n-button>
 						</div>
-					</template>
-				</div>
-			</template>
-		</div>
-	</template>
+					</n8n-input-label>
+				</template>
+				<template v-else>
+					<div :class="$style.sidebar">
+						<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
+					</div>
+					<div v-if="activeTab === 'settings'" :class="$style.mainContent" ref="content">
+						<template v-if="isTypeWebhook">
+							<parameter-input-list
+								:parameters="webhookDescription"
+								:hideDelete="true"
+								:nodeValues="nodeParameters"
+								:isReadOnly="!isInstanceOwner"
+								path=""
+								@valueChanged="valueChanged"
+							/>
+						</template>
+						<template v-else-if="isTypeSyslog">
+							<parameter-input-list
+								:parameters="syslogDescription"
+								:hideDelete="true"
+								:nodeValues="nodeParameters"
+								:isReadOnly="!isInstanceOwner"
+								path=""
+								@valueChanged="valueChanged"
+							/>
+						</template>
+						<template v-else-if="isTypeSentry">
+							<parameter-input-list
+								:parameters="sentryDescription"
+								:hideDelete="true"
+								:nodeValues="nodeParameters"
+								:isReadOnly="!isInstanceOwner"
+								path=""
+								@valueChanged="valueChanged"
+							/>
+						</template>
+					</div>
+					<div v-if="activeTab === 'events'" :class="$style.mainContent">
+						<template>
+							<div class="">
+								<n8n-input-label
+									class="mb-m mt-m"
+									:label="$locale.baseText('settings.logstreaming.tab.events.title')"
+									:bold="true"
+									size="medium"
+									:underline="false"
+								/>
+								<event-selection
+									class=""
+									:destinationId="destination.id"
+									@input="onInput"
+									@change="valueChanged"
+									:readonly="!isInstanceOwner"
+								/>
+							</div>
+						</template>
+					</div>
+				</template>
+			</div>
+		</template>
 	</Modal>
 </template>
 
@@ -186,30 +193,32 @@ import {
 	MessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationSentryOptions,
- } from 'n8n-workflow';
+} from 'n8n-workflow';
 import Vue from 'vue';
-import {LOG_STREAM_MODAL_KEY} from '../../constants';
+import { LOG_STREAM_MODAL_KEY } from '../../constants';
 import Modal from '@/components/Modal.vue';
-import {showMessage} from "@/mixins/showMessage";
+import { showMessage } from '@/mixins/showMessage';
 import { useUIStore } from '../../stores/ui';
+import { useUsersStore } from '../../stores/users';
 import { destinationToFakeINodeUi, saveDestinationToDb, sendTestMessage } from './Helpers.ee';
-import { webhookModalDescription, sentryModalDescription, syslogModalDescription } from './descriptions.ee';
+import {
+	webhookModalDescription,
+	sentryModalDescription,
+	syslogModalDescription,
+} from './descriptions.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
 import SaveButton from '../SaveButton.vue';
 import EventSelection from '@/components/SettingsLogStreaming/EventSelection.ee.vue';
 import { Checkbox } from 'element-ui';
 
-export default mixins(
-	showMessage,
-	restApi,
-).extend({
+export default mixins(showMessage, restApi).extend({
 	name: 'event-destination-settings-modal',
 	props: {
 		modalName: String,
 		destination: {
 			type: Object,
-			default: ()=>deepCopy(defaultMessageEventBusDestinationOptions),
+			default: () => deepCopy(defaultMessageEventBusDestinationOptions),
 		},
 		isNew: Boolean,
 		eventBus: {
@@ -236,7 +245,7 @@ export default mixins(
 			showRemoveConfirm: false,
 			typeSelectValue: '',
 			typeSelectPlaceholder: 'Destination Type',
-			nodeParameters:  deepCopy(defaultMessageEventBusDestinationOptions),
+			nodeParameters: deepCopy(defaultMessageEventBusDestinationOptions),
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
@@ -244,18 +253,14 @@ export default mixins(
 			headerLabel: this.$props.destination.label,
 			testMessageSent: false,
 			testMessageResult: false,
+			isInstanceOwner: false,
 			LOG_STREAM_MODAL_KEY,
 		};
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useLogStreamingStore,
-			useNDVStore,
-			useWorkflowsStore,
-		),
-		typeSelectOptions(): Array<{value: string, label: BaseTextKey}> {
-			const options: Array<{value: string, label: BaseTextKey}> = [];
+		...mapStores(useUIStore, useUsersStore, useLogStreamingStore, useNDVStore, useWorkflowsStore),
+		typeSelectOptions(): Array<{ value: string; label: BaseTextKey }> {
+			const options: Array<{ value: string; label: BaseTextKey }> = [];
 			for (const t of Object.values(MessageEventBusDestinationTypeNames)) {
 				if (t === MessageEventBusDestinationTypeNames.abstract) {
 					continue;
@@ -287,20 +292,20 @@ export default mixins(
 		},
 		sidebarItems(): IMenuItem[] {
 			const items: IMenuItem[] = [
-					{
-						id: 'settings',
-						label: this.$locale.baseText('settings.logstreaming.tab.settings'),
-						position: 'top',
-					}];
-				if (!this.isTypeAbstract) {
-					items.push(
-					{
-						id: 'events',
-						label: this.$locale.baseText('settings.logstreaming.tab.events'),
-						position: 'top',
-					});
-				}
-				return items;
+				{
+					id: 'settings',
+					label: this.$locale.baseText('settings.logstreaming.tab.settings'),
+					position: 'top',
+				},
+			];
+			if (!this.isTypeAbstract) {
+				items.push({
+					id: 'events',
+					label: this.$locale.baseText('settings.logstreaming.tab.events'),
+					position: 'top',
+				});
+			}
+			return items;
 		},
 		tabItems(): ITab[] {
 			return [
@@ -316,23 +321,27 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.setupNode(Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination));
+		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
+		this.setupNode(
+			Object.assign(deepCopy(defaultMessageEventBusDestinationOptions), this.destination),
+		);
 		this.workflowsStore.$onAction(
-		({
-			name, // name of the action
-			args, // array of parameters passed to the action
-		}) => {
-			if (name === 'updateNodeProperties') {
-				for (const arg of args) {
-					if (arg.name === this.destination.id) {
-						if ('credentials' in arg.properties) {
-							this.unchanged = false;
-							this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
+			({
+				name, // name of the action
+				args, // array of parameters passed to the action
+			}) => {
+				if (name === 'updateNodeProperties') {
+					for (const arg of args) {
+						if (arg.name === this.destination.id) {
+							if ('credentials' in arg.properties) {
+								this.unchanged = false;
+								this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
+							}
 						}
 					}
 				}
-			}
-		});
+			},
+		);
 	},
 	methods: {
 		onInput() {
@@ -359,15 +368,22 @@ export default mixins(
 		},
 		onContinueAddClicked() {
 			let newDestination;
-			switch(this.typeSelectValue) {
+			switch (this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
-					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), { id: this.destination.id });
+					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), {
+						id: this.destination.id,
+					});
 					break;
 				case MessageEventBusDestinationTypeNames.sentry:
-					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), { id: this.destination.id });
+					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), {
+						id: this.destination.id,
+					});
 					break;
 				case MessageEventBusDestinationTypeNames.webhook:
-					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), { id: this.destination.id });
+					newDestination = Object.assign(
+						deepCopy(defaultMessageEventBusDestinationWebhookOptions),
+						{ id: this.destination.id },
+					);
 					break;
 			}
 			if (newDestination) {
@@ -379,7 +395,9 @@ export default mixins(
 			this.unchanged = false;
 			this.testMessageSent = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
-			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
+			const parameterPath = parameterData.name.startsWith('parameters.')
+				? parameterData.name.split('.').slice(1).join('.')
+				: parameterData.name;
 
 			const nodeParameters = deepCopy(this.nodeParameters);
 
@@ -419,10 +437,9 @@ export default mixins(
 		},
 		async removeThis() {
 			const deleteConfirmed = await this.confirmMessage(
-				this.$locale.baseText(
-					'settings.logstreaming.destinationDelete.message',
-					{ interpolate: { destinationName: this.destination.label } },
-				),
+				this.$locale.baseText('settings.logstreaming.destinationDelete.message', {
+					interpolate: { destinationName: this.destination.label },
+				}),
 				this.$locale.baseText('settings.logstreaming.destinationDelete.headline'),
 				'warning',
 				this.$locale.baseText('settings.logstreaming.destinationDelete.confirmButtonText'),
@@ -459,8 +476,6 @@ export default mixins(
 		},
 	},
 });
-
-
 </script>
 
 <style lang="scss" module>
@@ -476,9 +491,9 @@ export default mixins(
 
 .sidebarSwitches {
 	margin-left: 1.5em;
-	margin-bottom: .5em;
+	margin-bottom: 0.5em;
 	span {
-		color: var(--color-text-dark)!important;
+		color: var(--color-text-dark) !important;
 	}
 }
 
@@ -521,7 +536,6 @@ export default mixins(
 	font-size: 20px;
 }
 
-
 .container {
 	display: flex;
 	height: 100%;
@@ -546,5 +560,4 @@ export default mixins(
 		margin-left: var(--spacing-2xs);
 	}
 }
-
 </style>
