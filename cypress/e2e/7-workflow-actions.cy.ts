@@ -186,6 +186,11 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should duplicate workflow', () => {
+		// Stub window.open so new tab is not getting opened
+		cy.window().then(win => {
+			cy.stub(win, 'open').as('open')
+		})
+
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.workflowMenu().should('be.visible');
