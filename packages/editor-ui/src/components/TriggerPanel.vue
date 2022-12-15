@@ -130,12 +130,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
@@ -335,8 +330,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('ndv.trigger.webhookBasedNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});
@@ -348,8 +342,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.active', {
 						interpolate: { service: this.serviceName },
 					});
-				}
-				else {
+				} else {
 					return this.$locale.baseText('ndv.trigger.pollingNode.activationHint.inactive', {
 						interpolate: { service: this.serviceName },
 					});

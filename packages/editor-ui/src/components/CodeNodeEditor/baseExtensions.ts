@@ -9,7 +9,12 @@ import {
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
 import { acceptCompletion, closeBrackets } from '@codemirror/autocomplete';
-import { history, indentWithTab, insertNewlineAndIndent, toggleComment } from '@codemirror/commands';
+import {
+	history,
+	indentWithTab,
+	insertNewlineAndIndent,
+	toggleComment,
+} from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
 import type { Extension } from '@codemirror/state';
 

@@ -24,6 +24,7 @@ importers:
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
       n8n: '*'
+      nock: ^13.2.9
       node-fetch: ^2.6.7
       prettier: ^2.3.2
       rimraf: ^3.0.2
@@ -32,7 +33,7 @@ importers:
       supertest: ^6.2.2
       ts-jest: ^29.0.3
       tsc-watch: ^5.0.3
-      turbo: 1.5.5
+      turbo: 1.6.3
       typescript: ^4.8.4
     dependencies:
       n8n: link:packages/cli
@@ -46,6 +47,7 @@ importers:
       jest: 29.3.1_@types+node@16.11.65
       jest-environment-jsdom: 29.3.1
       jest-mock: 29.3.1
+      nock: 13.2.9
       node-fetch: 2.6.7
       prettier: 2.7.1
       rimraf: 3.0.2
@@ -54,7 +56,7 @@ importers:
       supertest: 6.3.0
       ts-jest: 29.0.3_s73gpqhbuwbfokcbq32jn3f4zi
       tsc-watch: 5.0.3_typescript@4.8.4
-      turbo: 1.5.5
+      turbo: 1.6.3
       typescript: 4.8.4
 
   packages/@n8n_io/eslint-config:
@@ -181,10 +183,10 @@ importers:
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
       mysql2: ~2.3.0
-      n8n-core: ~0.146.1
-      n8n-editor-ui: ~0.172.1
-      n8n-nodes-base: ~0.204.1
-      n8n-workflow: ~0.128.1
+      n8n-core: ~0.147.0
+      n8n-editor-ui: ~0.173.1
+      n8n-nodes-base: ~0.205.1
+      n8n-workflow: ~0.129.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -373,7 +375,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.128.1
+      n8n-workflow: ~0.129.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -529,6 +531,7 @@ importers:
       '@vitejs/plugin-vue2': ^1.1.2
       axios: ^0.21.1
       c8: ^7.12.0
+      codemirror-lang-n8n-expression: ^0.1.0
       dateformat: ^3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: ^2.1.0
@@ -546,8 +549,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.46.0
-      n8n-workflow: ~0.128.1
+      n8n-design-system: ~0.47.0
+      n8n-workflow: ~0.129.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -589,6 +592,7 @@ importers:
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
       axios: 0.21.4
+      codemirror-lang-n8n-expression: 0.1.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: 2.1.0
@@ -665,8 +669,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.146.1
-      n8n-workflow: ~0.128.1
+      n8n-core: ~0.147.0
+      n8n-workflow: ~0.129.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -756,14 +760,15 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.146.1
-      n8n-workflow: ~0.128.1
+      n8n-core: ~0.147.0
+      n8n-workflow: ~0.129.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
       pdf-parse: ^1.1.1
       pg: ^8.3.0
       pg-promise: ^10.5.8
+      pretty-bytes: ^5.6.0
       promise-ftp: ^1.3.5
       redis: ^3.1.1
       request: ^2.88.2
@@ -822,6 +827,7 @@ importers:
       pdf-parse: 1.1.1
       pg: 8.8.0
       pg-promise: 10.12.0
+      pretty-bytes: 5.6.0
       promise-ftp: 1.3.5_promise-ftp-common@1.1.5
       redis: 3.1.2
       request: 2.88.2
@@ -8952,6 +8958,19 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
+  /codemirror-lang-n8n-expression/0.1.0_zyklskjzaprvz25ee7sq7godcq:
+    resolution: {integrity: sha512-20ss5p0koTu5bfivr1sBHYs7cpjWT2JhVB5gn7TX9WWPt+v/9p9tEcYSOyL/sm+OFuWh698Cgnmrba4efQnMCQ==}
+    dependencies:
+      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/language': 6.2.1
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/state'
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
+
   /codepage/1.15.0:
     resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
     engines: {node: '>=0.8'}
@@ -16004,6 +16023,18 @@ packages:
       lower-case: 2.0.2
       tslib: 2.4.0
 
+  /nock/13.2.9:
+    resolution: {integrity: sha512-1+XfJNYF1cjGB+TKMWi29eZ0b82QOvQs2YoLNzbpWGqFMtRQHTa57osqdGj4FrFPgkO4D4AZinzUJR9VvW3QUA==}
+    engines: {node: '>= 10.13'}
+    dependencies:
+      debug: 4.3.4
+      json-stringify-safe: 5.0.1
+      lodash: 4.17.21
+      propagate: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /node-abort-controller/3.0.1:
     resolution: {integrity: sha512-/ujIVxthRs+7q6hsdjHMaj8hRG9NuWmwrz+JdRwZ14jdFoKSkm+vDsCbF9PLpnSqjaWQJuTmVtcWHNLr+vrOFw==}
     dev: false
@@ -17590,6 +17621,11 @@ packages:
       loose-envify: 1.4.0
       object-assign: 4.1.1
       react-is: 16.13.1
+    dev: true
+
+  /propagate/2.0.1:
+    resolution: {integrity: sha512-vGrhOavPSTz4QVNuBNdcNXePNdNMaO1xj9yBeH1ScQPjk/rhg9sSlCXPhMkFuaNNW/syTvYqsnbIJxMBfRbbag==}
+    engines: {node: '>= 8'}
     dev: true
 
   /property-expr/2.0.5:
@@ -20617,58 +20653,58 @@ packages:
     engines: {node: '>=0.6.11 <=0.7.0 || >=0.7.3'}
     dev: false
 
-  /turbo-darwin-64/1.5.5:
-    resolution: {integrity: sha512-HvEn6P2B+NXDekq9LRpRgUjcT9/oygLTcK47U0qsAJZXRBSq/2hvD7lx4nAwgY/4W3rhYJeWtHTzbhoN6BXqGQ==}
+  /turbo-darwin-64/1.6.3:
+    resolution: {integrity: sha512-QmDIX0Yh1wYQl0bUS0gGWwNxpJwrzZU2GIAYt3aOKoirWA2ecnyb3R6ludcS1znfNV2MfunP+l8E3ncxUHwtjA==}
     cpu: [x64]
     os: [darwin]
     dev: true
     optional: true
 
-  /turbo-darwin-arm64/1.5.5:
-    resolution: {integrity: sha512-Dmxr09IUy6M0nc7/xWod9galIO2DD500B75sJSkHeT+CCdJOWnlinux0ZPF8CSygNqymwYO8AO2l15/6yxcycg==}
+  /turbo-darwin-arm64/1.6.3:
+    resolution: {integrity: sha512-75DXhFpwE7CinBbtxTxH08EcWrxYSPFow3NaeFwsG8aymkWXF+U2aukYHJA6I12n9/dGqf7yRXzkF0S/9UtdyQ==}
     cpu: [arm64]
     os: [darwin]
     dev: true
     optional: true
 
-  /turbo-linux-64/1.5.5:
-    resolution: {integrity: sha512-wd07TZ4zXXWjzZE00FcFMLmkybQQK/NV9ff66vvAV0vdiuacSMBCNLrD6Mm4ncfrUPW/rwFW5kU/7hyuEqqtDw==}
+  /turbo-linux-64/1.6.3:
+    resolution: {integrity: sha512-O9uc6J0yoRPWdPg9THRQi69K6E2iZ98cRHNvus05lZbcPzZTxJYkYGb5iagCmCW/pq6fL4T4oLWAd6evg2LGQA==}
     cpu: [x64]
     os: [linux]
     dev: true
     optional: true
 
-  /turbo-linux-arm64/1.5.5:
-    resolution: {integrity: sha512-q3q33tuo74R7gicnfvFbnZZvqmlq7Vakcvx0eshifnJw4PR+oMnTCb4w8ElVFx070zsb8DVTibq99y8NJH8T1Q==}
+  /turbo-linux-arm64/1.6.3:
+    resolution: {integrity: sha512-dCy667qqEtZIhulsRTe8hhWQNCJO0i20uHXv7KjLHuFZGCeMbWxB8rsneRoY+blf8+QNqGuXQJxak7ayjHLxiA==}
     cpu: [arm64]
     os: [linux]
     dev: true
     optional: true
 
-  /turbo-windows-64/1.5.5:
-    resolution: {integrity: sha512-lPp9kHonNFfqgovbaW+UAPO5cLmoAN+m3G3FzqcrRPnlzt97vXYsDhDd/4Zy3oAKoAcprtP4CGy0ddisqsKTVw==}
+  /turbo-windows-64/1.6.3:
+    resolution: {integrity: sha512-lKRqwL3mrVF09b9KySSaOwetehmGknV9EcQTF7d2dxngGYYX1WXoQLjFP9YYH8ZV07oPm+RUOAKSCQuDuMNhiA==}
     cpu: [x64]
     os: [win32]
     dev: true
     optional: true
 
-  /turbo-windows-arm64/1.5.5:
-    resolution: {integrity: sha512-3AfGULKNZiZVrEzsIE+W79ZRW1+f5r4nM4wLlJ1PTBHyRxBZdD6KTH1tijGfy/uTlcV5acYnKHEkDc6Q9PAXGQ==}
+  /turbo-windows-arm64/1.6.3:
+    resolution: {integrity: sha512-BXY1sDPEA1DgPwuENvDCD8B7Hb0toscjus941WpL8CVd10hg9pk/MWn9CNgwDO5Q9ks0mw+liDv2EMnleEjeNA==}
     cpu: [arm64]
     os: [win32]
     dev: true
     optional: true
 
-  /turbo/1.5.5:
-    resolution: {integrity: sha512-PVQSDl0STC9WXIyHcYUWs9gXsf8JjQig/FuHfuB8N6+XlgCGB3mPbfMEE6zrChGz2hufH4/guKRX1XJuNL6XTA==}
+  /turbo/1.6.3:
+    resolution: {integrity: sha512-FtfhJLmEEtHveGxW4Ye/QuY85AnZ2ZNVgkTBswoap7UMHB1+oI4diHPNyqrQLG4K1UFtCkjOlVoLsllUh/9QRw==}
     hasBin: true
     optionalDependencies:
-      turbo-darwin-64: 1.5.5
-      turbo-darwin-arm64: 1.5.5
-      turbo-linux-64: 1.5.5
-      turbo-linux-arm64: 1.5.5
-      turbo-windows-64: 1.5.5
-      turbo-windows-arm64: 1.5.5
+      turbo-darwin-64: 1.6.3
+      turbo-darwin-arm64: 1.6.3
+      turbo-linux-64: 1.6.3
+      turbo-linux-arm64: 1.6.3
+      turbo-windows-64: 1.6.3
+      turbo-windows-arm64: 1.6.3
     dev: true
 
   /tweetnacl/0.14.5:
