@@ -115,13 +115,7 @@ const onDialogOpened = () => {
 				</i18n>
 			</div>
 		</div>
-		<n8n-info-tip>
-			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
-				<template #link>
-					<a @click="onContactUs" href="mailto:sales@n8n.io" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
-				</template>
-			</i18n>
-		</n8n-info-tip>
+		<n8n-info-tip>{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
 		<div :class="$style.buttons">
 			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="tertiary" size="large" text>
 				<strong>{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
@@ -132,6 +126,13 @@ const onDialogOpened = () => {
 			<n8n-button v-else @click="onViewPlans" size="large">
 				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
+		</div>
+		<div :class="$style.help">
+			<i18n path="settings.usageAndPlan.help">
+				<template #link>
+					<a @click="onContactUs" href="mailto:sales@n8n.io" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
+				</template>
+			</i18n>
 		</div>
 		<el-dialog
 			width="480px"
@@ -239,6 +240,13 @@ const onDialogOpened = () => {
 			transition: width 0.2s $ease-out-expo;
 		}
 	}
+}
+
+.help {
+	display: flex;
+	justify-content: flex-end;
+	padding: var(--spacing-xs) 0 0;
+	font-size: var(--font-size-2xs);
 }
 
 div[class*="info"] > span > span:last-child {

@@ -75,8 +75,8 @@ export const useUsageStore = defineStore('usage', () => {
 			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
 			setData(data);
 			state.success = {
-				title: i18n.baseText('settings.usageAndPlan.activation.success.title'),
-				message: i18n.baseText('settings.usageAndPlan.activation.success.message', {
+				title: i18n.baseText('settings.usageAndPlan.license.activation.success.title'),
+				message: i18n.baseText('settings.usageAndPlan.license.activation.success.message', {
 					interpolate: {
 						name: state.data.license.planName || DEFAULT_PLAN_NAME,
 						type: planId.value ? i18n.baseText('settings.usageAndPlan.plan') : i18n.baseText('settings.usageAndPlan.edition'),
