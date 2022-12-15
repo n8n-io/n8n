@@ -62,8 +62,8 @@ export default mixins(genericHelpers, debounceHelper).extend({
 
 			return 'SM';
 		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		value(): any | undefined {
-			// tslint:disable-line:no-any
 			if (this.$props.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
 				return this.$props.valueXS;
 			}

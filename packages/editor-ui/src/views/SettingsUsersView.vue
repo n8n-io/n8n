@@ -30,7 +30,9 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="`${isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')}${$locale.baseText('settings.users.setupSMTPInfo')}`"
+				:description="`${
+					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
+				}${$locale.baseText('settings.users.setupSMTPInfo')}`"
 				@click="redirectToSetup"
 			/>
 		</div>
@@ -51,11 +53,7 @@
 </template>
 
 <script lang="ts">
-import {
-	EnterpriseEditionFeature,
-	INVITE_USER_MODAL_KEY,
-	VIEWS,
-} from '@/constants';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
