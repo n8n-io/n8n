@@ -47,7 +47,7 @@ beforeAll(async () => {
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
-	config.set('enterprise.workflowSharingEnabled', true); // @TODO: Remove once temp flag is removed
+	config.set('enterprise.features.sharing', true); // @TODO: Remove once temp flag is removed
 
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();

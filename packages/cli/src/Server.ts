@@ -355,7 +355,6 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 		};
@@ -385,7 +384,6 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

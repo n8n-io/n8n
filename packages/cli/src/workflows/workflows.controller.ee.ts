@@ -22,7 +22,7 @@ import * as GenericHelpers from '@/GenericHelpers';
 export const EEWorkflowController = express.Router();
 
 EEWorkflowController.use((req, res, next) => {
-	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
+	if (!isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;

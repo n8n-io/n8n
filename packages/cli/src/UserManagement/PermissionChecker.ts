@@ -31,7 +31,7 @@ export class PermissionChecker {
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && config.getEnv('enterprise.workflowSharingEnabled')) {
+		if (workflow.id && config.getEnv('enterprise.features.sharing')) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflow: { id: Number(workflow.id) } },

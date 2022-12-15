@@ -886,13 +886,6 @@ export const schema = {
 				env: 'N8N_SHARING_ENABLED',
 			},
 		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_WORKFLOW_SHARING_ENABLED',
-		},
 	},
 
 	hiringBanner: {
