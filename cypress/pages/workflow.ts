@@ -61,6 +61,7 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsSaveButton: () => cy.getByTestId('workflow-settings-save-button').find('button'),
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
+		nodeViewBackground: () => cy.getByTestId('node-view-background'),
 	};
 	actions = {
 		visit: () => {
