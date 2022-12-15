@@ -9,6 +9,7 @@ import axios, { AxiosRequestConfig, Method } from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import {
+	deepCopy,
 	jsonParse,
 	LoggerProxy,
 	MessageEventBusDestinationOptions,
@@ -274,21 +275,20 @@ export class MessageEventBusDestinationWebhook
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 
-		if (this.anonymizeAuditMessages || msg.anonymize) {
-			msg = msg.anonymize();
-		}
+		const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
 			if (this.sendPayload) {
 				this.axiosRequestOptions.data = {
 					...msg,
+					payload,
 					ts: msg.ts.toISO(),
 				};
 			} else {
 				this.axiosRequestOptions.data = {
 					...msg,
-					ts: msg.ts.toISO(),
 					payload: undefined,
+					ts: msg.ts.toISO(),
 				};
 			}
 		}

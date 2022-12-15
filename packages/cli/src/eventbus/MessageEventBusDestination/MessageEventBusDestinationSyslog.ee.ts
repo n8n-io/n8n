@@ -78,9 +78,7 @@ export class MessageEventBusDestinationSyslog
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {
-			if (this.anonymizeAuditMessages || msg.anonymize) {
-				msg = msg.anonymize();
-			}
+			// const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 			this.client.log(
 				msg.toString(),
 				{

@@ -35,6 +35,8 @@ export class MessageEventBusDestinationSentry
 
 	sentryInitSuccessful = false;
 
+	sentryClient: Sentry.NodeClient;
+
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
@@ -47,11 +49,14 @@ export class MessageEventBusDestinationSentry
 
 		GenericHelpers.getVersions()
 			.then((versions) => {
-				Sentry.init({
+				this.sentryClient = new Sentry.NodeClient({
 					dsn: this.dsn,
 					tracesSampleRate: this.tracesSampleRate,
 					environment,
 					release: versions.cli,
+					transport: Sentry.makeNodeTransport,
+					integrations: Sentry.defaultIntegrations,
+					stackParser: Sentry.defaultStackParser,
 				});
 				LoggerProxy.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
 				this.sentryInitSuccessful = true;
@@ -70,23 +75,27 @@ export class MessageEventBusDestinationSentry
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {
-			if (this.anonymizeAuditMessages || msg.anonymize) {
-				msg = msg.anonymize();
-			}
-			let sentryResult = '';
-			Sentry.withScope((scope: Sentry.Scope) => {
-				scope.setLevel(
-					(msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log') as Sentry.SeverityLevel,
-				);
-				scope.setTags({
-					event: msg.getEventName(),
-					logger: this.label ?? this.getId(),
-				});
-				if (this.sendPayload) {
-					scope.setExtras(msg.payload);
-				}
-				sentryResult = Sentry.captureMessage(msg.message ?? msg.eventName, scope);
+			const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
+			const scope: Sentry.Scope = new Sentry.Scope();
+			const level = (
+				msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log'
+			) as Sentry.SeverityLevel;
+			scope.setLevel(level);
+			scope.setTags({
+				event: msg.getEventName(),
+				logger: this.label ?? this.getId(),
+				app: 'n8n',
 			});
+			if (this.sendPayload) {
+				scope.setExtras(payload);
+			}
+			const sentryResult = this.sentryClient.captureMessage(
+				msg.message ?? msg.eventName,
+				level,
+				{ event_id: msg.id, data: payload },
+				scope,
+			);
+
 			if (sentryResult) {
 				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 				sendResult = true;
@@ -127,6 +136,7 @@ export class MessageEventBusDestinationSentry
 
 	async close() {
 		await super.close();
-		await Sentry.close();
+		// await Sentry.close();
+		await this.sentryClient.close();
 	}
 }

@@ -108,9 +108,9 @@ export abstract class AbstractEventMessage {
 	abstract deserialize(data: JsonObject): this;
 	abstract setPayload(payload: AbstractEventPayload): this;
 
-	anonymize(): this {
-		this.payload = modifyUnderscoredKeys(this.payload, () => '*');
-		return this;
+	anonymize(): AbstractEventPayload {
+		const anonymizedPayload = modifyUnderscoredKeys(this.payload, () => '*');
+		return anonymizedPayload;
 	}
 
 	serialize(): AbstractEventMessageOptions {
