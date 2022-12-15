@@ -140,10 +140,6 @@ export class Ldap implements INodeType {
 			},
 		},
 		loadOptions: {
-			// get Object Classes
-			// Apply new options to other fields
-			// Build docker image for review
-			// Update Docs for Deb
 			async getAttributes(this: ILoadOptionsFunctions) {
 				const credentials = await this.getCredentials('ldap');
 				const protocol = credentials.connectionSecurity === 'tls' ? 'ldaps' : 'ldap';
