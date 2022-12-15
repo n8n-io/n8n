@@ -15,15 +15,15 @@ import {
 import { eventBus } from '@/eventbus';
 import { SuperAgentTest } from 'supertest';
 import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
-import { Server } from 'http';
+import axios from 'axios';
 
 jest.mock('@/telemetry');
 // mocking Sentry to prevent destination constructor from throwing an errorn due to missing DSN
 jest.mock('@sentry/node');
+jest.mock('axios');
+const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 let app: express.Application;
-let appReceiver: express.Application;
-let appReceiverServer: Server;
 let testDbName = '';
 let globalOwnerRole: Role;
 let owner: User;
@@ -86,12 +86,6 @@ beforeAll(async () => {
 	config.set('eventBus.logWriter.keepLogCount', '1');
 	config.set('enterprise.features.logStreaming', true);
 	await eventBus.initialize();
-	appReceiver = express();
-	appReceiver.post('/', (req, res) => {
-		console.log('received test request');
-		res.status(200).send('OK');
-	});
-	appReceiverServer = appReceiver.use(express.json()).listen(3456);
 });
 
 beforeEach(async () => {
@@ -105,7 +99,6 @@ beforeEach(async () => {
 afterAll(async () => {
 	await testDb.terminate(testDbName);
 	await eventBus.close();
-	appReceiverServer.close();
 });
 
 test('should have a running logwriter process', async () => {
@@ -159,7 +152,6 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 	for (let index = 0; index < data.length; index++) {
 		const destination = data[index];
 		const foundDestinations = await eventBus.findDestination(destination.id);
-		console.log(destination.label, destination.id);
 		expect(Array.isArray(foundDestinations)).toBeTruthy();
 		expect(foundDestinations.length).toBe(1);
 		expect(foundDestinations[0].label).toBe(destination.label);
@@ -171,8 +163,9 @@ test('should send message to webhook ', async () => {
 	await eventBus.logWriter.getThread()?.cleanLogs();
 	const allMessages = await eventBus.getEvents('all');
 	expect(allMessages.length).toBe(0);
+	mockedAxios.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 	await eventBus.send(testMessage);
-
 	// not elegant, but since communication happens through emitters, we'll wait for a bit
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	const sent = await eventBus.getEvents('sent');
