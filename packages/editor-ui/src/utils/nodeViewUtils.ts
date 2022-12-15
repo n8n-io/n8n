@@ -90,6 +90,7 @@ export const CONNECTOR_FLOWCHART_TYPE: ConnectorSpec = {
 		loopbackVerticalLength: NODE_SIZE + GRID_SIZE, // height of vertical segment when looping
 		loopbackMinimum: LOOPBACK_MINIMUM, // minimum length before flowchart loops around
 		getEndpointOffset(endpoint: Endpoint) {
+			console.log("🚀 ~ file: nodeViewUtils.ts:93 ~ getEndpointOffset ~ endpoint", endpoint);
 			const indexOffset = 10; // stub offset between different endpoints of same node
 			const index = endpoint && endpoint.__meta ? endpoint.__meta.index : 0;
 			const totalEndpoints = endpoint && endpoint.__meta ? endpoint.__meta.totalEndpoints : 0;
@@ -216,8 +217,8 @@ export const getInputNameOverlay = (label: string): OverlaySpec => ({
 	},
 });
 
-export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
-	radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string): PaintStyle => ({
+	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
 	fill: getStyleTokenValue(color),
 	outlineStroke: 'none',
 });
@@ -233,11 +234,11 @@ export const getOutputNameOverlay = (label: string): OverlaySpec => ({
 	},
 });
 
-// export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
-// 	overlays.forEach((overlay: OverlaySpec) => {
-// 		connection.addOverlay(overlay);
-// 	});
-// };
+export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
+	overlays.forEach((overlay: OverlaySpec) => {
+		connection.addOverlay(overlay);
+	});
+};
 
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 	return nodes.reduce((leftmostTop, node) => {
@@ -297,6 +298,7 @@ export const getOverlay = (item: Connection | Endpoint, overlayId: string) => {
 
 export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
 	const overlay = getOverlay(item, overlayId);
+	console.log("🚀 ~ file: nodeViewUtils.ts:300 ~ showOverlay ~ overlay", overlay);
 	if (overlay) {
 		overlay.setVisible(true);
 	}
@@ -304,12 +306,14 @@ export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
 
 export const hideOverlay = (item: Connection | Endpoint, overlayId: string) => {
 	const overlay = getOverlay(item, overlayId);
+	console.log("🚀 ~ file: nodeViewUtils.ts:307 ~ hideOverlay ~ overlay", overlay);
 	if (overlay) {
 		overlay.setVisible(false);
 	}
 };
 
 export const showOrHideMidpointArrow = (connection: Connection) => {
+	console.log("🚀 ~ file: nodeViewUtils.ts:315 ~ showOrHideMidpointArrow ~ connection", connection);
 	if (!connection || !connection.endpoints || connection.endpoints.length !== 2) {
 		return;
 	}
@@ -318,10 +322,10 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
-	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
-	const targetPosition = targetEndpoint.anchor.lastReturnValue
-		? targetEndpoint.anchor.lastReturnValue[0]
-		: sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
+	const sourcePosition = sourceEndpoint._anchor.computedPosition?.curX ?? 0;
+	const targetPosition = targetEndpoint._anchor.computedPosition?.curX ?? sourcePosition + 1;
+		// ? targetEndpoint._anchor.computedPosition?.x
+		// : sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
 
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
@@ -349,8 +353,8 @@ const isLoopingBackwards = (connection: Connection) => {
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
 
-	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
-	const targetPosition = targetEndpoint.anchor.lastReturnValue[0];
+	const sourcePosition = sourceEndpoint._anchor.computedPosition?.x ?? 0;
+	const targetPosition = targetEndpoint._anchor.computedPosition?.x ?? 0;
 
 	return targetPosition - sourcePosition < -1 * LOOPBACK_MINIMUM;
 };
@@ -598,7 +602,7 @@ export const resetConnection = (connection: Connection) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOrHideMidpointArrow(connection);
 	if (connection.canvas) {
-		connection.canvas.classList.remove('success');
+		connection.removeClass('success');
 	}
 };
 
@@ -614,10 +618,9 @@ export const addConnectionOutputSuccess = (
 	output: { total: number; iterations: number },
 ) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
-	// TODO: Success state.
-	// if (connection.canvas) {
-	// 	connection.canvas.classList.add('success');
-	// }
+	if (connection.canvas) {
+		connection.addClass('success');
+	}
 
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
@@ -689,8 +692,8 @@ export const getZoomToFit = (
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
 	if (connection && connection.connector) {
 		if (targetEndpoint) {
-			// console.log("🚀 ~ file: nodeViewUtils.ts:655 ~ showDropConnectionState ~ connection.connector", connection.connector);
-			// connection.connector.setTargetEndpoint(targetEndpoint);
+			console.log("🚀 ~ file: nodeViewUtils.ts:655 ~ showDropConnectionState ~ connection.connector", connection.connector);
+			connection.connector.setTargetEndpoint(targetEndpoint);
 		}
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
 		hideOverlay(connection, OVERLAY_DROP_NODE_ID);
@@ -699,7 +702,7 @@ export const showDropConnectionState = (connection: Connection, targetEndpoint?:
 
 export const showPullConnectionState = (connection: Connection) => {
 	if (connection && connection.connector) {
-		// connection.connector.resetTargetEndpoint();
+		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PULL);
 		showOverlay(connection, OVERLAY_DROP_NODE_ID);
 	}
@@ -707,12 +710,12 @@ export const showPullConnectionState = (connection: Connection) => {
 
 export const resetConnectionAfterPull = (connection: Connection) => {
 	if (connection && connection.connector) {
-		// connection.connector.resetTargetEndpoint();
+		connection.connector.resetTargetEndpoint();
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	}
 };
 
-export const resetInputLabelPosition = (targetEndpoint: Endpoint) => {
+export const resetInputLabelPosition = (targetEndpoint: Connection | Endpoint) => {
 	const inputNameOverlay = getOverlay(targetEndpoint, OVERLAY_INPUT_NAME_LABEL);
 	if (inputNameOverlay) {
 		inputNameOverlay.setLocation(OVERLAY_INPUT_NAME_LABEL_POSITION);
@@ -731,37 +734,110 @@ export const addConnectionActionsOverlay = (
 	onDelete: Function,
 	onAdd: Function,
 ) => {
+	console.log("🚀 ~ file: nodeViewUtils.ts:736 ~ connection", connection);
 	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
 		return; // avoid free floating actions when moving connection from one node to another
 	}
-	connection.addOverlay({
-		type: 'Label',
+	const overlay = connection.addOverlay({
+		type: 'Custom',
 		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
-			label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon(
-				'trash',
-			)}</div>`,
-			cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
-			visible: false,
-			events: {
-				mousedown: (overlay: Overlay, event: MouseEvent) => {
-					const element = event.target as HTMLElement;
-					if (
-						element.classList.contains('delete') ||
-						(element.parentElement && element.parentElement.classList.contains('delete'))
-					) {
-						onDelete();
-					} else if (
-						element.classList.contains('add') ||
-						(element.parentElement && element.parentElement.classList.contains('add'))
-					) {
-						onAdd();
-					}
-				},
+			create: (component: any) => {
+				console.log("🚀 ~ file: nodeViewUtils.ts:745 ~ component", component);
+				const div = document.createElement('div');
+				const addButton = document.createElement('button');
+				const deleteButton = document.createElement('button');
+
+				div.classList.add(OVERLAY_CONNECTION_ACTIONS_ID);
+				addButton.classList.add('add');
+				deleteButton.classList.add('delete');
+
+				addButton.innerHTML = getIcon('plus');
+				deleteButton.innerHTML = getIcon('trash');
+
+				addButton.addEventListener('click', () => onAdd());
+				deleteButton.addEventListener('click', () => onDelete());
+
+				div.appendChild(addButton);
+				div.appendChild(deleteButton);
+				return div;
 			},
+			// innerhtml
+			// cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
+			// visible: false,
 		},
 	});
+	overlay.setVisible(false);
 };
+
+export const addOutputEdnpointOverlay = (endpoint: Endpoint) => {
+	const overlay = {
+		type: 'Custom',
+		options: {
+			id: OVERLAY_CONNECTION_ACTIONS_ID,
+			create: (component: any) => {
+				const div = document.createElement('div');
+				div.classList.add('plus-endpoint', 'dot-output-endpoint', 'jtk-endpoint');
+				div.innerHTML = `
+					<div class="plus-stalk">
+						<div class="connection-run-items-label">
+							<span class="floating"></span>
+						</div>
+					</div>
+
+					<div class="plus-container">
+						<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus">
+							<path fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path>
+						</svg>
+						<div class="drop-hover-message">
+							Click to add node</br>
+							or drag to connect
+						</div>
+					</div>
+				`;
+
+				// div.addEventListener('mousedown', (e) => {
+				// 	e.stopPropagation();
+				// 	const eventDelegate = document.querySelector('.katavorio-delegated-draggable');
+				// 	const modE = {
+				// 		...e,
+				// 		target: (endpoint as any).endpoint.canvas,
+				// 	};
+				// 	const event = new MouseEvent('mousedown', modE);
+				// 	const ev = {
+				// 		...event,
+				// 		target: (endpoint as any).endpoint.canvas,
+				// 	};
+				// 	(endpoint as any).endpoint.canvas.addEventListener('mousedown', (event1) => {
+				// 		event1.stopPropagation();
+				// 		console.log("🚀 ~ file: nodeViewUtils.ts:812 ~ event1", event1);
+				// 		console.log("🚀 ~ file: nodeViewUtils.ts:812 ~ event", event);
+				// 		setTimeout(() => {
+
+				// 			eventDelegate.dispatchEvent(event1);
+				// 		}, 0);
+
+				// 	});
+				// 	(endpoint as any).endpoint.canvas.dispatchEvent(event);
+				// 	console.log("🚀 ~ file: nodeViewUtils.ts:807 ~ div.addEventListener ~ event", event.target);
+				// 	// console.log('Mouse down', endpoint);
+				// 	// endpoint.instance.trigger((endpoint as any).endpoint.canvas, EVENT_ENDPOINT_MOUSEDOWN, e, {});
+				// 	// endpoint.instance.isConnectionBeingDragged = true;
+				// 	// endpoint.trigger(EVENT_CONNECTION_MOUSEDOWN, e);
+				// });
+				return div;
+			},
+		},
+	};
+
+	const overlayDef = endpoint.addOverlay(overlay);
+
+	endpoint.proxiedBy = overlayDef;
+	// innerhtml
+	// cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
+	// visible: false,
+};
+
 
 export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {
 	return `${nodeId}${OUTPUT_UUID_KEY}${outputIndex}`;

@@ -190,7 +190,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getNodeById() {
 			return (nodeId: string): INodeUi | undefined =>
-				this.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
+			this.workflow.nodes.find((node: INodeUi) => {
+					console.log("🚀 ~ file: workflows.ts:194 ~ getNodeById ~ this.workflow.nodes", this.workflow.nodes);
+				  return node.id === nodeId;
+				});
 		},
 		nodesIssuesExist(): boolean {
 			for (const node of this.workflow.nodes) {
@@ -722,6 +725,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addNode(nodeData: INodeUi): void {
+			console.log("🚀 ~ file: workflows.ts:728 ~ addNode ~ nodeData", nodeData);
 			if (!nodeData.hasOwnProperty('name')) {
 				// All nodes have to have a name
 				// TODO: Check if there is an error or whatever that is supposed to be returned

@@ -585,6 +585,7 @@ export default mixins(
 	position: absolute;
 	width: 100px;
 	height: 100px;
+	z-index: 10;
 
 	.node-description {
 		position: absolute;
@@ -801,10 +802,16 @@ export default mixins(
 		}
 	}
 }
-
+.dot-output-endpoint:hover circle {
+	fill: var(--color-primary);
+}
 /** connector */
 .jtk-connector {
 	z-index: 3;
+}
+
+.jtk-floating-endpoint {
+	display: none;
 }
 
 .jtk-connector path {
@@ -814,7 +821,6 @@ export default mixins(
 .jtk-connector.success {
 	z-index: 4;
 }
-
 .jtk-connector.jtk-hover {
 	z-index: 6;
 }
@@ -822,9 +828,9 @@ export default mixins(
 .jtk-endpoint.plus-endpoint {
 	z-index: 6;
 }
-
 .jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
+	overflow: auto;
 }
 
 .jtk-overlay {
@@ -880,6 +886,7 @@ $--box-size-small: 18px;
 .plus-endpoint {
 	cursor: pointer;
 	z-index: 100;
+	margin-left: 57px;
 
 	&:hover .plus-container {
 		color: var(--color-primary);

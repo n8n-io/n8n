@@ -18,11 +18,9 @@ import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history';
 import { MoveNodeCommand } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas';
+import { getStyleTokenValue } from '@/utils';
 export const nodeBase = mixins(deviceSupportHelpers).extend({
 	mounted() {
-		window.__printRefs = () => {
-			console.log('Node base: ', this.$refs);
-		};
 		// Initialize the node
 		if (this.data !== null) {
 			try {
@@ -94,7 +92,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					paintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
 					hoverPaintStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					source: false,
-					target: true, //!this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
+					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						nodeId: this.nodeId,
 						type: inputName,
@@ -103,31 +101,32 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					enabled: !this.isReadOnly, // enabled in default case to allow dragging
 					cssClass: 'rect-input-endpoint',
 					dragAllowedWhenFull: true,
+					hoverClass: 'dropHover',
 					// dropOptions: {
 					// 	tolerance: 'touch',
 					// 	hoverClass: 'dropHover',
 					// },
 				};
 
-				// if (nodeTypeData.inputNames) {
-				// 	// Apply input names if they got set
-				// 	newEndpointData.connectorOverlays = [
-				// 		NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]),
-				// 	];
-				// }
+				if (nodeTypeData.inputNames) {
+					// Apply input names if they got set
+					newEndpointData.connectorOverlays = [
+						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]),
+					];
+				}
 
 				const endpoint = this.instance?.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
-				// if(!Array.isArray(endpoint)) {
-				// 	endpoint.__meta = {
-				// 		nodeName: node.name,
-				// 		nodeId: this.nodeId,
-				// 		index: i,
-				// 		totalEndpoints: nodeTypeData.inputs.length,
-				// 	};
-				// }
+				if(!Array.isArray(endpoint)) {
+					endpoint.__meta = {
+						nodeName: node.name,
+						nodeId: this.nodeId,
+						index: i,
+						totalEndpoints: nodeTypeData.inputs.length,
+					};
+				}
 
 				// TODO: Activate again if it makes sense. Currently makes problems when removing
 				//       connection on which the input has a name. It does not get hidden because
@@ -164,7 +163,12 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
-					endpoint: 'Dot',
+					endpoint: {
+						type: 'Dot',
+						options: {
+							radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
+						},
+					},
 					paintStyle: NodeViewUtils.getOutputEndpointStyle(
 						nodeTypeData,
 						'--color-foreground-xdark',
@@ -178,17 +182,12 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						type: inputName,
 						index,
 					},
+					hoverClass: 'dot-output-endpoint-hover',
+					connectionsDirected: true,
 					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
 					// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 				};
-
-				if (nodeTypeData.outputNames) {
-					// Apply output names if they got set
-					newEndpointData.overlays = [
-						NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]),
-					];
-				}
 
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
@@ -197,9 +196,10 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					];
 				}
 
-				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, {
-					...newEndpointData,
-				});
+				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, newEndpointData);
+				console.log("🚀 ~ file: nodeBase.ts:195 ~ nodeTypeData.outputs.forEach ~ endpoint", endpoint);
+				// NodeViewUtils.addOutputEdnpointOverlay(endpoint);
+				// endpoint.addOverlay(NodeViewUtils.addOutputEdnpointOverlay);
 				if (!Array.isArray(endpoint)) {
 					endpoint.__meta = {
 						nodeName: node.name,
@@ -240,26 +240,26 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 				// };
 
 				if (!this.isReadOnly) {
-					// const plusEndpointData: IEndpointOptions = {
+					// const plusEndpointData: EndpointOptions = {
 					// 	uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					// 	anchor: anchorPosition,
 					// 	maxConnections: -1,
 					// 	endpoint: 'N8nPlus',
-					// 	isSource: true,
-					// 	isTarget: false,
+					// 	source: true,
+					// 	target: false,
 					// 	enabled: !this.isReadOnly,
-					// 	endpointStyle: {
+					// 	paintStyle: {
 					// 		fill: getStyleTokenValue('--color-xdark'),
 					// 		outlineStroke: 'none',
-					// 		hover: false,
+					// 		// hover: false,
 					// 		showOutputLabel: nodeTypeData.outputs.length === 1,
 					// 		size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
 					// 		hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 					// 	},
-					// 	endpointHoverStyle: {
+					// 	hoverPaintStyle: {
 					// 		fill: getStyleTokenValue('--color-primary'),
 					// 		outlineStroke: 'none',
-					// 		hover: true, // hack to distinguish hover state
+					// 		// hover: true, // hack to distinguish hover state
 					// 	},
 					// 	parameters: {
 					// 		nodeId: this.nodeId,
@@ -270,7 +270,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					// 	dragAllowedWhenFull: false,
 					// 	dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 					// };
-					// const plusEndpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
+					// const plusEndpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, plusEndpointData);
 					// if(!Array.isArray(plusEndpoint)) {
 					// 	plusEndpoint.__meta = {
 					// 		nodeName: node.name,

@@ -140,7 +140,6 @@ export class N8nConnector extends AbstractConnector {
 
 	majorAnchor: number;
 	minorAnchor: number;
-	// segments: Segment[];
 	midpoint: number;
 	alwaysRespectStubs: boolean;
 	loopbackVerticalLength: number;
@@ -154,18 +153,12 @@ export class N8nConnector extends AbstractConnector {
 	overrideTargetEndpoint: Endpoint | null;
 	getEndpointOffset: Function | null;
 	private internalSegments: FlowchartSegment[] = [];
-	// stub: number;
 
 	constructor(public connection: Connection, params: N8nConnectorOptions) {
-		console.log('Hello from');
-
 		super(connection, params);
 		params = params || {};
-		this.majorAnchor = params.curviness || 150;
-		this.minorAnchor = 10;
-		// this.minorAnchor = 0; // seems to be angle at which connector leaves endpoint
-		// this.majorAnchor = 0; // translates to curviness of bezier curve
-		// this.segments;
+		this.minorAnchor = 0; // seems to be angle at which connector leaves endpoint
+		this.majorAnchor = 0; // translates to curviness of bezier curve
 		this.stub = params.stub || 0;
 		this.midpoint = params.midpoint === null ? 0.5 : params.midpoint;
 		this.alwaysRespectStubs = params.alwaysRespectStubs === true;
@@ -222,7 +215,6 @@ export class N8nConnector extends AbstractConnector {
 			} else {
 				p.x = point.x - this.majorAnchor * soo[0];
 			}
-
 			if (soo[1] === 0) {
 				p.y =
 					sourceAnchorPosition.curY < targetAnchorPosition.curY
@@ -255,8 +247,8 @@ export class N8nConnector extends AbstractConnector {
 	}
 
 	writeFlowchartSegments(paintInfo: PaintGeometry) {
-		let current: FlowchartSegment = [];
-		let next: FlowchartSegment = [];
+		let current: FlowchartSegment = null;
+		let next: FlowchartSegment = null;
 		let currentDirection: [number, number];
 		let nextDirection: [number, number];
 
@@ -371,38 +363,35 @@ export class N8nConnector extends AbstractConnector {
 			midy = paintInfo.startStubY + (paintInfo.endStubY - paintInfo.startStubY) * this.midpoint;
 		}
 		// axis, startStub, endStub, idx, midx, midy
+		const result = lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 		return lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 	}
 
 	_getPaintInfo(params: ConnectorComputeParams): PaintGeometry {
-		// console.log("🚀 ~ file: N8nCustomConnector.ts:315 ~ N8nConnector ~ _getPaintInfo ~ originalPaintInfo", originalPaintInfo);
-		let targetPos: AnchorPlacement = params.targetPos;
+		let targetPos = params.targetPos;
 		let targetEndpoint: Endpoint = params.targetEndpoint;
 		if (this.overrideTargetEndpoint) {
-			console.log(
-				'🚀 ~ file: N8nCustomConnector.ts:320 ~ N8nConnector ~ _getPaintInfo ~ overrideTargetEndpoint',
-				this.overrideTargetEndpoint,
-			);
-			targetPos = this.overrideTargetEndpoint._anchor.currentLocation;
+			targetPos = this.overrideTargetEndpoint._anchor.computedPosition as AnchorPlacement;
+			console.log("🚀 ~ file: N8nCustomConnector.ts:375 ~ N8nConnector ~ _getPaintInfo ~ targetPos", targetPos);
 			targetEndpoint = this.overrideTargetEndpoint;
 		}
 
-		const sourceGap = 0;
 
 		this.stub = this.stub || 0;
+		const sourceGap = 0;
 		const sourceStub = isArray(this.stub) ? this.stub[0] : this.stub;
 		const targetStub = isArray(this.stub) ? this.stub[1] : this.stub;
-
 		const segment = quadrant(params.sourcePos, targetPos);
 		const swapX = targetPos.curX < params.sourcePos.curX;
 		const swapY = targetPos.curY < params.sourcePos.curY;
 		const lw = params.strokeWidth || 1;
-		let so: Orientation = [params.sourcePos.ox, params.sourcePos.oy];
-		let to: Orientation = [params.targetPos.ox, params.targetPos.oy];
 		const x = swapX ? targetPos.curX : params.sourcePos.curX;
 		const y = swapY ? targetPos.curY : params.sourcePos.curY;
 		const w = Math.abs(targetPos.curX - params.sourcePos.curX);
+		// console.log("🚀 ~ file: N8nCustomConnector.ts:390 ~ N8nConnector ~ _getPaintInfo ~ w", w, targetPos, params.sourcePos);
 		const h = Math.abs(targetPos.curY - params.sourcePos.curY);
+		let so: Orientation = [params.sourcePos.ox, params.sourcePos.oy];
+		let to: Orientation = [params.targetPos.ox, params.targetPos.oy];
 
 		// if either anchor does not have an orientation set, we derive one from their relative
 		// positions.  we fix the axis to be the one in which the two elements are further apart, and
@@ -415,18 +404,8 @@ export class N8nConnector extends AbstractConnector {
 			to = [];
 			so[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
 			to[indexNum] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
-			console.log(
-				'🚀 ~ file: N8nCustomConnector.ts:350 ~ N8nConnector ~ _getPaintInfo ~ so',
-				so,
-				to,
-			);
 			so[oIndex] = 0;
 			to[oIndex] = 0;
-			console.log(
-				'🚀 ~ file: N8nCustomConnector.ts:352 ~ N8nConnector ~ _getPaintInfo ~ params.sourcePos[index] > targetPos[index]',
-				params.sourcePos[index],
-				targetPos[index],
-			);
 		}
 
 		const sx = swapX ? w + sourceGap * so[0] : sourceGap * so[0],
@@ -435,17 +414,12 @@ export class N8nConnector extends AbstractConnector {
 			ty = swapY ? this.targetGap * to[1] : h + this.targetGap * to[1],
 			oProduct = so[0] * to[0] + so[1] * to[1];
 
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:367 ~ N8nConnector ~ _getPaintInfo ~ this.getEndpointOffset',
-			this.getEndpointOffset,
-		);
-		// console.log("🚀 ~ file: N8nCustomConnector.ts:358 ~ N8nConnector ~ _getPaintInfo ~ sx", sx);
 		const sourceStubWithOffset =
 			sourceStub +
 			(this.getEndpointOffset && params.sourceEndpoint
 				? this.getEndpointOffset(params.sourceEndpoint)
 				: 0);
-		// console.log("🚀 ~ file: N8nCustomConnector.ts:364 ~ N8nConnector ~ _getPaintInfo ~ sourceStubWithOffset", sourceStubWithOffset);
+
 		const targetStubWithOffset =
 			targetStub +
 			(this.getEndpointOffset && targetEndpoint ? this.getEndpointOffset(targetEndpoint) : 0);
@@ -495,27 +469,14 @@ export class N8nConnector extends AbstractConnector {
 			sourceEndpoint: params.sourceEndpoint,
 			targetEndpoint,
 			sourcePos: params.sourcePos,
-			targetPos: targetEndpoint._anchor.currentLocation,
+			targetPos,
 			targetGap: this.targetGap,
 		};
-		// console.log("🚀 ~ file: N8nCustomConnector.ts:397 ~ N8nConnector ~ _getPaintInfo ~ so", so);
-
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:399 ~ N8nConnector ~ _getPaintInfo ~ result',
-			result,
-		);
+		console.log("🚀 ~ file: N8nCustomConnector.ts:475 ~ N8nConnector ~ _getPaintInfo ~ result", result);
 		return result;
 	}
 
 	_compute(originalPaintInfo: PaintGeometry, connParams: ConnectorComputeParams) {
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:406 ~ N8nConnector ~ _compute ~ connParams',
-			connParams,
-		);
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:406 ~ N8nConnector ~ _compute ~ originalPaintInfo',
-			originalPaintInfo,
-		);
 		const paintInfo = this._getPaintInfo(connParams);
 		// Set the type of key as key of paintInfo
 		// TODO: Check if this is the best way to do this
@@ -523,17 +484,32 @@ export class N8nConnector extends AbstractConnector {
 		// Object.keys(paintInfo).forEach((key) => {
 		// 	if(key === undefined) return;
 		// 	// override so that bounding box is calculated correctly when target override is set
-		// 	originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
+		// 	// originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
 		// });
 
-		if (paintInfo.tx < 0) {
-			this._computeFlowchart(paintInfo);
-		} else {
-			this._computeBezier(paintInfo, connParams);
+		try {
+			if (paintInfo.tx < 0) {
+				this._computeFlowchart(paintInfo);
+			} else {
+				this._computeBezier(paintInfo, connParams);
+			}
+
+		} catch (error) {
+
 		}
 	}
-
-	_computeBezier(paintInfo: PaintGeometry, p: N8nConnectorOptions) {
+	/**
+	 * Set target endpoint
+	 * (to override default behavior tracking mouse when dragging mouse)
+	 * @param {Endpoint} endpoint
+	 */
+	setTargetEndpoint(endpoint: Endpoint) {
+		this.overrideTargetEndpoint = endpoint;
+	};
+	resetTargetEndpoint() {
+		this.overrideTargetEndpoint = null;
+	}
+	_computeBezier(paintInfo: PaintGeometry, p: ConnectorComputeParams) {
 		const sp = p.sourcePos;
 		const tp = p.targetPos;
 		const _w = Math.abs(sp.curX - tp.curX) - this.targetGap;
@@ -543,29 +519,17 @@ export class N8nConnector extends AbstractConnector {
 		const _tx = sp.curX < tp.curX ? 0 : _w;
 		const _ty = sp.curY < tp.curY ? 0 : _h;
 
+
 		if (paintInfo.ySpan <= 20 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
 			this.majorAnchor = 0.1;
 		} else {
 			this.majorAnchor = paintInfo.xSpan * this.curvinessCoeffient + this.zBezierOffset;
 		}
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:447 ~ N8nConnector ~ _computeBezier ~ this.majorAnchor ',
-			this.majorAnchor,
-			this.minorAnchor,
-		);
 
 		const _CP = this._findControlPoint({ x: _sx, y: _sy }, sp, tp, paintInfo.so, paintInfo.to);
-		console.log('🚀 ~ file: N8nCustomConnector.ts:456 ~ N8nConnector ~ _computeBezier ~ _CP', _CP, {
-			_sx,
-			_sy,
-		});
 		const _CP2 = this._findControlPoint({ x: _tx, y: _ty }, tp, sp, paintInfo.to, paintInfo.so);
-		console.log(
-			'🚀 ~ file: N8nCustomConnector.ts:464 ~ N8nConnector ~ _computeBezier ~ _CP2',
-			_CP2,
-		);
 
-		this._addSegment(BezierSegment, {
+		const bezRes = {
 			x1: _sx,
 			y1: _sy,
 			x2: _tx,
@@ -574,7 +538,8 @@ export class N8nConnector extends AbstractConnector {
 			cp1y: _CP.y,
 			cp2x: _CP2.x,
 			cp2y: _CP2.y,
-		});
+		};
+		this._addSegment(BezierSegment, bezRes);
 	}
 
 	addFlowchartSegment(x: number, y: number, paintInfo: PaintGeometry) {
@@ -594,6 +559,9 @@ export class N8nConnector extends AbstractConnector {
 		this.segments = [];
 		this.lastx = null;
 		this.lasty = null;
+
+		this.internalSegments = [];
+		// this.internalSegments.length = 0;
 
 		// calculate Stubs.
 		const stubs = this.calcualteStubSegment(paintInfo);
@@ -621,7 +589,6 @@ export class N8nConnector extends AbstractConnector {
 	}
 
 	transformGeometry(g: Geometry, dx: number, dy: number): Geometry {
-		console.log('🚀 ~ file: N8nCustomConnector.ts:512 ~ N8nConnector ~ transformGeometry ~ g', g);
 		return g;
 	}
 }
