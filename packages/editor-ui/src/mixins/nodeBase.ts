@@ -10,7 +10,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { BrowserJsPlumbInstance, DragStartEventParams, EVENT_DRAG_START } from '@jsplumb/browser-ui';
 // import { SingleAnchorSpec, EndpointOptions } from '@jsplumb/common';
 import { EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -286,6 +286,12 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 			//       https://github.com/jsplumb/katavorio/wiki
 			//       https://jsplumb.github.io/jsplumb/home.html
 			// Make nodes draggable
+			// this.instance.importDefaults({
+			// 	dragOptions: {}
+			// })
+			this.instance.bind(EVENT_DRAG_START, (params: DragStartEventParams) => {
+				console.log('Started draggign?');
+			});
 			this.instance.draggable(this.nodeId, {
 				grid: [NodeViewUtils.GRID_SIZE, NodeViewUtils.GRID_SIZE],
 				start: (params: { e: MouseEvent }) => {

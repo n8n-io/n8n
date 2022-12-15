@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node" :ref="data.name">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node" :ref="data.name" :data-name="data.name">
 		<div class="select-background" v-show="isSelected"></div>
 		<div
 			:class="{
@@ -7,7 +7,6 @@
 				'touch-active': isTouchActive,
 				'is-touch-device': isTouchDevice,
 			}"
-			:data-name="data.name"
 		>
 			<div
 				:class="nodeClass"

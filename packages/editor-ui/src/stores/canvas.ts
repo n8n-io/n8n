@@ -8,7 +8,7 @@ import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
-import type { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import type { BrowserJsPlumbInstance, DragStartEventParams, DragStopEventParams } from '@jsplumb/browser-ui';
 import { newInstance as newJsPlumbInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
@@ -21,6 +21,7 @@ import {
 	getZoomToFit,
 	PLACEHOLDER_TRIGGER_NODE_SIZE,
 	CONNECTOR_FLOWCHART_TYPE,
+	GRID_SIZE,
 } from '@/utils/nodeViewUtils';
 
 export const useCanvasStore = defineStore('canvas', () => {
@@ -29,6 +30,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	console.log('Before');
 	const newInstance = ref<BrowserJsPlumbInstance>();
+	const isDragging = ref<boolean>(false);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(() =>
@@ -139,8 +141,97 @@ export const useCanvasStore = defineStore('canvas', () => {
 			resizeObserver: false,
 			dragOptions: {
 				// cursor: 'pointer',
-				resizeObserver: false,
-				grid: { w: 20, h: 20 },
+				// resizeObserver: false,
+				grid: { w: GRID_SIZE, h: GRID_SIZE },
+				start: (params: DragStartEventParams) => {
+					const draggedNode = params.drag.getDragElement();
+					console.log("🚀 ~ file: canvas.ts:148 ~ initInstance ~ draggedNode", draggedNode);
+					const nodeName = draggedNode.getAttribute('data-name');
+					console.log("🚀 ~ file: canvas.ts:150 ~ initInstance ~ nodeName", nodeName);
+					if(!nodeName) return;
+					const nodeData = workflowStore.getNodeByName(nodeName);
+					console.log("🚀 ~ file: canvas.ts:151 ~ initInstance ~ nodeData", nodeData);
+					// console.log("🚀 ~ file: canvas.ts:148 ~ initInstance ~ draggedNode", draggedNode);
+					// console.log('Started dragging', params);
+					// if (this.isReadOnly === true) {
+					// 	// Do not allow to move nodes in readOnly mode
+					// 	return false;
+					// }
+					// @ts-ignore
+					// isDragging.value = true;
+
+					// const isSelected = this.uiStore.isNodeSelected(this.data.name);
+					// const nodeName = this.data.name;
+					// if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
+					// 	setTimeout(() => {
+					// 		this.$emit('nodeSelected', nodeName, false, true);
+					// 	}, 0);
+					// }
+
+					// if (params.e && !isSelected) {
+					// 	// Only the node which gets dragged directly gets an event, for all others it is
+					// 	// undefined. So check if the currently dragged node is selected and if not clear
+					// 	// the drag-selection.
+					// 	this.instance.clearDragSelection();
+					// 	this.uiStore.resetSelectedNodes();
+					// }
+
+					// this.uiStore.addActiveAction('dragActive');
+					// return true;
+				},
+				stop: (params: DragStopEventParams) => {
+					// @ts-ignore
+					// this.dragging = false;
+					// if (this.uiStore.isActionActive('dragActive')) {
+					// 	const moveNodes = this.uiStore.getSelectedNodes.slice();
+					// 	const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
+					// 	if (!selectedNodeNames.includes(this.data.name)) {
+					// 		// If the current node is not in selected add it to the nodes which
+					// 		// got moved manually
+					// 		moveNodes.push(this.data);
+					// 	}
+
+					// 	if (moveNodes.length > 1) {
+					// 		this.historyStore.startRecordingUndo();
+					// 	}
+					// 	// This does for some reason just get called once for the node that got clicked
+					// 	// even though "start" and "drag" gets called for all. So lets do for now
+					// 	// some dirty DOM query to get the new positions till I have more time to
+					// 	// create a proper solution
+					// 	let newNodePosition: XYPosition;
+					// 	moveNodes.forEach((node: INodeUi) => {
+					// 		const element = document.getElementById(node.id);
+					// 		if (element === null) {
+					// 			return;
+					// 		}
+
+					// 		newNodePosition = [
+					// 			parseInt(element.style.left!.slice(0, -2), 10),
+					// 			parseInt(element.style.top!.slice(0, -2), 10),
+					// 		];
+
+					// 		const updateInformation = {
+					// 			name: node.name,
+					// 			properties: {
+					// 				// @ts-ignore, draggable does not have definitions
+					// 				position: newNodePosition,
+					// 			},
+					// 		};
+					// 		const oldPosition = node.position;
+					// 		if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
+					// 			this.historyStore.pushCommandToUndo(
+					// 				new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
+					// 			);
+					// 			this.workflowsStore.updateNodeProperties(updateInformation);
+					// 			this.$emit('moved', node);
+					// 		}
+					// 	});
+					// 	if (moveNodes.length > 1) {
+					// 		this.historyStore.stopRecordingUndo();
+					// 	}
+					// }
+				},
+				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
 		window.__plumbInstance = () => newInstance.value;

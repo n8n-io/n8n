@@ -160,7 +160,7 @@ export class N8nConnector extends AbstractConnector {
 		this.minorAnchor = 0; // seems to be angle at which connector leaves endpoint
 		this.majorAnchor = 0; // translates to curviness of bezier curve
 		this.stub = params.stub || 0;
-		this.midpoint = params.midpoint === null ? 0.5 : params.midpoint;
+		this.midpoint = 0.5;
 		this.alwaysRespectStubs = params.alwaysRespectStubs === true;
 		this.loopbackVerticalLength = params.loopbackVerticalLength || 0;
 		this.lastx = null;
@@ -364,6 +364,7 @@ export class N8nConnector extends AbstractConnector {
 		}
 		// axis, startStub, endStub, idx, midx, midy
 		const result = lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
+		console.log("🚀 ~ file: N8nCustomConnector.ts:367 ~ N8nConnector ~ calculateLineSegment ~ result", { axis, startStub, endStub, idx, midx, midy });
 		return lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 	}
 
@@ -372,7 +373,6 @@ export class N8nConnector extends AbstractConnector {
 		let targetEndpoint: Endpoint = params.targetEndpoint;
 		if (this.overrideTargetEndpoint) {
 			targetPos = this.overrideTargetEndpoint._anchor.computedPosition as AnchorPlacement;
-			console.log("🚀 ~ file: N8nCustomConnector.ts:375 ~ N8nConnector ~ _getPaintInfo ~ targetPos", targetPos);
 			targetEndpoint = this.overrideTargetEndpoint;
 		}
 
@@ -383,17 +383,14 @@ export class N8nConnector extends AbstractConnector {
 		const targetStub = isArray(this.stub) ? this.stub[1] : this.stub;
 		const segment = quadrant(params.sourcePos, targetPos);
 		const swapX = targetPos.curX < params.sourcePos.curX;
-		console.log("🚀 ~ file: N8nCustomConnector.ts:386 ~ N8nConnector ~ _getPaintInfo ~ targetPos.curX", targetPos.curX);
-		console.log("🚀 ~ file: N8nCustomConnector.ts:386 ~ N8nConnector ~ _getPaintInfo ~ swapX", swapX);
 		const swapY = targetPos.curY < params.sourcePos.curY;
 		const lw = params.strokeWidth || 1;
 		const x = swapX ? targetPos.curX : params.sourcePos.curX;
 		const y = swapY ? targetPos.curY : params.sourcePos.curY;
 		const w = Math.abs(targetPos.curX - params.sourcePos.curX);
-		// console.log("🚀 ~ file: N8nCustomConnector.ts:390 ~ N8nConnector ~ _getPaintInfo ~ w", w, targetPos, params.sourcePos);
 		const h = Math.abs(targetPos.curY - params.sourcePos.curY);
 		let so: Orientation = [params.sourcePos.ox, params.sourcePos.oy];
-		let to: Orientation = [params.targetPos.ox, params.targetPos.oy];
+		let to: Orientation = [targetPos.ox, params.targetPos.oy];
 
 		// if either anchor does not have an orientation set, we derive one from their relative
 		// positions.  we fix the axis to be the one in which the two elements are further apart, and
@@ -405,7 +402,7 @@ export class N8nConnector extends AbstractConnector {
 			so = [];
 			to = [];
 			so[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
-			to[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : -1;
+			to[indexNum] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
 			so[oIndex] = 0;
 			to[oIndex] = 0;
 		}
@@ -474,7 +471,6 @@ export class N8nConnector extends AbstractConnector {
 			targetPos,
 			targetGap: this.targetGap,
 		};
-		console.log("🚀 ~ file: N8nCustomConnector.ts:475 ~ N8nConnector ~ _getPaintInfo ~ result", result);
 		return result;
 	}
 
@@ -489,7 +485,6 @@ export class N8nConnector extends AbstractConnector {
 			originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
 		});
 
-		console.log("🚀 ~ file: N8nCustomConnector.ts:492 ~ N8nConnector ~ _compute ~ paintInfo.tx", paintInfo.tx);
 		try {
 			if (paintInfo.tx < 0) {
 				this._computeFlowchart(paintInfo);
@@ -576,6 +571,7 @@ export class N8nConnector extends AbstractConnector {
 
 		// compute the rest of the line
 		const p = this.calculateLineSegment(paintInfo, stubs);
+		console.log("🚀 ~ file: N8nCustomConnector.ts:573 ~ N8nConnector ~ _computeFlowchart ~ paintInfo", JSON.stringify(p));
 		if (p) {
 			for (let i = 0; i < p.length; i++) {
 				this.addFlowchartSegment(p[i][0], p[i][1], paintInfo);

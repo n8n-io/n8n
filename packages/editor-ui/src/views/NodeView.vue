@@ -2804,6 +2804,7 @@ export default mixins(
 			return { incoming: [], outgoing: [] };
 		},
 		onNodeMoved(node: INodeUi) {
+			console.log("🚀 ~ file: NodeView.vue:2807 ~ onNodeMoved ~ node", node);
 			const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
 
 			[...incoming, ...outgoing].forEach((connection: Connection) => {
@@ -3737,16 +3738,17 @@ export default mixins(
 		setSuspendRecordingDetachedConnections(suspend: boolean) {
 			this.suspendRecordingDetachedConnections = suspend;
 		},
-		// onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
-		// 	this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
-		// 	setTimeout(() => {
-		// 		const node = this.workflowsStore.getNodeByName(nodeName);
-		// 		if (node) {
-		// 			this.newInstance?.repaintEverything();
-		// 			this.onNodeMoved(node);
-		// 		}
-		// 	}, 0);
-		// },
+		onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
+			this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
+			const node = this.workflowsStore.getNodeByName(nodeName);
+			console.log("🚀 ~ file: NodeView.vue:3743 ~ onMoveNode ~ node", node);
+			if (node) {
+				this.newInstance?.repaintEverything();
+				this.onNodeMoved(node);
+			}
+			setTimeout(() => {
+			}, 0);
+		},
 		onRevertAddNode({ node }: { node: INodeUi }): void {
 			this.removeNode(node.name, false);
 		},
