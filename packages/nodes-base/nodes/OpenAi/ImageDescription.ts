@@ -69,8 +69,8 @@ const createOperations: INodeProperties[] = [
 		name: 'responseFormat',
 		type: 'options',
 		default: 'binaryData',
-		description: 'The format in which the images are returned',
-		displayOptions: { // When this block must be displayed
+		description: 'The format in which to return the image(s)',
+		displayOptions: {
 			show: {
 				resource: ['image'],
 				operation: ['create'],
