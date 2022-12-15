@@ -1,5 +1,6 @@
 import { Telemetry } from '@/telemetry';
 import config from '@/config';
+
 import { flushPromises } from './Helpers';
 
 jest.mock('@/license/License.service', () => {
