@@ -2682,7 +2682,7 @@ export default mixins(
 
 				if (
 					newNodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					newNodeData.credentials = Object.fromEntries(
