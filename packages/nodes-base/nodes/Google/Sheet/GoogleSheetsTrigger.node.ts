@@ -246,22 +246,32 @@ export class GoogleSheetsTrigger implements INodeType {
 					},
 					{
 						displayName: 'Data Location on Sheet',
-						name: 'locationDefine',
+						name: 'dataLocationOnSheet',
 						type: 'fixedCollection',
 						placeholder: 'Select Range',
-						default: { values: {} },
+						default: { values: { rangeDefinition: 'specifyRangeA1' } },
 						options: [
 							{
 								displayName: 'Values',
 								name: 'values',
 								values: [
 									{
-										displayName: 'Range',
-										name: 'range',
-										type: 'string',
+										displayName: 'Range Definition',
+										name: 'rangeDefinition',
+										type: 'options',
+										options: [
+											{
+												name: 'Specify Range (A1 Notation)',
+												value: 'specifyRangeA1',
+												description: 'Manually specify the data range',
+											},
+											{
+												name: 'Specify Range (Rows)',
+												value: 'specifyRange',
+												description: 'Manually specify the data range',
+											},
+										],
 										default: '',
-										placeholder: 'e.g. A2:D10',
-										description: 'The range of cells to return',
 									},
 									{
 										displayName: 'Header Row',
@@ -272,11 +282,11 @@ export class GoogleSheetsTrigger implements INodeType {
 										},
 										default: 1,
 										description:
-											'Index of the row which contains the keys. The incoming node data is matched to the keys for assignment. The matching is case-sensitive.',
-										hint: 'Row index starts from 1.',
+											'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+										hint: 'From start of range. First row is row 1',
 										displayOptions: {
-											hide: {
-												'/event': ['anyUpdate', 'rowUpdate'],
+											show: {
+												rangeDefinition: ['specifyRange'],
 											},
 										},
 									},
@@ -289,11 +299,26 @@ export class GoogleSheetsTrigger implements INodeType {
 										},
 										default: 2,
 										description:
-											'Index of the first row which contains the actual data. Usually 2, if the first row is used for the keys.',
-										hint: 'Row index starts from 1.',
+											'Index of the first row which contains the actual data and not the keys. Starts with 1.',
+										hint: 'From start of range. First row is row 1',
 										displayOptions: {
-											hide: {
-												'/event': ['anyUpdate', 'rowUpdate'],
+											show: {
+												rangeDefinition: ['specifyRange'],
+											},
+										},
+									},
+									{
+										displayName: 'Range',
+										name: 'range',
+										type: 'string',
+										default: '',
+										placeholder: 'A:Z',
+										description:
+											'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+										hint: 'You can specify both the rows and the columns, e.g. C4:E7',
+										displayOptions: {
+											show: {
+												rangeDefinition: ['specifyRangeA1'],
 											},
 										},
 									},
@@ -307,6 +332,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						type: 'options',
 						options: [
 							{
+								name: 'Unformatted',
+								value: 'UNFORMATTED_VALUE',
+								description: 'Values will be calculated, but not formatted in the reply',
+							},
+							{
 								name: 'Formatted',
 								value: 'FORMATTED_VALUE',
 								description:
@@ -316,11 +346,6 @@ export class GoogleSheetsTrigger implements INodeType {
 								name: 'Formula',
 								value: 'FORMULA',
 								description: 'Values will not be calculated. The reply will include the formulas.',
-							},
-							{
-								name: 'Unformatted',
-								value: 'UNFORMATTED_VALUE',
-								description: 'Values will be calculated, but not formatted in the reply',
 							},
 						],
 						default: 'UNFORMATTED_VALUE',
@@ -421,24 +446,43 @@ export class GoogleSheetsTrigger implements INodeType {
 			const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			const options = this.getNodeParameter('options') as IDataObject;
 
-			const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
-
-			let range = 'A:Z';
+			let range = 'A:ZZZ';
 			let keyRow = 1;
 			let startIndex = 2;
 
-			if (locationDefine) {
-				if (locationDefine.range) {
+			let isRangeDefinedInOptions = false;
+
+			const [from, to] = range.split(':');
+			let keyRange = `${from}${keyRow}:${to}${keyRow}`;
+			let rangeToCheck = `${from}${startIndex}:${to}`;
+
+			if (options.dataLocationOnSheet) {
+				const locationDefine = (options.dataLocationOnSheet as IDataObject).values as IDataObject;
+				const rangeDefinition = locationDefine.rangeDefinition as string;
+
+				if (rangeDefinition === 'specifyRangeA1') {
 					range = locationDefine.range as string;
+					isRangeDefinedInOptions = true;
 				}
-				if (locationDefine.headerRow) {
+
+				if (rangeDefinition === 'specifyRange') {
 					keyRow = parseInt(locationDefine.headerRow as string, 10);
-				}
-				if (locationDefine.firstDataRow) {
 					startIndex = parseInt(locationDefine.firstDataRow as string, 10);
 				}
 
-				delete options.locationDefine;
+				const [rangeFrom, rangeTo] = range.split(':');
+				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+
+				if (cellDataFrom[2] !== undefined) {
+					keyRow = +cellDataFrom[2];
+					startIndex = +cellDataFrom[2] + 1;
+				} else {
+					range = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
+				}
+
+				keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
+				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
 			}
 
 			const qs: IDataObject = {};
@@ -446,10 +490,6 @@ export class GoogleSheetsTrigger implements INodeType {
 			Object.assign(qs, options);
 
 			if (event === 'rowAdded') {
-				const [rangeFrom, rangeTo] = range.split(':');
-				const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
-				const rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
-
 				if (workflowStaticData.lastIndexChecked === undefined) {
 					workflowStaticData.lastIndexChecked = 0;
 				}
@@ -477,6 +517,8 @@ export class GoogleSheetsTrigger implements INodeType {
 
 				const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
 
+				console.log('addedRows', addedRows);
+
 				if (Array.isArray(sheetData)) {
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
@@ -489,17 +531,13 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 
 			if (event === 'anyUpdate' || event === 'rowUpdate') {
-				const sheetRange = locationDefine?.range
-					? `${sheetName}!${locationDefine.range}`
-					: sheetName;
+				const sheetRange = `${sheetName}!${range}`;
 
 				const currentData =
 					((await googleSheet.getData(
 						sheetRange,
 						'UNFORMATTED_VALUE',
 						'SERIAL_NUMBER',
-						// (options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
-						// (options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 					)) as string[][]) || [];
 
 				if (previousRevision === undefined) {
@@ -524,14 +562,10 @@ export class GoogleSheetsTrigger implements INodeType {
 					sheetBinaryToArrayOfArrays(
 						previousRevisionBinaryData,
 						sheetName,
-						locationDefine?.range as string,
+						isRangeDefinedInOptions ? range : undefined,
 					) || [];
 
 				const includeInOutput = this.getNodeParameter('includeInOutput', 'new') as string;
-
-				const [rangeFrom, _rangeTo] = range.split(':');
-				const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-				const startRowIndex = +(cellData[2] || 1);
 
 				let returnData;
 				if (options.columnsToWatch) {
@@ -541,7 +575,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						keyRow,
 						includeInOutput,
 						options.columnsToWatch as string[],
-						startRowIndex,
+						startIndex - 1,
 						event,
 					);
 				} else {
@@ -551,7 +585,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						keyRow,
 						includeInOutput,
 						[],
-						startRowIndex,
+						startIndex - 1,
 						event,
 					);
 				}
