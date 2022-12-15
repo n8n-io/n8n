@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
 	jsPlumbInstance,
@@ -75,19 +76,19 @@ declare module 'jsplumb' {
 			};
 		};
 
-		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
+		// bind(event: string, (connection: Connection): void;): void;
 		bind(event: string, callback: Function): void;
 		removeOverlay(name: string): void;
 		removeOverlays(): void;
-		setParameter(name: string, value: any): void; // tslint:disable-line:no-any
+		setParameter(name: string, value: any): void;
 		setPaintStyle(arg0: PaintStyle): void;
-		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
-		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
+		addOverlay(arg0: any[]): void;
+		setConnector(arg0: any[]): void;
 		getUuids(): [string, string];
 	}
 
 	interface Endpoint {
-		endpoint: any; // tslint:disable-line:no-any
+		endpoint: any;
 		elementId: string;
 		__meta?: {
 			nodeName: string;
@@ -96,7 +97,7 @@ declare module 'jsplumb' {
 			totalEndpoints: number;
 		};
 		getUuid(): string;
-		getOverlay(name: string): any; // tslint:disable-line:no-any
+		getOverlay(name: string): any;
 		repaint(params?: object): void;
 	}
 
@@ -219,7 +220,7 @@ export interface IRestApi {
 		firstId?: string | number,
 	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
 	getCredentialTranslation(credentialType: string): Promise<object>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
@@ -805,7 +806,6 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
-	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -954,6 +954,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
+	ownedBy: Partial<IUser>;
+	sharedWith: Array<Partial<IUser>>;
 }
 
 export interface WorkflowsState {

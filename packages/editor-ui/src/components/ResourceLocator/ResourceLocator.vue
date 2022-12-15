@@ -66,7 +66,7 @@
 						type="mapping"
 						:disabled="hasOnlyListMode"
 						:sticky="true"
-						:stickyOffset="4"
+						:stickyOffset="isValueExpression ? [26, 3] : [3, 3]"
 						@drop="onDrop"
 					>
 						<template #default="{ droppable, activeDrop }">
@@ -78,14 +78,12 @@
 								}"
 								@keydown.stop="onKeyDown"
 							>
-								<n8n-input
-									v-if="isValueExpression || droppable || forceShowExpression"
-									type="text"
-									:size="inputSize"
+								<ExpressionParameterInput
+									v-if="isValueExpression || forceShowExpression"
 									:value="expressionDisplayValue"
-									:title="displayTitle"
-									:disabled="isReadOnly"
-									@keydown.stop
+									isForRecordLocator
+									@valueChanged="onInputChange"
+									@modalOpenerClick="$emit('modalOpenerClick')"
 									ref="input"
 								/>
 								<n8n-input
@@ -120,6 +118,7 @@
 					<parameter-issues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
 						<n8n-link theme="text" @click.stop="openResource(urlValue)">
@@ -147,7 +146,7 @@ import {
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -178,6 +177,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
+		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
@@ -722,9 +722,8 @@ $--mode-selector-width: 92px;
 		align-items: center;
 		width: 100%;
 
-		div:first-child {
-			display: flex;
-			flex-grow: 1;
+		> div {
+			width: 100%;
 		}
 	}
 
@@ -744,7 +743,6 @@ $--mode-selector-width: 92px;
 
 .droppable {
 	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-2);
 	--input-border-style: dashed;
 }
 
@@ -789,6 +787,11 @@ $--mode-selector-width: 92px;
 }
 
 .openResourceLink {
+	width: 25px !important;
 	margin-left: var(--spacing-2xs);
+}
+
+.parameter-issues {
+	width: 25px !important;
 }
 </style>

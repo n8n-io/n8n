@@ -188,7 +188,8 @@ export default mixins(showMessage).extend({
 		focusOnTag(tagId: string) {
 			const tagOptions = (this.$refs.tag as Vue[]) || [];
 			if (tagOptions && tagOptions.length) {
-				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const added = tagOptions.find((ref: any) => ref.value === tagId);
 			}
 		},
 		focusOnInput() {

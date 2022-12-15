@@ -1,7 +1,7 @@
+import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
 import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { parser as jsParser } from '@lezer/javascript';
-import { parserWithMetaData as n8nParser } from './n8nLanguagePack';
 
 const parserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {

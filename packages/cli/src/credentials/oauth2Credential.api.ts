@@ -93,10 +93,12 @@ oauth2CredentialController.get(
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
 		if (
 			decryptedDataOriginal?.scope &&
 			credentialType.includes('OAuth2') &&
-			!['oAuth2Api'].includes(credentialType)
+			!genericOAuth2.includes(credentialType)
 		) {
 			delete decryptedDataOriginal.scope;
 		}

@@ -155,7 +155,7 @@ const onDragEnd = (el: HTMLElement) => {
 	span span {
 		color: var(--color-success);
 		border-color: var(--color-success-light);
-		background: var(--color-success-tint-3);
+		background-color: white;
 	}
 }
 
@@ -167,7 +167,7 @@ const onDragEnd = (el: HTMLElement) => {
 	span span {
 		color: var(--color-primary);
 		border-color: var(--color-primary-tint-1);
-		background: var(--color-primary-tint-3);
+		background-color: var(--color-primary-tint-3);
 	}
 }
 </style>
