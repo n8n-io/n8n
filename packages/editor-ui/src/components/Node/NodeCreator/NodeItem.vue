@@ -97,6 +97,7 @@ const draggableStyle = computed<{ top: string; left: string }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const displayName = computed<any>(() => {
 	const displayName = props.nodeType.displayName.trimEnd();
 

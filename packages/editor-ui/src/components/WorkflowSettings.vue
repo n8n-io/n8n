@@ -259,7 +259,10 @@
 						</div>
 					</el-col>
 				</el-row>
-				<div v-if="workflowSettings.executionTimeout > -1" data-test-id="workflow-settings-timeout-form">
+				<div
+					v-if="workflowSettings.executionTimeout > -1"
+					data-test-id="workflow-settings-timeout-form"
+				>
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
@@ -334,7 +337,11 @@ import {
 	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
 import Modal from './Modal.vue';
-import {EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY} from '../constants';
+import {
+	EnterpriseEditionFeature,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -409,7 +416,9 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			return this.workflowsStore.workflowId;
 		},
 		isWorkflowSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowSharing,
+			);
 		},
 	},
 	async mounted() {
