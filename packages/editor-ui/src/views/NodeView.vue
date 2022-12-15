@@ -13,7 +13,7 @@
 				@touchstart="mouseDown"
 				@touchend="mouseUp"
 				@touchmove="mouseMoveNodeWorkflow"
-
+				@mousedown="mouseDown"
 				v-touch:tap="touchTap"
 				@mouseup="mouseUp"
 				@wheel="canvasStore.wheelScroll"
@@ -2547,12 +2547,17 @@ export default mixins(
 				}
 
 				const uuid: [string, string] = [outputUuid, inputUuid];
-
+				// const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
+				// const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
+				// this.newInstance?.manage(sourceNode, outputUuid);
+				// this.newInstance?.manage(targetNode, inputUuid);
 				// Create connections in DOM
 				// @ts-ignore
 				this.newInstance?.connect({
 					uuids: uuid,
 					detachable: !this.isReadOnly,
+					// source: sourceNode,
+					// target: targetNode,
 				});
 			} else {
 				const connectionProperties = { connection, setStateDirty: false };
@@ -4069,6 +4074,7 @@ export default mixins(
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	// margin-left: 10px;
 }
 
 .node-input-endpoint-label {

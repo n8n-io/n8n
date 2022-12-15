@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node" :ref="data.name">
 		<div class="select-background" v-show="isSelected"></div>
 		<div
 			:class="{
@@ -8,11 +8,11 @@
 				'is-touch-device': isTouchDevice,
 			}"
 			:data-name="data.name"
-			:ref="data.name"
 		>
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
+				@mousedown="onClick"
 				@click.left="onClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -585,7 +585,6 @@ export default mixins(
 	position: absolute;
 	width: 100px;
 	height: 100px;
-	z-index: 10;
 
 	.node-description {
 		position: absolute;

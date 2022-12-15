@@ -136,9 +136,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 		newInstance.value = newJsPlumbInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
+			resizeObserver: false,
 			dragOptions: {
 				// cursor: 'pointer',
-
+				resizeObserver: false,
 				grid: { w: 20, h: 20 },
 			},
 		});

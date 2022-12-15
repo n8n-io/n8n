@@ -107,19 +107,18 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					// 	hoverClass: 'dropHover',
 					// },
 				};
+				console.log("🚀 ~ file: nodeBase.ts:110 ~ nodeTypeData.inputs.forEach ~ newEndpointData", newEndpointData);
 
-				if (nodeTypeData.inputNames) {
-					// Apply input names if they got set
-					newEndpointData.connectorOverlays = [
-						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]),
-					];
-				}
 
 				const endpoint = this.instance?.addEndpoint(
 					this.$refs[this.data.name] as Element,
 					newEndpointData,
 				);
-				if(!Array.isArray(endpoint)) {
+				if (nodeTypeData.inputNames) {
+					// Apply input names if they got set
+					endpoint.addOverlay(NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]));
+				}
+			if(!Array.isArray(endpoint)) {
 					endpoint.__meta = {
 						nodeName: node.name,
 						nodeId: this.nodeId,
@@ -189,17 +188,15 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 				};
 
-				if (nodeTypeData.outputNames) {
-					// Apply output names if they got set
-					newEndpointData.connectorOverlays = [
-						NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]),
-					];
-				}
 
 				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, newEndpointData);
 				console.log("🚀 ~ file: nodeBase.ts:195 ~ nodeTypeData.outputs.forEach ~ endpoint", endpoint);
-				// NodeViewUtils.addOutputEdnpointOverlay(endpoint);
-				// endpoint.addOverlay(NodeViewUtils.addOutputEdnpointOverlay);
+				if (nodeTypeData.outputNames) {
+					// Apply output names if they got set
+					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]);
+					const overlay = endpoint.addOverlay(overlaySpec);
+				}
+
 				if (!Array.isArray(endpoint)) {
 					endpoint.__meta = {
 						nodeName: node.name,

@@ -383,6 +383,8 @@ export class N8nConnector extends AbstractConnector {
 		const targetStub = isArray(this.stub) ? this.stub[1] : this.stub;
 		const segment = quadrant(params.sourcePos, targetPos);
 		const swapX = targetPos.curX < params.sourcePos.curX;
+		console.log("🚀 ~ file: N8nCustomConnector.ts:386 ~ N8nConnector ~ _getPaintInfo ~ targetPos.curX", targetPos.curX);
+		console.log("🚀 ~ file: N8nCustomConnector.ts:386 ~ N8nConnector ~ _getPaintInfo ~ swapX", swapX);
 		const swapY = targetPos.curY < params.sourcePos.curY;
 		const lw = params.strokeWidth || 1;
 		const x = swapX ? targetPos.curX : params.sourcePos.curX;
@@ -403,7 +405,7 @@ export class N8nConnector extends AbstractConnector {
 			so = [];
 			to = [];
 			so[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : 1;
-			to[indexNum] = params.sourcePos[index] > targetPos[index] ? 1 : -1;
+			to[indexNum] = params.sourcePos[index] > targetPos[index] ? -1 : -1;
 			so[oIndex] = 0;
 			to[oIndex] = 0;
 		}
@@ -480,13 +482,14 @@ export class N8nConnector extends AbstractConnector {
 		const paintInfo = this._getPaintInfo(connParams);
 		// Set the type of key as key of paintInfo
 		// TODO: Check if this is the best way to do this
-		Object.assign(originalPaintInfo, paintInfo);
-		// Object.keys(paintInfo).forEach((key) => {
-		// 	if(key === undefined) return;
-		// 	// override so that bounding box is calculated correctly when target override is set
-		// 	// originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
-		// });
+		// Object.assign(originalPaintInfo, paintInfo);
+		Object.keys(paintInfo).forEach((key) => {
+			if(key === undefined) return;
+			// override so that bounding box is calculated correctly when target override is set
+			originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
+		});
 
+		console.log("🚀 ~ file: N8nCustomConnector.ts:492 ~ N8nConnector ~ _compute ~ paintInfo.tx", paintInfo.tx);
 		try {
 			if (paintInfo.tx < 0) {
 				this._computeFlowchart(paintInfo);
@@ -507,6 +510,7 @@ export class N8nConnector extends AbstractConnector {
 		this.overrideTargetEndpoint = endpoint;
 	};
 	resetTargetEndpoint() {
+		console.log("🚀 ~ file: N8nCustomConnector.ts:511 ~ N8nConnector ~ resetTargetEndpoint ~ this.overrideTargetEndpoint", this.overrideTargetEndpoint);
 		this.overrideTargetEndpoint = null;
 	}
 	_computeBezier(paintInfo: PaintGeometry, p: ConnectorComputeParams) {

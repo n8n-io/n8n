@@ -486,11 +486,11 @@ importers:
       '@fortawesome/free-regular-svg-icons': ^6.1.1
       '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
-      '@jsplumb/browser-ui': ^5.12.6
-      '@jsplumb/common': ^5.12.6
-      '@jsplumb/connector-bezier': ^5.12.6
-      '@jsplumb/core': ^5.12.6
-      '@jsplumb/util': ^5.12.6
+      '@jsplumb/browser-ui': ^5.13.2
+      '@jsplumb/common': ^5.13.2
+      '@jsplumb/connector-bezier': ^5.13.2
+      '@jsplumb/core': ^5.13.2
+      '@jsplumb/util': ^5.13.2
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
@@ -568,10 +568,10 @@ importers:
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
       '@jsplumb/browser-ui': link:../../../jsplumb/dist/browser-ui
-      '@jsplumb/common': 5.12.6
-      '@jsplumb/connector-bezier': 5.12.6
-      '@jsplumb/core': 5.12.6
-      '@jsplumb/util': 5.12.6
+      '@jsplumb/common': 5.13.2
+      '@jsplumb/connector-bezier': 5.13.2
+      '@jsplumb/core': 5.13.2
+      '@jsplumb/util': 5.13.2
       axios: 0.21.4
       dateformat: 3.0.3
       esprima-next: 5.8.4
@@ -3225,26 +3225,26 @@ packages:
   /@jsdevtools/ono/7.1.3:
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
-  /@jsplumb/common/5.12.6:
-    resolution: {integrity: sha512-099DvG4jzZYszOirn+OBusKBWhPf38vYzfrwIN+v8AUjjx1S+7xdy7wWhFcCkCaXT6NTP6iV55s5Az42yDP/7Q==}
+  /@jsplumb/common/5.13.2:
+    resolution: {integrity: sha512-ZX/EvvYi4HBkRVtsuSSAa/AuAz4p2wr3RrRz6l+r8yeElzX3lrrBx/fkERY2qwZPkKcOoLCr5ezZ7sslVMnl0Q==}
     dependencies:
-      '@jsplumb/util': 5.12.6
+      '@jsplumb/util': 5.13.2
     dev: false
 
-  /@jsplumb/connector-bezier/5.12.6:
-    resolution: {integrity: sha512-uhui644WMHY56ZQdbvBaHwLXiSTE2btk8GP1emOffqvkq1+/fweZFu7LIMoqGj5DLOWF2TnSbWpyxYp5NnCkLg==}
+  /@jsplumb/connector-bezier/5.13.2:
+    resolution: {integrity: sha512-AALmOvkiP3ouGag6TGkBcd7SbCewPNwsKu9gku9AZqIq+fFu321zJ2IpfoyCFgkoFFSQjJ9jo1sWBbD3gnEXrg==}
     dependencies:
-      '@jsplumb/core': 5.12.6
+      '@jsplumb/core': 5.13.2
     dev: false
 
-  /@jsplumb/core/5.12.6:
-    resolution: {integrity: sha512-gubETYlESN4yk7gF0y1APmv35U5+rlJp4dGLI5KlFNuQouPMmOSu3GguJkK0orwGmmcJEDDj+US8jGqz2++rYw==}
+  /@jsplumb/core/5.13.2:
+    resolution: {integrity: sha512-IODXQzhpq9QEzGKhPir6+ea8m4KeU3gzJsYjIu8oqSQ4jDhvEYF7TvSfeaNgy9sUAMt3OoKCqxCS4ga9J7LS5A==}
     dependencies:
-      '@jsplumb/common': 5.12.6
+      '@jsplumb/common': 5.13.2
     dev: false
 
-  /@jsplumb/util/5.12.6:
-    resolution: {integrity: sha512-b+G3LGF/G4cDj/g919rlZPdveojWbPTneX7xzCJ3c62z6g7KCAuITP5LhhwQr/mTfUDcllzGkT4N6hGSXrVxFA==}
+  /@jsplumb/util/5.13.2:
+    resolution: {integrity: sha512-POrqlZMOo821oa49Xbxb+pNmnxu0z2oS7FOeklRxKuYXR+7nsP0j9PpXjo8E8Ily4TaP+pdUnatb53vAaONO3g==}
     dev: false
 
   /@kafkajs/confluent-schema-registry/1.0.6:

@@ -212,6 +212,7 @@ export const getInputNameOverlay = (label: string): OverlaySpec => ({
 		id: OVERLAY_INPUT_NAME_LABEL,
 		location: OVERLAY_INPUT_NAME_LABEL_POSITION,
 		label,
+		labelLocation: [1,3],
 		cssClass: 'node-input-endpoint-label',
 		visible: true,
 	},
@@ -223,14 +224,21 @@ export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (label: string): OverlaySpec => ({
-	type: 'Label',
+export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
+	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
-		location: [1.9, 0.5],
-		label,
-		cssClass: 'node-output-endpoint-label',
+		location: 2,
+		// label,
+		// cssClass: 'node-output-endpoint-label',
 		visible: true,
+		create: (component: any) => {
+			const label = document.createElement('div');
+			label.innerHTML = labelText;
+			label.classList.add('node-output-endpoint-label');
+			// component.getOverlay(OVERLAY_OUTPUT_NAME_LABEL).canvas.appendChild(label);
+			return label;
+		},
 	},
 });
 
@@ -692,7 +700,6 @@ export const getZoomToFit = (
 export const showDropConnectionState = (connection: Connection, targetEndpoint?: Endpoint) => {
 	if (connection && connection.connector) {
 		if (targetEndpoint) {
-			console.log("🚀 ~ file: nodeViewUtils.ts:655 ~ showDropConnectionState ~ connection.connector", connection.connector);
 			connection.connector.setTargetEndpoint(targetEndpoint);
 		}
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
@@ -742,6 +749,7 @@ export const addConnectionActionsOverlay = (
 		type: 'Custom',
 		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
+			location: [2, 19],
 			create: (component: any) => {
 				console.log("🚀 ~ file: nodeViewUtils.ts:745 ~ component", component);
 				const div = document.createElement('div');
