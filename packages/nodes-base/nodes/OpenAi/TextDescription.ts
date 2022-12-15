@@ -38,7 +38,7 @@ export const textOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Moderate',
-				value: 'createModeration',
+				value: 'moderate',
 				action: 'Create a Moderation',
 				description: "Classify if a text violates OpenAI's content policy",
 				routing: {
@@ -212,7 +212,7 @@ const editOperations: INodeProperties[] = [
 	},
 ];
 
-const createModerationOperations: INodeProperties[] = [
+const moderateOperations: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
@@ -222,7 +222,7 @@ const createModerationOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['text'],
-				operation: ['createModeration'],
+				operation: ['moderate'],
 			},
 		},
 		options: [
@@ -252,7 +252,7 @@ const createModerationOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['text'],
-				operation: ['createModeration'],
+				operation: ['moderate'],
 			},
 		},
 		default: '',
@@ -271,7 +271,7 @@ const createModerationOperations: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: ['createModeration'],
+				operation: ['moderate'],
 				resource: ['text'],
 			},
 		},
@@ -461,9 +461,9 @@ export const textFields: INodeProperties[] = [
 	...editOperations,
 
 	/* -------------------------------------------------------------------------- */
-	/*                                text:createModeration                       */
+	/*                                text:moderate                       */
 	/* -------------------------------------------------------------------------- */
-	...createModerationOperations,
+	...moderateOperations,
 
 	/* -------------------------------------------------------------------------- */
 	/*                                text:ALL                                    */
