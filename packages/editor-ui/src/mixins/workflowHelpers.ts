@@ -68,7 +68,6 @@ import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { ICredentialMap, ICredentialsResponse, IUsedCredential } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
 
