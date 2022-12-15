@@ -77,121 +77,113 @@ export function compareRevisions(
 	startRowIndex: number,
 	event: string,
 ) {
-	try {
-		const dataLength = current.length > previous.length ? current.length : previous.length;
+	const dataLength = current.length > previous.length ? current.length : previous.length;
 
-		const columnsRowIndex = keyRow - 1;
-		const columnsInCurrent = current[columnsRowIndex];
-		const columnsInPrevious = previous[columnsRowIndex];
+	const columnsRowIndex = keyRow - 1;
+	const columnsInCurrent = current[columnsRowIndex];
+	const columnsInPrevious = previous[columnsRowIndex];
 
-		let columns: SheetDataRow = ['row_number'];
-		if (columnsInCurrent !== undefined && columnsInPrevious !== undefined) {
-			columns =
-				columnsInCurrent.length > columnsInPrevious.length
-					? columns.concat(columnsInCurrent)
-					: columns.concat(columnsInPrevious);
-		} else if (columnsInCurrent !== undefined) {
-			columns = columns.concat(columnsInCurrent);
-		} else if (columnsInPrevious !== undefined) {
-			columns = columns.concat(columnsInPrevious);
+	let columns: SheetDataRow = ['row_number'];
+	if (columnsInCurrent !== undefined && columnsInPrevious !== undefined) {
+		columns =
+			columnsInCurrent.length > columnsInPrevious.length
+				? columns.concat(columnsInCurrent)
+				: columns.concat(columnsInPrevious);
+	} else if (columnsInCurrent !== undefined) {
+		columns = columns.concat(columnsInCurrent);
+	} else if (columnsInPrevious !== undefined) {
+		columns = columns.concat(columnsInPrevious);
+	}
+
+	const diffData: Array<{
+		rowIndex: number;
+		previous: SheetDataRow;
+		current: SheetDataRow;
+	}> = [];
+
+	for (let i = 0; i < dataLength; i++) {
+		if (i === columnsRowIndex) {
+			continue;
 		}
 
-		const diffData: Array<{
-			rowIndex: number;
-			previous: SheetDataRow;
-			current: SheetDataRow;
-		}> = [];
-
-		for (let i = 0; i < dataLength; i++) {
-			if (i === columnsRowIndex) {
-				continue;
+		// sheets API omits trailing empty columns, xlsx does not - so we need to pad the shorter array
+		if (Array.isArray(current[i]) && Array.isArray(previous[i])) {
+			while (current[i].length < previous[i].length) {
+				current[i].push('');
 			}
-
-			// sheets API omits trailing empty columns, xlsx does not - so we need to pad the shorter array
-			if (Array.isArray(current[i]) && Array.isArray(previous[i])) {
-				while (current[i].length < previous[i].length) {
-					current[i].push('');
-				}
-			}
-
-			// if columnsToWatch is defined, only compare those columns
-			if (columnsToWatch?.length) {
-				const currentRow = current[i]
-					? columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1])
-					: [];
-				const previousRow = previous[i]
-					? columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1])
-					: [];
-
-				if (isEqual(currentRow, previousRow)) continue;
-			} else {
-				if (isEqual(current[i], previous[i])) continue;
-			}
-
-			if (event === 'rowUpdate' && (!previous[i] || previous[i].every((cell) => cell === '')))
-				continue;
-
-			if (previous[i] === undefined) {
-				previous[i] = current[i].map(() => '');
-			}
-
-			diffData.push({
-				rowIndex: i + startRowIndex,
-				previous: previous[i],
-				current: current[i],
-			});
 		}
 
-		if (includeInOutput === 'old') {
-			return arrayOfArraysToJson(
-				diffData.map(({ previous: entry, rowIndex }) =>
-					entry ? [rowIndex, ...entry] : [rowIndex],
-				),
-				columns,
-			);
-		}
-		if (includeInOutput === 'both') {
-			const previousData = arrayOfArraysToJson(
-				diffData.map(({ previous: entry, rowIndex }) =>
-					entry ? [rowIndex, ...entry] : [rowIndex],
-				),
-				columns,
-			).map((row) => ({ previous: row }));
+		// if columnsToWatch is defined, only compare those columns
+		if (columnsToWatch?.length) {
+			const currentRow = current[i]
+				? columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1])
+				: [];
+			const previousRow = previous[i]
+				? columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1])
+				: [];
 
-			const currentData = arrayOfArraysToJson(
-				diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-				columns,
-			).map((row) => ({ current: row }));
-
-			const differences = currentData.map(({ current: currentRow }, index) => {
-				const { row_number, ...rest } = currentRow;
-				const returnData: IDataObject = {};
-				returnData.row_number = row_number;
-
-				Object.keys(rest).forEach((key) => {
-					const previousValue = previousData[index].previous[key];
-					const currentValue = currentRow[key];
-
-					if (isEqual(previousValue, currentValue)) return;
-
-					returnData[key] = {
-						previous: previousValue,
-						current: currentValue,
-					};
-				});
-				return { differences: returnData };
-			});
-
-			return zip(previousData, currentData, differences).map((row) => Object.assign({}, ...row));
+			if (isEqual(currentRow, previousRow)) continue;
+		} else {
+			if (isEqual(current[i], previous[i])) continue;
 		}
 
+		if (event === 'rowUpdate' && (!previous[i] || previous[i].every((cell) => cell === '')))
+			continue;
+
+		if (previous[i] === undefined) {
+			previous[i] = current[i].map(() => '');
+		}
+
+		diffData.push({
+			rowIndex: i + startRowIndex,
+			previous: previous[i],
+			current: current[i],
+		});
+	}
+
+	if (includeInOutput === 'old') {
 		return arrayOfArraysToJson(
-			diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
 			columns,
 		);
-	} catch (error) {
-		throw error;
 	}
+	if (includeInOutput === 'both') {
+		const previousData = arrayOfArraysToJson(
+			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+			columns,
+		).map((row) => ({ previous: row }));
+
+		const currentData = arrayOfArraysToJson(
+			diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+			columns,
+		).map((row) => ({ current: row }));
+
+		const differences = currentData.map(({ current: currentRow }, index) => {
+			const { row_number, ...rest } = currentRow;
+			const returnData: IDataObject = {};
+			returnData.row_number = row_number;
+
+			Object.keys(rest).forEach((key) => {
+				const previousValue = previousData[index].previous[key];
+				const currentValue = currentRow[key];
+
+				if (isEqual(previousValue, currentValue)) return;
+
+				returnData[key] = {
+					previous: previousValue,
+					current: currentValue,
+				};
+			});
+			return { differences: returnData };
+		});
+
+		return zip(previousData, currentData, differences).map((row) => Object.assign({}, ...row));
+	}
+
+	return arrayOfArraysToJson(
+		diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+		columns,
+	);
 }
 
 export function columnNumberToLetter(colNumber: number) {

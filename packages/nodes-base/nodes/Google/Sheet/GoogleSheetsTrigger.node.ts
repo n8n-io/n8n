@@ -562,7 +562,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		} catch (error) {
 			if (
-				error?.error?.error?.message &&
+				error?.error?.error?.message !== undefined &&
 				!(error.error.error.message as string).toLocaleLowerCase().includes('unknown error') &&
 				!(error.error.error.message as string).toLocaleLowerCase().includes('bad request')
 			) {
