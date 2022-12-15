@@ -75,6 +75,7 @@ export function compareRevisions(
 	includeInOutput: string,
 	columnsToWatch: string[],
 	startRowIndex: number,
+	event: string,
 ) {
 	try {
 		const dataLength = current.length > previous.length ? current.length : previous.length;
@@ -127,7 +128,12 @@ export function compareRevisions(
 				if (isEqual(current[i], previous[i])) continue;
 			}
 
-			if (!previous[i] || previous[i].every((cell) => cell === '')) continue;
+			if (event === 'rowUpdate' && (!previous[i] || previous[i].every((cell) => cell === '')))
+				continue;
+
+			if (previous[i] === undefined) {
+				previous[i] = current[i].map(() => '');
+			}
 
 			diffData.push({
 				rowIndex: i + startRowIndex,

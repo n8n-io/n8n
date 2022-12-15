@@ -182,6 +182,12 @@ export class GoogleSheetsTrigger implements INodeType {
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'Rows(s) updated',
+						value: 'rowUpdate',
+					},
+					// eslint-disable-next-line n8n-nodes-base/node-param-option-value-duplicate
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'Rows(s) added or updated',
 						value: 'anyUpdate',
 					},
 				],
@@ -234,7 +240,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						default: [],
 						displayOptions: {
 							show: {
-								'/event': ['anyUpdate'],
+								'/event': ['anyUpdate', 'rowUpdate'],
 							},
 						},
 					},
@@ -270,7 +276,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										hint: 'Row index starts from 1.',
 										displayOptions: {
 											hide: {
-												'/event': ['anyUpdate'],
+												'/event': ['anyUpdate', 'rowUpdate'],
 											},
 										},
 									},
@@ -287,7 +293,7 @@ export class GoogleSheetsTrigger implements INodeType {
 										hint: 'Row index starts from 1.',
 										displayOptions: {
 											hide: {
-												'/event': ['anyUpdate'],
+												'/event': ['anyUpdate', 'rowUpdate'],
 											},
 										},
 									},
@@ -322,7 +328,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							'Determines how values will be rendered in the output. <a href="https://developers.google.com/sheets/api/reference/rest/v4/ValueRenderOption" target="_blank">More info</a>.',
 						displayOptions: {
 							hide: {
-								'/event': ['anyUpdate'],
+								'/event': ['anyUpdate', 'rowUpdate'],
 							},
 						},
 					},
@@ -349,7 +355,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							'Determines how dates should be rendered in the output.  <a href="https://developers.google.com/sheets/api/reference/rest/v4/DateTimeRenderOption" target="_blank">More info</a>.',
 						displayOptions: {
 							hide: {
-								'/event': ['anyUpdate'],
+								'/event': ['anyUpdate', 'rowUpdate'],
 							},
 						},
 					},
@@ -482,7 +488,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				}
 			}
 
-			if (event === 'anyUpdate') {
+			if (event === 'anyUpdate' || event === 'rowUpdate') {
 				const sheetRange = locationDefine?.range
 					? `${sheetName}!${locationDefine.range}`
 					: sheetName;
@@ -536,6 +542,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						includeInOutput,
 						options.columnsToWatch as string[],
 						startRowIndex,
+						event,
 					);
 				} else {
 					returnData = compareRevisions(
@@ -545,6 +552,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						includeInOutput,
 						[],
 						startRowIndex,
+						event,
 					);
 				}
 
