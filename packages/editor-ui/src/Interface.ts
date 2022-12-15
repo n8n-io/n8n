@@ -805,7 +805,6 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
-	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -954,6 +953,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
+	ownedBy: Partial<IUser>;
+	sharedWith: Array<Partial<IUser>>;
 }
 
 export interface WorkflowsState {

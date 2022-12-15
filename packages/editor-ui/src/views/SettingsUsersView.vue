@@ -30,7 +30,7 @@
 			<n8n-action-box
 				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="$locale.baseText('settings.users.setupToInviteUsersInfo')"
+				:description="`${isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')}${$locale.baseText('settings.users.setupSMTPInfo')}`"
 				@click="redirectToSetup"
 			/>
 		</div>
@@ -51,7 +51,11 @@
 </template>
 
 <script lang="ts">
-import { INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
+import {
+	EnterpriseEditionFeature,
+	INVITE_USER_MODAL_KEY,
+	VIEWS,
+} from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
@@ -74,6 +78,9 @@ export default mixins(showMessage).extend({
 	},
 	computed: {
 		...mapStores(useSettingsStore, useUIStore, useUsersStore),
+		isSharingEnabled() {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
 	},
 	methods: {
 		redirectToSetup() {
