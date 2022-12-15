@@ -113,7 +113,7 @@
 				>
 					<template #suffix>
 						<n8n-icon
-							v-if="!isReadOnly"
+							v-if="!isReadOnly && !isSecretParameter"
 							icon="external-link-alt"
 							size="xsmall"
 							class="edit-window-button textarea-modal-opener"
@@ -769,6 +769,9 @@ export default mixins(
 		},
 		isResourceLocatorParameter(): boolean {
 			return this.parameter.type === 'resourceLocator';
+		},
+		isSecretParameter(): boolean {
+			return this.getArgument('password') === true;
 		},
 	},
 	methods: {
