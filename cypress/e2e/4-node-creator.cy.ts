@@ -33,6 +33,7 @@ describe('Node Creator', () => {
 		}).as('nodesIntercept');
 
 		cy.visit(nodeCreatorFeature.url);
+		cy.waitForLoad();
 	});
 
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
@@ -94,7 +95,6 @@ describe('Node Creator', () => {
 	})
 
 	it('should add manual trigger node', () => {
-		cy.get('.el-loading-mask').should('not.exist');
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
 

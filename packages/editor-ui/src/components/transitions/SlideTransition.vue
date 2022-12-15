@@ -21,5 +21,4 @@ export default Vue.extend({
 .slide-enter {
 	transform: translateX(100%);
 }
-
 </style>

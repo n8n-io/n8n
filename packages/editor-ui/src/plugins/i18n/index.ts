@@ -7,15 +7,13 @@ import {
 	isNestedInCollectionLike,
 	normalize,
 	insertOptionsAndValues,
-} from "./utils";
-import {
-	locale,
-} from 'n8n-design-system';
+} from './utils';
+import { locale } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
-import { useUIStore } from "@/stores/ui";
-import { useNDVStore } from "@/stores/ndv";
-import {INodeProperties, INodePropertyCollection, INodePropertyOptions} from "n8n-workflow";
+import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
+import { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -26,16 +24,19 @@ export function I18nPlugin(vue: typeof Vue): void {
 	i18n = new I18nClass();
 
 	Object.defineProperty(vue, '$locale', {
-		get() { return i18n; },
+		get() {
+			return i18n;
+		},
 	});
 
 	Object.defineProperty(vue.prototype, '$locale', {
-		get() { return i18n; },
+		get() {
+			return i18n;
+		},
 	});
 }
 
 export class I18nClass {
-
 	private get i18n(): VueI18n {
 		return i18nInstance;
 	}
@@ -73,9 +74,7 @@ export class I18nClass {
 	/**
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
-	private dynamicRender(
-		{ key, fallback }: { key: string; fallback?: string; },
-	) {
+	private dynamicRender({ key, fallback }: { key: string; fallback?: string }) {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback ?? '';
 	}
 
@@ -83,27 +82,24 @@ export class I18nClass {
 	 * Render a string of header text (a node's name and description),
 	 * used variously in the nodes panel, under the node icon, etc.
 	 */
-	headerText(arg: { key: string; fallback: string; }) {
+	headerText(arg: { key: string; fallback: string }) {
 		return this.dynamicRender(arg);
 	}
 
 	/**
 	 * Namespace for methods to render text in the credentials details modal.
 	 */
-	credText () {
+	credText() {
 		const uiStore = useUIStore();
 		const credentialType = uiStore.activeCredentialType;
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 
 		return {
-
 			/**
 			 * Display name for a top-level param.
 			 */
-			inputLabelDisplayName(
-				{ name: parameterName, displayName }: INodeProperties,
-			) {
+			inputLabelDisplayName({ name: parameterName, displayName }: INodeProperties) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
 						key: `_reusableDynamicText.oauth2.${parameterName}`,
@@ -120,9 +116,7 @@ export class I18nClass {
 			/**
 			 * Hint for a top-level param.
 			 */
-			hint(
-				{ name: parameterName, hint }: INodeProperties,
-			) {
+			hint({ name: parameterName, hint }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
 					fallback: hint,
@@ -132,9 +126,7 @@ export class I18nClass {
 			/**
 			 * Description (tooltip text) for an input label param.
 			 */
-			inputLabelDescription(
-				{ name: parameterName, description }: INodeProperties,
-			) {
+			inputLabelDescription({ name: parameterName, description }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
 					fallback: description,
@@ -170,9 +162,7 @@ export class I18nClass {
 			/**
 			 * Placeholder for a `string` param.
 			 */
-			placeholder(
-				{ name: parameterName, placeholder }: INodeProperties,
-			) {
+			placeholder({ name: parameterName, placeholder }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
 					fallback: placeholder,
@@ -185,7 +175,7 @@ export class I18nClass {
 	 * Namespace for methods to render text in the node details view,
 	 * except for `eventTriggerDescription`.
 	 */
-	nodeText () {
+	nodeText() {
 		const ndvStore = useNDVStore();
 		const activeNode = ndvStore.activeNode;
 		const nodeType = activeNode ? this.shortNodeType(activeNode.type as string) : ''; // unused in eventTriggerDescription
@@ -196,10 +186,7 @@ export class I18nClass {
 			/**
 			 * Display name for an input label, whether top-level or nested.
 			 */
-			inputLabelDisplayName(
-				parameter: INodeProperties,
-				path: string,
-			) {
+			inputLabelDisplayName(parameter: INodeProperties, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -211,10 +198,7 @@ export class I18nClass {
 			/**
 			 * Description (tooltip text) for an input label, whether top-level or nested.
 			 */
-			inputLabelDescription(
-				parameter: INodeProperties,
-				path: string,
-			) {
+			inputLabelDescription(parameter: INodeProperties, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -226,10 +210,7 @@ export class I18nClass {
 			/**
 			 * Hint for an input, whether top-level or nested.
 			 */
-			hint(
-				parameter: INodeProperties,
-				path: string,
-			) {
+			hint(parameter: INodeProperties, path: string) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
@@ -244,10 +225,7 @@ export class I18nClass {
 			 * - For an input label, the placeholder is unselectable greyed-out sample text.
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
-			placeholder(
-				parameter: INodeProperties,
-				path: string,
-			) {
+			placeholder(parameter: INodeProperties, path: string) {
 				let middleKey = parameter.name;
 
 				if (isNestedInCollectionLike(path)) {
@@ -332,19 +310,14 @@ export class I18nClass {
 			 * Text for a button to add another option inside a `collection` or
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
-			multipleValueButtonText(
-				{ name: parameterName, typeOptions}: INodeProperties,
-			) {
+			multipleValueButtonText({ name: parameterName, typeOptions }: INodeProperties) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
 					fallback: typeOptions?.multipleValueButtonText,
 				});
 			},
 
-			eventTriggerDescription(
-				nodeType: string,
-				eventTriggerDescription: string,
-			) {
+			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
 					fallback: eventTriggerDescription,
@@ -361,7 +334,9 @@ export const i18nInstance = new VueI18n({
 	silentTranslationWarn: true,
 });
 
-locale.i18n((key: string, options?: {interpolate: object}) => i18nInstance.t(key, options && options.interpolate));
+locale.i18n((key: string, options?: { interpolate: object }) =>
+	i18nInstance.t(key, options && options.interpolate),
+);
 
 const loadedLanguages = ['en'];
 
@@ -416,10 +391,7 @@ export function addNodeTranslation(
 	};
 
 	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(
-			oldNodesBase,
-			{ nodes: updatedNodes },
-		),
+		'n8n-nodes-base': Object.assign(oldNodesBase, { nodes: updatedNodes }),
 	};
 
 	i18nInstance.setLocaleMessage(
@@ -444,10 +416,7 @@ export function addCredentialTranslation(
 	};
 
 	const newNodesBase = {
-		'n8n-nodes-base': Object.assign(
-			oldNodesBase,
-			{ credentials: updatedCredentials },
-		),
+		'n8n-nodes-base': Object.assign(oldNodesBase, { credentials: updatedCredentials }),
 	};
 
 	i18nInstance.setLocaleMessage(
@@ -459,10 +428,7 @@ export function addCredentialTranslation(
 /**
  * Add a node's header strings to the i18n instance's `messages` object.
  */
-export function addHeaders(
-	headers: INodeTranslationHeaders,
-	language: string,
-) {
+export function addHeaders(headers: INodeTranslationHeaders, language: string) {
 	i18nInstance.setLocaleMessage(
 		language,
 		Object.assign(i18nInstance.messages[language], { headers }),
@@ -479,12 +445,10 @@ declare module 'vue/types/vue' {
 	}
 }
 
-type GetBaseTextKey<T> = T extends `_${string}` ? never :  T;
+type GetBaseTextKey<T> = T extends `_${string}` ? never : T;
 
 export type BaseTextKey = GetBaseTextKey<keyof typeof englishBaseText>;
 
-type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}`
-	? C
-	: never;
+type GetCategoryName<T> = T extends `nodeCreator.categoryNames.${infer C}` ? C : never;
 
 export type CategoryName = GetCategoryName<keyof typeof englishBaseText>;
