@@ -23,7 +23,8 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
 		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-		successToast: () => cy.get('.el-notification__title'),
+		successToast: () => cy.get('.el-notification .el-icon-success'),
+		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -58,6 +59,8 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsTimeoutWorkflowSwitch: () => cy.getByTestId('workflow-settings-timeout-workflow'),
 		workflowSettingsTimeoutForm: () => cy.getByTestId('workflow-settings-timeout-form'),
 		workflowSettingsSaveButton: () => cy.getByTestId('workflow-settings-save-button').find('button'),
+
+		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 	};
 	actions = {
 		visit: () => {
