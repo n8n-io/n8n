@@ -206,6 +206,12 @@ export default mixins(showMessage, restApi).extend({
 					name: WORKFLOW_SHARE_MODAL_KEY,
 					data: { id: this.data.id },
 				});
+
+				this.$telemetry.track('User opened sharing modal', {
+					workflow_id: this.data.id,
+					user_id_sharer: this.currentUser.id,
+					sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {

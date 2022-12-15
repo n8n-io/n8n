@@ -68,6 +68,7 @@ import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
+import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
 
 let cachedWorkflowKey: string | null = '';
@@ -85,6 +86,9 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 			useUsersStore,
 			useUIStore,
 		),
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(this.usersStore.currentUser, this.workflowsStore.workflow);
+		},
 	},
 	methods: {
 		executeData(
@@ -827,6 +831,11 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				this.uiStore.removeActiveAction('workflowSaving');
 
 				if (error.errorCode === 100) {
+					this.$telemetry.track('User attempted to save locked workflow', {
+						workflowId: currentWorkflow,
+						sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
+					});
+
 					const url = this.$router.resolve({
 						name: VIEWS.WORKFLOW,
 						params: { name: currentWorkflow },

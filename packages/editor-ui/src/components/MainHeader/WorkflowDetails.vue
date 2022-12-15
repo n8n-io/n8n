@@ -139,7 +139,13 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import { IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare, NestedRecord } from '@/Interface';
+import {
+	IUser,
+	IWorkflowDataUpdate,
+	IWorkflowDb,
+	IWorkflowToShare,
+	NestedRecord,
+} from '@/Interface';
 
 import { saveAs } from 'file-saver';
 import { titleChange } from '@/mixins/titleChange';
@@ -194,6 +200,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 			useWorkflowsStore,
 			useUsersStore,
 		),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
 		dynamicTranslations(): NestedRecord<string> {
 			return this.uiStore.dynamicTranslations;
 		},
@@ -301,6 +310,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 			this.uiStore.openModalWithData({
 				name: WORKFLOW_SHARE_MODAL_KEY,
 				data: { id: this.currentWorkflowId },
+			});
+
+			this.$telemetry.track('User opened sharing modal', {
+				workflow_id: this.currentWorkflowId,
+				user_id_sharer: this.currentUser?.id,
+				sub_view: this.$route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
 			});
 		},
 		onTagsEditEnable() {
