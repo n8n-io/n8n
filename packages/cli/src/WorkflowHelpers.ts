@@ -102,6 +102,7 @@ export async function executeErrorWorkflow(
 			// 2) if now instance owner, then check if the user has access to the
 			//    triggered workflow.
 
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
@@ -580,6 +581,7 @@ export function validateWorkflowCredentialUsage(
 			nodeName: node.name,
 			nodeId: node.id,
 		});
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
 			(previousNode) => previousNode.id === node.id,
 		)!;

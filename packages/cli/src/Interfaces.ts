@@ -19,7 +19,6 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
-	INode,
 } from 'n8n-workflow';
 
 import { WorkflowExecute } from 'n8n-core';
