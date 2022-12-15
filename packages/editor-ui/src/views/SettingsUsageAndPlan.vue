@@ -92,7 +92,13 @@ const onDialogOpened = () => {
 	<div v-if="!usageStore.isLoading">
 		<n8n-heading size="2xlarge">{{ $locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-heading :class="$style.title" size="large">
-			{{ $locale.baseText('settings.usageAndPlan.plan', { interpolate: {plan: usageStore.planName } } ) }}
+			<i18n path="settings.usageAndPlan.description">
+				<template #name>{{ usageStore.planName }}</template>
+				<template #type>
+					<span v-if="usageStore.planId">{{ $locale.baseText('settings.usageAndPlan.plan') }}</span>
+					<span v-else>{{ $locale.baseText('settings.usageAndPlan.edition') }}</span>
+				</template>
+			</i18n>
 		</n8n-heading>
 		<div :class="$style.quota">
 			<n8n-text size="medium" color="text-light">{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}</n8n-text>

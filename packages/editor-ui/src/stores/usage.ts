@@ -16,7 +16,6 @@ export type UsageTelemetry = {
 };
 
 const SUBSCRIPTION_APP_URL = 'https://staging-subscription.n8n.io';
-const DEFAULT_PLAN_ID = 'community';
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
 	loading: true,
@@ -31,7 +30,7 @@ const DEFAULT_STATE: UsageState = {
 			},
 		},
 		license: {
-			planId: DEFAULT_PLAN_ID,
+			planId: '',
 			planName: DEFAULT_PLAN_NAME,
 		},
 	},
@@ -43,6 +42,16 @@ export const useUsageStore = defineStore('usage', () => {
 	const usersStore = useUsersStore();
 
 	const state = reactive<UsageState>(DEFAULT_STATE);
+
+	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
+	const planId = computed(() => state.data.license.planId);
+	const executionLimit = computed(() => state.data.usage.executions.limit);
+	const executionCount = computed(() => state.data.usage.executions.value);
+	const executionPercentage = computed(() => executionCount.value / executionLimit.value * 100);
+	const instanceId = computed(() => settingsStore.settings.instanceId);
+	const managementToken = computed(() => state.data.managementToken);
+	const appVersion = computed(() => settingsStore.settings.versionCli);
+	const commonSubscriptionAppUrlQueryParams = computed(() => `instanceid=${instanceId.value}&version=${appVersion.value}`);
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -67,7 +76,12 @@ export const useUsageStore = defineStore('usage', () => {
 			setData(data);
 			state.success = {
 				title: i18n.baseText('settings.usageAndPlan.activation.success.title'),
-				message: i18n.baseText('settings.usageAndPlan.activation.success.message', { interpolate: { planName: state.data.license.planName || DEFAULT_PLAN_NAME } } ),
+				message: i18n.baseText('settings.usageAndPlan.activation.success.message', {
+					interpolate: {
+						name: state.data.license.planName || DEFAULT_PLAN_NAME,
+						type: planId.value ? i18n.baseText('settings.usageAndPlan.plan') : i18n.baseText('settings.usageAndPlan.edition'),
+					},
+				}),
 			};
 		} catch (error) {
 			state.error = error;
@@ -84,15 +98,6 @@ export const useUsageStore = defineStore('usage', () => {
 		}
 	};
 
-	const planName = computed(() => state.data.license.planName || DEFAULT_PLAN_NAME);
-	const executionLimit = computed(() => state.data.usage.executions.limit);
-	const executionCount = computed(() => state.data.usage.executions.value);
-	const executionPercentage = computed(() => executionCount.value / executionLimit.value * 100);
-	const instanceId = computed(() => settingsStore.settings.instanceId);
-	const managementToken = computed(() => state.data.managementToken);
-	const appVersion = computed(() => settingsStore.settings.versionCli);
-	const commonSubscriptionAppUrlQueryParams = computed(() => `instanceid=${instanceId.value}&version=${appVersion.value}`);
-
 	return {
 		setLoading,
 		getLicenseInfo,
@@ -100,6 +105,7 @@ export const useUsageStore = defineStore('usage', () => {
 		activateLicense,
 		refreshLicenseManagementToken,
 		planName,
+		planId,
 		executionLimit,
 		executionCount,
 		executionPercentage,
