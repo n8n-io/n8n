@@ -444,14 +444,16 @@ export default mixins(
 				shortcuts: [
 					{
 						text: 'Today', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							picker.$emit('pick', new Date());
 						},
 					},
 					{
 						text: 'Yesterday', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
@@ -460,7 +462,8 @@ export default mixins(
 					},
 					{
 						text: 'A week ago', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
