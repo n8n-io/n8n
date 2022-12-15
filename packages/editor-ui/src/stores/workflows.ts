@@ -557,7 +557,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			][sourceData.index]) {
 				for (propertyName of checkProperties) {
 					if (
-						// tslint:disable-next-line:no-any
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						(existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]
 					) {
 						continue connectionLoop;

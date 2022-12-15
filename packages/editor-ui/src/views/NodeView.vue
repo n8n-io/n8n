@@ -2401,6 +2401,7 @@ export default mixins(
 			this.canvasStore.setZoomLevel(1, 0);
 			this.canvasStore.zoomToFit();
 		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		tryToAddWelcomeSticky: once(async function (this: any) {
 			const newWorkflow = this.workflowData;
 			if (window.posthog?.getFeatureFlag?.('welcome-note') === 'test') {

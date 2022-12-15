@@ -259,7 +259,10 @@
 						</div>
 					</el-col>
 				</el-row>
-				<div v-if="workflowSettings.executionTimeout > -1" data-test-id="workflow-settings-timeout-form">
+				<div
+					v-if="workflowSettings.executionTimeout > -1"
+					data-test-id="workflow-settings-timeout-form"
+				>
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}

@@ -428,6 +428,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				try {
 					parameters = JSON.parse(parameters) as {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						[key: string]: any;
 					};
 
