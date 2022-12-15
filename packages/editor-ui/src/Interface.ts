@@ -953,6 +953,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
+	ownedBy: Partial<IUser>;
+	sharedWith: Array<Partial<IUser>>;
 }
 
 export interface WorkflowsState {
