@@ -1,8 +1,6 @@
 import Vue from 'vue';
 
-import {
-	WorkflowTitleStatus,
-} from '../../Interface';
+import { WorkflowTitleStatus } from '../../Interface';
 
 export const titleChange = Vue.extend({
 	methods: {
@@ -12,6 +10,7 @@ export const titleChange = Vue.extend({
 		 * @param {string} workflow Name of workflow
 		 * @param {WorkflowTitleStatus} status Status of workflow
 		 */
+
 		$titleSet(workflow: string, status: WorkflowTitleStatus) {
 			let icon = '⚠️';
 			if (status === 'EXECUTING') {
@@ -20,12 +19,11 @@ export const titleChange = Vue.extend({
 				icon = '▶️';
 			}
 
-			window.document.title = `n8n - ${icon} ${workflow}`;
+			window.document.title = `REVREBEL - ${icon} ${workflow}`;
 		},
 
 		$titleReset() {
-			document.title = `n8n - Workflow Automation`;
+			document.title = `WORKFLOW BY REVREBEL`;
 		},
-
 	},
 });

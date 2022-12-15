@@ -1,0 +1,13 @@
+(?d).DS_Store
+(?d).cache
+(?d).Spotlight-V100
+(?d).Trashes
+!frobble
+!quuz
+foo
+*2
+qu*
+(?i)my pictures
+(?d)desktop.ini
+(?d)ehthumbs.db
+(?d)Thumbs.db
