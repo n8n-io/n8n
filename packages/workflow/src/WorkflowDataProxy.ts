@@ -48,6 +48,10 @@ const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	return node && SCRIPTING_NODE_TYPES.includes(node.type);
 };
 
+const isProcessAvailable = 'process' in globalThis;
+
+const isEnvAllowed = isProcessAvailable && process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE !== 'true';
+
 export class WorkflowDataProxy {
 	private workflow: Workflow;
 
@@ -456,24 +460,22 @@ export class WorkflowDataProxy {
 	 * @private
 	 */
 	private envGetter() {
-		const that = this;
+		const { runIndex, itemIndex } = this;
 		return new Proxy(
 			{},
 			{
 				get(target, name, receiver) {
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
+					if (!isProcessAvailable) {
+						return '[no preview available for $env expressions]';
+					}
+
+					if (!isEnvAllowed) {
 						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'if you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
+							runIndex,
+							itemIndex,
 							failExecution: true,
-						});
-					}
-					if (typeof process === 'undefined') {
-						throw new ExpressionError('no preview available for $env expressions', {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
 						});
 					}
 					return process.env[name.toString()];
