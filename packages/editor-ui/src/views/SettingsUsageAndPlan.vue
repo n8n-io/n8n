@@ -112,12 +112,14 @@ const onDialogOpened = () => {
 		<n8n-info-tip>
 			<i18n path="settings.usageAndPlan.activeWorkflows.hint">
 				<template #link>
-					<a @click="onContactUs" href="https://n8n.io/contact" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
+					<a @click="onContactUs" href="mailto:sales@n8n.io" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
 				</template>
 			</i18n>
 		</n8n-info-tip>
 		<div :class="$style.buttons">
-			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="primary" size="large" text :label="$locale.baseText('settings.usageAndPlan.button.activation')" />
+			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="tertiary" size="large" text>
+				<strong>{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+			</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 				<a :href="managePlanUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
@@ -127,7 +129,7 @@ const onDialogOpened = () => {
 		</div>
 		<el-dialog
 			width="480px"
-			top="26vh"
+			top="0"
 			@closed="onDialogClosed"
 			@opened="onDialogOpened"
 			:visible.sync="activationKeyModal"
@@ -200,6 +202,10 @@ const onDialogOpened = () => {
 			padding: var(--spacing-xs) var(--spacing-m);
 			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
 		}
+
+		strong {
+			font-weight: var(--font-weight-bold);
+		}
 	}
 }
 
@@ -236,10 +242,18 @@ div[class*="info"] > span > span:last-child {
 </style>
 
 <style lang="scss" scoped>
-:deep(.el-dialog) {
-	.el-dialog__footer {
-		button {
-			margin-left: var(--spacing-xs);
+:deep(.el-dialog__wrapper) {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	.el-dialog {
+		margin: 0;
+
+		.el-dialog__footer {
+			button {
+				margin-left: var(--spacing-xs);
+			}
 		}
 	}
 }
