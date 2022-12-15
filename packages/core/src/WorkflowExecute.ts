@@ -39,6 +39,7 @@ import {
 } from 'n8n-workflow';
 import get from 'lodash.get';
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
+import { profileStart } from './Profiler';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -888,6 +889,13 @@ export class WorkflowExecute {
 						}
 					}
 
+					const profiler = await profileStart({
+						action: 'Execute Node',
+						workflowId: workflow.id,
+						nodeType: executionNode.type,
+						nodeVersion: executionNode.typeVersion,
+					});
+
 					startTime = new Date().getTime();
 
 					let maxTries = 1;
@@ -957,6 +965,8 @@ export class WorkflowExecute {
 								node: executionNode.name,
 								workflowId: workflow.id,
 							});
+
+							await profiler.end();
 
 							if (nodeSuccessData) {
 								// Check if the output data contains pairedItem data
