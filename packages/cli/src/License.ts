@@ -70,10 +70,6 @@ export class License {
 			return;
 		}
 
-		if (this.manager.isValid()) {
-			return;
-		}
-
 		await this.manager.activate(activationKey);
 	}
 
