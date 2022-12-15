@@ -43,6 +43,14 @@ function buildLogFileNameWithCounter(counter?: number): string {
 	}
 }
 
+function cleanAllLogs() {
+	for (let i = 0; i <= keepFiles; i++) {
+		if (existsSync(buildLogFileNameWithCounter(i))) {
+			rmSync(buildLogFileNameWithCounter(i));
+		}
+	}
+}
+
 /**
  * Runs synchronously and cycles through log files up to the max amount kept
  */
@@ -125,6 +133,9 @@ const messageEventBusLogWriterWorker = {
 		} else {
 			return undefined;
 		}
+	},
+	cleanLogs() {
+		cleanAllLogs();
 	},
 };
 if (isWorkerRuntime()) {

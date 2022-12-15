@@ -96,6 +96,8 @@ export class MessageEventBusDestinationWebhook
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
+
+		console.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
 	}
 
 	async matchDecryptedCredentialType(credentialType: string) {
@@ -268,7 +270,6 @@ export class MessageEventBusDestinationWebhook
 			if (!isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
-
 		// at first run, build this.requestOptions with the destination settings
 		await this.generateAxiosOptions();
 
@@ -348,21 +349,23 @@ export class MessageEventBusDestinationWebhook
 
 		try {
 			const requestResponse = await axios.request(this.axiosRequestOptions);
-
-			if (this.responseCodeMustMatch) {
-				if (requestResponse.status === this.expectedStatusCode) {
+			if (requestResponse) {
+				if (this.responseCodeMustMatch) {
+					if (requestResponse.status === this.expectedStatusCode) {
+						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						sendResult = true;
+					} else {
+						sendResult = false;
+					}
+				} else {
 					await eventBus.confirmSent(msg, { id: this.id, name: this.label });
 					sendResult = true;
-				} else {
-					sendResult = false;
 				}
-			} else {
-				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
-				sendResult = true;
 			}
 		} catch (error) {
 			console.error(error);
 		}
+
 		return sendResult;
 	}
 }

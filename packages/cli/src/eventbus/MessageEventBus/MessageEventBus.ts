@@ -60,7 +60,6 @@ class MessageEventBus extends EventEmitter {
 	 * Sets `isInitialized` to `true` once finished.
 	 */
 	async initialize() {
-		console.error('HERE');
 		if (this.isInitialized) {
 			return;
 		}
@@ -201,6 +200,7 @@ class MessageEventBus extends EventEmitter {
 		this.emit('message', msg);
 
 		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
+		console.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		// if there are no set up destinations, immediately mark the event as sent
 		if (!isLogStreamingEnabled() || Object.keys(this.destinations).length === 0) {

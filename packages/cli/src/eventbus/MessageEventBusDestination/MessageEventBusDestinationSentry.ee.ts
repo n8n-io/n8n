@@ -52,7 +52,7 @@ export class MessageEventBusDestinationSentry
 					environment,
 					release: versions.cli,
 				});
-				console.debug(`MessageEventBusDestinationSentry Broker initialized`);
+				console.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
 				this.sentryInitSuccessful = true;
 			})
 			.catch((error) => {

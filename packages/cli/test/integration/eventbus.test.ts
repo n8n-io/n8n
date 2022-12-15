@@ -14,11 +14,16 @@ import {
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
 import { SuperAgentTest } from 'supertest';
-import { v4 as uuid } from 'uuid';
+import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
+import { Server } from 'http';
 
 jest.mock('@/telemetry');
+// mocking Sentry to prevent destination constructor from throwing an errorn due to missing DSN
+jest.mock('@sentry/node');
 
 let app: express.Application;
+let appReceiver: express.Application;
+let appReceiverServer: Server;
 let testDbName = '';
 let globalOwnerRole: Role;
 let owner: User;
@@ -30,20 +35,27 @@ const testSyslogDestination: MessageEventBusDestinationSyslogOptions = {
 	protocol: 'udp',
 	label: 'Test Syslog',
 	enabled: false,
+	subscribedEvents: ['n8n.test.message'],
 };
 
 const testWebhookDestination: MessageEventBusDestinationWebhookOptions = {
 	...defaultMessageEventBusDestinationWebhookOptions,
-	url: 'http://localhost:3000',
+	id: '88be6560-bfb4-455c-8aa1-06971e9e5522',
+	url: 'http://localhost:3456',
+	method: `POST`,
 	label: 'Test Webhook',
-	enabled: false,
+	enabled: true,
+	subscribedEvents: ['n8n.test.message'],
 };
 const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 	...defaultMessageEventBusDestinationSentryOptions,
 	dsn: 'http://localhost:3000',
 	label: 'Test Sentry',
 	enabled: false,
+	subscribedEvents: ['n8n.test.message'],
 };
+
+const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message' });
 
 beforeAll(async () => {
 	const initResult = await testDb.init();
@@ -69,6 +81,17 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 	utils.initTestLogger();
+	config.set('eventBus.enabled', true);
+	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
+	config.set('eventBus.logWriter.keepLogCount', '1');
+	config.set('enterprise.features.logStreaming', true);
+	await eventBus.initialize();
+	appReceiver = express();
+	appReceiver.post('/', (req, res) => {
+		console.log('received test request');
+		res.status(200).send('OK');
+	});
+	appReceiverServer = appReceiver.use(express.json()).listen(3456);
 });
 
 beforeEach(async () => {
@@ -81,6 +104,28 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
+	await eventBus.close();
+	appReceiverServer.close();
+});
+
+test('should have a running logwriter process', async () => {
+	const thread = eventBus.logWriter.getThread();
+	expect(thread).toBeDefined();
+});
+
+test('should have a clean log', async () => {
+	await eventBus.logWriter.getThread()?.cleanLogs();
+	const allMessages = await eventBus.getEvents('all');
+	expect(allMessages.length).toBe(0);
+});
+
+test('should have logwriter log messages', async () => {
+	await eventBus.send(testMessage);
+	const sent = await eventBus.getEvents('sent');
+	const unsent = await eventBus.getEvents('unsent');
+	expect(sent.length).toBeGreaterThan(0);
+	expect(unsent.length).toBe(0);
+	expect(sent.find((e) => e.id === testMessage.id)).toEqual(testMessage);
 });
 
 test('GET /eventbus/destination should fail due to missing authentication', async () => {
@@ -114,10 +159,26 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 	for (let index = 0; index < data.length; index++) {
 		const destination = data[index];
 		const foundDestinations = await eventBus.findDestination(destination.id);
+		console.log(destination.label, destination.id);
 		expect(Array.isArray(foundDestinations)).toBeTruthy();
 		expect(foundDestinations.length).toBe(1);
 		expect(foundDestinations[0].label).toBe(destination.label);
 	}
+});
+
+test('should send message to webhook ', async () => {
+	config.set('enterprise.features.logStreaming', true);
+	await eventBus.logWriter.getThread()?.cleanLogs();
+	const allMessages = await eventBus.getEvents('all');
+	expect(allMessages.length).toBe(0);
+	await eventBus.send(testMessage);
+
+	// not elegant, but since communication happens through emitters, we'll wait for a bit
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	const sent = await eventBus.getEvents('sent');
+	const unsent = await eventBus.getEvents('unsent');
+	expect(sent.length).toBe(1);
+	expect(unsent.length).toBe(0);
 });
 
 test('DEL /eventbus/destination delete all destinations by id', async () => {
