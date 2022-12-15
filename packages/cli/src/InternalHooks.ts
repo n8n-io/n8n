@@ -223,6 +223,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					node_graph_string: properties.node_graph_string as string,
 					error_node_id: properties.error_node_id as string,
 					webhook_domain: null,
+					sharing_role: userRole,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -238,7 +239,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 							runData.data.startData?.destinationNode,
 						)?.type,
 						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
-						sharing_role: userRole,
 					};
 
 					promises.push(
