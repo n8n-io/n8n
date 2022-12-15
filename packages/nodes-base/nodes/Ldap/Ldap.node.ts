@@ -323,7 +323,7 @@ export class Ldap implements INodeType {
 					});
 				} else if (operation === 'search') {
 					const baseDN = this.getNodeParameter('baseDN', itemIndex) as string;
-					let filter = this.getNodeParameter('filter', itemIndex) as string;
+					let searchFor = this.getNodeParameter('searchFor', itemIndex) as string;
 					const returnAll = this.getNodeParameter('returnAll', itemIndex);
 					const limit = this.getNodeParameter('limit', itemIndex, 0);
 					const options = this.getNodeParameter('options', itemIndex);
@@ -346,12 +346,12 @@ export class Ldap implements INodeType {
 						: [];
 					options.explicitBufferAttributes = BINARY_AD_ATTRIBUTES;
 
-					if (filter === 'custom') {
-						filter = this.getNodeParameter('customFilter', itemIndex) as string;
+					if (searchFor === 'custom') {
+						searchFor = this.getNodeParameter('customFilter', itemIndex) as string;
 					} else {
 						const searchText = this.getNodeParameter('searchText', itemIndex) as string;
 						const attribute = this.getNodeParameter('attribute', itemIndex) as string;
-						filter = `(&${filter}(${attribute}=${searchText}))`;
+						searchFor = `(&${searchFor}(${attribute}=${searchText}))`;
 					}
 
 					// Replace escaped filter special chars for ease of use
@@ -361,11 +361,11 @@ export class Ldap implements INodeType {
 					// (               0x28
 					// )               0x29
 					// \               0x5c
-					filter = filter.replace(/\\\\/g, '\\5c');
-					filter = filter.replace(/\\\*/g, '\\2a');
-					filter = filter.replace(/\\\(/g, '\\28');
-					filter = filter.replace(/\\\)/g, '\\29');
-					options.filter = filter;
+					searchFor = searchFor.replace(/\\\\/g, '\\5c');
+					searchFor = searchFor.replace(/\\\*/g, '\\2a');
+					searchFor = searchFor.replace(/\\\(/g, '\\28');
+					searchFor = searchFor.replace(/\\\)/g, '\\29');
+					options.filter = searchFor;
 
 					if (nodeDebug) {
 						Logger.info(

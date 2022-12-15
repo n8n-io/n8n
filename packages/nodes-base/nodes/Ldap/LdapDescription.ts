@@ -248,7 +248,7 @@ export const ldapFields: INodeProperties[] = [
 		default: '(objectclass=*)',
 		displayOptions: {
 			show: {
-				filter: ['custom'],
+				searchFor: ['custom'],
 			},
 		},
 		description: `Custom LDAP filter. Escape these chars * ( ) \\ with a backslash '\\'.`,
