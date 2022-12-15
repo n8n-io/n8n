@@ -14,7 +14,7 @@ export const textOperations: INodeProperties[] = [
 		options: [
 			{
 				name: 'Complete',
-				value: 'createCompletion',
+				value: 'complete',
 				action: 'Create a Completion',
 				description: 'Create one or more completions for a given text',
 				routing: {
@@ -26,7 +26,7 @@ export const textOperations: INodeProperties[] = [
 			},
 			{
 				name: 'Edit',
-				value: 'createEdit',
+				value: 'edit',
 				action: 'Create an Edit',
 				description: 'Create an edited version for a given text',
 				routing: {
@@ -49,11 +49,11 @@ export const textOperations: INodeProperties[] = [
 				},
 			},
 		],
-		default: 'createCompletion',
+		default: 'complete',
 	},
 ];
 
-const createCompletionOperations: INodeProperties[] = [
+const completeOperations: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
@@ -62,7 +62,7 @@ const createCompletionOperations: INodeProperties[] = [
 			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
-				operation: ['createCompletion'],
+				operation: ['complete'],
 				resource: ['text'],
 			},
 		},
@@ -123,7 +123,7 @@ const createCompletionOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['text'],
-				operation: ['createCompletion'],
+				operation: ['complete'],
 			},
 		},
 		default: '',
@@ -139,7 +139,7 @@ const createCompletionOperations: INodeProperties[] = [
 	},
 ];
 
-const createEditOperations: INodeProperties[] = [
+const editOperations: INodeProperties[] = [
 	{
 		displayName: 'Model',
 		name: 'model',
@@ -148,7 +148,7 @@ const createEditOperations: INodeProperties[] = [
 			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
-				operation: ['createEdit'],
+				operation: ['edit'],
 				resource: ['text'],
 			},
 		},
@@ -174,12 +174,12 @@ const createEditOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'e.g. What day of the week is it?',
+		placeholder: 'e.g. What day of the wek is it?',
 		description: 'The input text to be edited',
 		displayOptions: {
 			show: {
 				resource: ['text'],
-				operation: ['createEdit'],
+				operation: ['edit'],
 			},
 		},
 		default: '',
@@ -199,7 +199,7 @@ const createEditOperations: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['text'],
-				operation: ['createEdit'],
+				operation: ['edit'],
 			},
 		},
 		default: '',
@@ -307,7 +307,7 @@ const sharedOperations: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				operation: ['createCompletion', 'createEdit'],
+				operation: ['complete', 'edit'],
 				resource: ['text'],
 			},
 		},
@@ -356,7 +356,7 @@ const sharedOperations: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: ['createCompletion', 'createEdit'],
+				operation: ['complete', 'edit'],
 				resource: ['text'],
 			},
 		},
@@ -369,7 +369,7 @@ const sharedOperations: INodeProperties[] = [
 				default: false,
 				displayOptions: {
 					show: {
-						'/operation': ['createCompletion'],
+						'/operation': ['complete'],
 					},
 				},
 				routing: {
@@ -388,7 +388,7 @@ const sharedOperations: INodeProperties[] = [
 				type: 'number',
 				displayOptions: {
 					show: {
-						'/operation': ['createCompletion'],
+						'/operation': ['complete'],
 					},
 				},
 				typeOptions: {
@@ -451,14 +451,14 @@ const sharedOperations: INodeProperties[] = [
 
 export const textFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                               text:createCompletion                        */
+	/*                               text:complete                        */
 	/* -------------------------------------------------------------------------- */
-	...createCompletionOperations,
+	...completeOperations,
 
 	/* -------------------------------------------------------------------------- */
-	/*                                text:createEdit                             */
+	/*                                text:edit                             */
 	/* -------------------------------------------------------------------------- */
-	...createEditOperations,
+	...editOperations,
 
 	/* -------------------------------------------------------------------------- */
 	/*                                text:createModeration                       */
