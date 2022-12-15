@@ -43,6 +43,14 @@ export default mixins(userHelpers, pushConnection).extend({
 		sidebarMenuItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [
 				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-bar',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					activateOnRouteNames: [ VIEWS.USAGE ],
+				},
+				{
 					id: 'settings-personal',
 					icon: 'user-circle',
 					label: this.$locale.baseText('settings.personal'),
@@ -89,17 +97,6 @@ export default mixins(userHelpers, pushConnection).extend({
 				available: this.canAccessCommunityNodes(),
 				activateOnRouteNames: [VIEWS.COMMUNITY_NODES],
 			});
-
-			menuItems.push(
-				{
-					id: 'settings-usage-and-plan',
-					icon: 'chart-bar',
-					label: this.$locale.baseText('settings.usageAndPlan.title'),
-					position: 'top',
-					available: this.canAccessUsageAndPlan(),
-					activateOnRouteNames: [ VIEWS.USAGE ],
-				},
-			);
 
 			return menuItems;
 		},

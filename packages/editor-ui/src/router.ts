@@ -432,6 +432,34 @@ const router = new Router({
 			props: true,
 			children: [
 				{
+					path: 'usage',
+					name: VIEWS.USAGE,
+					components: {
+						settingsView: settingsUsageAndPlanView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'usage',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.settings.hideUsagePage === true;
+								},
+							},
+						},
+					},
+				},
+				{
 					path: 'personal',
 					name: VIEWS.PERSONAL_SETTINGS,
 					components: {
@@ -553,34 +581,6 @@ const router = new Router({
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
-							},
-						},
-					},
-				},
-				{
-					path: 'usage',
-					name: VIEWS.USAGE,
-					components: {
-						settingsView: settingsUsageAndPlanView,
-					},
-					meta: {
-						telemetry: {
-							pageCategory: 'settings',
-							getProperties(route: Route) {
-								return {
-									feature: 'usage',
-								};
-							},
-						},
-						permissions: {
-							allow: {
-								loginStatus: [LOGIN_STATUS.LoggedIn],
-							},
-							deny: {
-								shouldDeny: () => {
-									const settingsStore = useSettingsStore();
-									return settingsStore.settings.hideUsagePage === true;
-								},
 							},
 						},
 					},
