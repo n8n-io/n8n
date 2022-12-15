@@ -1,4 +1,4 @@
-import { INodeProperties } from 'n8n-workflow';
+import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
 export const textOperations: INodeProperties[] = [
 	{
@@ -322,6 +322,19 @@ const sharedOperations: INodeProperties[] = [
 							property: 'data',
 						},
 					},
+					async function (items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
+						if (this.getNode().parameters.simplifyOutput === false) {
+							return items;
+						}
+						return items.map((item) => {
+							return {
+								json: {
+									...item.json,
+									text: (item.json.text as string).trim(),
+								},
+							};
+						});
+					},
 				],
 			},
 		},
@@ -330,7 +343,7 @@ const sharedOperations: INodeProperties[] = [
 
 	{
 		displayName: 'Options',
-		name: 'additionalOptions',
+		name: 'options',
 		placeholder: 'Add Option',
 		description: 'Additional options to add',
 		type: 'collection',
@@ -383,9 +396,24 @@ const sharedOperations: INodeProperties[] = [
 				},
 			},
 			{
+				displayName: 'Number of Completions',
+				name: 'n',
+				default: 1,
+				description:
+					'How many completions to generate for each prompt. Note: Because this parameter generates many completions, it can quickly consume your token quota. Use carefully and ensure that you have reasonable settings for max_tokens and stop.',
+				type: 'number',
+				routing: {
+					send: {
+						type: 'body',
+						property: 'n',
+					},
+				},
+			},
+			{
 				displayName: 'Sampling Temperature',
 				name: 'temperature',
 				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 				description:
 					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 				type: 'number',
@@ -400,6 +428,7 @@ const sharedOperations: INodeProperties[] = [
 				displayName: 'Top P',
 				name: 'topP',
 				default: 1,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 				description:
 					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
@@ -407,20 +436,6 @@ const sharedOperations: INodeProperties[] = [
 					send: {
 						type: 'body',
 						property: 'top_p',
-					},
-				},
-			},
-			{
-				displayName: 'Number of Completions',
-				name: 'n',
-				default: 1,
-				description:
-					'How many completions to generate for each prompt. Note: Because this parameter generates many completions, it can quickly consume your token quota. Use carefully and ensure that you have reasonable settings for max_tokens and stop.',
-				type: 'number',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'n',
 					},
 				},
 			},

@@ -63,7 +63,6 @@ const createOperations: INodeProperties[] = [
 			},
 		},
 	},
-	// TODO: replace the boolean with this option
 	{
 		displayName: 'Response Format',
 		name: 'responseFormat',
@@ -86,26 +85,16 @@ const createOperations: INodeProperties[] = [
 				value: 'imageUrl',
 			},
 		],
-	},
-	{
-		displayName: 'Download Image',
-		name: 'download',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['image'],
-			},
-		},
 		routing: {
 			send: {
 				type: 'body',
 				property: 'response_format',
-				value: '={{ $value === false ? "url" : "b64_json" }}',
+				value: '={{ $value === "imageUrl" ? "url" : "b64_json" }}',
 			},
 			output: {
 				postReceive: [
 					async function (items: INodeExecutionData[]): Promise<INodeExecutionData[]> {
-						if (this.getNode().parameters.download === false) {
+						if (this.getNode().parameters.responseFormat === 'imageUrl') {
 							return items;
 						}
 
@@ -127,13 +116,12 @@ const createOperations: INodeProperties[] = [
 				],
 			},
 		},
-		default: true,
 	},
 	{
 		displayName: 'Options',
-		name: 'additionalOptions',
+		name: 'options',
 		placeholder: 'Add Option',
-		description: 'Additional fields to add',
+		description: 'Additional options to add',
 		type: 'collection',
 		default: {},
 		displayOptions: {
