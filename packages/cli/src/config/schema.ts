@@ -1016,6 +1016,13 @@ export const schema = {
 		},
 	},
 
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
+	},
+
 	eventBus: {
 		enabled: {
 			doc: 'Whether event logging is enabled.',
@@ -1063,10 +1070,5 @@ export const schema = {
 				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
 			},
 		},
-	hideUsagePage: {
-		format: Boolean,
-		default: false,
-		env: 'N8N_HIDE_USAGE_PAGE',
-		doc: 'Hide or show the usage page',
 	},
 };
