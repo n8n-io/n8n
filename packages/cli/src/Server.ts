@@ -81,6 +81,7 @@ import {
 	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	inDevelopment,
 	N8N_VERSION,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -138,10 +139,11 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import { NodeTypes } from '@/NodeTypes';
-import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import type { LoadNodesAndCredentialsClass } from '@/LoadNodesAndCredentials';
+import type { NodeTypesClass } from '@/NodeTypes';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import type { WaitTrackerClass } from '@/WaitTracker';
 import { WaitTracker } from '@/WaitTracker';
@@ -177,9 +179,11 @@ class Server extends AbstractServer {
 
 	loadNodesAndCredentials: LoadNodesAndCredentialsClass;
 
-	nodeTypes: INodeTypes;
+	nodeTypes: NodeTypesClass;
 
 	credentialTypes: ICredentialTypes;
+
+	push: Push.Push;
 
 	constructor() {
 		super();
@@ -197,6 +201,8 @@ class Server extends AbstractServer {
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
 		}
+
+		this.push = Push.getInstance();
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -429,7 +435,6 @@ class Server extends AbstractServer {
 		this.app.use(cookieParser());
 
 		// Get push connections
-		const push = Push.getInstance();
 		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
@@ -447,7 +452,7 @@ class Server extends AbstractServer {
 				}
 			}
 
-			push.add(sessionId as string, req, res);
+			this.push.add(sessionId as string, req, res);
 		});
 
 		// Make sure that Vue history mode works properly
@@ -1369,6 +1374,11 @@ export async function start(): Promise<void> {
 
 	// Set up event handling
 	initEvents();
+
+	if (inDevelopment && process.env.N8N_DEV_RELOAD === 'true') {
+		const { reloadNodesAndCredentials } = await import('@/ReloadNodesAndCredentials');
+		await reloadNodesAndCredentials(app.loadNodesAndCredentials, app.nodeTypes, app.push);
+	}
 
 	void Db.collections.Workflow.findOne({
 		select: ['createdAt'],

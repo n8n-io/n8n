@@ -32,15 +32,17 @@ export type Types = {
 };
 
 export abstract class DirectoryLoader {
-	readonly loadedNodes: INodeTypeNameVersion[] = [];
+	isLazyLoaded = false;
 
-	readonly nodeTypes: INodeTypeData = {};
+	loadedNodes: INodeTypeNameVersion[] = [];
 
-	readonly credentialTypes: ICredentialTypeData = {};
+	nodeTypes: INodeTypeData = {};
 
-	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+	credentialTypes: ICredentialTypeData = {};
 
-	readonly types: Types = { nodes: [], credentials: [] };
+	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
+
+	types: Types = { nodes: [], credentials: [] };
 
 	constructor(
 		protected readonly directory: string,
@@ -49,7 +51,16 @@ export abstract class DirectoryLoader {
 	) {}
 
 	abstract packageName: string;
+
 	abstract loadAll(): Promise<void>;
+
+	reset() {
+		this.loadedNodes = [];
+		this.nodeTypes = {};
+		this.credentialTypes = {};
+		this.known = { nodes: {}, credentials: {} };
+		this.types = { nodes: [], credentials: [] };
+	}
 
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
@@ -370,6 +381,8 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 				credentials: this.types.credentials?.length ?? 0,
 				nodes: this.types.nodes?.length ?? 0,
 			});
+
+			this.isLazyLoaded = true;
 
 			return; // We can load nodes and credentials lazily now
 		} catch {
