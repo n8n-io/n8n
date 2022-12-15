@@ -63,7 +63,6 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			return 'SM';
 		},
 		value(): any | undefined {
-			// tslint:disable-line:no-any
 			if (this.$props.valueXS !== undefined && this.$data.width < BREAKPOINT_SM) {
 				return this.$props.valueXS;
 			}

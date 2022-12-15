@@ -171,7 +171,7 @@ export default Vue.extend({
 
 		focusOnInput(): void {
 			setTimeout(() => {
-				const input = this.$refs.nameInput as any; // tslint:disable-line:no-any
+				const input = this.$refs.nameInput as any;
 				if (input && input.focus) {
 					input.focus();
 				}
@@ -180,7 +180,7 @@ export default Vue.extend({
 
 		focusOnDelete(): void {
 			setTimeout(() => {
-				const input = this.$refs.deleteHiddenInput as any; // tslint:disable-line:no-any
+				const input = this.$refs.deleteHiddenInput as any;
 				if (input && input.focus) {
 					input.focus();
 				}

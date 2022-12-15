@@ -602,7 +602,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.hasUnsavedChanges = true;
 		},
 		onDataChange({ name, value }: { name: string; value: any }) {
-			// tslint:disable-line:no-any
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;

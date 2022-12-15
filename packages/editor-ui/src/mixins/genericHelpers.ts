@@ -6,7 +6,7 @@ import mixins from 'vue-typed-mixins';
 export const genericHelpers = mixins(showMessage).extend({
 	data() {
 		return {
-			loadingService: null as any | null, // tslint:disable-line:no-any
+			loadingService: null as any | null,
 		};
 	},
 	computed: {

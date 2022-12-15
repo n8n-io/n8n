@@ -65,7 +65,6 @@ export const restApi = Vue.extend({
 					method: Method,
 					endpoint: string,
 					data?: IDataObject,
-					// tslint:disable-next-line:no-any
 				): Promise<any> {
 					return makeRestApiRequest(self.rootStore.getRestApiContext, method, endpoint, data);
 				},
