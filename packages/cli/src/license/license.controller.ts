@@ -73,7 +73,7 @@ licenseController.post(
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
-			await license.activate(req.body.activationKey);
+			console.log(await license.activate(req.body.activationKey));
 		} catch (e) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
@@ -100,14 +100,17 @@ licenseController.post(
 		try {
 			await license.renew();
 		} catch (e) {
-			await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
+			// not awaiting so as not to make the endpoint hang
+			InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
 			}
 		}
 
+		// not awaiting so as not to make the endpoint hang
+		InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
+
 		// Return the read data, plus the management JWT
-		await InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
 		return {
 			managementToken: license.getManagementJwt(),
 			...(await LicenseService.getLicenseData()),

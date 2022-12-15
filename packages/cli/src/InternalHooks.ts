@@ -503,6 +503,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 	 * License
 	 */
 	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
-		return this.telemetry.track('Instance attempted to refresh license', data);
+		await this.telemetry.track('Instance attempted to refresh license', data);
 	}
 }
