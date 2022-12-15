@@ -13,7 +13,7 @@ export const textOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Complete a Text',
+				name: 'Complete',
 				value: 'createCompletion',
 				action: 'Create a Completion',
 				description: 'Create one or more completions for a given text',
@@ -25,7 +25,7 @@ export const textOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Edit a Text',
+				name: 'Edit',
 				value: 'createEdit',
 				action: 'Create an Edit',
 				description: 'Create an edited version for a given text',
@@ -37,7 +37,7 @@ export const textOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Moderate a Text',
+				name: 'Moderate',
 				value: 'createModeration',
 				action: 'Create a Moderation',
 				description: "Classify if a text violates OpenAI's content policy",
