@@ -13,10 +13,10 @@ export const textOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Create Completion',
+				name: 'Complete a Text',
 				value: 'createCompletion',
 				action: 'Create a Completion',
-				description: 'Create a predicted completions for a given text',
+				description: 'Create one or more completions for a given text',
 				routing: {
 					request: {
 						method: 'POST',
@@ -25,7 +25,7 @@ export const textOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Create Edit',
+				name: 'Edit a Text',
 				value: 'createEdit',
 				action: 'Create an Edit',
 				description: 'Create an edited version for a given text',
@@ -37,7 +37,7 @@ export const textOperations: INodeProperties[] = [
 				},
 			},
 			{
-				name: 'Create Moderation',
+				name: 'Moderate a Text',
 				value: 'createModeration',
 				action: 'Create a Moderation',
 				description: "Classify if a text violates OpenAI's content policy",
@@ -59,7 +59,7 @@ const createCompletionOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'Information about models can be found <a href="https://beta.openai.com/docs/models/overview">here</a>',
+			'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
 				operation: ['createCompletion'],
@@ -112,7 +112,8 @@ const createCompletionOperations: INodeProperties[] = [
 		displayName: 'Prompt',
 		name: 'prompt',
 		type: 'string',
-		placeholder: 'Say this is a test',
+		description: 'The prompt to generate completion(s) for',
+		placeholder: 'e.g. Say this is a test',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -120,6 +121,9 @@ const createCompletionOperations: INodeProperties[] = [
 			},
 		},
 		default: '',
+		typeOptions: {
+			rows: 2,
+		},
 		routing: {
 			send: {
 				type: 'body',
@@ -135,7 +139,7 @@ const createEditOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'Information about models can be found <a href="https://beta.openai.com/docs/models/overview">here</a>',
+			'The model which will generate the edited version. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -164,7 +168,8 @@ const createEditOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'What day of the wek is it?',
+		placeholder: 'e.g. What day of the week is it?',
+		description: 'The input text to be edited',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -183,7 +188,8 @@ const createEditOperations: INodeProperties[] = [
 		displayName: 'Instruction',
 		name: 'instruction',
 		type: 'string',
-		placeholder: 'Fix the spelling mistakes',
+		placeholder: 'e.g. Fix the spelling mistakes',
+		description: 'The instruction that tells the model how to edit the input text',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -206,7 +212,7 @@ const createModerationOperations: INodeProperties[] = [
 		name: 'model',
 		type: 'options',
 		description:
-			'Information about models can be found <a href="https://beta.openai.com/docs/models/overview">here</a>',
+			'The model which will classify the text. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -235,7 +241,8 @@ const createModerationOperations: INodeProperties[] = [
 		displayName: 'Input',
 		name: 'input',
 		type: 'string',
-		placeholder: 'I want to kill them.',
+		placeholder: 'e.g. I want to kill them',
+		description: 'The input text to classify',
 		displayOptions: {
 			show: {
 				resource: ['text'],
@@ -322,7 +329,7 @@ const sharedOperations: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Additional Options',
+		displayName: 'Options',
 		name: 'additionalOptions',
 		placeholder: 'Add Option',
 		description: 'Additional options to add',
@@ -357,12 +364,16 @@ const sharedOperations: INodeProperties[] = [
 				displayName: 'Maximum Number of Tokens',
 				name: 'maxTokens',
 				default: 16,
-				description: 'The maximum number of tokens to generate in the completion',
+				description:
+					'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 4096).',
 				type: 'number',
 				displayOptions: {
 					show: {
 						'/operation': ['createCompletion'],
 					},
+				},
+				typeOptions: {
+					maxValue: 4096,
 				},
 				routing: {
 					send: {
@@ -376,7 +387,7 @@ const sharedOperations: INodeProperties[] = [
 				name: 'temperature',
 				default: 1,
 				description:
-					'What <a href="https://towardsdatascience.com/how-to-sample-from-language-models-682bceb97277">sampling temperature</a> to use. Higher values means the model will take more risks. Try 0.9 for more creative applications, and 0 (argmax sampling) for ones with a well-defined answer. We generally recommend altering this or top_p but not both.',
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 				type: 'number',
 				routing: {
 					send: {
@@ -390,7 +401,7 @@ const sharedOperations: INodeProperties[] = [
 				name: 'topP',
 				default: 1,
 				description:
-					'An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered. We generally recommend altering this or temperature but not both.',
+					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
 				routing: {
 					send: {
