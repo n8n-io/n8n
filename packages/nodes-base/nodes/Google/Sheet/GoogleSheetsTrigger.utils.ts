@@ -187,3 +187,16 @@ export function compareRevisions(
 		throw error;
 	}
 }
+
+export function columnNumberToLetter(colNumber: number) {
+	const A = 'a'.charCodeAt(0);
+	const Z = 'z'.charCodeAt(0);
+	const len = Z - A + 1;
+
+	let colName = '';
+	while (colNumber >= 0) {
+		colName = String.fromCharCode((colNumber % len) + A) + colName;
+		colNumber = Math.floor(colNumber / len) - 1;
+	}
+	return colName;
+}

@@ -37,15 +37,6 @@ export class GoogleSheetsTrigger implements INodeType {
 		inputs: [],
 		outputs: ['main'],
 		credentials: [
-			// {
-			// 	name: 'googleApi',
-			// 	required: true,
-			// 	displayOptions: {
-			// 		show: {
-			// 			authentication: ['serviceAccount'],
-			// 		},
-			// 	},
-			// },
 			{
 				name: 'googleSheetsTriggerOAuth2Api',
 				required: true,
@@ -64,10 +55,6 @@ export class GoogleSheetsTrigger implements INodeType {
 				name: 'authentication',
 				type: 'hidden',
 				options: [
-					// {
-					// 	name: 'Service Account',
-					// 	value: 'serviceAccount',
-					// },
 					{
 						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						name: 'OAuth2 (recommended)',
@@ -377,191 +364,207 @@ export class GoogleSheetsTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const workflowStaticData = this.getWorkflowStaticData('node');
-		const event = this.getNodeParameter('event', 0) as string;
+		try {
+			const workflowStaticData = this.getWorkflowStaticData('node');
+			const event = this.getNodeParameter('event', 0) as string;
 
-		const documentId = this.getNodeParameter('documentId', undefined, {
-			extractValue: true,
-		}) as string;
+			const documentId = this.getNodeParameter('documentId', undefined, {
+				extractValue: true,
+			}) as string;
 
-		let pageToken;
-		const previousRevision = workflowStaticData.lastRevision as number;
-		const previousRevisionLink = workflowStaticData.lastRevisionLink as string;
-		do {
-			const { revisions, nextPageToken } = await apiRequest.call(
-				this,
-				'GET',
-				``,
-				undefined,
-				{
-					fields: 'revisions(id, exportLinks), nextPageToken',
-					pageToken,
-					pageSize: 1000,
-				},
-				`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
-			);
-
-			if (nextPageToken) {
-				pageToken = nextPageToken as string;
-			} else {
-				pageToken = undefined;
-
-				const lastRevision = +revisions[revisions.length - 1].id;
-				if (lastRevision <= previousRevision) {
-					return null;
-				} else {
-					workflowStaticData.lastRevision = lastRevision;
-					workflowStaticData.lastRevisionLink =
-						revisions[revisions.length - 1].exportLinks[BINARY_MIME_TYPE];
-				}
-			}
-		} while (pageToken);
-
-		let sheetId = this.getNodeParameter('sheetName', undefined, {
-			extractValue: true,
-		}) as string;
-
-		sheetId = sheetId === 'gid=0' ? '0' : sheetId;
-
-		const googleSheet = new GoogleSheet(documentId, this);
-		const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
-		const options = this.getNodeParameter('options') as IDataObject;
-
-		const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
-
-		let range = 'A:Z';
-		let keyRow = 1;
-		let startIndex = 2;
-
-		if (locationDefine) {
-			if (locationDefine.range) {
-				range = locationDefine.range as string;
-			}
-			if (locationDefine.headerRow) {
-				keyRow = parseInt(locationDefine.headerRow as string, 10);
-			}
-			if (locationDefine.firstDataRow) {
-				startIndex = parseInt(locationDefine.firstDataRow as string, 10);
-			}
-
-			delete options.locationDefine;
-		}
-
-		const qs: IDataObject = {};
-
-		Object.assign(qs, options);
-
-		if (event === 'rowAdded') {
-			let rangeToCheck;
-			const [rangeFrom, rangeTo] = range.split(':');
-			const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
-
-			if (workflowStaticData.lastIndexChecked === undefined) {
-				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
-				workflowStaticData.lastIndexChecked = startIndex;
-			} else {
-				rangeToCheck = `${rangeFrom}${workflowStaticData.lastIndexChecked}:${rangeTo}`;
-			}
-
-			const [columns] = ((
-				(await apiRequest.call(
+			let pageToken;
+			const previousRevision = workflowStaticData.lastRevision as number;
+			const previousRevisionLink = workflowStaticData.lastRevisionLink as string;
+			do {
+				const { revisions, nextPageToken } = await apiRequest.call(
 					this,
 					'GET',
-					`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
-				)) as IDataObject
-			).values as string[][]) || [[]];
+					``,
+					undefined,
+					{
+						fields: 'revisions(id, exportLinks), nextPageToken',
+						pageToken,
+						pageSize: 1000,
+					},
+					`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+				);
 
-			if (!columns?.length) {
-				throw new NodeOperationError(this.getNode(), 'Could not retrieve the columns from key row');
+				if (nextPageToken) {
+					pageToken = nextPageToken as string;
+				} else {
+					pageToken = undefined;
+
+					const lastRevision = +revisions[revisions.length - 1].id;
+					if (lastRevision <= previousRevision) {
+						return null;
+					} else {
+						workflowStaticData.lastRevision = lastRevision;
+						workflowStaticData.lastRevisionLink =
+							revisions[revisions.length - 1].exportLinks[BINARY_MIME_TYPE];
+					}
+				}
+			} while (pageToken);
+
+			let sheetId = this.getNodeParameter('sheetName', undefined, {
+				extractValue: true,
+			}) as string;
+
+			sheetId = sheetId === 'gid=0' ? '0' : sheetId;
+
+			const googleSheet = new GoogleSheet(documentId, this);
+			const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
+			const options = this.getNodeParameter('options') as IDataObject;
+
+			const locationDefine = (options.locationDefine as IDataObject)?.values as IDataObject;
+
+			let range = 'A:Z';
+			let keyRow = 1;
+			let startIndex = 2;
+
+			if (locationDefine) {
+				if (locationDefine.range) {
+					range = locationDefine.range as string;
+				}
+				if (locationDefine.headerRow) {
+					keyRow = parseInt(locationDefine.headerRow as string, 10);
+				}
+				if (locationDefine.firstDataRow) {
+					startIndex = parseInt(locationDefine.firstDataRow as string, 10);
+				}
+
+				delete options.locationDefine;
 			}
 
-			const sheetData = await googleSheet.getData(
-				`${sheetName}!${rangeToCheck}`,
-				(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
-				(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
-			);
+			const qs: IDataObject = {};
 
-			if (Array.isArray(sheetData)) {
-				const returnData = arrayOfArraysToJson(sheetData, columns);
+			Object.assign(qs, options);
 
-				workflowStaticData.lastIndexChecked =
-					(workflowStaticData.lastIndexChecked as number) + sheetData.length;
+			if (event === 'rowAdded') {
+				const [rangeFrom, rangeTo] = range.split(':');
+				const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
+				const rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
+
+				if (workflowStaticData.lastIndexChecked === undefined) {
+					workflowStaticData.lastIndexChecked = 0;
+				}
+
+				const [columns] = ((
+					(await apiRequest.call(
+						this,
+						'GET',
+						`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
+					)) as IDataObject
+				).values as string[][]) || [[]];
+
+				if (!columns?.length) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Could not retrieve the columns from key row',
+					);
+				}
+
+				const sheetData = await googleSheet.getData(
+					`${sheetName}!${rangeToCheck}`,
+					(options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
+					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
+				);
+
+				const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
+
+				if (Array.isArray(sheetData)) {
+					const returnData = arrayOfArraysToJson(addedRows, columns);
+
+					workflowStaticData.lastIndexChecked = sheetData.length;
+
+					if (Array.isArray(returnData) && returnData.length !== 0) {
+						return [this.helpers.returnJsonArray(returnData)];
+					}
+				}
+			}
+
+			if (event === 'anyUpdate') {
+				const sheetRange = locationDefine?.range
+					? `${sheetName}!${locationDefine.range}`
+					: sheetName;
+
+				const currentData =
+					((await googleSheet.getData(
+						sheetRange,
+						'UNFORMATTED_VALUE',
+						'SERIAL_NUMBER',
+						// (options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
+						// (options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
+					)) as string[][]) || [];
+
+				if (previousRevision === undefined) {
+					if (currentData.length === 0) {
+						return [[]];
+					}
+					const zeroBasedKeyRow = keyRow - 1;
+					const columns = currentData[zeroBasedKeyRow];
+					currentData.splice(zeroBasedKeyRow, 1); // Remove key row
+					const returnData = arrayOfArraysToJson(currentData, columns);
+
+					if (Array.isArray(returnData) && returnData.length !== 0 && this.getMode() === 'manual') {
+						return [this.helpers.returnJsonArray(returnData)];
+					} else {
+						return null;
+					}
+				}
+
+				const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
+
+				const previousRevisionSheetData =
+					sheetBinaryToArrayOfArrays(
+						previousRevisionBinaryData,
+						sheetName,
+						locationDefine?.range as string,
+					) || [];
+
+				const includeInOutput = this.getNodeParameter('includeInOutput', 'new') as string;
+
+				const [rangeFrom, _rangeTo] = range.split(':');
+				const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				const startRowIndex = +(cellData[2] || 1);
+
+				let returnData;
+				if (options.columnsToWatch) {
+					returnData = compareRevisions(
+						previousRevisionSheetData,
+						currentData,
+						keyRow,
+						includeInOutput,
+						options.columnsToWatch as string[],
+						startRowIndex,
+					);
+				} else {
+					returnData = compareRevisions(
+						previousRevisionSheetData,
+						currentData,
+						keyRow,
+						includeInOutput,
+						[],
+						startRowIndex,
+					);
+				}
 
 				if (Array.isArray(returnData) && returnData.length !== 0) {
 					return [this.helpers.returnJsonArray(returnData)];
 				}
 			}
+		} catch (error) {
+			if (
+				error?.error?.error?.message &&
+				!(error.error.error.message as string).toLocaleLowerCase().includes('unknown error') &&
+				!(error.error.error.message as string).toLocaleLowerCase().includes('bad request')
+			) {
+				const [message, ...description] = (error.error.error.message as string).split('. ');
+				throw new NodeOperationError(this.getNode(), message, {
+					description: description.join('.\n '),
+				});
+			}
+			throw new NodeOperationError(this.getNode(), error);
 		}
-
-		if (event === 'anyUpdate') {
-			const sheetRange = locationDefine?.range ? `${sheetName}!${locationDefine.range}` : sheetName;
-
-			const currentData =
-				((await googleSheet.getData(
-					sheetRange,
-					'UNFORMATTED_VALUE',
-					'SERIAL_NUMBER',
-					// (options.valueRender as ValueRenderOption) || 'UNFORMATTED_VALUE',
-					// (options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
-				)) as string[][]) || [];
-
-			if (previousRevision === undefined) {
-				if (currentData.length === 0) {
-					return [[]];
-				}
-				const zeroBasedKeyRow = keyRow - 1;
-				const columns = currentData[zeroBasedKeyRow];
-				currentData.splice(zeroBasedKeyRow, 1); // Remove key row
-				const returnData = arrayOfArraysToJson(currentData, columns);
-
-				if (Array.isArray(returnData) && returnData.length !== 0 && this.getMode() === 'manual') {
-					return [this.helpers.returnJsonArray(returnData)];
-				} else {
-					return null;
-				}
-			}
-
-			const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
-
-			const previousRevisionSheetData =
-				sheetBinaryToArrayOfArrays(
-					previousRevisionBinaryData,
-					sheetName,
-					locationDefine?.range as string,
-				) || [];
-
-			const includeInOutput = this.getNodeParameter('includeInOutput', 'new') as string;
-
-			const [rangeFrom, _rangeTo] = range.split(':');
-			const cellData = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-			const startRowIndex = +(cellData[2] || 1);
-
-			let returnData;
-			if (options.columnsToWatch) {
-				returnData = compareRevisions(
-					previousRevisionSheetData,
-					currentData,
-					keyRow,
-					includeInOutput,
-					options.columnsToWatch as string[],
-					startRowIndex,
-				);
-			} else {
-				returnData = compareRevisions(
-					previousRevisionSheetData,
-					currentData,
-					keyRow,
-					includeInOutput,
-					[],
-					startRowIndex,
-				);
-			}
-
-			if (Array.isArray(returnData) && returnData.length !== 0) {
-				return [this.helpers.returnJsonArray(returnData)];
-			}
-		}
-
 		return null;
 	}
 }
