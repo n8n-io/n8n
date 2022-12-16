@@ -164,7 +164,6 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 			planId: '',
 			planName: 'Community',
 		},
-		environment: 'production',
 	},
 };
 

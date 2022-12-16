@@ -32,7 +32,6 @@ export class LicenseService {
 				planId: mainPlan?.productId ?? '',
 				planName: license.getPlanName(),
 			},
-			environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 		};
 	}
 }

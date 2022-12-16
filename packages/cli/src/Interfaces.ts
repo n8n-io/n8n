@@ -501,6 +501,9 @@ export interface IN8nUISettings {
 		workflowSharing: boolean;
 	};
 	hideUsagePage: boolean;
+	license: {
+		environment: 'production' | 'staging';
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -768,7 +771,6 @@ export interface ILicenseReadResponse {
 		planId: string;
 		planName: string;
 	};
-	environment: 'production' | 'staging';
 }
 
 export interface ILicensePostResponse extends ILicenseReadResponse {

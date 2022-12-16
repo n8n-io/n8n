@@ -359,6 +359,9 @@ class App {
 				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
 		};
 	}
 
