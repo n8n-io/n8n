@@ -121,10 +121,10 @@ const onDialogOpened = () => {
 				<strong>{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
 			</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
-				<a :href="managePlanUrl">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
+				<a :href="managePlanUrl" target="_blank">{{ $locale.baseText('settings.usageAndPlan.button.manage') }}</a>
 			</n8n-button>
 			<n8n-button v-else @click="onViewPlans" size="large">
-				<a :href="viewPlansUrl">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
+				<a :href="viewPlansUrl" target="_blank">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
 		</div>
 		<div :class="$style.help">
