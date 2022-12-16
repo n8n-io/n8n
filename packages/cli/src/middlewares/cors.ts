@@ -1,7 +1,5 @@
+import { inDevelopment } from '@/constants';
 import type { RequestHandler } from 'express';
-
-const { NODE_ENV } = process.env;
-const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
 
 export const corsMiddleware: RequestHandler = (req, res, next) => {
 	if (inDevelopment && 'origin' in req.headers) {
