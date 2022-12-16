@@ -149,6 +149,7 @@ export class RabbitMQTrigger implements INodeType {
 
 		const channel = await rabbitmqConnectQueue.call(this, queue, options);
 
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
 		let parallelMessages =

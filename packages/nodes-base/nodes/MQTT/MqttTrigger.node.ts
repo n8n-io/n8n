@@ -128,6 +128,7 @@ export class MqttTrigger implements INodeType {
 			client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
 		async function manualTriggerFunction() {

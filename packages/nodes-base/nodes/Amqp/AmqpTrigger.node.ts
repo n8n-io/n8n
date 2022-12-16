@@ -152,6 +152,7 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
 		const self = this;
 
 		container.on('receiver_open', (context: EventContext) => {

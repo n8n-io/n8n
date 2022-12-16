@@ -20,7 +20,7 @@ module.exports = {
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
 		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-this-alias': 'off',
+		// '@typescript-eslint/no-this-alias': 'off',
 		'@typescript-eslint/no-throw-literal': 'off',
 		'@typescript-eslint/no-unnecessary-qualifier': 'off',
 		'@typescript-eslint/no-unsafe-argument': 'off',
@@ -35,7 +35,8 @@ module.exports = {
 		'@typescript-eslint/restrict-plus-operands': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/unbound-method': 'off',
-		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		// '@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/ban-ts-comment': 'off',
 	},
 
 	overrides: [
