@@ -119,7 +119,8 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 
 						if (includePrivateKey) {
 							const password = this.getNodeParameter('password', i) as string;
-							(body.IncludePrivateKey = true), (body.Password = password);
+							body.IncludePrivateKey = true;
+							body.Password = password;
 						}
 
 						Object.assign(body, additionalFields);

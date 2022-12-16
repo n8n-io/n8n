@@ -442,7 +442,8 @@ export class CoinGecko implements INodeType {
 						const currencies = this.getNodeParameter('currencies', i) as string[];
 						const options = this.getNodeParameter('options', i);
 
-						(qs.ids = ids), (qs.vs_currencies = currencies.join(','));
+						qs.ids = ids;
+						qs.vs_currencies = currencies.join(',');
 
 						Object.assign(qs, options);
 

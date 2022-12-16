@@ -20,12 +20,12 @@ module.exports = {
 		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
 		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
-		'@typescript-eslint/no-unsafe-argument': 'off',
-		'@typescript-eslint/no-unsafe-assignment': 'off',
-		'@typescript-eslint/no-unsafe-call': 'off',
-		'@typescript-eslint/no-unsafe-member-access': 'off',
-		'@typescript-eslint/no-unsafe-return': 'off',
-		'@typescript-eslint/no-unused-expressions': 'off',
+		'@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
+		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-var-requires': 'off',
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
