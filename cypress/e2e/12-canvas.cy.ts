@@ -1,4 +1,4 @@
-import { MANUAL_TRIGGER_NODE_NAME, CODE_NODE_NAME } from './../constants';
+import { MANUAL_TRIGGER_NODE_NAME, CODE_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME, SET_NODE_NAME } from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -51,6 +51,60 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 2);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should add note between two connected nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
+		cy.get('.connection-actions .add').should('be.visible');
+		cy.get('.connection-actions .add').click({ force: true });
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		// Should now have 3 nodes and 2 connections
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
+		// And last node should be pushed to the right
+		WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 640px; top: 260px;');
+	});
+
+	it('should delete node using node action button', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodeByName(CODE_NODE_NAME)
+			.find('[data-test-id=delete-node-button]')
+			.click({ force: true });
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should delete node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should delete node between two connected nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
+		WorkflowPage.actions.zoomToFit();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+	});
+
+	it('should delete multiple nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		WorkflowPage.actions.selectAll();
+		cy.get('body').type('{backspace}');
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 0);
 	});
 
 	it('should move node', () => {
