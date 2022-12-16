@@ -282,7 +282,7 @@ describe('Telemetry', () => {
 			pulseSpy.mockClear();
 		});
 
-		test('should trigger pulse in intervals', async () => {
+		xtest('should trigger pulse in intervals', async () => {
 			expect(pulseSpy).toBeCalledTimes(0);
 
 			jest.advanceTimersToNextTimer();
@@ -309,7 +309,7 @@ describe('Telemetry', () => {
 			});
 		});
 
-		test('should track workflow counts correctly', async () => {
+		xtest('should track workflow counts correctly', async () => {
 			expect(pulseSpy).toBeCalledTimes(0);
 
 			let execBuffer = telemetry.getCountsBuffer();
