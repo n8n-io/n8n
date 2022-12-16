@@ -604,7 +604,7 @@ export class FileMaker implements INodeType {
 				try {
 					returnData = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error);
 				}
 
 				return returnData;
@@ -620,7 +620,7 @@ export class FileMaker implements INodeType {
 				try {
 					layouts = await layoutsApiRequest.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error);
 				}
 				for (const layout of layouts) {
 					returnData.push({
@@ -638,7 +638,7 @@ export class FileMaker implements INodeType {
 				try {
 					fields = await getFields.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error);
 				}
 				for (const field of fields) {
 					returnData.push({
@@ -656,7 +656,7 @@ export class FileMaker implements INodeType {
 				try {
 					scripts = await getScripts.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error);
 				}
 				for (const script of scripts) {
 					if (!script.isFolder) {
@@ -676,7 +676,7 @@ export class FileMaker implements INodeType {
 				try {
 					portals = await getPortals.call(this);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `FileMaker Error: ${error}`);
+					throw new NodeOperationError(this.getNode(), error);
 				}
 				Object.keys(portals).forEach((portal) => {
 					returnData.push({
@@ -700,7 +700,7 @@ export class FileMaker implements INodeType {
 		try {
 			token = await getToken.call(this);
 		} catch (error) {
-			throw new NodeOperationError(this.getNode(), `Login fail: ${error}`);
+			throw new NodeOperationError(this.getNode(), new Error('Login fail', { cause: error }));
 		}
 
 		let requestOptions: OptionsWithUri;
