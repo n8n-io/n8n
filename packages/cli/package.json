@@ -153,7 +153,7 @@
     "n8n-core": "~0.148.0",
     "n8n-editor-ui": "~0.174.0",
     "n8n-nodes-base": "~0.206.0",
-    "n8n-workflow": "~0.129.0",
+    "n8n-workflow": "~0.130.0",
     "nodemailer": "^6.7.1",
     "oauth-1.0a": "^2.2.6",
     "open": "^7.0.0",
