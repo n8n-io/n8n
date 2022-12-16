@@ -753,7 +753,7 @@
     "@types/xml2js": "^0.4.3",
     "eslint-plugin-n8n-nodes-base": "^1.11.1",
     "gulp": "^4.0.0",
-    "n8n-workflow": "~0.129.0"
+    "n8n-workflow": "~0.130.0"
   },
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
