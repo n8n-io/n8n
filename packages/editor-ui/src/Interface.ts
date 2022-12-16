@@ -1147,7 +1147,7 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	dynamicTranslations: {
+	contextBasedTranslationKeys: {
 		credentials: {
 			sharing: {
 				unavailable: {
@@ -1155,7 +1155,7 @@ export interface UIState {
 					description: string;
 					action: string;
 					button: string;
-					linkURL: string;
+					linkUrl: string;
 				};
 			};
 		};
@@ -1170,7 +1170,7 @@ export interface UIState {
 					};
 					action: string;
 					button: string;
-					linkURL: string;
+					linkUrl: string;
 				};
 			};
 		};

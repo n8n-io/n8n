@@ -145,30 +145,30 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['settings'],
 			},
 		],
-		dynamicTranslations: {
+		contextBasedTranslationKeys: {
 			credentials: {
 				sharing: {
 					unavailable: {
-						title: 'dynamic.credentials.sharing.unavailable.title',
-						description: 'dynamic.credentials.sharing.unavailable.description',
-						action: 'dynamic.credentials.sharing.unavailable.action',
-						button: 'dynamic.credentials.sharing.unavailable.button',
-						linkURL: 'https://subscription.n8n.io/',
+						title: 'contextual.credentials.sharing.unavailable.title',
+						description: 'contextual.credentials.sharing.unavailable.description',
+						action: 'contextual.credentials.sharing.unavailable.action',
+						button: 'contextual.credentials.sharing.unavailable.button',
+						linkUrl: 'https://subscription.n8n.io/',
 					},
 				},
 			},
 			workflows: {
 				sharing: {
-					title: 'dynamic.workflows.sharing.title',
+					title: 'contextual.workflows.sharing.title',
 					unavailable: {
-						title: 'dynamic.workflows.sharing.unavailable.title',
+						title: 'contextual.workflows.sharing.unavailable.title',
 						description: {
-							modal: 'dynamic.workflows.sharing.unavailable.description.modal',
-							tooltip: 'dynamic.workflows.sharing.unavailable.description.tooltip',
+							modal: 'contextual.workflows.sharing.unavailable.description.modal',
+							tooltip: 'contextual.workflows.sharing.unavailable.description.tooltip',
 						},
-						action: 'dynamic.workflows.sharing.unavailable.action',
-						button: 'dynamic.workflows.sharing.unavailable.button',
-						linkURL: 'https://subscription.n8n.io/',
+						action: 'contextual.workflows.sharing.unavailable.action',
+						button: 'contextual.workflows.sharing.unavailable.button',
+						linkUrl: 'https://subscription.n8n.io/',
 					},
 				},
 			},

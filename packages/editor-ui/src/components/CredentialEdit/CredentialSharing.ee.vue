@@ -2,11 +2,15 @@
 	<div :class="$style.container">
 		<div v-if="!isSharingEnabled">
 			<n8n-action-box
-				:heading="$locale.baseText(dynamicTranslations.credentials.sharing.unavailable.title)"
-				:description="
-					$locale.baseText(dynamicTranslations.credentials.sharing.unavailable.description)
+				:heading="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.title)
 				"
-				:buttonText="$locale.baseText(dynamicTranslations.credentials.sharing.unavailable.button)"
+				:description="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.description)
+				"
+				:buttonText="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.button)
+				"
 				@click="goToUpgrade"
 			/>
 		</div>
@@ -89,8 +93,8 @@ export default mixins(showMessage).extend({
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
 		},
-		dynamicTranslations(): UIState['dynamicTranslations'] {
-			return this.uiStore.dynamicTranslations;
+		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
+			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -158,7 +162,10 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			window.open(this.dynamicTranslations.credentials.sharing.unavailable.linkURL, '_blank');
+			window.open(
+				this.contextBasedTranslationKeys.credentials.sharing.unavailable.linkUrl,
+				'_blank',
+			);
 		},
 	},
 	mounted() {

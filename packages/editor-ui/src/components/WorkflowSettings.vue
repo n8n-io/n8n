@@ -42,7 +42,7 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<div v-if="isWorkflowSharingEnabled">
+				<div v-if="isSharingEnabled">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
@@ -415,7 +415,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		workflowId(): string {
 			return this.workflowsStore.workflowId;
 		},
-		isWorkflowSharingEnabled(): boolean {
+		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 	},

@@ -11,7 +11,9 @@
 			<div v-if="!isSharingEnabled" :class="$style.container">
 				<n8n-text>
 					{{
-						$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.description.modal)
+						$locale.baseText(
+							contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+						)
 					}}
 				</n8n-text>
 			</div>
@@ -69,7 +71,7 @@
 					<template #fallback>
 						<n8n-text>
 							<i18n
-								:path="dynamicTranslations.workflows.sharing.unavailable.description"
+								:path="contextBasedTranslationKeys.workflows.sharing.unavailable.description"
 								tag="span"
 							>
 								<template #action />
@@ -83,7 +85,7 @@
 		<template #footer>
 			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
 				<n8n-button @click="goToUpgrade">
-					{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
+					{{ $locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button) }}
 				</n8n-button>
 			</div>
 			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
@@ -110,9 +112,11 @@
 				</n8n-button>
 
 				<template #fallback>
-					<n8n-link :to="dynamicTranslations.workflows.sharing.unavailable.linkURL">
+					<n8n-link :to="contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl">
 						<n8n-button :loading="loading" size="medium">
-							{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
+							{{
+								$locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button)
+							}}
 						</n8n-button>
 					</n8n-link>
 				</template>
@@ -186,8 +190,8 @@ export default mixins(showMessage).extend({
 		modalTitle(): string {
 			return this.$locale.baseText(
 				this.isSharingEnabled
-					? this.dynamicTranslations.workflows.sharing.title
-					: this.dynamicTranslations.workflows.sharing.unavailable.title,
+					? this.contextBasedTranslationKeys.workflows.sharing.title
+					: this.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
 				{
 					interpolate: { name: this.workflow.name },
 				},
@@ -229,8 +233,8 @@ export default mixins(showMessage).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
-		dynamicTranslations(): UIState['dynamicTranslations'] {
-			return this.uiStore.dynamicTranslations;
+		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
+			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
@@ -427,7 +431,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			window.open(this.dynamicTranslations.workflows.sharing.unavailable.linkURL, '_blank');
+			window.open(this.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl, '_blank');
 		},
 	},
 	mounted() {
