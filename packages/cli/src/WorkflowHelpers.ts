@@ -24,7 +24,6 @@ import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { User } from '@db/entities/User';
 import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
-import pick from 'lodash.pick';
 import omit from 'lodash.omit';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
