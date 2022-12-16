@@ -110,6 +110,14 @@ export class EmailSend implements INodeType {
 						default: false,
 						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
+					{
+						displayName: 'Reply To',
+						name: 'replyTo',
+						type: 'string',
+						default: '',
+						placeholder: 'info@example.com',
+						description: 'The email address to send the reply to',
+					},
 				],
 			},
 		],
@@ -169,6 +177,7 @@ export class EmailSend implements INodeType {
 					subject,
 					text,
 					html,
+					replyTo: options.replyTo as string | undefined,
 				};
 
 				if (attachmentPropertyString && item.binary) {
