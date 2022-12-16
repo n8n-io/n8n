@@ -18,7 +18,7 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.getters.canvasNodes().first().dblclick();
 		ndv.getters.container().should('be.visible');
-		ndv.getters.backToCanvas().click()
+		ndv.getters.backToCanvas().click();
 		ndv.getters.container().should('not.be.visible');
 	});
 
@@ -31,13 +31,13 @@ describe('NDV', () => {
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
 
-		cy.readClipboard().then(url => {
+		cy.readClipboard().then((url) => {
 			cy.request({
 				method: 'GET',
 				url,
 			}).then((resp) => {
-				expect(resp.status).to.eq(200)
-			})
+				expect(resp.status).to.eq(200);
+			});
 		});
 
 		ndv.getters.runDataDisplayMode().should('have.length.at.least', 1).and('be.visible');

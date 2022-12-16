@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-input"></div>
 </template>
 
 <script lang="ts">
@@ -39,10 +39,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
-			const range = this.editor?.state.selection.ranges[0];
-
-			if (range !== undefined && range.from !== range.to) return;
-
 			try {
 				this.editor?.dispatch({
 					changes: {
