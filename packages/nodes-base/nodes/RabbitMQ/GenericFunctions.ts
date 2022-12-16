@@ -4,7 +4,7 @@ import * as amqplib from 'amqplib';
 
 declare module 'amqplib' {
 	interface Channel {
-		connection: amqplib.Connection;
+		connection: Connection;
 	}
 }
 

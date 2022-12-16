@@ -23,9 +23,9 @@ export declare namespace Zammad {
 		accessToken: string;
 	};
 
-	export type UserAdditionalFields = IDataObject & Zammad.CustomFieldsUi & Zammad.AddressUi;
+	export type UserAdditionalFields = IDataObject & CustomFieldsUi & AddressUi;
 	export type UserUpdateFields = UserAdditionalFields;
-	export type UserFilterFields = IDataObject & Zammad.SortUi;
+	export type UserFilterFields = IDataObject & SortUi;
 
 	export type Organization = {
 		active: boolean;
