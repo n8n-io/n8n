@@ -6,25 +6,6 @@ import {
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
 
-export async function bambooHrApiCredentialTest(
-	this: ICredentialTestFunctions,
-	credential: ICredentialsDecrypted,
-): Promise<INodeCredentialTestResult> {
-	try {
-		await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-	} catch (error) {
-		return {
-			status: 'Error',
-			message: 'The API Key included in the request is invalid',
-		};
-	}
-
-	return {
-		status: 'OK',
-		message: 'Connection successful!',
-	} as INodeCredentialTestResult;
-}
-
 async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
@@ -46,4 +27,23 @@ async function validateCredentials(
 	};
 
 	return this.helpers.request(options);
+}
+
+export async function bambooHrApiCredentialTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	try {
+		await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: 'The API Key included in the request is invalid',
+		};
+	}
+
+	return {
+		status: 'OK',
+		message: 'Connection successful!',
+	} as INodeCredentialTestResult;
 }

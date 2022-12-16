@@ -13,6 +13,43 @@ import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } 
 
 const { NodeVM } = require('vm2');
 
+const compareItems = (
+	obj: INodeExecutionData,
+	obj2: INodeExecutionData,
+	keys: string[],
+	disableDotNotation: boolean,
+	_node: INode,
+) => {
+	let result = true;
+	for (const key of keys) {
+		if (!disableDotNotation) {
+			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
+				result = false;
+				break;
+			}
+		} else {
+			if (!isEqual(obj.json[key], obj2.json[key])) {
+				result = false;
+				break;
+			}
+		}
+	}
+	return result;
+};
+
+const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
+	return !isObject(obj)
+		? { [path.join('.')]: obj }
+		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
+};
+
+const shuffleArray = (array: any[]) => {
+	for (let i = array.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[array[i], array[j]] = [array[j], array[i]];
+	}
+};
+
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Item Lists',
@@ -1356,40 +1393,3 @@ return 0;`,
 		}
 	}
 }
-
-const compareItems = (
-	obj: INodeExecutionData,
-	obj2: INodeExecutionData,
-	keys: string[],
-	disableDotNotation: boolean,
-	_node: INode,
-) => {
-	let result = true;
-	for (const key of keys) {
-		if (!disableDotNotation) {
-			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
-				result = false;
-				break;
-			}
-		} else {
-			if (!isEqual(obj.json[key], obj2.json[key])) {
-				result = false;
-				break;
-			}
-		}
-	}
-	return result;
-};
-
-const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
-	return !isObject(obj)
-		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
-};
-
-const shuffleArray = (array: any[]) => {
-	for (let i = array.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[array[i], array[j]] = [array[j], array[i]];
-	}
-};

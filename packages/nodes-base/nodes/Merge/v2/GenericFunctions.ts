@@ -203,6 +203,38 @@ export function findMatches(
 	return filteredData;
 }
 
+export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
+	const mergeMode = clashResolveOptions.mergeMode as string;
+
+	if (clashResolveOptions.overrideEmpty) {
+		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
+			if (srcValue === undefined || srcValue === null || srcValue === '') {
+				return targetValue;
+			}
+		}
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return mergeWith(targetCopy, ...source, customizer);
+			};
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return assignWith(targetCopy, ...source, customizer);
+			};
+		}
+	} else {
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
+		}
+	}
+	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+}
+
 export function mergeMatched(
 	matched: EntryMatches[],
 	clashResolveOptions: ClashResolveOptions,
@@ -283,38 +315,6 @@ export function mergeMatched(
 	}
 
 	return returnData;
-}
-
-export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
-	const mergeMode = clashResolveOptions.mergeMode as string;
-
-	if (clashResolveOptions.overrideEmpty) {
-		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
-			if (srcValue === undefined || srcValue === null || srcValue === '') {
-				return targetValue;
-			}
-		}
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => {
-				const targetCopy = Object.assign({}, target);
-				return mergeWith(targetCopy, ...source, customizer);
-			};
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => {
-				const targetCopy = Object.assign({}, target);
-				return assignWith(targetCopy, ...source, customizer);
-			};
-		}
-	} else {
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
-		}
-	}
-	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {

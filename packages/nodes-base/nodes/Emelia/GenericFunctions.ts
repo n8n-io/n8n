@@ -11,22 +11,6 @@ import {
 } from 'n8n-workflow';
 
 /**
- * Make an authenticated GraphQL request to Emelia.
- */
-export async function emeliaGraphqlRequest(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
-	body: object = {},
-) {
-	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
-
-	if (response.errors) {
-		throw new NodeApiError(this.getNode(), response);
-	}
-
-	return response;
-}
-
-/**
  * Make an authenticated REST API request to Emelia, used for trigger node.
  */
 export async function emeliaApiRequest(
@@ -54,6 +38,22 @@ export async function emeliaApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+/**
+ * Make an authenticated GraphQL request to Emelia.
+ */
+export async function emeliaGraphqlRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	body: object = {},
+) {
+	const response = await emeliaApiRequest.call(this, 'POST', '/graphql', body);
+
+	if (response.errors) {
+		throw new NodeApiError(this.getNode(), response);
+	}
+
+	return response;
 }
 
 /**

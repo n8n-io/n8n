@@ -24,6 +24,71 @@ interface ScriptObject {
 	folderScriptNames?: LayoutObject[];
 }
 
+export async function getToken(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+): Promise<any> {
+	const credentials = await this.getCredentials('fileMaker');
+
+	const host = credentials.host as string;
+	const db = credentials.db as string;
+	const login = credentials.login as string;
+	const password = credentials.password as string;
+
+	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
+
+	// Reset all values
+	const requestOptions: OptionsWithUri = {
+		uri: url,
+		headers: {},
+		method: 'POST',
+		json: true,
+		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+	};
+	requestOptions.auth = {
+		user: login,
+		pass: password,
+	};
+	requestOptions.body = {
+		fmDataSource: [
+			{
+				database: host,
+				username: login,
+				password,
+			},
+		],
+	};
+
+	try {
+		const response = await this.helpers.request!(requestOptions);
+
+		if (typeof response === 'string') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Response body is not valid JSON. Change "Response Format" to "String"',
+			);
+		}
+
+		return response.response.token;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+}
+
+function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
+	const returnData: INodePropertyOptions[] = [];
+	for (const layout of layouts) {
+		if (layout.isFolder!) {
+			returnData.push(...parseLayouts(layout.folderLayoutNames!));
+		} else {
+			returnData.push({
+				name: layout.name,
+				value: layout.name,
+			});
+		}
+	}
+	return returnData;
+}
+
 /**
  * Make an API request to ActiveCampaign
  *
@@ -55,21 +120,6 @@ export async function layoutsApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
-}
-
-function parseLayouts(layouts: LayoutObject[]): INodePropertyOptions[] {
-	const returnData: INodePropertyOptions[] = [];
-	for (const layout of layouts) {
-		if (layout.isFolder!) {
-			returnData.push(...parseLayouts(layout.folderLayoutNames!));
-		} else {
-			returnData.push({
-				name: layout.name,
-				value: layout.name,
-			});
-		}
-	}
-	return returnData;
 }
 
 /**
@@ -134,6 +184,21 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	}
 }
 
+function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
+	const returnData: INodePropertyOptions[] = [];
+	for (const script of scripts) {
+		if (script.isFolder!) {
+			returnData.push(...parseScriptsList(script.folderScriptNames!));
+		} else if (script.name !== '-') {
+			returnData.push({
+				name: script.name,
+				value: script.name,
+			});
+		}
+	}
+	return returnData;
+}
+
 /**
  * Make an API request to ActiveCampaign
  *
@@ -163,71 +228,6 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
-	}
-}
-
-function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
-	const returnData: INodePropertyOptions[] = [];
-	for (const script of scripts) {
-		if (script.isFolder!) {
-			returnData.push(...parseScriptsList(script.folderScriptNames!));
-		} else if (script.name !== '-') {
-			returnData.push({
-				name: script.name,
-				value: script.name,
-			});
-		}
-	}
-	return returnData;
-}
-
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
-	const credentials = await this.getCredentials('fileMaker');
-
-	const host = credentials.host as string;
-	const db = credentials.db as string;
-	const login = credentials.login as string;
-	const password = credentials.password as string;
-
-	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
-
-	// Reset all values
-	const requestOptions: OptionsWithUri = {
-		uri: url,
-		headers: {},
-		method: 'POST',
-		json: true,
-		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
-	};
-	requestOptions.auth = {
-		user: login,
-		pass: password,
-	};
-	requestOptions.body = {
-		fmDataSource: [
-			{
-				database: host,
-				username: login,
-				password,
-			},
-		],
-	};
-
-	try {
-		const response = await this.helpers.request!(requestOptions);
-
-		if (typeof response === 'string') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
-			);
-		}
-
-		return response.response.token;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
 	}
 }
 

@@ -23,6 +23,17 @@ export async function getTimeOffTypeID(
 	return returnData;
 }
 
+//@ts-ignore
+const sort = (a, b) => {
+	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+		return -1;
+	}
+	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+		return 1;
+	}
+	return 0;
+};
+
 export async function getCompanyFileCategories(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
@@ -174,14 +185,3 @@ export async function getEmployeeFields(
 
 	return returnData;
 }
-
-//@ts-ignore
-const sort = (a, b) => {
-	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
-		return -1;
-	}
-	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
-		return 1;
-	}
-	return 0;
-};

@@ -6,6 +6,10 @@ import { OptionsWithUri } from 'request';
 
 import { GrafanaCredentials } from './types';
 
+export function tolerateTrailingSlash(baseUrl: string) {
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
+}
+
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -79,10 +83,6 @@ export function throwOnEmptyUpdate(
 			`Please enter at least one field to update for the ${resource}.`,
 		);
 	}
-}
-
-export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }
 
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {

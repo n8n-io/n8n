@@ -1,5 +1,13 @@
 import type { IDataObject } from 'n8n-workflow';
 
+export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
+	return typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe);
+}
+
+function isTraversable(maybe: unknown): maybe is IDataObject {
+	return isObject(maybe) && typeof maybe.toJSON !== 'function' && Object.keys(maybe).length > 0;
+}
+
 /**
  * Stringify any non-standard JS objects (e.g. `Date`, `RegExp`) inside output items at any depth.
  */
@@ -14,14 +22,6 @@ export function standardizeOutput(output: IDataObject) {
 	}
 
 	return output;
-}
-
-export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
-	return typeof maybe === 'object' && maybe !== null && !Array.isArray(maybe);
-}
-
-function isTraversable(maybe: unknown): maybe is IDataObject {
-	return isObject(maybe) && typeof maybe.toJSON !== 'function' && Object.keys(maybe).length > 0;
 }
 
 export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';

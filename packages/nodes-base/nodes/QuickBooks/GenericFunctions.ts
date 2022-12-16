@@ -90,6 +90,17 @@ export async function quickBooksApiRequest(
 	}
 }
 
+async function getCount(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	qs: IDataObject,
+): Promise<any> {
+	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
+
+	return responseData.QueryResponse.totalCount;
+}
+
 /**
  * Make an authenticated API request to QuickBooks and return all results.
  */
@@ -132,17 +143,6 @@ export async function quickBooksApiRequestAllItems(
 	} while (maxCount > returnData.length);
 
 	return returnData;
-}
-
-async function getCount(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	method: string,
-	endpoint: string,
-	qs: IDataObject,
-): Promise<any> {
-	const responseData = await quickBooksApiRequest.call(this, method, endpoint, qs, {});
-
-	return responseData.QueryResponse.totalCount;
 }
 
 /**
@@ -427,12 +427,12 @@ export function populateFields(
 
 export const toOptions = (option: string) => ({ name: option, value: option });
 
-export const toDisplayName = ({ name, value }: Option): INodePropertyOptions => {
-	return { name: splitPascalCase(name), value };
-};
-
 export const splitPascalCase = (word: string) => {
 	return word.match(/($[a-z])|[A-Z][^A-Z]+/g)!.join(' ');
+};
+
+export const toDisplayName = ({ name, value }: Option): INodePropertyOptions => {
+	return { name: splitPascalCase(name), value };
 };
 
 export function adjustTransactionDates(transactionFields: IDataObject & DateFieldsUi): IDataObject {

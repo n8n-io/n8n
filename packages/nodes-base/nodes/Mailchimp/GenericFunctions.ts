@@ -9,6 +9,23 @@ import {
 
 import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+async function getMetadata(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	oauthTokenData: IDataObject,
+) {
+	const credentials = await this.getCredentials('mailchimpOAuth2Api');
+	const options: OptionsWithUrl = {
+		headers: {
+			Accept: 'application/json',
+			Authorization: `OAuth ${oauthTokenData.access_token}`,
+		},
+		method: 'GET',
+		url: credentials.metadataUrl as string,
+		json: true,
+	};
+	return this.helpers.request!(options);
+}
+
 export async function mailchimpApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
@@ -98,23 +115,6 @@ export function validateJSON(json: string | undefined): any {
 		result = '';
 	}
 	return result;
-}
-
-async function getMetadata(
-	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	oauthTokenData: IDataObject,
-) {
-	const credentials = await this.getCredentials('mailchimpOAuth2Api');
-	const options: OptionsWithUrl = {
-		headers: {
-			Accept: 'application/json',
-			Authorization: `OAuth ${oauthTokenData.access_token}`,
-		},
-		method: 'GET',
-		url: credentials.metadataUrl as string,
-		json: true,
-	};
-	return this.helpers.request!(options);
 }
 
 export const campaignFieldsMetadata = [

@@ -59,17 +59,6 @@ export function adjustPutItem(putItemUi: PutItemUi) {
 	return adjustedPutItem;
 }
 
-export function simplify(item: IAttributeValue): IDataObject {
-	const output: IDataObject = {};
-
-	for (const [attribute, value] of Object.entries(item)) {
-		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
-		output[attribute] = decodeAttribute(type, content);
-	}
-
-	return output;
-}
-
 function decodeAttribute(type: AttributeValueType, attribute: string) {
 	switch (type) {
 		case 'BOOL':
@@ -84,6 +73,17 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		default:
 			return null;
 	}
+}
+
+export function simplify(item: IAttributeValue): IDataObject {
+	const output: IDataObject = {};
+
+	for (const [attribute, value] of Object.entries(item)) {
+		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
+		output[attribute] = decodeAttribute(type, content);
+	}
+
+	return output;
 }
 
 export function validateJSON(input: any): object {

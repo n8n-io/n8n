@@ -254,6 +254,13 @@ export function formatBlocks(blocks: IDataObject[]) {
 	return results;
 }
 
+function getDateFormat(includeTime: boolean) {
+	if (!includeTime) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
+}
+
 function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
@@ -376,13 +383,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		default:
 	}
 	return result;
-}
-
-function getDateFormat(includeTime: boolean) {
-	if (!includeTime) {
-		return 'yyyy-MM-DD';
-	}
-	return '';
 }
 
 function getNameAndType(key: string) {
@@ -546,6 +546,21 @@ export function simplifyProperties(properties: any) {
 		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
+}
+
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return (
+		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
+			?.plain_text || ''
+	);
+}
+
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
 }
 
 export function simplifyObjects(objects: any, download = false, version = 2) {
@@ -786,21 +801,6 @@ export function extractDatabaseId(database: string) {
 	} else {
 		return database;
 	}
-}
-
-function prepend(stringKey: string, properties: { [key: string]: any }) {
-	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
-		delete properties[key];
-	}
-	return properties;
-}
-
-export function getPropertyTitle(properties: { [key: string]: any }) {
-	return (
-		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
-			?.plain_text || ''
-	);
 }
 
 export function getSearchFilters(resource: string) {

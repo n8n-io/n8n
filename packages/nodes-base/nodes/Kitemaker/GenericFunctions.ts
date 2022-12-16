@@ -29,6 +29,16 @@ export async function kitemakerRequest(
 	return responseData;
 }
 
+function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
+	const map: { [key: string]: { [key: string]: string } } = {
+		space: { group: 'organization', items: 'spaces' },
+		user: { group: 'organization', items: 'users' },
+		workItem: { group: 'workItems', items: 'workItems' },
+	};
+
+	return [map[resource].group, map[resource].items];
+}
+
 export async function kitemakerRequestAllItems(
 	this: IExecuteFunctions,
 	body: { query: string; variables: { [key: string]: string } },
@@ -53,16 +63,6 @@ export async function kitemakerRequestAllItems(
 	} while (responseData.data[group].hasMore);
 
 	return returnData;
-}
-
-function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
-	const map: { [key: string]: { [key: string]: string } } = {
-		space: { group: 'organization', items: 'spaces' },
-		user: { group: 'organization', items: 'users' },
-		workItem: { group: 'workItems', items: 'workItems' },
-	};
-
-	return [map[resource].group, map[resource].items];
 }
 
 export function createLoadOptions(

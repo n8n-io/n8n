@@ -23,6 +23,12 @@ interface IHaloPSATokens {
 	id_token: string;
 }
 
+function getAuthUrl(credentials: IDataObject) {
+	return credentials.hostingType === 'on-premise'
+		? `${credentials.appUrl}/auth/token`
+		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
+}
+
 // API Requests ---------------------------------------------------------------------
 
 export async function getAccessTokens(
@@ -184,11 +190,6 @@ export async function haloPSAApiRequestAllItems(
 }
 
 // Utilities ------------------------------------------------------------------------
-function getAuthUrl(credentials: IDataObject) {
-	return credentials.hostingType === 'on-premise'
-		? `${credentials.appUrl}/auth/token`
-		: `${credentials.authUrl}/token?tenant=${credentials.tenant}`;
-}
 
 export function simplifyHaloPSAGetOutput(
 	response: IDataObject[],
