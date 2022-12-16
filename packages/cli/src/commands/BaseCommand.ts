@@ -3,6 +3,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger, Logger } from '@/Logger';
 import { User } from '@db/entities/User';
 import * as Db from '@/Db';
+import { inTest } from '@/constants';
 
 export abstract class BaseCommand extends Command {
 	logger: Logger;
@@ -19,7 +20,7 @@ export abstract class BaseCommand extends Command {
 	}
 
 	async finally(): Promise<void> {
-		if (process.env.NODE_ENV === 'test') return;
+		if (inTest) return;
 
 		this.exit();
 	}
