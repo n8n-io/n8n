@@ -365,6 +365,7 @@ class App {
 				workflowSharing: false,
 				ldap: false,
 			},
+			hideUsagePage: config.getEnv('hideUsagePage'),
 		};
 	}
 

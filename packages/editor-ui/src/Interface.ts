@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
 	jsPlumbInstance,
@@ -9,7 +10,7 @@ import {
 	EndpointRectangle,
 	EndpointRectangleOptions,
 	EndpointSpec,
-} from "jsplumb";
+} from 'jsplumb';
 import {
 	GenericValue,
 	IConnections,
@@ -59,10 +60,10 @@ declare module 'jsplumb' {
 
 	interface Connection {
 		__meta?: {
-			sourceNodeName: string,
-			sourceOutputIndex: number,
-			targetNodeName: string,
-			targetOutputIndex: number,
+			sourceNodeName: string;
+			sourceOutputIndex: number;
+			targetNodeName: string;
+			targetOutputIndex: number;
 		};
 		canvas?: HTMLElement;
 		connector?: {
@@ -73,31 +74,31 @@ declare module 'jsplumb' {
 				maxX: number;
 				minY: number;
 				maxY: number;
-			}
+			};
 		};
 
-		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
+		// bind(event: string, (connection: Connection): void;): void;
 		bind(event: string, callback: Function): void;
 		removeOverlay(name: string): void;
 		removeOverlays(): void;
-		setParameter(name: string, value: any): void; // tslint:disable-line:no-any
+		setParameter(name: string, value: any): void;
 		setPaintStyle(arg0: PaintStyle): void;
-		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
-		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
+		addOverlay(arg0: any[]): void;
+		setConnector(arg0: any[]): void;
 		getUuids(): [string, string];
 	}
 
 	interface Endpoint {
-		endpoint: any; // tslint:disable-line:no-any
+		endpoint: any;
 		elementId: string;
 		__meta?: {
-			nodeName: string,
-			nodeId: string,
-			index: number,
+			nodeName: string;
+			nodeId: string;
+			index: number;
 			totalEndpoints: number;
 		};
 		getUuid(): string;
-		getOverlay(name: string): any; // tslint:disable-line:no-any
+		getOverlay(name: string): any;
 		repaint(params?: object): void;
 	}
 
@@ -121,44 +122,57 @@ declare module 'jsplumb' {
 
 // EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
 export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
-	endpointStyle: EndpointStyle
-	endpointHoverStyle: EndpointStyle
-	endpoint?: EndpointSpec | string
-	dragAllowedWhenFull?: boolean
+	endpointStyle: EndpointStyle;
+	endpointHoverStyle: EndpointStyle;
+	endpoint?: EndpointSpec | string;
+	dragAllowedWhenFull?: boolean;
 	dropOptions?: DropOptions & {
-		tolerance: string
+		tolerance: string;
 	};
-	dragProxy?: string | string[] | EndpointSpec | [ EndpointRectangle,  EndpointRectangleOptions & { strokeWidth: number } ]
+	dragProxy?:
+		| string
+		| string[]
+		| EndpointSpec
+		| [EndpointRectangle, EndpointRectangleOptions & { strokeWidth: number }];
 };
 
 export type EndpointStyle = {
-	width?: number
-	height?: number
-	fill?: string
-	stroke?: string
-	outlineStroke?:string
-	lineWidth?: number
-	hover?: boolean
-	showOutputLabel?: boolean
-	size?: string
-	hoverMessage?: string
+	width?: number;
+	height?: number;
+	fill?: string;
+	stroke?: string;
+	outlineStroke?: string;
+	lineWidth?: number;
+	hover?: boolean;
+	showOutputLabel?: boolean;
+	size?: string;
+	hoverMessage?: string;
 };
 
 export type IDragOptions = DragOptions & {
-	grid: [number, number]
-	filter: string
+	grid: [number, number];
+	filter: string;
 };
 
 export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
-	clearDragSelection: () => void
-	addEndpoint(el: ElementGroupRef, params?: IEndpointOptions, referenceParams?: IEndpointOptions): Endpoint | Endpoint[]
-	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance
+	clearDragSelection: () => void;
+	addEndpoint(
+		el: ElementGroupRef,
+		params?: IEndpointOptions,
+		referenceParams?: IEndpointOptions,
+	): Endpoint | Endpoint[];
+	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance;
 };
 
 export interface IUpdateInformation {
 	name: string;
 	key?: string;
-	value: string | number | { [key: string]: string | number | boolean } | NodeParameterValueType | INodeParameters; // with null makes problems in NodeSettings.vue
+	value:
+		| string
+		| number
+		| { [key: string]: string | number | boolean }
+		| NodeParameterValueType
+		| INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
 }
@@ -198,11 +212,16 @@ export interface IExternalHooks {
  */
 export interface IRestApi {
 	getActiveWorkflows(): Promise<string[]>;
-	getActivationError(id: string): Promise<IActivationError | undefined >;
+	getActivationError(id: string): Promise<IActivationError | undefined>;
 	getCurrentExecutions(filter: object): Promise<IExecutionsCurrentSummaryExtended[]>;
-	getPastExecutions(filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse>;
+	getPastExecutions(
+		filter: object,
+		limit: number,
+		lastId?: string | number,
+		firstId?: string | number,
+	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
 	getCredentialTranslation(credentialType: string): Promise<object>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
@@ -225,7 +244,7 @@ export interface INodeTranslationHeaders {
 		[key: string]: {
 			displayName: string;
 			description: string;
-		},
+		};
 	};
 }
 
@@ -240,7 +259,7 @@ export interface IStartRunData {
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
-	hasJson: {[key: string]: boolean};
+	hasJson: { [key: string]: boolean };
 }
 
 export interface IVariableItemSelected {
@@ -316,7 +335,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	versionId: string;
-	usedCredentials?: Array<Partial<ICredentialsResponse>>;
+	usedCredentials?: IUsedCredential[];
 }
 
 // Identical to cli.Interfaces.ts
@@ -336,7 +355,6 @@ export interface IWorkflowsShareResponse {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 }
-
 
 // Identical or almost identical to cli.Interfaces.ts
 
@@ -369,7 +387,7 @@ export interface ICredentialsBase {
 	updatedAt: number | string;
 }
 
-export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted{
+export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICredentialsDecrypted {
 	id: string;
 }
 
@@ -599,7 +617,10 @@ export type IPersonalizationSurveyAnswersV3 = {
 
 export type IPersonalizationLatestVersion = IPersonalizationSurveyAnswersV3;
 
-export type IPersonalizationSurveyVersions = IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3;
+export type IPersonalizationSurveyVersions =
+	| IPersonalizationSurveyAnswersV1
+	| IPersonalizationSurveyAnswersV2
+	| IPersonalizationSurveyAnswersV3;
 
 export type IRole = 'default' | 'owner' | 'member';
 
@@ -681,7 +702,7 @@ export interface ITemplatesCollection {
 	id: number;
 	name: string;
 	nodes: ITemplatesNode[];
-	workflows: Array<{id: number}>;
+	workflows: Array<{ id: number }>;
 }
 
 interface ITemplatesImage {
@@ -791,7 +812,6 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
-	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -867,7 +887,11 @@ export interface ActionCreateElement extends CreateElementBase {
 	properties: IActionItemProps;
 }
 
-export type INodeCreateElement = NodeCreateElement | CategoryCreateElement | SubcategoryCreateElement | ActionCreateElement;
+export type INodeCreateElement =
+	| NodeCreateElement
+	| CategoryCreateElement
+	| SubcategoryCreateElement
+	| ActionCreateElement;
 
 export interface ICategoriesWithNodes {
 	[category: string]: {
@@ -936,6 +960,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
+	ownedBy: Partial<IUser>;
+	sharedWith: Array<Partial<IUser>>;
 }
 
 export interface WorkflowsState {
@@ -952,7 +978,7 @@ export interface WorkflowsState {
 	usedCredentials: Record<string, IUsedCredential>;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
-	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
+	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	workflowsById: IWorkflowsMap;
 }
 
@@ -1004,7 +1030,7 @@ export interface IRootState {
 	oauthCallbackUrls: object;
 	n8nMetadata: object;
 	workflowExecutionData: IExecutionResponse | null;
-	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
+	workflowExecutionPairedItemMappings: { [itemId: string]: Set<string> };
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeViewOffsetPosition: XYPosition;
@@ -1071,7 +1097,7 @@ export interface TargetItem {
 
 export interface NDVState {
 	activeNodeName: string | null;
-	mainPanelDimensions: {[key: string]: {[key: string]: number}};
+	mainPanelDimensions: { [key: string]: { [key: string]: number } };
 	sessionId: string;
 	input: {
 		displayMode: IRunDataDisplayMode;
@@ -1080,21 +1106,21 @@ export interface NDVState {
 		branch?: number;
 		data: {
 			isEmpty: boolean;
-		}
+		};
 	};
 	output: {
 		branch?: number;
 		displayMode: IRunDataDisplayMode;
 		data: {
 			isEmpty: boolean;
-		}
+		};
 		editMode: {
 			enabled: boolean;
 			value: string;
 		};
 	};
 	focusedMappableInput: string;
-	mappingTelemetry: {[key: string]: string | number | boolean};
+	mappingTelemetry: { [key: string]: string | number | boolean };
 	hoveringItem: null | TargetItem;
 	draggable: {
 		isDragging: boolean;
@@ -1104,7 +1130,6 @@ export interface NDVState {
 		stickyPosition: null | XYPosition;
 	};
 }
-
 
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
@@ -1155,20 +1180,20 @@ export interface UIState {
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
-	id: FAKE_DOOR_FEATURES,
-	featureName: string,
-	icon?: string,
-	infoText?: string,
-	actionBoxTitle: string,
-	actionBoxDescription: string,
-	actionBoxButtonLabel?: string,
-	linkURL: string,
-	uiLocations: IFakeDoorLocation[],
+	id: FAKE_DOOR_FEATURES;
+	featureName: string;
+	icon?: string;
+	infoText?: string;
+	actionBoxTitle: string;
+	actionBoxDescription: string;
+	actionBoxButtonLabel?: string;
+	linkURL: string;
+	uiLocations: IFakeDoorLocation[];
 };
 
 export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
 
-export type INodeFilterType = "Regular" | "Trigger" | "All";
+export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
 
 export interface INodeCreatorState {
 	itemsFilter: string;
@@ -1201,25 +1226,25 @@ export interface INodeTypesState {
 	nodeTypes: {
 		[nodeType: string]: {
 			[version: number]: INodeTypeDescription;
-		}
+		};
 	};
 }
 
 export interface ITemplateState {
-	categories: {[id: string]: ITemplatesCategory};
-	collections: {[id: string]: ITemplatesCollection};
-	workflows: {[id: string]: ITemplatesWorkflow};
+	categories: { [id: string]: ITemplatesCategory };
+	collections: { [id: string]: ITemplatesCollection };
+	workflows: { [id: string]: ITemplatesWorkflow };
 	workflowSearches: {
 		[search: string]: {
 			workflowIds: string[];
 			totalWorkflows: number;
 			loadingMore?: boolean;
-		}
+		};
 	};
 	collectionSearches: {
 		[search: string]: {
 			collectionIds: string[];
-		}
+		};
 	};
 	currentSessionId: string;
 	previousSessionId: string;
@@ -1233,7 +1258,7 @@ export interface IVersionsState {
 
 export interface IUsersState {
 	currentUserId: null | string;
-	users: {[userId: string]: IUser};
+	users: { [userId: string]: IUser };
 }
 
 export interface IWorkflowsState {
@@ -1241,7 +1266,7 @@ export interface IWorkflowsState {
 	activeWorkflowExecution: IExecutionsSummary | null;
 	finishedExecutionsCount: number;
 }
-	export interface IWorkflowsMap {
+export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
 
@@ -1318,14 +1343,14 @@ export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 }
 
 export interface CurlToJSONResponse {
-	"parameters.url": string;
-	"parameters.authentication": string;
-	"parameters.method": string;
-	"parameters.sendHeaders": boolean;
-	"parameters.headerParameters.parameters.0.name": string;
-	"parameters.headerParameters.parameters.0.value": string;
-	"parameters.sendQuery": boolean;
-	"parameters.sendBody": boolean;
+	'parameters.url': string;
+	'parameters.authentication': string;
+	'parameters.method': string;
+	'parameters.sendHeaders': boolean;
+	'parameters.headerParameters.parameters.0.name': string;
+	'parameters.headerParameters.parameters.0.value': string;
+	'parameters.sendQuery': boolean;
+	'parameters.sendBody': boolean;
 }
 
 export interface HistoryState {
@@ -1350,8 +1375,6 @@ export type SchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
-export type Schema = { type: SchemaType, key?: string, value: string | Schema[], path: string };
-
 
 export interface ILdapSyncData {
 	id: number;
@@ -1373,6 +1396,7 @@ export interface ILdapSyncTable {
 	runMode: string;
 	details: string;
 }
+
 export interface ILdapConfig {
 	loginEnabled: boolean;
 	loginLabel: string;
@@ -1394,3 +1418,5 @@ export interface ILdapConfig {
 	searchPageSize: number;
 	searchTimeout: number;
 }
+
+export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };

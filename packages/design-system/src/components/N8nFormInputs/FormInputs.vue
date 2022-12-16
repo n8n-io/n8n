@@ -71,7 +71,7 @@ export default Vue.extend({
 	data() {
 		return {
 			showValidationWarnings: false,
-			values: {} as { [key: string]: any },
+			values: {} as { [key: string]: unknown },
 			validity: {} as { [key: string]: boolean },
 		};
 	},
@@ -103,7 +103,7 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onInput(name: string, value: any) {
+		onInput(name: string, value: unknown) {
 			this.values = {
 				...this.values,
 				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

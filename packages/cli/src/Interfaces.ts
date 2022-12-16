@@ -513,6 +513,7 @@ export interface IN8nUISettings {
 		workflowSharing: boolean;
 		ldap: boolean;
 	};
+	hideUsagePage: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {

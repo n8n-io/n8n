@@ -1,23 +1,92 @@
-
-import { CALENDLY_TRIGGER_NODE_TYPE, CLEARBIT_NODE_TYPE, COMPANY_SIZE_1000_OR_MORE, COMPANY_SIZE_500_999, SCHEDULE_TRIGGER_NODE_TYPE, ELASTIC_SECURITY_NODE_TYPE, EMAIL_SEND_NODE_TYPE, EXECUTE_COMMAND_NODE_TYPE, FINANCE_WORK_AREA, GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, IF_NODE_TYPE, ITEM_LISTS_NODE_TYPE, IT_ENGINEERING_WORK_AREA, JIRA_TRIGGER_NODE_TYPE, MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE, PAGERDUTY_NODE_TYPE, PRODUCT_WORK_AREA, QUICKBOOKS_NODE_TYPE, SALESFORCE_NODE_TYPE, SALES_BUSINESSDEV_WORK_AREA, SECURITY_WORK_AREA, SEGMENT_NODE_TYPE, SET_NODE_TYPE, SLACK_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE, SWITCH_NODE_TYPE, WEBHOOK_NODE_TYPE, XERO_NODE_TYPE, COMPANY_SIZE_KEY, WORK_AREA_KEY, CODING_SKILL_KEY, COMPANY_TYPE_KEY, ECOMMERCE_COMPANY_TYPE, MSP_COMPANY_TYPE, PERSONAL_COMPANY_TYPE, AUTOMATION_GOAL_KEY, OTHER_AUTOMATION_GOAL, NOT_SURE_YET_GOAL, CUSTOMER_INTEGRATIONS_GOAL, CUSTOMER_SUPPORT_GOAL, FINANCE_ACCOUNTING_GOAL, ZENDESK_TRIGGER_NODE_TYPE, WOOCOMMERCE_TRIGGER_NODE_TYPE, SALES_MARKETING_GOAL, HUBSPOT_TRIGGER_NODE_TYPE, HR_GOAL, WORKABLE_TRIGGER_NODE_TYPE, OPERATIONS_GOAL, PRODUCT_GOAL, NOTION_TRIGGER_NODE_TYPE, SECURITY_GOAL, THE_HIVE_TRIGGER_NODE_TYPE, ZENDESK_NODE_TYPE, SERVICENOW_NODE_TYPE, JIRA_NODE_TYPE, BAMBOO_HR_NODE_TYPE, GOOGLE_SHEETS_NODE_TYPE, CODE_NODE_TYPE } from '@/constants';
-import { IPermissions, IPersonalizationSurveyAnswersV1, IPersonalizationSurveyAnswersV2, IPersonalizationSurveyAnswersV3, IPersonalizationSurveyVersions, IUser } from '@/Interface';
-import { ILogInStatus, IRole, IUserPermissions } from "@/Interface";
+import {
+	CALENDLY_TRIGGER_NODE_TYPE,
+	CLEARBIT_NODE_TYPE,
+	COMPANY_SIZE_1000_OR_MORE,
+	COMPANY_SIZE_500_999,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	ELASTIC_SECURITY_NODE_TYPE,
+	EMAIL_SEND_NODE_TYPE,
+	EXECUTE_COMMAND_NODE_TYPE,
+	FINANCE_WORK_AREA,
+	GITHUB_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
+	IF_NODE_TYPE,
+	ITEM_LISTS_NODE_TYPE,
+	IT_ENGINEERING_WORK_AREA,
+	JIRA_TRIGGER_NODE_TYPE,
+	MICROSOFT_EXCEL_NODE_TYPE,
+	MICROSOFT_TEAMS_NODE_TYPE,
+	PAGERDUTY_NODE_TYPE,
+	PRODUCT_WORK_AREA,
+	QUICKBOOKS_NODE_TYPE,
+	SALESFORCE_NODE_TYPE,
+	SALES_BUSINESSDEV_WORK_AREA,
+	SECURITY_WORK_AREA,
+	SEGMENT_NODE_TYPE,
+	SET_NODE_TYPE,
+	SLACK_NODE_TYPE,
+	SPREADSHEET_FILE_NODE_TYPE,
+	SWITCH_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	XERO_NODE_TYPE,
+	COMPANY_SIZE_KEY,
+	WORK_AREA_KEY,
+	CODING_SKILL_KEY,
+	COMPANY_TYPE_KEY,
+	ECOMMERCE_COMPANY_TYPE,
+	MSP_COMPANY_TYPE,
+	PERSONAL_COMPANY_TYPE,
+	AUTOMATION_GOAL_KEY,
+	OTHER_AUTOMATION_GOAL,
+	NOT_SURE_YET_GOAL,
+	CUSTOMER_INTEGRATIONS_GOAL,
+	CUSTOMER_SUPPORT_GOAL,
+	FINANCE_ACCOUNTING_GOAL,
+	ZENDESK_TRIGGER_NODE_TYPE,
+	WOOCOMMERCE_TRIGGER_NODE_TYPE,
+	SALES_MARKETING_GOAL,
+	HUBSPOT_TRIGGER_NODE_TYPE,
+	HR_GOAL,
+	WORKABLE_TRIGGER_NODE_TYPE,
+	OPERATIONS_GOAL,
+	PRODUCT_GOAL,
+	NOTION_TRIGGER_NODE_TYPE,
+	SECURITY_GOAL,
+	THE_HIVE_TRIGGER_NODE_TYPE,
+	ZENDESK_NODE_TYPE,
+	SERVICENOW_NODE_TYPE,
+	JIRA_NODE_TYPE,
+	BAMBOO_HR_NODE_TYPE,
+	GOOGLE_SHEETS_NODE_TYPE,
+	CODE_NODE_TYPE,
+} from '@/constants';
+import {
+	IPermissions,
+	IPersonalizationSurveyAnswersV1,
+	IPersonalizationSurveyAnswersV2,
+	IPersonalizationSurveyAnswersV3,
+	IPersonalizationSurveyVersions,
+	IUser,
+} from '@/Interface';
+import { ILogInStatus, IRole, IUserPermissions } from '@/Interface';
 
 /*
 	Utility functions used to handle users in n8n
 */
 
-function isPersonalizationV2OrV3(data: IPersonalizationSurveyVersions): data is IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 {
-	return "version" in data;
+function isPersonalizationV2OrV3(
+	data: IPersonalizationSurveyVersions,
+): data is IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 {
+	return 'version' in data;
 }
 
-export const ROLE: {Owner: IRole, Member: IRole, Default: IRole} = {
+export const ROLE: { Owner: IRole; Member: IRole; Default: IRole } = {
 	Owner: 'owner',
 	Member: 'member',
 	Default: 'default', // default user with no email when setting up instance
 };
 
-export const LOGIN_STATUS: {LoggedIn: ILogInStatus, LoggedOut: ILogInStatus} = {
+export const LOGIN_STATUS: { LoggedIn: ILogInStatus; LoggedOut: ILogInStatus } = {
 	LoggedIn: 'LoggedIn', // Can be owner or member or default user
 	LoggedOut: 'LoggedOut', // Can only be logged out if UM has been setup
 };
@@ -71,8 +140,7 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 			if (permissions.deny.role && permissions.deny.role.includes(role)) {
 				return false;
 			}
-		}
-		else if (permissions.deny.role) {
+		} else if (permissions.deny.role) {
 			return false;
 		}
 	}
@@ -99,7 +167,13 @@ export const isAuthorized = (permissions: IPermissions, currentUser: IUser | nul
 	return false;
 };
 
-export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV1 | IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3 | null): string[] {
+export function getPersonalizedNodeTypes(
+	answers:
+		| IPersonalizationSurveyAnswersV1
+		| IPersonalizationSurveyAnswersV2
+		| IPersonalizationSurveyAnswersV3
+		| null,
+): string[] {
 	if (!answers) {
 		return [];
 	}
@@ -112,19 +186,21 @@ export function getPersonalizedNodeTypes(answers: IPersonalizationSurveyAnswersV
 }
 
 export function getAccountAge(currentUser: IUser): number {
-	if(currentUser.createdAt) {
+	if (currentUser.createdAt) {
 		const accountCreatedAt = new Date(currentUser.createdAt);
 		const today = new Date();
 
-		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000* 3600 * 24));
+		return Math.ceil((today.getTime() - accountCreatedAt.getTime()) / (1000 * 3600 * 24));
 	}
 	return -1;
 }
 
-function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3) {
+function getPersonalizationV2(
+	answers: IPersonalizationSurveyAnswersV2 | IPersonalizationSurveyAnswersV3,
+) {
 	let nodeTypes: string[] = [];
 
-	const {version, ...data} = answers;
+	const { version, ...data } = answers;
 	if (Object.keys(data).length === 0) {
 		return [];
 	}
@@ -136,7 +212,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPerson
 	let codingSkill = null;
 	if (CODING_SKILL_KEY in answers && answers[CODING_SKILL_KEY]) {
 		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
-		codingSkill = isNaN(codingSkill)? 0 : codingSkill;
+		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 
 	// slot 1 trigger
@@ -144,13 +220,28 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPerson
 		nodeTypes = nodeTypes.concat(WOOCOMMERCE_TRIGGER_NODE_TYPE);
 	} else if (companyType === MSP_COMPANY_TYPE) {
 		nodeTypes = nodeTypes.concat(JIRA_TRIGGER_NODE_TYPE);
-	} else if((companyType === PERSONAL_COMPANY_TYPE || automationGoal === OTHER_AUTOMATION_GOAL ||  automationGoal === NOT_SURE_YET_GOAL) && codingSkill !== null && codingSkill >= 4) {
+	} else if (
+		(companyType === PERSONAL_COMPANY_TYPE ||
+			automationGoal === OTHER_AUTOMATION_GOAL ||
+			automationGoal === NOT_SURE_YET_GOAL) &&
+		codingSkill !== null &&
+		codingSkill >= 4
+	) {
 		nodeTypes = nodeTypes.concat(WEBHOOK_NODE_TYPE);
-	} else if((companyType === PERSONAL_COMPANY_TYPE || automationGoal === OTHER_AUTOMATION_GOAL ||  automationGoal === NOT_SURE_YET_GOAL) && codingSkill !== null && codingSkill < 3) {
+	} else if (
+		(companyType === PERSONAL_COMPANY_TYPE ||
+			automationGoal === OTHER_AUTOMATION_GOAL ||
+			automationGoal === NOT_SURE_YET_GOAL) &&
+		codingSkill !== null &&
+		codingSkill < 3
+	) {
 		nodeTypes = nodeTypes.concat(SCHEDULE_TRIGGER_NODE_TYPE);
 	} else if (automationGoal === CUSTOMER_INTEGRATIONS_GOAL) {
 		nodeTypes = nodeTypes.concat(WEBHOOK_NODE_TYPE);
-	} else if (automationGoal === CUSTOMER_SUPPORT_GOAL || automationGoal === FINANCE_ACCOUNTING_GOAL) {
+	} else if (
+		automationGoal === CUSTOMER_SUPPORT_GOAL ||
+		automationGoal === FINANCE_ACCOUNTING_GOAL
+	) {
 		nodeTypes = nodeTypes.concat(ZENDESK_TRIGGER_NODE_TYPE);
 	} else if (automationGoal === SALES_MARKETING_GOAL) {
 		nodeTypes = nodeTypes.concat(HUBSPOT_TRIGGER_NODE_TYPE);
@@ -176,8 +267,7 @@ function getPersonalizationV2(answers: IPersonalizationSurveyAnswersV2 | IPerson
 	// slot 3 logic node
 	if (codingSkill !== null && codingSkill < 3) {
 		nodeTypes = nodeTypes.concat(IF_NODE_TYPE);
-	}
-	else {
+	} else {
 		nodeTypes = nodeTypes.concat(SWITCH_NODE_TYPE);
 	}
 
@@ -254,7 +344,7 @@ function getPersonalizationV1(answers: IPersonalizationSurveyAnswersV1) {
 		}
 	}
 
-	const workAreaIsEmpty = !workArea|| workArea.length === 0;
+	const workAreaIsEmpty = !workArea || workArea.length === 0;
 
 	if (companySize === null && workAreaIsEmpty && answers[CODING_SKILL_KEY] === null) {
 		return [];
@@ -263,65 +353,56 @@ function getPersonalizationV1(answers: IPersonalizationSurveyAnswersV1) {
 	let codingSkill = null;
 	if (answers[CODING_SKILL_KEY]) {
 		codingSkill = parseInt(answers[CODING_SKILL_KEY] as string, 10);
-		codingSkill = isNaN(codingSkill)? 0 : codingSkill;
+		codingSkill = isNaN(codingSkill) ? 0 : codingSkill;
 	}
 
 	let nodeTypes = [] as string[];
 	if (isWorkAreaAnswer(IT_ENGINEERING_WORK_AREA)) {
 		nodeTypes = nodeTypes.concat(WEBHOOK_NODE_TYPE);
-	}
-	else {
+	} else {
 		nodeTypes = nodeTypes.concat(SCHEDULE_TRIGGER_NODE_TYPE);
 	}
 
 	if (codingSkill !== null && codingSkill >= 4) {
 		nodeTypes = nodeTypes.concat(CODE_NODE_TYPE);
-	}
-	else {
+	} else {
 		nodeTypes = nodeTypes.concat(ITEM_LISTS_NODE_TYPE);
 	}
 
 	if (codingSkill !== null && codingSkill < 3) {
 		nodeTypes = nodeTypes.concat(IF_NODE_TYPE);
-	}
-	else {
+	} else {
 		nodeTypes = nodeTypes.concat(SWITCH_NODE_TYPE);
 	}
 
 	if (companySize === COMPANY_SIZE_500_999 || companySize === COMPANY_SIZE_1000_OR_MORE) {
 		if (isWorkAreaAnswer(SALES_BUSINESSDEV_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat(SALESFORCE_NODE_TYPE);
-		}
-		else if (isWorkAreaAnswer(SECURITY_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(SECURITY_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([ELASTIC_SECURITY_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
-		}
-		else if (isWorkAreaAnswer(PRODUCT_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(PRODUCT_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([JIRA_TRIGGER_NODE_TYPE, SEGMENT_NODE_TYPE]);
-		}
-		else if (isWorkAreaAnswer(IT_ENGINEERING_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(IT_ENGINEERING_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([GITHUB_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
-		}
-		else {
+		} else {
 			nodeTypes = nodeTypes.concat([MICROSOFT_EXCEL_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE]);
 		}
-	}
-	else {
+	} else {
 		if (isWorkAreaAnswer(SALES_BUSINESSDEV_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat(CLEARBIT_NODE_TYPE);
-		}
-		else if (isWorkAreaAnswer(SECURITY_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(SECURITY_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([PAGERDUTY_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
-		}
-		else if (isWorkAreaAnswer(PRODUCT_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(PRODUCT_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([JIRA_TRIGGER_NODE_TYPE, CALENDLY_TRIGGER_NODE_TYPE]);
-		}
-		else if (isWorkAreaAnswer(IT_ENGINEERING_WORK_AREA)) {
+		} else if (isWorkAreaAnswer(IT_ENGINEERING_WORK_AREA)) {
 			nodeTypes = nodeTypes.concat([EXECUTE_COMMAND_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
-		}
-		else if (isWorkAreaAnswer(FINANCE_WORK_AREA)) {
-			nodeTypes = nodeTypes.concat([XERO_NODE_TYPE, QUICKBOOKS_NODE_TYPE, SPREADSHEET_FILE_NODE_TYPE]);
-		}
-		else {
+		} else if (isWorkAreaAnswer(FINANCE_WORK_AREA)) {
+			nodeTypes = nodeTypes.concat([
+				XERO_NODE_TYPE,
+				QUICKBOOKS_NODE_TYPE,
+				SPREADSHEET_FILE_NODE_TYPE,
+			]);
+		} else {
 			nodeTypes = nodeTypes.concat([EMAIL_SEND_NODE_TYPE, SLACK_NODE_TYPE]);
 		}
 	}

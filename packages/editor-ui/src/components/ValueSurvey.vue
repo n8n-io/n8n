@@ -88,10 +88,7 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 		getTitle(): string {
 			if (this.form.value !== '') {
 				if (Number(this.form.value) > 7) {
@@ -140,7 +137,9 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 
-			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({ value: this.form.value });
+			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
+				value: this.form.value,
+			});
 
 			if (response && response.updated) {
 				this.$telemetry.track('User responded value survey score', {
@@ -151,10 +150,12 @@ export default mixins(workflowHelpers).extend({
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
-					email: this.form.email,
-					value: this.form.value,
-				});
+				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey(
+					{
+						email: this.form.email,
+						value: this.form.value,
+					},
+				);
 
 				if (response && response.updated) {
 					this.$telemetry.track('User responded value survey email', {

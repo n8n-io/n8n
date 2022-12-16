@@ -122,12 +122,11 @@ import {
 	faTree,
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
-import {
-	faStickyNote,
-} from '@fortawesome/free-regular-svg-icons';
+import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-function addIcon(icon: any) { // tslint:disable-line:no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function addIcon(icon: any) {
 	library.add(icon as IconDefinition);
 }
 
@@ -253,4 +252,3 @@ addIcon(faVideo);
 addIcon(faTree);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
-

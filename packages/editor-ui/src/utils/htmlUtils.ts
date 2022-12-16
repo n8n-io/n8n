@@ -5,8 +5,8 @@ import xss, { friendlyAttrValue } from 'xss';
 */
 
 export function sanitizeHtml(dirtyHtml: string) {
-	const allowedAttributes = ['href','name', 'target', 'title', 'class', 'id'];
-	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ];
+	const allowedAttributes = ['href', 'name', 'target', 'title', 'class', 'id'];
+	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small'];
 
 	const sanitizedHtml = xss(dirtyHtml, {
 		onTagAttr: (tag, name, value) => {
@@ -20,13 +20,15 @@ export function sanitizeHtml(dirtyHtml: string) {
 			}
 
 			// Allow `allowedAttributes` and all `data-*` attributes
-			if(allowedAttributes.includes(name) || name.startsWith('data-')) return `${name}="${friendlyAttrValue(value)}"`;
+			if (allowedAttributes.includes(name) || name.startsWith('data-')) {
+				return `${name}="${friendlyAttrValue(value)}"`;
+			}
 
 			return;
 			// Return nothing, means keep the default handling measure
 		},
 		onTag: (tag) => {
-			if(!allowedTags.includes(tag)) return '';
+			if (!allowedTags.includes(tag)) return '';
 			return;
 		},
 	});
