@@ -41,7 +41,7 @@ const SettingsView = defineComponent({
 		},
 		fullWidthContent(): boolean {
 			return this.$router.currentRoute.meta?.fullWidthPage;
-		}
+		},
 	},
 });
 
