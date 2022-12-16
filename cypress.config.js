@@ -6,7 +6,7 @@ const BASE_URL = 'http://localhost:5678';
 module.exports = defineConfig({
 	retries: {
 		openMode: 1,
-		runMode: 3
+		runMode: 3,
 	},
 	e2e: {
 		baseUrl: BASE_URL,
@@ -17,7 +17,7 @@ module.exports = defineConfig({
 
 		setupNodeEvents(on, config) {
 			on('task', {
-				'reset': () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
+				reset: () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
 				'setup-owner': (payload) =>
 					fetch(BASE_URL + '/e2e/db/setup-owner', {
 						method: 'POST',
