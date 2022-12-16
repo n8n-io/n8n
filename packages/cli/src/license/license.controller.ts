@@ -101,14 +101,14 @@ licenseController.post(
 			await license.renew();
 		} catch (e) {
 			// not awaiting so as not to make the endpoint hang
-			InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
+			void InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: false });
 			if (e instanceof Error) {
 				throw new ResponseHelper.BadRequestError(e.message);
 			}
 		}
 
 		// not awaiting so as not to make the endpoint hang
-		InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
+		void InternalHooksManager.getInstance().onLicenseRenewAttempt({ success: true });
 
 		// Return the read data, plus the management JWT
 		return {

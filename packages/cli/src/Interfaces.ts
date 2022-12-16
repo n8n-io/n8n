@@ -500,9 +500,6 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		workflowSharing: boolean;
 	};
-	license: {
-		tenantId: number;
-	};
 	hideUsagePage: boolean;
 }
 
@@ -771,6 +768,7 @@ export interface ILicenseReadResponse {
 		planId: string;
 		planName: string;
 	};
+	environment: 'production' | 'staging';
 }
 
 export interface ILicensePostResponse extends ILicenseReadResponse {

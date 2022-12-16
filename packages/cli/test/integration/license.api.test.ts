@@ -87,7 +87,7 @@ test('POST /license/activate should work for instance owner', async () => {
 	expect(response.statusCode).toBe(200);
 
 	// No license defined so we just expect the result to be the defaults
-	expect(response.body).toStrictEqual(DEFAULT_POST_RESPONSE);
+	expect(response.body).toMatchObject(DEFAULT_POST_RESPONSE);
 });
 
 test('POST /license/activate does not work for regular users', async () => {
@@ -126,7 +126,7 @@ test('POST /license/renew should work for instance owner', async () => {
 	expect(response.statusCode).toBe(200);
 
 	// No license defined so we just expect the result to be the defaults
-	expect(response.body).toStrictEqual(DEFAULT_POST_RESPONSE);
+	expect(response.body).toMatchObject(DEFAULT_POST_RESPONSE);
 });
 
 test('POST /license/renew does not work for regular users', async () => {
@@ -164,6 +164,7 @@ const DEFAULT_LICENSE_RESPONSE: { data: ILicenseReadResponse } = {
 			planId: '',
 			planName: 'Community',
 		},
+		environment: 'production',
 	},
 };
 
