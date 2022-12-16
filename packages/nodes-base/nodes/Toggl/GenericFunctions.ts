@@ -21,11 +21,10 @@ export async function togglApiRequest(
 		| ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('togglApi');
 	const headerWithAuthentication = Object.assign(

@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -61,8 +60,8 @@ export class HumanticAi implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			if (resource === 'profile') {
 				if (operation === 'create') {
@@ -81,7 +80,7 @@ export class HumanticAi implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
@@ -154,7 +153,7 @@ export class HumanticAi implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {

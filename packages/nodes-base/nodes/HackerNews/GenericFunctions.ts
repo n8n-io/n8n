@@ -13,7 +13,6 @@ export async function hackerNewsApiRequest(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -23,7 +22,7 @@ export async function hackerNewsApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -40,7 +39,6 @@ export async function hackerNewsApiRequestAllItems(
 	method: string,
 	endpoint: string,
 	qs: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	qs.hitsPerPage = 100;
 

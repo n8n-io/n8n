@@ -8,7 +8,7 @@ export async function getAll(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', index);
 	const filters = this.getNodeParameter('filters', index);
 
 	let qs = {} as IDataObject;
@@ -20,7 +20,7 @@ export async function getAll(
 		qs = filters;
 	}
 
-	if (returnAll === false) {
+	if (!returnAll) {
 		qs.per_page = this.getNodeParameter('limit', index);
 	}
 

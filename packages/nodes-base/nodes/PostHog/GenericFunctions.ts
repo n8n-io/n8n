@@ -8,11 +8,10 @@ export async function posthogApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	_option = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('postHogApi');
 
@@ -43,14 +42,14 @@ export async function posthogApiRequest(
 
 export interface IEvent {
 	event: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
 }
 
 export interface IAlias {
 	type: string;
 	event: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
-	context: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
+	context: { [key: string]: any };
 }
 
 export interface ITrack {
@@ -60,13 +59,13 @@ export interface ITrack {
 	messageId?: string;
 	distinct_id: string;
 	category?: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
-	context: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
+	context: { [key: string]: any };
 }
 
 export interface IIdentity {
 	event: string;
 	messageId?: string;
 	distinct_id: string;
-	properties: { [key: string]: any }; // tslint:disable-line:no-any
+	properties: { [key: string]: any };
 }

@@ -15,12 +15,11 @@ export async function travisciApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('travisCiApi');
 	let options: OptionsWithUri = {
@@ -56,10 +55,9 @@ export async function travisciApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,6 +71,6 @@ export async function travisciApiRequestAllItems(
 			query = Object.fromEntries(parsedPath);
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['@pagination']['is_last'] !== true);
+	} while (responseData['@pagination'].is_last !== true);
 	return returnData;
 }

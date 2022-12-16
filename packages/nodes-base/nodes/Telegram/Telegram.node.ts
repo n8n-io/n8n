@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -504,9 +503,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -588,9 +584,6 @@ export class Telegram implements INodeType {
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description:
 							'Text of the notification. If not specified, nothing will be shown to the user, 0-200 characters.',
@@ -1019,9 +1012,6 @@ export class Telegram implements INodeType {
 										displayName: 'Caption',
 										name: 'caption',
 										type: 'string',
-										typeOptions: {
-											alwaysOpenEditWindow: true,
-										},
 										default: '',
 										description: 'Caption text to set, 0-1024 characters',
 									},
@@ -1057,9 +1047,6 @@ export class Telegram implements INodeType {
 				name: 'text',
 				type: 'string',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {
@@ -1477,9 +1464,6 @@ export class Telegram implements INodeType {
 						displayName: 'Caption',
 						name: 'caption',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': [
@@ -1627,9 +1611,6 @@ export class Telegram implements INodeType {
 						displayName: 'Title',
 						name: 'title',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						displayOptions: {
 							show: {
 								'/operation': ['sendAudio'],
@@ -1683,8 +1664,8 @@ export class Telegram implements INodeType {
 		let requestMethod: string;
 		let endpoint: string;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		for (let i = 0; i < items.length; i++) {
@@ -1829,10 +1810,7 @@ export class Telegram implements INodeType {
 						body.chat_id = this.getNodeParameter('chatId', i) as string;
 						body.message_id = this.getNodeParameter('messageId', i) as string;
 
-						const { disable_notification } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as IDataObject;
+						const { disable_notification } = this.getNodeParameter('additionalFields', i);
 						if (disable_notification) {
 							body.disable_notification = true;
 						}
@@ -1981,16 +1959,16 @@ export class Telegram implements INodeType {
 
 				let responseData;
 
-				if (binaryData === true) {
+				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-					const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+					const itemBinaryData = items[i].binary![binaryPropertyName];
 					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
-					const filename = fileName || binaryData.fileName?.toString();
+					const filename = fileName || itemBinaryData.fileName?.toString();
 
-					if (!fileName && !binaryData.fileName) {
+					if (!fileName && !itemBinaryData.fileName) {
 						throw new NodeOperationError(
 							this.getNode(),
 							`File name is needed to ${operation}. Make sure the property that holds the binary data
@@ -2007,7 +1985,7 @@ export class Telegram implements INodeType {
 							value: dataBuffer,
 							options: {
 								filename,
-								contentType: binaryData.mimeType,
+								contentType: itemBinaryData.mimeType,
 							},
 						},
 					};
@@ -2018,7 +1996,7 @@ export class Telegram implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'get') {
-					if (this.getNodeParameter('download', i, false) === true) {
+					if (this.getNodeParameter('download', i, false)) {
 						const filePath = responseData.result.file_path;
 
 						const credentials = await this.getCredentials('telegramApi');
@@ -2037,7 +2015,7 @@ export class Telegram implements INodeType {
 						);
 
 						const fileName = filePath.split('/').pop();
-						const binaryData = await this.helpers.prepareBinaryData(
+						const data = await this.helpers.prepareBinaryData(
 							Buffer.from(file.body as string),
 							fileName,
 						);
@@ -2045,7 +2023,7 @@ export class Telegram implements INodeType {
 						returnData.push({
 							json: responseData,
 							binary: {
-								data: binaryData,
+								data,
 							},
 							pairedItem: { item: i },
 						});

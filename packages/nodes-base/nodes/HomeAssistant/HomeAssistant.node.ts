@@ -159,18 +159,18 @@ export class HomeAssistant implements INodeType {
 
 		loadOptions: {
 			async getAllEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this);
+				return getHomeAssistantEntities.call(this);
 			},
 			async getCameraEntities(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantEntities.call(this, 'camera');
+				return getHomeAssistantEntities.call(this, 'camera');
 			},
 			async getDomains(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				return await getHomeAssistantServices.call(this);
+				return getHomeAssistantServices.call(this);
 			},
 			async getDomainServices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const currentDomain = this.getCurrentNodeParameter('domain') as string;
 				if (currentDomain) {
-					return await getHomeAssistantServices.call(this, currentDomain);
+					return getHomeAssistantServices.call(this, currentDomain);
 				} else {
 					return [];
 				}
@@ -182,8 +182,8 @@ export class HomeAssistant implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const qs: IDataObject = {};
 		let responseData;
 		for (let i = 0; i < length; i++) {

@@ -42,7 +42,7 @@ export async function marketstackApiRequestAllItems(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	let responseData;

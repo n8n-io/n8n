@@ -156,8 +156,8 @@ export class PayPalTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		let webhook;
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
-		const bodyData = this.getBodyData() as IDataObject;
+		const webhookData = this.getWorkflowStaticData('node');
+		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData() as IDataObject;
 		const endpoint = '/notifications/verify-webhook-signature';

@@ -19,7 +19,6 @@ export async function muteAlert(
 	body.id = id;
 	body.mute_for = mute;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	return this.helpers.returnJsonArray(responseData);
 }

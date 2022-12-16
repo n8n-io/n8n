@@ -19,7 +19,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Venafi events occur',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​ Trigger',
+			name: 'Venafi TLS Protect Cloud Trigger',
 		},
 		credentials: [
 			{

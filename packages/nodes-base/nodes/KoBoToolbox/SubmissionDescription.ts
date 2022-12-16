@@ -63,7 +63,7 @@ export const submissionFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['submission'],
-				operation: ['get', 'delete', 'getValidation', 'setValidation'],
+				operation: ['get', 'delete', 'getValidation', 'setValidation', 'getAll'],
 			},
 		},
 		description:
@@ -114,24 +114,6 @@ export const submissionFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                submission:getAll                           */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Form Name or ID',
-		name: 'formId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadForms',
-		},
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['submission'],
-				operation: ['getAll'],
-			},
-		},
-		description:
-			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -204,9 +186,6 @@ export const submissionFields: INodeProperties[] = [
 		name: 'filterJson',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			// alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['submission'],

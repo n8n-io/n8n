@@ -12,12 +12,11 @@ export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -72,10 +71,9 @@ export async function googleApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -84,14 +82,14 @@ export async function googleApiRequestAllItems(
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
-		query.pageToken = responseData['pageToken'];
+		query.pageToken = responseData.pageToken;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['pageToken'] !== undefined && responseData['pageToken'] !== '');
+	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
 
 	return returnData;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	credentials: IDataObject,
 ): Promise<IDataObject> {

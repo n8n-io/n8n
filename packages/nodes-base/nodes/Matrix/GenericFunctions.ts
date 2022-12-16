@@ -13,10 +13,9 @@ export async function matrixApiRequest(
 	resource: string,
 	body: string | object = {},
 	query: object = {},
-	headers: {} | undefined = undefined,
-	option: {} = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+	headers: IDataObject | undefined = undefined,
+	option: IDataObject = {},
+) {
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {
@@ -35,8 +34,6 @@ export async function matrixApiRequest(
 		delete options.qs;
 	}
 	try {
-		let response: any; // tslint:disable-line:no-any
-
 		const credentials = await this.getCredentials('matrixApi');
 
 		options.uri = `${credentials.homeserverUrl}/_matrix/${
@@ -44,8 +41,7 @@ export async function matrixApiRequest(
 			option.overridePrefix || 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-		//@ts-ignore
-		response = await this.helpers.request(options);
+		const response = await this.helpers.request!(options);
 
 		// When working with images, the request cannot be JSON (it's raw binary data)
 		// But the output is JSON so we have to parse it manually.
@@ -62,11 +58,10 @@ export async function handleMatrixCall(
 	index: number,
 	resource: string,
 	operation: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (resource === 'account') {
 		if (operation === 'me') {
-			return await matrixApiRequest.call(this, 'GET', '/account/whoami');
+			return matrixApiRequest.call(this, 'GET', '/account/whoami');
 		}
 	} else if (resource === 'room') {
 		if (operation === 'create') {
@@ -80,20 +75,20 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return await matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return matrixApiRequest.call(this, 'POST', `/createRoom`, body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
-			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
+			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
 		} else if (operation === 'leave') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
+			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/leave`);
 		} else if (operation === 'invite') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
 			const body: IDataObject = {
 				user_id: userId,
 			};
-			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
+			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/invite`, body);
 		} else if (operation === 'kick') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const userId = this.getNodeParameter('userId', index) as string;
@@ -102,7 +97,7 @@ export async function handleMatrixCall(
 				user_id: userId,
 				reason,
 			};
-			return await matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
+			return matrixApiRequest.call(this, 'POST', `/rooms/${roomId}/kick`, body);
 		}
 	} else if (resource === 'message') {
 		if (operation === 'create') {
@@ -121,7 +116,7 @@ export async function handleMatrixCall(
 				body.body = fallbackText;
 			}
 			const messageId = uuid();
-			return await matrixApiRequest.call(
+			return matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,
@@ -129,7 +124,7 @@ export async function handleMatrixCall(
 			);
 		} else if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+			const returnAll = this.getNodeParameter('returnAll', index);
 			const otherOptions = this.getNodeParameter('otherOptions', index) as IDataObject;
 			const returnData: IDataObject[] = [];
 
@@ -183,7 +178,7 @@ export async function handleMatrixCall(
 		if (operation === 'get') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const eventId = this.getNodeParameter('eventId', index) as string;
-			return await matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
+			return matrixApiRequest.call(this, 'GET', `/rooms/${roomId}/event/${eventId}`);
 		}
 	} else if (resource === 'media') {
 		if (operation === 'upload') {
@@ -194,7 +189,6 @@ export async function handleMatrixCall(
 			let body;
 			const qs: IDataObject = {};
 			const headers: IDataObject = {};
-			let filename;
 
 			if (
 				item.binary === undefined ||
@@ -210,12 +204,12 @@ export async function handleMatrixCall(
 			// @ts-ignore
 			qs.filename = item.binary[binaryPropertyName].fileName;
 			//@ts-ignore
-			filename = item.binary[binaryPropertyName].fileName;
+			const filename = item.binary[binaryPropertyName].fileName;
 
 			body = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 			//@ts-ignore
 			headers['Content-Type'] = item.binary[binaryPropertyName].mimeType;
-			headers['accept'] = 'application/json,text/*;q=0.99';
+			headers.accept = 'application/json,text/*;q=0.99';
 
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
@@ -236,7 +230,7 @@ export async function handleMatrixCall(
 				url: uploadRequestResult.content_uri,
 			};
 			const messageId = uuid();
-			return await matrixApiRequest.call(
+			return matrixApiRequest.call(
 				this,
 				'PUT',
 				`/rooms/${roomId}/send/m.room.message/${messageId}`,

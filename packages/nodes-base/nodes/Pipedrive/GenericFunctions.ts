@@ -30,7 +30,6 @@ export async function pipedriveApiRequest(
 	query: IDataObject = {},
 	formData?: IDataObject,
 	downloadFile?: boolean,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -101,7 +100,6 @@ export async function pipedriveApiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {
 		query = {};
@@ -123,11 +121,7 @@ export async function pipedriveApiRequestAllItems(
 		}
 
 		query.start = responseData.additionalData.pagination.next_start;
-	} while (
-		responseData.additionalData !== undefined &&
-		responseData.additionalData.pagination !== undefined &&
-		responseData.additionalData.pagination.more_items_in_collection === true
-	);
+	} while (responseData.additionalData?.pagination?.more_items_in_collection === true);
 
 	return {
 		data: returnData,
@@ -192,7 +186,7 @@ export function pipedriveEncodeCustomProperties(
 
 	for (const key of Object.keys(item)) {
 		customPropertyData = Object.values(customProperties).find(
-			(customPropertyData) => customPropertyData.name === key,
+			(propertyData) => propertyData.name === key,
 		);
 
 		if (customPropertyData !== undefined) {
@@ -211,12 +205,12 @@ export function pipedriveEncodeCustomProperties(
 				);
 
 				if (propertyOption !== undefined) {
-					item[customPropertyData.key as string] = propertyOption.id;
+					item[customPropertyData.key] = propertyOption.id;
 					delete item[key];
 				}
 			} else {
 				// Does already represent the actual value or is null
-				item[customPropertyData.key as string] = item[key];
+				item[customPropertyData.key] = item[key];
 				delete item[key];
 			}
 		}
@@ -267,7 +261,7 @@ export function pipedriveResolveCustomProperties(
 					'timerange',
 				].includes(customPropertyData.field_type)
 			) {
-				json[customPropertyData.name as string] = json[key];
+				json[customPropertyData.name] = json[key];
 				delete json[key];
 				// type options
 			} else if (
@@ -278,7 +272,7 @@ export function pipedriveResolveCustomProperties(
 					(option) => option.id.toString() === json[key]!.toString(),
 				);
 				if (propertyOption !== undefined) {
-					json[customPropertyData.name as string] = propertyOption.label;
+					json[customPropertyData.name] = propertyOption.label;
 					delete json[key];
 				}
 				// type multioptions

@@ -11,12 +11,11 @@ export async function hunterApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('hunterApi');
 	qs = Object.assign({ api_key: credentials.apiKey }, qs);
@@ -47,10 +46,9 @@ export async function hunterApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -63,8 +61,7 @@ export async function hunterApiRequestAllItems(
 		returnData.push(responseData[propertyName]);
 		query.offset += query.limit;
 	} while (
-		responseData.meta !== undefined &&
-		responseData.meta.results !== undefined &&
+		responseData.meta?.results !== undefined &&
 		responseData.meta.offset <= responseData.meta.results
 	);
 	return returnData;

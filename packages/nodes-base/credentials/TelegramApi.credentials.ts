@@ -2,8 +2,11 @@ import { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-wo
 
 export class TelegramApi implements ICredentialType {
 	name = 'telegramApi';
+
 	displayName = 'Telegram API';
+
 	documentationUrl = 'telegram';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
