@@ -264,7 +264,10 @@ export async function logout(
 		return response;
 	} catch (error) {
 		const message =
-			error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
+			(error.response.body.messages[0].message as string) +
+			'(' +
+			(error.response.body.messages[0].message as string) +
+			')';
 
 		if (message !== undefined) {
 			throw new NodeApiError(this.getNode(), error, { message });

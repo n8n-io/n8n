@@ -19,7 +19,7 @@ import { URL } from 'url';
 
 function queryToString(params: IDataObject) {
 	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
+		.map((key) => key + '=' + (params[key] as string))
 		.join('&');
 }
 

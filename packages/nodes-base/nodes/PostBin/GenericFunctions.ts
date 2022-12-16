@@ -107,8 +107,8 @@ export async function transformBinReponse(
 				nowIso: new Date(item.json.now as string).toISOString(),
 				expiresTimestamp: item.json.expires,
 				expiresIso: new Date(item.json.expires as string).toISOString(),
-				requestUrl: 'https://www.toptal.com/developers/postbin/' + item.json.binId,
-				viewUrl: 'https://www.toptal.com/developers/postbin/b/' + item.json.binId,
+				requestUrl: 'https://www.toptal.com/developers/postbin/' + (item.json.binId as string),
+				viewUrl: 'https://www.toptal.com/developers/postbin/b/' + (item.json.binId as string),
 			}),
 	);
 	return items;

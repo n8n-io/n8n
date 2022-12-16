@@ -303,7 +303,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}
@@ -349,7 +349,7 @@ export class Salesforce implements INodeType {
 					const userName = user.Name;
 					const userId = user.Id;
 					returnData.push({
-						name: userPrefix + userName,
+						name: userPrefix + (userName as string),
 						value: userId,
 					});
 				}

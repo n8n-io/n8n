@@ -63,7 +63,7 @@ export async function boxApiRequestAllItems(
 	query.offset = 0;
 	do {
 		responseData = await boxApiRequest.call(this, method, endpoint, body, query);
-		query.offset = responseData.offset + query.limit;
+		query.offset = (responseData.offset as number) + query.limit;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData[propertyName].length !== 0);
 

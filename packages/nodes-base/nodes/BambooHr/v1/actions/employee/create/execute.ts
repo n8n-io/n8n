@@ -100,7 +100,7 @@ export async function create(
 	);
 
 	//obtain employeeID
-	const rawEmployeeId = responseData.headers.location.lastIndexOf('/');
+	const rawEmployeeId: number = responseData.headers.location.lastIndexOf('/');
 	const employeeId = responseData.headers.location.substring(rawEmployeeId + 1);
 
 	//return

@@ -190,7 +190,7 @@ export class GmailTrigger implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		let responseData;
 
-		const now = Math.floor(DateTime.now().toSeconds()) + '';
+		const now = Math.floor(DateTime.now().toSeconds()).toString();
 		const startDate = (webhookData.lastTimeChecked as string) || +now;
 		const endDate = +now;
 

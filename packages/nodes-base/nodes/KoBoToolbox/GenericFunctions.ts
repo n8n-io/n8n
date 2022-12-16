@@ -37,7 +37,7 @@ export async function koBoToolboxApiRequest(
 		Object.assign(options, option);
 	}
 	if (options.url && !/^http(s)?:/.test(options.url)) {
-		options.url = credentials.URL + options.url;
+		options.url = (credentials.URL as string) + options.url;
 	}
 
 	let results = null;
@@ -68,7 +68,7 @@ export async function koBoToolboxRawRequest(
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	if (option.url && !/^http(s)?:/.test(option.url)) {
-		option.url = credentials.URL + option.url;
+		option.url = (credentials.URL as string) + option.url;
 	}
 
 	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);

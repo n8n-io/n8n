@@ -229,10 +229,11 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							'Certificates.member.1.CertificateArn=' + this.getNodeParameter('certificateId', i),
+							'Certificates.member.1.CertificateArn=' +
+								(this.getNodeParameter('certificateId', i) as string),
 						);
 
-						params.push('ListenerArn=' + this.getNodeParameter('listenerId', i));
+						params.push('ListenerArn=' + (this.getNodeParameter('listenerId', i) as string));
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
@@ -265,7 +266,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeListenerCertificates&' + params.join('&'),
 							);
 						} else {
-							params.push('PageSize=' + this.getNodeParameter('limit', 0));
+							params.push('PageSize=' + (this.getNodeParameter('limit', 0) as unknown as string));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -285,10 +286,11 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							'Certificates.member.1.CertificateArn=' + this.getNodeParameter('certificateId', i),
+							'Certificates.member.1.CertificateArn=' +
+								(this.getNodeParameter('certificateId', i) as string),
 						);
 
-						params.push('ListenerArn=' + this.getNodeParameter('listenerId', i));
+						params.push('ListenerArn=' + (this.getNodeParameter('listenerId', i) as string));
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
@@ -365,7 +367,9 @@ export class AwsElb implements INodeType {
 					if (operation === 'delete') {
 						const params = ['Version=2015-12-01'];
 
-						params.push('LoadBalancerArn=' + this.getNodeParameter('loadBalancerId', i));
+						params.push(
+							'LoadBalancerArn=' + (this.getNodeParameter('loadBalancerId', i) as string),
+						);
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
@@ -402,7 +406,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeLoadBalancers&' + params.join('&'),
 							);
 						} else {
-							params.push('PageSize=' + this.getNodeParameter('limit', 0));
+							params.push('PageSize=' + this.getNodeParameter('limit', 0).toString());
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -421,7 +425,9 @@ export class AwsElb implements INodeType {
 					if (operation === 'get') {
 						const params = ['Version=2015-12-01'];
 
-						params.push('LoadBalancerArns.member.1=' + this.getNodeParameter('loadBalancerId', i));
+						params.push(
+							'LoadBalancerArns.member.1=' + (this.getNodeParameter('loadBalancerId', i) as string),
+						);
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
