@@ -24,6 +24,8 @@ import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { User } from '@db/entities/User';
 import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import pick from 'lodash.pick';
+import omit from 'lodash.omit';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -581,11 +583,14 @@ export function validateWorkflowCredentialUsage(
 			nodeName: node.name,
 			nodeId: node.id,
 		});
-		const disabledFlag = newWorkflowVersion.nodes[nodeIdx].disabled;
-		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
+		const previousNodeVersion = previousWorkflowVersion.nodes.find(
 			(previousNode) => previousNode.id === node.id,
-		) as INode;
-		newWorkflowVersion.nodes[nodeIdx].disabled = disabledFlag;
+		);
+		// Allow changing only name, position and disabled status for read-only nodes
+		Object.assign(
+			newWorkflowVersion.nodes[nodeIdx],
+			omit(previousNodeVersion, ['name', 'position', 'disabled']),
+		);
 	});
 
 	return newWorkflowVersion;
