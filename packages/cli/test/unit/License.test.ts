@@ -40,22 +40,10 @@ describe('License', () => {
 		});
 	});
 
-	test('activates license if current license is not valid', async () => {
-		LicenseManager.prototype.isValid.mockReturnValue(false);
-
+	test('attempts to activate license with provided key', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 
-		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
 		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
-	});
-
-	test('does not activate license if current license is valid', async () => {
-		LicenseManager.prototype.isValid.mockReturnValue(true);
-
-		await license.activate(MOCK_ACTIVATION_KEY);
-
-		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
-		expect(LicenseManager.prototype.activate).not.toHaveBeenCalledWith();
 	});
 
 	test('renews license', async () => {
