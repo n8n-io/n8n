@@ -1,5 +1,5 @@
-import {IRestApiContext} from "@/Interface";
-import {makeRestApiRequest} from "@/api/helpers";
+import { IRestApiContext } from '@/Interface';
+import { makeRestApiRequest } from '@/utils';
 
 export function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {
 	return makeRestApiRequest(context, 'GET', '/me/api-key');

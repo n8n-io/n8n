@@ -1,5 +1,4 @@
 /* eslint-disable import/no-mutable-exports */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
@@ -16,25 +15,24 @@ import {
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-// eslint-disable-next-line import/no-cycle
-import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
+import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
 
-import config from '../config';
+import config from '@/config';
 
-// eslint-disable-next-line import/no-cycle
-import { entities } from './databases/entities';
+import { entities } from '@db/entities';
 import {
 	getMariaDBConnectionOptions,
 	getMysqlConnectionOptions,
 	getOptionOverrides,
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
-} from './databases/config';
+} from '@db/config';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-let connection: Connection;
+export let connection: Connection;
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
@@ -180,6 +178,7 @@ export async function init(
 	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
 
 	isInitialized = true;
 

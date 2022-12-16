@@ -183,7 +183,7 @@ export class RabbitMQTrigger implements INodeType {
 
 		const startConsumer = async () => {
 			if (parallelMessages !== -1) {
-				channel.prefetch(parallelMessages);
+				await channel.prefetch(parallelMessages);
 			}
 
 			channel.on('close', () => {
@@ -199,7 +199,7 @@ export class RabbitMQTrigger implements INodeType {
 							messageTracker.received(message);
 						}
 
-						let content: IDataObject | string = message!.content!.toString();
+						let content: IDataObject | string = message.content.toString();
 
 						const item: INodeExecutionData = {
 							json: {},
@@ -214,7 +214,7 @@ export class RabbitMQTrigger implements INodeType {
 							message.content = undefined as unknown as Buffer;
 						} else {
 							if (options.jsonParseBody === true) {
-								content = JSON.parse(content as string);
+								content = JSON.parse(content);
 							}
 							if (options.onlyContent === true) {
 								item.json = content as IDataObject;
@@ -270,14 +270,14 @@ export class RabbitMQTrigger implements INodeType {
 			consumerTag = consumerInfo.consumerTag;
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
 		async function closeFunction() {
 			closeGotCalled = true;
 			try {
-				return messageTracker.closeChannel(channel, consumerTag);
+				return await messageTracker.closeChannel(channel, consumerTag);
 			} catch (error) {
 				const workflow = self.getWorkflow();
 				const node = self.getNode();

@@ -222,8 +222,8 @@ export class Twilio implements INodeType {
 				body = {};
 				qs = {};
 
-				resource = this.getNodeParameter('resource', i) as string;
-				operation = this.getNodeParameter('operation', i) as string;
+				resource = this.getNodeParameter('resource', i);
+				operation = this.getNodeParameter('operation', i);
 
 				if (resource === 'sms') {
 					if (operation === 'send') {
@@ -241,7 +241,7 @@ export class Twilio implements INodeType {
 
 						const toWhatsapp = this.getNodeParameter('toWhatsapp', i) as boolean;
 
-						if (toWhatsapp === true) {
+						if (toWhatsapp) {
 							body.From = `whatsapp:${body.From}`;
 							body.To = `whatsapp:${body.To}`;
 						}

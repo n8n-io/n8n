@@ -5,7 +5,6 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 export class Mailgun implements INodeType {
@@ -75,7 +74,6 @@ export class Mailgun implements INodeType {
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',
@@ -179,7 +177,11 @@ export class Mailgun implements INodeType {
 				let responseData;
 
 				try {
-					responseData = await this.helpers.requestWithAuthentication.call(this, 'mailgunApi', options);
+					responseData = await this.helpers.requestWithAuthentication.call(
+						this,
+						'mailgunApi',
+						options,
+					);
 				} catch (error) {
 					throw new NodeApiError(this.getNode(), error);
 				}

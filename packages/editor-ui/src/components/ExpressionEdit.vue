@@ -1,6 +1,13 @@
 <template>
 	<div v-if="dialogVisible" @keydown.stop>
-		<el-dialog :visible="dialogVisible" custom-class="expression-dialog classic" append-to-body width="80%" :title="$locale.baseText('expressionEdit.editExpression')" :before-close="closeDialog">
+		<el-dialog
+			:visible="dialogVisible"
+			custom-class="expression-dialog classic"
+			append-to-body
+			width="80%"
+			:title="$locale.baseText('expressionEdit.editExpression')"
+			:before-close="closeDialog"
+		>
 			<el-row>
 				<el-col :span="8">
 					<div class="header-side-menu">
@@ -19,77 +26,95 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.expression') }}
+							<div>
+								{{ $locale.baseText('expressionEdit.expression') }}
+							</div>
+							<div class="hint">
+								<span>
+									{{ $locale.baseText('expressionEdit.anythingInside') }}
+								</span>
+								<div class="expression-syntax-example" v-text="`{{ }}`"></div>
+								<span>
+									{{ $locale.baseText('expressionEdit.isJavaScript') }}
+								</span>
+								<n8n-link size="medium" :to="expressionsDocsUrl">
+									{{ $locale.baseText('expressionEdit.learnMore') }}
+								</n8n-link>
+							</div>
 						</div>
 						<div class="expression-editor ph-no-capture">
-							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
+							<ExpressionEditorModalInput
+								:value="value"
+								:isReadOnly="isReadOnly"
+								@change="valueChanged"
+								ref="inputFieldExpression"
+								data-test-id="expression-modal-input"
+							/>
 						</div>
 					</div>
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.result') }}
+							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
-							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+							<ExpressionEditorModalOutput
+								:segments="segments"
+								ref="expressionResult"
+								data-test-id="expression-modal-output"
+							/>
 						</div>
 					</div>
-
 				</el-col>
 			</el-row>
-
 		</el-dialog>
 	</div>
 </template>
 
 <script lang="ts">
-import ExpressionInput from '@/components/ExpressionInput.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { genericHelpers } from '@/mixins/genericHelpers';
+
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
-import { hasExpressionMapping } from './helpers';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
-export default mixins(
-	externalHooks,
-	genericHelpers,
-	debounceHelper,
-).extend({
+import type { Segment } from '@/types/expressions';
+
+export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 	name: 'ExpressionEdit',
-	props: [
-		'dialogVisible',
-		'parameter',
-		'path',
-		'value',
-		'eventSource',
-	],
+	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
-		ExpressionInput,
+		ExpressionEditorModalInput,
+		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
-	data () {
+	data() {
 		return {
 			displayValue: '',
 			latestValue: '',
+			segments: [] as Segment[],
+			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
-		valueChanged (value: string, forceUpdate = false) {
+		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
+			this.segments = segments;
 
 			if (forceUpdate === true) {
 				this.updateDisplayValue();
@@ -99,11 +124,11 @@ export default mixins(
 			}
 		},
 
-		updateDisplayValue () {
+		updateDisplayValue() {
 			this.displayValue = this.latestValue;
 		},
 
-		closeDialog () {
+		closeDialog() {
 			if (this.latestValue !== this.value) {
 				// Handle the close externally as the visible parameter is an external prop
 				// and is so not allowed to be changed here.
@@ -113,9 +138,14 @@ export default mixins(
 			return false;
 		},
 
-		itemSelected (eventData: IVariableItemSelected) {
-			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+		itemSelected(eventData: IVariableItemSelected) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
+			this.$externalHooks().run('expressionEdit.itemSelected', {
+				parameter: this.parameter,
+				value: this.value,
+				selectedItem: eventData,
+			});
 
 			const trackProperties: {
 				event_version: string;
@@ -129,11 +159,11 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.ndvStore.activeNode? this.ndvStore.activeNode.type : '',
+				node_type_dest: this.ndvStore.activeNode ? this.ndvStore.activeNode.type : '',
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
-				node_name: this.ndvStore.activeNode? this.ndvStore.activeNode.name : '',
+				node_name: this.ndvStore.activeNode ? this.ndvStore.activeNode.name : '',
 			};
 
 			if (eventData.variable) {
@@ -151,43 +181,60 @@ export default mixins(
 
 				if (splitVar[0].startsWith('$node')) {
 					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source = this.workflowsStore.getNodeByName(sourceNodeName)?.type;
-					const nodeConnections: Array<Array<{ node: string }>> = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')) ? true : false;
+					trackProperties.node_type_source =
+						this.workflowsStore.getNodeByName(sourceNodeName)?.type;
+					const nodeConnections: Array<Array<{ node: string }>> =
+						this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
+					trackProperties.is_immediate_input =
+						nodeConnections &&
+						nodeConnections[0] &&
+						!!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')
+							? true
+							: false;
 
 					if (splitVar[1].startsWith('parameter')) {
 						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
 					}
-
 				} else {
 					trackProperties.is_immediate_input = true;
 
-					if(splitVar[0].startsWith('$parameter')) {
+					if (splitVar[0].startsWith('$parameter')) {
 						trackProperties.parameter_name_source = splitVar[0].split('"')[1];
 					}
 				}
 			}
 
-			this.$telemetry.track('User inserted item from Expression Editor variable selector', trackProperties);
+			this.$telemetry.track(
+				'User inserted item from Expression Editor variable selector',
+				trackProperties,
+			);
 		},
 	},
 	watch: {
-		dialogVisible (newValue) {
+		dialogVisible(newValue) {
 			this.displayValue = this.value;
 			this.latestValue = this.value;
 
-			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+			const resolvedExpressionValue =
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
+				undefined;
+			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
+				dialogVisible: newValue,
+				parameter: this.parameter,
+				value: this.value,
+				resolvedExpressionValue,
+			});
 
 			if (!newValue) {
-				const telemetryPayload = {
-					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
-					workflow_id: this.workflowsStore.workflowId,
-					source: this.eventSource,
-					session_id: this.ndvStore.sessionId,
-					has_parameter: this.value.includes('$parameter'),
-					has_mapping: hasExpressionMapping(this.value),
-				};
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.value,
+					this.workflowsStore.workflowId,
+					this.ndvStore.sessionId,
+					this.ndvStore.activeNode?.type ?? '',
+				);
+
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
@@ -200,7 +247,32 @@ export default mixins(
 .editor-description {
 	line-height: 1.5;
 	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;;
+	padding: 0 0 0.5em 0.2em;
+	display: flex;
+	justify-content: space-between;
+
+	.hint {
+		color: var(--color-text-base);
+		font-weight: normal;
+		display: flex;
+
+		@media (max-width: $breakpoint-xs) {
+			display: none;
+		}
+
+		span {
+			margin-right: var(--spacing-4xs);
+		}
+		.expression-syntax-example {
+			display: inline-block;
+			margin-top: 3px;
+			height: 16px;
+			line-height: 1;
+			background-color: var(--color-expression-syntax-example);
+			color: var(--color-text-dark);
+			margin-right: var(--spacing-4xs);
+		}
+	}
 }
 
 .expression-result-wrapper,

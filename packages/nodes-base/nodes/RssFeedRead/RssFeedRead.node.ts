@@ -19,7 +19,7 @@ export class RssFeedRead implements INodeType {
 		version: 1,
 		description: 'Reads data from an RSS Feed',
 		defaults: {
-			name: 'RSS Feed Read',
+			name: 'RSS Read',
 			color: '#b02020',
 		},
 		inputs: ['main'],
@@ -88,7 +88,7 @@ export class RssFeedRead implements INodeType {
 
 function validateURL(url: string) {
 	try {
-		const parseUrl = new URL(url);
+		const _parseUrl = new URL(url);
 		return true;
 	} catch (err) {
 		return false;

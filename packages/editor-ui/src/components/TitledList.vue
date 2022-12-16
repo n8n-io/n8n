@@ -11,7 +11,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "TitledList",
+	name: 'TitledList',
 	props: {
 		title: {
 			type: String,
@@ -32,7 +32,7 @@ export default Vue.extend({
 		list-style: none;
 		padding-left: var(--spacing-3xs);
 		&::before {
-			content: "- ";
+			content: '- ';
 		}
 	}
 }

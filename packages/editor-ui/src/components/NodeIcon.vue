@@ -21,16 +21,15 @@ import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 interface NodeIconSource {
-		path?: string;
-		fileBuffer?: string;
-		icon?: string;
+	path?: string;
+	fileBuffer?: string;
+	icon?: string;
 }
 
 export default Vue.extend({
 	name: 'NodeIcon',
 	props: {
-		nodeType: {
-		},
+		nodeType: {},
 		size: {
 			type: Number,
 			required: false,
@@ -49,13 +48,12 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
-		type (): string {
+		...mapStores(useRootStore),
+		type(): string {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			let iconType = 'unknown';
 			if (nodeType) {
+				if (nodeType.iconUrl) return 'file';
 				if ((nodeType as IVersionNode).iconData) {
 					iconType = (nodeType as IVersionNode).iconData.type;
 				} else if (nodeType.icon) {
@@ -64,16 +62,16 @@ export default Vue.extend({
 			}
 			return iconType;
 		},
-		color () : string {
+		color(): string {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			if (nodeType && nodeType.defaults && nodeType.defaults.color) {
 				return nodeType.defaults.color.toString();
 			}
 			return '';
 		},
-		iconSource () : NodeIconSource {
+		iconSource(): NodeIconSource {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const restUrl = this.rootStore.getRestUrl;
+			const baseUrl = this.rootStore.getBaseUrl;
 			const iconSource = {} as NodeIconSource;
 
 			if (nodeType) {
@@ -84,11 +82,14 @@ export default Vue.extend({
 						fileBuffer: (nodeType as IVersionNode).iconData.fileBuffer,
 					};
 				}
+				if (nodeType.iconUrl) {
+					return { path: baseUrl + nodeType.iconUrl };
+				}
 				// Otherwise, extract it from icon prop
 				if (nodeType.icon) {
 					const [type, path] = nodeType.icon.split(':');
 					if (type === 'file') {
-						iconSource.path = `${restUrl}/node-icon/${nodeType.name}`;
+						throw new Error(`Unexpected icon: ${nodeType.icon}`);
 					} else {
 						iconSource.icon = path;
 					}
@@ -100,5 +101,4 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss">
-</style>
+<style lang="scss"></style>

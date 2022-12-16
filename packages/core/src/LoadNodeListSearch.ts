@@ -1,6 +1,6 @@
 import type { INodeListSearchResult, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
-import { NodeExecuteFunctions } from '.';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import { LoadNodeDetails } from './LoadNodeDetails';
 
 export class LoadNodeListSearch extends LoadNodeDetails {

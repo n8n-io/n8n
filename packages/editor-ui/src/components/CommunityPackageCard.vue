@@ -19,7 +19,8 @@
 					</n8n-text>
 					<n8n-text size="small" color="text-light">
 						<span v-for="(node, index) in communityPackage.installedNodes" :key="node.name">
-							{{ node.name }}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
+							{{ node.name
+							}}<span v-if="index != communityPackage.installedNodes.length - 1">,</span>
 						</span>
 					</n8n-text>
 				</div>
@@ -29,21 +30,27 @@
 					v{{ communityPackage.installedVersion }}
 				</n8n-text>
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-					</div>
-					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+						</div>
+					</template>
+					<n8n-button type="outline" label="Update" @click="onUpdateClick" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />
 				</n8n-tooltip>
 				<div :class="$style.cardActions">
@@ -59,15 +66,10 @@ import { useUIStore } from '@/stores/ui';
 import { PublicInstalledPackage } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import {
-	NPM_PACKAGE_DOCS_BASE_URL,
-	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-} from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
+import { showMessage } from '@/mixins/showMessage';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'CommunityPackageCard',
 	props: {
 		communityPackage: {
@@ -129,7 +131,8 @@ export default mixins(
 	background-color: var(--color-background-xlight);
 }
 
-.packageCard, .cardSkeleton {
+.packageCard,
+.cardSkeleton {
 	display: flex;
 	flex-basis: 100%;
 	justify-content: space-between;

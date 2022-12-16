@@ -6,7 +6,7 @@
 			id="app"
 			:class="{
 				[$style.container]: true,
-				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed,
 			}"
 		>
 			<div id="header" :class="$style.header">
@@ -33,12 +33,11 @@ import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
-import { userHelpers } from './components/mixins/userHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
-import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
+import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
@@ -46,29 +45,32 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
+import { historyHelper } from '@/mixins/history';
 
-export default mixins(
-	showMessage,
-	userHelpers,
-	restApi,
-	globalLinkActions,
-).extend({
+export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
 	},
+	setup() {
+		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+		return {
+			registerCustomAction,
+			unregisterCustomAction,
+		};
+	},
 	computed: {
 		...mapStores(
-				useNodeTypesStore,
-				useRootStore,
-				useSettingsStore,
-				useTemplatesStore,
-				useUIStore,
-				useUsersStore,
-			),
-		defaultLocale (): string {
+			useNodeTypesStore,
+			useRootStore,
+			useSettingsStore,
+			useTemplatesStore,
+			useUIStore,
+			useUsersStore,
+		),
+		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},
 	},
@@ -92,9 +94,9 @@ export default mixins(
 				throw e;
 			}
 		},
-		loginWithCookie(): void {
+		async loginWithCookie(): Promise<void> {
 			try {
-				this.usersStore.loginWithCookie();
+				await this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
@@ -103,8 +105,7 @@ export default mixins(
 			}
 			try {
 				await this.settingsStore.testTemplatesEndpoint();
-		} catch (e) {
-			}
+			} catch (e) {}
 		},
 		logHiringBanner() {
 			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
@@ -119,8 +120,7 @@ export default mixins(
 			this.uiStore.currentView = this.$route.name || '';
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.templatesStore.setSessionId();
-			}
-			else {
+			} else {
 				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 			}
 
@@ -154,7 +154,8 @@ export default mixins(
 			// if cannot access page and is logged in, respect signin redirect
 			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);
-				if (redirect.startsWith('/')) { // protect against phishing
+				if (redirect.startsWith('/')) {
+					// protect against phishing
 					this.$router.replace(redirect);
 					return;
 				}
@@ -164,7 +165,10 @@ export default mixins(
 			this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
-			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect();
+			const redirect =
+				this.$route.meta &&
+				typeof this.$route.meta.getRedirect === 'function' &&
+				this.$route.meta.getRedirect();
 			if (redirect) {
 				this.$router.replace(redirect);
 			}
@@ -186,7 +190,6 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
-		// TODO: Un-comment once front-end hooks are updated to work with pinia store
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
@@ -215,11 +218,11 @@ export default mixins(
 
 .container {
 	display: grid;
-  grid-template-areas:
-    "sidebar header"
-    "sidebar content";
-  grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-  grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-template-areas:
+		'sidebar header'
+		'sidebar content';
+	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
+	grid-template-rows: fit-content($sidebar-width) 1fr;
 }
 
 .content {

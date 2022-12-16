@@ -20,7 +20,6 @@
 import { useRootStore } from '@/stores/n8nRootStore';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
-import mixins from 'vue-typed-mixins';
 
 export default Vue.extend({
 	props: {
@@ -29,9 +28,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		basePath(): string {
 			return this.rootStore.baseUrl;
 		},

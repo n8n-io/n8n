@@ -75,10 +75,9 @@ export class PostHog implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (resource === 'alias') {
 			if (operation === 'create') {
@@ -88,11 +87,10 @@ export class PostHog implements INodeType {
 
 						const alias = this.getNodeParameter('alias', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const context =
-							(((additionalFields.contextUi as IDataObject) || {})
-								.contextValues as IDataObject[]) || [];
+							((additionalFields.contextUi as IDataObject)?.contextValues as IDataObject[]) || [];
 
 						const event: IAlias = {
 							type: 'alias',
@@ -138,11 +136,11 @@ export class PostHog implements INodeType {
 
 						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const properties =
-							(((additionalFields.propertiesUi as IDataObject) || {})
-								.propertyValues as IDataObject[]) || [];
+							((additionalFields.propertiesUi as IDataObject)?.propertyValues as IDataObject[]) ||
+							[];
 
 						const event: IEvent = {
 							event: eventName,
@@ -152,7 +150,7 @@ export class PostHog implements INodeType {
 							),
 						};
 
-						event.properties['distinct_id'] = distinctId;
+						event.properties.distinct_id = distinctId;
 
 						Object.assign(event, additionalFields);
 
@@ -186,11 +184,11 @@ export class PostHog implements INodeType {
 					try {
 						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const properties =
-							(((additionalFields.propertiesUi as IDataObject) || {})
-								.propertyValues as IDataObject[]) || [];
+							((additionalFields.propertiesUi as IDataObject)?.propertyValues as IDataObject[]) ||
+							[];
 
 						const event: IIdentity = {
 							event: '$identify',
@@ -233,15 +231,14 @@ export class PostHog implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const context =
-							(((additionalFields.contextUi as IDataObject) || {})
-								.contextValues as IDataObject[]) || [];
+							((additionalFields.contextUi as IDataObject)?.contextValues as IDataObject[]) || [];
 
 						const properties =
-							(((additionalFields.propertiesUi as IDataObject) || {})
-								.propertyValues as IDataObject[]) || [];
+							((additionalFields.propertiesUi as IDataObject)?.propertyValues as IDataObject[]) ||
+							[];
 
 						const event: ITrack = {
 							name,

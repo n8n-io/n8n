@@ -6,14 +6,19 @@
 			:class="{
 				[$style.submenu]: true,
 				[$style.compact]: compact,
-				[$style.active]: mode === 'router' && isItemActive(item)
+				[$style.active]: mode === 'router' && isItemActive(item),
 			}"
 			:index="item.id"
 			popper-append-to-body
 			:popper-class="`${$style.submenuPopper} ${popperClass}`"
 		>
-			<template slot="title">
-				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
+			<template #title>
+				<n8n-icon
+					v-if="item.icon"
+					:class="$style.icon"
+					:icon="item.icon"
+					:size="item.customIconSize || 'large'"
+				/>
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
 			<el-menu-item
@@ -25,6 +30,7 @@
 					[$style.disableActiveStyle]: !isItemActive(child),
 					[$style.active]: isItemActive(child),
 				}"
+				data-test-id="menu-item"
 				:index="child.id"
 				@click="onItemClick(child)"
 			>
@@ -32,7 +38,13 @@
 				<span :class="$style.label">{{ child.label }}</span>
 			</el-menu-item>
 		</el-submenu>
-		<n8n-tooltip v-else placement="right" :content="item.label" :disabled="!compact" :open-delay="tooltipDelay">
+		<n8n-tooltip
+			v-else
+			placement="right"
+			:content="item.label"
+			:disabled="!compact"
+			:open-delay="tooltipDelay"
+		>
 			<el-menu-item
 				:id="item.id"
 				:class="{
@@ -40,12 +52,18 @@
 					[$style.item]: true,
 					[$style.disableActiveStyle]: !isItemActive(item),
 					[$style.active]: isItemActive(item),
-					[$style.compact]: compact
+					[$style.compact]: compact,
 				}"
+				data-test-id="menu-item"
 				:index="item.id"
 				@click="onItemClick(item)"
 			>
-				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
+				<n8n-icon
+					v-if="item.icon"
+					:class="$style.icon"
+					:icon="item.icon"
+					:size="item.customIconSize || 'large'"
+				/>
 				<span :class="$style.label">{{ item.label }}</span>
 			</el-menu-item>
 		</n8n-tooltip>
@@ -53,25 +71,23 @@
 </template>
 
 <script lang="ts">
-import ElSubmenu from 'element-ui/lib/submenu';
-import ElMenuItem from 'element-ui/lib/menu-item';
+import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
-import Vue from 'vue';
-import { Route } from 'vue-router';
+import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-menu-item',
 	components: {
-		ElSubmenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElMenuItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSubmenu,
+		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,
 	},
 	props: {
 		item: {
-			type: Object as () => IMenuItem,
+			type: Object as PropType<IMenuItem>,
 			required: true,
 		},
 		compact: {
@@ -97,21 +113,30 @@ export default Vue.extend({
 	},
 	computed: {
 		availableChildren(): IMenuItem[] {
-			return Array.isArray(this.item.children) ? this.item.children.filter(child => child.available !== false) : [];
+			return Array.isArray(this.item.children)
+				? this.item.children.filter((child) => child.available !== false)
+				: [];
 		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
 			const isItemActive = this.isActive(item);
-			const hasActiveChild = Array.isArray(item.children) && item.children.some(child => this.isActive(child));
+			const hasActiveChild =
+				Array.isArray(item.children) && item.children.some((child) => this.isActive(child));
 			return isItemActive || hasActiveChild;
 		},
 		isActive(item: IMenuItem): boolean {
 			if (this.mode === 'router') {
 				if (item.activateOnRoutePaths) {
-					return Array.isArray(item.activateOnRoutePaths) && item.activateOnRoutePaths.includes(this.$route.path);
+					return (
+						Array.isArray(item.activateOnRoutePaths) &&
+						item.activateOnRoutePaths.includes(this.$route.path)
+					);
 				} else if (item.activateOnRouteNames) {
-					return Array.isArray(item.activateOnRouteNames) && item.activateOnRouteNames.includes(this.$route.name || '');
+					return (
+						Array.isArray(item.activateOnRouteNames) &&
+						item.activateOnRouteNames.includes(this.$route.name || '')
+					);
 				}
 				return false;
 			} else {
@@ -127,22 +152,20 @@ export default Vue.extend({
 
 				if (item.properties.newWindow) {
 					window.open(href);
-				}
-				else {
+				} else {
 					window.location.assign(item.properties.href);
 				}
-
 			}
 			this.$emit('click', event, item.id);
 		},
 	},
 });
-
 </script>
 
 <style module lang="scss">
 // Element menu-item overrides
-:global(.el-menu-item), :global(.el-submenu__title) {
+:global(.el-menu-item),
+:global(.el-submenu__title) {
 	--menu-font-color: var(--color-text-base);
 	--menu-item-active-background-color: var(--color-foreground-base);
 	--menu-item-active-font-color: var(--color-text-dark);
@@ -151,7 +174,6 @@ export default Vue.extend({
 	--menu-item-height: 35px;
 	--submenu-item-height: 27px;
 }
-
 
 .submenu {
 	background: none !important;
@@ -177,7 +199,9 @@ export default Vue.extend({
 		}
 
 		&:hover {
-			.icon { color: var(--color-text-dark) }
+			.icon {
+				color: var(--color-text-dark);
+			}
 		}
 	}
 
@@ -189,9 +213,11 @@ export default Vue.extend({
 		user-select: none;
 
 		&:hover {
-			.icon { color: var(--color-text-dark) }
+			.icon {
+				color: var(--color-text-dark);
+			}
 		}
-	};
+	}
 }
 
 .disableActiveStyle {
@@ -214,10 +240,13 @@ export default Vue.extend({
 }
 
 .active {
-	&, & :global(.el-submenu__title) {
+	&,
+	& :global(.el-submenu__title) {
 		background-color: var(--color-foreground-base);
 		border-radius: var(--border-radius-base);
-		.icon { color: var(--color-text-dark) }
+		.icon {
+			color: var(--color-text-dark);
+		}
 	}
 }
 

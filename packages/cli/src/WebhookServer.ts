@@ -13,27 +13,21 @@ import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
 
 import compression from 'compression';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
-import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	ICustomRequest,
-	IExternalHooksClass,
-	IPackageVersions,
-	ResponseHelper,
-	WaitingWebhooks,
-} from '.';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WEBHOOK_METHODS } from './WebhookHelpers';
-import { initErrorHandling } from './ErrorReporting';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import { WaitingWebhooks } from '@/WaitingWebhooks';
+import type { ICustomRequest, IExternalHooksClass, IPackageVersions } from '@/Interfaces';
+import config from '@/config';
+import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { setupErrorMiddleware } from '@/ErrorReporting';
+import { corsMiddleware } from './middlewares/cors';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -219,7 +213,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		initErrorHandling(this.app);
+		setupErrorMiddleware(this.app);
 	}
 
 	/**
@@ -285,22 +279,11 @@ class App {
 			}),
 		);
 
-		if (process.env.NODE_ENV !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header(
-					'Access-Control-Allow-Headers',
-					'Origin, X-Requested-With, Content-Type, Accept, sessionid',
-				);
-				next();
-			});
-		}
+		this.app.use(corsMiddleware);
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -324,7 +307,7 @@ class App {
 				await connection.query('SELECT 1');
 				// eslint-disable-next-line id-denylist
 			} catch (err) {
-				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 

@@ -8,7 +8,7 @@
 		width="70%"
 		height="80%"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
@@ -20,6 +20,7 @@
 						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
+						data-test-id="credential-name"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -32,24 +33,28 @@
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
+						data-test-id="credential-delete-button"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
 						:saved="!hasUnsavedChanges && !isTesting"
 						:isSaving="isSaving || isTesting"
-						:savingLabel="isTesting
-							? $locale.baseText('credentialEdit.credentialEdit.testing')
-							: $locale.baseText('credentialEdit.credentialEdit.saving')"
+						:savingLabel="
+							isTesting
+								? $locale.baseText('credentialEdit.credentialEdit.testing')
+								: $locale.baseText('credentialEdit.credentialEdit.saving')
+						"
 						@click="saveCredential"
+						data-test-id="credential-save-button"
 					/>
 				</div>
 			</div>
 			<hr />
 		</template>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
-					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
+					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<CredentialConfig
@@ -82,6 +87,7 @@
 						:credentialData="credentialData"
 						:credentialId="credentialId"
 						:credentialPermissions="credentialPermissions"
+						:modalBus="modalBus"
 						@change="onChangeSharedWith"
 					/>
 				</enterprise-edition>
@@ -105,12 +111,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import {
-	ICredentialsDecryptedResponse,
-	ICredentialsResponse,
-	IFakeDoor,
-	IUser,
-} from '@/Interface';
+import { ICredentialsResponse, IFakeDoor, IUser } from '@/Interface';
 
 import {
 	CredentialInformation,
@@ -119,7 +120,6 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
-	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -129,19 +129,19 @@ import {
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { showMessage } from '../mixins/showMessage';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
-import CredentialSharing from "./CredentialSharing.ee.vue";
+import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
-import {EnterpriseEditionFeature} from "@/constants";
-import {IDataObject} from "n8n-workflow";
+import { EnterpriseEditionFeature } from '@/constants';
+import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import {getCredentialPermissions, IPermissions} from "@/permissions";
+import { getCredentialPermissions, IPermissions } from '@/permissions';
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
@@ -150,6 +150,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useCredentialsStore } from '@/stores/credentials';
+import { isValidCredentialResponse } from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -184,7 +186,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		return {
 			activeTab: 'connection',
 			authError: '',
-			credentialId: '' as string | number,
+			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: new Vue(),
@@ -201,38 +203,39 @@ export default mixins(showMessage, nodeHelpers).extend({
 		};
 	},
 	async mounted() {
-		this.nodeAccess = this.nodesWithAccess.reduce(
-			(accu: NodeAccessMap, node: { name: string }) => {
-				if (this.mode === 'new') {
-					accu[node.name] = { nodeType: node.name }; // enable all nodes by default
-				} else {
-					accu[node.name] = null;
-				}
+		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: { name: string }) => {
+			if (this.mode === 'new') {
+				accu[node.name] = { nodeType: node.name }; // enable all nodes by default
+			} else {
+				accu[node.name] = null;
+			}
 
-				return accu;
-			},
-			{},
-		);
+			return accu;
+		}, {});
 
-		if (this.mode === 'new') {
-			this.credentialName = await this.$store.dispatch(
-				'credentials/getNewCredentialName',
-				{ credentialTypeName: this.credentialTypeName },
-			);
-
-			Vue.set(this.credentialData, 'ownedBy', {
-				id: this.currentUser.id,
-				firstName: this.currentUser.firstName,
-				lastName: this.currentUser.lastName,
-				email: this.currentUser.email,
+		if (this.mode === 'new' && this.credentialTypeName) {
+			this.credentialName = await this.credentialsStore.getNewCredentialName({
+				credentialTypeName: this.credentialTypeName,
 			});
+
+			if (this.currentUser) {
+				Vue.set(this.credentialData, 'ownedBy', {
+					id: this.currentUser.id,
+					firstName: this.currentUser.firstName,
+					lastName: this.currentUser.lastName,
+					email: this.currentUser.email,
+				});
+			}
 		} else {
 			await this.loadCurrentCredential();
 		}
 
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
-				if (!this.credentialData.hasOwnProperty(property.name)) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
 					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
@@ -248,8 +251,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (this.credentialId) {
 				if (!this.requiredPropertiesFilled) {
 					this.showValidationWarning = true;
-				}
-				else {
+				} else {
 					this.retestCredential();
 				}
 			}
@@ -259,23 +261,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
-				useNDVStore,
-				useSettingsStore,
-				useUIStore,
-				useUsersStore,
-				useWorkflowsStore,
-			),
-		currentUser(): IUser {
-			return this.usersStore.currentUser || {} as IUser;
+			useCredentialsStore,
+			useNDVStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](
-				this.credentialId,
-			);
+			return this.credentialsStore.getCredentialById(this.credentialId);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -293,9 +294,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](
-				this.credentialTypeName,
-			);
+			const type = this.credentialsStore.getCredentialTypeByName(this.credentialTypeName);
 
 			if (!type) {
 				return null;
@@ -306,21 +305,25 @@ export default mixins(showMessage, nodeHelpers).extend({
 				properties: this.getCredentialProperties(this.credentialTypeName),
 			};
 		},
-		isCredentialTestable (): boolean {
+		isCredentialTestable(): boolean {
 			if (this.isOAuthType || !this.requiredPropertiesFilled) {
 				return false;
 			}
 
 			const { ownedBy, sharedWith, ...credentialData } = this.credentialData;
-			const hasExpressions = Object.values(credentialData).reduce((accu: boolean, value: CredentialInformation) => accu || (typeof value === 'string' && value.startsWith('=')), false);
+			const hasExpressions = Object.values(credentialData).reduce(
+				(accu: boolean, value: CredentialInformation) =>
+					accu || (typeof value === 'string' && value.startsWith('=')),
+				false,
+			);
 			if (hasExpressions) {
 				return false;
 			}
 
-			const nodesThatCanTest = this.nodesWithAccess.filter(node => {
+			const nodesThatCanTest = this.nodesWithAccess.filter((node) => {
 				if (node.credentials) {
 					// Returns a list of nodes that can test this credentials
-					const eligibleTesters = node.credentials.filter(credential => {
+					const eligibleTesters = node.credentials.filter((credential) => {
 						return credential.name === this.credentialTypeName && credential.testedBy;
 					});
 					// If we have any node that can test, return true.
@@ -333,9 +336,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
-				return this.$store.getters['credentials/getNodesWithAccess'](
-					this.credentialTypeName,
-				);
+				return this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 			}
 
 			return [];
@@ -348,18 +349,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return [];
 		},
 		isOAuthType(): boolean {
-			return !!this.credentialTypeName && (
-				(
-					(
-						this.credentialTypeName === 'oAuth2Api' ||
-						this.parentTypes.includes('oAuth2Api')
-					) && this.credentialData.grantType === 'authorizationCode'
-				)
-				||
-				(
+			return (
+				!!this.credentialTypeName &&
+				(((this.credentialTypeName === 'oAuth2Api' || this.parentTypes.includes('oAuth2Api')) &&
+					this.credentialData.grantType === 'authorizationCode') ||
 					this.credentialTypeName === 'oAuth1Api' ||
-					this.parentTypes.includes('oAuth1Api')
-				)
+					this.parentTypes.includes('oAuth1Api'))
 			);
 		},
 		isOAuthConnected(): boolean {
@@ -370,19 +365,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return [];
 			}
 
-			return this.credentialType.properties.filter(
-				(propertyData: INodeProperties) => {
-					if (!this.displayCredentialParameter(propertyData)) {
-						return false;
-					}
-					return (
-						!this.credentialType!.__overwrittenProperties ||
-						!this.credentialType!.__overwrittenProperties.includes(
-							propertyData.name,
-						)
-					);
-				},
-			);
+			return this.credentialType.properties.filter((propertyData: INodeProperties) => {
+				if (!this.displayCredentialParameter(propertyData)) {
+					return false;
+				}
+				return (
+					!this.credentialType!.__overwrittenProperties ||
+					!this.credentialType!.__overwrittenProperties.includes(propertyData.name)
+				);
+			});
 		},
 		requiredPropertiesFilled(): boolean {
 			for (const property of this.credentialProperties) {
@@ -408,41 +399,42 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return {};
 			}
 
-			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
+			return getCredentialPermissions(
+				this.currentUser,
+				(this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse,
+			);
 		},
 		sidebarItems(): IMenuItem[] {
-				const items: IMenuItem[] = [
-					{
-						id: 'connection',
-						label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
-						position: 'top',
-					},
-					{
-						id: 'sharing',
-						label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
-						position: 'top',
-						available: this.credentialType !== null && this.isSharingAvailable,
-					},
-				];
+			const items: IMenuItem[] = [
+				{
+					id: 'connection',
+					label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
+					position: 'top',
+				},
+				{
+					id: 'sharing',
+					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
+					position: 'top',
+					available: this.credentialType !== null && this.isSharingAvailable,
+				},
+			];
 
-				if (this.credentialType !== null && !this.isSharingAvailable) {
-					for (const item of this.credentialsFakeDoorFeatures) {
-						items.push({
-							id: `coming-soon/${item.id}`,
-							label: this.$locale.baseText(item.featureName as BaseTextKey),
-							position: 'top',
-						});
-					}
+			if (this.credentialType !== null && !this.isSharingAvailable) {
+				for (const item of this.credentialsFakeDoorFeatures) {
+					items.push({
+						id: `coming-soon/${item.id}`,
+						label: this.$locale.baseText(item.featureName as BaseTextKey),
+						position: 'top',
+					});
 				}
+			}
 
-				items.push(
-					{
-						id: 'details',
-						label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
-						position: 'top',
-					},
-				);
-				return items;
+			items.push({
+				id: 'details',
+				label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+				position: 'top',
+			});
+			return items;
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -455,30 +447,45 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (this.hasUnsavedChanges) {
 				const displayName = this.credentialType ? this.credentialType.displayName : '';
 				keepEditing = await this.confirmMessage(
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', { interpolate: { credentialDisplayName: displayName } }),
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.message',
+						{ interpolate: { credentialDisplayName: displayName } },
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline',
+					),
 					null,
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText'),
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText'),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
+					),
 				);
 			} else if (this.credentialPermissions.isOwner && this.isOAuthType && !this.isOAuthConnected) {
 				keepEditing = await this.confirmMessage(
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.message',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline',
+					),
 					null,
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText'),
-					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText'),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
+					),
 				);
 			}
 
 			if (!keepEditing) {
 				return true;
-			}
-			else if (!this.requiredPropertiesFilled) {
+			} else if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
 				this.scrollToTop();
-			}
-			else if (this.isOAuthType) {
+			} else if (this.isOAuthType) {
 				this.scrollToBottom();
 			}
 
@@ -494,16 +501,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return true;
 			}
 
-			return this.displayParameter(
-				this.credentialData as INodeParameters,
-				parameter,
-				'',
-				null,
-			);
+			return this.displayParameter(this.credentialData as INodeParameters, parameter, '', null);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
-			const credentialTypeData =
-				this.$store.getters['credentials/getCredentialTypeByName'](name);
+			const credentialTypeData = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (!credentialTypeData) {
 				return [];
@@ -515,19 +516,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			const combineProperties = [] as INodeProperties[];
 			for (const credentialsTypeName of credentialTypeData.extends) {
-				const mergeCredentialProperties =
-					this.getCredentialProperties(credentialsTypeName);
-				NodeHelpers.mergeNodeProperties(
-					combineProperties,
-					mergeCredentialProperties,
-				);
+				const mergeCredentialProperties = this.getCredentialProperties(credentialsTypeName);
+				NodeHelpers.mergeNodeProperties(combineProperties, mergeCredentialProperties);
 			}
 
-			// The properties defined on the parent credentials take presidence
-			NodeHelpers.mergeNodeProperties(
-				combineProperties,
-				credentialTypeData.properties,
-			);
+			// The properties defined on the parent credentials take precedence
+			NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
 			return combineProperties;
 		},
@@ -536,13 +530,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.credentialId = this.activeId;
 
 			try {
-				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', {
+				const currentCredentials = await this.credentialsStore.getCredentialData({
 					id: this.credentialId,
 				});
 
 				if (!currentCredentials) {
 					throw new Error(
-						this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') + ':' + this.credentialId,
+						this.$locale.baseText('credentialEdit.credentialEdit.couldNotFindCredentialWithId') +
+							':' +
+							this.credentialId,
 					);
 				}
 
@@ -555,12 +551,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 
 				this.credentialName = currentCredentials.name;
-				currentCredentials.nodesAccess.forEach(
-					(access: { nodeType: string }) => {
-						// keep node access structure to keep dates when updating
-						this.nodeAccess[access.nodeType] = access;
-					},
-				);
+				currentCredentials.nodesAccess.forEach((access: { nodeType: string }) => {
+					// keep node access structure to keep dates when updating
+					this.nodeAccess[access.nodeType] = access;
+				});
 			} catch (error) {
 				this.$showError(
 					error,
@@ -586,7 +580,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
 		},
-		onNodeAccessChange({name, value}: {name: string, value: boolean}) {
+		onNodeAccessChange({ name, value }: { name: string; value: boolean }) {
 			this.hasUnsavedChanges = true;
 
 			if (value) {
@@ -607,7 +601,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 			Vue.set(this.credentialData, 'sharedWith', sharees);
 			this.hasUnsavedChanges = true;
 		},
-		onDataChange({ name, value }: { name: string; value: any }) { // tslint:disable-line:no-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		onDataChange({ name, value }: { name: string; value: any }) {
 			this.hasUnsavedChanges = true;
 
 			const { oauthTokenData, ...credData } = this.credentialData;
@@ -622,13 +617,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		getParentTypes(name: string): string[] {
-			const credentialType =
-				this.$store.getters['credentials/getCredentialTypeByName'](name);
+			const credentialType = this.credentialsStore.getCredentialTypeByName(name);
 
-			if (
-				credentialType === undefined ||
-				credentialType.extends === undefined
-			) {
+			if (credentialType === undefined || credentialType.extends === undefined) {
 				return [];
 			}
 
@@ -691,12 +682,11 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result = await this.credentialsStore.testCredential(credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
-			}
-			else {
+			} else {
 				this.authError = '';
 				this.testedSuccessfully = true;
 			}
@@ -708,8 +698,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			if (!this.requiredPropertiesFilled) {
 				this.showValidationWarning = true;
 				this.scrollToTop();
-			}
-			else {
+			} else {
 				this.showValidationWarning = false;
 			}
 
@@ -749,13 +738,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const isNewCredential = this.mode === 'new' && !this.credentialId;
 
 			if (isNewCredential) {
-				credential = await this.createCredential(
-					credentialDetails,
-				);
+				credential = await this.createCredential(credentialDetails);
 			} else {
-				credential = await this.updateCredential(
-					credentialDetails,
-				);
+				credential = await this.updateCredential(credentialDetails);
 			}
 
 			this.isSaving = false;
@@ -771,8 +756,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 					await this.testCredential(credentialDetails);
 					this.isTesting = false;
-				}
-				else {
+				} else {
 					this.authError = '';
 					this.testedSuccessfully = false;
 				}
@@ -812,10 +796,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			let credential;
 
 			try {
-				credential = (await this.$store.dispatch(
-					'credentials/createNewCredential',
-					credentialDetails,
-				)) as ICredentialsResponse;
+				credential = await this.credentialsStore.createNewCredential(credentialDetails);
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -846,10 +827,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = (await this.$store.dispatch(
-					'credentials/updateCredential',
-					{ id: this.credentialId, data: credentialDetails },
-				)) as ICredentialsResponse;
+				credential = await this.credentialsStore.updateCredential({
+					id: this.credentialId,
+					data: credentialDetails,
+				});
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -881,10 +862,17 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const savedCredentialName = this.currentCredential.name;
 
 			const deleteConfirmed = await this.confirmMessage(
-				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', { interpolate: { savedCredentialName } }),
-				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
+				this.$locale.baseText(
+					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.message',
+					{ interpolate: { savedCredentialName } },
+				),
+				this.$locale.baseText(
+					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline',
+				),
 				null,
-				this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText'),
+				this.$locale.baseText(
+					'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
+				),
 			);
 
 			if (deleteConfirmed === false) {
@@ -893,9 +881,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			try {
 				this.isDeleting = true;
-				await this.$store.dispatch('credentials/deleteCredential', {
-					id: this.credentialId,
-				});
+				this.credentialsStore.deleteCredential({ id: this.credentialId });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -929,28 +915,25 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const types = this.parentTypes;
 
 			try {
-				if (
-					this.credentialTypeName === 'oAuth2Api' ||
-					types.includes('oAuth2Api')
-				) {
-					url = (await this.$store.dispatch('credentials/oAuth2Authorize', {
-						...this.credentialData,
-						id: credential.id,
-					})) as string;
-				} else if (
-					this.credentialTypeName === 'oAuth1Api' ||
-					types.includes('oAuth1Api')
-				) {
-					url = (await this.$store.dispatch('credentials/oAuth1Authorize', {
-						...this.credentialData,
-						id: credential.id,
-					})) as string;
+				const credData = { id: credential.id, ...this.credentialData };
+				if (this.credentialTypeName === 'oAuth2Api' || types.includes('oAuth2Api')) {
+					if (isValidCredentialResponse(credData)) {
+						url = await this.credentialsStore.oAuth2Authorize(credData);
+					}
+				} else if (this.credentialTypeName === 'oAuth1Api' || types.includes('oAuth1Api')) {
+					if (isValidCredentialResponse(credData)) {
+						url = await this.credentialsStore.oAuth1Authorize(credData);
+					}
 				}
 			} catch (error) {
 				this.$showError(
 					error,
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
-					this.$locale.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title',
+					),
+					this.$locale.baseText(
+						'credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message',
+					),
 				);
 
 				return;
@@ -971,7 +954,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
-					this.$store.commit('credentials/enableOAuthCredential', credential);
+					this.credentialsStore.enableOAuthCredential(credential);
 
 					// Close the window
 					if (oauthPopup) {
@@ -983,7 +966,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			window.addEventListener('message', receiveMessage, false);
 		},
 	},
-
 });
 </script>
 

@@ -17,7 +17,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 $--light-pulse-color: hsla(
 	var(--color-primary-h),
 	var(--color-primary-s),
@@ -112,5 +111,4 @@ $--dark-pulse-color: hsla(
 		box-shadow: 0 0 0 0 transparent;
 	}
 }
-
 </style>

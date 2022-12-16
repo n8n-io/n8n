@@ -44,7 +44,7 @@ export async function elasticSecurityApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return this.helpers.request!(options);
 	} catch (error) {
 		if (error?.error?.error === 'Not Acceptable' && error?.error?.message) {
 			error.error.error = `${error.error.error}: ${error.error.message}`;
@@ -61,15 +61,15 @@ export async function elasticSecurityApiRequestAllItems(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	let page = 1;
+	let _page = 1;
 	const returnData: IDataObject[] = [];
-	let responseData: any; // tslint:disable-line
+	let responseData: any;
 
 	const resource = this.getNodeParameter('resource', 0) as 'case' | 'caseComment';
 
 	do {
 		responseData = await elasticSecurityApiRequest.call(this, method, endpoint, body, qs);
-		page++;
+		_page++;
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 
@@ -86,10 +86,10 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await elasticSecurityApiRequestAllItems.call(
@@ -99,7 +99,7 @@ export async function handleListing(
 		body,
 		qs,
 	);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

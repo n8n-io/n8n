@@ -1,4 +1,9 @@
-import { INodeProperties, INodePropertyOptions, INodePropertyCollection } from './Interfaces';
+import {
+	INodeProperties,
+	INodePropertyOptions,
+	INodePropertyCollection,
+	INodeParameterResourceLocator,
+} from './Interfaces';
 
 export const isINodeProperties = (
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
@@ -24,4 +29,17 @@ export const isINodePropertyCollectionList = (
 	items: INodeProperties['options'],
 ): items is INodePropertyCollection[] => {
 	return Array.isArray(items) && items.every(isINodePropertyCollection);
+};
+
+export const isValidResourceLocatorParameterValue = (
+	value: INodeParameterResourceLocator,
+): boolean => {
+	if (typeof value === 'object') {
+		if (typeof value.value === 'number') {
+			return true; // Accept all numbers
+		}
+		return !!value.value;
+	} else {
+		return !!value;
+	}
 };

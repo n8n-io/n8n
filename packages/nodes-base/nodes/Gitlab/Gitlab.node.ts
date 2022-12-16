@@ -20,7 +20,7 @@ export class Gitlab implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Retrieve data from GitLab API',
 		defaults: {
-			name: 'Gitlab',
+			name: 'GitLab',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -978,15 +978,15 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		let credentials;
+		let _credentials;
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 		try {
 			if (authenticationMethod === 'accessToken') {
-				credentials = await this.getCredentials('gitlabApi');
+				_credentials = await this.getCredentials('gitlabApi');
 			} else {
-				credentials = await this.getCredentials('gitlabOAuth2Api');
+				_credentials = await this.getCredentials('gitlabOAuth2Api');
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
@@ -1025,8 +1025,8 @@ export class Gitlab implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 		const fullOperation = `${resource}:${operation}`;
 
 		for (let i = 0; i < items.length; i++) {
@@ -1065,8 +1065,8 @@ export class Gitlab implements INodeType {
 
 						const assigneeIds = this.getNodeParameter('assignee_ids', i) as IDataObject[];
 
-						body.labels = labels.map((data) => data['label']).join(',');
-						body.assignee_ids = assigneeIds.map((data) => data['assignee']);
+						body.labels = labels.map((data) => data.label).join(',');
+						body.assignee_ids = assigneeIds.map((data) => data.assignee);
 
 						endpoint = `${baseEndpoint}/issues`;
 					} else if (operation === 'createComment') {
@@ -1092,12 +1092,10 @@ export class Gitlab implements INodeType {
 						body = this.getNodeParameter('editFields', i, {}) as IDataObject;
 
 						if (body.labels !== undefined) {
-							body.labels = (body.labels as IDataObject[]).map((data) => data['label']).join(',');
+							body.labels = (body.labels as IDataObject[]).map((data) => data.label).join(',');
 						}
 						if (body.assignee_ids !== undefined) {
-							body.assignee_ids = (body.assignee_ids as IDataObject[]).map(
-								(data) => data['assignee'],
-							);
+							body.assignee_ids = (body.assignee_ids as IDataObject[]).map((data) => data.assignee);
 						}
 
 						endpoint = `${baseEndpoint}/issues/${issueNumber}`;
@@ -1132,7 +1130,7 @@ export class Gitlab implements INodeType {
 
 						requestMethod = 'POST';
 
-						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						body = this.getNodeParameter('additionalFields', i, {});
 
 						body.tag_name = this.getNodeParameter('releaseTag', i) as string;
 
@@ -1173,12 +1171,12 @@ export class Gitlab implements INodeType {
 
 						const id = this.getNodeParameter('projectId', i) as string;
 
-						qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						qs = this.getNodeParameter('additionalFields', i, {});
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
-						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
 						endpoint = `/projects/${id}/releases`;
@@ -1194,7 +1192,7 @@ export class Gitlab implements INodeType {
 
 						const tagName = this.getNodeParameter('tag_name', i) as string;
 
-						body = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+						body = this.getNodeParameter('additionalFields', i, {});
 						if (body.milestones) {
 							body.milestones = (body.milestones as string).split(',');
 						}
@@ -1237,7 +1235,7 @@ export class Gitlab implements INodeType {
 					});
 				}
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await gitlabApiRequestAllItems.call(
 						this,
 						requestMethod,

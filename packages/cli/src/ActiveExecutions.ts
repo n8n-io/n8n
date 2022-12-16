@@ -12,21 +12,19 @@ import {
 	IRun,
 } from 'n8n-workflow';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
-// eslint-disable-next-line import/no-cycle
+import * as Db from '@/Db';
 import {
-	Db,
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionsCurrentSummary,
 	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	WorkflowHelpers,
-} from '.';
+} from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
 
 export class ActiveExecutions {
 	private activeExecutions: {

@@ -7,6 +7,7 @@
 		class="ndv-wrapper"
 		width="auto"
 		append-to-body
+		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -14,10 +15,12 @@
 			:disabled="!showTriggerWaitingWarning"
 			manual
 		>
-			<div slot="content" :class="$style.triggerWarning">
-				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
-			</div>
-			<div :class="$style.backToCanvas" @click="close">
+			<template #content>
+				<div :class="$style.triggerWarning">
+					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+				</div>
+			</template>
+			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
 					{{ $locale.baseText('ndv.backToCanvas') }}
@@ -55,6 +58,7 @@
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
 						:readOnly="readOnly || hasForeignCredential"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -67,12 +71,14 @@
 				</template>
 				<template #output>
 					<OutputPanel
+						data-test-id="output-panel"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -87,8 +93,10 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
-						:isReadOnly="readOnly || hasForeignCredential"
+						:hasForeignCredential="hasForeignCredential"
+						:readOnly="readOnly"
 						:blockUI="blockUi && showTriggerPanel"
+						:executable="!readOnly"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
@@ -120,9 +128,9 @@ import {
 } from 'n8n-workflow';
 import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import NodeSettings from '@/components/NodeSettings.vue';
 import NDVDraggablePanels from './NDVDraggablePanels.vue';
@@ -132,20 +140,21 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
-import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
+	EnterpriseEditionFeature,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import { workflowActivate } from './mixins/workflowActivate';
-import { pinData } from "@/components/mixins/pinData";
+import { workflowActivate } from '@/mixins/workflowActivate';
+import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(
 	externalHooks,
@@ -169,6 +178,10 @@ export default mixins(
 		renaming: {
 			type: Boolean,
 		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -183,25 +196,22 @@ export default mixins(
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
-			hasForeignCredential: false,
 		};
 	},
 	mounted() {
 		this.ndvStore.setNDVSessionId;
-		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
-			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
-		});
+		dataPinningEventBus.$on(
+			'data-pinning-discovery',
+			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
+				this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
+			},
+		);
 	},
-	destroyed () {
+	destroyed() {
 		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore, useSettingsStore),
 		sessionId(): string {
 			return this.ndvStore.sessionId;
 		},
@@ -240,7 +250,9 @@ export default mixins(
 			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
 			const isPollingNode = this.activeNodeType?.polling;
 			const override = !!this.activeNodeType?.triggerPanel;
-			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
+			return (
+				!this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override)
+			);
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
@@ -265,9 +277,7 @@ export default mixins(
 			);
 		},
 		isActiveStickyNode(): boolean {
-			return (
-				!!this.ndvStore.activeNode && this.ndvStore.activeNode .type === STICKY_NODE_TYPE
-			);
+			return !!this.ndvStore.activeNode && this.ndvStore.activeNode.type === STICKY_NODE_TYPE;
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.workflowsStore.getWorkflowExecution;
@@ -348,7 +358,7 @@ export default mixins(
 			}
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
-		outputPanelEditMode(): { enabled: boolean; value: string; } {
+		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isWorkflowRunning(): boolean {
@@ -359,6 +369,28 @@ export default mixins(
 		},
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
+		},
+		hasForeignCredential(): boolean {
+			const credentials = (this.activeNode || {}).credentials;
+			const usedCredentials = this.workflowsStore.usedCredentials;
+
+			let hasForeignCredential = false;
+			if (
+				credentials &&
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+			) {
+				Object.values(credentials).forEach((credential) => {
+					if (
+						credential.id &&
+						usedCredentials[credential.id] &&
+						!usedCredentials[credential.id].currentUserHasAccess
+					) {
+						hasForeignCredential = true;
+					}
+				});
+			}
+
+			return hasForeignCredential;
 		},
 	},
 	watch: {
@@ -379,8 +411,6 @@ export default mixins(
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
 
-				this.checkForeignCredentials();
-
 				setTimeout(() => {
 					if (this.activeNode) {
 						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
@@ -391,6 +421,7 @@ export default mixins(
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
 							workflow_id: this.workflowsStore.workflowId,
 							session_id: this.sessionId,
+							is_editable: !this.hasForeignCredential,
 							parameters_pane_position: this.mainPanelPosition,
 							input_first_connector_runs: this.maxInputRun,
 							output_first_connector_runs: this.maxOutputRun,
@@ -432,7 +463,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+		onInputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (!this.inputNodeName) {
 				return;
 			}
@@ -449,7 +480,7 @@ export default mixins(
 			};
 			this.ndvStore.setHoveringItem(item);
 		},
-		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+		onOutputItemHover(e: { itemIndex: number; outputIndex: number } | null) {
 			if (e === null || !this.activeNode) {
 				this.ndvStore.setHoveringItem(null);
 				return;
@@ -563,16 +594,18 @@ export default mixins(
 					const { value } = this.outputPanelEditMode;
 
 					if (!this.isValidPinDataSize(value)) {
-						dataPinningEventBus.$emit(
-							'data-pinning-error', { errorType: 'data-too-large', source: 'on-ndv-close-modal' },
-						);
+						dataPinningEventBus.$emit('data-pinning-error', {
+							errorType: 'data-too-large',
+							source: 'on-ndv-close-modal',
+						});
 						return;
 					}
 
 					if (!this.isValidPinDataJSON(value)) {
-						dataPinningEventBus.$emit(
-							'data-pinning-error', { errorType: 'invalid-json', source: 'on-ndv-close-modal' },
-						);
+						dataPinningEventBus.$emit('data-pinning-error', {
+							errorType: 'invalid-json',
+							source: 'on-ndv-close-modal',
+						});
 						return;
 					}
 
@@ -626,13 +659,7 @@ export default mixins(
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
 		},
-		checkForeignCredentials() {
-			if(this.activeNode){
-				const issues = this.getNodeCredentialIssues(this.activeNode);
-				this.hasForeignCredential = !!issues?.credentials?.foreign;
-			}
-		},
-		onStopExecution(){
+		onStopExecution() {
 			this.$emit('stopExecution');
 		},
 	},

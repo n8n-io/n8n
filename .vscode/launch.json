@@ -21,6 +21,8 @@
 			"env": {
 				// "N8N_PORT": "5679",
 			},
+			"outputCapture": "std",
+			"killBehavior": "polite"
 		},
 		{
 			"name": "Debug CLI tests",
@@ -28,13 +30,13 @@
 			"runtimeExecutable": "npm",
 			"args": [
 				"run",
-				"test",
+				"test"
 				// "--",
 				// "ActiveExecutions"
 			],
 			"type": "node",
 			"request": "launch"
-		},
+		}
 	]
 
 	/**

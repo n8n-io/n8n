@@ -1,6 +1,6 @@
 import type { IUser } from 'n8n-workflow';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity, 'shared'> {
 	ownedBy?: IUser | null;
@@ -12,5 +12,8 @@ export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity,
 export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
+	type?: string;
 	currentUserHasAccess: boolean;
+	ownedBy?: IUser | null;
+	sharedWith?: IUser[];
 }

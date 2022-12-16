@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" class="ph-no-capture" />
+	<div ref="codeNodeEditor" class="ph-no-capture"></div>
 </template>
 
 <script lang="ts">
@@ -13,7 +13,7 @@ import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
 import { CODE_NODE_EDITOR_THEME } from './theme';
-import { workflowHelpers } from '../mixins/workflowHelpers'; // for json field completions
+import { workflowHelpers } from '@/mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
@@ -49,9 +49,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		content(): string {
 			if (!this.editor) return '';
 

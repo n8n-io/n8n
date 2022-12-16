@@ -1,5 +1,4 @@
 /* eslint-disable import/first */
-/* eslint-disable import/no-cycle */
 export * from './CredentialsHelper';
 export * from './CredentialTypes';
 export * from './CredentialsOverwrites';
@@ -25,6 +24,8 @@ import * as WebhookHelpers from './WebhookHelpers';
 import * as WebhookServer from './WebhookServer';
 import * as WorkflowExecuteAdditionalData from './WorkflowExecuteAdditionalData';
 import * as WorkflowHelpers from './WorkflowHelpers';
+
+import './events';
 
 export {
 	ActiveExecutions,

@@ -191,7 +191,7 @@ export class RespondToWebhook implements INodeType {
 		const items = this.getInputData();
 
 		const respondWith = this.getNodeParameter('respondWith', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		const headers = {} as IDataObject;
 		if (options.responseHeaders) {

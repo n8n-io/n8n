@@ -97,7 +97,7 @@ function parseBinId(context: IExecuteSingleFunctions) {
 export async function transformBinReponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
+	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	items.forEach(
 		(item) =>

@@ -18,7 +18,6 @@ import {
 	ICredentialTestFunctions,
 	IHttpRequestOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 function getEndpointForService(
@@ -43,7 +42,6 @@ export async function awsApiRequest(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -84,7 +82,6 @@ export async function awsApiRequestREST(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -101,7 +98,6 @@ export async function awsApiRequestSOAP(
 	path: string,
 	body?: string,
 	headers?: object,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
@@ -146,7 +142,6 @@ export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
 	service: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 
@@ -180,7 +175,7 @@ export async function validateCredentials(
 
 	const response = await this.helpers.request!(options);
 
-	return await new Promise((resolve, reject) => {
+	return new Promise((resolve, reject) => {
 		parseString(response, { explicitArray: false }, (err, data) => {
 			if (err) {
 				return reject(err);

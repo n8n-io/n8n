@@ -118,7 +118,7 @@ export class Grist implements INodeType {
 		let responseData;
 		const returnData: IDataObject[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -220,10 +220,10 @@ export class Grist implements INodeType {
 
 					const qs: IDataObject = {};
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 					}
 
 					const { sort, filter } = this.getNodeParameter(

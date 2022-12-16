@@ -115,9 +115,6 @@ export class GmailTrigger implements INodeType {
 						displayName: 'Search',
 						name: 'q',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						placeholder: 'has:attachment',
 						hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
@@ -194,8 +191,8 @@ export class GmailTrigger implements INodeType {
 		let responseData;
 
 		const now = Math.floor(DateTime.now().toSeconds()) + '';
-		const startDate = (webhookData.lastTimeChecked as string) || now;
-		const endDate = now;
+		const startDate = (webhookData.lastTimeChecked as string) || +now;
+		const endDate = +now;
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 		const filters = this.getNodeParameter('filters', {}) as IDataObject;
@@ -273,7 +270,38 @@ export class GmailTrigger implements INodeType {
 			);
 		}
 
-		webhookData.lastTimeChecked = endDate;
+		const getEmailDateAsSeconds = (email: IDataObject) => {
+			const { internalDate, date } = email;
+			return internalDate
+				? +(internalDate as string) / 1000
+				: +DateTime.fromJSDate(new Date(date as string)).toSeconds();
+		};
+
+		const lastEmailDate = (responseData as IDataObject[]).reduce((lastDate, { json }) => {
+			const emailDate = getEmailDateAsSeconds(json as IDataObject);
+			return emailDate > lastDate ? emailDate : lastDate;
+		}, 0);
+
+		const nextPollPossibleDuplicates = (responseData as IDataObject[]).reduce(
+			(duplicates, { json }) => {
+				const emailDate = getEmailDateAsSeconds(json as IDataObject);
+				return emailDate === lastEmailDate
+					? duplicates.concat((json as IDataObject).id as string)
+					: duplicates;
+			},
+			[] as string[],
+		);
+
+		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) || [];
+		if (possibleDuplicates.length) {
+			responseData = (responseData as IDataObject[]).filter(({ json }) => {
+				const { id } = json as IDataObject;
+				return !possibleDuplicates.includes(id as string);
+			});
+		}
+
+		webhookData.possibleDuplicates = nextPollPossibleDuplicates;
+		webhookData.lastTimeChecked = lastEmailDate || endDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
 			return [responseData as INodeExecutionData[]];

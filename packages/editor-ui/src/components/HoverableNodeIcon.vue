@@ -8,7 +8,9 @@
 	>
 		<div :class="$style.tooltip">
 			<n8n-tooltip placement="top" manual :value="showTooltip">
-				<div slot="content" v-text="nodeType.displayName"></div>
+				<template #content>
+					<div v-text="nodeType.displayName"></div>
+				</template>
 				<span />
 			</n8n-tooltip>
 		</div>
@@ -74,9 +76,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		fontStyleData(): object {
 			return {
 				'max-width': this.size + 'px',

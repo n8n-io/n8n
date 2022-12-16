@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import { Diagnostic, linter as createLinter } from '@codemirror/lint';
-import * as esprima from 'esprima';
+import * as esprima from 'esprima-next';
 
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
@@ -31,6 +31,15 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				let line;
 
 				try {
+					const lineAtError = editorView.state.doc.line(syntaxError.lineNumber - 1).text;
+
+					// optional chaining operators currently unsupported by esprima-next
+					if (['?.', ']?'].some((operator) => lineAtError.includes(operator))) return [];
+				} catch (_) {
+					return [];
+				}
+
+				try {
 					line = editorView.state.doc.line(syntaxError.lineNumber);
 
 					return [
@@ -41,7 +50,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 							message: this.$locale.baseText('codeNodeEditor.linter.bothModes.syntaxError'),
 						},
 					];
-				} catch (error) {
+				} catch (_) {
 					/**
 					 * For invalid (e.g. half-written) n8n syntax, esprima errors with an off-by-one line number for the final line. In future, we should add full linting for n8n syntax before parsing JS.
 					 */
@@ -126,19 +135,19 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			/**
 			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
 			 *
-			 * $input.all().item -> <removed>
+			 * $input.item -> <removed>
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & { property: RangeNode };
 
-				const isUnavailablePropertyinAllItems = (node: Node) =>
+				const isUnavailableItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				walk<TargetNode>(ast, isUnavailablePropertyinAllItems).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailableItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({
@@ -159,39 +168,74 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `item` (legacy var from Function Item node) being accessed
-			 * in `runOnceForEachItem` mode, unless user-defined `item`.
+			 * Lint for `item` (legacy var from Function Item node) unavailable
+			 * in `runOnceForAllItems` mode, unless user-defined `item`.
 			 *
-			 * item. -> $input.item.json.
+			 * item -> $input.all()
 			 */
-			if (this.mode === 'runOnceForEachItem' && !/(let|const|var) item =/.test(script)) {
+			if (this.mode === 'runOnceForAllItems' && !/(let|const|var) item (=|of)/.test(script)) {
 				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
 
-				const isItemAccess = (node: Node) =>
-					node.type === 'MemberExpression' &&
-					node.computed === false &&
-					node.object.type === 'Identifier' &&
-					node.object.name === 'item';
+				const isUnavailableLegacyItems = (node: Node) =>
+					node.type === 'Identifier' && node.name === 'item';
 
-				walk<TargetNode>(ast, isItemAccess).forEach((node) => {
-					const [start, end] = this.getRange(node.object);
+				walk<TargetNode>(ast, isUnavailableLegacyItems).forEach((node) => {
+					const [start, end] = this.getRange(node);
 
 					lintings.push({
 						from: start,
 						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.legacyItemAccess'),
+						message: this.$locale.baseText('codeNodeEditor.linter.allItems.unavailableItem'),
 						actions: [
 							{
 								name: 'Fix',
 								apply(view, from, to) {
 									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('$input.item.json')) {
+									if (view.state.doc.toString().slice(from, to).includes('$input.all()')) {
 										return;
 									}
 
 									view.dispatch({ changes: { from: start, to: end } });
-									view.dispatch({ changes: { from, insert: '$input.item.json' } });
+									view.dispatch({ changes: { from, insert: '$input.all()' } });
+								},
+							},
+						],
+					});
+				});
+			}
+
+			/**
+			 * Lint for `items` (legacy var from Function node) unavailable
+			 * in `runOnceForEachItem` mode, unless user-defined `items`.
+			 *
+			 * items -> $input.item
+			 */
+			if (this.mode === 'runOnceForEachItem' && !/(let|const|var) items =/.test(script)) {
+				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
+
+				const isUnavailableLegacyItems = (node: Node) =>
+					node.type === 'Identifier' && node.name === 'items';
+
+				walk<TargetNode>(ast, isUnavailableLegacyItems).forEach((node) => {
+					const [start, end] = this.getRange(node);
+
+					lintings.push({
+						from: start,
+						to: end,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableItems'),
+						actions: [
+							{
+								name: 'Fix',
+								apply(view, from, to) {
+									// prevent second insertion of unknown origin
+									if (view.state.doc.toString().slice(from, to).includes('$input.item')) {
+										return;
+									}
+
+									view.dispatch({ changes: { from: start, to: end } });
+									view.dispatch({ changes: { from, insert: '$input.item' } });
 								},
 							},
 						],
@@ -285,8 +329,8 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.callee.object.type === 'Identifier' &&
 					node.callee.object.name === '$input' &&
 					node.callee.property.type === 'Identifier' &&
-					['first', 'last'].includes(node.callee.property.name)
-					&& node.arguments.length !== 0;
+					['first', 'last'].includes(node.callee.property.name) &&
+					node.arguments.length !== 0;
 
 				walk<TargetNode>(ast, inputFirstOrLastCalledWithArg).forEach((node) => {
 					const [start, end] = this.getRange(node.callee.property);
@@ -368,14 +412,19 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					left: { declarations: Array<{ id: { type: string; name: string } }> };
 				};
 
-				const isForOfStatement = (node: Node) =>
+				const isForOfStatementOverN8nVar = (node: Node) =>
 					node.type === 'ForOfStatement' &&
 					node.left.type === 'VariableDeclaration' &&
 					node.left.declarations.length === 1 &&
 					node.left.declarations[0].type === 'VariableDeclarator' &&
-					node.left.declarations[0].id.type === 'Identifier';
+					node.left.declarations[0].id.type === 'Identifier' &&
+					node.right.type === 'CallExpression' &&
+					node.right.callee.type === 'MemberExpression' &&
+					node.right.callee.computed === false &&
+					node.right.callee.object.type === 'Identifier' &&
+					node.right.callee.object.name.startsWith('$'); // n8n var, e.g $input
 
-				const found = walk<TargetNode>(ast, isForOfStatement);
+				const found = walk<TargetNode>(ast, isForOfStatementOverN8nVar);
 
 				if (found.length === 1) {
 					const itemAlias = found[0].left.declarations[0].id.name;

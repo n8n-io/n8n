@@ -66,7 +66,6 @@ export async function haloPSAApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const resourceApiUrl = (await this.getCredentials('haloPSAApi')).resourceApiUrl as string;
 
@@ -159,7 +158,6 @@ export async function haloPSAApiRequestAllItems(
 	accessToken: string,
 	body = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -213,14 +211,14 @@ export function qsSetStatus(status: string) {
 	if (!status) return {};
 	const qs: IDataObject = {};
 	if (status === 'all') {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = true;
+		qs.includeinactive = true;
+		qs.includeactive = true;
 	} else if (status === 'active') {
-		qs['includeinactive'] = false;
-		qs['includeactive'] = true;
+		qs.includeinactive = false;
+		qs.includeactive = true;
 	} else {
-		qs['includeinactive'] = true;
-		qs['includeactive'] = false;
+		qs.includeinactive = true;
+		qs.includeactive = false;
 	}
 	return qs;
 }

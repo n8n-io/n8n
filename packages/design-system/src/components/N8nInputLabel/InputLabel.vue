@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-on="$listeners">
 		<label
 			v-if="label || $slots.options"
 			:for="inputName"
@@ -12,20 +12,28 @@
 			}"
 		>
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
+				<n8n-text :bold="bold" :size="size" :compact="compact" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
 			</div>
-			<span :class="[$style.infoIcon, showTooltip ? $style.visible: $style.hidden]" v-if="tooltipText && label">
+			<span
+				:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
+				v-if="tooltipText && label"
+			>
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
-					<div slot="content" v-html="addTargetBlank(tooltipText)" />
+					<template #content>
+						<div v-html="addTargetBlank(tooltipText)" />
+					</template>
 				</n8n-tooltip>
 			</span>
-			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}" />
-			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.visible]: showOptions}">
-				<slot name="options"/>
+			<div
+				v-if="$slots.options && label"
+				:class="{ [$style.overlay]: true, [$style.visible]: showOptions }"
+			/>
+			<div v-if="$slots.options" :class="{ [$style.options]: true, [$style.visible]: showOptions }">
+				<slot name="options" />
 			</div>
 		</label>
 		<slot />
@@ -49,6 +57,10 @@ export default Vue.extend({
 		N8nTooltip,
 	},
 	props: {
+		compact: {
+			type: Boolean,
+			default: false,
+		},
 		color: {
 			type: String,
 		},
@@ -71,8 +83,7 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium'].includes(value),
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},
 		underline: {
 			type: Boolean,
@@ -98,7 +109,8 @@ export default Vue.extend({
 .inputLabel {
 	display: block;
 }
-.container:hover,.inputLabel:hover {
+.container:hover,
+.inputLabel:hover {
 	.infoIcon {
 		opacity: 1;
 	}
@@ -136,7 +148,7 @@ export default Vue.extend({
 .options {
 	opacity: 0;
 	background-color: var(--color-background-xlight);
-	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
+	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
 
 	> * {
 		float: right;
@@ -147,7 +159,7 @@ export default Vue.extend({
 	position: relative;
 	flex-grow: 1;
 	opacity: 0;
-	transition: opacity 250ms cubic-bezier(.98,-0.06,.49,-0.2); // transition on hover out
+	transition: opacity 250ms cubic-bezier(0.98, -0.06, 0.49, -0.2); // transition on hover out
 
 	> div {
 		position: absolute;
@@ -157,7 +169,11 @@ export default Vue.extend({
 		right: 0;
 		z-index: 0;
 
-		background: linear-gradient(270deg, var(--color-foreground-xlight) 72.19%, rgba(255, 255, 255, 0) 107.45%);
+		background: linear-gradient(
+			270deg,
+			var(--color-foreground-xlight) 72.19%,
+			rgba(255, 255, 255, 0) 107.45%
+		);
 	}
 }
 
@@ -197,5 +213,4 @@ export default Vue.extend({
 		margin-left: var(--spacing-s);
 	}
 }
-
 </style>

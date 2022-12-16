@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	IHttpRequestOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 /**
@@ -22,7 +21,7 @@ export async function apiRequest(
 ) {
 	const credentials = await this.getCredentials('syncroMspApi');
 
-	query['api_key'] = credentials.apiKey;
+	query.api_key = credentials.apiKey;
 
 	const options: IHttpRequestOptions = {
 		method,
@@ -62,7 +61,6 @@ export async function apiRequestAllItems(
 export async function validateCredentials(
 	this: ICredentialTestFunctions,
 	decryptedCredentials: ICredentialDataDecryptedObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = decryptedCredentials;
 

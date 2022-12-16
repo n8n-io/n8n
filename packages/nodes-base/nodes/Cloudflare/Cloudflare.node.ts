@@ -74,8 +74,8 @@ export class Cloudflare implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -109,8 +109,8 @@ export class Cloudflare implements INodeType {
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
 					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i, {});
 
 						Object.assign(qs, filters);
 
@@ -124,7 +124,7 @@ export class Cloudflare implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { per_page: limit });
 							responseData = await cloudflareApiRequest.call(
 								this,

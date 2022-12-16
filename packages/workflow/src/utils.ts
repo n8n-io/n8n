@@ -1,4 +1,4 @@
-import * as ErrorReporter from './ErrorReporterProxy';
+import { BinaryFileType } from './Interfaces';
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
@@ -19,9 +19,6 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
-		ErrorReporter.warn('Circular reference detected', {
-			extra: { source, path },
-		});
 		return hash.get(source);
 	}
 	// Array
@@ -64,3 +61,16 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		throw error;
 	}
 };
+
+export const sleep = async (ms: number): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+
+export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
+	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('text/')) return 'text';
+	return;
+}

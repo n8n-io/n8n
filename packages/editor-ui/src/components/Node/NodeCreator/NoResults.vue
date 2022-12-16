@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.noResults">
+	<div :class="{ [$style.noResults]: true, [$style.iconless]: !showIcon }">
 		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
@@ -14,7 +14,8 @@
 			<p v-text="$locale.baseText('nodeCreator.noResults.wantUsToMakeItFaster')" />
 			<div>
 				<n8n-link :to="REQUEST_NODE_FORM_URL">
-					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span>&nbsp;
+					<span>{{ $locale.baseText('nodeCreator.noResults.requestTheNode') }}</span
+					>&nbsp;
 					<span>
 						<font-awesome-icon
 							:class="$style.external"
@@ -28,31 +29,16 @@
 	</div>
 </template>
 
-
-<script lang="ts">
+<script setup lang="ts">
 import { REQUEST_NODE_FORM_URL } from '@/constants';
-import Vue from 'vue';
 import NoResultsIcon from './NoResultsIcon.vue';
 
-export default Vue.extend({
-	name: 'NoResults',
-	props: {
-		showRequest: {
-			type: Boolean,
-		},
-		showIcon: {
-			type: Boolean,
-		},
-	},
-	components: {
-		NoResultsIcon,
-	},
-	data() {
-		return {
-			REQUEST_NODE_FORM_URL,
-		};
-	},
-});
+export interface Props {
+	showIcon?: boolean;
+	showRequest?: boolean;
+}
+
+defineProps<Props>();
 </script>
 
 <style lang="scss" module>
@@ -79,9 +65,10 @@ export default Vue.extend({
 	}
 }
 
-.action, .request {
+.action p,
+.request p {
 	font-size: var(--font-size-s);
-	line-height: var(--font-line-height-compact);
+	line-height: var(--font-line-height-xloose);
 }
 
 .request {
@@ -97,11 +84,10 @@ export default Vue.extend({
 .icon {
 	margin-top: var(--spacing-2xl);
 	min-height: 67px;
-	opacity: .6;
+	opacity: 0.6;
 }
 
 .external {
 	font-size: var(--font-size-2xs);
 }
-
 </style>
