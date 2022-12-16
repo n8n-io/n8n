@@ -9,7 +9,7 @@ import { i18n } from '@/plugins/i18n';
 
 export type UsageTelemetry = {
 	instance_id: string
-	action: 'view_plans' | 'manage_plan' | 'add_activation_key' | 'contact_us'
+	action: 'view_plans' | 'manage_plan' | 'add_activation_key'
 	plan_name_current: string
 	usage: number
 	quota: number
@@ -83,6 +83,7 @@ export const useUsageStore = defineStore('usage', () => {
 					},
 				}),
 			};
+			await settingsStore.getSettings();
 		} catch (error) {
 			state.error = error;
 			throw Error(error);
