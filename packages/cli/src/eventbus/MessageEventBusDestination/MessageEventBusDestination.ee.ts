@@ -50,16 +50,18 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 		}
 	}
 
+	stopListening() {
+		eventBus.removeAllListeners(this.getId());
+	}
+
 	enable() {
 		this.enabled = true;
+		this.startListening();
 	}
 
 	disable() {
 		this.enabled = false;
-	}
-
-	stopListening() {
-		eventBus.removeAllListeners(this.getId());
+		this.stopListening();
 	}
 
 	getId() {

@@ -78,9 +78,12 @@ export class MessageEventBusDestinationSyslog
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
 		}
 		try {
-			// const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
+			const serializedMessage = msg.serialize();
+			if (this.anonymizeAuditMessages) {
+				serializedMessage.payload = msg.anonymize();
+			}
 			this.client.log(
-				msg.toString(),
+				JSON.stringify(serializedMessage),
 				{
 					severity: msg.eventName.toLowerCase().endsWith('error')
 						? syslog.Severity.Error
