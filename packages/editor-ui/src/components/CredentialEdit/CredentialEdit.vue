@@ -107,7 +107,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsResponse, IUser } from '@/Interface';
 
 import {
 	CredentialInformation,
