@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -11,7 +12,7 @@ import { readFile, rm, writeFile } from 'fs/promises';
 
 import { file } from 'tmp-promise';
 
-const nodeSSH = require('node-ssh');
+import nodeSSH = require('node-ssh');
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -292,7 +293,7 @@ export class Ssh implements INodeType {
 							const command = this.getNodeParameter('command', i) as string;
 							const cwd = this.getNodeParameter('cwd', i) as string;
 							returnItems.push({
-								json: await ssh.execCommand(command, { cwd }),
+								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
 								pairedItem: {
 									item: i,
 								},

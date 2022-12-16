@@ -13,7 +13,14 @@ import { AttributesValuesUi, CommentAnalyzeBody, Language, RequestedAttributes }
 
 import { googleApiRequest } from './GenericFunctions';
 
-const ISO6391 = require('iso-639-1');
+// const ISO6391 = require('iso-639-1');
+
+type ISO = {
+	getAllNames: () => string[];
+	getCode: (name: string) => string;
+};
+
+import ISO6391 = require('iso-639-1');
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
@@ -184,12 +191,13 @@ export class GooglePerspective implements INodeType {
 					'Russian',
 				];
 
-				const languages = ISO6391.getAllNames().filter((language: string) =>
+				const ISO = ISO6391 as unknown as ISO;
+				const languages = ISO.getAllNames().filter((language: string) =>
 					supportedLanguages.includes(language),
 				);
 				for (const language of languages) {
 					const languageName = language;
-					const languageId = ISO6391.getCode(language);
+					const languageId = ISO.getCode(language);
 					returnData.push({
 						name: languageName,
 						value: languageId,

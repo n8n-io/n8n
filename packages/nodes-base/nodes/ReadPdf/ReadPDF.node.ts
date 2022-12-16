@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdf = require('pdf-parse');
 
 export class ReadPDF implements INodeType {

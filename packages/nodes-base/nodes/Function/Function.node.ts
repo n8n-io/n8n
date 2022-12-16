@@ -9,7 +9,9 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-const { NodeVM } = require('vm2');
+import vm2 = require('vm2');
+
+const { NodeVM } = vm2;
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -165,7 +167,7 @@ return items;`,
 			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
 		}
 
-		const vm = new NodeVM(options);
+		const vm = new NodeVM(options as unknown as vm2.NodeVMOptions);
 
 		if (mode === 'manual') {
 			vm.on('console.log', this.sendMessageToUI);

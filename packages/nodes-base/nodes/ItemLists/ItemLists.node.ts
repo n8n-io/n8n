@@ -11,7 +11,9 @@ import {
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
 
-const { NodeVM } = require('vm2');
+import vm2 = require('vm2');
+
+const { NodeVM } = vm2;
 
 const compareItems = (
 	obj: INodeExecutionData,
@@ -1350,7 +1352,7 @@ return 0;`,
 							console: mode === 'manual' ? 'redirect' : 'inherit',
 							sandbox,
 						};
-						const vm = new NodeVM(options);
+						const vm = new NodeVM(options as unknown as vm2.NodeVMOptions);
 
 						newItems = await vm.run(
 							`

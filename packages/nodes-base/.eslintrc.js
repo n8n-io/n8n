@@ -26,7 +26,6 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
 		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
-		'@typescript-eslint/no-var-requires': 'off',
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 		'@typescript-eslint/restrict-plus-operands': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',

@@ -41,7 +41,8 @@ export interface IAttachments {
 	content: string;
 }
 
-const mailComposer = require('nodemailer/lib/mail-composer');
+// const mailComposer = require('nodemailer/lib/mail-composer');
+import mailComposer = require('nodemailer/lib/mail-composer');
 
 async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -312,6 +313,8 @@ export async function encodeEmail(email: IEmail) {
 	// So add keepBcc flag to averride such behaviour. Only works when
 	// the flag is set after the compilation.
 	//https://nodemailer.com/extras/mailcomposer/#bcc
+
+	// @ts-ignore-next-line
 	mail.keepBcc = true;
 
 	const mailBody = await mail.build();
