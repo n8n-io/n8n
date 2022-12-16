@@ -427,11 +427,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			const dynamicTranslations = (
-				(this.dynamicTranslations.workflows as NestedRecord<string>).sharing as NestedRecord<string>
-			).unavailable as NestedRecord<string>;
-
-			window.open(dynamicTranslations.linkURL as string, '_blank');
+			window.open(this.dynamicTranslations.workflows.sharing.unavailable.linkURL, '_blank');
 		},
 	},
 	mounted() {

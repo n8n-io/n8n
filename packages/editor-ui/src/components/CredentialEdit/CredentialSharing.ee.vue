@@ -158,10 +158,7 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			window.open(
-				this.dynamicTranslations.credentials.sharing.unavailable.linkURL as string,
-				'_blank',
-			);
+			window.open(this.dynamicTranslations.credentials.sharing.unavailable.linkURL, '_blank');
 		},
 	},
 	mounted() {
