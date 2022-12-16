@@ -1,18 +1,21 @@
 <template>
 	<Modal
 		width="460px"
-		:title="
-			$locale.baseText(dynamicTranslations.workflows.shareModal.title, {
-				interpolate: { name: workflow.name },
-			})
-		"
+		:title="modalTitle"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
 		:beforeClose="onCloseModal"
 	>
 		<template #content>
-			<div v-if="isDefaultUser" :class="$style.container">
+			<div v-if="!isSharingEnabled" :class="$style.container">
+				<n8n-text>
+					{{
+						$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.description.modal)
+					}}
+				</n8n-text>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.container">
 				<n8n-text>
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
 				</n8n-text>
@@ -78,7 +81,12 @@
 		</template>
 
 		<template #footer>
-			<div v-if="isDefaultUser" :class="$style.actionButtons">
+			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
+				<n8n-button @click="goToUpgrade">
+					{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
+				</n8n-button>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
 				<n8n-button @click="goToUsersSettings">
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
 				</n8n-button>
@@ -122,7 +130,7 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, NestedRecord } from '@/Interface';
+import { IUser, IWorkflowDb, NestedRecord, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -172,6 +180,19 @@ export default mixins(showMessage).extend({
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
 		},
+		isSharingEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		modalTitle(): string {
+			return this.$locale.baseText(
+				this.isSharingEnabled
+					? this.dynamicTranslations.workflows.sharing.title
+					: this.dynamicTranslations.workflows.sharing.unavailable.title,
+				{
+					interpolate: { name: this.workflow.name },
+				},
+			);
+		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -208,12 +229,7 @@ export default mixins(showMessage).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
-		isSharingAvailable(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) === true
-			);
-		},
-		dynamicTranslations(): NestedRecord<string> {
+		dynamicTranslations(): UIState['dynamicTranslations'] {
 			return this.uiStore.dynamicTranslations;
 		},
 		isDirty(): boolean {
@@ -410,9 +426,16 @@ export default mixins(showMessage).extend({
 				...data,
 			});
 		},
+		goToUpgrade() {
+			const dynamicTranslations = (
+				(this.dynamicTranslations.workflows as NestedRecord<string>).sharing as NestedRecord<string>
+			).unavailable as NestedRecord<string>;
+
+			window.open(dynamicTranslations.linkURL as string, '_blank');
+		},
 	},
 	mounted() {
-		if (this.isSharingAvailable) {
+		if (this.isSharingEnabled) {
 			this.loadUsers();
 		}
 	},

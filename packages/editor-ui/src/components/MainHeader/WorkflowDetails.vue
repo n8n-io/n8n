@@ -72,7 +72,7 @@
 							</n8n-button>
 							<template #content>
 								<i18n
-									:path="dynamicTranslations.workflows.sharing.unavailable.description"
+									:path="dynamicTranslations.workflows.sharing.unavailable.description.tooltip"
 									tag="span"
 								>
 									<template #action>
@@ -81,7 +81,7 @@
 											target="_blank"
 										>
 											{{
-												$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.action)
+												$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button)
 											}}
 										</a>
 									</template>

@@ -1075,10 +1075,6 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export interface NestedRecord<T> {
-	[key: string]: T | NestedRecord<T>;
-}
-
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
 export type NodePanelType = 'input' | 'output';
 
@@ -1151,7 +1147,34 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	dynamicTranslations: NestedRecord<string>;
+	dynamicTranslations: {
+		credentials: {
+			sharing: {
+				unavailable: {
+					title: string;
+					description: string;
+					action: string;
+					button: string;
+					linkURL: string;
+				};
+			};
+		};
+		workflows: {
+			sharing: {
+				title: string;
+				unavailable: {
+					title: string;
+					description: {
+						modal: string;
+						tooltip: string;
+					};
+					action: string;
+					button: string;
+					linkURL: string;
+				};
+			};
+		};
+	};
 	draggable: {
 		isDragging: boolean;
 		type: string;
