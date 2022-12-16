@@ -1296,6 +1296,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveFilter
 	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
@@ -1325,7 +1326,7 @@ export interface IPostReceiveBase {
 	type: string;
 	enabled?: boolean | string;
 	properties: {
-		[key: string]: string | number | IDataObject;
+		[key: string]: string | number | boolean | IDataObject;
 	};
 	errorMessage?: string;
 }
@@ -1334,6 +1335,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveFilter extends IPostReceiveBase {
+	type: 'filter';
+	properties: {
+		pass: boolean | string;
 	};
 }
 

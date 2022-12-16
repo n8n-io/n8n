@@ -75,12 +75,12 @@ import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator } from '../../types';
+import { Rule, RuleGroup, IValidator, Validatable, FormState } from '../../types';
 
 import { t } from '../../locale';
 
 export interface Props {
-	value: any;
+	value: Validatable;
 	label: string;
 	infoText?: string;
 	required?: boolean;
@@ -112,7 +112,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
 	(event: 'validate', shouldValidate: boolean): void;
-	(event: 'input', value: any): void;
+	(event: 'input', value: unknown): void;
 	(event: 'focus'): void;
 	(event: 'blur'): void;
 	(event: 'enter'): void;
@@ -169,7 +169,7 @@ function onBlur() {
 	emit('blur');
 }
 
-function onInput(value: any) {
+function onInput(value: FormState) {
 	state.isTyping = true;
 	emit('input', value);
 }
