@@ -1449,12 +1449,5 @@
 	"dynamic.workflows.sharing.unavailable.description.tooltip.cloud.upgrade": "Sharing is available for Team and Enterprise plans. {action} to unlock more features.",
 	"dynamic.workflows.sharing.unavailable.button": "See plans",
 	"dynamic.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
-	"dynamic.workflows.sharing.unavailable.linkUrl": "https://subscription.n8n.io/",
-
-	"fakeDoor.credentialEdit.sharing.name": "Sharing",
-	"fakeDoor.credentialEdit.sharing.actionBox.title": "Sharing is only available on <a href=\"https://n8n.io/cloud/\" target=\"_blank\">n8n Cloud</a> right now",
-	"fakeDoor.credentialEdit.sharing.actionBox.description": "We’re working on bringing it to this edition of n8n, as a paid feature. If you’d like to be the first to hear when it’s ready, join the list.",
-	"fakeDoor.credentialEdit.sharing.actionBox.title.cloud.upgrade": "Upgrade to share credentials",
-	"fakeDoor.credentialEdit.sharing.actionBox.description.cloud.upgrade": "Power and Pro plan users can create multiple user accounts and collaborate on workflows",
-	"fakeDoor.credentialEdit.sharing.actionBox.button.cloud.upgrade": "Upgrade"
+	"dynamic.workflows.sharing.unavailable.linkUrl": "https://subscription.n8n.io/"
 }
