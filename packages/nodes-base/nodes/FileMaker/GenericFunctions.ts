@@ -263,13 +263,14 @@ export async function logout(
 
 		return response;
 	} catch (error) {
-		const errorMessage =
+		const message =
 			error.response.body.messages[0].message + '(' + error.response.body.messages[0].message + ')';
 
-		if (errorMessage !== undefined) {
-			throw errorMessage;
+		if (message !== undefined) {
+			throw new NodeApiError(this.getNode(), error, { message });
 		}
-		throw error.response.body;
+
+		throw new NodeApiError(this.getNode(), error.response.body);
 	}
 }
 
