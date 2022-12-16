@@ -180,7 +180,10 @@ export class NocoDB implements INodeType {
 					const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 					return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), `Error while fetching projects! (${e})`);
+					throw new NodeOperationError(
+						this.getNode(),
+						new Error('Error while fetching projects!', { cause: e }),
+					);
 				}
 			},
 			// This only supports using the Project ID
@@ -193,7 +196,10 @@ export class NocoDB implements INodeType {
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					} catch (e) {
-						throw new NodeOperationError(this.getNode(), `Error while fetching tables! (${e})`);
+						throw new NodeOperationError(
+							this.getNode(),
+							new Error('Error while fetching tables!', { cause: e }),
+						);
 					}
 				} else {
 					throw new NodeOperationError(this.getNode(), `No project selected!`);
