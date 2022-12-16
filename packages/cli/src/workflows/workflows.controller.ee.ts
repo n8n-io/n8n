@@ -74,7 +74,7 @@ EEWorkflowController.put(
 			}
 		});
 
-		await InternalHooksManager.getInstance().onWorkflowSharingUpdate(
+		void InternalHooksManager.getInstance().onWorkflowSharingUpdate(
 			workflowId,
 			req.user.id,
 			shareWithIds,

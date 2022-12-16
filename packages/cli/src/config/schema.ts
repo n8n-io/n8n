@@ -883,7 +883,6 @@ export const schema = {
 			sharing: {
 				format: Boolean,
 				default: false,
-				env: 'N8N_SHARING_ENABLED',
 			},
 		},
 	},

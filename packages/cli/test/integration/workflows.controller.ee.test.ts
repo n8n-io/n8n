@@ -666,7 +666,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		expect(response.statusCode).toBe(400);
 	});
 
-	it('Should succeed but prevent modifying attributes other than position, name and disabled', async () => {
+	it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
 		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
 

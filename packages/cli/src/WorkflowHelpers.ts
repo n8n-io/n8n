@@ -568,7 +568,7 @@ export function validateWorkflowCredentialUsage(
 			// Node is new, so this is probably a tampering attempt. Throw an error
 			throw new NodeOperationError(
 				node,
-				`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share it with you.`,
+				`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
 			);
 		}
 		// Replace the node with the previous version of the node
