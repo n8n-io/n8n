@@ -1,3 +1,4 @@
+import { flow } from 'lodash';
 import { Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -6,6 +7,7 @@ import {
 	IExecuteWorkflowInfo,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
+	ILogger,
 	INode,
 	INodeCredentialsDetails,
 	INodeType,
@@ -16,6 +18,7 @@ import {
 	IVersionedNodeType,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
+	LoggerProxy,
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
@@ -156,3 +159,20 @@ export function extractOutputData(testData: any, result: IRun) {
 }
 
 export function extractResultData() {}
+
+export function setup(nodes: INodeType[]) {
+	const nodeTypes = NodeTypes();
+	for (const node of nodes) {
+		nodeTypes.addNode('n8n-nodes-base.' + node.description.name, node);
+	}
+	const fakeLogger = {
+		log: () => {},
+		debug: () => {},
+		verbose: () => {},
+		info: () => {},
+		warn: () => {},
+		error: () => {},
+	} as ILogger;
+	LoggerProxy.init(fakeLogger);
+	return nodeTypes;
+}

@@ -6,6 +6,7 @@ import {
 	Workflow,
 	ILogger,
 	LoggerProxy,
+	INodeType,
 } from 'n8n-workflow';
 import { WorkflowExecute } from '../../../../core/dist';
 import * as Helpers from '../Helpers';
@@ -187,20 +188,8 @@ describe('ExecuteNode', () => {
 				},
 			},
 		];
-		const codexBase: string = 'n8n-nodes-base.';
-		const fakeLogger = {
-			log: () => {},
-			debug: () => {},
-			verbose: () => {},
-			info: () => {},
-			warn: () => {},
-			error: () => {},
-		} as ILogger;
-
-		Helpers.NodeTypes().addNode(codexBase + 'start', new Start());
-		Helpers.NodeTypes().addNode(codexBase + 'set', new Set());
-		const nodeTypes = Helpers.NodeTypes();
-		LoggerProxy.init(fakeLogger);
+		const nodes: INodeType[] = [new Start(), new Set()];
+		const nodeTypes = Helpers.setup(nodes);
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
