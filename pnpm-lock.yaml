@@ -73,7 +73,6 @@ importers:
       eslint-plugin-n8n-local-rules: ~1.0
       eslint-plugin-prettier: ~4.2
       eslint-plugin-vue: ~7.17
-      tslint: ^6.1.3
     devDependencies:
       '@types/eslint': 8.4.6
       '@typescript-eslint/eslint-plugin': 5.45.0_psz44bhp76u27vmulntnlx26h4
@@ -87,7 +86,6 @@ importers:
       eslint-plugin-n8n-local-rules: 1.0.0
       eslint-plugin-prettier: 4.2.1_pgxuib4rd7wiymfktharf5ydt4
       eslint-plugin-vue: 7.17.0_eslint@8.28.0
-      tslint: 6.1.3_typescript@4.8.4
 
   packages/cli:
     specifiers:
@@ -183,10 +181,10 @@ importers:
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
       mysql2: ~2.3.0
-      n8n-core: ~0.147.0
-      n8n-editor-ui: ~0.173.1
-      n8n-nodes-base: ~0.205.1
-      n8n-workflow: ~0.129.0
+      n8n-core: ~0.148.0
+      n8n-editor-ui: ~0.174.0
+      n8n-nodes-base: ~0.206.0
+      n8n-workflow: ~0.130.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -375,7 +373,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.129.0
+      n8n-workflow: ~0.130.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -549,7 +547,7 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.47.0
+      n8n-design-system: ~0.48.0
       n8n-workflow: ~0.129.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
@@ -610,7 +608,7 @@ importers:
       luxon: 2.3.2
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.129.0
       normalize-wheel: 1.0.1
       pinia: 2.0.23_xjcbg5znturqejtkpd33hx726m
       prismjs: 1.29.0
@@ -669,7 +667,7 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.147.0
+      n8n-core: ~0.148.0
       n8n-workflow: ~0.129.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
@@ -682,7 +680,7 @@ importers:
       fast-glob: 3.2.12
       inquirer: 7.3.3
       n8n-core: link:../core
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.129.0
       oauth-1.0a: 2.2.6
       replace-in-file: 6.3.5
       request: 2.88.2
@@ -760,8 +758,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.147.0
-      n8n-workflow: ~0.129.0
+      n8n-core: ~0.148.0
+      n8n-workflow: ~0.130.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -8263,11 +8261,6 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
     optional: true
-
-  /builtin-modules/1.1.1:
-    resolution: {integrity: sha512-wxXCdllwGhI2kCC0MnvTGYTMvnVZTvqgypkiTI8Pa5tcz2i6VqsqwYGgqwXji+4RgCzms6EajE4IxiUH6HH8nQ==}
-    engines: {node: '>=0.10.0'}
-    dev: true
 
   /builtin-status-codes/3.0.0:
     resolution: {integrity: sha512-HpGFw18DgFWlncDfjTa2rcQ4W88O1mC8e8yZ2AvQY5KDaktSTwo+KRf6nHK6FRI5FyRyb/5T6+TSxfP7QyGsmQ==}
@@ -15930,6 +15923,19 @@ packages:
       thenify-all: 1.6.0
     dev: false
 
+  /n8n-workflow/0.129.0:
+    resolution: {integrity: sha512-/T3kftRi8e7XZkjUDZVBIEph+OM/8oHlxH3ugKOASXmie2xKfHWb6cb1oVYzrRSHt7Ny7h4/A83kwGnHOAUCmw==}
+    dependencies:
+      '@n8n_io/riot-tmpl': 1.0.1
+      jmespath: 0.16.0
+      lodash.get: 4.4.2
+      lodash.isequal: 4.5.0
+      lodash.merge: 4.6.2
+      lodash.set: 4.3.2
+      luxon: 2.3.2
+      xml2js: 0.4.23
+    dev: false
+
   /named-placeholders/1.1.2:
     resolution: {integrity: sha512-wiFWqxoLL3PGVReSZpjLVxyJ1bRqe+KKJVbr4hGs1KWfTZTQyezHFBbuKj9hsizHyGV2ne7EMjHdxEGAybD5SA==}
     engines: {node: '>=6.0.0'}
@@ -20591,43 +20597,10 @@ packages:
   /tslib/2.4.0:
     resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
 
-  /tslint/6.1.3_typescript@4.8.4:
-    resolution: {integrity: sha512-IbR4nkT96EQOvKE2PW/djGz8iGNeJ4rF2mBfiYaR/nvUWYKJhLwimoJKgjIFEIDibBtOevj7BqCRL4oHeWWUCg==}
-    engines: {node: '>=4.8.0'}
-    deprecated: TSLint has been deprecated in favor of ESLint. Please see https://github.com/palantir/tslint/issues/4534 for more information.
-    hasBin: true
-    peerDependencies:
-      typescript: '>=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >=3.0.0-dev || >= 3.1.0-dev || >= 3.2.0-dev || >= 4.0.0-dev'
-    dependencies:
-      '@babel/code-frame': 7.18.6
-      builtin-modules: 1.1.1
-      chalk: 2.4.2
-      commander: 2.20.3
-      diff: 4.0.2
-      glob: 7.2.3
-      js-yaml: 3.14.1
-      minimatch: 3.1.2
-      mkdirp: 0.5.6
-      resolve: 1.22.1
-      semver: 5.7.1
-      tslib: 1.14.1
-      tsutils: 2.29.0_typescript@4.8.4
-      typescript: 4.8.4
-    dev: true
-
   /tsscmp/1.0.6:
     resolution: {integrity: sha512-LxhtAkPDTkVCMQjt2h6eBVY28KCjikZqZfMcC15YBeNjkgUpdCfBu5HoiOTDu86v6smE8yOjyEktJ8hlbANHQA==}
     engines: {node: '>=0.6.x'}
     dev: false
-
-  /tsutils/2.29.0_typescript@4.8.4:
-    resolution: {integrity: sha512-g5JVHCIJwzfISaXpXE1qvNalca5Jwob6FjI4AoPlqMusJ6ftFE7IkkFoMhVLRgK+4Kx3gkzb8UZK5t5yTTvEmA==}
-    peerDependencies:
-      typescript: '>=2.1.0 || >=2.1.0-dev || >=2.2.0-dev || >=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >= 3.0.0-dev || >= 3.1.0-dev'
-    dependencies:
-      tslib: 1.14.1
-      typescript: 4.8.4
-    dev: true
 
   /tsutils/3.21.0_typescript@4.8.4:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
@@ -22347,7 +22320,7 @@ packages:
   /xml2js/0.4.19:
     resolution: {integrity: sha512-esZnJZJOiJR9wWKMyuvSE1y6Dq5LCuJanqhxslH2bxM6duahNZ+HMpCLhBQGZkbX6xRf8x1Y2eJlgt2q3qo49Q==}
     dependencies:
-      sax: 1.2.1
+      sax: 1.2.4
       xmlbuilder: 9.0.7
     dev: false
 
