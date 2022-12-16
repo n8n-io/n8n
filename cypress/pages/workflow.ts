@@ -173,5 +173,13 @@ export class WorkflowPage extends BasePage {
 			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
 			cy.get('body').type(metaKey, { delay: 500, release: false }).type('d');
 		},
+		hitCopy: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('c');
+		},
+		hitPaste: () => {
+			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+			cy.get('body').type(metaKey, { delay: 500, release: false }).type('P');
+		},
 	};
 }

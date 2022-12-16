@@ -8,6 +8,7 @@ const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
 const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
 const ZOOM_OUT_X1_FACTOR = 0.8;
 const ZOOM_OUT_X2_FACTOR = 0.64;
+const RENAME_NODE_NAME = 'Something else';
 
 describe('Canvas Actions', () => {
 	beforeEach(() => {
@@ -195,5 +196,91 @@ describe('Canvas Actions', () => {
 		cy.wait(500);
 		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
 		WorkflowPage.getters.selectedNodes().should('have.length', 2);
+	});
+
+	it('should delete connections by pressing the delete button', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
+		cy.get('.connection-actions .delete').click();
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should delete a connection by moving it away from endpoint', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.drag('.rect-input-endpoint.jtk-endpoint-connected', 0, -100);
+		WorkflowPage.getters.nodeConnections().should('have.length', 0);
+	});
+
+	it('should disable node by pressing the disable button', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.find('[data-test-id="disable-node-button"]')
+			.click({ force: true });
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+	});
+
+	it('should disable node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		WorkflowPage.actions.hitDisableNodeShortcut();
+		WorkflowPage.getters.disabledNodes().should('have.length', 1);
+	});
+
+	it('should disable multiple nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.get('body').type('{esc}');
+		cy.get('body').type('{esc}');
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitDisableNodeShortcut();
+		WorkflowPage.getters.disabledNodes().should('have.length', 2);
+	});
+
+	it('should rename node using keyboard shortcut', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().last().click();
+		cy.get('body').trigger('keydown', { key: 'F2' });
+		cy.get('.rename-prompt').should('be.visible');
+		cy.get('body').type(RENAME_NODE_NAME);
+		cy.get('body').type('{enter}');
+		WorkflowPage.getters.canvasNodeByName(RENAME_NODE_NAME).should('exist');
+	});
+
+	it('should duplicate node', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.find('[data-test-id="duplicate-node-button"]')
+			.click({ force: true });
+		WorkflowPage.getters.canvasNodes().should('have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 1);
+	})
+
+	it('should execute node', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.find('[data-test-id="execute-node-button"]')
+			.click({ force: true });
+		WorkflowPage.getters.successToast().should('contain', 'Node executed successfully');
+	});
+
+	it('should copy selected nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.actions.hitCopy();
+		WorkflowPage.getters.successToast().should('contain', 'Copied!');
 	});
 });
