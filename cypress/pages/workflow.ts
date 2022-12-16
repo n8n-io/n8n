@@ -43,6 +43,7 @@ export class WorkflowPage extends BasePage {
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
+		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
 		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		// Workflow menu items
@@ -72,8 +73,12 @@ export class WorkflowPage extends BasePage {
 
 		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
 		nodeViewBackground: () => cy.getByTestId('node-view-background'),
+		nodeView: () => cy.getByTestId('node-view'),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
+		zoomInButton: () => cy.getByTestId('zoom-in-button'),
+		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
+		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
 	};
 	actions = {
 		visit: () => {

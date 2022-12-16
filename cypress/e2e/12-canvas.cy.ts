@@ -3,6 +3,12 @@ import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
 
+const DEFAULT_ZOOM_FACTOR = 1;
+const ZOOM_IN_X1_FACTOR = 1.25; // Zoom in factor after one click
+const ZOOM_IN_X2_FACTOR = 1.5625; // Zoom in factor after two clicks
+const ZOOM_OUT_X1_FACTOR = 0.8;
+const ZOOM_OUT_X2_FACTOR = 0.64;
+
 describe('Canvas Actions', () => {
 	beforeEach(() => {
 		cy.resetAll();
@@ -53,5 +59,86 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.zoomToFit();
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
 		WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 740px; top: 360px;');
+	});
+
+	it('should zoom in', () => {
+		WorkflowPage.getters.zoomInButton().should('be.visible');
+		WorkflowPage.getters.zoomInButton().click();
+		WorkflowPage.getters.nodeView().should(
+			'have.css',
+			'transform',
+			`matrix(${ ZOOM_IN_X1_FACTOR }, 0, 0, ${ ZOOM_IN_X1_FACTOR }, 0, 0)`
+		);
+		WorkflowPage.getters.zoomInButton().click();
+		WorkflowPage.getters.nodeView().should(
+			'have.css',
+			'transform',
+			`matrix(${ ZOOM_IN_X2_FACTOR }, 0, 0, ${ ZOOM_IN_X2_FACTOR }, 0, 0)`
+		);
+	});
+
+	it('should zoom out', () => {
+		WorkflowPage.getters.zoomOutButton().should('be.visible');
+		WorkflowPage.getters.zoomOutButton().click();
+		WorkflowPage.getters.nodeView().should(
+			'have.css',
+			'transform',
+			`matrix(${ ZOOM_OUT_X1_FACTOR }, 0, 0, ${ ZOOM_OUT_X1_FACTOR }, 0, 0)`
+		);
+		WorkflowPage.getters.zoomOutButton().click();
+		WorkflowPage.getters.nodeView().should(
+			'have.css',
+			'transform',
+			`matrix(${ ZOOM_OUT_X2_FACTOR }, 0, 0, ${ ZOOM_OUT_X2_FACTOR }, 0, 0)`
+		);
+	});
+
+	it('should reset zoom', () => {
+		// Reset zoom should not appear until zoom level changed
+		WorkflowPage.getters.resetZoomButton().should('not.exist');
+		WorkflowPage.getters.zoomInButton().click();
+		WorkflowPage.getters.resetZoomButton().should('be.visible');
+		WorkflowPage.getters.resetZoomButton().click();
+		WorkflowPage.getters.nodeView().should(
+			'have.css',
+			'transform',
+			`matrix(${ DEFAULT_ZOOM_FACTOR }, 0, 0, ${ DEFAULT_ZOOM_FACTOR }, 0, 0)`
+		);
+	});
+
+	it('should zoom to fit', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		// At this point last added node should be off-screen
+		WorkflowPage.getters.canvasNodes().last().should('not.be.visible');
+		WorkflowPage.getters.zoomToFitButton().click();
+		WorkflowPage.getters.canvasNodes().last().should('be.visible');
+	});
+
+	it('should select all nodes', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		WorkflowPage.actions.selectAll();
+		WorkflowPage.getters.selectedNodes().should('have.length', 2);
+	});
+
+	it('should select nodes using arrow keys', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		cy.get('body').type('{leftArrow}');
+		WorkflowPage.getters.canvasNodes().first().should('have.class', 'jtk-drag-selected');
+		cy.get('body').type('{rightArrow}');
+		WorkflowPage.getters.canvasNodes().last().should('have.class', 'jtk-drag-selected');
+	});
+
+	it ('should select nodes using shift and arrow keys', () => {
+		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
+		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
+		cy.wait(500);
+		cy.get('body').type('{shift}', { release: false }).type('{leftArrow}');
+		WorkflowPage.getters.selectedNodes().should('have.length', 2);
 	});
 });

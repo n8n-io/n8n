@@ -19,7 +19,7 @@
 				@wheel="canvasStore.wheelScroll"
 			>
 				<div id="node-view-background" class="node-view-background" :style="backgroundStyle" data-test-id="node-view-background" />
-				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView">
+				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView" data-test-id="node-view">
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
 						@click="showTriggerCreator('trigger_placeholder_button')"
