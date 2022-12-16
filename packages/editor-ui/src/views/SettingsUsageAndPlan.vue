@@ -10,7 +10,7 @@ const usageStore = useUsageStore();
 const route = useRoute();
 const router = useRouter();
 
-const queryParamCallback = ref<string>(`callback=${encodeURIComponent(`${window.location.origin}${route.fullPath}`)}`);
+const queryParamCallback = ref<string>(`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`);
 const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}`);
 const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
 const activationKeyModal = ref(false);
