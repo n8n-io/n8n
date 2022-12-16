@@ -58,7 +58,6 @@
 </template>
 
 <script lang="ts">
-import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
