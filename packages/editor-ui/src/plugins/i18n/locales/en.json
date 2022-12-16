@@ -1440,7 +1440,7 @@
 	"dynamic.credentials.sharing.unavailable.button": "See plans",
 	"dynamic.credentials.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
 
-	"dynamic.workflows.sharing.title": "Share '{name}'",
+	"dynamic.workflows.sharing.title": "Sharing",
 	"dynamic.workflows.sharing.unavailable.title": "Sharing",
 	"dynamic.workflows.sharing.unavailable.title.cloud.upgrade": "Upgrade to add users",
 	"dynamic.workflows.sharing.unavailable.description.modal": "You can collaborate with others on workflows when you upgrade your plan.",
