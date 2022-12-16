@@ -25,7 +25,7 @@ export async function figmaApiRequest(
 		headers: { 'X-FIGMA-TOKEN': credentials.accessToken },
 		method,
 		body,
-		uri: uri || `https://api.figma.com${resource}`,
+		uri: uri ?? `https://api.figma.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

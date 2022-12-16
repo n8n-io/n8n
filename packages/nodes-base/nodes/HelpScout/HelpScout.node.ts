@@ -504,7 +504,7 @@ export class HelpScout implements INodeType {
 									];
 									if (binaryProperty) {
 										return {
-											fileName: binaryProperty.fileName || 'unknown',
+											fileName: binaryProperty.fileName ?? 'unknown',
 											data: binaryProperty.data,
 											mimeType: binaryProperty.mimeType,
 										};

@@ -23,7 +23,7 @@ export async function pushcutApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.pushcut.io/v1${path}`,
+		uri: uri ?? `https://api.pushcut.io/v1${path}`,
 		json: true,
 	};
 	try {

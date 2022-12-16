@@ -51,7 +51,7 @@ export class VenafiTlsProtectDatacenterTrigger implements INodeType {
 
 		const now = moment().format();
 
-		qs.ValidToGreater = webhookData.lastTimeChecked || now;
+		qs.ValidToGreater = webhookData.lastTimeChecked ?? now;
 
 		qs.ValidToLess = now;
 

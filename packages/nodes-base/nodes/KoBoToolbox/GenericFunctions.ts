@@ -159,7 +159,7 @@ export function formatSubmission(
 			.split('/')
 			.map((k) => _.trim(k, ' _'))
 			.join('.');
-		const leafKey = sanitizedKey.split('.').pop() || '';
+		const leafKey = sanitizedKey.split('.').pop() ?? '';
 		let format = 'string';
 		if (_.some(numberMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'number';
@@ -205,7 +205,7 @@ export async function downloadAttachments(
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
-	const attachmentList = (submission._attachments || submission.attachments) as any[]; // tslint:disable-line:no-any
+	const attachmentList = (submission._attachments ?? submission.attachments) as any[]; // tslint:disable-line:no-any
 
 	if (attachmentList?.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
@@ -267,7 +267,7 @@ export async function downloadAttachments(
 				if ('question' === options.binaryNamingScheme && relatedQuestion) {
 					binaryName = relatedQuestion;
 				} else {
-					binaryName = `${options.dataPropertyAttachmentsPrefixName || 'attachment_'}${index}`;
+					binaryName = `${options.dataPropertyAttachmentsPrefixName ?? 'attachment_'}${index}`;
 				}
 
 				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(

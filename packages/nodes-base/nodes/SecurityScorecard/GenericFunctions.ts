@@ -22,7 +22,7 @@ export async function scorecardApiRequest(
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://api.securityscorecard.io/${resource}`,
+		uri: uri ?? `https://api.securityscorecard.io/${resource}`,
 		body,
 		json: true,
 	};

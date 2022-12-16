@@ -20,7 +20,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com${resource}`,
+		uri: uri ?? `https://www.googleapis.com${resource}`,
 		json: true,
 	};
 

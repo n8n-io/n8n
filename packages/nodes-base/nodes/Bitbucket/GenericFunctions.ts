@@ -26,7 +26,7 @@ export async function bitbucketApiRequest(
 		},
 		qs,
 		body,
-		uri: uri || `https://api.bitbucket.org/2.0${resource}`,
+		uri: uri ?? `https://api.bitbucket.org/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

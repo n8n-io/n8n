@@ -40,7 +40,7 @@ export async function apiRequest(
 
 	const baseUrl = credentials.host as string;
 
-	query = query || {};
+	query = query ?? {};
 
 	const options: OptionsWithUri = {
 		method,

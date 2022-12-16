@@ -193,7 +193,7 @@ export class EmailSend implements INodeType {
 							continue;
 						}
 						attachments.push({
-							filename: item.binary[propertyName].fileName || 'unknown',
+							filename: item.binary[propertyName].fileName ?? 'unknown',
 							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}

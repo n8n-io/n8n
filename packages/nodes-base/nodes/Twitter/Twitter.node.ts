@@ -254,7 +254,7 @@ export class Twitter implements INodeType {
 							}
 						}
 
-						qs.tweet_mode = additionalFields.tweetMode || 'compat';
+						qs.tweet_mode = additionalFields.tweetMode ?? 'compat';
 
 						if (returnAll) {
 							responseData = await twitterApiRequestAllItems.call(

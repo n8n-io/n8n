@@ -25,7 +25,7 @@ export async function bitlyApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api-ssl.bitly.com/v4${resource}`,
+		uri: uri ?? `https://api-ssl.bitly.com/v4${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

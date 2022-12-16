@@ -28,7 +28,7 @@ export async function lingvaNexApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri || `https://api-b2b.backenster.com/b1/api/v3${resource}`,
+			uri: uri ?? `https://api-b2b.backenster.com/b1/api/v3${resource}`,
 			json: true,
 		};
 

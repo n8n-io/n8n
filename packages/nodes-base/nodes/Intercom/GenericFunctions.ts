@@ -29,7 +29,7 @@ export async function intercomApiRequest(
 		headers: headerWithAuthentication,
 		method,
 		qs: query,
-		uri: uri || `https://api.intercom.io${endpoint}`,
+		uri: uri ?? `https://api.intercom.io${endpoint}`,
 		body,
 		json: true,
 	};

@@ -62,7 +62,7 @@ export async function searchTables(
 	const sql = `
 	SELECT table_name FROM information_schema.tables
 	WHERE table_schema = '${credentials.database}'
-		and table_name like '%${query || ''}%'
+		and table_name like '%${query ?? ''}%'
 	ORDER BY table_name
 	`;
 	const [rows] = await connection.query(sql);

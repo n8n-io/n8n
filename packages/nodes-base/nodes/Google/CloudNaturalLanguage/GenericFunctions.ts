@@ -22,7 +22,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://language.googleapis.com${endpoint}`,
+		uri: uri ?? `https://language.googleapis.com${endpoint}`,
 		json: true,
 	};
 

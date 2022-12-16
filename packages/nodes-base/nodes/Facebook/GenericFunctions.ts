@@ -45,7 +45,7 @@ export async function facebookApiRequest(
 		qs,
 		body,
 		gzip: true,
-		uri: uri || `https://graph.facebook.com/v8.0${resource}`,
+		uri: uri ?? `https://graph.facebook.com/v8.0${resource}`,
 		json: true,
 	};
 

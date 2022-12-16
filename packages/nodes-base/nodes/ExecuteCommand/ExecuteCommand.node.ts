@@ -38,7 +38,7 @@ async function execPromise(command: string): Promise<IExecReturnData> {
 
 			resolve(returnData);
 		}).on('exit', (code) => {
-			returnData.exitCode = code || 0;
+			returnData.exitCode = code ?? 0;
 		});
 	});
 }

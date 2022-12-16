@@ -28,7 +28,7 @@ export async function helpscoutApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.helpscout.net${resource}`,
+		uri: uri ?? `https://api.helpscout.net${resource}`,
 		json: true,
 	};
 	try {

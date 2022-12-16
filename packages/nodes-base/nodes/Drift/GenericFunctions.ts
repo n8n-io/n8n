@@ -19,7 +19,7 @@ export async function driftApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://driftapi.com${resource}`,
+		uri: uri ?? `https://driftapi.com${resource}`,
 		json: true,
 	};
 

@@ -542,7 +542,7 @@ export class GoogleSlides implements INodeType {
 							return {
 								replaceAllText: {
 									replaceText: text.replaceText,
-									pageObjectIds: text.pageObjectIds || [],
+									pageObjectIds: text.pageObjectIds ?? [],
 									containsText: {
 										text: text.text,
 										matchCase: text.matchCase,

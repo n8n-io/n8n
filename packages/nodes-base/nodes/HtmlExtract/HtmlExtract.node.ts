@@ -24,7 +24,7 @@ const extractFunctions: {
 } = {
 	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
 		$.attr(valueData.attribute!),
-	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() || undefined,
+	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() ?? undefined,
 	text: ($: Cheerio, _valueData: IValueData): string | undefined => $.text(),
 	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
 };

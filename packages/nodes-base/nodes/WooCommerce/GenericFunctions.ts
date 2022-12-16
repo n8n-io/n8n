@@ -39,7 +39,7 @@ export async function woocommerceApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `${credentials.url}/wp-json/wc/v3${resource}`,
+		uri: uri ?? `${credentials.url}/wp-json/wc/v3${resource}`,
 		json: true,
 	};
 

@@ -28,7 +28,7 @@ export async function citrixADCApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${url.replace(new RegExp('/$'), '')}/nitro/v1${resource}`,
+		uri: uri ?? `${url.replace(new RegExp('/$'), '')}/nitro/v1${resource}`,
 		json: true,
 	};
 

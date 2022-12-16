@@ -27,7 +27,7 @@ export async function affinityApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: uri ?? `${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

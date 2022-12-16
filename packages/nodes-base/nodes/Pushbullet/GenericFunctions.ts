@@ -18,7 +18,7 @@ export async function pushbulletApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.pushbullet.com/v2${path}`,
+		uri: uri ?? `https://api.pushbullet.com/v2${path}`,
 		json: true,
 	};
 	try {

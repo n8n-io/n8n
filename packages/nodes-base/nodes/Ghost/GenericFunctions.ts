@@ -37,7 +37,7 @@ export async function ghostApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/ghost/api/${version}${endpoint}`,
+		uri: uri ?? `${credentials.url}/ghost/api/${version}${endpoint}`,
 		body,
 		json: true,
 	};

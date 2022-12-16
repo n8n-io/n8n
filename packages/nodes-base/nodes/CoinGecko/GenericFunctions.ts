@@ -22,7 +22,7 @@ export async function coinGeckoApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.coingecko.com/api/v3${endpoint}`,
+		uri: uri ?? `https://api.coingecko.com/api/v3${endpoint}`,
 		json: true,
 	};
 

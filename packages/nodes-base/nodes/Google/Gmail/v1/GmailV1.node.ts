@@ -324,7 +324,7 @@ export class GmailV1 implements INodeType {
 													binaryProperty,
 												);
 												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
+													name: binaryData.fileName ?? 'unknown',
 													content: binaryDataBuffer,
 													type: binaryData.mimeType,
 												});
@@ -414,7 +414,7 @@ export class GmailV1 implements INodeType {
 													binaryProperty,
 												);
 												attachmentsBinary.push({
-													name: binaryData.fileName || 'unknown',
+													name: binaryData.fileName ?? 'unknown',
 													content: binaryDataBuffer,
 													type: binaryData.mimeType,
 												});
@@ -489,7 +489,7 @@ export class GmailV1 implements INodeType {
 						const id = this.getNodeParameter('messageId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const format = additionalFields.format || 'resolved';
+						const format = additionalFields.format ?? 'resolved';
 
 						if (format === 'resolved') {
 							qs.format = 'raw';
@@ -557,7 +557,7 @@ export class GmailV1 implements INodeType {
 							responseData = [];
 						}
 
-						const format = additionalFields.format || 'resolved';
+						const format = additionalFields.format ?? 'resolved';
 
 						if (format !== 'ids') {
 							if (format === 'resolved') {
@@ -658,7 +658,7 @@ export class GmailV1 implements INodeType {
 														binaryProperty,
 													);
 													attachmentsBinary.push({
-														name: binaryData.fileName || 'unknown',
+														name: binaryData.fileName ?? 'unknown',
 														content: binaryDataBuffer,
 														type: binaryData.mimeType,
 													});
@@ -707,7 +707,7 @@ export class GmailV1 implements INodeType {
 						const id = this.getNodeParameter('messageId', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i);
-						const format = additionalFields.format || 'resolved';
+						const format = additionalFields.format ?? 'resolved';
 
 						if (format === 'resolved') {
 							qs.format = 'raw';
@@ -785,7 +785,7 @@ export class GmailV1 implements INodeType {
 							responseData = [];
 						}
 
-						const format = additionalFields.format || 'resolved';
+						const format = additionalFields.format ?? 'resolved';
 
 						if (format !== 'ids') {
 							if (format === 'resolved') {

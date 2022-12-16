@@ -26,7 +26,7 @@ export async function bannerbearApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://api.bannerbear.com/v2${resource}`,
+		uri: uri ?? `https://api.bannerbear.com/v2${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

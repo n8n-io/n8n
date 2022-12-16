@@ -447,7 +447,7 @@ export class ElasticSecurity implements INodeType {
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
-							owner: additionalFields.owner || 'securitySolution',
+							owner: additionalFields.owner ?? 'securitySolution',
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);

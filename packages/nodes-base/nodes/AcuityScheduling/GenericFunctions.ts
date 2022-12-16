@@ -32,7 +32,7 @@ export async function acuitySchedulingApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://acuityscheduling.com/api/v1${resource}`,
+		uri: uri ?? `https://acuityscheduling.com/api/v1${resource}`,
 		json: true,
 	};
 

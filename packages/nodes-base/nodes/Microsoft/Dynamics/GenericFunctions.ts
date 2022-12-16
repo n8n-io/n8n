@@ -28,7 +28,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
+		uri: uri ?? `https://${credentials.subdomain}.${credentials.region}/api/data/v9.2${resource}`,
 		json: true,
 	};
 
