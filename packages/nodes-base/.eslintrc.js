@@ -26,10 +26,9 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
 		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
 		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
-		'@typescript-eslint/restrict-template-expressions': 'off',
+		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
 		'@typescript-eslint/unbound-method': 'off',
-		// '@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 
 	overrides: [
