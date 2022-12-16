@@ -33,10 +33,12 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssueData,
+	INodeParameters,
 	IPinData,
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
+	NodeHelpers,
 } from 'n8n-workflow';
 import Vue from 'vue';
 
@@ -824,8 +826,18 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const latestNode = this.workflow.nodes.findLast(
 				(node) => node.type === updateInformation.key,
 			) as INodeUi;
+			const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
+			if(!nodeType) return;
 
-			if (latestNode) this.setNodeParameters({ ...updateInformation, name: latestNode.name }, true);
+			const nodeParams = NodeHelpers.getNodeParameters(
+				nodeType.properties,
+				updateInformation.value as INodeParameters,
+				true,
+				false,
+				latestNode,
+			);
+
+			if (latestNode) this.setNodeParameters({ value: nodeParams, name: latestNode.name }, true);
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {
