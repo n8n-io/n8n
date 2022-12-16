@@ -61,10 +61,6 @@ const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
 	telemetry.track('User clicked button on usage page', telemetryPayload);
 };
 
-const onContactUs = () => {
-	sendUsageTelemetry('contact_us');
-};
-
 const onAddActivationKey = () => {
 	activationKeyModal.value = true;
 	sendUsageTelemetry('add_activation_key');
@@ -117,7 +113,7 @@ const onDialogOpened = () => {
 		</div>
 		<n8n-info-tip>{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
 		<div :class="$style.buttons">
-			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="tertiary" size="large" text>
+			<n8n-button @click="onAddActivationKey" v-if="usageStore.canUserActivateLicense" type="tertiary" size="large">
 				<strong>{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
 			</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
@@ -126,13 +122,6 @@ const onDialogOpened = () => {
 			<n8n-button v-else @click="onViewPlans" size="large">
 				<a :href="viewPlansUrl" target="_blank">{{ $locale.baseText('settings.usageAndPlan.button.plans') }}</a>
 			</n8n-button>
-		</div>
-		<div :class="$style.help">
-			<i18n path="settings.usageAndPlan.help">
-				<template #link>
-					<a @click="onContactUs" href="mailto:sales@n8n.io" target="_blank">{{ $locale.baseText('_reusableBaseText.contactUs') }}</a>
-				</template>
-			</i18n>
 		</div>
 		<el-dialog
 			width="480px"
@@ -209,10 +198,6 @@ const onDialogOpened = () => {
 			padding: var(--spacing-xs) var(--spacing-m);
 			margin: calc(var(--spacing-xs) * -1) calc(var(--spacing-m) * -1);
 		}
-
-		strong {
-			font-weight: var(--font-weight-bold);
-		}
 	}
 }
 
@@ -240,13 +225,6 @@ const onDialogOpened = () => {
 			transition: width 0.2s $ease-out-expo;
 		}
 	}
-}
-
-.help {
-	display: flex;
-	justify-content: flex-end;
-	padding: var(--spacing-xs) 0 0;
-	font-size: var(--font-size-2xs);
 }
 
 div[class*="info"] > span > span:last-child {
