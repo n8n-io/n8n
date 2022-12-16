@@ -3,7 +3,7 @@ import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRole } from './UserManagementHelper';
+import { getRole, isSharingEnabled } from './UserManagementHelper';
 
 export class PermissionChecker {
 	/**
@@ -31,7 +31,7 @@ export class PermissionChecker {
 
 		let workflowUserIds = [userId];
 
-		if (workflow.id && config.getEnv('enterprise.features.sharing')) {
+		if (workflow.id && isSharingEnabled()) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflow: { id: Number(workflow.id) } },
@@ -44,7 +44,7 @@ export class PermissionChecker {
 				where: { user: In(workflowUserIds) },
 			};
 
-		if (!config.getEnv('enterprise.features.sharing')) {
+		if (!isSharingEnabled()) {
 			// If credential sharing is not enabled, get only credentials owned by this user
 			credentialsWhereCondition.where.role = await getRole('credential', 'owner');
 		}
