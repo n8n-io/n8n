@@ -144,35 +144,31 @@ export const useUIStore = defineStore(STORES.UI, {
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
 				uiLocations: ['settings'],
 			},
-			{
-				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
-				featureName: 'fakeDoor.credentialEdit.sharing.name',
-				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
-				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-				uiLocations: ['credentialsModal'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.WORKFLOWS_SHARING,
-				featureName: 'fakeDoor.workflowsSharing.name',
-				actionBoxTitle: 'workflows.shareModal.title', // Use this translation in modal title when removing fakeDoor
-				actionBoxDescription: 'fakeDoor.workflowsSharing.description',
-				actionBoxButtonLabel: 'fakeDoor.workflowsSharing.button',
-				linkURL: 'https://n8n.cloud',
-				uiLocations: ['workflowShareModal'],
-			},
 		],
 		dynamicTranslations: {
-			workflows: {
-				shareModal: {
-					title: 'dynamic.workflows.shareModal.title',
-				},
+			credentials: {
 				sharing: {
 					unavailable: {
-						description: 'dynamic.workflows.sharing.unavailable.description',
+						title: 'dynamic.credentials.sharing.unavailable.title',
+						description: 'dynamic.credentials.sharing.unavailable.description',
+						action: 'dynamic.credentials.sharing.unavailable.action',
+						button: 'dynamic.credentials.sharing.unavailable.button',
+						linkURL: 'https://subscription.n8n.io/',
+					},
+				},
+			},
+			workflows: {
+				sharing: {
+					title: 'dynamic.workflows.sharing.title',
+					unavailable: {
+						title: 'dynamic.workflows.sharing.unavailable.title',
+						description: {
+							modal: 'dynamic.workflows.sharing.unavailable.description.modal',
+							tooltip: 'dynamic.workflows.sharing.unavailable.description.tooltip',
+						},
 						action: 'dynamic.workflows.sharing.unavailable.action',
 						button: 'dynamic.workflows.sharing.unavailable.button',
-						linkURL: 'https://n8n.cloud',
+						linkURL: 'https://subscription.n8n.io/',
 					},
 				},
 			},
