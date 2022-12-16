@@ -31,8 +31,7 @@ import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
-
-const settingsUsageAndPlanView = () => import('./views/SettingsUsageAndPlan.vue');
+import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 
 Vue.use(Router);
 
@@ -435,7 +434,7 @@ const router = new Router({
 					path: 'usage',
 					name: VIEWS.USAGE,
 					components: {
-						settingsView: settingsUsageAndPlanView,
+						settingsView: SettingsUsageAndPlanVue,
 					},
 					meta: {
 						telemetry: {
