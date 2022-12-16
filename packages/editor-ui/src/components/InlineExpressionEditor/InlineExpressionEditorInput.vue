@@ -39,10 +39,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
-			const range = this.editor?.state.selection.ranges[0];
-
-			if (range !== undefined && range.from !== range.to) return;
-
 			try {
 				this.editor?.dispatch({
 					changes: {
