@@ -1,3 +1,34 @@
+# [0.208.0](https://github.com/n8n-io/n8n/compare/n8n@0.207.1...n8n@0.208.0) (2022-12-16)
+
+
+### Bug Fixes
+
+* **core:** Fix for Google and Microsoft generic OAuth2 credentials ([efa4c56](https://github.com/n8n-io/n8n/commit/efa4c567579d88f9ce764c535dfb41e7391a1286))
+* **core:** Fix HTTP Digest Auth for responses without an opaque parameter ([#4806](https://github.com/n8n-io/n8n/issues/4806)) ([6fac502](https://github.com/n8n-io/n8n/commit/6fac502f9ec288d7df2263e6f5a28b3a1fa84595))
+* **Disqus Node:** Fix thread parameter for "Get All Threads" operation ([#4912](https://github.com/n8n-io/n8n/issues/4912)) ([a04f838](https://github.com/n8n-io/n8n/commit/a04f838117076424084d858494103638fc201996))
+* Do not crash the server when Telemetry is blocked via DNS ([#4947](https://github.com/n8n-io/n8n/issues/4947)) ([6127c95](https://github.com/n8n-io/n8n/commit/6127c958f5ed786ee93f8fedb3344d6792158723))
+* **editor:** Allow mapping onto expression editor with selection range ([#4945](https://github.com/n8n-io/n8n/issues/4945)) ([6b83972](https://github.com/n8n-io/n8n/commit/6b83972f6e18e03874eb11180488505b83a0111a))
+* **editor:** Do not show actions dialog for actionless triggers when selected via keyboard ([#4911](https://github.com/n8n-io/n8n/issues/4911)) ([74100d3](https://github.com/n8n-io/n8n/commit/74100d3d5b12f70e78e04e8c87541f3adf6decdb))
+* **editor:** Fix an issue where some node actions wouldn't select default params correctly ([#4946](https://github.com/n8n-io/n8n/issues/4946)) ([626879b](https://github.com/n8n-io/n8n/commit/626879b3a2f8f4fb6b1c365297d752f456a47610))
+* **editor:** Fix typo in retry-button option "Retry with original workflow" ([#4528](https://github.com/n8n-io/n8n/issues/4528)) ([76a3f13](https://github.com/n8n-io/n8n/commit/76a3f1345877599d46691f37878e3fc3fa062243))
+* Update permission for showing workflow caller policy ([#4916](https://github.com/n8n-io/n8n/issues/4916)) ([f73267f](https://github.com/n8n-io/n8n/commit/f73267ffa5b4a265ab6be52e887747487cae10c5))
+* Update pnpm-lock to fix build ([#4910](https://github.com/n8n-io/n8n/issues/4910)) ([66fdc53](https://github.com/n8n-io/n8n/commit/66fdc538085368921b10a123e11c45ba72061b8a))
+
+
+### Features
+
+* Add workflow sharing telemetry ([#4906](https://github.com/n8n-io/n8n/issues/4906)) ([ac066fc](https://github.com/n8n-io/n8n/commit/ac066fc9f3a2c1abeb327dacd7b98ae3a47e2371))
+* **core:** Allow for hiding usage page via environment ([#4899](https://github.com/n8n-io/n8n/issues/4899)) ([0f40ca3](https://github.com/n8n-io/n8n/commit/0f40ca39ba64156df186bbf27433ab17edbfa1a6))
+* **editor:** Inline expression editor ([#4814](https://github.com/n8n-io/n8n/issues/4814)) ([a125989](https://github.com/n8n-io/n8n/commit/a1259898c01406ebd7f8d0182a6c66fd8b0c7734)), closes [#4836](https://github.com/n8n-io/n8n/issues/4836) [#4846](https://github.com/n8n-io/n8n/issues/4846)
+* **editor:** Update user management setup message when sharing is disabled ([#4928](https://github.com/n8n-io/n8n/issues/4928)) ([fbcbef2](https://github.com/n8n-io/n8n/commit/fbcbef20e7b193d6c69334a1da3c0d16936c5ec4))
+* Hide credentials password values ([#4868](https://github.com/n8n-io/n8n/issues/4868)) ([fe0f982](https://github.com/n8n-io/n8n/commit/fe0f9824377026a1660d6fda63da79b6cc31ea4b))
+* **OpenAI Node:** Add a node to work with OpenAI ([#4932](https://github.com/n8n-io/n8n/issues/4932)) ([7a984bb](https://github.com/n8n-io/n8n/commit/7a984bb6b74381fecb43755c1421be9d80b3ed44))
+* **Send Email Node:** Add replyTo support ([#4941](https://github.com/n8n-io/n8n/issues/4941)) ([3140942](https://github.com/n8n-io/n8n/commit/31409420c2367c75cd8eaaf82d5b81f467efc8bb))
+* Set all resources view as default subview ([#4919](https://github.com/n8n-io/n8n/issues/4919)) ([bcde07e](https://github.com/n8n-io/n8n/commit/bcde07e03288729ed185d1508cd73efebd82dec0))
+* Update workflow overwriting message ([#4917](https://github.com/n8n-io/n8n/issues/4917)) ([2964458](https://github.com/n8n-io/n8n/commit/2964458191a02046a1806bd413e67ebf1308c2f8))
+
+
+
 ## [0.207.1](https://github.com/n8n-io/n8n/compare/n8n@0.207.0...n8n@0.207.1) (2022-12-13)
 
 ### Bug Fixes
