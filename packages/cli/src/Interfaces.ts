@@ -500,6 +500,9 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		workflowSharing: boolean;
 	};
+	license: {
+		tenantId: number;
+	};
 	hideUsagePage: boolean;
 }
 

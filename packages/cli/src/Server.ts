@@ -359,6 +359,9 @@ class App {
 				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				tenantId: config.getEnv('license.tenantId'),
+			},
 		};
 	}
 
