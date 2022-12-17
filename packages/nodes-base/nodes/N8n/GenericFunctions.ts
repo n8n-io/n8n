@@ -166,7 +166,9 @@ export const parseAndSetBodyJson = (
 		} catch (err) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The '${parameterName}' property must be valid JSON, but cannot be parsed: ${err}`,
+				new Error(`The '${parameterName}' property must be valid JSON, but cannot be parsed`, {
+					cause: err,
+				}),
 			);
 		}
 		return requestOptions;

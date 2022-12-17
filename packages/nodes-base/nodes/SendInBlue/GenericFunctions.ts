@@ -122,7 +122,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `${err}`);
+				throw new NodeOperationError(this.getNode(), err);
 			}
 		}
 
