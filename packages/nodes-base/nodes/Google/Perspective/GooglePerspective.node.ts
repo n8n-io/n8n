@@ -191,7 +191,7 @@ export class GooglePerspective implements INodeType {
 					'Russian',
 				];
 
-				const ISO = ISO6391 as unknown as ISO;
+				const ISO: ISO = ISO6391 as unknown as ISO;
 				const languages = ISO.getAllNames().filter((language: string) =>
 					supportedLanguages.includes(language),
 				);

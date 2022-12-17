@@ -314,8 +314,7 @@ export async function encodeEmail(email: IEmail) {
 	// the flag is set after the compilation.
 	//https://nodemailer.com/extras/mailcomposer/#bcc
 
-	// @ts-ignore-next-line
-	mail.keepBcc = true;
+	(mail as any).keepBcc = true;
 
 	const mailBody = await mail.build();
 
