@@ -16,8 +16,11 @@ interface SetupPayload {
 declare global {
 	namespace Cypress {
 		interface Chainable {
-			getByTestId(selector: string, ...args: (Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined)[]): Chainable<JQuery<HTMLElement>>
-			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>
+			getByTestId(
+				selector: string,
+				...args: (Partial<Loggable & Timeoutable & Withinable & Shadow> | undefined)[]
+			): Chainable<JQuery<HTMLElement>>;
+			findChildByTestId(childTestId: string): Chainable<JQuery<HTMLElement>>;
 			createFixtureWorkflow(fixtureKey: string, workflowName: string): void;
 			signin(payload: SigninPayload): void;
 			setup(payload: SetupPayload): void;
@@ -27,8 +30,8 @@ declare global {
 			waitForLoad(): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
-			paste(pastePayload: string): void,
-			drag(selector: string, xDiff: number, yDiff: number): void,
+			paste(pastePayload: string): void;
+			drag(selector: string, xDiff: number, yDiff: number): void;
 		}
 	}
 }

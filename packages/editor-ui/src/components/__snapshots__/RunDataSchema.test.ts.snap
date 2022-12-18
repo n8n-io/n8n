@@ -3,34 +3,34 @@
 exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1x7h2_1"
+    class="_schemaWrapper_5xhkc_1"
   >
     <div
       class=""
     >
       <div
-        class="_schema_1x7h2_1"
+        class="_schema_5xhkc_1"
       >
         <div
-          class="_item_eg159_1"
+          class="_item_14xdy_1"
         >
           <!---->
           <!---->
           <!---->
           <!---->
           <div
-            class="_sub_eg159_14"
+            class="_sub_14xdy_14"
           >
             <div
-              class="_item_eg159_1"
+              class="_item_14xdy_1"
               style="transition-delay: 0s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_14xdy_51 _mappable_14xdy_70"
                 title="string"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_14xdy_89"
                   data-depth="1"
                   data-name="name"
                   data-path="[\\"name\\"]"
@@ -50,7 +50,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="_text_eg159_100"
+                class="_text_14xdy_100"
               >
                 John
               </span>
@@ -59,15 +59,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
               <!---->
             </div>
             <div
-              class="_item_eg159_1"
+              class="_item_14xdy_1"
               style="transition-delay: 0.033s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_14xdy_51 _mappable_14xdy_70"
                 title="number"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_14xdy_89"
                   data-depth="1"
                   data-name="age"
                   data-path="[\\"age\\"]"
@@ -87,7 +87,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="_text_eg159_100"
+                class="_text_14xdy_100"
               >
                 22
               </span>
@@ -96,15 +96,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
               <!---->
             </div>
             <div
-              class="_item_eg159_1"
+              class="_item_14xdy_1"
               style="transition-delay: 0.066s;"
             >
               <div
-                class="_pill_eg159_51 _mappable_eg159_70"
+                class="_pill_14xdy_51 _mappable_14xdy_70"
                 title="array"
               >
                 <span
-                  class="_label_eg159_89"
+                  class="_label_14xdy_89"
                   data-depth="1"
                   data-name="hobbies"
                   data-path="[\\"hobbies\\"]"
@@ -130,7 +130,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 type="checkbox"
               />
               <label
-                class="_toggle_eg159_20"
+                class="_toggle_14xdy_20"
                 for="array-0-2"
               >
                 <font-awesome-icon-stub
@@ -138,18 +138,18 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 />
               </label>
               <div
-                class="_sub_eg159_14"
+                class="_sub_14xdy_14"
               >
                 <div
-                  class="_item_eg159_1"
+                  class="_item_14xdy_1"
                   style="transition-delay: 0s;"
                 >
                   <div
-                    class="_pill_eg159_51 _mappable_eg159_70"
+                    class="_pill_14xdy_51 _mappable_14xdy_70"
                     title="string"
                   >
                     <span
-                      class="_label_eg159_89"
+                      class="_label_14xdy_89"
                       data-depth="2"
                       data-name="string[0]"
                       data-path="[\\"hobbies\\"][0]"
@@ -164,14 +164,14 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_eg159_94"
+                        class="_arrayIndex_14xdy_94"
                       >
                         [0]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_eg159_100"
+                    class="_text_14xdy_100"
                   >
                     surfing
                   </span>
@@ -180,15 +180,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   <!---->
                 </div>
                 <div
-                  class="_item_eg159_1"
+                  class="_item_14xdy_1"
                   style="transition-delay: 0.033s;"
                 >
                   <div
-                    class="_pill_eg159_51 _mappable_eg159_70"
+                    class="_pill_14xdy_51 _mappable_14xdy_70"
                     title="string"
                   >
                     <span
-                      class="_label_eg159_89"
+                      class="_label_14xdy_89"
                       data-depth="2"
                       data-name="string[1]"
                       data-path="[\\"hobbies\\"][1]"
@@ -203,14 +203,14 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_eg159_94"
+                        class="_arrayIndex_14xdy_94"
                       >
                         [1]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_eg159_100"
+                    class="_text_14xdy_100"
                   >
                     traveling
                   </span>
@@ -235,7 +235,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1x7h2_1"
+    class="_schemaWrapper_5xhkc_1"
   >
     <div
       class="n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12"

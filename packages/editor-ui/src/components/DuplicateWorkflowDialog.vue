@@ -62,6 +62,8 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { IWorkflowDataUpdate } from '@/Interface';
+import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
@@ -85,7 +87,13 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapStores(useSettingsStore, useWorkflowsStore),
+		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(
+				this.usersStore.currentUser,
+				this.workflowsStore.getWorkflowById(this.data.id),
+			);
+		},
 	},
 	watch: {
 		isActive(active) {
@@ -157,6 +165,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 					this.$telemetry.track('User duplicated workflow', {
 						old_workflow_id: currentWorkflowId,
 						workflow_id: this.data.id,
+						sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
 					});
 				}
 			} catch (error) {
