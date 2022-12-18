@@ -196,15 +196,12 @@ export class Telemetry {
 					properties: updatedProperties,
 				};
 
-				if (withPostHog && this.postHog) {
-					return Promise.all([
-						this.postHog.capture({
-							distinctId: payload.userId,
-							sendFeatureFlags: true,
-							...payload,
-						}),
-						this.rudderStack.track(payload),
-					]).then(() => resolve());
+				if (withPostHog) {
+					this.postHog?.capture({
+						distinctId: payload.userId,
+						sendFeatureFlags: true,
+						...payload,
+					});
 				}
 
 				return this.rudderStack.track(payload, resolve);

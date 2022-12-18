@@ -4,6 +4,12 @@
 import { resolve, join, dirname } from 'path';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 
+const { NODE_ENV, E2E_TESTS } = process.env;
+export const inProduction = NODE_ENV === 'production';
+export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
+export const inTest = NODE_ENV === 'test';
+export const inE2ETests = E2E_TESTS === 'true';
+
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
@@ -50,3 +56,5 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
 }
+
+export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

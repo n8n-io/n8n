@@ -87,7 +87,12 @@
 			</div>
 
 			<div class="node-options no-select-on-click" v-if="!isReadOnly" v-show="!hideActions">
-				<div v-touch:tap="deleteNode" class="option" :title="$locale.baseText('node.deleteNode')">
+				<div
+					v-touch:tap="deleteNode"
+					class="option"
+					:title="$locale.baseText('node.deleteNode')"
+					data-test-id="delete-node-button"
+				>
 					<font-awesome-icon icon="trash" />
 				</div>
 				<div

@@ -43,7 +43,7 @@
 							</div>
 						</div>
 						<div class="expression-editor ph-no-capture">
-							<expression-modal-input
+							<ExpressionEditorModalInput
 								:value="value"
 								:isReadOnly="isReadOnly"
 								@change="valueChanged"
@@ -58,7 +58,7 @@
 							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
-							<expression-modal-output
+							<ExpressionEditorModalOutput
 								:segments="segments"
 								ref="expressionResult"
 								data-test-id="expression-modal-output"
@@ -72,8 +72,8 @@
 </template>
 
 <script lang="ts">
-import ExpressionModalInput from '@/components/ExpressionEditorModal/ExpressionModalInput.vue';
-import ExpressionModalOutput from '@/components/ExpressionEditorModal/ExpressionModalOutput.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import ExpressionEditorModalOutput from '@/components/ExpressionEditorModal/ExpressionEditorModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
@@ -84,20 +84,20 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
-import { hasExpressionMapping } from '@/utils';
 import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 
-import type { Resolvable, Segment } from './ExpressionEditorModal/types';
+import type { Segment } from '@/types/expressions';
 
 export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 	name: 'ExpressionEdit',
 	props: ['dialogVisible', 'parameter', 'path', 'value', 'eventSource'],
 	components: {
-		ExpressionModalInput,
-		ExpressionModalOutput,
+		ExpressionEditorModalInput,
+		ExpressionEditorModalOutput,
 		VariableSelector,
 	},
 	data() {
@@ -139,7 +139,8 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 		},
 
 		itemSelected(eventData: IVariableItemSelected) {
-			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(this.$refs.inputFieldExpression as any).itemSelected(eventData);
 			this.$externalHooks().run('expressionEdit.itemSelected', {
 				parameter: this.parameter,
 				value: this.value,
@@ -215,8 +216,9 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 			this.latestValue = this.value;
 
 			const resolvedExpressionValue =
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				(this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue()) ||
-				undefined; // tslint:disable-line:no-any
+				undefined;
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', {
 				dialogVisible: newValue,
 				parameter: this.parameter,
@@ -225,36 +227,13 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 			});
 
 			if (!newValue) {
-				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
-				const errorResolvables = resolvables.filter((r) => r.error);
-
-				const exposeErrorProperties = (error: Error) => {
-					return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
-						// @ts-ignore
-						return (acc[key] = error[key]), acc;
-					}, {});
-				};
-
-				const telemetryPayload = {
-					empty_expression: this.value === '=' || this.value === '={{}}' || !this.value,
-					workflow_id: this.workflowsStore.workflowId,
-					source: this.eventSource,
-					session_id: this.ndvStore.sessionId,
-					has_parameter: this.value.includes('$parameter'),
-					has_mapping: hasExpressionMapping(this.value),
-					node_type: this.ndvStore.activeNode?.type ?? '',
-					handlebar_count: resolvables.length,
-					handlebar_error_count: errorResolvables.length,
-					full_errors: errorResolvables.map((errorResolvable) => {
-						return errorResolvable.fullError
-							? {
-									...exposeErrorProperties(errorResolvable.fullError),
-									stack: errorResolvable.fullError.stack,
-							  }
-							: null;
-					}),
-					short_errors: errorResolvables.map((r) => r.resolved ?? null),
-				};
+				const telemetryPayload = createExpressionTelemetryPayload(
+					this.segments,
+					this.value,
+					this.workflowsStore.workflowId,
+					this.ndvStore.sessionId,
+					this.ndvStore.activeNode?.type ?? '',
+				);
 
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);

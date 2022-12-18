@@ -265,7 +265,6 @@ export class RoutingNode {
 		if (action.type === 'rootProperty') {
 			try {
 				return inputData.flatMap((item) => {
-					// let itemContent = item.json[action.properties.property];
 					let itemContent = get(item.json, action.properties.property);
 
 					if (!Array.isArray(itemContent)) {
@@ -284,6 +283,28 @@ export class RoutingNode {
 					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
 				});
 			}
+		}
+		if (action.type === 'filter') {
+			const passValue = action.properties.pass;
+
+			inputData = inputData.filter((item) => {
+				// If the value is an expression resolve it
+				return this.getParameterValue(
+					passValue,
+					itemIndex,
+					runIndex,
+					executeSingleFunctions.getExecuteData(),
+					{
+						$response: responseData,
+						$responseItem: item.json,
+						$value: parameterValue,
+						$version: this.node.typeVersion,
+					},
+					false,
+				) as boolean;
+			});
+
+			return inputData;
 		}
 		if (action.type === 'limit') {
 			const maxResults = this.getParameterValue(
