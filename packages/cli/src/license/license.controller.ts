@@ -73,11 +73,28 @@ licenseController.post(
 		// Call the license manager activate function and tell it to throw an error
 		const license = getLicense();
 		try {
-			console.log(await license.activate(req.body.activationKey));
+			await license.activate(req.body.activationKey);
 		} catch (e) {
-			if (e instanceof Error) {
-				throw new ResponseHelper.BadRequestError(e.message);
+			const error = e as Error & { errorId?: string };
+
+			switch (error.errorId ?? 'UNSPECIFIED') {
+				case 'SCHEMA_VALIDATION':
+					error.message = 'Activation key is in the wrong format';
+					break;
+				case 'RESERVATION_EXHAUSTED':
+					error.message =
+						'Activation key has been used too many times. Please contact sales@n8n.io if you would like to extend it';
+					break;
+				case 'RESERVATION_EXPIRED':
+					error.message = 'Activation key has expired';
+					break;
+				case 'NOT_FOUND':
+				case 'RESERVATION_CONFLICT':
+					error.message = 'Activation key not found';
+					break;
 			}
+
+			throw new ResponseHelper.BadRequestError((e as Error).message);
 		}
 
 		// Return the read data, plus the management JWT
