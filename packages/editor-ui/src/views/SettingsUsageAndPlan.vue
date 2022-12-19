@@ -36,9 +36,9 @@ onMounted(async () => {
 		} else {
 			await usageStore.getLicenseInfo();
 		}
+		usageStore.setLoading(false);
 	} catch (e) {
 	}
-	usageStore.setLoading(false);
 });
 
 watch(() => usageStore.error, (error: UsageState['error']) => {
