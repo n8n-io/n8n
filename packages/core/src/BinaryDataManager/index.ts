@@ -93,6 +93,12 @@ export class BinaryDataManager {
 
 			// Prevent preserving data in memory if handled by a data manager.
 			binaryData.data = this.binaryDataMode;
+
+			await manager.storeBinaryMetadata(identifier, {
+				fileName: binaryData.fileName,
+				mimeType: binaryData.mimeType,
+				fileSize: binaryBuffer.length,
+			});
 		} else {
 			// Else fallback to storing this data in memory.
 			binaryData.data = binaryBuffer.toString(BINARY_ENCODING);
