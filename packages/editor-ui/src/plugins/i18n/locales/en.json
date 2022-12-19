@@ -1433,11 +1433,11 @@
 	"importParameter.showError.invalidProtocol2.title": "Invalid Protocol",
 	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests",
 
-	"contextual.credentials.sharing.unavailable.title": "Sharing",
-	"contextual.credentials.sharing.unavailable.title.cloud.upgrade": "Upgrade to add users",
+	"contextual.credentials.sharing.unavailable.title": "Upgrade to collaborate",
+	"contextual.credentials.sharing.unavailable.title.cloud.upgrade": "Upgrade to collaborate",
 	"contextual.credentials.sharing.unavailable.description": "You can share credentials with others when you upgrade your plan.",
 	"contextual.credentials.sharing.unavailable.description.cloud.upgrade": "Sharing is available for Team and Enterprise plans. Upgrade your plan to unlock more features.",
-	"contextual.credentials.sharing.unavailable.button": "See plans",
+	"contextual.credentials.sharing.unavailable.button": "View plans",
 	"contextual.credentials.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
 
 	"contextual.workflows.sharing.title": "Sharing",
