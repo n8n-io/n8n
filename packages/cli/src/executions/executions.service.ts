@@ -160,18 +160,16 @@ export class ExecutionsService {
 		}
 
 		// safeguard against querying workflowIds not shared with the user
-		if (filter?.workflowId !== undefined) {
-			const workflowId = filter.workflowId.toString();
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(
-					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
-				);
-				return {
-					count: 0,
-					estimated: false,
-					results: [],
-				};
-			}
+		const workflowId = filter?.workflowId?.toString();
+		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
+			LoggerProxy.verbose(
+				`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
+			);
+			return {
+				count: 0,
+				estimated: false,
+				results: [],
+			};
 		}
 
 		const limit = req.query.limit

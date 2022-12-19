@@ -411,7 +411,7 @@ export async function getSharedWorkflowIds(user: User, roles?: string[]): Promis
 		where: whereClause({ user, entityType: 'workflow', roles }),
 	});
 
-	return sharedWorkflows.map(({ workflow }) => workflow.id.toString());
+	return sharedWorkflows.map(({ workflowId }) => workflowId.toString());
 }
 
 /**

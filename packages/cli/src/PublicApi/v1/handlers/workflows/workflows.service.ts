@@ -20,7 +20,7 @@ export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 		where: { user },
 	});
 
-	return sharedWorkflows.map((workflow) => workflow.workflowId.toString());
+	return sharedWorkflows.map(({ workflowId }) => workflowId.toString());
 }
 
 export async function getSharedWorkflow(
