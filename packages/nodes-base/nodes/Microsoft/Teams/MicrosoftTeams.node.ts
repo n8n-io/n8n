@@ -212,6 +212,33 @@ export class MicrosoftTeams implements INodeType {
 				const results = filterSortSearchListItems(returnData, filter);
 				return { results };
 			},
+			async getBuckets(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				let planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
+				const operation = this.getNodeParameter('operation', 0) as string;
+				if (operation === 'update' && (planId === undefined || planId === null)) {
+					// planId not found at base, check updateFields for the planId
+					planId = this.getCurrentNodeParameter('updateFields.planId', {
+						extractValue: true,
+					}) as string;
+				}
+				const { value } = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/v1.0/planner/plans/${planId}/buckets`,
+				);
+				for (const bucket of value) {
+					returnData.push({
+						name: bucket.name,
+						value: bucket.id,
+					});
+				}
+				const results = filterSortSearchListItems(returnData, filter);
+				return { results };
+			},
 			async getMembers(
 				this: ILoadOptionsFunctions,
 				filter?: string,
@@ -520,7 +547,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/planner-post-tasks?view=graph-rest-1.0&tabs=http
 					if (operation === 'create') {
 						const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
-						const bucketId = this.getNodeParameter('bucketId', i) as string;
+						const bucketId = this.getNodeParameter('bucketId', i, '', {
+							extractValue: true,
+						}) as string;
 						const title = this.getNodeParameter('title', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const assignedTo = this.getNodeParameter('additionalFields.assignedTo', i, '', {
@@ -644,14 +673,18 @@ export class MicrosoftTeams implements INodeType {
 						const planId = this.getNodeParameter('updateFields.planId', i, '', {
 							extractValue: true,
 						}) as string;
+						const bucketId = this.getNodeParameter('updateFields.bucketId', i, '', {
+							extractValue: true,
+						}) as string;
 						const assignedTo = this.getNodeParameter('updateFields.assignedTo', i, '', {
 							extractValue: true,
 						}) as string;
 						const body: IDataObject = {};
-						Object.assign(body, updateFields, { planId, assignedTo });
+						Object.assign(body, updateFields, { planId, assignedTo, bucketId });
 
 						if (!planId) delete body.planId;
 						if (!assignedTo) delete body.assignedTo;
+						if (!bucketId) delete body.bucketId;
 
 						if (body.assignedTo) {
 							body.assignments = {

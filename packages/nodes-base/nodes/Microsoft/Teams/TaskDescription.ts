@@ -158,23 +158,38 @@ export const taskFields: INodeProperties[] = [
 		description: 'The plan for the task to belong to',
 	},
 	{
-		displayName: 'Bucket Name or ID',
+		displayName: 'Bucket Name',
 		name: 'bucketId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getBuckets',
-			loadOptionsDependsOn: ['planId'],
-		},
+		modes: [
+			{
+				displayName: 'Bucket',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Bucket...',
+				typeOptions: {
+					searchListMethod: 'getBuckets',
+					// missing searchListDependsOn: ['planId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['create'],
 				resource: ['task'],
 			},
 		},
-		default: '',
-		description:
-			'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The bucket for the task to belong to',
 	},
 	{
 		displayName: 'Title',
@@ -569,16 +584,31 @@ export const taskFields: INodeProperties[] = [
 				description: 'Who the task should be assigned to',
 			},
 			{
-				displayName: 'Bucket Name or ID',
+				displayName: 'Bucket Name',
 				name: 'bucketId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getBuckets',
-					loadOptionsDependsOn: ['updateFields.planId'],
-				},
-				default: '',
-				description:
-					'The bucket for the task to belong to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Bucket',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Bucket...',
+						typeOptions: {
+							searchListMethod: 'getBuckets',
+							// missing searchListDependsOn: ['updateFields.planId'],
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'rl1HYb0cUEiHPc7zgB_KWWUAA7Of',
+						// validation missing because no documentation found how these unique ids look like.
+					},
+				],
+				description: 'The bucket for the task to belong to',
 			},
 			{
 				displayName: 'Due Date Time',
