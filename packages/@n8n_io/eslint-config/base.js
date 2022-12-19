@@ -234,7 +234,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'property',
-				format: ['camelCase', 'snake_case'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},

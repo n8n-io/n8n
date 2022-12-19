@@ -1,0 +1,12 @@
+post:
+  x-eov-operation-id: generateAudit
+  x-eov-operation-handler: v1/handlers/audit/audit.handler
+  tags:
+    - Audit
+  summary: Generate an audit
+  description: Generate a security audit for your n8n instance.
+  responses:
+    '200':
+      description: Operation successful.
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
