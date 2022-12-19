@@ -19,38 +19,52 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
+const showActivationSuccess = () => {
+	Notification.success({
+		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
+		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
+			interpolate: {
+				name: usageStore.planName,
+				type: usageStore.planId
+					? locale.baseText('settings.usageAndPlan.plan')
+					: locale.baseText('settings.usageAndPlan.edition'),
+			},
+		}),
+		position: 'bottom-right',
+	});
+};
+
+const showActivationError = (error: Error) => {
+	Notification.error({
+		title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
+		message: error.message,
+		position: 'bottom-right',
+	});
+};
+
 const onLicenseActivation = async () => {
 	try {
 		await usageStore.activateLicense(activationKey.value);
 		activationKeyModal.value = false;
-		Notification.success({
-			title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
-			message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
-				interpolate: {
-					name: usageStore.planName,
-					type: usageStore.planId
-						? locale.baseText('settings.usageAndPlan.plan')
-						: locale.baseText('settings.usageAndPlan.edition'),
-				},
-			}),
-			position: 'bottom-right',
-		});
+		showActivationSuccess();
 	} catch (error) {
-		Notification.error({
-			title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
-			message: error.message,
-			position: 'bottom-right',
-		});
+		showActivationError(error);
 	}
 };
 
 onMounted(async () => {
 	usageStore.setLoading(true);
-	try {
-		if (route.query.key) {
+	if (route.query.key) {
+		try {
 			await usageStore.activateLicense(route.query.key as string);
 			await router.replace({ query: {} });
-		} else if (usageStore.canUserActivateLicense) {
+			showActivationSuccess();
+		} catch (error) {
+			showActivationError(error);
+		}
+	}
+	try {
+		if (!route.query.key && usageStore.canUserActivateLicense) {
 			await usageStore.refreshLicenseManagementToken();
 		} else {
 			await usageStore.getLicenseInfo();
