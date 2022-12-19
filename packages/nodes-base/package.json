@@ -725,7 +725,7 @@
     ]
   },
   "devDependencies": {
-    "@types/amqplib": "^0.8.2",
+    "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "^1.1.2",
     "@types/cheerio": "^0.22.15",
@@ -758,7 +758,7 @@
   "dependencies": {
     "@kafkajs/confluent-schema-registry": "1.0.6",
     "@types/js-nacl": "^1.3.0",
-    "amqplib": "^0.8.0",
+    "amqplib": "^0.10.3",
     "aws4": "^1.8.0",
     "basic-auth": "^2.0.1",
     "change-case": "^4.1.1",
