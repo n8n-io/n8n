@@ -89,6 +89,7 @@ export const useUsageStore = defineStore('usage', () => {
 			};
 			await settingsStore.getSettings();
 		} catch (error) {
+			error.name = i18n.baseText('settings.usageAndPlan.license.activation.error.title');
 			state.error = error;
 			throw Error(error);
 		}
