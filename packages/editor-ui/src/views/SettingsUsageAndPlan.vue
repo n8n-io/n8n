@@ -17,20 +17,26 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
-const onLicenseActivation = () => {
-	usageStore.activateLicense(activationKey.value).then(() => {
+const onLicenseActivation = async () => {
+	try {
+		await usageStore.activateLicense(activationKey.value);
 		activationKeyModal.value = false;
-	});
+	} catch (e) {
+	}
 };
 
 onMounted(async () => {
 	usageStore.setLoading(true);
-	if (route.query.key) {
-		await usageStore.activateLicense(route.query.key as string).then(() => router.replace({ query: {} }));
-	} else if (usageStore.canUserActivateLicense) {
-		await usageStore.refreshLicenseManagementToken();
-	} else {
-		await usageStore.getLicenseInfo();
+	try {
+		if (route.query.key) {
+			await usageStore.activateLicense(route.query.key as string);
+			await router.replace({ query: {} });
+		} else if (usageStore.canUserActivateLicense) {
+			await usageStore.refreshLicenseManagementToken();
+		} else {
+			await usageStore.getLicenseInfo();
+		}
+	} catch (e) {
 	}
 	usageStore.setLoading(false);
 });
