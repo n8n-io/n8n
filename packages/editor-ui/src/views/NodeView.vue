@@ -104,6 +104,7 @@
 						icon="play-circle"
 						type="primary"
 						:disabled="isExecutionDisabled"
+						data-test-id="execute-workflow-button"
 					/>
 				</span>
 

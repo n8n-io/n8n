@@ -1,3 +1,4 @@
+import { META_KEY } from '../constants';
 import { BasePage } from './base';
 
 export class WorkflowPage extends BasePage {
@@ -79,6 +80,7 @@ export class WorkflowPage extends BasePage {
 		zoomInButton: () => cy.getByTestId('zoom-in-button'),
 		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
 		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
+		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
 	};
 	actions = {
 		visit: () => {
@@ -155,31 +157,25 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId('zoom-to-fit').click();
 		},
 		hitUndo: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('z');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
 		},
 		hitRedo: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
 			cy.get('body')
-				.type(metaKey, { delay: 500, release: false })
+				.type(META_KEY, { delay: 500, release: false })
 				.type('{shift}', { release: false })
 				.type('z');
 		},
 		selectAll: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('d');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
 		},
 		hitCopy: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('c');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		},
 		hitPaste: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('P');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
 		},
 	};
 }

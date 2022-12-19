@@ -1,4 +1,4 @@
-import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
+import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME, META_KEY, SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const NEW_WORKFLOW_NAME = 'Something else';
@@ -96,16 +96,14 @@ describe('Workflow Actions', () => {
 	});
 
 	it('should copy nodes', () => {
-		const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.have.length', 2);
 
 		cy.get('#node-creator').should('not.exist');
-		cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		cy.get('.jtk-drag-selected').should('have.length', 2);
-		cy.get('body').type(metaKey, { delay: 500, release: false }).type('c');
+		cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
 		WorkflowPage.getters.successToast().should('exist');
 	});
 

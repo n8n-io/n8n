@@ -21,22 +21,21 @@ describe('Canvas Actions', () => {
 	it('should render canvas', () => {
 		WorkflowPage.getters.nodeViewRoot().should('be.visible');
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
+		WorkflowPage.getters.zoomToFitButton().should('be.visible');
+		WorkflowPage.getters.zoomInButton().should('be.visible');
+		WorkflowPage.getters.zoomOutButton().should('be.visible');
+		WorkflowPage.getters.executeWorkflowButton().should('be.visible');
 	});
 
 	it('should add first step', () => {
 		WorkflowPage.getters.canvasPlusButton().should('be.visible');
-		WorkflowPage.getters.canvasPlusButton().click();
-		cy.getByTestId('item-iterator-item').contains('Manually').as('manualTrigger');
-		cy.get('@manualTrigger').should('exist');
-		cy.get('@manualTrigger').click();
-		cy.get('body').type('{esc}');
+		WorkflowPage.actions.addInitialNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 	});
 
-	it('should add connected node', () => {
+	it('should add a connected node using plus endpoint', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
-		cy.get('.plus-endpoint').should('be.visible');
-		cy.get('.plus-endpoint').click();
+		cy.get('.plus-endpoint').should('be.visible').click();
 		WorkflowPage.getters.nodeCreatorSearchBar().should('be.visible');
 		WorkflowPage.getters.nodeCreatorSearchBar().type(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeCreatorSearchBar().type('{enter}');
@@ -58,11 +57,11 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.wait(500);
-		cy.get('.connection-actions .add').should('be.visible');
-		cy.get('.connection-actions .add').click({ force: true });
+		cy.get('.connection-actions .add').as('AddNodeConnectionButton')
+		cy.get('@AddNodeConnectionButton').invoke('show');
+		cy.get('@AddNodeConnectionButton').should('be.visible').click();
+		// cy.get('@AddNodeConnectionButton').click();
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
-		// Should now have 3 nodes and 2 connections
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		// And last node should be pushed to the right
@@ -76,7 +75,7 @@ describe('Canvas Actions', () => {
 			.canvasNodeByName(CODE_NODE_NAME)
 			.find('[data-test-id=delete-node-button]')
 			.click({ force: true });
-		WorkflowPage.getters.canvasNodes().should('have.have.length', 1);
+		WorkflowPage.getters.canvasNodes().should('have.length', 1);
 		WorkflowPage.getters.nodeConnections().should('have.length', 0);
 	});
 
@@ -93,6 +92,8 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
+		WorkflowPage.getters.canvasNodes().should('have.have.length', 3);
+		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		WorkflowPage.getters.canvasNodeByName(CODE_NODE_NAME).click();
 		WorkflowPage.actions.zoomToFit();
 		cy.get('body').type('{backspace}');
@@ -118,8 +119,7 @@ describe('Canvas Actions', () => {
 	});
 
 	it('should zoom in', () => {
-		WorkflowPage.getters.zoomInButton().should('be.visible');
-		WorkflowPage.getters.zoomInButton().click();
+		WorkflowPage.getters.zoomInButton().should('be.visible').click();
 		WorkflowPage.getters.nodeView().should(
 			'have.css',
 			'transform',
@@ -134,8 +134,7 @@ describe('Canvas Actions', () => {
 	});
 
 	it('should zoom out', () => {
-		WorkflowPage.getters.zoomOutButton().should('be.visible');
-		WorkflowPage.getters.zoomOutButton().click();
+		WorkflowPage.getters.zoomOutButton().should('be.visible').click();
 		WorkflowPage.getters.nodeView().should(
 			'have.css',
 			'transform',
@@ -153,8 +152,7 @@ describe('Canvas Actions', () => {
 		// Reset zoom should not appear until zoom level changed
 		WorkflowPage.getters.resetZoomButton().should('not.exist');
 		WorkflowPage.getters.zoomInButton().click();
-		WorkflowPage.getters.resetZoomButton().should('be.visible');
-		WorkflowPage.getters.resetZoomButton().click();
+		WorkflowPage.getters.resetZoomButton().should('be.visible').click();
 		WorkflowPage.getters.nodeView().should(
 			'have.css',
 			'transform',
