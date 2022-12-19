@@ -147,7 +147,7 @@ async function generateInactiveCredsReport(workflows: WorkflowEntity[]) {
 		report.riskTypes.push({
 			riskType: 'Credentials not used in any workflow',
 			description: [
-				'These credentials are not being used in any workflow at all .',
+				'These credentials are not being used in any workflow at all.',
 				recommendation,
 			].join(' '),
 			credentialIds: credsNotInAnyUse,
