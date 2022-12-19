@@ -611,6 +611,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			}
 
 			this.workflowsStore.activeExecutions = activeExecutions;
+			this.workflowsStore.addToCurrentExecutions(activeExecutions);
 		},
 		async loadAutoRefresh(): Promise<void> {
 			const filter = this.workflowFilterPast;
@@ -697,6 +698,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			);
 			this.finishedExecutionsCount = results[0].count;
 			this.finishedExecutionsCountEstimated = results[0].estimated;
+			this.workflowsStore.addToCurrentExecutions(this.finishedExecutions);
 		},
 		async loadFinishedExecutions(): Promise<void> {
 			if (this.filter.status === 'running') {
@@ -712,6 +714,8 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			this.finishedExecutions = data.results;
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
+
+			this.workflowsStore.addToCurrentExecutions(data.results);
 		},
 		async loadMore() {
 			if (this.filter.status === 'running') {
@@ -747,6 +751,8 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			this.finishedExecutionsCountEstimated = data.estimated;
 
 			this.isDataLoading = false;
+
+			this.workflowsStore.addToCurrentExecutions(data.results);
 		},
 		async loadWorkflows() {
 			try {
