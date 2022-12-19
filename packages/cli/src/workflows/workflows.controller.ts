@@ -213,7 +213,7 @@ workflowsController.get(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to access a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -286,7 +286,7 @@ workflowsController.delete(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to delete a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});

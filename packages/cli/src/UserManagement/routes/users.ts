@@ -406,11 +406,15 @@ export function usersNamespace(this: N8nApp): void {
 			if (transferId) {
 				const transferee = users.find((user) => user.id === transferId);
 				await Db.transaction(async (transactionManager) => {
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedWorkflow, { user: transferee });
 					await transactionManager.update(
 						SharedWorkflow,
 						{ user: userToDelete },
 						{ user: transferee },
 					);
+					await transactionManager.delete(SharedCredentials, { user: transferee });
 					await transactionManager.update(
 						SharedCredentials,
 						{ user: userToDelete },

@@ -61,7 +61,7 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-button type="secondary" class="mr-2xs" @click="onShareButtonClick">
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
@@ -72,16 +72,20 @@
 							</n8n-button>
 							<template #content>
 								<i18n
-									:path="dynamicTranslations.workflows.sharing.unavailable.description"
+									:path="
+										contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
+									"
 									tag="span"
 								>
 									<template #action>
 										<a
-											:href="dynamicTranslations.workflows.sharing.unavailable.linkURL"
+											:href="contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl"
 											target="_blank"
 										>
 											{{
-												$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.action)
+												$locale.baseText(
+													contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+												)
 											}}
 										</a>
 									</template>
@@ -203,8 +207,8 @@ export default mixins(workflowHelpers, titleChange).extend({
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		dynamicTranslations(): NestedRecord<string> {
-			return this.uiStore.dynamicTranslations;
+		contextBasedTranslationKeys(): NestedRecord<string> {
+			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;

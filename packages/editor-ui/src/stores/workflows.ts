@@ -278,7 +278,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			this.workflow = createEmptyWorkflow();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				Vue.set(this.workflow, 'ownedBy', usersStore.currentUser);
 			}
 		},

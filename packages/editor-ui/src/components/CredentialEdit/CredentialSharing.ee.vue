@@ -1,7 +1,22 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="isDefaultUser">
+		<div v-if="!isSharingEnabled">
 			<n8n-action-box
+				:heading="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.title)
+				"
+				:description="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.description)
+				"
+				:buttonText="
+					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.button)
+				"
+				@click="goToUpgrade"
+			/>
+		</div>
+		<div v-else-if="isDefaultUser">
+			<n8n-action-box
+				:heading="$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.title')"
 				:description="
 					$locale.baseText('credentialEdit.credentialSharing.isDefaultUser.description')
 				"
@@ -53,13 +68,15 @@
 </template>
 
 <script lang="ts">
-import { IUser } from '@/Interface';
+import { IUser, NestedRecord, UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui';
 import { useCredentialsStore } from '@/stores/credentials';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 export default mixins(showMessage).extend({
 	name: 'CredentialSharing',
@@ -72,9 +89,15 @@ export default mixins(showMessage).extend({
 		'modalBus',
 	],
 	computed: {
-		...mapStores(useCredentialsStore, useUsersStore),
+		...mapStores(useCredentialsStore, useUsersStore, useUIStore, useSettingsStore),
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
+		},
+		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
+			return this.uiStore.contextBasedTranslationKeys;
+		},
+		isSharingEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
@@ -137,6 +160,12 @@ export default mixins(showMessage).extend({
 		goToUsersSettings() {
 			this.$router.push({ name: VIEWS.USERS_SETTINGS });
 			this.modalBus.$emit('close');
+		},
+		goToUpgrade() {
+			window.open(
+				this.contextBasedTranslationKeys.credentials.sharing.unavailable.linkUrl,
+				'_blank',
+			);
 		},
 	},
 	mounted() {

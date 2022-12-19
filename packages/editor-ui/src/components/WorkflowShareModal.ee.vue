@@ -1,18 +1,23 @@
 <template>
 	<Modal
 		width="460px"
-		:title="
-			$locale.baseText(dynamicTranslations.workflows.shareModal.title, {
-				interpolate: { name: workflow.name },
-			})
-		"
+		:title="modalTitle"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
 		:beforeClose="onCloseModal"
 	>
 		<template #content>
-			<div v-if="isDefaultUser" :class="$style.container">
+			<div v-if="!isSharingEnabled" :class="$style.container">
+				<n8n-text>
+					{{
+						$locale.baseText(
+							contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+						)
+					}}
+				</n8n-text>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.container">
 				<n8n-text>
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.description') }}
 				</n8n-text>
@@ -25,7 +30,7 @@
 						})
 					}}
 				</n8n-info-tip>
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						class="mb-s"
@@ -66,7 +71,7 @@
 					<template #fallback>
 						<n8n-text>
 							<i18n
-								:path="dynamicTranslations.workflows.sharing.unavailable.description"
+								:path="contextBasedTranslationKeys.workflows.sharing.unavailable.description"
 								tag="span"
 							>
 								<template #action />
@@ -78,14 +83,19 @@
 		</template>
 
 		<template #footer>
-			<div v-if="isDefaultUser" :class="$style.actionButtons">
+			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
+				<n8n-button @click="goToUpgrade">
+					{{ $locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button) }}
+				</n8n-button>
+			</div>
+			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
 				<n8n-button @click="goToUsersSettings">
 					{{ $locale.baseText('workflows.shareModal.isDefaultUser.button') }}
 				</n8n-button>
 			</div>
 			<enterprise-edition
 				v-else
-				:features="[EnterpriseEditionFeature.WorkflowSharing]"
+				:features="[EnterpriseEditionFeature.Sharing]"
 				:class="$style.actionButtons"
 			>
 				<n8n-text v-show="isDirty" color="text-light" size="small" class="mr-xs">
@@ -102,9 +112,11 @@
 				</n8n-button>
 
 				<template #fallback>
-					<n8n-link :to="dynamicTranslations.workflows.sharing.unavailable.linkURL">
+					<n8n-link :to="contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl">
 						<n8n-button :loading="loading" size="medium">
-							{{ $locale.baseText(dynamicTranslations.workflows.sharing.unavailable.button) }}
+							{{
+								$locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button)
+							}}
 						</n8n-button>
 					</n8n-link>
 				</template>
@@ -122,7 +134,7 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, NestedRecord } from '@/Interface';
+import { IUser, IWorkflowDb, NestedRecord, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -172,6 +184,19 @@ export default mixins(showMessage).extend({
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
 		},
+		isSharingEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		modalTitle(): string {
+			return this.$locale.baseText(
+				this.isSharingEnabled
+					? this.contextBasedTranslationKeys.workflows.sharing.title
+					: this.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
+				{
+					interpolate: { name: this.workflow.name },
+				},
+			);
+		},
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -208,14 +233,8 @@ export default mixins(showMessage).extend({
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
 		},
-		isSharingAvailable(): boolean {
-			return (
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) ===
-				true
-			);
-		},
-		dynamicTranslations(): NestedRecord<string> {
-			return this.uiStore.dynamicTranslations;
+		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
+			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
@@ -240,10 +259,10 @@ export default mixins(showMessage).extend({
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
-							resolve(this.workflowsStore.workflowId);
+							resolve(this.workflow.id);
 						});
 					} else {
-						resolve(this.workflowsStore.workflowId);
+						resolve(this.workflow.id);
 					}
 				});
 			};
@@ -411,9 +430,12 @@ export default mixins(showMessage).extend({
 				...data,
 			});
 		},
+		goToUpgrade() {
+			window.open(this.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl, '_blank');
+		},
 	},
 	mounted() {
-		if (this.isSharingAvailable) {
+		if (this.isSharingEnabled) {
 			this.loadUsers();
 		}
 	},
