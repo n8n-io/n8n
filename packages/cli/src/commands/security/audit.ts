@@ -9,6 +9,8 @@ import { BaseCommand } from '@/commands/BaseCommand';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 
+// @TODO: Documentation
+
 export class SecurityAuditCommand extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
 
@@ -140,6 +142,8 @@ async function generateInactiveCredsReport(workflows: WorkflowEntity[]) {
 		risk: 'Inactive credentials',
 		riskTypes: [],
 	};
+
+	// @TODO: More info on creds (not only IDs)
 
 	const recommendation = 'Consider removing these credentials if you no longer need them.';
 
