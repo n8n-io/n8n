@@ -1370,11 +1370,11 @@ export type Schema = { type: SchemaType; key?: string; value: string | Schema[];
 
 export type UsageState = {
 	loading: boolean;
-	error: Partial<Error>;
-	success: Partial<{
+	error: Error | null;
+	success: {
 		title: string,
 		message: string,
-	}>,
+	} | null,
 	data: {
 		usage: {
 			executions: {
