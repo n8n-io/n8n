@@ -153,7 +153,7 @@ export class WorkflowsService {
 
 		// safeguard against querying ids not shared with the user
 		if (filter?.id !== undefined) {
-			const workflowId = parseInt(filter.id.toString());
+			const workflowId = filter.id.toString();
 			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
 				LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
 				return [];

@@ -55,7 +55,7 @@ export class ExecutionsService {
 	 * Function to get the workflow Ids for a User
 	 * Overridden in EE version to ignore roles
 	 */
-	static async getWorkflowIdsForUser(user: User): Promise<number[]> {
+	static async getWorkflowIdsForUser(user: User): Promise<string[]> {
 		// Get all workflows using owner role
 		return getSharedWorkflowIds(user, ['owner']);
 	}
@@ -161,7 +161,7 @@ export class ExecutionsService {
 
 		// safeguard against querying workflowIds not shared with the user
 		if (filter?.workflowId !== undefined) {
-			const workflowId = parseInt(filter.workflowId.toString());
+			const workflowId = filter.workflowId.toString();
 			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
 				LoggerProxy.verbose(
 					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
