@@ -305,31 +305,40 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
-			const mergedNodes = this.visibleNodesWithActions.reduce(
-				(acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
-					const clonedNode = deepCopy(node);
-					const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
-					const actions = node.actions || [];
-					// Do not merge core nodes
-					const normalizedName = isCoreNode
-						? node.name
-						: node.name.toLowerCase().replace('trigger', '');
-					const existingNode = acc[normalizedName];
+			const mergedNodes = [...this.visibleNodesWithActions]
+				// Sort triggers so they are always on top and when later get merged
+				// they won't be disacrded if they have the same name as a core node which doesn't contain actions
+				.sort((a, b) => {
+					if (a.group.includes('trigger')) return -1;
+					if (b.group.includes('trigger')) return 1;
 
-					if (existingNode) existingNode.actions?.push(...actions);
-					else acc[normalizedName] = clonedNode;
+					return 0;
+				})
+				.reduce(
+					(acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
+						const clonedNode = deepCopy(node);
+						const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
+						const actions = node.actions || [];
+						// Do not merge core nodes
+						const normalizedName = isCoreNode
+							? node.name
+							: node.name.toLowerCase().replace('trigger', '');
+						const existingNode = acc[normalizedName];
 
-					if (!isCoreNode) {
-						acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
-					}
+						if (existingNode) existingNode.actions?.push(...actions);
+						else acc[normalizedName] = clonedNode;
 
-					acc[normalizedName].actions = filterSinglePlaceholderAction(
-						acc[normalizedName].actions || [],
-					);
-					return acc;
-				},
-				{},
-			);
+						if (!isCoreNode) {
+							acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
+						}
+
+						acc[normalizedName].actions = filterSinglePlaceholderAction(
+							acc[normalizedName].actions || [],
+						);
+						return acc;
+					},
+					{},
+				);
 			return Object.values(mergedNodes);
 		},
 		getNodeTypesWithManualTrigger:
