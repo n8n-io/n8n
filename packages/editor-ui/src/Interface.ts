@@ -1372,21 +1372,21 @@ export type UsageState = {
 	loading: boolean;
 	error: Error | null;
 	success: {
-		title: string,
-		message: string,
-	} | null,
+		title: string;
+		message: string;
+	} | null;
 	data: {
 		usage: {
 			executions: {
-				limit: number, // -1 for unlimited, from license
-				value: number,
-				warningThreshold: number, // hardcoded value in BE
-			},
-		},
+				limit: number; // -1 for unlimited, from license
+				value: number;
+				warningThreshold: number; // hardcoded value in BE
+			};
+		};
 		license: {
-			planId: string, // community
-			planName: string, // defaults to Community
-		},
-		managementToken?: string,
-	}
+			planId: string; // community
+			planName: string; // defaults to Community
+		};
+		managementToken?: string;
+	};
 };

@@ -48,7 +48,7 @@ export default mixins(userHelpers, pushConnection).extend({
 					label: this.$locale.baseText('settings.usageAndPlan.title'),
 					position: 'top',
 					available: this.canAccessUsageAndPlan(),
-					activateOnRouteNames: [ VIEWS.USAGE ],
+					activateOnRouteNames: [VIEWS.USAGE],
 				},
 				{
 					id: 'settings-personal',
