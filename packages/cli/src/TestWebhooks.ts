@@ -32,6 +32,11 @@ export class TestWebhooks {
 
 	private activeWebhooks: ActiveWebhooks | null = null;
 
+	/**
+	 * Whether the next manual execution should run _only_ the executed webhook node.
+	 */
+	isWebhookOnlyExecution = false;
+
 	constructor() {
 		this.activeWebhooks = new ActiveWebhooks();
 		this.activeWebhooks.testWebhooks = true;

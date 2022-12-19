@@ -397,6 +397,14 @@ export class WorkflowsService {
 
 			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
 
+			if (
+				startNodes?.length === 1 &&
+				startNodes[0] === destinationNode &&
+				workflowData.nodes.find((n) => n.name === startNodes[0])?.type === 'n8n-nodes-base.webhook'
+			) {
+				TestWebhooks.getInstance().isWebhookOnlyExecution = true;
+			}
+
 			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
 				workflowData,
 				workflow,

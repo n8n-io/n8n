@@ -54,6 +54,7 @@ import * as ActiveExecutions from '@/ActiveExecutions';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import * as TestWebhooks from './TestWebhooks';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -378,6 +379,11 @@ export async function executeWebhook(
 					waitingExecution: {},
 				},
 			} as IRunExecutionData);
+
+		if (TestWebhooks.getInstance().isWebhookOnlyExecution && runExecutionData.startData) {
+			runExecutionData.startData.destinationNode = workflowStartNode.name;
+			TestWebhooks.getInstance().isWebhookOnlyExecution = false; // reset
+		}
 
 		if (executionId !== undefined) {
 			// Set the data the webhook node did return on the waiting node if executionId
