@@ -108,7 +108,7 @@ const onDialogOpened = () => {
 				<i18n :class='$style.count' path='settings.usageAndPlan.activeWorkflows.count'>
 					<template #count>{{ usageStore.executionCount }}</template>
 					<template #limit>
-						<span v-if='usageStore.executionLimit < 0'>{{ $locale.baseText('_reusableBaseText.unlimited') }}</span>
+						<span v-if='usageStore.executionLimit < 0'>{{ $locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited') }}</span>
 						<span v-else>{{ usageStore.executionLimit }}</span>
 					</template>
 				</i18n>
@@ -147,10 +147,10 @@ const onDialogOpened = () => {
 			</template>
 			<template #footer>
 				<n8n-button @click='activationKeyModal = false' size='medium' type='secondary'>
-					{{ $locale.baseText('_reusableBaseText.cancel') }}
+					{{ $locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 				</n8n-button>
 				<n8n-button @click='onLicenseActivation' size='medium'>
-					{{ $locale.baseText('_reusableBaseText.activate') }}
+					{{ $locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 				</n8n-button>
 			</template>
 		</el-dialog>
