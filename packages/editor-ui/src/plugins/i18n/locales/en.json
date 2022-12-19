@@ -1148,6 +1148,7 @@
 	"settings.usageAndPlan.dialog.activation.label": "Activation key",
 	"settings.usageAndPlan.dialog.activation.activate": "@:_reusableBaseText.activate",
 	"settings.usageAndPlan.dialog.activation.cancel": "@:_reusableBaseText.cancel",
+	"settings.usageAndPlan.license.activation.error.title": "Activation failed",
 	"settings.usageAndPlan.license.activation.success.title": "License activated",
 	"settings.usageAndPlan.license.activation.success.message": "Your {name} {type} has been successfully activated.",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
