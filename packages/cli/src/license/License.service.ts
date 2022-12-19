@@ -1,4 +1,3 @@
-import config from '@/config';
 import { getLicense } from '@/License';
 import { Db, ILicenseReadResponse } from '..';
 
