@@ -53,7 +53,15 @@ export const useUsageStore = defineStore('usage', () => {
 	const commonSubscriptionAppUrlQueryParams = computed(
 		() => `instanceid=${instanceId.value}&version=${appVersion.value}`,
 	);
-	const subscriptionAppUrl = computed(() => settingsStore.settings.license.environment === 'production' ? 'https://subscription.n8n.io' : 'https://staging-subscription.n8n.io');
+	const subscriptionAppUrl = computed(() =>
+		settingsStore.settings.license.environment === 'production'
+			? 'https://subscription.n8n.io'
+			: 'https://staging-subscription.n8n.io',
+	);
+	const resetErrorAndSuccess = () => {
+		state.error = null;
+		state.success = null;
+	};
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -64,15 +72,21 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const getLicenseInfo = async () => {
+		resetErrorAndSuccess();
 		try {
 			const data = await getLicense(rootStore.getRestApiContext);
 			setData(data);
 		} catch (error) {
+			if (!error.name) {
+				error.name = i18n.baseText('settings.usageAndPlan.error');
+			}
 			state.error = error;
+			throw Error(error);
 		}
 	};
 
 	const activateLicense = async (activationKey: string) => {
+		resetErrorAndSuccess();
 		try {
 			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
 			setData(data);
@@ -96,6 +110,7 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const refreshLicenseManagementToken = async () => {
+		resetErrorAndSuccess();
 		try {
 			const data = await renewLicense(rootStore.getRestApiContext);
 			setData(data);

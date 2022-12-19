@@ -1,9 +1,8 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router/composables';
 import { Notification } from 'element-ui';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
-import { UsageState } from '@/Interface';
 import { telemetry } from '@/plugins/telemetry';
 
 const usageStore = useUsageStore();
@@ -19,11 +18,28 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
+const showNotification = () => {
+	if (usageStore.error) {
+		Notification.error({
+			title: usageStore.error.name,
+			message: usageStore.error.message,
+			position: 'bottom-right',
+		});
+	} else if (usageStore.success) {
+		Notification.success({
+			title: usageStore.success.title,
+			message: usageStore.success.message,
+			position: 'bottom-right',
+		});
+	}
+};
+
 const onLicenseActivation = async () => {
 	try {
 		await usageStore.activateLicense(activationKey.value);
 		activationKeyModal.value = false;
 	} catch (e) {}
+	showNotification();
 };
 
 onMounted(async () => {
@@ -39,33 +55,8 @@ onMounted(async () => {
 		}
 		usageStore.setLoading(false);
 	} catch (e) {}
+	showNotification();
 });
-
-watch(
-	() => usageStore.error,
-	(error: UsageState['error']) => {
-		if (error?.message) {
-			Notification.error({
-				title: error.name,
-				message: error.message,
-				position: 'bottom-right',
-			});
-		}
-	},
-);
-
-watch(
-	() => usageStore.success,
-	(success: UsageState['success']) => {
-		if (success?.title && success?.message) {
-			Notification.success({
-				title: success.title,
-				message: success.message,
-				position: 'bottom-right',
-			});
-		}
-	},
-);
 
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
 	const telemetryPayload = usageStore.telemetryPayload;

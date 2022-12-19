@@ -809,7 +809,7 @@ export interface IN8nUISettings {
 	hideUsagePage: boolean;
 	license: {
 		environment: 'development' | 'production';
-	}
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
