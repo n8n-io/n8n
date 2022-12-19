@@ -202,6 +202,7 @@ importers:
       tsc-alias: ^1.7.0
       tsconfig-paths: ^3.14.1
       tslib: 1.14.1
+      type-is: ^1.6.18
       typeorm: 0.2.45
       uuid: ^8.3.2
       validator: 13.7.0
@@ -281,6 +282,7 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       tslib: 1.14.1
+      type-is: 1.6.18
       typeorm: 0.2.45_6spgkqhramqg35yodisibk43rm
       uuid: 8.3.2
       validator: 13.7.0

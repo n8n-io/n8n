@@ -161,10 +161,55 @@ import { getLicense } from '@/License';
 import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
+const typeis = require('type-is');
 
 const exec = promisify(callbackExec);
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
+
+function parseNdjson(str: string): any[] {
+	const result: any[] = [];
+	const items = str
+		.split('\n')
+		.map((item: string) => item.trim())
+		.filter((item: string) => item !== '');
+	for (const item of items) {
+		try {
+			result.push(JSON.parse(item));
+		} catch (e) {
+			throw Error(
+				// eslint-disable-next-line prettier/prettier
+				`error parsing ndjson, while parsing item ${result.length + 1} of ${result.length}: ${e.message}`,
+				{ cause: e },
+			);
+		}
+	}
+	return result;
+}
+
+function onJsonErrorTryNdjson() {
+	return (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+		if (
+			typeis(req, ['application/json', 'application/x-ndjson']) &&
+			err.type === 'entity.parse.failed'
+		) {
+			let body = err.body;
+			if (body.match(/^\s*\{[^\n]*}\s*(\n\s*\{[^\n]*}\s*)+$/)) {
+				try {
+					const result = parseNdjson(body);
+					req.body = result;
+					req.rawBody = Buffer.from(`[${result.join(',\n')}]`);
+					res.status(200);
+					next();
+					return; //this is the only "happy flow" - in every other case we continue with the original error
+				} catch (e) {
+					console.error(e);
+				}
+			}
+		}
+		next(err);
+	};
+}
 
 class App {
 	app: express.Application;
@@ -665,6 +710,9 @@ class App {
 				},
 			}),
 		);
+
+		// Support ndjson, by converting the ndjson to an array of objects (only if the body is indeed ndjson, with more than one line)
+		this.app.use(onJsonErrorTryNdjson());
 
 		// Support application/xml type post data
 		this.app.use(
