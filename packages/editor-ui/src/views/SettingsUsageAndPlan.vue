@@ -59,6 +59,8 @@ onMounted(async () => {
 			await usageStore.activateLicense(route.query.key as string);
 			await router.replace({ query: {} });
 			showActivationSuccess();
+			usageStore.setLoading(false);
+			return;
 		} catch (error) {
 			showActivationError(error);
 		}
