@@ -17,7 +17,7 @@ RUN \
 # Set a custom user to not have n8n run as root
 USER root
 
-RUN npm_config_user=root npm install -g npm@latest n8n@${N8N_VERSION}
+RUN npm_config_user=root npm install -g npm@8.19.2 n8n@${N8N_VERSION}
 
 WORKDIR /data
 
