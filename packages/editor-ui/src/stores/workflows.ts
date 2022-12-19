@@ -944,5 +944,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
+		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+			executions.forEach(execution => {
+				const exists = this.currentWorkflowExecutions.find(ex => ex.id === execution.id);
+				if (!exists) {
+					this.currentWorkflowExecutions.push(execution);
+				}
+			});
+		},
 	},
 });

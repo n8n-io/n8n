@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router/composables';
 import { Notification } from 'element-ui';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';
+import { i18n as locale } from '@/plugins/i18n';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -18,44 +19,67 @@ const activationKeyModal = ref(false);
 const activationKey = ref('');
 const activationKeyInput = ref<HTMLInputElement | null>(null);
 
-const showNotification = () => {
-	if (usageStore.error) {
-		Notification.error({
-			title: usageStore.error.name,
-			message: usageStore.error.message,
-			position: 'bottom-right',
-		});
-	} else if (usageStore.success) {
-		Notification.success({
-			title: usageStore.success.title,
-			message: usageStore.success.message,
-			position: 'bottom-right',
-		});
-	}
+const showActivationSuccess = () => {
+	Notification.success({
+		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
+		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
+			interpolate: {
+				name: usageStore.planName,
+				type: usageStore.planId
+					? locale.baseText('settings.usageAndPlan.plan')
+					: locale.baseText('settings.usageAndPlan.edition'),
+			},
+		}),
+		position: 'bottom-right',
+	});
+};
+
+const showActivationError = (error: Error) => {
+	Notification.error({
+		title: locale.baseText('settings.usageAndPlan.license.activation.error.title'),
+		message: error.message,
+		position: 'bottom-right',
+	});
 };
 
 const onLicenseActivation = async () => {
 	try {
 		await usageStore.activateLicense(activationKey.value);
 		activationKeyModal.value = false;
-	} catch (e) {}
-	showNotification();
+		showActivationSuccess();
+	} catch (error) {
+		showActivationError(error);
+	}
 };
 
 onMounted(async () => {
 	usageStore.setLoading(true);
-	try {
-		if (route.query.key) {
+	if (route.query.key) {
+		try {
 			await usageStore.activateLicense(route.query.key as string);
 			await router.replace({ query: {} });
-		} else if (usageStore.canUserActivateLicense) {
+			showActivationSuccess();
+		} catch (error) {
+			showActivationError(error);
+		}
+	}
+	try {
+		if (!route.query.key && usageStore.canUserActivateLicense) {
 			await usageStore.refreshLicenseManagementToken();
 		} else {
 			await usageStore.getLicenseInfo();
 		}
 		usageStore.setLoading(false);
-	} catch (e) {}
-	showNotification();
+	} catch (error) {
+		if (!error.name) {
+			error.name = locale.baseText('settings.usageAndPlan.error');
+		}
+		Notification.error({
+			title: error.name,
+			message: error.message,
+			position: 'bottom-right',
+		});
+	}
 });
 
 const sendUsageTelemetry = (action: UsageTelemetry['action']) => {
@@ -88,20 +112,20 @@ const onDialogOpened = () => {
 
 <template>
 	<div v-if="!usageStore.isLoading">
-		<n8n-heading size="2xlarge">{{ $locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
+		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
 		<n8n-heading :class="$style.title" size="large">
 			<i18n path="settings.usageAndPlan.description">
 				<template #name>{{ usageStore.planName }}</template>
 				<template #type>
-					<span v-if="usageStore.planId">{{ $locale.baseText('settings.usageAndPlan.plan') }}</span>
-					<span v-else>{{ $locale.baseText('settings.usageAndPlan.edition') }}</span>
+					<span v-if="usageStore.planId">{{ locale.baseText('settings.usageAndPlan.plan') }}</span>
+					<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 				</template>
 			</i18n>
 		</n8n-heading>
 
 		<div :class="$style.quota">
 			<n8n-text size="medium" color="text-light">
-				{{ $locale.baseText('settings.usageAndPlan.activeWorkflows') }}
+				{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
 			</n8n-text>
 			<div :class="$style.chart">
 				<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
@@ -114,7 +138,7 @@ const onDialogOpened = () => {
 					<template #count>{{ usageStore.executionCount }}</template>
 					<template #limit>
 						<span v-if="usageStore.executionLimit < 0">{{
-							$locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
+							locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
 						}}</span>
 						<span v-else>{{ usageStore.executionLimit }}</span>
 					</template>
@@ -122,9 +146,7 @@ const onDialogOpened = () => {
 			</div>
 		</div>
 
-		<n8n-info-tip>{{
-			$locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
-		}}</n8n-info-tip>
+		<n8n-info-tip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
 
 		<div :class="$style.buttons">
 			<n8n-button
@@ -133,16 +155,16 @@ const onDialogOpened = () => {
 				type="tertiary"
 				size="large"
 			>
-				<strong>{{ $locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+				<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
 			</n8n-button>
 			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
 				<a :href="managePlanUrl" target="_blank">{{
-					$locale.baseText('settings.usageAndPlan.button.manage')
+					locale.baseText('settings.usageAndPlan.button.manage')
 				}}</a>
 			</n8n-button>
 			<n8n-button v-else @click="onViewPlans" size="large">
 				<a :href="viewPlansUrl" target="_blank">{{
-					$locale.baseText('settings.usageAndPlan.button.plans')
+					locale.baseText('settings.usageAndPlan.button.plans')
 				}}</a>
 			</n8n-button>
 		</div>
@@ -153,22 +175,22 @@ const onDialogOpened = () => {
 			@closed="onDialogClosed"
 			@opened="onDialogOpened"
 			:visible.sync="activationKeyModal"
-			:title="$locale.baseText('settings.usageAndPlan.dialog.activation.title')"
+			:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 		>
 			<template #default>
 				<n8n-input
 					ref="activationKeyInput"
 					v-model="activationKey"
 					size="medium"
-					:placeholder="$locale.baseText('settings.usageAndPlan.dialog.activation.label')"
+					:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
 				/>
 			</template>
 			<template #footer>
 				<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
-					{{ $locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+					{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 				</n8n-button>
 				<n8n-button @click="onLicenseActivation" size="medium">
-					{{ $locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+					{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 				</n8n-button>
 			</template>
 		</el-dialog>
