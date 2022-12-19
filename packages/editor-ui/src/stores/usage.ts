@@ -5,7 +5,6 @@ import { activateLicenseKey, getLicense, renewLicense } from '@/api/usage';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { i18n } from '@/plugins/i18n';
 
 export type UsageTelemetry = {
 	instance_id: string;
@@ -18,8 +17,6 @@ export type UsageTelemetry = {
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
 	loading: true,
-	error: null,
-	success: null,
 	data: {
 		usage: {
 			executions: {
@@ -58,10 +55,6 @@ export const useUsageStore = defineStore('usage', () => {
 			? 'https://subscription.n8n.io'
 			: 'https://staging-subscription.n8n.io',
 	);
-	const resetErrorAndSuccess = () => {
-		state.error = null;
-		state.success = null;
-	};
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -72,45 +65,17 @@ export const useUsageStore = defineStore('usage', () => {
 	};
 
 	const getLicenseInfo = async () => {
-		resetErrorAndSuccess();
-		try {
-			const data = await getLicense(rootStore.getRestApiContext);
-			setData(data);
-		} catch (error) {
-			if (!error.name) {
-				error.name = i18n.baseText('settings.usageAndPlan.error');
-			}
-			state.error = error;
-			throw Error(error);
-		}
+		const data = await getLicense(rootStore.getRestApiContext);
+		setData(data);
 	};
 
 	const activateLicense = async (activationKey: string) => {
-		resetErrorAndSuccess();
-		try {
-			const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
-			setData(data);
-			state.success = {
-				title: i18n.baseText('settings.usageAndPlan.license.activation.success.title'),
-				message: i18n.baseText('settings.usageAndPlan.license.activation.success.message', {
-					interpolate: {
-						name: state.data.license.planName || DEFAULT_PLAN_NAME,
-						type: planId.value
-							? i18n.baseText('settings.usageAndPlan.plan')
-							: i18n.baseText('settings.usageAndPlan.edition'),
-					},
-				}),
-			};
-			await settingsStore.getSettings();
-		} catch (error) {
-			error.name = i18n.baseText('settings.usageAndPlan.license.activation.error.title');
-			state.error = error;
-			throw Error(error);
-		}
+		const data = await activateLicenseKey(rootStore.getRestApiContext, { activationKey });
+		setData(data);
+		await settingsStore.getSettings();
 	};
 
 	const refreshLicenseManagementToken = async () => {
-		resetErrorAndSuccess();
 		try {
 			const data = await renewLicense(rootStore.getRestApiContext);
 			setData(data);
@@ -148,8 +113,6 @@ export const useUsageStore = defineStore('usage', () => {
 		),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
-		error: computed(() => state.error),
-		success: computed(() => state.success),
 		telemetryPayload: computed<UsageTelemetry>(() => ({
 			instance_id: instanceId.value,
 			action: 'view_plans',
