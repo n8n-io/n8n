@@ -96,8 +96,6 @@ return items;`,
 			getWorkflowStaticData: this.getWorkflowStaticData,
 			helpers: this.helpers,
 			items,
-			// To be able to access data of other items
-			$item: (index: number) => this.getWorkflowDataProxy(index),
 			getBinaryDataAsync: async (item: INodeExecutionData): Promise<IBinaryKeyData | undefined> => {
 				// Fetch Binary Data, if available. Cannot check item with `if (item?.index)`, as index may be 0.
 				if (item?.binary && item?.index !== undefined && item?.index !== null) {
@@ -140,11 +138,10 @@ return items;`,
 				// Set Item Reference
 				item.binary = data;
 			},
+			// Make it possible to access data via $node, $parameter, ...
+			// By default use data from first item
+			...this.getWorkflowDataProxy(0),
 		};
-
-		// Make it possible to access data via $node, $parameter, ...
-		// By default use data from first item
-		Object.assign(sandbox, sandbox.$item(0));
 
 		const mode = this.getMode();
 

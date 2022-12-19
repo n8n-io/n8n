@@ -126,7 +126,7 @@ return item;`,
 								)?.toString('base64');
 							}
 						}
-						// Retrun Data
+						// Return Data
 						return item.binary;
 					},
 					setBinaryDataAsync: async (data: IBinaryKeyData) => {
@@ -150,11 +150,9 @@ return item;`,
 						// Set Item Reference
 						item.binary = data;
 					},
+					// Make it possible to access data via $node, $parameter, etc.
+					...this.getWorkflowDataProxy(itemIndex),
 				};
-
-				// Make it possible to access data via $node, $parameter, ...
-				const dataProxy = this.getWorkflowDataProxy(itemIndex);
-				Object.assign(sandbox, dataProxy);
 
 				const options = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
