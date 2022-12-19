@@ -15,7 +15,6 @@ export type UsageTelemetry = {
 	quota: number;
 };
 
-const SUBSCRIPTION_APP_URL = 'https://staging-subscription.n8n.io';
 const DEFAULT_PLAN_NAME = 'Community';
 const DEFAULT_STATE: UsageState = {
 	loading: true,
@@ -54,6 +53,7 @@ export const useUsageStore = defineStore('usage', () => {
 	const commonSubscriptionAppUrlQueryParams = computed(
 		() => `instanceid=${instanceId.value}&version=${appVersion.value}`,
 	);
+	const subscriptionAppUrl = computed(() => settingsStore.settings.license.environment === 'production' ? 'https://subscription.n8n.io' : 'https://staging-subscription.n8n.io');
 
 	const setLoading = (loading: boolean) => {
 		state.loading = loading;
@@ -124,11 +124,11 @@ export const useUsageStore = defineStore('usage', () => {
 				  state.data.usage.executions.warningThreshold,
 		),
 		viewPlansUrl: computed(
-			() => `${SUBSCRIPTION_APP_URL}?${commonSubscriptionAppUrlQueryParams.value}`,
+			() => `${subscriptionAppUrl.value}?${commonSubscriptionAppUrlQueryParams.value}`,
 		),
 		managePlanUrl: computed(
 			() =>
-				`${SUBSCRIPTION_APP_URL}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
+				`${subscriptionAppUrl.value}/manage?token=${managementToken.value}&${commonSubscriptionAppUrlQueryParams.value}`,
 		),
 		canUserActivateLicense: computed(() => usersStore.canUserActivateLicense),
 		isLoading: computed(() => state.loading),
