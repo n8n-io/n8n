@@ -268,31 +268,6 @@ export class MicrosoftTeams implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the plans to display them to user so that he can
-			// select them easily
-			async getBuckets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				let planId = this.getCurrentNodeParameter('planId', { extractValue: true }) as string;
-				const operation = this.getNodeParameter('operation', 0) as string;
-				if (operation === 'update' && (planId === undefined || planId === null)) {
-					// planId not found at base, check updateFields for the planId
-					planId = this.getCurrentNodeParameter('updateFields.planId', {
-						extractValue: true,
-					}) as string;
-				}
-				const { value } = await microsoftApiRequest.call(
-					this,
-					'GET',
-					`/v1.0/planner/plans/${planId}/buckets`,
-				);
-				for (const bucket of value) {
-					returnData.push({
-						name: bucket.name,
-						value: bucket.id,
-					});
-				}
-				return returnData;
-			},
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
