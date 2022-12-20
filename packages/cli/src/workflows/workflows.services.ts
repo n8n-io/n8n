@@ -13,7 +13,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '@/Server';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
 import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -23,6 +22,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
+import { ExternalHooks } from '@/ExternalHooks';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -252,6 +252,7 @@ export class WorkflowsService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
+		const externalHooks = ExternalHooks();
 		await externalHooks.run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
