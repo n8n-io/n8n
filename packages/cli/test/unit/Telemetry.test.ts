@@ -20,7 +20,7 @@ jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() 
 	};
 });
 
-describe('Telemetry', () => {
+describe.skip('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
