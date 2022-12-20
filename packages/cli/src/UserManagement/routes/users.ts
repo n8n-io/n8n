@@ -429,11 +429,11 @@ export function usersNamespace(this: N8nApp): void {
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
-					where: { user: userToDelete, role: ['owner'] },
+					where: { user: userToDelete, role: 'owner' },
 				}),
 				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
-					where: { user: userToDelete, role: ['owner'] },
+					where: { user: userToDelete, role: 'owner' },
 				}),
 			]);
 
