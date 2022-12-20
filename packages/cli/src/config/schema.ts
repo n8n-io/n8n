@@ -42,6 +42,12 @@ export const schema = {
 			default: '',
 			env: 'DB_TABLE_PREFIX',
 		},
+		ignoreMigrationLockFail: {
+			doc: 'Continue running even if migrations could not be applied du to missing lock (default: false)',
+			format: Boolean,
+			default: false,
+			env: 'DB_IGNORE_MIGRATION_LOCK_FAIL',
+		},
 		logging: {
 			enabled: {
 				doc: 'Typeorm logging enabled flag.',

@@ -36,7 +36,7 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
-		migrationsRun: true,
+		migrationsRun: false, // migrations are turned off here in favour of migrateDatabaseWithLock() in Db.ts
 		migrationsTableName: `${entityPrefix}migrations`,
 		cli: { entitiesDir, migrationsDir },
 		...connectionDetails,

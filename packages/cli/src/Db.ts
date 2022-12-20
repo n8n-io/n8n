@@ -28,6 +28,7 @@ import {
 	getPostgresConnectionOptions,
 	getSqliteConnectionOptions,
 } from '@db/config';
+import { migrateDatabaseWithLock } from './databases/utils/migrationLock';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -160,6 +161,8 @@ export async function init(
 			await connection.close();
 			connection = await createConnection(connectionOptions);
 		}
+	} else {
+		await migrateDatabaseWithLock(connection, false);
 	}
 
 	// @ts-ignore
