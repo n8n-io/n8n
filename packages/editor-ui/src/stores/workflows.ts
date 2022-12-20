@@ -827,7 +827,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				(node) => node.type === updateInformation.key,
 			) as INodeUi;
 			const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-			if(!nodeType) return;
+			if (!nodeType) return;
 
 			const nodeParams = NodeHelpers.getNodeParameters(
 				nodeType.properties,
