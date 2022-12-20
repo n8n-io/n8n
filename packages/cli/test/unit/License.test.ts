@@ -12,7 +12,7 @@ const MOCK_ACTIVATION_KEY = 'activation-key';
 const MOCK_FEATURE_FLAG = 'feat:mock';
 const MOCK_MAIN_PLAN_ID = 1234;
 
-describe('License', () => {
+describe.skip('License', () => {
 	beforeAll(() => {
 		config.set('license.serverUrl', MOCK_SERVER_URL);
 		config.set('license.autoRenewEnabled', true);
