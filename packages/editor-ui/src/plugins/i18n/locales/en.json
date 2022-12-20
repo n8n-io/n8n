@@ -366,8 +366,6 @@
 	"dataMapping.tableHint": "<img src='/static/data-mapping-gif.gif'/> Drag a column onto <b>{name}</b> to map it",
 	"dataMapping.jsonHint": "<img src='/static/json-mapping-gif.gif'/> Drag a JSON key onto <b>{name}</b> to map data",
 	"dataMapping.schemaHint": "<img src='/static/schema-mapping-gif.gif'/> Drag a datapill onto <b>{name}</b> to map data",
-	"dataMapping.mapKeyToField": "Map '{name}' to a field",
-	"dataMapping.mapAllKeysToField": "Map every '{name}' to a field",
 	"dataMapping.tableView.tableColumnsExceeded": "Some columns are hidden",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip": "Your data has more than {columnLimit} columns so some are hidden. Switch to {link} to see all data.",
 	"dataMapping.tableView.tableColumnsExceeded.tooltip.link": "JSON view",
