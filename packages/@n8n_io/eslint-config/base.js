@@ -328,6 +328,11 @@ const config = (module.exports = {
 		 */
 		'import/order': 'error',
 
+		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
+		 */
+		'import/no-cycle': 'warn',
+
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
