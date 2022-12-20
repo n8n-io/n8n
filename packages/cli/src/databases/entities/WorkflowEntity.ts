@@ -21,11 +21,11 @@ import {
 } from 'typeorm';
 
 import config from '@/config';
-import { TagEntity } from './TagEntity';
-import { SharedWorkflow } from './SharedWorkflow';
+import type { TagEntity } from './TagEntity';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { WorkflowStatistics } from './WorkflowStatistics';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import { WorkflowStatistics } from './WorkflowStatistics';
 import type { IWorkflowDb } from '@/Interfaces';
 
 @Entity()
@@ -63,7 +63,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	staticData?: IDataObject;
 
-	@ManyToMany(() => TagEntity, (tag) => tag.workflows)
+	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
@@ -77,13 +77,10 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	tags?: TagEntity[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
 
-	@OneToMany(
-		() => WorkflowStatistics,
-		(workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow,
-	)
+	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
 

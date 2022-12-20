@@ -17,7 +17,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
 import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
@@ -57,7 +57,7 @@ workflowsController.post(
 
 		await validateEntity(newWorkflow);
 
-		await externalHooks.run('workflow.create', [newWorkflow]);
+		await ExternalHooks().run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -103,7 +103,7 @@ workflowsController.post(
 			});
 		}
 
-		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
 		const { id, ...rest } = savedWorkflow;
@@ -273,7 +273,7 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		await externalHooks.run('workflow.delete', [workflowId]);
+		await ExternalHooks().run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow', 'role'],
@@ -303,7 +303,7 @@ workflowsController.delete(
 		await Db.collections.Workflow.delete(workflowId);
 
 		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
-		await externalHooks.run('workflow.afterDelete', [workflowId]);
+		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
 	}),
