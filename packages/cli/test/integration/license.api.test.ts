@@ -55,7 +55,7 @@ afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test('GET /license should return license information to the instance owner', async () => {
+test.skip('GET /license should return license information to the instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
 	const response = await authAgent(userShell).get('/license');
@@ -66,7 +66,7 @@ test('GET /license should return license information to the instance owner', asy
 	expect(response.body).toStrictEqual(DEFAULT_LICENSE_RESPONSE);
 });
 
-test('GET /license should return license information to a regular user', async () => {
+test.skip('GET /license should return license information to a regular user', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
 	const response = await authAgent(userShell).get('/license');
@@ -77,7 +77,7 @@ test('GET /license should return license information to a regular user', async (
 	expect(response.body).toStrictEqual(DEFAULT_LICENSE_RESPONSE);
 });
 
-test('POST /license/activate should work for instance owner', async () => {
+test.skip('POST /license/activate should work for instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
 	const response = await authAgent(userShell)
@@ -90,7 +90,7 @@ test('POST /license/activate should work for instance owner', async () => {
 	expect(response.body).toMatchObject(DEFAULT_POST_RESPONSE);
 });
 
-test('POST /license/activate does not work for regular users', async () => {
+test.skip('POST /license/activate does not work for regular users', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
 	const response = await authAgent(userShell)
@@ -101,7 +101,7 @@ test('POST /license/activate does not work for regular users', async () => {
 	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
 });
 
-test('POST /license/activate errors out properly', async () => {
+test.skip('POST /license/activate errors out properly', async () => {
 	License.prototype.activate = jest.fn().mockImplementation(() => {
 		throw new Error(INVALID_ACIVATION_KEY_MESSAGE);
 	});
@@ -116,7 +116,7 @@ test('POST /license/activate errors out properly', async () => {
 	expect(response.body.message).toBe(INVALID_ACIVATION_KEY_MESSAGE);
 });
 
-test('POST /license/renew should work for instance owner', async () => {
+test.skip('POST /license/renew should work for instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
 	const response = await authAgent(userShell).post('/license/renew');
@@ -127,7 +127,7 @@ test('POST /license/renew should work for instance owner', async () => {
 	expect(response.body).toMatchObject(DEFAULT_POST_RESPONSE);
 });
 
-test('POST /license/renew does not work for regular users', async () => {
+test.skip('POST /license/renew does not work for regular users', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
 	const response = await authAgent(userShell).post('/license/renew');
@@ -136,7 +136,7 @@ test('POST /license/renew does not work for regular users', async () => {
 	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
 });
 
-test('POST /license/renew errors out properly', async () => {
+test.skip('POST /license/renew errors out properly', async () => {
 	License.prototype.renew = jest.fn().mockImplementation(() => {
 		throw new Error(RENEW_ERROR_MESSAGE);
 	});
