@@ -522,9 +522,9 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
-		const opaque: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1)[1]
-			.replace(/"/g, '');
+		// If authDeatials does not have opaque, we should not add it to authorization.
+		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
+		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
 		const nonce: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
 			.replace(/"/g, '');
@@ -542,10 +542,14 @@ function digestAuthAxiosConfig(
 			.createHash('md5')
 			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
 			.digest('hex');
-		const authorization =
+		let authorization =
 			`Digest username="${auth?.username as string}",realm="${realm}",` +
 			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}",opaque="${opaque}"`;
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		// Only when opaque exists, add it to authorization.
+		if (opaque) {
+			authorization += `,opaque="${opaque}"`;
+		}
 		if (axiosConfig.headers) {
 			axiosConfig.headers.authorization = authorization;
 		} else {

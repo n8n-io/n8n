@@ -13,7 +13,7 @@ describe('Expression editor modal', () => {
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
 		WorkflowPage.actions.openNodeNdv('Hacker News');
-		WorkflowPage.actions.openExpressionEditor();
+		WorkflowPage.actions.openExpressionEditorModal();
 	});
 
 	it('should resolve primitive resolvables', () => {

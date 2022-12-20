@@ -14,9 +14,8 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from './Interfaces';
-
-const inDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+} from '@/Interfaces';
+import { inDevelopment } from '@/constants';
 
 /**
  * Special Error which allows to return also an error code and http status code

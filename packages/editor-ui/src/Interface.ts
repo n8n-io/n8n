@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
 	jsPlumbInstance,
@@ -219,7 +220,7 @@ export interface IRestApi {
 		firstId?: string | number,
 	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
-	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>; // tslint:disable-line:no-any
+	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
 	getCredentialTranslation(credentialType: string): Promise<object>;
 	removeTestWebhook(workflowId: string): Promise<boolean>;
 	runWorkflow(runData: IStartRunData): Promise<IExecutionPushResponse>;
@@ -805,7 +806,6 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
-	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -954,6 +954,8 @@ export interface IUsedCredential {
 	name: string;
 	credentialType: string;
 	currentUserHasAccess: boolean;
+	ownedBy: Partial<IUser>;
+	sharedWith: Array<Partial<IUser>>;
 }
 
 export interface WorkflowsState {

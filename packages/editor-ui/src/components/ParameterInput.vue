@@ -12,11 +12,7 @@
 			@closeDialog="closeExpressionEditDialog"
 			@valueChanged="expressionUpdated"
 		></expression-edit>
-		<div
-			class="parameter-input ignore-key-press"
-			:style="parameterInputWrapperStyle"
-			@click="openExpressionEdit"
-		>
+		<div class="parameter-input ignore-key-press" :style="parameterInputWrapperStyle">
 			<resource-locator
 				v-if="isResourceLocatorParameter"
 				ref="resourceLocator"
@@ -32,19 +28,21 @@
 				:node="node"
 				:path="path"
 				@input="valueChanged"
+				@modalOpenerClick="openExpressionEditorModal"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
-			<n8n-input
-				v-else-if="isValueExpression || droppable || forceShowExpression"
-				:size="inputSize"
-				:type="getStringInputType"
-				:rows="getArgument('rows')"
+			<ExpressionParameterInput
+				v-else-if="isValueExpression || forceShowExpression"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
-				:readOnly="isReadOnly"
-				@keydown.stop
+				:isReadOnly="isReadOnly"
+				@valueChanged="expressionUpdated"
+				@modalOpenerClick="openExpressionEditorModal"
+				@focus="setFocus"
+				@blur="onBlur"
+				ref="inputField"
 			/>
 			<div
 				v-else-if="
@@ -99,6 +97,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
+					class="input-with-opener"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
@@ -113,15 +112,19 @@
 					:placeholder="getPlaceholder()"
 				>
 					<template #suffix>
-						<div class="expand-input-icon-container">
-							<font-awesome-icon
-								v-if="!isReadOnly"
-								icon="expand-alt"
-								class="edit-window-button clickable"
-								:title="$locale.baseText('parameterInput.openEditWindow')"
-								@click="displayEditDialog()"
-							/>
-						</div>
+						<n8n-icon
+							v-if="!isReadOnly && !isSecretParameter"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button textarea-modal-opener"
+							:class="{
+								focused: isFocused,
+								invalid: !isFocused && getIssues.length > 0 && !isValueExpression,
+							}"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+							@focus="setFocus"
+						/>
 					</template>
 				</n8n-input>
 			</div>
@@ -329,6 +332,7 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -362,6 +366,7 @@ export default mixins(
 		CodeEdit,
 		CodeNodeEditor,
 		ExpressionEdit,
+		ExpressionParameterInput,
 		NodeCredentials,
 		CredentialsSelect,
 		PrismEditor,
@@ -439,14 +444,16 @@ export default mixins(
 				shortcuts: [
 					{
 						text: 'Today', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							picker.$emit('pick', new Date());
 						},
 					},
 					{
 						text: 'Yesterday', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24);
@@ -455,7 +462,8 @@ export default mixins(
 					},
 					{
 						text: 'A week ago', // TODO
-						// tslint:disable-next-line:no-any
+
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						onClick(picker: any) {
 							const date = new Date();
 							date.setTime(date.getTime() - 3600 * 1000 * 24 * 7);
@@ -464,6 +472,7 @@ export default mixins(
 					},
 				],
 			},
+			isFocused: false,
 		};
 	},
 	watch: {
@@ -718,10 +727,12 @@ export default mixins(
 				classes['parameter-value-container'] = true;
 			}
 
-			if (this.isValueExpression || this.forceShowExpression) {
-				classes['expression'] = true;
-			}
-			if (!this.droppable && !this.activeDrop && (this.getIssues.length || this.errorHighlight)) {
+			if (
+				!this.droppable &&
+				!this.activeDrop &&
+				(this.getIssues.length > 0 || this.errorHighlight) &&
+				!this.isValueExpression
+			) {
 				classes['has-issues'] = true;
 			}
 
@@ -758,6 +769,9 @@ export default mixins(
 		},
 		isResourceLocatorParameter(): boolean {
 			return this.parameter.type === 'resourceLocator';
+		},
+		isSecretParameter(): boolean {
+			return this.getArgument('password') === true;
 		},
 	},
 	methods: {
@@ -890,26 +904,20 @@ export default mixins(
 				: value;
 			this.valueChanged(val);
 		},
-		openExpressionEdit() {
-			if (this.isValueExpression) {
-				this.expressionEditDialogVisible = true;
-				this.trackExpressionEditOpen();
-				return;
-			}
+		openExpressionEditorModal() {
+			if (!this.isValueExpression) return;
+
+			this.expressionEditDialogVisible = true;
+			this.trackExpressionEditOpen();
 		},
 		onBlur() {
 			this.$emit('blur');
+			this.isFocused = false;
 		},
 		onResourceLocatorDrop(data: string) {
 			this.$emit('drop', data);
 		},
 		setFocus() {
-			if (this.isValueExpression) {
-				this.expressionEditDialogVisible = true;
-				this.trackExpressionEditOpen();
-				return;
-			}
-
 			if (['json'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 				this.displayEditDialog();
 				return;
@@ -931,6 +939,7 @@ export default mixins(
 				if (this.$refs.inputField && this.$refs.inputField.$el) {
 					// @ts-ignore
 					this.$refs.inputField.focus();
+					this.isFocused = true;
 				}
 			});
 
@@ -1014,8 +1023,6 @@ export default mixins(
 
 			if (command === 'resetValue') {
 				this.valueChanged(this.parameter.default);
-			} else if (command === 'openExpression') {
-				this.expressionEditDialogVisible = true;
 			} else if (command === 'addExpression') {
 				if (this.isResourceLocatorParameter) {
 					if (isResourceLocatorValue(this.value)) {
@@ -1023,18 +1030,22 @@ export default mixins(
 					} else {
 						this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
 					}
+				} else if (
+					this.parameter.type === 'number' &&
+					(!this.value || this.value === '[Object: null]')
+				) {
+					this.valueChanged('={{ 0 }}');
 				} else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-					this.valueChanged(`={{${this.value}}}`);
+					this.valueChanged(`={{ ${this.value} }}`);
 				} else {
 					this.valueChanged(`=${this.value}`);
 				}
 
-				setTimeout(() => {
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
-				}, 375);
+				this.setFocus();
 			} else if (command === 'removeExpression') {
 				let value: NodeParameterValueType = this.expressionEvaluated;
+
+				this.isFocused = false;
 
 				if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 					value = (value || '')
@@ -1201,24 +1212,13 @@ export default mixins(
 	background-color: #f0f0f0;
 }
 
-.expression {
-	textarea,
-	input {
-		cursor: pointer !important;
-	}
-
-	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
-	--input-font-color: var(--color-secondary);
-}
-
 .droppable {
 	--input-border-color: var(--color-secondary);
-	--input-background-color: var(--color-foreground-xlight);
 	--input-border-style: dashed;
 
 	textarea,
-	input {
+	input,
+	.cm-editor {
 		border-width: 1.5px;
 	}
 }
@@ -1275,5 +1275,40 @@ export default mixins(
 	display: flex;
 	height: 100%;
 	align-items: center;
+}
+
+.input-with-opener > .el-input__suffix {
+	right: 0;
+}
+
+.textarea-modal-opener {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	background-color: white;
+	padding: 3px;
+	line-height: 9px;
+	border: var(--border-base);
+	border-top-left-radius: var(--border-radius-base);
+	border-bottom-right-radius: var(--border-radius-base);
+	cursor: pointer;
+
+	svg {
+		width: 9px !important;
+		height: 9px;
+		transform: rotate(270deg);
+
+		&:hover {
+			color: var(--color-primary);
+		}
+	}
+}
+
+.focused {
+	border-color: var(--color-secondary);
+}
+
+.invalid {
+	border-color: var(--color-danger);
 }
 </style>

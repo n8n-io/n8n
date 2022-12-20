@@ -12,7 +12,7 @@
 		:scrollable="true"
 	>
 		<template #content>
-			<div v-loading="isLoading" class="workflow-settings">
+			<div v-loading="isLoading" class="workflow-settings" data-test-id="workflow-settings-dialog">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ':' }}
@@ -30,152 +30,13 @@
 							size="medium"
 							filterable
 							:limit-popper-width="true"
+							data-test-id="workflow-settings-error-workflow"
 						>
 							<n8n-option
 								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
-							>
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.timezone') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
-							<template #content>
-								<div v-text="helpTexts.timezone"></div>
-							</template>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select
-							v-model="workflowSettings.timezone"
-							placeholder="Select Timezone"
-							size="medium"
-							filterable
-							:limit-popper-width="true"
-						>
-							<n8n-option
-								v-for="timezone of timezones"
-								:key="timezone.key"
-								:label="timezone.value"
-								:value="timezone.key"
-							>
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
-							<template #content>
-								<div v-text="helpTexts.saveDataErrorExecution"></div>
-							</template>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select
-							v-model="workflowSettings.saveDataErrorExecution"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
-							filterable
-							:limit-popper-width="true"
-						>
-							<n8n-option
-								v-for="option of saveDataErrorExecutionOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
-							<template #content>
-								<div v-text="helpTexts.saveDataSuccessExecution"></div>
-							</template>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select
-							v-model="workflowSettings.saveDataSuccessExecution"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
-							filterable
-							:limit-popper-width="true"
-						>
-							<n8n-option
-								v-for="option of saveDataSuccessExecutionOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
-							<template #content>
-								<div v-text="helpTexts.saveManualExecutions"></div>
-							</template>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select
-							v-model="workflowSettings.saveManualExecutions"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
-							filterable
-							:limit-popper-width="true"
-						>
-							<n8n-option
-								v-for="option of saveManualOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
-							>
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ':' }}
-						<n8n-tooltip class="setting-info" placement="top">
-							<template #content>
-								<div v-text="helpTexts.saveExecutionProgress"></div>
-							</template>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select
-							v-model="workflowSettings.saveExecutionProgress"
-							:placeholder="$locale.baseText('workflowSettings.selectOption')"
-							size="medium"
-							filterable
-							:limit-popper-width="true"
-						>
-							<n8n-option
-								v-for="option of saveExecutionProgressOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key"
 							>
 							</n8n-option>
 						</n8n-select>
@@ -233,6 +94,151 @@
 				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.timezone') + ':' }}
+						<n8n-tooltip class="setting-info" placement="top">
+							<template #content>
+								<div v-text="helpTexts.timezone"></div>
+							</template>
+							<font-awesome-icon icon="question-circle" />
+						</n8n-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.timezone"
+							placeholder="Select Timezone"
+							size="medium"
+							filterable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-timezone"
+						>
+							<n8n-option
+								v-for="timezone of timezones"
+								:key="timezone.key"
+								:label="timezone.value"
+								:value="timezone.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ':' }}
+						<n8n-tooltip class="setting-info" placement="top">
+							<template #content>
+								<div v-text="helpTexts.saveDataErrorExecution"></div>
+							</template>
+							<font-awesome-icon icon="question-circle" />
+						</n8n-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.saveDataErrorExecution"
+							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							size="medium"
+							filterable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-failed-executions"
+						>
+							<n8n-option
+								v-for="option of saveDataErrorExecutionOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ':' }}
+						<n8n-tooltip class="setting-info" placement="top">
+							<template #content>
+								<div v-text="helpTexts.saveDataSuccessExecution"></div>
+							</template>
+							<font-awesome-icon icon="question-circle" />
+						</n8n-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.saveDataSuccessExecution"
+							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							size="medium"
+							filterable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-success-executions"
+						>
+							<n8n-option
+								v-for="option of saveDataSuccessExecutionOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ':' }}
+						<n8n-tooltip class="setting-info" placement="top">
+							<template #content>
+								<div v-text="helpTexts.saveManualExecutions"></div>
+							</template>
+							<font-awesome-icon icon="question-circle" />
+						</n8n-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.saveManualExecutions"
+							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							size="medium"
+							filterable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-manual-executions"
+						>
+							<n8n-option
+								v-for="option of saveManualOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
+						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ':' }}
+						<n8n-tooltip class="setting-info" placement="top">
+							<template #content>
+								<div v-text="helpTexts.saveExecutionProgress"></div>
+							</template>
+							<font-awesome-icon icon="question-circle" />
+						</n8n-tooltip>
+					</el-col>
+					<el-col :span="14" class="ignore-key-press">
+						<n8n-select
+							v-model="workflowSettings.saveExecutionProgress"
+							:placeholder="$locale.baseText('workflowSettings.selectOption')"
+							size="medium"
+							filterable
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-save-execution-progress"
+						>
+							<n8n-option
+								v-for="option of saveExecutionProgressOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</n8n-option>
+						</n8n-select>
+					</el-col>
+				</el-row>
+				<el-row>
+					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ':' }}
 						<n8n-tooltip class="setting-info" placement="top">
 							<template #content>
@@ -248,11 +254,15 @@
 								:value="workflowSettings.executionTimeout > -1"
 								@change="toggleTimeout"
 								active-color="#13ce66"
+								data-test-id="workflow-settings-timeout-workflow"
 							></el-switch>
 						</div>
 					</el-col>
 				</el-row>
-				<div v-if="workflowSettings.executionTimeout > -1">
+				<div
+					v-if="workflowSettings.executionTimeout > -1"
+					data-test-id="workflow-settings-timeout-form"
+				>
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ':' }}
@@ -300,7 +310,7 @@
 			</div>
 		</template>
 		<template #footer>
-			<div class="action-buttons">
+			<div class="action-buttons" data-test-id="workflow-settings-save-button">
 				<n8n-button
 					:label="$locale.baseText('workflowSettings.save')"
 					size="large"
@@ -327,7 +337,11 @@ import {
 	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
 import Modal from './Modal.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
+import {
+	EnterpriseEditionFeature,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -402,7 +416,9 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			return this.workflowsStore.workflowId;
 		},
 		isWorkflowSharingEnabled(): boolean {
-			return this.settingsStore.isWorkflowSharingEnabled;
+			return this.settingsStore.isEnterpriseFeatureEnabled(
+				EnterpriseEditionFeature.WorkflowSharing,
+			);
 		},
 	},
 	async mounted() {

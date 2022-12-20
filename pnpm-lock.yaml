@@ -24,6 +24,7 @@ importers:
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
       n8n: '*'
+      nock: ^13.2.9
       node-fetch: ^2.6.7
       prettier: ^2.3.2
       rimraf: ^3.0.2
@@ -46,6 +47,7 @@ importers:
       jest: 29.3.1_@types+node@16.11.65
       jest-environment-jsdom: 29.3.1
       jest-mock: 29.3.1
+      nock: 13.2.9
       node-fetch: 2.6.7
       prettier: 2.7.1
       rimraf: 3.0.2
@@ -71,7 +73,6 @@ importers:
       eslint-plugin-n8n-local-rules: ~1.0
       eslint-plugin-prettier: ~4.2
       eslint-plugin-vue: ~7.17
-      tslint: ^6.1.3
     devDependencies:
       '@types/eslint': 8.4.6
       '@typescript-eslint/eslint-plugin': 5.45.0_psz44bhp76u27vmulntnlx26h4
@@ -85,7 +86,6 @@ importers:
       eslint-plugin-n8n-local-rules: 1.0.0
       eslint-plugin-prettier: 4.2.1_pgxuib4rd7wiymfktharf5ydt4
       eslint-plugin-vue: 7.17.0_eslint@8.28.0
-      tslint: 6.1.3_typescript@4.8.4
 
   packages/cli:
     specifiers:
@@ -170,10 +170,10 @@ importers:
       lodash.split: ^4.4.2
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
-      n8n-core: ~0.147.0
-      n8n-editor-ui: ~0.173.1
-      n8n-nodes-base: ~0.205.1
-      n8n-workflow: ~0.129.0
+      n8n-core: ~0.148.1
+      n8n-editor-ui: ~0.174.1
+      n8n-nodes-base: ~0.206.1
+      n8n-workflow: ~0.130.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -347,7 +347,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.129.0
+      n8n-workflow: ~0.130.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -508,6 +508,7 @@ importers:
       '@vitejs/plugin-vue2': ^1.1.2
       axios: ^0.21.1
       c8: ^7.12.0
+      codemirror-lang-n8n-expression: ^0.1.0
       dateformat: ^3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: ^2.1.0
@@ -525,8 +526,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.47.0
-      n8n-workflow: ~0.129.0
+      n8n-design-system: ~0.48.0
+      n8n-workflow: ~0.130.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -567,12 +568,13 @@ importers:
       '@fortawesome/free-regular-svg-icons': 6.2.0
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
-      '@jsplumb/browser-ui': link:../../../jsplumb/dist/browser-ui
+      '@jsplumb/browser-ui': 5.13.2
       '@jsplumb/common': 5.13.2
       '@jsplumb/connector-bezier': 5.13.2
       '@jsplumb/core': 5.13.2
       '@jsplumb/util': 5.13.2
       axios: 0.21.4
+      codemirror-lang-n8n-expression: 0.1.0_zyklskjzaprvz25ee7sq7godcq
       dateformat: 3.0.3
       esprima-next: 5.8.4
       fast-json-stable-stringify: 2.1.0
@@ -649,8 +651,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.147.0
-      n8n-workflow: ~0.129.0
+      n8n-core: ~0.148.1
+      n8n-workflow: ~0.130.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -677,7 +679,7 @@ importers:
   packages/nodes-base:
     specifiers:
       '@kafkajs/confluent-schema-registry': 1.0.6
-      '@types/amqplib': ^0.8.2
+      '@types/amqplib': ^0.10.1
       '@types/aws4': ^1.5.1
       '@types/basic-auth': ^1.1.2
       '@types/cheerio': ^0.22.15
@@ -704,7 +706,7 @@ importers:
       '@types/tmp': ^0.2.0
       '@types/uuid': ^8.3.2
       '@types/xml2js': ^0.4.3
-      amqplib: ^0.8.0
+      amqplib: ^0.10.3
       aws4: ^1.8.0
       basic-auth: ^2.0.1
       change-case: ^4.1.1
@@ -740,8 +742,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.147.0
-      n8n-workflow: ~0.129.0
+      n8n-core: ~0.148.1
+      n8n-workflow: ~0.130.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -766,7 +768,7 @@ importers:
     dependencies:
       '@kafkajs/confluent-schema-registry': 1.0.6
       '@types/js-nacl': 1.3.0
-      amqplib: 0.8.0
+      amqplib: 0.10.3
       aws4: 1.11.0
       basic-auth: 2.0.1
       change-case: 4.1.2
@@ -823,7 +825,7 @@ importers:
       xlsx: 0.17.5
       xml2js: 0.4.23
     devDependencies:
-      '@types/amqplib': 0.8.2
+      '@types/amqplib': 0.10.1
       '@types/aws4': 1.11.2
       '@types/basic-auth': 1.1.3
       '@types/cheerio': 0.22.31
@@ -891,6 +893,17 @@ importers:
       '@types/xml2js': 0.4.11
 
 packages:
+
+  /@acuminous/bitsyntax/0.1.2:
+    resolution: {integrity: sha512-29lUK80d1muEQqiUsSo+3A0yP6CdspgC95EnKBMi22Xlwt79i/En4Vr67+cXhU+cZjbti3TgGGC5wy1stIywVQ==}
+    engines: {node: '>=0.8'}
+    dependencies:
+      buffer-more-ints: 1.0.0
+      debug: 4.3.4
+      safe-buffer: 5.1.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
 
   /@adobe/css-tools/4.0.1:
     resolution: {integrity: sha512-+u76oB43nOHrF4DDWRLWDCtci7f3QJoEBigemIdIeTi1ODqjx6Tad9NCVnPRwewWlKkVab5PlK8DCtPTyX7S8g==}
@@ -3225,6 +3238,12 @@ packages:
   /@jsdevtools/ono/7.1.3:
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
 
+  /@jsplumb/browser-ui/5.13.2:
+    resolution: {integrity: sha512-BZ76kPtxESMIdhcCtWXPdICMudJyBVzDxaKY4jlne93Zq1T2ErfpNQ3E6f3JZfvoyvlNbKgh0udYkZ7Yg7BmIQ==}
+    dependencies:
+      '@jsplumb/core': 5.13.2
+    dev: false
+
   /@jsplumb/common/5.13.2:
     resolution: {integrity: sha512-ZX/EvvYi4HBkRVtsuSSAa/AuAz4p2wr3RrRz6l+r8yeElzX3lrrBx/fkERY2qwZPkKcOoLCr5ezZ7sslVMnl0Q==}
     dependencies:
@@ -5423,10 +5442,9 @@ packages:
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
     engines: {node: '>= 10'}
 
-  /@types/amqplib/0.8.2:
-    resolution: {integrity: sha512-p+TFLzo52f8UanB+Nq6gyUi65yecAcRY3nYowU6MPGFtaJvEDxcnFWrxssSTkF+ts1W3zyQDvgVICLQem5WxRA==}
+  /@types/amqplib/0.10.1:
+    resolution: {integrity: sha512-j6ANKT79ncUDnAs/+9r9eDujxbeJoTjoVu33gHHcaPfmLQaMhvfbH2GqSe8KUM444epAp1Vl3peVOQfZk3UIqA==}
     dependencies:
-      '@types/bluebird': 3.5.37
       '@types/node': 16.11.65
     dev: true
 
@@ -7051,15 +7069,13 @@ packages:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  /amqplib/0.8.0:
-    resolution: {integrity: sha512-icU+a4kkq4Y1PS4NNi+YPDMwdlbFcZ1EZTQT2nigW3fvOb6AOgUQ9+Mk4ue0Zu5cBg/XpDzB40oH10ysrk2dmA==}
+  /amqplib/0.10.3:
+    resolution: {integrity: sha512-UHmuSa7n8vVW/a5HGh2nFPqAEr8+cD4dEZ6u9GjP91nHfr1a54RyAKyra7Sb5NH7NBKOUlyQSMXIp0qAixKexw==}
     engines: {node: '>=10'}
     dependencies:
-      bitsyntax: 0.1.0
-      bluebird: 3.7.2
+      '@acuminous/bitsyntax': 0.1.2
       buffer-more-ints: 1.0.0
       readable-stream: 1.1.14
-      safe-buffer: 5.2.1
       url-parse: 1.5.10
     transitivePeerDependencies:
       - supports-color
@@ -7938,17 +7954,6 @@ packages:
     resolution: {integrity: sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==}
     dev: false
 
-  /bitsyntax/0.1.0:
-    resolution: {integrity: sha512-ikAdCnrloKmFOugAfxWws89/fPc+nw0OOG1IzIE72uSOg/A3cYptKCjSUhDTuj7fhsJtzkzlv7l3b8PzRHLN0Q==}
-    engines: {node: '>=0.8'}
-    dependencies:
-      buffer-more-ints: 1.0.0
-      debug: 2.6.9
-      safe-buffer: 5.1.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /bl/4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
     dependencies:
@@ -7974,6 +7979,7 @@ packages:
 
   /bluebird/3.7.2:
     resolution: {integrity: sha512-XpNj6GDQzdfW+r2Wnn7xiSAd7TM3jzkxGXBGTtWKuSXv1xUV+azxAm8jdWZN06QTQk+2N2XB9jRDkvbmQmcRtg==}
+    dev: true
 
   /bn.js/4.12.0:
     resolution: {integrity: sha512-c98Bf3tPniI+scsdk237ku1Dc3ujXQTSgyiPUDEOe7tRkhrqridvh8klBv0HCEso1OLOYcHuCv/cS6DNxKH+ZA==}
@@ -8220,11 +8226,6 @@ packages:
     engines: {node: '>=10.0.0'}
     dev: false
     optional: true
-
-  /builtin-modules/1.1.1:
-    resolution: {integrity: sha512-wxXCdllwGhI2kCC0MnvTGYTMvnVZTvqgypkiTI8Pa5tcz2i6VqsqwYGgqwXji+4RgCzms6EajE4IxiUH6HH8nQ==}
-    engines: {node: '>=0.10.0'}
-    dev: true
 
   /builtin-status-codes/3.0.0:
     resolution: {integrity: sha512-HpGFw18DgFWlncDfjTa2rcQ4W88O1mC8e8yZ2AvQY5KDaktSTwo+KRf6nHK6FRI5FyRyb/5T6+TSxfP7QyGsmQ==}
@@ -8915,6 +8916,19 @@ packages:
     resolution: {integrity: sha512-RpAVKQA5T63xEj6/giIbUEtZwJ4UFIc3ZtvEkiaUERylqe8xb5IvqcgOurZLahv93CLKfxcw5YI+DZcUBRyLXA==}
     engines: {node: '>=0.10.0'}
     dev: true
+
+  /codemirror-lang-n8n-expression/0.1.0_zyklskjzaprvz25ee7sq7godcq:
+    resolution: {integrity: sha512-20ss5p0koTu5bfivr1sBHYs7cpjWT2JhVB5gn7TX9WWPt+v/9p9tEcYSOyL/sm+OFuWh698Cgnmrba4efQnMCQ==}
+    dependencies:
+      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/language': 6.2.1
+      '@lezer/highlight': 1.1.1
+      '@lezer/lr': 1.2.3
+    transitivePeerDependencies:
+      - '@codemirror/state'
+      - '@codemirror/view'
+      - '@lezer/common'
+    dev: false
 
   /codepage/1.15.0:
     resolution: {integrity: sha512-3g6NUTPd/YtuuGrhMnOMRjFc+LJw/bnMp3+0r/Wcz3IXUuCosKRJvMphm5+Q+bvTVGcJJuRvVLuYba+WojaFaA==}
@@ -15926,6 +15940,18 @@ packages:
       lower-case: 2.0.2
       tslib: 2.4.0
 
+  /nock/13.2.9:
+    resolution: {integrity: sha512-1+XfJNYF1cjGB+TKMWi29eZ0b82QOvQs2YoLNzbpWGqFMtRQHTa57osqdGj4FrFPgkO4D4AZinzUJR9VvW3QUA==}
+    engines: {node: '>= 10.13'}
+    dependencies:
+      debug: 4.3.4
+      json-stringify-safe: 5.0.1
+      lodash: 4.17.21
+      propagate: 2.0.1
+    transitivePeerDependencies:
+      - supports-color
+    dev: true
+
   /node-abort-controller/3.0.1:
     resolution: {integrity: sha512-/ujIVxthRs+7q6hsdjHMaj8hRG9NuWmwrz+JdRwZ14jdFoKSkm+vDsCbF9PLpnSqjaWQJuTmVtcWHNLr+vrOFw==}
     dev: false
@@ -17508,6 +17534,11 @@ packages:
       loose-envify: 1.4.0
       object-assign: 4.1.1
       react-is: 16.13.1
+    dev: true
+
+  /propagate/2.0.1:
+    resolution: {integrity: sha512-vGrhOavPSTz4QVNuBNdcNXePNdNMaO1xj9yBeH1ScQPjk/rhg9sSlCXPhMkFuaNNW/syTvYqsnbIJxMBfRbbag==}
+    engines: {node: '>= 8'}
     dev: true
 
   /property-expr/2.0.5:
@@ -20452,43 +20483,10 @@ packages:
   /tslib/2.4.0:
     resolution: {integrity: sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==}
 
-  /tslint/6.1.3_typescript@4.8.4:
-    resolution: {integrity: sha512-IbR4nkT96EQOvKE2PW/djGz8iGNeJ4rF2mBfiYaR/nvUWYKJhLwimoJKgjIFEIDibBtOevj7BqCRL4oHeWWUCg==}
-    engines: {node: '>=4.8.0'}
-    deprecated: TSLint has been deprecated in favor of ESLint. Please see https://github.com/palantir/tslint/issues/4534 for more information.
-    hasBin: true
-    peerDependencies:
-      typescript: '>=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >=3.0.0-dev || >= 3.1.0-dev || >= 3.2.0-dev || >= 4.0.0-dev'
-    dependencies:
-      '@babel/code-frame': 7.18.6
-      builtin-modules: 1.1.1
-      chalk: 2.4.2
-      commander: 2.20.3
-      diff: 4.0.2
-      glob: 7.2.3
-      js-yaml: 3.14.1
-      minimatch: 3.1.2
-      mkdirp: 0.5.6
-      resolve: 1.22.1
-      semver: 5.7.1
-      tslib: 1.14.1
-      tsutils: 2.29.0_typescript@4.8.4
-      typescript: 4.8.4
-    dev: true
-
   /tsscmp/1.0.6:
     resolution: {integrity: sha512-LxhtAkPDTkVCMQjt2h6eBVY28KCjikZqZfMcC15YBeNjkgUpdCfBu5HoiOTDu86v6smE8yOjyEktJ8hlbANHQA==}
     engines: {node: '>=0.6.x'}
     dev: false
-
-  /tsutils/2.29.0_typescript@4.8.4:
-    resolution: {integrity: sha512-g5JVHCIJwzfISaXpXE1qvNalca5Jwob6FjI4AoPlqMusJ6ftFE7IkkFoMhVLRgK+4Kx3gkzb8UZK5t5yTTvEmA==}
-    peerDependencies:
-      typescript: '>=2.1.0 || >=2.1.0-dev || >=2.2.0-dev || >=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >= 3.0.0-dev || >= 3.1.0-dev'
-    dependencies:
-      tslib: 1.14.1
-      typescript: 4.8.4
-    dev: true
 
   /tsutils/3.21.0_typescript@4.8.4:
     resolution: {integrity: sha512-mHKK3iUXL+3UF6xL5k0PEhKRUBKPBCv/+RkEOpjRWxxx27KKRBmmA60A9pgOUvMi8GKhRMPEmjBRPzs2W7O1OA==}
@@ -22208,7 +22206,7 @@ packages:
   /xml2js/0.4.19:
     resolution: {integrity: sha512-esZnJZJOiJR9wWKMyuvSE1y6Dq5LCuJanqhxslH2bxM6duahNZ+HMpCLhBQGZkbX6xRf8x1Y2eJlgt2q3qo49Q==}
     dependencies:
-      sax: 1.2.1
+      sax: 1.2.4
       xmlbuilder: 9.0.7
     dev: false
 
