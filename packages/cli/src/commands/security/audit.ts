@@ -4,7 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { BaseCommand } from '@/commands/BaseCommand';
 import * as Db from '@/Db';
-import { generateInactiveCredsReport, generateSqlInjectionRiskReport } from '@/SecurityAudit';
+import { reportSqlInjection, reportInactiveCreds } from '@/SecurityAudit';
 
 // @TODO: Documentation
 
@@ -18,8 +18,9 @@ export class SecurityAuditCommand extends BaseCommand {
 		LoggerProxy.init(logger);
 
 		const workflows = await Db.collections.Workflow.find();
-		const sqlInjectionRiskReport = await generateSqlInjectionRiskReport(workflows);
-		const inactiveCredsReport = await generateInactiveCredsReport(workflows);
+		const sqlInjectionRiskReport = await reportSqlInjection(workflows);
+		const inactiveCredsReport = await reportInactiveCreds(workflows);
+		console.log(JSON.stringify(inactiveCredsReport, null, 2));
 
 		this.logger.info('Successfully generated security audit report');
 		process.exit();

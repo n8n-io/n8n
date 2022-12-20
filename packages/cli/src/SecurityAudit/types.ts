@@ -1,6 +1,12 @@
+import type { INodeCredentialsDetails } from 'n8n-workflow';
+
 export type InactiveCredsReport = {
 	risk: string;
-	riskTypes: Array<{ riskType: string; description: string; credentialIds: string[] }>;
+	riskTypes: Array<{
+		riskType: string;
+		description: string;
+		credentials: INodeCredentialsDetails[];
+	}>;
 };
 
 export type RiskySqlWorkflow = {
@@ -11,4 +17,4 @@ export type RiskySqlWorkflow = {
 	nodeType: string;
 };
 
-export type WorkflowIdsToCredIds = { [workflowId: string]: Set<string> };
+export type WorkflowIdsToCredIds = { [workflowId: string]: INodeCredentialsDetails[] };
