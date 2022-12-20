@@ -409,6 +409,7 @@ export default mixins(
 				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
+				!this.hasPinData &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&

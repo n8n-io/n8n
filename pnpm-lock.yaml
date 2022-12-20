@@ -90,7 +90,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.6.1
+      '@n8n_io/license-sdk': ^1.7.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -170,9 +170,9 @@ importers:
       lodash.split: ^4.4.2
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
-      n8n-core: ~0.148.0
-      n8n-editor-ui: ~0.174.0
-      n8n-nodes-base: ~0.206.0
+      n8n-core: ~0.148.1
+      n8n-editor-ui: ~0.174.1
+      n8n-nodes-base: ~0.206.1
       n8n-workflow: ~0.130.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
@@ -208,7 +208,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.6.1
+      '@n8n_io/license-sdk': 1.7.0
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -542,7 +542,7 @@ importers:
       vue-i18n: ^8.26.7
       vue-json-pretty: 1.9.3
       vue-prism-editor: ^0.3.0
-      vue-router: ^3.0.6
+      vue-router: ^3.6.5
       vue-template-compiler: ^2.7
       vue-tsc: ^0.35.0
       vue-typed-mixins: ^0.2.0
@@ -641,7 +641,7 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.148.0
+      n8n-core: ~0.148.1
       n8n-workflow: ~0.130.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
@@ -669,7 +669,7 @@ importers:
   packages/nodes-base:
     specifiers:
       '@kafkajs/confluent-schema-registry': 1.0.6
-      '@types/amqplib': ^0.8.2
+      '@types/amqplib': ^0.10.1
       '@types/aws4': ^1.5.1
       '@types/basic-auth': ^1.1.2
       '@types/cheerio': ^0.22.15
@@ -696,7 +696,7 @@ importers:
       '@types/tmp': ^0.2.0
       '@types/uuid': ^8.3.2
       '@types/xml2js': ^0.4.3
-      amqplib: ^0.8.0
+      amqplib: ^0.10.3
       aws4: ^1.8.0
       basic-auth: ^2.0.1
       change-case: ^4.1.1
@@ -732,7 +732,7 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.148.0
+      n8n-core: ~0.148.1
       n8n-workflow: ~0.130.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
@@ -758,7 +758,7 @@ importers:
     dependencies:
       '@kafkajs/confluent-schema-registry': 1.0.6
       '@types/js-nacl': 1.3.0
-      amqplib: 0.8.0
+      amqplib: 0.10.3
       aws4: 1.11.0
       basic-auth: 2.0.1
       change-case: 4.1.2
@@ -815,7 +815,7 @@ importers:
       xlsx: 0.17.5
       xml2js: 0.4.23
     devDependencies:
-      '@types/amqplib': 0.8.2
+      '@types/amqplib': 0.10.1
       '@types/aws4': 1.11.2
       '@types/basic-auth': 1.1.3
       '@types/cheerio': 0.22.31
@@ -883,6 +883,17 @@ importers:
       '@types/xml2js': 0.4.11
 
 packages:
+
+  /@acuminous/bitsyntax/0.1.2:
+    resolution: {integrity: sha512-29lUK80d1muEQqiUsSo+3A0yP6CdspgC95EnKBMi22Xlwt79i/En4Vr67+cXhU+cZjbti3TgGGC5wy1stIywVQ==}
+    engines: {node: '>=0.8'}
+    dependencies:
+      buffer-more-ints: 1.0.0
+      debug: 4.3.4
+      safe-buffer: 5.1.2
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
 
   /@adobe/css-tools/4.0.1:
     resolution: {integrity: sha512-+u76oB43nOHrF4DDWRLWDCtci7f3QJoEBigemIdIeTi1ODqjx6Tad9NCVnPRwewWlKkVab5PlK8DCtPTyX7S8g==}
@@ -3323,8 +3334,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.6.1:
-    resolution: {integrity: sha512-cVFs67ydYScRyuxaPTXEyrIz8JcpwyE9vYWWtkbNNsW9OOjYAqd5wg3hcurctrtg3Tn7gsu+9E3P5LQBH2F7lg==}
+  /@n8n_io/license-sdk/1.7.0:
+    resolution: {integrity: sha512-5Hs+G8xKQXyvODL08NUN4IV0qnJdAWgZo1jRqf8yBhXpFCKFerh5HKZdLdpzpatk5rrRps6pFmcnVwOCcFBrPA==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3
@@ -5393,10 +5404,9 @@ packages:
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
     engines: {node: '>= 10'}
 
-  /@types/amqplib/0.8.2:
-    resolution: {integrity: sha512-p+TFLzo52f8UanB+Nq6gyUi65yecAcRY3nYowU6MPGFtaJvEDxcnFWrxssSTkF+ts1W3zyQDvgVICLQem5WxRA==}
+  /@types/amqplib/0.10.1:
+    resolution: {integrity: sha512-j6ANKT79ncUDnAs/+9r9eDujxbeJoTjoVu33gHHcaPfmLQaMhvfbH2GqSe8KUM444epAp1Vl3peVOQfZk3UIqA==}
     dependencies:
-      '@types/bluebird': 3.5.37
       '@types/node': 16.11.65
     dev: true
 
@@ -7021,15 +7031,13 @@ packages:
       json-schema-traverse: 0.4.1
       uri-js: 4.4.1
 
-  /amqplib/0.8.0:
-    resolution: {integrity: sha512-icU+a4kkq4Y1PS4NNi+YPDMwdlbFcZ1EZTQT2nigW3fvOb6AOgUQ9+Mk4ue0Zu5cBg/XpDzB40oH10ysrk2dmA==}
+  /amqplib/0.10.3:
+    resolution: {integrity: sha512-UHmuSa7n8vVW/a5HGh2nFPqAEr8+cD4dEZ6u9GjP91nHfr1a54RyAKyra7Sb5NH7NBKOUlyQSMXIp0qAixKexw==}
     engines: {node: '>=10'}
     dependencies:
-      bitsyntax: 0.1.0
-      bluebird: 3.7.2
+      '@acuminous/bitsyntax': 0.1.2
       buffer-more-ints: 1.0.0
       readable-stream: 1.1.14
-      safe-buffer: 5.2.1
       url-parse: 1.5.10
     transitivePeerDependencies:
       - supports-color
@@ -7908,17 +7916,6 @@ packages:
     resolution: {integrity: sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==}
     dev: false
 
-  /bitsyntax/0.1.0:
-    resolution: {integrity: sha512-ikAdCnrloKmFOugAfxWws89/fPc+nw0OOG1IzIE72uSOg/A3cYptKCjSUhDTuj7fhsJtzkzlv7l3b8PzRHLN0Q==}
-    engines: {node: '>=0.8'}
-    dependencies:
-      buffer-more-ints: 1.0.0
-      debug: 2.6.9
-      safe-buffer: 5.1.2
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /bl/4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
     dependencies:
@@ -7944,6 +7941,7 @@ packages:
 
   /bluebird/3.7.2:
     resolution: {integrity: sha512-XpNj6GDQzdfW+r2Wnn7xiSAd7TM3jzkxGXBGTtWKuSXv1xUV+azxAm8jdWZN06QTQk+2N2XB9jRDkvbmQmcRtg==}
+    dev: true
 
   /bn.js/4.12.0:
     resolution: {integrity: sha512-c98Bf3tPniI+scsdk237ku1Dc3ujXQTSgyiPUDEOe7tRkhrqridvh8klBv0HCEso1OLOYcHuCv/cS6DNxKH+ZA==}

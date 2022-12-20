@@ -504,6 +504,9 @@ export interface IN8nUISettings {
 		sharing: boolean;
 	};
 	hideUsagePage: boolean;
+	license: {
+		environment: 'production' | 'staging';
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {
@@ -753,4 +756,26 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	success: boolean;
 	error_node_type?: string;
 	is_manual: boolean;
+}
+
+// ----------------------------------
+//               license
+// ----------------------------------
+
+export interface ILicenseReadResponse {
+	usage: {
+		executions: {
+			limit: number;
+			value: number;
+			warningThreshold: number;
+		};
+	};
+	license: {
+		planId: string;
+		planName: string;
+	};
+}
+
+export interface ILicensePostResponse extends ILicenseReadResponse {
+	managementToken: string;
 }
