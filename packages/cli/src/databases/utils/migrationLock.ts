@@ -132,10 +132,10 @@ async function withMigrationLock(
 			}
 
 			if (!unlocked) {
-				LoggerProxy.warn(`Migration was not locked`);
+				LoggerProxy.warn(`Migration was not locked.`);
 			}
 
-			LoggerProxy.debug(`Migration lock unlocked`);
+			LoggerProxy.debug(`Migration lock released.`);
 		}
 	}
 }
