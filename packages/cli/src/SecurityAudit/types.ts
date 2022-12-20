@@ -9,7 +9,7 @@ export type InactiveCredsReport = {
 	}>;
 };
 
-export type FlaggedWorkflow = {
+export type FlaggedLocation = {
 	workflowId: string;
 	workflowName: string;
 	nodeId: string;

@@ -4,7 +4,12 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { BaseCommand } from '@/commands/BaseCommand';
 import * as Db from '@/Db';
-import { reportSqlInjection, reportInactiveCreds, reportOpenWebhooks } from '@/SecurityAudit';
+// import {
+// 	reportSqlInjection,
+// 	reportInactiveCreds,
+// 	reportOpenWebhooks,
+// 	reportSensitiveNodes,
+// } from '@/SecurityAudit';
 
 // @TODO: Documentation
 
@@ -17,11 +22,11 @@ export class SecurityAuditCommand extends BaseCommand {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		const workflows = await Db.collections.Workflow.find();
+		// const workflows = await Db.collections.Workflow.find();
 		// const sqlInjectionRiskReport = await reportSqlInjection(workflows);
 		// const inactiveCredsReport = await reportInactiveCreds(workflows);
-		const openWebhookWorkflows = await reportOpenWebhooks(workflows);
-		console.log(JSON.stringify(openWebhookWorkflows, null, 2));
+		// const openWebhookWorkflows = await reportSensitiveNodes(workflows);
+		// console.log(JSON.stringify(openWebhookWorkflows, null, 2));
 
 		this.logger.info('Successfully generated security audit report');
 		process.exit();
