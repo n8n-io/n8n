@@ -1,10 +1,14 @@
 /* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
 import {
+	deepCopy,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	ICredentialType,
 	INodeCredentialTestResult,
+	INodeProperties,
 	LoggerProxy,
+	NodeHelpers,
 } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In } from 'typeorm';
 
@@ -12,7 +16,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
@@ -20,6 +24,7 @@ import { externalHooks } from '../Server';
 
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
+import { CredentialTypes } from '@/CredentialTypes';
 
 export class CredentialsService {
 	static async get(
@@ -33,7 +38,7 @@ export class CredentialsService {
 
 	static async getAll(
 		user: User,
-		options?: { relations?: string[]; roles?: string[] },
+		options?: { relations?: string[]; roles?: string[]; disableGlobalRole?: boolean },
 	): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
@@ -46,7 +51,7 @@ export class CredentialsService {
 
 		// if instance owner, return all credentials
 
-		if (user.globalRole.name === 'owner') {
+		if (user.globalRole.name === 'owner' && options?.disableGlobalRole !== true) {
 			return Db.collections.Credentials.find({
 				select: SELECT_FIELDS,
 				relations: options?.relations,
@@ -157,10 +162,15 @@ export class CredentialsService {
 		data: CredentialRequest.CredentialProperties,
 		decryptedData: ICredentialDataDecryptedObject,
 	): Promise<CredentialsEntity> {
+		const mergedData = deepCopy(data);
+		if (mergedData.data) {
+			mergedData.data = this.unredact(mergedData.data, decryptedData);
+		}
+
 		// This saves us a merge but requires some type casting. These
 		// types are compatiable for this case.
 		const updateData = Db.collections.Credentials.create(
-			data as ICredentialsDb,
+			mergedData as ICredentialsDb,
 		) as CredentialsEntity;
 
 		await validateEntity(updateData);
@@ -215,7 +225,9 @@ export class CredentialsService {
 		credential: CredentialsEntity,
 	): Promise<ICredentialDataDecryptedObject> {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
-		return coreCredential.getData(encryptionKey);
+		const data = coreCredential.getData(encryptionKey);
+
+		return data;
 	}
 
 	static async update(
@@ -282,10 +294,95 @@ export class CredentialsService {
 		user: User,
 		encryptionKey: string,
 		credentials: ICredentialsDecrypted,
-		nodeToTestWith: string | undefined,
 	): Promise<INodeCredentialTestResult> {
 		const helper = new CredentialsHelper(encryptionKey);
 
-		return helper.testCredentials(user, credentials.type, credentials, nodeToTestWith);
+		return helper.testCredentials(user, credentials.type, credentials);
+	}
+
+	// Take data and replace all sensitive values with a sentinel value.
+	// This will replace password fields and oauth data.
+	static redact(
+		data: ICredentialDataDecryptedObject,
+		credential: CredentialsEntity,
+	): ICredentialDataDecryptedObject {
+		const copiedData = deepCopy(data);
+
+		const credTypes = CredentialTypes();
+		let credType: ICredentialType;
+		try {
+			credType = credTypes.getByName(credential.type);
+		} catch {
+			// This _should_ only happen when testing. If it does happen in
+			// production it means it's either a mangled credential or a
+			// credential for a removed community node. Either way, there's
+			// no way to know what to redact.
+			return data;
+		}
+
+		const getExtendedProps = (type: ICredentialType) => {
+			const props: INodeProperties[] = [];
+			for (const e of type.extends ?? []) {
+				const extendsType = credTypes.getByName(e);
+				const extendedProps = getExtendedProps(extendsType);
+				NodeHelpers.mergeNodeProperties(props, extendedProps);
+			}
+			NodeHelpers.mergeNodeProperties(props, type.properties);
+			return props;
+		};
+		const properties = getExtendedProps(credType);
+
+		for (const dataKey of Object.keys(copiedData)) {
+			// The frontend only cares that this value isn't falsy.
+			if (dataKey === 'oauthTokenData') {
+				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				continue;
+			}
+			const prop = properties.find((v) => v.name === dataKey);
+			if (!prop) {
+				continue;
+			}
+			if (prop.typeOptions?.password) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+			}
+		}
+
+		return copiedData;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	private static unredactRestoreValues(unmerged: any, replacement: any) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		for (const [key, value] of Object.entries(unmerged)) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (value === CREDENTIAL_BLANKING_VALUE) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+				unmerged[key] = replacement[key];
+			} else if (
+				typeof value === 'object' &&
+				value !== null &&
+				key in replacement &&
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				typeof replacement[key] === 'object' &&
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				replacement[key] !== null
+			) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
+				this.unredactRestoreValues(value, replacement[key]);
+			}
+		}
+	}
+
+	// Take unredacted data (probably from the DB) and merge it with
+	// redacted data to create an unredacted version.
+	static unredact(
+		redactedData: ICredentialDataDecryptedObject,
+		savedData: ICredentialDataDecryptedObject,
+	): ICredentialDataDecryptedObject {
+		// Replace any blank sentinel values with their saved version
+		const mergedData = deepCopy(redactedData);
+		this.unredactRestoreValues(mergedData, savedData);
+		return mergedData;
 	}
 }

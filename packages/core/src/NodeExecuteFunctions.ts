@@ -36,10 +36,10 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
-	INodeType,
 	IOAuth2Options,
 	IPollFunctions,
 	IRunExecutionData,
+	ISourceData,
 	ITaskDataConnections,
 	ITriggerFunctions,
 	IWebhookData,
@@ -64,6 +64,7 @@ import {
 	NodeExecutionWithMetadata,
 	IPairedItemData,
 	deepCopy,
+	fileTypeFromMimeType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -77,8 +78,8 @@ import FormData from 'form-data';
 import path from 'path';
 import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
 import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
-import { fromBuffer } from 'file-type';
-import { lookup } from 'mime-types';
+import FileType from 'file-type';
+import { lookup, extension } from 'mime-types';
 import { IncomingHttpHeaders } from 'http';
 import axios, {
 	AxiosError,
@@ -521,9 +522,9 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
-		const opaque: string = authDetails
-			.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1)[1]
-			.replace(/"/g, '');
+		// If authDeatials does not have opaque, we should not add it to authorization.
+		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
+		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
 		const nonce: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('nonce') > -1)[1]
 			.replace(/"/g, '');
@@ -541,10 +542,14 @@ function digestAuthAxiosConfig(
 			.createHash('md5')
 			.update(`${ha1}:${nonce}:${nonceCount}:${cnonce}:auth:${ha2}`)
 			.digest('hex');
-		const authorization =
+		let authorization =
 			`Digest username="${auth?.username as string}",realm="${realm}",` +
 			`nonce="${nonce}",uri="${path}",qop="auth",algorithm="MD5",` +
-			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}",opaque="${opaque}"`;
+			`response="${response}",nc="${nonceCount}",cnonce="${cnonce}"`;
+		// Only when opaque exists, add it to authorization.
+		if (opaque) {
+			authorization += `,opaque="${opaque}"`;
+		}
 		if (axiosConfig.headers) {
 			axiosConfig.headers.authorization = authorization;
 		} else {
@@ -555,6 +560,9 @@ function digestAuthAxiosConfig(
 }
 
 async function proxyRequestToAxios(
+	workflow: Workflow,
+	additionalData: IWorkflowExecuteAdditionalData,
+	node: INode,
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
 ): Promise<any> {
@@ -624,7 +632,7 @@ async function proxyRequestToAxios(
 
 	return new Promise((resolve, reject) => {
 		axiosPromise
-			.then((response) => {
+			.then(async (response) => {
 				if (configObject.resolveWithFullResponse === true) {
 					let body = response.data;
 					if (response.data === '') {
@@ -634,6 +642,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
 					resolve({
 						body,
 						headers: response.headers,
@@ -650,6 +659,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
 					resolve(body);
 				}
 			})
@@ -846,10 +856,60 @@ export async function setBinaryDataBuffer(
 	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
 }
 
+export async function copyBinaryFile(
+	executionId: string,
+	filePath: string,
+	fileName: string,
+	mimeType?: string,
+): Promise<IBinaryData> {
+	let fileExtension: string | undefined;
+	if (!mimeType) {
+		// If no mime type is given figure it out
+
+		if (filePath) {
+			// Use file path to guess mime type
+			const mimeTypeLookup = lookup(filePath);
+			if (mimeTypeLookup) {
+				mimeType = mimeTypeLookup;
+			}
+		}
+
+		if (!mimeType) {
+			// read the first bytes of the file to guess mime type
+			const fileTypeData = await FileType.fromFile(filePath);
+			if (fileTypeData) {
+				mimeType = fileTypeData.mime;
+				fileExtension = fileTypeData.ext;
+			}
+		}
+
+		if (!mimeType) {
+			// Fall back to text
+			mimeType = 'text/plain';
+		}
+	} else if (!fileExtension) {
+		fileExtension = extension(mimeType) || undefined;
+	}
+
+	const returnData: IBinaryData = {
+		mimeType,
+		fileType: fileTypeFromMimeType(mimeType),
+		fileExtension,
+		data: '',
+	};
+
+	if (fileName) {
+		returnData.fileName = fileName;
+	} else if (filePath) {
+		returnData.fileName = path.parse(filePath).base;
+	}
+
+	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+}
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
- *
  */
 export async function prepareBinaryData(
 	binaryData: Buffer,
@@ -871,7 +931,7 @@ export async function prepareBinaryData(
 
 		if (!mimeType) {
 			// Use buffer to guess mime type
-			const fileTypeData = await fromBuffer(binaryData);
+			const fileTypeData = await FileType.fromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
 				fileExtension = fileTypeData.ext;
@@ -882,10 +942,13 @@ export async function prepareBinaryData(
 			// Fall back to text
 			mimeType = 'text/plain';
 		}
+	} else if (!fileExtension) {
+		fileExtension = extension(mimeType) || undefined;
 	}
 
 	const returnData: IBinaryData = {
 		mimeType,
+		fileType: fileTypeFromMimeType(mimeType),
 		fileExtension,
 		data: '',
 	};
@@ -1457,7 +1520,7 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-		return await proxyRequestToAxios(requestOptions as IDataObject);
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions as IDataObject);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1483,7 +1546,12 @@ export async function requestWithAuthentication(
 						additionalData.timezone,
 					);
 					// retry the request
-					return await proxyRequestToAxios(requestOptions as IDataObject);
+					return await proxyRequestToAxios(
+						workflow,
+						additionalData,
+						node,
+						requestOptions as IDataObject,
+					);
 				}
 			}
 			throw error;
@@ -1825,7 +1893,7 @@ export function getWebhookDescription(
 	workflow: Workflow,
 	node: INode,
 ): IWebhookDescription | undefined {
-	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
+	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 	if (nodeType.description.webhooks === undefined) {
 		// Node does not have any webhooks so return
@@ -1944,7 +2012,9 @@ export function getExecutePollFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2109,7 +2179,9 @@ export function getExecuteTriggerFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2246,6 +2318,13 @@ export function getExecuteFunctions(
 
 				return inputData[inputName][inputIndex] as INodeExecutionData[];
 			},
+			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
+				if (executeData?.source === null) {
+					// Should never happen as n8n sets it automatically
+					throw new Error('Source data is missing!');
+				}
+				return executeData.source[inputName][inputIndex];
+			},
 			getNodeParameter: (
 				parameterName: string,
 				itemIndex: number,
@@ -2377,7 +2456,9 @@ export function getExecuteFunctions(
 				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2504,6 +2585,13 @@ export function getExecuteSingleFunctions(
 
 				return allItems[itemIndex];
 			},
+			getInputSourceData: (inputIndex = 0, inputName = 'main') => {
+				if (executeData?.source === null) {
+					// Should never happen as n8n sets it automatically
+					throw new Error('Source data is missing!');
+				}
+				return executeData.source[inputName][inputIndex] as ISourceData;
+			},
 			getItemIndex() {
 				return itemIndex;
 			},
@@ -2602,7 +2690,9 @@ export function getExecuteSingleFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2756,7 +2846,9 @@ export function getLoadOptionsFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2902,7 +2994,9 @@ export function getExecuteHookFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -3076,6 +3170,19 @@ export function getExecuteWebhookFunctions(
 				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
 					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
 				},
+				async copyBinaryFile(
+					filePath: string,
+					fileName: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return copyBinaryFile.call(
+						this,
+						additionalData.executionId!,
+						filePath,
+						fileName,
+						mimeType,
+					);
+				},
 				async prepareBinaryData(
 					binaryData: Buffer,
 					filePath?: string,
@@ -3089,7 +3196,9 @@ export function getExecuteWebhookFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,

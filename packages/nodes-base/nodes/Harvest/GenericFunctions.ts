@@ -12,12 +12,11 @@ import { IDataObject, NodeApiError } from 'n8n-workflow';
 export async function harvestApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	path: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -43,7 +42,7 @@ export async function harvestApiRequest(
 			const credentials = await this.getCredentials('harvestApi');
 
 			//@ts-ignore
-			options.headers['Authorization'] = `Bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `Bearer ${credentials.accessToken}`;
 
 			return await this.helpers.request!(options);
 		} else {
@@ -61,12 +60,11 @@ export async function harvestApiRequest(
 export async function harvestApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
-	qs: IDataObject = {},
+	qs: IDataObject,
 	uri: string,
 	resource: string,
 	body: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

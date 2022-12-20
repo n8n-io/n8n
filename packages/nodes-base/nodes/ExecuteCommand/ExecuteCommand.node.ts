@@ -19,7 +19,7 @@ export interface IExecReturnData {
  * Promisifiy exec manually to also get the exit code
  *
  */
-function execPromise(command: string): Promise<IExecReturnData> {
+async function execPromise(command: string): Promise<IExecReturnData> {
 	const returnData: IExecReturnData = {
 		error: undefined,
 		exitCode: 0,
@@ -85,7 +85,7 @@ export class ExecuteCommand implements INodeType {
 		let command: string;
 		const executeOnce = this.getNodeParameter('executeOnce', 0) as boolean;
 
-		if (executeOnce === true) {
+		if (executeOnce) {
 			items = [items[0]];
 		}
 

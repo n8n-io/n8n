@@ -78,20 +78,34 @@ oauth2CredentialController.get(
 			throw new ResponseHelper.InternalServerError((error as Error).message);
 		}
 
+		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
+
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 			true,
 		);
 
+		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
+		// Delete scope before applying defaults to make sure new scopes are present on reconnect
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
+		if (
+			decryptedDataOriginal?.scope &&
+			credentialType.includes('OAuth2') &&
+			!genericOAuth2.includes(credentialType)
+		) {
+			delete decryptedDataOriginal.scope;
+		}
+
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 		);
@@ -122,7 +136,7 @@ oauth2CredentialController.get(
 		// Encrypt the data
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			(credential as unknown as ICredentialsEncrypted).nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;

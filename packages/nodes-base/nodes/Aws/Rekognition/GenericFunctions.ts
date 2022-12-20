@@ -23,7 +23,6 @@ export async function awsApiRequest(
 	headers?: object,
 	option: IDataObject = {},
 	_region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
 
@@ -55,7 +54,6 @@ export async function awsApiRequestREST(
 	headers?: object,
 	options: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -85,7 +83,6 @@ export async function awsApiRequestSOAP(
 	headers?: object,
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const response = await awsApiRequest.call(
 		this,
@@ -123,7 +120,6 @@ export async function awsApiRequestSOAPAllItems(
 	headers: IDataObject = {},
 	option: IDataObject = {},
 	region?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -170,7 +166,7 @@ export async function awsApiRequestSOAPAllItems(
 export function keysTPascalCase(object: IDataObject) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(object)) {
-		data[pascalCase(key as string)] = object[key];
+		data[pascalCase(key)] = object[key];
 	}
 	return data;
 }

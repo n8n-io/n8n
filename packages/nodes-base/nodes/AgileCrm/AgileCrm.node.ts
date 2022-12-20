@@ -41,7 +41,7 @@ export class AgileCrm implements INodeType {
 		version: 1,
 		description: 'Consume Agile CRM API',
 		defaults: {
-			name: 'AgileCRM',
+			name: 'Agile CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -93,8 +93,8 @@ export class AgileCrm implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			if (resource === 'contact' || resource === 'company') {
@@ -150,7 +150,7 @@ export class AgileCrm implements INodeType {
 					} else if (filterType === 'json') {
 						const filterJsonRules = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJsonRules) !== undefined) {
-							Object.assign(filterJson, jsonParse(filterJsonRules) as IFilter);
+							Object.assign(filterJson, jsonParse(filterJsonRules));
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', {
 								itemIndex: i,

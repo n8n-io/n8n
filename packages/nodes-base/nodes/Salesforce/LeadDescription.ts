@@ -217,9 +217,6 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the lead',
 			},
@@ -481,9 +478,6 @@ export const leadFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Description of the lead',
 			},
@@ -914,9 +908,6 @@ export const leadFields: INodeProperties[] = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{

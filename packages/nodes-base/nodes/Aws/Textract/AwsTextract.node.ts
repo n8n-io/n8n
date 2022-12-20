@@ -115,7 +115,7 @@ export class AwsTextract implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				//https://docs.aws.amazon.com/textract/latest/dg/API_AnalyzeExpense.html

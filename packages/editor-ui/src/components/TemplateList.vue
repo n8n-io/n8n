@@ -93,10 +93,10 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openTemplate', {event, id});
+			this.$emit('openTemplate', { event, id });
 		},
 		onUseWorkflow(event: MouseEvent, id: string) {
-			this.$emit('useWorkflow', {event, id});
+			this.$emit('useWorkflow', { event, id });
 		},
 	},
 });
@@ -118,5 +118,4 @@ export default mixins(genericHelpers).extend({
 		}
 	}
 }
-
 </style>

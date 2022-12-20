@@ -10,6 +10,8 @@ module.exports = {
 		extraFileExtensions: ['.vue'],
 	},
 
+	ignorePatterns: ['*.d.cts'],
+
 	rules: {
 		// TODO: Remove these
 		'id-denylist': 'off',
@@ -17,7 +19,7 @@ module.exports = {
 		'import/no-default-export': 'off',
 		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'indent': 'off',
+		indent: 'off',
 		'prettier/prettier': 'off',
 		'@typescript-eslint/ban-types': 'off',
 		'@typescript-eslint/dot-notation': 'off',
@@ -26,7 +28,6 @@ module.exports = {
 		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
-		'@typescript-eslint/no-explicit-any': 'off',
 		'@typescript-eslint/no-floating-promises': 'off',
 		'@typescript-eslint/no-for-in-array': 'off',
 		'@typescript-eslint/no-loop-func': 'off',

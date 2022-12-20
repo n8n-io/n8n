@@ -34,9 +34,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi TLS Protect Cloud​ API',
+		description: 'Consume Venafi TLS Protect Cloud API',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​',
+			name: 'Venafi TLS Protect Cloud',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -137,8 +137,8 @@ export class VenafiTlsProtectCloud implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'certificateRequest') {
@@ -170,9 +170,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 							const subjectAltNamesByType: ISubjectAltNamesByType = {};
 
 							body.isVaaSGenerated = true;
-							body.applicationServerTypeId = applicationServerTypeId as string;
+							body.applicationServerTypeId = applicationServerTypeId;
 
-							csrAttributes.commonName = commonName as string;
+							csrAttributes.commonName = commonName;
 
 							// Csr Generation
 							if (additionalFields.organization) {
@@ -311,7 +311,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/
 					if (operation === 'download') {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
-						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 						const downloadItem = this.getNodeParameter('downloadItem', i) as string;
 						const options = this.getNodeParameter('options', i);
 

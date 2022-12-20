@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -35,7 +34,7 @@ export class CiscoWebex implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Cisco Webex API',
 		defaults: {
-			name: 'Webex',
+			name: 'Webex by Cisco',
 		},
 		credentials: [
 			{
@@ -112,8 +111,8 @@ export class CiscoWebex implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -139,23 +138,23 @@ export class CiscoWebex implements INodeType {
 						const markdown = this.getNodeParameter('additionalFields.markdown', i, '') as boolean;
 						const body = {} as IDataObject;
 						if (destination === 'room') {
-							body['roomId'] = this.getNodeParameter('roomId', i);
+							body.roomId = this.getNodeParameter('roomId', i);
 						}
 
 						if (destination === 'person') {
 							const specifyPersonBy = this.getNodeParameter('specifyPersonBy', 0) as string;
 							if (specifyPersonBy === 'id') {
-								body['toPersonId'] = this.getNodeParameter('toPersonId', i);
+								body.toPersonId = this.getNodeParameter('toPersonId', i);
 							} else {
-								body['toPersonEmail'] = this.getNodeParameter('toPersonEmail', i);
+								body.toPersonEmail = this.getNodeParameter('toPersonEmail', i);
 							}
 						}
 
 						if (markdown) {
-							body['markdown'] = markdown;
+							body.markdown = markdown;
 						}
 
-						body['text'] = this.getNodeParameter('text', i);
+						body.text = this.getNodeParameter('text', i);
 
 						body.attachments = getAttachemnts(
 							this.getNodeParameter(
@@ -177,7 +176,7 @@ export class CiscoWebex implements INodeType {
 
 								const binaryPropertyName = file.binaryPropertyName as string;
 
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
 									i,
 									binaryPropertyName,
@@ -260,7 +259,7 @@ export class CiscoWebex implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await webexApiRequestAllItems.call(
 								this,
 								'items',
@@ -295,10 +294,10 @@ export class CiscoWebex implements INodeType {
 							roomId: responseData.roomId,
 						} as IDataObject;
 
-						if (markdown === true) {
-							body['markdown'] = this.getNodeParameter('markdownText', i);
+						if (markdown) {
+							body.markdown = this.getNodeParameter('markdownText', i);
 						} else {
-							body['text'] = this.getNodeParameter('text', i);
+							body.text = this.getNodeParameter('text', i);
 						}
 
 						responseData = await webexApiRequest.call(this, 'PUT', endpoint, body);
@@ -329,7 +328,7 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+							body.registration = (body.requireRegistrationInfo as string[]).reduce(
 								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
 								{},
 							);
@@ -337,7 +336,7 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (invitees) {
-							body['invitees'] = invitees;
+							body.invitees = invitees;
 							delete body.inviteesUi;
 						}
 
@@ -419,7 +418,7 @@ export class CiscoWebex implements INodeType {
 								.format();
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await webexApiRequestAllItems.call(
 								this,
 								'items',
@@ -459,7 +458,7 @@ export class CiscoWebex implements INodeType {
 						};
 
 						if (body.requireRegistrationInfo) {
-							body['registration'] = (body.requireRegistrationInfo as string[]).reduce(
+							body.registration = (body.requireRegistrationInfo as string[]).reduce(
 								(obj, value) => Object.assign(obj, { [`${value}`]: true }),
 								{},
 							);
@@ -467,7 +466,7 @@ export class CiscoWebex implements INodeType {
 						}
 
 						if (invitees.length) {
-							body['invitees'] = invitees;
+							body.invitees = invitees;
 						}
 
 						if (body.start) {

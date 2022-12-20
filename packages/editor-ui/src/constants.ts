@@ -7,6 +7,7 @@ export const PLACEHOLDER_FILLED_AT_EXECUTION_TIME = '[filled at execution time]'
 
 // parameter input
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 
 // workflows
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
@@ -65,11 +66,12 @@ export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
 export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
 export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
 export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
-export const COMMUNITY_NODES_NPM_INSTALLATION_URL = 'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
+export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
+	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
 export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
 export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
 export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
-
+export const EXPRESSIONS_DOCS_URL = 'https://docs.n8n.io/code-examples/expressions/';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -79,10 +81,12 @@ export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
+export const GIT_NODE_TYPE = 'n8n-nodes-base.git';
 export const GOOGLE_SHEETS_NODE_TYPE = 'n8n-nodes-base.googleSheets';
 export const ERROR_TRIGGER_NODE_TYPE = 'n8n-nodes-base.errorTrigger';
 export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
+export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
@@ -125,10 +129,7 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 ];
 
-export const MULTIPLE_OUTPUT_NODE_TYPES = [
-	IF_NODE_TYPE,
-	SWITCH_NODE_TYPE,
-];
+export const MULTIPLE_OUTPUT_NODE_TYPES = [IF_NODE_TYPE, SWITCH_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [
 	...MULTIPLE_OUTPUT_NODE_TYPES,
@@ -139,12 +140,14 @@ export const PIN_DATA_NODE_TYPES_DENYLIST = [
 export const CORE_NODES_CATEGORY = 'Core Nodes';
 export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
+export const RECOMMENDED_CATEGORY = 'Recommended';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
 } = {
-	'Core Nodes': { // this - all subkeys are set from codex
+	'Core Nodes': {
+		// this - all subkeys are set from codex
 		Flow: 'Branches, core triggers, merge data',
-		Files:  'Work with CSV, XML, text, images etc.',
+		Files: 'Work with CSV, XML, text, images etc.',
 		'Data Transformation': 'Manipulate data fields, run code',
 		Helpers: 'HTTP Requests (API calls), date and time, scrape HTML',
 	},
@@ -191,7 +194,7 @@ export const MARKETING_INDUSTRY = 'marketing-industry';
 export const MEDIA_INDUSTRY = 'media-industry';
 export const MANUFACTURING_INDUSTRY = 'manufacturing-industry';
 export const MSP_INDUSTRY = 'msp';
-export const HEALTHCARE_INDUSTRY= 'healthcare';
+export const HEALTHCARE_INDUSTRY = 'healthcare';
 export const FINANCE_INSURANCE_INDUSTRY = 'finance-insurance-industry';
 export const IT_INDUSTRY = 'it-industry';
 export const SECURITY_INDUSTRY = 'security-industry';
@@ -244,7 +247,8 @@ export const MODAL_CANCEL = 'cancel';
 export const MODAL_CLOSE = 'close';
 export const MODAL_CONFIRMED = 'confirmed';
 
-export const VALID_EMAIL_REGEX = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+export const VALID_EMAIL_REGEX =
+	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 export const LOCAL_STORAGE_ACTIVATION_FLAG = 'N8N_HIDE_ACTIVATION_ALERT';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY_NDV';
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
@@ -280,37 +284,34 @@ export const NODE_TYPE_COUNT_MAPPER = {
 	[TRIGGER_NODE_FILTER]: ['triggerCount'],
 	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
 };
-export const TEMPLATES_NODES_FILTER = [
-	'n8n-nodes-base.start',
-	'n8n-nodes-base.respondToWebhook',
-];
+export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.respondToWebhook'];
 
 export enum VIEWS {
-	HOMEPAGE = "Homepage",
-	COLLECTION = "TemplatesCollectionView",
-	EXECUTION = "ExecutionById",
-	EXECUTIONS = "ExecutionList",
-	EXECUTION_PREVIEW = "ExecutionPreview",
-	EXECUTION_HOME = "ExecutionsLandingPage",
-	TEMPLATE = "TemplatesWorkflowView",
-	TEMPLATES = "TemplatesSearchView",
-	CREDENTIALS = "CredentialsView",
-	NEW_WORKFLOW = "NodeViewNew",
-	WORKFLOW = "NodeViewExisting",
-	DEMO = "WorkflowDemo",
-	TEMPLATE_IMPORT = "WorkflowTemplate",
-	SIGNIN = "SigninView",
-	SIGNUP = "SignupView",
-	SETUP = "SetupView",
-	FORGOT_PASSWORD = "ForgotMyPasswordView",
-	CHANGE_PASSWORD = "ChangePasswordView",
-	USERS_SETTINGS = "UsersSettings",
-	PERSONAL_SETTINGS = "PersonalSettings",
-	API_SETTINGS = "APISettings",
-	NOT_FOUND = "NotFoundView",
-	FAKE_DOOR = "ComingSoon",
-	COMMUNITY_NODES = "CommunityNodes",
-	WORKFLOWS = "WorkflowsView",
+	HOMEPAGE = 'Homepage',
+	COLLECTION = 'TemplatesCollectionView',
+	EXECUTION = 'ExecutionById',
+	EXECUTIONS = 'ExecutionList',
+	EXECUTION_PREVIEW = 'ExecutionPreview',
+	EXECUTION_HOME = 'ExecutionsLandingPage',
+	TEMPLATE = 'TemplatesWorkflowView',
+	TEMPLATES = 'TemplatesSearchView',
+	CREDENTIALS = 'CredentialsView',
+	NEW_WORKFLOW = 'NodeViewNew',
+	WORKFLOW = 'NodeViewExisting',
+	DEMO = 'WorkflowDemo',
+	TEMPLATE_IMPORT = 'WorkflowTemplate',
+	SIGNIN = 'SigninView',
+	SIGNUP = 'SignupView',
+	SETUP = 'SetupView',
+	FORGOT_PASSWORD = 'ForgotMyPasswordView',
+	CHANGE_PASSWORD = 'ChangePasswordView',
+	USERS_SETTINGS = 'UsersSettings',
+	PERSONAL_SETTINGS = 'PersonalSettings',
+	API_SETTINGS = 'APISettings',
+	NOT_FOUND = 'NotFoundView',
+	FAKE_DOOR = 'ComingSoon',
+	COMMUNITY_NODES = 'CommunityNodes',
+	WORKFLOWS = 'WorkflowsView',
 }
 
 export enum FAKE_DOOR_FEATURES {
@@ -325,11 +326,11 @@ export const FIRST_ONBOARDING_PROMPT_TIMEOUT = 300000;
 
 export const TEST_PIN_DATA = [
 	{
-		name: "First item",
+		name: 'First item',
 		code: 1,
 	},
 	{
-		name: "Second item",
+		name: 'Second item',
 		code: 2,
 	},
 ];
@@ -405,13 +406,13 @@ export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 ];
 
 export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
-	'ftp': 'FTP',
-	'ftps': 'FTP',
-	'ldap': 'LDAP',
-	'ldaps': 'LDAP',
-	'mqtt': 'MQTT',
-	'imap': 'IMAP',
-	'imaps': 'IMAP',
+	ftp: 'FTP',
+	ftps: 'FTP',
+	ldap: 'LDAP',
+	ldaps: 'LDAP',
+	mqtt: 'MQTT',
+	imap: 'IMAP',
+	imaps: 'IMAP',
 };
 
 export enum STORES {
@@ -430,4 +431,5 @@ export enum STORES {
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
+	HISTORY = 'history',
 }

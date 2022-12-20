@@ -143,9 +143,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Template Content',
 				name: 'templateContent',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['customVerificationEmail'],
@@ -307,9 +304,6 @@ export class AwsSes implements INodeType {
 						displayName: 'Template Content',
 						name: 'templateContent',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						description:
 							'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 						default: '',
@@ -407,9 +401,6 @@ export class AwsSes implements INodeType {
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						resource: ['email'],
@@ -828,8 +819,8 @@ export class AwsSes implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -911,7 +902,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member',
@@ -1153,8 +1144,7 @@ export class AwsSes implements INodeType {
 						}
 
 						if (templateDataUi) {
-							const templateDataValues = (templateDataUi as IDataObject)
-								.templateDataValues as IDataObject[];
+							const templateDataValues = templateDataUi.templateDataValues as IDataObject[];
 							const templateData: IDataObject = {};
 							if (templateDataValues !== undefined) {
 								for (const templateDataValue of templateDataValues) {
@@ -1239,7 +1229,7 @@ export class AwsSes implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',

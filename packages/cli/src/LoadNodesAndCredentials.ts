@@ -15,13 +15,13 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
+import { createWriteStream } from 'fs';
 import {
 	access as fsAccess,
 	copyFile,
 	mkdir,
 	readdir as fsReaddir,
 	stat as fsStat,
-	writeFile,
 } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
@@ -76,10 +76,17 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
 
-		const writeStaticJSON = async (name: string, data: any[]) => {
+		const writeStaticJSON = async (name: string, data: object[]) => {
 			const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
-			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
-			await writeFile(filePath, payload, { encoding: 'utf-8' });
+			const stream = createWriteStream(filePath, 'utf-8');
+			stream.write('[\n');
+			data.forEach((entry, index) => {
+				stream.write(JSON.stringify(entry));
+				if (index !== data.length - 1) stream.write(',');
+				stream.write('\n');
+			});
+			stream.write(']\n');
+			stream.end();
 		};
 
 		await writeStaticJSON('nodes', this.types.nodes);
@@ -316,25 +323,21 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		this.types.credentials = this.types.credentials.concat(types.credentials);
 
 		// Copy over all icons and set `iconUrl` for the frontend
-		const iconPromises: Array<Promise<void>> = [];
-		for (const node of types.nodes) {
-			if (node.icon?.startsWith('file:')) {
-				const icon = node.icon.substring(5);
-				const iconUrl = `icons/nodes/${node.name}${path.extname(icon)}`;
-				delete node.icon;
-				node.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
-		for (const credential of types.credentials) {
-			if (credential.icon?.startsWith('file:')) {
-				const icon = credential.icon.substring(5);
-				const iconUrl = `icons/credentials/${credential.name}${path.extname(icon)}`;
-				delete credential.icon;
-				credential.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
+		const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
+			typesArr.map((type) => {
+				if (!type.icon?.startsWith('file:')) return;
+				const icon = type.icon.substring(5);
+				const iconUrl = `icons/${typeName}/${type.name}${path.extname(icon)}`;
+				delete type.icon;
+				type.iconUrl = iconUrl;
+				const source = path.join(dir, icon);
+				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
+				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
+					copyFile(source, destination),
+				);
+			}),
+		);
+
 		await Promise.all(iconPromises);
 
 		// Nodes and credentials that have been loaded immediately
@@ -347,20 +350,24 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 
 		// Nodes and credentials that will be lazy loaded
-		if (loader instanceof LazyPackageDirectoryLoader) {
+		if (loader instanceof PackageDirectoryLoader) {
 			const { packageName, known } = loader;
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
-				this.known.nodes[`${packageName}.${type}`] = {
+				this.known.nodes[type] = {
 					className,
 					sourcePath: path.join(dir, sourcePath),
 				};
 			}
 
 			for (const type in known.credentials) {
-				const { className, sourcePath } = known.credentials[type];
-				this.known.credentials[type] = { className, sourcePath: path.join(dir, sourcePath) };
+				const { className, sourcePath, nodesToTestWith } = known.credentials[type];
+				this.known.credentials[type] = {
+					className,
+					sourcePath: path.join(dir, sourcePath),
+					nodesToTestWith: nodesToTestWith?.map((nodeName) => `${packageName}.${nodeName}`),
+				};
 			}
 		}
 

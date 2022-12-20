@@ -18,7 +18,6 @@ export async function citrixADCApiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const { url } = (await this.getCredentials('citrixAdcApi')) as { url: string };
 
@@ -36,7 +35,7 @@ export async function citrixADCApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'citrixAdcApi', options);
+		return this.helpers.requestWithAuthentication.call(this, 'citrixAdcApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
