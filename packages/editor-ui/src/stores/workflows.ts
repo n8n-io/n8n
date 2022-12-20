@@ -827,7 +827,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				(node) => node.type === updateInformation.key,
 			) as INodeUi;
 			const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-			if(!nodeType) return;
+			if (!nodeType) return;
 
 			const nodeParams = NodeHelpers.getNodeParameters(
 				nodeType.properties,
@@ -943,6 +943,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
+		},
+		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+			executions.forEach(execution => {
+				const exists = this.currentWorkflowExecutions.find(ex => ex.id === execution.id);
+				if (!exists) {
+					this.currentWorkflowExecutions.push(execution);
+				}
+			});
 		},
 	},
 });
