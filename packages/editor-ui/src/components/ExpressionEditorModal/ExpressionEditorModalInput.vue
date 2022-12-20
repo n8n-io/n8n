@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop @keydown.esc="onClose"></div>
 </template>
 
 <script lang="ts">
@@ -82,6 +82,9 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		this.editor?.destroy();
 	},
 	methods: {
+		onClose() {
+			this.$emit('close');
+		},
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor || this.isReadOnly) return;
 
