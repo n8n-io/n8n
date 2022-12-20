@@ -1436,7 +1436,7 @@
 	"contextual.credentials.sharing.unavailable.title": "Upgrade to collaborate",
 	"contextual.credentials.sharing.unavailable.title.cloud.upgrade": "Upgrade to collaborate",
 	"contextual.credentials.sharing.unavailable.description": "You can share credentials with others when you upgrade your plan.",
-	"contextual.credentials.sharing.unavailable.description.cloud.upgrade": "Sharing is available for Team and Enterprise plans. Upgrade your plan to unlock more features.",
+	"contextual.credentials.sharing.unavailable.description.cloud.upgrade": "Sharing is available for Pro and Power plans. Upgrade now to unlock more features.",
 	"contextual.credentials.sharing.unavailable.button": "View plans",
 	"contextual.credentials.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
 
@@ -1444,9 +1444,9 @@
 	"contextual.workflows.sharing.unavailable.title": "Sharing",
 	"contextual.workflows.sharing.unavailable.title.cloud.upgrade": "Upgrade to add users",
 	"contextual.workflows.sharing.unavailable.description.modal": "You can collaborate with others on workflows when you upgrade your plan.",
-	"contextual.workflows.sharing.unavailable.description.modal.cloud.upgrade": "Sharing is available for Team and Enterprise plans. Upgrade now to unlock more features.",
+	"contextual.workflows.sharing.unavailable.description.modal.cloud.upgrade": "Sharing is available for Pro and Power plans. Upgrade now to unlock more features.",
 	"contextual.workflows.sharing.unavailable.description.tooltip": "You can collaborate with others on workflows when you upgrade your plan. {action}",
-	"contextual.workflows.sharing.unavailable.description.tooltip.cloud.upgrade": "Sharing is available for Team and Enterprise plans. {action} to unlock more features.",
+	"contextual.workflows.sharing.unavailable.description.tooltip.cloud.upgrade": "Sharing is available for Pro and Power plans. {action} to unlock more features.",
 	"contextual.workflows.sharing.unavailable.button": "See plans",
 	"contextual.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
 	"contextual.workflows.sharing.unavailable.linkUrl": "https://subscription.n8n.io/"
