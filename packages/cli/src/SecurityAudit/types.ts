@@ -1,4 +1,4 @@
-import type { INodeCredentialsDetails } from 'n8n-workflow';
+import type { INode, INodeCredentialsDetails } from 'n8n-workflow';
 
 export type InactiveCredsReport = {
 	risk: string;
@@ -18,3 +18,15 @@ export type FlaggedLocation = {
 };
 
 export type WorkflowIdsToCredIds = { [workflowId: string]: INodeCredentialsDetails[] };
+
+export type Version = {
+	name: string;
+	nodes: Array<INode & { iconData?: { type: string; fileBuffer: string } }>;
+	createdAt: string;
+	description: string;
+	documentationUrl: string;
+	hasBreakingChange: boolean;
+	hasSecurityFix: boolean;
+	hasSecurityIssue: boolean;
+	securityIssueFixVersion: string;
+};
