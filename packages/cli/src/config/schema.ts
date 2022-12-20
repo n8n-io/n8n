@@ -882,7 +882,7 @@ export const schema = {
 		features: {
 			sharing: {
 				format: Boolean,
-				default: false,
+				default: true,
 			},
 		},
 	},
