@@ -20,7 +20,7 @@ jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() 
 	};
 });
 
-describe.skip('Telemetry', () => {
+describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
@@ -56,7 +56,7 @@ describe.skip('Telemetry', () => {
 	});
 
 	describe('trackN8nStop', () => {
-		test('should call track method', () => {
+		test.skip('should call track method', () => {
 			telemetry.trackN8nStop();
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 		});
@@ -67,7 +67,7 @@ describe.skip('Telemetry', () => {
 			jest.setSystemTime(testDateTime);
 		});
 
-		test('should count executions correctly', async () => {
+		test.skip('should count executions correctly', async () => {
 			const payload = {
 				workflow_id: '1',
 				is_manual: true,
@@ -117,7 +117,7 @@ describe.skip('Telemetry', () => {
 			expect(execBuffer['1'].prod_error?.first).toEqual(execTime4);
 		});
 
-		test('should fire "Workflow execution errored" event for failed executions', async () => {
+		test.skip('should fire "Workflow execution errored" event for failed executions', async () => {
 			const payload = {
 				workflow_id: '1',
 				is_manual: true,
@@ -152,7 +152,7 @@ describe.skip('Telemetry', () => {
 			expect(execBuffer['1'].manual_error?.first).toEqual(execTime1);
 		});
 
-		test('should track production executions count correctly', async () => {
+		test.skip('should track production executions count correctly', async () => {
 			const payload = {
 				workflow_id: '1',
 				is_manual: false,
