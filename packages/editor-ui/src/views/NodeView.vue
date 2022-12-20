@@ -65,6 +65,7 @@
 							@nodeSelected="nodeSelectedByName"
 							@removeNode="(name) => removeNode(name, true)"
 							:key="`${nodeData.id}_sticky`"
+							:ref="`node-${nodeData.id}`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
 							:instance="newInstance"
@@ -165,10 +166,7 @@ ConnectionDetachedParams,
 ConnectionMovedParams,
 } from '@jsplumb/core';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import once from 'lodash/once';
-import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
-import { EndpointFactory, Connectors } from '@jsplumb/core';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -207,10 +205,8 @@ import Node from '@/components/Node.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
-import { BezierConnector } from '@jsplumb/connector-bezier';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import * as jsPlumbBrowserUI from '@jsplumb/browser-ui';
 import {
 	deepCopy,
 	IConnection,
@@ -277,12 +273,20 @@ import {
 	RemoveConnectionCommand,
 	RemoveNodeCommand,
 	RenameNodeCommand,
+	historyBus,
 } from '@/models/history';
-import { EVENT_CONNECTION_DRAG } from '@jsplumb/browser-ui';
-import { EVENT_CONNECTION_ABORT } from '@jsplumb/browser-ui';
-import { EVENT_CONNECTION_MOUSEOUT } from '@jsplumb/browser-ui';
-import { EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
-import { EVENT_ENDPOINT_MOUSEOVER, EVENT_ENDPOINT_MOUSEOUT } from '@jsplumb/browser-ui';
+import {
+	EVENT_ENDPOINT_MOUSEOVER,
+	EVENT_ENDPOINT_MOUSEOUT,
+	EVENT_DRAG_MOVE,
+	EVENT_CONNECTION_DRAG,
+	EVENT_CONNECTION_ABORT,
+	EVENT_CONNECTION_MOUSEOUT,
+	EVENT_CONNECTION_MOUSEOVER,
+	DragStopPayload,
+	BrowserJsPlumbInstance,
+	ready,
+} from '@jsplumb/browser-ui';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -2160,7 +2164,7 @@ export default mixins(
 						setStateDirty: true,
 					});
 					if (!this.suspendRecordingDetachedConnections) {
-						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
+						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
 					if (!this.isReadOnly) {
 						NodeViewUtils.addConnectionActionsOverlay(info.connection,
@@ -2183,7 +2187,7 @@ export default mixins(
 			});
 			let exitTimer: NodeJS.Timeout | undefined;
 			let enterTimer: NodeJS.Timeout | undefined;
-			this.newInstance.bind(jsPlumbBrowserUI.EVENT_DRAG_MOVE, (payload: jsPlumbBrowserUI.DragStopPayload) => {
+			this.newInstance.bind(EVENT_DRAG_MOVE, (payload: DragStopPayload) => {
 				this.newInstance?.connections
 					.flatMap((connection) => Object.values(connection.overlays))
 					.forEach((overlay) => {
@@ -2293,7 +2297,7 @@ export default mixins(
 						const outputIndex = info.connection.parameters.index;
 
 						if (connectionInfo) {
-							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
+							this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 						}
 						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
 						this.pullConnActiveNodeName = null;
@@ -2586,8 +2590,8 @@ export default mixins(
 					return;
 				}
 				const connections = this.newInstance?.getConnections({
-					source: sourceNode.Id,
-					target: targetNode.Id,
+					source: sourceNode.id,
+					target: targetNode.id,
 				});
 
 				connections.forEach((connectionInstance: Connection) => {
@@ -2643,7 +2647,7 @@ export default mixins(
 				if (removeVisualConnection) {
 					this.__deleteJSPlumbConnection(info.connection, trackHistory);
 				} else if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo, this));
+					this.historyStore.pushCommandToUndo(new RemoveConnectionCommand(connectionInfo));
 				}
 				this.workflowsStore.removeConnection({ connection: connectionInfo });
 			}
@@ -2837,7 +2841,7 @@ export default mixins(
 				endpoints.forEach((endpoint: Endpoint) => {
 					// @ts-ignore
 					if (endpoint.type === 'N8nPlus') {
-						// (endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+						(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 					}
 				});
 
@@ -2880,7 +2884,7 @@ export default mixins(
 								if (output && output.total > 0) {
 									endpoint.endpoint.setSuccessOutput(NodeViewUtils.getRunItemsLabel(output));
 								} else {
-									// (endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 								}
 							}
 						},
@@ -2991,7 +2995,7 @@ export default mixins(
 				// Remove node from selected index if found in it
 				this.uiStore.removeNodeFromSelection(node);
 				if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node, this));
+					this.historyStore.pushCommandToUndo(new RemoveNodeCommand(node));
 				}
 			}, 0); // allow other events to finish like drag stop
 			if (trackHistory && trackBulk) {
@@ -3065,7 +3069,7 @@ export default mixins(
 			workflow.renameNode(currentName, newName);
 
 			if (trackHistory) {
-				this.historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, this));
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName));
 			}
 
 			// Update also last selected node and execution data
@@ -3228,7 +3232,7 @@ export default mixins(
 
 				this.workflowsStore.addNode(node);
 				if (trackHistory) {
-					this.historyStore.pushCommandToUndo(new AddNodeCommand(node, this));
+					this.historyStore.pushCommandToUndo(new AddNodeCommand(node));
 				}
 			});
 
@@ -3723,11 +3727,11 @@ export default mixins(
 		onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
 			this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			if (node) {
-				this.newInstance?.repaintEverything();
-				this.onNodeMoved(node);
-			}
 			setTimeout(() => {
+				if (node) {
+					this.newInstance?.repaintEverything();
+					this.onNodeMoved(node);
+				}
 			}, 0);
 		},
 		onRevertAddNode({ node }: { node: INodeUi }): void {
@@ -3791,7 +3795,7 @@ export default mixins(
 			);
 			return;
 		}
-		jsPlumbBrowserUI.ready(async () => {
+		ready(async () => {
 			try {
 				try {
 					this.initNodeView();
@@ -3870,13 +3874,13 @@ export default mixins(
 		this.$root.$on('newWorkflow', this.newWorkflow);
 		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		this.$root.$on('nodeMove', this.onMoveNode);
-		this.$root.$on('revertAddNode', this.onRevertAddNode);
-		this.$root.$on('revertRemoveNode', this.onRevertRemoveNode);
-		this.$root.$on('revertAddConnection', this.onRevertAddConnection);
-		this.$root.$on('revertRemoveConnection', this.onRevertRemoveConnection);
-		this.$root.$on('revertRenameNode', this.onRevertNameChange);
-		this.$root.$on('enableNodeToggle', this.onRevertEnableToggle);
+		historyBus.$on('nodeMove', this.onMoveNode);
+		historyBus.$on('revertAddNode', this.onRevertAddNode);
+		historyBus.$on('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.$on('revertAddConnection', this.onRevertAddConnection);
+		historyBus.$on('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.$on('revertRenameNode', this.onRevertNameChange);
+		historyBus.$on('enableNodeToggle', this.onRevertEnableToggle);
 
 		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3892,13 +3896,13 @@ export default mixins(
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-		this.$root.$off('nodeMove', this.onMoveNode);
-		this.$root.$off('revertAddNode', this.onRevertAddNode);
-		this.$root.$off('revertRemoveNode', this.onRevertRemoveNode);
-		this.$root.$off('revertAddConnection', this.onRevertAddConnection);
-		this.$root.$off('revertRemoveConnection', this.onRevertRemoveConnection);
-		this.$root.$off('revertRenameNode', this.onRevertNameChange);
-		this.$root.$off('enableNodeToggle', this.onRevertEnableToggle);
+		historyBus.$off('nodeMove', this.onMoveNode);
+		historyBus.$off('revertAddNode', this.onRevertAddNode);
+		historyBus.$off('revertRemoveNode', this.onRevertRemoveNode);
+		historyBus.$off('revertAddConnection', this.onRevertAddConnection);
+		historyBus.$off('revertRemoveConnection', this.onRevertRemoveConnection);
+		historyBus.$off('revertRenameNode', this.onRevertNameChange);
+		historyBus.$off('enableNodeToggle', this.onRevertEnableToggle);
 
 		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
@@ -4001,21 +4005,19 @@ export default mixins(
 
 <style lang="scss">
 .connection-run-items-label {
-	span {
-		border-radius: 7px;
-		background-color: hsla(
-			var(--color-canvas-background-h),
-			var(--color-canvas-background-s),
-			var(--color-canvas-background-l),
-			0.85
-		);
-		line-height: 1.3em;
-		padding: 0px 3px;
-		white-space: nowrap;
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-regular);
-		color: var(--color-success);
-	}
+	border-radius: 7px;
+	background-color: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
+	line-height: 1.3em;
+	padding: 0px 3px;
+	white-space: nowrap;
+	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-regular);
+	color: var(--color-success);
 
 	.floating {
 		position: absolute;

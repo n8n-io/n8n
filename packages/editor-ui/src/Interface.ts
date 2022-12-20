@@ -1,17 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
-	jsPlumbInstance,
-	DragOptions,
-	DropOptions,
-	ElementGroupRef,
-	Endpoint,
-	EndpointOptions,
-	EndpointRectangle,
-	EndpointRectangleOptions,
-	EndpointSpec,
-} from 'jsplumb';
-import {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -42,99 +31,6 @@ import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/src/types';
-
-// declare module 'jsplumb' {
-// 	interface PaintStyle {
-// 		stroke?: string;
-// 		fill?: string;
-// 		strokeWidth?: number;
-// 		outlineStroke?: string;
-// 		outlineWidth?: number;
-// 	}
-
-// 	// Extend jsPlumb Anchor interface
-// 	interface Anchor {
-// 		lastReturnValue: number[];
-// 	}
-
-// 	interface Connection {
-// 		__meta?: {
-// 			sourceNodeName: string,
-// 			sourceOutputIndex: number,
-// 			targetNodeName: string,
-// 			targetOutputIndex: number,
-// 		};
-// 		canvas?: HTMLElement;
-// 		connector?: {
-// 			setTargetEndpoint: (endpoint: Endpoint) => void;
-// 			resetTargetEndpoint: () => void;
-// 			bounds: {
-// 				minX: number;
-// 				maxX: number;
-// 				minY: number;
-// 				maxY: number;
-// 			}
-// 		};
-
-// 		// bind(event: string, (connection: Connection): void;): void; // tslint:disable-line:no-any
-// 		bind(event: string, callback: Function): void;
-// 		removeOverlay(name: string): void;
-// 		removeOverlays(): void;
-// 		setParameter(name: string, value: any): void; // tslint:disable-line:no-any
-// 		setPaintStyle(arg0: PaintStyle): void;
-// 		addOverlay(arg0: any[]): void; // tslint:disable-line:no-any
-// 		setConnector(arg0: any[]): void; // tslint:disable-line:no-any
-// 		getUuids(): [string, string];
-// 	}
-
-// 	interface Endpoint {
-// 		endpoint: any; // tslint:disable-line:no-any
-// 		elementId: string;
-// 		__meta?: {
-// 			nodeName: string,
-// 			nodeId: string,
-// 			index: number,
-// 			totalEndpoints: number;
-// 		};
-// 		getUuid(): string;
-// 		getOverlay(name: string): any; // tslint:disable-line:no-any
-// 		repaint(params?: object): void;
-// 	}
-
-// 	interface N8nPlusEndpoint extends Endpoint {
-// 		setSuccessOutput(message: string): void;
-// 		clearSuccessOutput(): void;
-// 	}
-
-// 	interface Overlay {
-// 		setVisible(visible: boolean): void;
-// 		setLocation(location: number): void;
-// 		canvas?: HTMLElement;
-// 	}
-
-// 	interface OnConnectionBindInfo {
-// 		originalSourceEndpoint: Endpoint;
-// 		originalTargetEndpoint: Endpoint;
-// 		getParameters(): { index: number };
-// 	}
-// }
-
-// EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
-export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
-	endpointStyle: EndpointStyle;
-	endpointHoverStyle: EndpointStyle;
-	endpoint?: EndpointSpec | string;
-	dragAllowedWhenFull?: boolean;
-	dropOptions?: DropOptions & {
-		tolerance: string;
-	};
-	dragProxy?:
-		| string
-		| string[]
-		| EndpointSpec
-		| [EndpointRectangle, EndpointRectangleOptions & { strokeWidth: number }];
-};
-
 export type EndpointStyle = {
 	width?: number;
 	height?: number;
@@ -148,20 +44,6 @@ export type EndpointStyle = {
 	hoverMessage?: string;
 };
 
-export type IDragOptions = DragOptions & {
-	grid: [number, number];
-	filter: string;
-};
-
-export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
-	clearDragSelection: () => void;
-	addEndpoint(
-		el: ElementGroupRef,
-		params?: IEndpointOptions,
-		referenceParams?: IEndpointOptions,
-	): Endpoint | Endpoint[];
-	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance;
-};
 
 export interface IUpdateInformation {
 	name: string;

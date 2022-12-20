@@ -186,9 +186,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			if (this.node) {
-				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
-			}
 		},
 		onResize({ height, width, dX, dY }: { width: number; height: number; dX: number; dY: number }) {
 			if (!this.node) {
@@ -202,7 +199,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onResizeEnd() {
 			this.isResizing = false;
-			this.__makeInstanceDraggable(this.data);
 		},
 		setParameters(params: { content?: string; height?: number; width?: number }) {
 			if (this.node) {

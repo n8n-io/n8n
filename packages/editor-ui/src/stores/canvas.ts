@@ -32,7 +32,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 
-	console.log('Before');
 	const newInstance = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 
@@ -138,36 +137,22 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	function initInstance(container: Element) {
-		if(newInstance.value) {
-			console.log('__DEBUG: newInstance.value already exists', newInstance.value);
-		};
 		newInstance.value = newJsPlumbInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
 			dragOptions: {
 				cursor: 'pointer',
-				// resizeObserver: false,
 				grid: { w: GRID_SIZE, h: GRID_SIZE },
 				start: (params: BeforeStartEventParams) => {
 					const draggedNode = params.drag.getDragElement();
 					const nodeName = draggedNode.getAttribute('data-name');
 					if(!nodeName) return;
-					const nodeData = workflowStore.getNodeByName(nodeName);
-					console.log('Started dragging', params);
-					// @ts-ignore
 					isDragging.value = true;
 
 					const isSelected = uiStore.isNodeSelected(nodeName);
-					if (nodeData?.type === STICKY_NODE_TYPE && !isSelected) {
-						setTimeout(() => {
-							console.log('Node selected????');
-							// this.$emit('nodeSelected', nodeName, false, true);
-						}, 0);
-					}
 
 					if (params.e && !isSelected) {
-						console.log("🚀 ~ file: canvas.ts:167 ~ initInstance ~ isSelected", isSelected);
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
@@ -203,7 +188,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 						let newNodePosition: XYPosition;
 						moveNodes.forEach((node: INodeUi) => {
 							const element = document.getElementById(node.id);
-							console.log("🚀 ~ file: canvas.ts:203 ~ moveNodes.forEach ~ element", element);
 							if (element === null) {
 								return;
 							}
@@ -216,17 +200,15 @@ export const useCanvasStore = defineStore('canvas', () => {
 							const updateInformation = {
 								name: node.name,
 								properties: {
-									// @ts-ignore, draggable does not have definitions
 									position: newNodePosition,
 								},
 							};
 							const oldPosition = node.position;
 							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
-								// historyStore.pushCommandToUndo(
-								// 	new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
-								// );
+								historyStore.pushCommandToUndo(
+									new MoveNodeCommand(node.name, oldPosition, newNodePosition),
+								);
 								workflowStore.updateNodeProperties(updateInformation);
-								// this.$emit('moved', node);
 							}
 						});
 						if (moveNodes.length > 1) {
@@ -239,18 +221,14 @@ export const useCanvasStore = defineStore('canvas', () => {
 		});
 		newInstance.value?.setDragConstrainFunction((pos: XYPosition) => {
 			const isReadOnly = uiStore.isReadOnly;
-			console.log("🚀 ~ file: canvas.ts:147 ~ initInstance ~ isReadOnly", isReadOnly);
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
 				return null;
 			}
 			return pos;
 		});
-		window.__plumbInstance = () => newInstance.value;
 	}
 	return {
-		// jsPlumbInstance,
-		// jsPlumbInstanceNew,
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,

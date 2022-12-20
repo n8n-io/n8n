@@ -239,7 +239,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
 		isReadOnly(): boolean {
-			console.log("🚀 ~ file: ui.ts:244 ~ isReadOnly ~ ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);", ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS));
 			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.currentView as VIEWS);
 		},
 		isNodeView(): boolean {

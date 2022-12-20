@@ -29,7 +29,6 @@ export const register = () => {
 		},
 
 		updateNode: (ep: N8nPlusEndpoint) => {
-			console.log('__DEBUG: Update node plus', ep);
 			const hasConnections = () => {
 				const connections = [...ep.endpoint.connections, ...ep.params.connectedEndpoint.connections];
 				return connections.length > 0;

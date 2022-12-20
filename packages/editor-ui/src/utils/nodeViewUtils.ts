@@ -7,12 +7,10 @@ import {
 	QUICKSTART_NOTE_NAME,
 } from '@/constants';
 import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from '@/Interface';
-// import { AnchorArraySpec, Connection, Overlay, PaintStyle } from "jsplumb";
 import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
-import { Endpoint, Overlay, Connection } from '@jsplumb/core';
+import { Endpoint, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
-import { AnchorArraySpec } from 'jsplumb';
 import {
 	IConnection,
 	INode,
@@ -209,13 +207,8 @@ export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
-		// location: 0.5,
 		visible: true,
 		create: (component: Endpoint) => {
-			console.log("🚀 ~ file: nodeViewUtils.ts:215 ~ getInputNameOverlay ~ component", component);
-			// component.bind('anchor:changed', (params: any) => {
-			// 	console.log("🚀 ~ file: nodeViewUtils.ts:217 ~ component.bind ~ params", params);
-			// });
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-input-endpoint-label');
@@ -234,7 +227,6 @@ export const getOutputNameOverlay = (labelText: string): OverlaySpec => ({
 	type: 'Custom',
 	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
-		// location: 0.5,
 		visible: true,
 		create: (component: Endpoint) => {
 			const label = document.createElement('div');
@@ -310,16 +302,7 @@ export const getOverlay = (item: Connection | Endpoint, overlayId: string) => {
 export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
 	const overlay = getOverlay(item, overlayId);
 	if (overlay) {
-		// const overlayElement = overlay.canvas;
-		// console.log("__DEBUG: Overlay canvas", overlayElement);
-		// item.instance.repaint(overlayElement);
-		item.instance.setSuspendDrawing(true);
 		overlay.setVisible(true);
-		overlay.setVisible(false);
-		setTimeout(() => {
-			overlay.setVisible(true);
-			item.instance.setSuspendDrawing(false);
-		}, 500);
 	}
 };
 
@@ -341,8 +324,6 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const targetEndpoint = connection.endpoints[1];
 	const sourcePosition = sourceEndpoint._anchor.computedPosition?.curX ?? 0;
 	const targetPosition = targetEndpoint._anchor.computedPosition?.curX ?? sourcePosition + 1;
-		// ? targetEndpoint._anchor.computedPosition?.x
-		// : sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
 
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
@@ -377,14 +358,11 @@ const isLoopingBackwards = (connection: Connection) => {
 };
 
 export const showOrHideItemsLabel = (connection: Connection) => {
-	if (!connection || !connection.connector) {
-		return;
-	}
+	if (!connection?.connector) return;
 
 	const overlay = getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
-	if (!overlay) {
-		return;
-	}
+	if (!overlay) return;
+
 
 	const actionsOverlay = getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 	if (actionsOverlay && actionsOverlay.visible) {
@@ -533,22 +511,26 @@ export const getBackgroundStyles = (
 	return styles;
 };
 
-export const hideConnectionActions = (connection: Connection | null) => {
-	if (connection?.connector) {
-		hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-		showOrHideItemsLabel(connection);
-		showOrHideMidpointArrow(connection);
-	}
+export const hideConnectionActions = (connection: Connection) => {
+	if(!connection) return;
+
+	hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+	showOrHideItemsLabel(connection);
+	showOrHideMidpointArrow(connection);
+
+	connection.instance.repaintEverything();
 };
 
-export const showConnectionActions = (connection: Connection | null) => {
-	if (connection?.connector) {
-		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
-		if (!getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
-			hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
-		}
+export const showConnectionActions = (connection: Connection) => {
+	if(!connection) return;
+
+	showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+	hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
+	if (!getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
+		hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 	}
+
+	connection.instance.repaintEverything();
 };
 
 export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputConnections) => {
@@ -618,9 +600,8 @@ export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOrHideMidpointArrow(connection);
-	if (connection.canvas) {
-		connection.removeClass('success');
-	}
+	connection.removeClass('success');
+
 };
 
 export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {
@@ -635,26 +616,30 @@ export const addConnectionOutputSuccess = (
 	output: { total: number; iterations: number },
 ) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
-	if (connection.canvas) {
-		connection.addClass('success');
-	}
 
+	connection.addClass('success');
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	connection.addOverlay({
-		type: 'Label',
+	const overlay = connection.addOverlay({
+		type: 'Custom',
 		options: {
 			id: OVERLAY_RUN_ITEMS_ID,
-			label: `<span>${getRunItemsLabel(output)}</span>`,
-			cssClass: 'connection-run-items-label',
+			create() {
+				const label = document.createElement('div');
+				label.classList.add('connection-run-items-label');
+				label.innerHTML = getRunItemsLabel(output);
+				return label;
+			},
 			location: 0.5,
 		},
 	});
 
+	overlay.setVisible(true);
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
+	overlay.instance.repaintEverything();
 };
 
 const getContentDimensions = (): { editorWidth: number; editorHeight: number } => {
@@ -710,7 +695,6 @@ export const showDropConnectionState = (connection: Connection, targetEndpoint?:
 	if (connection?.connector) {
 		const connector = connection.connector as N8nConnector;
 		if (targetEndpoint) {
-			console.log("🚀 ~ file: nodeViewUtils.ts:704 ~ showDropConnectionState ~ targetEndpoint", targetEndpoint);
 			connector.setTargetEndpoint(targetEndpoint);
 		}
 		connection.setPaintStyle(CONNECTOR_PAINT_STYLE_PRIMARY);
@@ -754,17 +738,11 @@ export const addConnectionActionsOverlay = (
 	onDelete: Function,
 	onAdd: Function,
 ) => {
-	connection.instance.setSuspendDrawing(true);
-	connection.instance.removeOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 
-	// if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
-	// 	return; // avoid free floating actions when moving connection from one node to another
-	// }
 	const overlay = connection.addOverlay({
 		type: 'Custom',
 		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
-			// location: [2, 19],
 			create: (component: Connection) => {
 				const div = document.createElement('div');
 				const addButton = document.createElement('button');
@@ -786,8 +764,13 @@ export const addConnectionActionsOverlay = (
 			},
 		},
 	});
-	overlay.setVisible(false);
-	connection.instance.setSuspendDrawing(false);
+
+	// Overlays are created in visible state and if
+	// immediately hidden they are not rendered correctly and won't show up on hover
+	overlay.setVisible(true);
+	setTimeout(() => {
+		overlay.setVisible(false);
+	}, 200);
 };
 
 export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {

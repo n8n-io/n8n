@@ -505,7 +505,7 @@ export const nodeHelpers = mixins(restApi).extend({
 				this.updateNodeCredentialIssues(node);
 				if (trackHistory) {
 					this.historyStore.pushCommandToUndo(
-						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true, this),
+						new EnableNodeToggleCommand(node.name, oldState === true, node.disabled === true),
 					);
 				}
 			}

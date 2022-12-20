@@ -517,7 +517,6 @@ importers:
       jquery: ^3.4.1
       jshint: ^2.9.7
       jsonpath: ^1.1.1
-      jsplumb: 2.15.4
       lodash-es: ^4.17.21
       lodash.camelcase: ^4.3.0
       lodash.debounce: ^4.0.8
@@ -582,7 +581,6 @@ importers:
       flatted: 3.2.7
       jquery: 3.6.1
       jsonpath: 1.1.1
-      jsplumb: 2.15.4
       lodash-es: 4.17.21
       lodash.camelcase: 4.3.0
       lodash.debounce: 4.0.8
@@ -14573,10 +14571,6 @@ packages:
       lodash.once: 4.1.1
       ms: 2.1.3
       semver: 5.7.1
-    dev: false
-
-  /jsplumb/2.15.4:
-    resolution: {integrity: sha512-QssfhXe0YRxY4V2WHPmKwsE3bPHNj4Vts9oinys66ci+4m9lJvFDcEMDygqueiSFL8Jb8CnFyQC9fvL+YHJS7g==}
     dev: false
 
   /jsprim/1.4.2:

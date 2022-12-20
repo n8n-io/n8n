@@ -109,37 +109,32 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.setVisible(visible);
 	};
 
-	// setSuccessOutput = (label: string) => {
-	// 	if (!this.plusElement) return;
+	setSuccessOutput(label: string) {
 
-	// 	this.plusElement.classList.add('success');
-	// 	if (this.showOutputLabel) {
-	// 		const plusStalk = this.plusElement.querySelector('.plus-stalk') as HTMLElement;
-	// 		const successOutput = this.plusElement.querySelector('.plus-stalk span') as HTMLElement;
+		this.endpoint.addClass('success');
+		// if (this.params.showOutputLabel) {
+			// const plusStalk = this.plusElement.querySelector('.plus-stalk') as HTMLElement;
+			// const successOutput = this.plusElement.querySelector('.plus-stalk span') as HTMLElement;
 
-	// 		successOutput.textContent = label;
-	// 		this.label = label;
-	// 		this.labelOffset = successOutput.offsetWidth;
+			// successOutput.textContent = label;
+			// this.label = label;
+			// this.labelOffset = successOutput.offsetWidth;
 
-	// 		plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
-	// 		// if (this._jsPlumb && this._jsPlumb.instance && !this._jsPlumb.instance.isSuspendDrawing()) {
-	// 		// 	params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
-	// 		// }
-	// 	}
-	// };
+			// plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
+			// if (this._jsPlumb && this._jsPlumb.instance && !this._jsPlumb.instance.isSuspendDrawing()) {
+			// 	params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
+			// }
+		// }
+	};
 
-	// clearSuccessOutput(endpoint: N8nPlusEndpoint) {
-	// 	// const container = this.plusElement.querySelector('.plus-container');
-	// 	const plusStalk = this.plusElement.querySelector('.plus-stalk') as HTMLElement;
-	// 	const successOutput = this.plusElement.querySelector('.plus-stalk span') as HTMLElement;
-
-	// 	this.plusElement.classList.remove('success');
-	// 	successOutput.textContent = '';
-	// 	this.label = '';
-	// 	this.labelOffset = 0;
-	// 	plusStalk.style.width = `${stalkLength}px`;
-	// 	endpoint.instance.repaint(endpoint);
-	// }
+	clearSuccessOutput() {
+		this.endpoint.removeClass('success');
+		// successOutput.textContent = '';
+		// this.label = '';
+		// this.labelOffset = 0;
+		// plusStalk.style.width = `${stalkLength}px`;
+		// endpoint.instance.repaint(endpoint);
+	}
 
 	// ep.clearOverlays();
 	// ep.setStalkOverlay();

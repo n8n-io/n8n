@@ -512,7 +512,6 @@ export default mixins(
 						this.data.name,
 						!this.data.disabled,
 						this.data.disabled === true,
-						this,
 					),
 				);
 				this.$telemetry.track('User clicked node hover button', {
