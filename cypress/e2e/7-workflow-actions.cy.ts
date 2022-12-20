@@ -211,8 +211,7 @@ describe('Workflow Actions', () => {
 		WorkflowPage.getters.workflowMenu().click();
 		WorkflowPage.getters.workflowMenuItemDelete().click();
 		cy.get('div[role=dialog][aria-modal=true]').should('be.visible');
-		cy.get('button.btn--confirm').should('be.visible');
-		cy.get('button.btn--confirm').click();
+		cy.get('button.btn--confirm').should('be.visible').click();
 		WorkflowPage.getters.successToast().should('exist');
 		cy.url().should('include', '/workflow/new');
 	});
