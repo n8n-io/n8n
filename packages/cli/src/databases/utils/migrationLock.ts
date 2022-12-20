@@ -127,8 +127,9 @@ async function withMigrationLock(
 				case 'mysqldb':
 					unlocked = await mysqlUnlock(connection);
 					break;
+				case 'sqlite':
 				default:
-					lock = false;
+					unlocked = true;
 			}
 
 			if (!unlocked) {
