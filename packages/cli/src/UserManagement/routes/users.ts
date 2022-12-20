@@ -25,6 +25,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { RoleService } from '@/role/role.service';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -426,14 +427,19 @@ export function usersNamespace(this: N8nApp): void {
 				return { success: true };
 			}
 
+			const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
+				RoleService.get({ name: 'owner', scope: 'workflow' }),
+				RoleService.get({ name: 'owner', scope: 'credential' }),
+			]);
+
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
-					where: { user: userToDelete, role: 'owner' },
+					where: { user: userToDelete, role: workflowOwnerRole },
 				}),
 				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
-					where: { user: userToDelete, role: 'owner' },
+					where: { user: userToDelete, role: credentialOwnerRole },
 				}),
 			]);
 
