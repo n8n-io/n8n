@@ -1194,6 +1194,7 @@ export interface INodeCreatorState {
 	showTabs: boolean;
 	showScrim: boolean;
 	selectedType: INodeFilterType;
+	createNodeActive: boolean;
 }
 
 export interface ISettingsState {

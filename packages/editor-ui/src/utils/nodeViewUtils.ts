@@ -6,13 +6,11 @@ import {
 	STICKY_NODE_TYPE,
 	QUICKSTART_NOTE_NAME,
 } from '@/constants';
-import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from '@/Interface';
-// import { AnchorArraySpec, Connection, Overlay, PaintStyle } from "jsplumb";
+import { EndpointStyle, IBounds, ICredentialsResponse, INodeUi, IUser, IZoomConfig, XYPosition } from '@/Interface';
 import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import { Endpoint, Overlay, Connection } from '@jsplumb/core';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
 import { closestNumberDivisibleBy } from '@/utils';
-import { AnchorArraySpec } from 'jsplumb';
 import {
 	IConnection,
 	INode,
@@ -20,7 +18,21 @@ import {
 	INodeExecutionData,
 	NodeInputConnections,
 	INodeTypeDescription,
+	INodeIssues,
+	INodeIssueObjectProperty,
+	ICredentialType,
+	INodeCredentialsDetails,
+	INodeParameters,
+	INodeProperties,
+	INodeCredentialDescription,
+	NodeHelpers,
 } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
+import { i18n } from '@/plugins/i18n';
+import { getCredentialPermissions } from '@/permissions';
+import { useUsersStore } from '@/stores/users';
 
 /*
 	Canvas constants and functions.
@@ -57,6 +69,16 @@ const LOOPBACK_MINIMUM = 140;
 export const INPUT_UUID_KEY = '-input';
 export const OUTPUT_UUID_KEY = '-output';
 export const PLACEHOLDER_BUTTON = 'PlaceholderTriggerButton';
+
+declare namespace HttpRequestNode {
+	namespace V2 {
+		type AuthParams = {
+			authentication: 'none' | 'genericCredentialType' | 'predefinedCredentialType';
+			genericAuthType: string;
+			nodeCredentialType: string;
+		};
+	}
+}
 
 export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	name: 'Choose a Trigger...',
@@ -467,8 +489,8 @@ export const getNewNodePosition = (
 };
 
 export const getMousePosition = (e: MouseEvent | TouchEvent): XYPosition => {
-	// @ts-ignore
 	const x =
+	// @ts-expect-error
 		e.pageX !== undefined
 			? e.pageX
 			: e.touches && e.touches[0] && e.touches[0].pageX
@@ -542,6 +564,7 @@ export const hideConnectionActions = (connection: Connection | null) => {
 };
 
 export const showConnectionActions = (connection: Connection | null) => {
+	console.log("🚀 ~ file: nodeViewUtils.ts:545 ~ showConnectionActions ~ connection", connection);
 	if (connection?.connector) {
 		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
@@ -612,6 +635,280 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 	});
 
 	return outputMap;
+};
+export const getNodeIssues = (
+	nodeType: INodeTypeDescription | null,
+	node: INodeUi,
+	ignoreIssues?: string[],
+): INodeIssues | null => {
+	const pinDataNodeNames = Object.keys(useWorkflowsStore().getPinData || {});
+
+	let nodeIssues: INodeIssues | null = null;
+	ignoreIssues = ignoreIssues || [];
+
+	if (node.disabled === true || pinDataNodeNames.includes(node.name)) {
+		// Ignore issues on disabled and pindata nodes
+		return null;
+	}
+
+	if (nodeType === null) {
+		// Node type is not known
+		if (!ignoreIssues.includes('typeUnknown')) {
+			nodeIssues = {
+				typeUnknown: true,
+			};
+		}
+	} else {
+		// Node type is known
+
+		// Add potential parameter issues
+		if (!ignoreIssues.includes('parameters')) {
+			nodeIssues = NodeHelpers.getNodeParametersIssues(nodeType.properties, node);
+		}
+
+		if (!ignoreIssues.includes('credentials')) {
+			// Add potential credential issues
+			const nodeCredentialIssues = getNodeCredentialIssues(node, nodeType);
+			if (nodeIssues === null) {
+				nodeIssues = nodeCredentialIssues;
+			} else {
+				NodeHelpers.mergeIssues(nodeIssues, nodeCredentialIssues);
+			}
+		}
+	}
+
+	if (hasNodeExecutionIssues(node) === true && !ignoreIssues.includes('execution')) {
+		if (nodeIssues === null) {
+			nodeIssues = {};
+		}
+		nodeIssues.execution = true;
+	}
+
+	return nodeIssues;
+};
+
+// Set the status on all the nodes which produced an error so that it can be
+// displayed in the node-view
+const hasNodeExecutionIssues = (node: INodeUi): boolean => {
+	const workflowResultData = useWorkflowsStore().getWorkflowRunData;
+
+	if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
+		return false;
+	}
+
+	for (const taskData of workflowResultData[node.name]) {
+		if (taskData.error !== undefined) {
+			return true;
+		}
+	}
+
+	return false;
+};
+/**
+ * Whether the node has no selected credentials, or none of the node's
+ * selected credentials are of the specified type.
+ */
+function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
+	return !node.credentials || !Object.keys(node.credentials).includes(credentialType);
+}
+
+function hasProxyAuth(node: INodeUi): boolean {
+	return Object.keys(node.parameters).includes('nodeCredentialType');
+}
+
+/**
+ * Whether the node's selected credentials of the specified type
+ * can no longer be found in the database.
+ */
+function selectedCredsDoNotExist(
+	node: INodeUi,
+	nodeCredentialType: string,
+	storedCredsByType: ICredentialsResponse[] | null,
+) {
+	if (!node.credentials || !storedCredsByType) return false;
+
+	const selectedCredsByType = node.credentials[nodeCredentialType];
+
+	if (!selectedCredsByType) return false;
+
+	return !storedCredsByType.find((c) => c.id === selectedCredsByType.id);
+}
+
+const reportUnsetCredential = (credentialType: ICredentialType) => {
+	return {
+		credentials: {
+			[credentialType.name]: [
+				i18n.baseText('nodeHelpers.credentialsUnset', {
+					interpolate: {
+						credentialType: credentialType.displayName,
+					},
+				}),
+			],
+		},
+	};
+};
+
+// Returns if the given parameter should be displayed or not
+const displayParameter = (
+	nodeValues: INodeParameters,
+	parameter: INodeProperties | INodeCredentialDescription,
+	path: string,
+	node: INodeUi | null,
+) => NodeHelpers.displayParameterPath(nodeValues, parameter, path, node);
+
+export const getNodeCredentialIssues = (node: INodeUi, nodeType?: INodeTypeDescription): INodeIssues | null => {
+	if (node.disabled) {
+		// Node is disabled
+		return null;
+	}
+
+	if (!nodeType) {
+		// @ts-expect-error
+		nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+	}
+
+	if (!nodeType?.credentials) {
+		// Node does not need any credentials or nodeType could not be found
+		return null;
+	}
+
+	const foundIssues: INodeIssueObjectProperty = {};
+
+	let userCredentials: ICredentialsResponse[] | null;
+	let credentialType: ICredentialType | null;
+	let credentialDisplayName: string;
+	let selectedCredentials: INodeCredentialsDetails;
+
+	const { authentication, genericAuthType, nodeCredentialType } =
+		node.parameters as HttpRequestNode.V2.AuthParams;
+
+	if (
+		authentication === 'genericCredentialType' &&
+		genericAuthType !== '' &&
+		selectedCredsAreUnusable(node, genericAuthType)
+	) {
+		const credential = useCredentialsStore().getCredentialTypeByName(genericAuthType);
+		return reportUnsetCredential(credential);
+	}
+
+	if (
+		hasProxyAuth(node) &&
+		authentication === 'predefinedCredentialType' &&
+		nodeCredentialType !== '' &&
+		node.credentials !== undefined
+	) {
+		const stored = useCredentialsStore().getCredentialsByType(nodeCredentialType);
+
+		if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
+			const credential = useCredentialsStore().getCredentialTypeByName(nodeCredentialType);
+			return reportUnsetCredential(credential);
+		}
+	}
+
+	if (
+		hasProxyAuth(node) &&
+		authentication === 'predefinedCredentialType' &&
+		nodeCredentialType !== '' &&
+		selectedCredsAreUnusable(node, nodeCredentialType)
+	) {
+		const credential = useCredentialsStore().getCredentialTypeByName(nodeCredentialType);
+		return reportUnsetCredential(credential);
+	}
+
+	for (const credentialTypeDescription of nodeType.credentials) {
+		// Check if credentials should be displayed else ignore
+		if (!displayParameter(node.parameters, credentialTypeDescription, '', node)) {
+			continue;
+		}
+
+		// Get the display name of the credential type
+		credentialType = useCredentialsStore().getCredentialTypeByName(
+			credentialTypeDescription.name,
+		);
+		if (credentialType === null) {
+			credentialDisplayName = credentialTypeDescription.name;
+		} else {
+			credentialDisplayName = credentialType.displayName;
+		}
+
+		if (!node.credentials || !node.credentials?.[credentialTypeDescription.name]) {
+			// Credentials are not set
+			if (credentialTypeDescription.required) {
+				foundIssues[credentialTypeDescription.name] = [
+					i18n.baseText('nodeIssues.credentials.notSet', {
+						interpolate: { type: credentialDisplayName },
+					}),
+				];
+			}
+		} else {
+			// If they are set check if the value is valid
+			selectedCredentials = node.credentials[
+				credentialTypeDescription.name
+			] as INodeCredentialsDetails;
+			if (typeof selectedCredentials === 'string') {
+				selectedCredentials = {
+					id: null,
+					name: selectedCredentials,
+				};
+			}
+
+			const currentUser = useUsersStore().currentUser || ({} as IUser);
+			userCredentials = useCredentialsStore()
+				.getCredentialsByType(credentialTypeDescription.name)
+				.filter((credential: ICredentialsResponse) => {
+					const permissions = getCredentialPermissions(currentUser, credential);
+					return permissions.use;
+				});
+
+			if (userCredentials === null) {
+				userCredentials = [];
+			}
+
+			if (selectedCredentials.id) {
+				const idMatch = userCredentials.find(
+					(credentialData) => credentialData.id === selectedCredentials.id,
+				);
+				if (idMatch) {
+					continue;
+				}
+			}
+
+			const nameMatches = userCredentials.filter(
+				(credentialData) => credentialData.name === selectedCredentials.name,
+			);
+			if (nameMatches.length > 1) {
+				foundIssues[credentialTypeDescription.name] = [
+					i18n.baseText('nodeIssues.credentials.notIdentified', {
+						interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
+					}),
+					i18n.baseText('nodeIssues.credentials.notIdentified.hint'),
+				];
+				continue;
+			}
+
+			if (nameMatches.length === 0) {
+				const isCredentialUsedInWorkflow =
+					useWorkflowsStore().usedCredentials?.[selectedCredentials.id as string];
+				if (!isCredentialUsedInWorkflow) {
+					foundIssues[credentialTypeDescription.name] = [
+						i18n.baseText('nodeIssues.credentials.doNotExist', {
+							interpolate: { name: selectedCredentials.name, type: credentialDisplayName },
+						}),
+						i18n.baseText('nodeIssues.credentials.doNotExist.hint'),
+					];
+				}
+			}
+		}
+	}
+
+	// TODO: Could later check also if the node has access to the credentials
+	if (Object.keys(foundIssues).length === 0) {
+		return null;
+	}
+
+	return {
+		credentials: foundIssues,
+	};
 };
 
 export const resetConnection = (connection: Connection) => {
@@ -757,6 +1054,7 @@ export const addConnectionActionsOverlay = (
 	connection.instance.setSuspendDrawing(true);
 	connection.instance.removeOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 
+	console.log('__DEBUG Add Overlay Arrow');
 	// if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
 	// 	return; // avoid free floating actions when moving connection from one node to another
 	// }

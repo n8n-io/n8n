@@ -34,7 +34,7 @@ Vue.use(PiniaVuePlugin);
 
 const pinia = createPinia();
 
-new Vue({
+window.__instance = new Vue({
 	i18n: i18nInstance,
 	router,
 	pinia,

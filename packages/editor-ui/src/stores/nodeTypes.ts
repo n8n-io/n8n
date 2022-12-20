@@ -5,7 +5,7 @@ import {
 	getNodeTypes,
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
-import { DEFAULT_NODETYPE_VERSION, STORES } from '@/constants';
+import { DEFAULT_NODETYPE_VERSION, ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE, STORES } from '@/constants';
 import {
 	ICategoriesWithNodes,
 	INodeCreateElement,
@@ -20,8 +20,11 @@ import {
 	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
+	INodeType,
+	INodeTypeData,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	INodeTypes,
 } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -127,12 +130,43 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, {
 			// Trigger compute of mergedAppNodes getter so it's ready when user opens the node creator
 			useNodeCreatorStore().mergedAppNodes;
 		},
+
 		removeNodeTypes(nodeTypesToRemove: INodeTypeDescription[]): void {
 			this.nodeTypes = nodeTypesToRemove.reduce(
 				(oldNodes, newNodeType) => omit(newNodeType.name, oldNodes),
 				this.nodeTypes,
 			);
 		},
+
+		getNodeTypes(): INodeTypes {
+			const nodeTypes: INodeTypes = {
+				nodeTypes: {},
+				init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
+				// @ts-ignore
+				getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
+					const nodeTypeDescription = this.getNodeType(nodeType, version);
+
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+
+					return {
+						description: nodeTypeDescription,
+						// As we do not have the trigger/poll functions available in the frontend
+						// we use the information available to figure out what are trigger nodes
+						// @ts-ignore
+						trigger:
+							(![ERROR_TRIGGER_NODE_TYPE, START_NODE_TYPE].includes(nodeType) &&
+								nodeTypeDescription.inputs.length === 0 &&
+								!nodeTypeDescription.webhooks) ||
+							undefined,
+					};
+				},
+			};
+
+			return nodeTypes;
+		},
+
 		async getNodesInformation(
 			nodeInfos: INodeTypeNameVersion[],
 			replace = true,

@@ -2,7 +2,7 @@ import { INodeUi } from '@/Interface';
 import { IConnection } from 'n8n-workflow';
 import Vue from 'vue';
 import { XYPosition } from '../Interface';
-
+import { useCanvasStore } from '@/stores/canvas';
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack
 // when debugging
@@ -20,7 +20,7 @@ export enum COMMANDS {
 // canvas out of sync with store state, so we are adding
 // this timeout in between canvas actions
 // (0 is usually enough but leaving this just in case)
-const CANVAS_ACTION_TIMEOUT = 10;
+export const CANVAS_ACTION_TIMEOUT = 10;
 
 export abstract class Undoable {}
 
@@ -76,7 +76,8 @@ export class MoveNodeCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			this.eventBus.$root.$emit('nodeMove', {
+			console.log('__DEBUG: reverting move node');
+			useCanvasStore().onMoveNode({
 				nodeName: this.nodeName,
 				position: this.oldPosition,
 			});
@@ -157,7 +158,10 @@ export class AddConnectionCommand extends Command {
 
 	async revert(): Promise<void> {
 		return new Promise<void>((resolve) => {
-			this.eventBus.$root.$emit('revertAddConnection', { connection: this.connectionData });
+			const { setSuspendRecordingDetachedConnections, __removeConnection } = useCanvasStore();
+			setSuspendRecordingDetachedConnections(true);
+			__removeConnection(this.connectionData, true);
+			setSuspendRecordingDetachedConnections(false);
 			resolve();
 		});
 	}

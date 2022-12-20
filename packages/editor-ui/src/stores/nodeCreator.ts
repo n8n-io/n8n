@@ -244,6 +244,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		showTabs: true,
 		showScrim: false,
 		selectedType: ALL_NODE_FILTER,
+		createNodeActive: false,
 	}),
 	actions: {
 		setShowTabs(isVisible: boolean) {
@@ -257,6 +258,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		},
 		setFilter(search: string) {
 			this.itemsFilter = search;
+		},
+		setNodeCreatorActive(isActive: boolean) {
+			this.createNodeActive = isActive;
 		},
 		setAddedNodeActionParameters(action: IUpdateInformation, telemetry?: Telemetry, track = true) {
 			const { $onAction: onWorkflowStoreAction } = useWorkflowsStore();
@@ -283,6 +287,21 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			};
 			$externalHooks().run('nodeCreateList.addAction', payload);
 			telemetry?.trackNodesPanel('nodeCreateList.addAction', payload);
+		},
+		toggleNodeCreator({
+			source,
+			createNodeActive,
+		}: {
+			source?: string;
+			createNodeActive: boolean;
+		}) {
+			if (createNodeActive === this.createNodeActive) return;
+			const { workflowContainsTrigger } = useWorkflowsStore();
+
+			// Default to the trigger tab in node creator if there's no trigger node yet
+			if (!workflowContainsTrigger) this.setSelectedType(TRIGGER_NODE_FILTER);
+
+			this.setNodeCreatorActive(createNodeActive);
 		},
 	},
 	getters: {

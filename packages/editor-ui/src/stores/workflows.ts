@@ -34,11 +34,14 @@ import {
 	INodeExecutionData,
 	INodeIssueData,
 	INodeParameters,
+	INodeTypeData,
+	INodeTypes,
 	IPinData,
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
 	NodeHelpers,
+	Workflow,
 } from 'n8n-workflow';
 import Vue from 'vue';
 
@@ -78,6 +81,9 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	versionId: '',
 	usedCredentials: [],
 });
+
+let cachedWorkflowKey: string | null = '';
+let cachedWorkflow: Workflow | null = null;
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -135,6 +141,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				);
 				return nodeType && nodeType.group.includes('trigger');
 			});
+		},
+		workflowContainsTrigger(): boolean {
+			return this.workflowTriggerNodes.length > 0;
 		},
 		currentWorkflowHasWebhookNode(): boolean {
 			return !!this.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
@@ -287,6 +296,57 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowId(id: string): void {
 			this.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		},
+
+		getCurrentWorkflow(copyData?: boolean): Workflow {
+			const nodes = this.getNodes();
+			const connections = this.allConnections;
+			const cacheKey = JSON.stringify({ nodes, connections });
+			if (!copyData && cachedWorkflow && cacheKey === cachedWorkflowKey) {
+				return cachedWorkflow;
+			}
+			cachedWorkflowKey = cacheKey;
+
+			return this.getWorkflow(nodes, connections, copyData);
+		},
+
+		getWorkflow(nodes: INodeUi[], connections: IConnections, copyData?: boolean): Workflow {
+			const nodeTypes = useNodeTypesStore().getNodeTypes();
+			let workflowId: string | undefined = this.workflowId;
+			if (workflowId && workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				workflowId = undefined;
+			}
+
+			const workflowName = this.workflowName;
+
+			cachedWorkflow = new Workflow({
+				id: workflowId,
+				name: workflowName,
+				nodes: copyData ? deepCopy(nodes) : nodes,
+				connections: copyData ? deepCopy(connections) : connections,
+				active: false,
+				nodeTypes,
+				settings: this.workflowSettings,
+				// @ts-expect-error
+				pinData: this.pinData,
+			});
+
+			return cachedWorkflow;
+		},
+
+		// Returns a shallow copy of the nodes which means that all the data on the lower
+		// levels still only gets referenced but the top level object is a different one.
+		// This has the advantage that it is very fast and does not cause problems with vuex
+		// when the workflow replaces the node-parameters.
+		getNodes(): INodeUi[] {
+			const nodes = this.allNodes;
+			const returnNodes: INodeUi[] = [];
+
+			for (const node of nodes) {
+				returnNodes.push(Object.assign({}, node));
+			}
+
+			return returnNodes;
 		},
 
 		setUsedCredentials(data: IUsedCredential[]) {

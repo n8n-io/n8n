@@ -251,99 +251,99 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 			});
 			console.log('Added output endpoints');
 		},
-		__makeInstanceDraggable(node: INodeUi) {
-			console.log('Make instance draggable');
-			// TODO: This caused problems with displaying old information
-			//       https://github.com/jsplumb/katavorio/wiki
-			//       https://jsplumb.github.io/jsplumb/home.html
-			// Make nodes draggable
-			// this.instance.importDefaults({
-			// 	dragOptions: {}
-			// })
-			this.instance.draggable(this.nodeId, {
-				grid: [NodeViewUtils.GRID_SIZE, NodeViewUtils.GRID_SIZE],
-				start: (params: { e: MouseEvent }) => {
-					if (this.isReadOnly === true) {
-						// Do not allow to move nodes in readOnly mode
-						return false;
-					}
-					// @ts-ignore
-					this.dragging = true;
+		// __makeInstanceDraggable(node: INodeUi) {
+		// 	console.log('Make instance draggable');
+		// 	// TODO: This caused problems with displaying old information
+		// 	//       https://github.com/jsplumb/katavorio/wiki
+		// 	//       https://jsplumb.github.io/jsplumb/home.html
+		// 	// Make nodes draggable
+		// 	// this.instance.importDefaults({
+		// 	// 	dragOptions: {}
+		// 	// })
+		// 	this.instance.draggable(this.nodeId, {
+		// 		grid: [NodeViewUtils.GRID_SIZE, NodeViewUtils.GRID_SIZE],
+		// 		start: (params: { e: MouseEvent }) => {
+		// 			if (this.isReadOnly === true) {
+		// 				// Do not allow to move nodes in readOnly mode
+		// 				return false;
+		// 			}
+		// 			// @ts-ignore
+		// 			this.dragging = true;
 
-					const isSelected = this.uiStore.isNodeSelected(this.data.name);
-					const nodeName = this.data.name;
-					if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
-						setTimeout(() => {
-							this.$emit('nodeSelected', nodeName, false, true);
-						}, 0);
-					}
+		// 			const isSelected = this.uiStore.isNodeSelected(this.data.name);
+		// 			const nodeName = this.data.name;
+		// 			if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
+		// 				setTimeout(() => {
+		// 					this.$emit('nodeSelected', nodeName, false, true);
+		// 				}, 0);
+		// 			}
 
-					if (params.e && !isSelected) {
-						// Only the node which gets dragged directly gets an event, for all others it is
-						// undefined. So check if the currently dragged node is selected and if not clear
-						// the drag-selection.
-						this.instance.clearDragSelection();
-						this.uiStore.resetSelectedNodes();
-					}
+		// 			if (params.e && !isSelected) {
+		// 				// Only the node which gets dragged directly gets an event, for all others it is
+		// 				// undefined. So check if the currently dragged node is selected and if not clear
+		// 				// the drag-selection.
+		// 				this.instance.clearDragSelection();
+		// 				this.uiStore.resetSelectedNodes();
+		// 			}
 
-					this.uiStore.addActiveAction('dragActive');
-					return true;
-				},
-				stop: (params: { e: MouseEvent }) => {
-					// @ts-ignore
-					this.dragging = false;
-					if (this.uiStore.isActionActive('dragActive')) {
-						const moveNodes = this.uiStore.getSelectedNodes.slice();
-						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
-						if (!selectedNodeNames.includes(this.data.name)) {
-							// If the current node is not in selected add it to the nodes which
-							// got moved manually
-							moveNodes.push(this.data);
-						}
+		// 			this.uiStore.addActiveAction('dragActive');
+		// 			return true;
+		// 		},
+		// 		stop: (params: { e: MouseEvent }) => {
+		// 			// @ts-ignore
+		// 			this.dragging = false;
+		// 			if (this.uiStore.isActionActive('dragActive')) {
+		// 				const moveNodes = this.uiStore.getSelectedNodes.slice();
+		// 				const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
+		// 				if (!selectedNodeNames.includes(this.data.name)) {
+		// 					// If the current node is not in selected add it to the nodes which
+		// 					// got moved manually
+		// 					moveNodes.push(this.data);
+		// 				}
 
-						if (moveNodes.length > 1) {
-							this.historyStore.startRecordingUndo();
-						}
-						// This does for some reason just get called once for the node that got clicked
-						// even though "start" and "drag" gets called for all. So lets do for now
-						// some dirty DOM query to get the new positions till I have more time to
-						// create a proper solution
-						let newNodePosition: XYPosition;
-						moveNodes.forEach((node: INodeUi) => {
-							const element = document.getElementById(node.id);
-							if (element === null) {
-								return;
-							}
+		// 				if (moveNodes.length > 1) {
+		// 					this.historyStore.startRecordingUndo();
+		// 				}
+		// 				// This does for some reason just get called once for the node that got clicked
+		// 				// even though "start" and "drag" gets called for all. So lets do for now
+		// 				// some dirty DOM query to get the new positions till I have more time to
+		// 				// create a proper solution
+		// 				let newNodePosition: XYPosition;
+		// 				moveNodes.forEach((node: INodeUi) => {
+		// 					const element = document.getElementById(node.id);
+		// 					if (element === null) {
+		// 						return;
+		// 					}
 
-							newNodePosition = [
-								parseInt(element.style.left!.slice(0, -2), 10),
-								parseInt(element.style.top!.slice(0, -2), 10),
-							];
+		// 					newNodePosition = [
+		// 						parseInt(element.style.left!.slice(0, -2), 10),
+		// 						parseInt(element.style.top!.slice(0, -2), 10),
+		// 					];
 
-							const updateInformation = {
-								name: node.name,
-								properties: {
-									// @ts-ignore, draggable does not have definitions
-									position: newNodePosition,
-								},
-							};
-							const oldPosition = node.position;
-							if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
-								this.historyStore.pushCommandToUndo(
-									new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
-								);
-								this.workflowsStore.updateNodeProperties(updateInformation);
-								this.$emit('moved', node);
-							}
-						});
-						if (moveNodes.length > 1) {
-							this.historyStore.stopRecordingUndo();
-						}
-					}
-				},
-				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
-			});
-		},
+		// 					const updateInformation = {
+		// 						name: node.name,
+		// 						properties: {
+		// 							// @ts-ignore, draggable does not have definitions
+		// 							position: newNodePosition,
+		// 						},
+		// 					};
+		// 					const oldPosition = node.position;
+		// 					if (oldPosition[0] !== newNodePosition[0] || oldPosition[1] !== newNodePosition[1]) {
+		// 						this.historyStore.pushCommandToUndo(
+		// 							new MoveNodeCommand(node.name, oldPosition, newNodePosition, this),
+		// 						);
+		// 						this.workflowsStore.updateNodeProperties(updateInformation);
+		// 						this.$emit('moved', node);
+		// 					}
+		// 				});
+		// 				if (moveNodes.length > 1) {
+		// 					this.historyStore.stopRecordingUndo();
+		// 				}
+		// 			}
+		// 		},
+		// 		filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
+		// 	});
+		// },
 		__addNode(node: INodeUi) {
 			const nodeTypeData = (this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
 				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)) as INodeTypeDescription;
