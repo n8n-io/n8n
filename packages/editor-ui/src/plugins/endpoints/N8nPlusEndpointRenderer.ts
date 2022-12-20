@@ -7,113 +7,46 @@ const stalkLength = 40;
 
 export const register = () => {
 	registerEndpointRenderer<N8nPlusEndpoint>(N8nPlusEndpoint.type, {
-		// TODO `instance` not needed here
 		makeNode: (ep: N8nPlusEndpoint, style: PaintStyle) => {
-			const canvas = createElement(
-				'div',
-				{
-					display: 'block',
-					background: 'transparent',
-					position: 'absolute',
-				},
-				`${ep.instance.endpointClass} plus-endpoint`,
-			);
-
-			canvas.innerHTML = `
-				<div class="plus-stalk">
-					<div class="connection-run-items-label">
-						<span class="floating"></span>
-					</div>
-				</div>
-
-				<div class="plus-container">
-					<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus">
-						<path fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path>
-					</svg>
-					<div class="drop-hover-message">${style.hoverMessage}</div>
-				</div>
-			`;
-			if (style.size !== 'medium') {
-				canvas.classList.add(style.size);
-			}
-
-			canvas.style.top = `${ep.y - 3}px`;
-			canvas.style.left = `${ep.x + 10 + stalkLength}px`;
-
-			function proxyPlusClick(e: MouseEvent) {
-				// ep.endpoint.fire("plusClick", e);
-				console.log('Proxy click');
-			}
-
-			console.log('Make node 2', ep.plusElement);
-			const previousEl = ep.endpoint.element.querySelector('.plus-endpoint');
-			console.log(
-				'🚀 ~ file: N8nPlusEndpointRenderer.ts:51 ~ register ~ previousEl',
-				ep.plusElement,
-			);
-			// canvas.addEventListener('click', proxyPlusClick);
-			ep.instance._appendElementToContainer(canvas);
-			// ep.addClass('plus-svg-circle');
-			// ep.setPlusElement(canvas);
-			// TODO: How to registe the second endpoint as well?
-
-			const svgNode = svg.node(CIRCLE, {
-				cx: 0,
-				cy: 0,
-				r: 0,
+			const group = svg.node('g', {
+				"width": 24,
+				"height": 24,
 			});
-			ep.node = canvas;
-			svgNode.appendChild(canvas);
 
-			return canvas;
+			const containerBorder = svg.node('rect', {
+				rx: 3,
+				stroke: '#000000',
+				'stroke-width': 2,
+				fillOpacity: 0,
+				height: 22,
+				width: 22,
+				y: 1,
+				x: 1,
+			});
+			const plusPath = svg.node('path', {
+				d: "m16.40655,10.89837l-3.30491,0l0,-3.30491c0,-0.40555 -0.32889,-0.73443 -0.73443,-0.73443l-0.73443,0c-0.40554,0 -0.73442,0.32888 -0.73442,0.73443l0,3.30491l-3.30491,0c-0.40555,0 -0.73443,0.32888 -0.73443,0.73442l0,0.73443c0,0.40554 0.32888,0.73443 0.73443,0.73443l3.30491,0l0,3.30491c0,0.40554 0.32888,0.73442 0.73442,0.73442l0.73443,0c0.40554,0 0.73443,-0.32888 0.73443,-0.73442l0,-3.30491l3.30491,0c0.40554,0 0.73442,-0.32889 0.73442,-0.73443l0,-0.73443c0,-0.40554 -0.32888,-0.73442 -0.73442,-0.73442z",
+			});
+			if (ep.size !== 'medium') {
+				ep.addClass(ep.size);
+			}
+			group.appendChild(containerBorder);
+			group.appendChild(plusPath);
+
+			ep.setStalkOverlay();
+			ep.setVisible(false);
+			console.log('__DEBUG: Make node');
+			return group;
 		},
 
 		updateNode: (ep: N8nPlusEndpoint, node) => {
-			// const canvas = createElement(
-			// 	'foreignObject',
-			// 	{
-			// 		display: 'block',
-			// 		background: 'transparent',
-			// 		position: 'absolute',
-			// 	},
-			// 	`${ep.instance.endpointClass} plus-endpoint`,
-			// );
-
-			// canvas.innerHTML = `
-			// 	<div class="plus-stalk">
-			// 		<div class="connection-run-items-label">
-			// 			<span class="floating"></span>
-			// 		</div>
-			// 	</div>
-
-			// 	<div class="plus-container">
-			// 		<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus">
-			// 			<path fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path>
-			// 		</svg>
-			// 		<div class="drop-hover-message">123</div>
-			// 	</div>
-			// `;
-			// // if (style.size !== 'medium') {
-			// // 	canvas.classList.add(style.size);
-			// // }
-
-			// canvas.style.top = `${ep.y - 3}px`;
-			// canvas.style.left = `${ep.x + 10 + stalkLength}px`;
-
-			// console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:77 ~ register ~ node", node.parentElement);
-			// node.parentElement?.appendChild(canvas);
-			// console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:52 ~ register ~ ep.instance.currentlyDragging", ep.instance.currentlyDragging);
-			if (!ep.instance.currentlyDragging) {
-				// console.log('plusElement, ', ep.plusElement);
-				ep.node.style.top = `${ep.y - 3}px`;
-				ep.node.style.left = `${ep.x + 10 + stalkLength}px`;
-			}
-			// svg.attr(node, {
-			// 	// "cx": 9,
-			// 	// "cy": 9,
-			// 	// "r": 8,
-			// });
-			console.log("🚀 ~ file: N8nPlusEndpointRenderer.ts:124 ~ register ~ node", node);
+			const hasConnections = () => {
+				const connections = [...ep.endpoint.connections, ...ep.connectedEndpoint.connections];
+				return connections.length > 0;
+			};
+			ep.instance.setSuspendDrawing(true);
+			ep.setVisible(!ep.instance.isConnectionBeingDragged && !hasConnections());
+			setTimeout(() => ep.setIsVisible(!hasConnections()), 0);
+			ep.instance.setSuspendDrawing(false);
 		},
 	});
 };

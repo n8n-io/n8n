@@ -19,6 +19,14 @@ const STRAIGHT = 'Straight';
 const ARC = 'Arc';
 
 export interface N8nConnectorOptions extends ConnectorOptions {}
+interface N8nConnectorPaintGeometry extends PaintGeometry {
+	sourceEndpoint: Endpoint;
+	targetEndpoint: Endpoint;
+	sourcePos: AnchorPlacement;
+	targetPos: AnchorPlacement;
+	targetGap: number;
+}
+
 type SegmentDirection = -1 | 0 | 1;
 type FlowchartSegment = [number, number, number, number, string];
 type StubPositions = [number, number, number, number];
@@ -246,7 +254,7 @@ export class N8nConnector extends AbstractConnector {
 		return p;
 	}
 
-	writeFlowchartSegments(paintInfo: PaintGeometry) {
+	writeFlowchartSegments(paintInfo: N8nConnectorPaintGeometry) {
 		let current: FlowchartSegment = null;
 		let next: FlowchartSegment = null;
 		let currentDirection: [number, number];
@@ -364,18 +372,16 @@ export class N8nConnector extends AbstractConnector {
 		}
 		// axis, startStub, endStub, idx, midx, midy
 		const result = lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
-		console.log("🚀 ~ file: N8nCustomConnector.ts:367 ~ N8nConnector ~ calculateLineSegment ~ result", { axis, startStub, endStub, idx, midx, midy });
 		return lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 	}
 
-	_getPaintInfo(params: ConnectorComputeParams): PaintGeometry {
+	_getPaintInfo(params: ConnectorComputeParams): N8nConnectorPaintGeometry {
 		let targetPos = params.targetPos;
 		let targetEndpoint: Endpoint = params.targetEndpoint;
 		if (this.overrideTargetEndpoint) {
 			targetPos = this.overrideTargetEndpoint._anchor.computedPosition as AnchorPlacement;
 			targetEndpoint = this.overrideTargetEndpoint;
 		}
-
 
 		this.stub = this.stub || 0;
 		const sourceGap = 0;
@@ -390,7 +396,7 @@ export class N8nConnector extends AbstractConnector {
 		const w = Math.abs(targetPos.curX - params.sourcePos.curX);
 		const h = Math.abs(targetPos.curY - params.sourcePos.curY);
 		let so: Orientation = [params.sourcePos.ox, params.sourcePos.oy];
-		let to: Orientation = [targetPos.ox, params.targetPos.oy];
+		let to: Orientation = [targetPos.ox, targetPos.oy];
 
 		// if either anchor does not have an orientation set, we derive one from their relative
 		// positions.  we fix the axis to be the one in which the two elements are further apart, and
@@ -471,6 +477,7 @@ export class N8nConnector extends AbstractConnector {
 			targetPos,
 			targetGap: this.targetGap,
 		};
+
 		return result;
 	}
 
@@ -489,7 +496,7 @@ export class N8nConnector extends AbstractConnector {
 			if (paintInfo.tx < 0) {
 				this._computeFlowchart(paintInfo);
 			} else {
-				this._computeBezier(paintInfo, connParams);
+				this._computeBezier(paintInfo);
 			}
 
 		} catch (error) {
@@ -505,12 +512,11 @@ export class N8nConnector extends AbstractConnector {
 		this.overrideTargetEndpoint = endpoint;
 	};
 	resetTargetEndpoint() {
-		console.log("🚀 ~ file: N8nCustomConnector.ts:511 ~ N8nConnector ~ resetTargetEndpoint ~ this.overrideTargetEndpoint", this.overrideTargetEndpoint);
 		this.overrideTargetEndpoint = null;
 	}
-	_computeBezier(paintInfo: PaintGeometry, p: ConnectorComputeParams) {
-		const sp = p.sourcePos;
-		const tp = p.targetPos;
+	_computeBezier(paintInfo: N8nConnectorPaintGeometry) {
+		const sp = paintInfo.sourcePos;
+		const tp = paintInfo.targetPos;
 		const _w = Math.abs(sp.curX - tp.curX) - this.targetGap;
 		const _h = Math.abs(sp.curY - tp.curY);
 		const _sx = sp.curX < tp.curX ? _w : 0;
@@ -554,7 +560,7 @@ export class N8nConnector extends AbstractConnector {
 		this.internalSegments.push([lx, ly, x, y, o]);
 	}
 
-	_computeFlowchart(paintInfo: PaintGeometry) {
+	_computeFlowchart(paintInfo: N8nConnectorPaintGeometry) {
 		this.segments = [];
 		this.lastx = null;
 		this.lasty = null;
@@ -571,7 +577,6 @@ export class N8nConnector extends AbstractConnector {
 
 		// compute the rest of the line
 		const p = this.calculateLineSegment(paintInfo, stubs);
-		console.log("🚀 ~ file: N8nCustomConnector.ts:573 ~ N8nConnector ~ _computeFlowchart ~ paintInfo", JSON.stringify(p));
 		if (p) {
 			for (let i = 0; i < p.length; i++) {
 				this.addFlowchartSegment(p[i][0], p[i][1], paintInfo);

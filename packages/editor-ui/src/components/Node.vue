@@ -11,7 +11,6 @@
 			<div
 				:class="nodeClass"
 				:style="nodeStyle"
-				@mousedown="onClick"
 				@click.left="onClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -809,7 +808,8 @@ export default mixins(
 }
 
 .jtk-floating-endpoint {
-	display: none;
+	// display: none;
+	opacity: 0;
 }
 
 .jtk-connector path {
@@ -847,9 +847,12 @@ export default mixins(
 .jtk-drag-active.rect-input-endpoint {
 	z-index: 9;
 }
+.rect-input-endpoint > * {
+	pointer-events: none;
+}
 
 .connection-actions {
-	z-index: 10;
+	z-index: 100;
 }
 
 .node-options {
@@ -881,11 +884,41 @@ $--box-size-small: 18px;
 		}
 	}
 }
+.plus-stalk {
+	width: 37px;
+	border: 1px solid var(--color-foreground-dark);
+	margin-left: 28px;
+	z-index: -1;
+}
 .plus-endpoint {
 	cursor: pointer;
 	z-index: 100;
 	margin-left: 57px;
 
+	&:hover {
+		path {
+			fill: var(--color-primary);
+		}
+		rect {
+			stroke: var(--color-primary);
+		}
+	}
+	path {
+		fill: var(--color-foreground-xdark);
+	}
+	rect {
+		stroke: var(--color-foreground-xdark);
+	}
+
+	&.small {
+		g {
+			transform: scale(0.75);
+			transform-origin: center;
+		}
+		rect {
+			stroke-width: 2.5;
+		}
+	}
 	&:hover .plus-container {
 		color: var(--color-primary);
 		border: 2px solid var(--color-primary);

@@ -282,6 +282,7 @@ import { EVENT_CONNECTION_DRAG } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_ABORT } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOUT } from '@jsplumb/browser-ui';
 import { EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
+import { EVENT_ENDPOINT_MOUSEOVER, EVENT_ENDPOINT_MOUSEOUT } from '@jsplumb/browser-ui';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -969,7 +970,6 @@ export default mixins(
 			}
 		},
 		mouseDown(e: MouseEvent | TouchEvent) {
-			console.log("🚀 ~ file: NodeView.vue:972 ~ mouseDown ~ e", e);
 			// Save the location of the mouse click
 			this.lastClickPosition = this.getMousePositionWithinNodeView(e);
 
@@ -1671,6 +1671,7 @@ export default mixins(
 		},
 
 		nodeSelectedByName(nodeName: string, setActive = false, deselectAllOthers?: boolean) {
+			console.log("🚀 ~ file: NodeView.vue:1674 ~ nodeSelectedByName ~ nodeName", nodeName);
 			if (deselectAllOthers === true) {
 				this.deselectAllNodes();
 			}
@@ -1962,7 +1963,6 @@ export default mixins(
 			targetNodeOuputIndex: number,
 			trackHistory = false,
 		) {
-			console.log("🚀 ~ file: NodeView.vue:1954 ~ sourceNodeName", sourceNodeName);
 			if (
 				this.getConnection(
 					sourceNodeName,
@@ -2054,13 +2054,10 @@ export default mixins(
 				eventSource: string;
 				connection?: Connection;
 			}) => {
-				console.log("🚀 ~ file: NodeView.vue:2043 ~ initNodeView ~ info", info);
 				// Get the node and set it as active that new nodes
 				// which get created get automatically connected
 				// to it.
 				const sourceNode = this.workflowsStore.getNodeById(info.sourceId);
-				console.log("🚀 ~ file: NodeView.vue:2053 ~ initNodeView ~ this.workflowsStore.getNodeById", this.workflowsStore.getNodeById);
-				console.log("🚀 ~ file: NodeView.vue:2053 ~ initNodeView ~ sourceNode", sourceNode);
 				if (!sourceNode) {
 					return;
 				}
@@ -2077,7 +2074,6 @@ export default mixins(
 			};
 
 			this.newInstance?.bind(EVENT_CONNECTION_ABORT, (connection: Connection) => {
-				console.log("🚀 ~ file: NodeView.vue:2068 ~ this.newInstance?.bind ~ connection", connection);
 				try {
 					if (this.dropPrevented) {
 						this.dropPrevented = false;
@@ -2101,13 +2097,13 @@ export default mixins(
 						index: connection.parameters.index,
 						eventSource: 'node_connection_drop',
 					});
+					console.log('__DEBUG: Connection abort');
 				} catch (e) {
 					console.error(e);  // eslint-disable-line no-console
 				}
 			});
 
 			this.newInstance?.bind(INTERCEPT_BEFORE_DROP, (info: BeforeDropParams) => {
-				console.log("🚀 ~ file: NodeView.vue ~ line 1891 ~ this.newInstance?.bind ~ info", info);
 				try {
 					const sourceInfo = info.connection.endpoints[0].parameters;
 					const targetInfo = info.dropEndpoint.parameters;
@@ -2276,7 +2272,12 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-
+			this.newInstance?.bind(EVENT_ENDPOINT_MOUSEOVER, async(endpoint: Endpoint) => {
+				endpoint.endpoint.addClass('hover');
+			});
+			this.newInstance?.bind(EVENT_ENDPOINT_MOUSEOUT, async(endpoint: Endpoint) => {
+				endpoint.endpoint.removeClass('hover');
+			});
 			this.newInstance?.bind(EVENT_CONNECTION_DETACHED, async(info: ConnectionDetachedParams) => {
 				try {
 					const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
@@ -2315,19 +2316,15 @@ export default mixins(
 					this.newNodeInsertPosition = null;
 					NodeViewUtils.resetConnection(connection);
 
-					const nodes = [...document.querySelectorAll('.node-default')];
-					console.log("🚀 ~ file: NodeView.vue:2335 ~ this.newInstance?.bind ~ nodes", nodes);
+					const nodes = [...document.querySelectorAll('.node-wrapper')];
 
 					const onMouseMove = (e: MouseEvent | TouchEvent) => {
-						console.log('On mouse move connection');
 						if (!connection) {
 							return;
 						}
 
-						const element = document.querySelector('.jtk-endpoint.dropHover');
-						// console.log("🚀 ~ file: NodeView.vue:2343 ~ onMouseMove ~ element", element);
+						const element = document.querySelector('.jtk-endpoint.hover');
 						if (element) {
-							console.log("🚀 ~ file: NodeView.vue:2345 ~ onMouseMove ~ element", element);
 							NodeViewUtils.showDropConnectionState(connection, element.jtk.endpoint);
 							return;
 						}
@@ -2381,6 +2378,25 @@ export default mixins(
 				}
 			});
 
+			// this.newInstance?.bind(EVENT_CONNECTION_ABORT, (params: any) => {
+			// 	console.log('__DEBUG: Drag Abort', params);
+			// 	this.newInstance?.repaint(plusEndpoint.element);
+			// });
+			this.newInstance?.bind([EVENT_CONNECTION_DRAG, EVENT_CONNECTION_DRAG], (params: any) => {
+				const allEndpoints = Object.values(this.newInstance?.endpointsByElement)
+					.flat()
+					.filter((endpoint) => endpoint.endpoint.type === 'N8nPlus')
+					.map((endpoint) => endpoint.endpoint.canvas)
+					.forEach((endpoint) => {
+						console.log("__DEBUG: Repainting endpoint", endpoint);
+						setTimeout(() => {
+							this.newInstance?.repaint(endpoint);
+						}, 0);
+					});
+				// console.log("🚀 ~ file: NodeView.vue:2385 ~ this.newInstance?.bind ~ allEndpoints", allEndpoints)
+				console.log('__DEBUG: Connection Drag Move', allEndpoints);
+				// this.newInstance?.repaint(plusEndpoint.element);
+			});
 			// @ts-ignore
 			// this.newInstance?.bind(('plusEndpointClick'), (endpoint: Endpoint) => {
 			// 	if (endpoint && endpoint.__meta) {
@@ -2538,7 +2554,6 @@ export default mixins(
 			return NodeViewUtils.getInputEndpointUUID(node.id, index);
 		},
 		__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
-			console.log("🚀 ~ file: NodeView.vue:2545 ~ __addConnection ~ connection", connection);
 			if (addVisualConnection) {
 				const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
 				const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
@@ -2572,7 +2587,6 @@ export default mixins(
 		},
 		__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
 			if (removeVisualConnection) {
-				console.log("🚀 ~ file: NodeView.vue:2580 ~ __removeConnection ~ connection", connection);
 				const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
 				const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
 
@@ -2605,18 +2619,15 @@ export default mixins(
 			this.workflowsStore.removeConnection({ connection });
 		},
 		__deleteJSPlumbConnection(connection: Connection, trackHistory = false) {
-			console.log("🚀 ~ file: NodeView.vue:2601 ~ __deleteJSPlumbConnection ~ connection", connection);
 			// Make sure to remove the overlay else after the second move
 			// it visibly stays behind free floating without a connection.
 			connection.removeOverlays();
 
 			const sourceEndpoint = connection.endpoints?.[0];
-			console.log("🚀 ~ file: NodeView.vue:2607 ~ __deleteJSPlumbConnection ~ sourceEndpoint", sourceEndpoint);
 			this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 			this.newInstance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 			if (sourceEndpoint) {
 				const endpoints = this.newInstance?.getEndpoints(sourceEndpoint.element);
-				console.log("🚀 ~ file: NodeView.vue:2611 ~ __deleteJSPlumbConnection ~ endpoints", endpoints);
 				endpoints.forEach((endpoint: Endpoint) => this.newInstance.repaint(endpoint.element)); // repaint both circle and plus endpoint
 			}
 			if (trackHistory && connection.__meta) {
@@ -2736,9 +2747,7 @@ export default mixins(
 			targetInputIndex: number,
 		): Connection | undefined {
 			const sourceNode = this.workflowsStore.getNodeByName(sourceNodeName);
-			console.log("🚀 ~ file: NodeView.vue:2737 ~ sourceNode", sourceNode);
 			const targetNode = this.workflowsStore.getNodeByName(targetNodeName);
-			console.log("🚀 ~ file: NodeView.vue:2739 ~ targetNode", targetNode);
 			if (!sourceNode || !targetNode) {
 				return;
 			}
@@ -2765,9 +2774,7 @@ export default mixins(
 			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
 				.$el as Element;
 
-			// console.log("🚀 ~ file: NodeView.vue:2580 ~ getJSPlumbEndpoints ~ nodeEls", nodeEls);
 			const endpoints = this.newInstance?.getEndpoints();
-			// console.log("🚀 ~ file: NodeView.vue ~ line 2492 ~ getJSPlumbEndpoints ~ endpoints", endpoints);
 
 			return endpoints as Endpoint[];
 		},
@@ -2804,7 +2811,6 @@ export default mixins(
 			return { incoming: [], outgoing: [] };
 		},
 		onNodeMoved(node: INodeUi) {
-			console.log("🚀 ~ file: NodeView.vue:2807 ~ onNodeMoved ~ node", node);
 			const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
 
 			[...incoming, ...outgoing].forEach((connection: Connection) => {
@@ -3178,7 +3184,6 @@ export default mixins(
 			);
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
-			console.log("🚀 ~ file: NodeView.vue:3175 ~ addNodes ~ nodes", nodes);
 			if (!nodes || !nodes.length) {
 				return;
 			}
@@ -3193,7 +3198,6 @@ export default mixins(
 			let foundNodeIssues: INodeIssues | null;
 			nodes.forEach((node) => {
 				if (!node.id) {
-					console.log("🚀 ~ file: NodeView.vue:3190 ~ nodes.forEach ~ node.id", node.id);
 					node.id = uuid();
 				}
 
@@ -3741,7 +3745,6 @@ export default mixins(
 		onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
 			this.workflowsStore.updateNodeProperties({ name: nodeName, properties: { position }});
 			const node = this.workflowsStore.getNodeByName(nodeName);
-			console.log("🚀 ~ file: NodeView.vue:3743 ~ onMoveNode ~ node", node);
 			if (node) {
 				this.newInstance?.repaintEverything();
 				this.onNodeMoved(node);
@@ -3785,7 +3788,6 @@ export default mixins(
 	async mounted() {
 		// Connectors.register(N8nConnector.type, N8nConnector);
 		this.canvasStore.initInstance(this.$refs.nodeView as HTMLElement);
-		// console.log("🚀 ~ file: NodeView.vue ~ line 3294 ~ mounted ~ instance", this.newInstance);
 		this.$titleReset();
 		window.addEventListener('message', this.onPostMessageReceived);
 
@@ -4076,11 +4078,14 @@ export default mixins(
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
-	// margin-left: 10px;
 }
 
+.node-output-endpoint-label {
+	margin-left: 24px;
+}
 .node-input-endpoint-label {
 	text-align: right;
+	margin-left: -28px;
 }
 
 .connection-actions {

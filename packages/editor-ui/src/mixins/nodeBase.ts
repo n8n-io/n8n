@@ -1,6 +1,6 @@
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { IJsPlumbInstance, INodeUi, XYPosition } from '@/Interface';
+import { INodeUi, XYPosition } from '@/Interface';
 // import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
@@ -10,7 +10,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BrowserJsPlumbInstance, DragStartEventParams, EVENT_DRAG_START } from '@jsplumb/browser-ui';
+import { BrowserJsPlumbInstance, DragStartEventParams, EVENT_DRAG_START, EVENT_CONNECTION_ABORT, EVENT_CONNECTION_DRAG } from '@jsplumb/browser-ui';
 // import { SingleAnchorSpec, EndpointOptions } from '@jsplumb/common';
 import { EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
@@ -107,8 +107,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					// 	hoverClass: 'dropHover',
 					// },
 				};
-				console.log("🚀 ~ file: nodeBase.ts:110 ~ nodeTypeData.inputs.forEach ~ newEndpointData", newEndpointData);
-
+				console.log("🚀 ~ file: nodeBase.ts:110 ~ nodeTypeData.inputs.forEach ~ !this.isReadOnly && nodeTypeData.inputs.length > 1", !this.isReadOnly && nodeTypeData.inputs.length > 1);
 
 				const endpoint = this.instance?.addEndpoint(
 					this.$refs[this.data.name] as Element,
@@ -162,6 +161,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
+
 					endpoint: {
 						type: 'Dot',
 						options: {
@@ -190,7 +190,6 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 
 
 				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, newEndpointData);
-				console.log("🚀 ~ file: nodeBase.ts:195 ~ nodeTypeData.outputs.forEach ~ endpoint", endpoint);
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]);
@@ -205,77 +204,54 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						totalEndpoints: nodeTypeData.outputs.length,
 					};
 				}
-				// const plusEndpointData: EndpointOptions = {
-				// 	uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
-				// 	anchor: anchorPosition,
-				// 	maxConnections: -1,
-				// 	endpoint: 'N8nPlus',
-				// 	source: true,
-				// 	target: false,
-				// 	enabled: !this.isReadOnly,
-				// 	paintStyle: {
-				// 		fill: getStyleTokenValue('--color-xdark'),
-				// 		outlineStroke: 'none',
-				// 		// hover: false,
-				// 		// showOutputLabel: nodeTypeData.outputs.length === 1,
-				// 		// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-				// 		// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
-				// 	},
-				// 	hoverPaintStyle: {
-				// 		fill: getStyleTokenValue('--color-primary'),
-				// 		outlineStroke: 'none',
-				// 		// hover: true, // hack to distinguish hover state
-				// 	},
-				// 	parameters: {
-				// 		nodeId: this.nodeId,
-				// 		type: inputName,
-				// 		index,
-				// 	},
-				// 	cssClass: 'plus-draggable-endpoint',
-				// 	dragAllowedWhenFull: false,
-				// 	// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
-				// };
 
 				if (!this.isReadOnly) {
-					// const plusEndpointData: EndpointOptions = {
-					// 	uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
-					// 	anchor: anchorPosition,
-					// 	maxConnections: -1,
-					// 	endpoint: 'N8nPlus',
-					// 	source: true,
-					// 	target: false,
-					// 	enabled: !this.isReadOnly,
-					// 	paintStyle: {
-					// 		fill: getStyleTokenValue('--color-xdark'),
-					// 		outlineStroke: 'none',
-					// 		// hover: false,
-					// 		showOutputLabel: nodeTypeData.outputs.length === 1,
-					// 		size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-					// 		hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
-					// 	},
-					// 	hoverPaintStyle: {
-					// 		fill: getStyleTokenValue('--color-primary'),
-					// 		outlineStroke: 'none',
-					// 		// hover: true, // hack to distinguish hover state
-					// 	},
-					// 	parameters: {
-					// 		nodeId: this.nodeId,
-					// 		type: inputName,
-					// 		index,
-					// 	},
-					// 	cssClass: 'plus-draggable-endpoint',
-					// 	dragAllowedWhenFull: false,
-					// 	dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
-					// };
-					// const plusEndpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, plusEndpointData);
-					// if(!Array.isArray(plusEndpoint)) {
-					// 	plusEndpoint.__meta = {
-					// 		nodeName: node.name,
-					// 		nodeId: this.nodeId,
-					// 		index: i,
-					// 		totalEndpoints: nodeTypeData.outputs.length,
-					// 	};
-					// }
+					const plusEndpointData: EndpointOptions = {
+						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
+						anchor: anchorPosition,
+						maxConnections: -1,
+						endpoint: {
+							type: 'N8nPlus',
+							options: {
+								radius: 12,
+								connectedEndpoint: endpoint,
+							},
+						},
+						source: true,
+						target: false,
+						enabled: !this.isReadOnly,
+						paintStyle: {
+							// fill: getStyleTokenValue('--color-xdark'),
+							outlineStroke: 'none',
+							// hover: false,
+							showOutputLabel: nodeTypeData.outputs.length === 1,
+							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+							// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+						},
+						hoverPaintStyle: {
+							// fill: getStyleTokenValue('--color-primary'),
+							outlineStroke: 'none',
+							// hover: true, // hack to distinguish hover state
+						},
+						parameters: {
+							nodeId: this.nodeId,
+							type: inputName,
+							index,
+						},
+						cssClass: 'plus-draggable-endpoint',
+						dragAllowedWhenFull: false,
+						dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+					};
+					const plusEndpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, plusEndpointData);
+
+					if(!Array.isArray(plusEndpoint)) {
+						plusEndpoint.__meta = {
+							nodeName: node.name,
+							nodeId: this.nodeId,
+							index: i,
+							totalEndpoints: nodeTypeData.outputs.length,
+						};
+					}
 				}
 			});
 			console.log('Added output endpoints');
@@ -289,9 +265,6 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 			// this.instance.importDefaults({
 			// 	dragOptions: {}
 			// })
-			this.instance.bind(EVENT_DRAG_START, (params: DragStartEventParams) => {
-				console.log('Started draggign?');
-			});
 			this.instance.draggable(this.nodeId, {
 				grid: [NodeViewUtils.GRID_SIZE, NodeViewUtils.GRID_SIZE],
 				start: (params: { e: MouseEvent }) => {
