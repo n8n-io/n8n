@@ -213,25 +213,21 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						endpoint: {
 							type: 'N8nPlus',
 							options: {
-								radius: 12,
+								dimensions: 24,
 								connectedEndpoint: endpoint,
+								showOutputLabel: nodeTypeData.outputs.length === 1,
+								size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+								hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 							},
 						},
 						source: true,
 						target: false,
 						enabled: !this.isReadOnly,
 						paintStyle: {
-							// fill: getStyleTokenValue('--color-xdark'),
 							outlineStroke: 'none',
-							// hover: false,
-							showOutputLabel: nodeTypeData.outputs.length === 1,
-							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-							// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 						},
 						hoverPaintStyle: {
-							// fill: getStyleTokenValue('--color-primary'),
 							outlineStroke: 'none',
-							// hover: true, // hack to distinguish hover state
 						},
 						parameters: {
 							nodeId: this.nodeId,
@@ -240,7 +236,6 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
-						dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 					};
 					const plusEndpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, plusEndpointData);
 
@@ -350,16 +345,12 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 			});
 		},
 		__addNode(node: INodeUi) {
-			console.log('Add node');
 			const nodeTypeData = (this.nodeTypesStore.getNodeType(node.type, node.typeVersion) ??
 				this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE)) as INodeTypeDescription;
 
-			console.log('before __addInputEndpoints');
 			this.__addInputEndpoints(node, nodeTypeData);
-			console.log('after __addInputEndpoints');
 			this.__addOutputEndpoints(node, nodeTypeData);
-			console.log('Before making instance draggable');
-			this.__makeInstanceDraggable(node);
+			// this.__makeInstanceDraggable(node);
 		},
 		touchEnd(e: MouseEvent) {
 			if (this.isTouchDevice) {

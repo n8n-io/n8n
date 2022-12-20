@@ -138,6 +138,9 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	function initInstance(container: Element) {
+		if(newInstance.value) {
+			console.log('__DEBUG: newInstance.value already exists', newInstance.value);
+		};
 		newInstance.value = newJsPlumbInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,

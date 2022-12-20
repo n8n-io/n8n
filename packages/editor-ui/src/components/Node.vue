@@ -900,6 +900,10 @@ $--box-size-small: 18px;
 	z-index: 100;
 	margin-left: 57px;
 
+	g {
+		pointer-events: none;
+	}
+
 	&:hover {
 		path {
 			fill: var(--color-primary);
@@ -980,18 +984,6 @@ $--box-size-small: 18px;
 		}
 	}
 
-	.drop-hover-message {
-		font-weight: var(--font-weight-bold);
-		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-height-regular);
-		color: var(--color-text-light);
-
-		position: absolute;
-		top: -6px;
-		left: calc(100% + 8px);
-		width: 200px;
-		display: none;
-	}
 
 	&.hidden > * {
 		display: none;
@@ -1003,6 +995,20 @@ $--box-size-small: 18px;
 		span {
 			display: inline;
 		}
+	}
+}
+.hover-message.jtk-overlay {
+	--hover-message-width: 110px;
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	line-height: var(--font-line-height-regular);
+	color: var(--color-text-light);
+	width: var(--hover-message-width);
+	margin-left: calc(var(--hover-message-width) + var(--spacing-l));
+	opacity: 0;
+
+	&.visible {
+		opacity: 1;
 	}
 }
 </style>

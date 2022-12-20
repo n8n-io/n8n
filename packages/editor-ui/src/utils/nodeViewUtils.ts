@@ -213,9 +213,9 @@ export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 		visible: true,
 		create: (component: Endpoint) => {
 			console.log("🚀 ~ file: nodeViewUtils.ts:215 ~ getInputNameOverlay ~ component", component);
-			component.bind('anchor:changed', (params: any) => {
-				console.log("🚀 ~ file: nodeViewUtils.ts:217 ~ component.bind ~ params", params);
-			});
+			// component.bind('anchor:changed', (params: any) => {
+			// 	console.log("🚀 ~ file: nodeViewUtils.ts:217 ~ component.bind ~ params", params);
+			// });
 			const label = document.createElement('div');
 			label.innerHTML = labelText;
 			label.classList.add('node-input-endpoint-label');
@@ -310,7 +310,16 @@ export const getOverlay = (item: Connection | Endpoint, overlayId: string) => {
 export const showOverlay = (item: Connection | Endpoint, overlayId: string) => {
 	const overlay = getOverlay(item, overlayId);
 	if (overlay) {
+		// const overlayElement = overlay.canvas;
+		// console.log("__DEBUG: Overlay canvas", overlayElement);
+		// item.instance.repaint(overlayElement);
+		item.instance.setSuspendDrawing(true);
 		overlay.setVisible(true);
+		overlay.setVisible(false);
+		setTimeout(() => {
+			overlay.setVisible(true);
+			item.instance.setSuspendDrawing(false);
+		}, 500);
 	}
 };
 
@@ -745,15 +754,18 @@ export const addConnectionActionsOverlay = (
 	onDelete: Function,
 	onAdd: Function,
 ) => {
-	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
-		return; // avoid free floating actions when moving connection from one node to another
-	}
+	connection.instance.setSuspendDrawing(true);
+	connection.instance.removeOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
+
+	// if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
+	// 	return; // avoid free floating actions when moving connection from one node to another
+	// }
 	const overlay = connection.addOverlay({
 		type: 'Custom',
 		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
-			location: [2, 19],
-			create: (component: any) => {
+			// location: [2, 19],
+			create: (component: Connection) => {
 				const div = document.createElement('div');
 				const addButton = document.createElement('button');
 				const deleteButton = document.createElement('button');
@@ -775,68 +787,8 @@ export const addConnectionActionsOverlay = (
 		},
 	});
 	overlay.setVisible(false);
+	connection.instance.setSuspendDrawing(false);
 };
-
-export const addOutputEdnpointOverlay = (endpoint: Endpoint) => {
-	const overlay = {
-		type: 'Custom',
-		options: {
-			id: OVERLAY_CONNECTION_ACTIONS_ID,
-			create: (component: any) => {
-				const div = document.createElement('div');
-				div.classList.add('plus-endpoint', 'dot-output-endpoint', 'jtk-endpoint');
-				div.innerHTML = `
-					<div class="plus-stalk">
-						<div class="connection-run-items-label">
-							<span class="floating"></span>
-						</div>
-					</div>
-
-					<div class="plus-container">
-						<svg aria-hidden="true" focusable="false" data-prefix="fas" data-icon="plus" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" class="svg-inline--fa fa-plus">
-							<path fill="currentColor" d="M416 208H272V64c0-17.67-14.33-32-32-32h-32c-17.67 0-32 14.33-32 32v144H32c-17.67 0-32 14.33-32 32v32c0 17.67 14.33 32 32 32h144v144c0 17.67 14.33 32 32 32h32c17.67 0 32-14.33 32-32V304h144c17.67 0 32-14.33 32-32v-32c0-17.67-14.33-32-32-32z" class=""></path>
-						</svg>
-						<div class="drop-hover-message">
-							Click to add node</br>
-							or drag to connect
-						</div>
-					</div>
-				`;
-
-				// div.addEventListener('mousedown', (e) => {
-				// 	e.stopPropagation();
-				// 	const eventDelegate = document.querySelector('.katavorio-delegated-draggable');
-				// 	const modE = {
-				// 		...e,
-				// 		target: (endpoint as any).endpoint.canvas,
-				// 	};
-				// 	const event = new MouseEvent('mousedown', modE);
-				// 	const ev = {
-				// 		...event,
-				// 		target: (endpoint as any).endpoint.canvas,
-				// 	};
-				// 	(endpoint as any).endpoint.canvas.addEventListener('mousedown', (event1) => {
-				// 		event1.stopPropagation();
-				// 		setTimeout(() => {
-
-				// 			eventDelegate.dispatchEvent(event1);
-				// 		}, 0);
-
-				// 	});
-				// 	(endpoint as any).endpoint.canvas.dispatchEvent(event);
-				// 	// console.log('Mouse down', endpoint);
-				// 	// endpoint.instance.trigger((endpoint as any).endpoint.canvas, EVENT_ENDPOINT_MOUSEDOWN, e, {});
-				// 	// endpoint.instance.isConnectionBeingDragged = true;
-				// 	// endpoint.trigger(EVENT_CONNECTION_MOUSEDOWN, e);
-				// });
-				return div;
-			},
-		},
-	};
-
-	endpoint.addOverlay(overlay);
-};
-
 
 export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {
 	return `${nodeId}${OUTPUT_UUID_KEY}${outputIndex}`;
