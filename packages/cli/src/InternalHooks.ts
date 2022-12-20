@@ -498,4 +498,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}): Promise<void> {
 		return this.telemetry.track('Workflow first data fetched', data, { withPostHog: true });
 	}
+
+	/**
+	 * License
+	 */
+	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
+		await this.telemetry.track('Instance attempted to refresh license', data);
+	}
 }

@@ -61,6 +61,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		canUserDeleteTags(): boolean {
 			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
 		},
+		canUserActivateLicense(): boolean {
+			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
+		},
 		canUserAccessSidebarUserInfo() {
 			if (this.currentUser) {
 				const currentUser: IUser = this.currentUser;
