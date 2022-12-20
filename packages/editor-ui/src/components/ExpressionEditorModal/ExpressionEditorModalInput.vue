@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop></div>
 </template>
 
 <script lang="ts">
