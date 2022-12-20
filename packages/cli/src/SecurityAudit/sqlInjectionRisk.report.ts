@@ -1,9 +1,9 @@
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import { SQL_NODES } from './constants';
-import type { RiskySqlWorkflow } from './types';
+import type { FlaggedWorkflow } from './types';
 
 export async function reportSqlInjection(workflows: WorkflowEntity[]) {
-	const riskySqlWorkflows = workflows.reduce<RiskySqlWorkflow[]>((acc, workflow) => {
+	const sqlInjectionWorkflows = workflows.reduce<FlaggedWorkflow[]>((acc, workflow) => {
 		workflow.nodes.forEach((node) => {
 			if (
 				SQL_NODES.includes(node.type) &&
@@ -25,12 +25,12 @@ export async function reportSqlInjection(workflows: WorkflowEntity[]) {
 		return acc;
 	}, []);
 
-	if (riskySqlWorkflows.length === 0) return null;
+	if (sqlInjectionWorkflows.length === 0) return null;
 
 	return {
 		risk: 'SQL injection risk',
 		description:
 			'These workflows contain at least one SQL node whose "Execute Query" field contains an expression. Building a query with an expression that evaluates arbitrary data may lead to a SQL injection attack. Consider validating the input used to build the query.',
-		workflows: riskySqlWorkflows,
+		workflows: sqlInjectionWorkflows,
 	};
 }

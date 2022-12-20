@@ -9,7 +9,7 @@ export type InactiveCredsReport = {
 	}>;
 };
 
-export type RiskySqlWorkflow = {
+export type FlaggedWorkflow = {
 	workflowId: string;
 	workflowName: string;
 	nodeId: string;
