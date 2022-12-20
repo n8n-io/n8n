@@ -45,7 +45,7 @@
 							:key="`${nodeData.id}_node`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
-							:instance="newInstance"
+							:instance="instance"
 							:isActive="!!activeNode && activeNode.name === nodeData.name"
 							:hideActions="pullConnActive"
 							:isProductionExecutionPreview="isProductionExecutionPreview"
@@ -68,7 +68,7 @@
 							:ref="`node-${nodeData.id}`"
 							:name="nodeData.name"
 							:isReadOnly="isReadOnly"
-							:instance="newInstance"
+							:instance="instance"
 							:isActive="!!activeNode && activeNode.name === nodeData.name"
 							:nodeViewScale="nodeViewScale"
 							:gridSize="GRID_SIZE"
@@ -585,8 +585,8 @@ export default mixins(
 		// instance(): jsPlumbInstance {
 		// 	return this.canvasStore.jsPlumbInstance;
 		// },
-		newInstance(): BrowserJsPlumbInstance {
-			return this.canvasStore.newInstance;
+		instance(): BrowserJsPlumbInstance {
+			return this.canvasStore.instance;
 		},
 	},
 	data() {
@@ -2037,7 +2037,7 @@ export default mixins(
 			this.historyStore.stopRecordingUndo();
 		},
 		initNodeView() {
-			this.newInstance?.importDefaults({
+			this.instance?.importDefaults({
 				endpoint: {
 					type: 'Dot',
 					options: { radius: 5 },
@@ -2072,7 +2072,7 @@ export default mixins(
 				this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true });
 			};
 
-			this.newInstance?.bind(EVENT_CONNECTION_ABORT, (connection: Connection) => {
+			this.instance?.bind(EVENT_CONNECTION_ABORT, (connection: Connection) => {
 				try {
 					if (this.dropPrevented) {
 						this.dropPrevented = false;
@@ -2101,7 +2101,7 @@ export default mixins(
 				}
 			});
 
-			this.newInstance?.bind(INTERCEPT_BEFORE_DROP, (info: BeforeDropParams) => {
+			this.instance?.bind(INTERCEPT_BEFORE_DROP, (info: BeforeDropParams) => {
 				try {
 					const sourceInfo = info.connection.endpoints[0].parameters;
 					const targetInfo = info.dropEndpoint.parameters;
@@ -2126,7 +2126,7 @@ export default mixins(
 			// only one set of visible actions should be visible at the same time
 			let activeConnection: null | Connection = null;
 
-			this.newInstance?.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
+			this.instance?.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
 				try {
 					const sourceInfo = info.sourceEndpoint.parameters;
 					const targetInfo = info.targetEndpoint.parameters;
@@ -2187,16 +2187,16 @@ export default mixins(
 			});
 			let exitTimer: NodeJS.Timeout | undefined;
 			let enterTimer: NodeJS.Timeout | undefined;
-			this.newInstance.bind(EVENT_DRAG_MOVE, (payload: DragStopPayload) => {
-				this.newInstance?.connections
+			this.instance.bind(EVENT_DRAG_MOVE, (payload: DragStopPayload) => {
+				this.instance?.connections
 					.flatMap((connection) => Object.values(connection.overlays))
 					.forEach((overlay) => {
 						if(!overlay.canvas) return;
-						this.newInstance?.repaint(overlay.canvas);
+						this.instance?.repaint(overlay.canvas);
 					});
 
 			});
-			this.newInstance.bind(EVENT_CONNECTION_MOUSEOVER, (connection: Connection) => {
+			this.instance.bind(EVENT_CONNECTION_MOUSEOVER, (connection: Connection) => {
 				try {
 					if (exitTimer !== undefined) {
 						clearTimeout(exitTimer);
@@ -2219,7 +2219,7 @@ export default mixins(
 				}
 			});
 
-			this.newInstance.bind(EVENT_CONNECTION_MOUSEOUT, (connection: Connection) => {
+			this.instance.bind(EVENT_CONNECTION_MOUSEOUT, (connection: Connection) => {
 				try {
 					if (exitTimer) return;
 
@@ -2243,7 +2243,7 @@ export default mixins(
 				}
 			});
 
-			this.newInstance?.bind(EVENT_CONNECTION_MOVED, (info: ConnectionMovedParams) => {
+			this.instance?.bind(EVENT_CONNECTION_MOVED, (info: ConnectionMovedParams) => {
 				try {
 					// When a connection gets moved from one node to another it for some reason
 					// calls the "connection" event but not the "connectionDetached" one. So we listen
@@ -2272,18 +2272,18 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			this.newInstance?.bind(EVENT_ENDPOINT_MOUSEOVER, (endpoint: Endpoint, mouse) => {
+			this.instance?.bind(EVENT_ENDPOINT_MOUSEOVER, (endpoint: Endpoint, mouse) => {
 				// This event seems bugged. It gets called constantly even when the mouse is not over the endpoint
 				// if the endpoint has a connection attached to it. So we need to check if the mouse is actually over
 				// the endpoint.
 				if (!endpoint.isTarget || mouse.target !== endpoint.endpoint.canvas) return;
-				this.newInstance.setHover(endpoint, true);
+				this.instance.setHover(endpoint, true);
 			});
-			this.newInstance?.bind(EVENT_ENDPOINT_MOUSEOUT, (endpoint: Endpoint) => {
+			this.instance?.bind(EVENT_ENDPOINT_MOUSEOUT, (endpoint: Endpoint) => {
 				if (!endpoint.isTarget) return;
-				this.newInstance.setHover(endpoint, false);
+				this.instance.setHover(endpoint, false);
 			});
-			this.newInstance?.bind(EVENT_CONNECTION_DETACHED, async(info: ConnectionDetachedParams) => {
+			this.instance?.bind(EVENT_CONNECTION_DETACHED, async(info: ConnectionDetachedParams) => {
 				try {
 					const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 					NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
@@ -2313,7 +2313,7 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			this.newInstance?.bind(EVENT_CONNECTION_DRAG, (connection: Connection) => {
+			this.instance?.bind(EVENT_CONNECTION_DRAG, (connection: Connection) => {
 				// The overlays are visible by default so we need to hide the midpoint arrow
 				// manually
 				connection.overlays['midpoint-arrow']?.setVisible(false);
@@ -2350,7 +2350,7 @@ export default mixins(
 										this.pullConnActiveNodeName = node.name;
 										const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
 										if (endpointUUID) {
-											const endpoint = this.newInstance?.getEndpoint(endpointUUID);
+											const endpoint = this.instance?.getEndpoint(endpointUUID);
 
 											NodeViewUtils.showDropConnectionState(connection, endpoint);
 
@@ -2386,14 +2386,14 @@ export default mixins(
 				}
 			});
 
-			this.newInstance?.bind([EVENT_CONNECTION_DRAG, EVENT_CONNECTION_ABORT, EVENT_CONNECTION_DETACHED], (connection: Connection) => {
-				Object.values(this.newInstance?.endpointsByElement)
+			this.instance?.bind([EVENT_CONNECTION_DRAG, EVENT_CONNECTION_ABORT, EVENT_CONNECTION_DETACHED], (connection: Connection) => {
+				Object.values(this.instance?.endpointsByElement)
 					.flatMap((endpoints) => Object.values(endpoints))
 					.filter((endpoint) => endpoint.endpoint.type === 'N8nPlus')
 					.forEach((endpoint) => setTimeout(() => endpoint.instance.revalidate(endpoint.element), 0));
 			});
 
-			this.newInstance?.bind(('plusEndpointClick'), (endpoint: Endpoint) => {
+			this.instance?.bind(('plusEndpointClick'), (endpoint: Endpoint) => {
 				if (endpoint && endpoint.__meta) {
 					insertNodeAfterSelected({
 						sourceId: endpoint.__meta.nodeId,
@@ -2558,17 +2558,10 @@ export default mixins(
 				}
 
 				const uuid: [string, string] = [outputUuid, inputUuid];
-				// const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
-				// const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
-				// this.newInstance?.manage(sourceNode, outputUuid);
-				// this.newInstance?.manage(targetNode, inputUuid);
 				// Create connections in DOM
-				// @ts-ignore
-				this.newInstance?.connect({
+				this.instance?.connect({
 					uuids: uuid,
 					detachable: !this.isReadOnly,
-					// source: sourceNode,
-					// target: targetNode,
 				});
 			} else {
 				const connectionProperties = { connection, setStateDirty: false };
@@ -2589,7 +2582,7 @@ export default mixins(
 				if (!sourceNode || !targetNode) {
 					return;
 				}
-				const connections = this.newInstance?.getConnections({
+				const connections = this.instance?.getConnections({
 					source: sourceNode.id,
 					target: targetNode.id,
 				});
@@ -2618,10 +2611,10 @@ export default mixins(
 
 			const sourceEndpoint = connection.endpoints?.[0];
 			this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
-			this.newInstance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
+			this.instance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
 			if (sourceEndpoint) {
-				const endpoints = this.newInstance?.getEndpoints(sourceEndpoint.element);
-				endpoints.forEach((endpoint: Endpoint) => this.newInstance.repaint(endpoint.element)); // repaint both circle and plus endpoint
+				const endpoints = this.instance?.getEndpoints(sourceEndpoint.element);
+				endpoints.forEach((endpoint: Endpoint) => this.instance.repaint(endpoint.element)); // repaint both circle and plus endpoint
 			}
 			if (trackHistory && connection.__meta) {
 				const connectionData: [IConnection, IConnection] = [
@@ -2752,7 +2745,7 @@ export default mixins(
 			const targetEndpoint = NodeViewUtils.getInputEndpointUUID(targetId, targetInputIndex);
 
 			// @ts-ignore
-			const connections = this.newInstance?.getConnections({
+			const connections = this.instance?.getConnections({
 				source: sourceId,
 				target: targetId,
 			}) as Connection[];
@@ -2767,7 +2760,7 @@ export default mixins(
 			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
 				.$el as Element;
 
-			const endpoints = this.newInstance?.getEndpoints();
+			const endpoints = this.instance?.getEndpoints();
 
 			return endpoints as Endpoint[];
 		},
@@ -2787,12 +2780,12 @@ export default mixins(
 
 			if (node) {
 				// @ts-ignore
-				const outgoing = this.newInstance?.getConnections({
+				const outgoing = this.instance?.getConnections({
 					source: node.id,
 				});
 
 				// @ts-ignore
-				const incoming = this.newInstance?.getConnections({
+				const incoming = this.instance?.getConnections({
 					target: node.id,
 				}) as Connection[];
 
@@ -2830,7 +2823,7 @@ export default mixins(
 
 			if (data === null || data.length === 0 || waiting) {
 				// @ts-ignore
-				const outgoing = this.newInstance?.getConnections({
+				const outgoing = this.instance?.getConnections({
 					source: sourceId,
 				}) as Connection[];
 
@@ -2967,7 +2960,7 @@ export default mixins(
 							);
 
 							if (waitForNewConnection) {
-								this.newInstance?.setSuspendDrawing(false, true);
+								this.instance?.setSuspendDrawing(false, true);
 								waitForNewConnection = false;
 							}
 						}, 100); // just to make it clear to users that this is a new connection
@@ -2977,10 +2970,10 @@ export default mixins(
 
 			setTimeout(() => {
 				// Suspend drawing
-				this.newInstance?.setSuspendDrawing(true);
-				this.newInstance?.endpointsByElement[node.id]
+				this.instance?.setSuspendDrawing(true);
+				this.instance?.endpointsByElement[node.id]
 					.flat()
-					.forEach((endpoint) => this.newInstance?.deleteEndpoint(endpoint));
+					.forEach((endpoint) => this.instance?.deleteEndpoint(endpoint));
 
 				// Remove the connections in data
 				this.workflowsStore.removeAllNodeConnection(node);
@@ -2989,7 +2982,7 @@ export default mixins(
 
 				if (!waitForNewConnection) {
 					// Now it can draw again
-					this.newInstance?.setSuspendDrawing(false, true);
+					this.instance?.setSuspendDrawing(false, true);
 				}
 
 				// Remove node from selected index if found in it
@@ -3103,12 +3096,12 @@ export default mixins(
 		},
 		deleteEveryEndpoint() {
 			// Check as it does not exist on first load
-			if (this.newInstance) {
-				Object.values(this.newInstance?.endpointsByElement)
+			if (this.instance) {
+				Object.values(this.instance?.endpointsByElement)
 					.flatMap((endpoint) => endpoint)
 					.forEach((endpoint) => endpoint.destroy());
 
-				this.newInstance.deleteEveryConnection({ fireEvent: true});
+				this.instance.deleteEveryConnection({ fireEvent: true});
 			}
 		},
 		matchCredentials(node: INodeUi) {
@@ -3240,7 +3233,7 @@ export default mixins(
 			await Vue.nextTick();
 
 			// Suspend drawing
-			this.newInstance?.setSuspendDrawing(true);
+			this.instance?.setSuspendDrawing(true);
 
 			// Load the connections
 			if (connections !== undefined) {
@@ -3278,7 +3271,7 @@ export default mixins(
 			}
 
 			// Now it can draw again
-			this.newInstance?.setSuspendDrawing(false, true);
+			this.instance?.setSuspendDrawing(false, true);
 		},
 		async addNodesToWorkflow(data: IWorkflowDataUpdate): Promise<IWorkflowDataUpdate> {
 			// Because nodes with the same name maybe already exist, it could
@@ -3626,7 +3619,7 @@ export default mixins(
 				}
 
 				// @ts-ignore
-				const connections = this.newInstance?.getConnections({
+				const connections = this.instance?.getConnections({
 					source: node.id,
 				}) as Connection[];
 
@@ -3646,7 +3639,7 @@ export default mixins(
 				}
 
 				// @ts-ignore
-				const connections = this.newInstance?.getConnections({
+				const connections = this.instance?.getConnections({
 					source: node.id,
 				}) as Connection[];
 
@@ -3729,7 +3722,7 @@ export default mixins(
 			const node = this.workflowsStore.getNodeByName(nodeName);
 			setTimeout(() => {
 				if (node) {
-					this.newInstance?.repaintEverything();
+					this.instance?.repaintEverything();
 					this.onNodeMoved(node);
 				}
 			}, 0);

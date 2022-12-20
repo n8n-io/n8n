@@ -10,7 +10,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import type { BeforeStartEventParams, BrowserJsPlumbInstance, DragStartEventParams, DragStopEventParams } from '@jsplumb/browser-ui';
-import { newInstance as newJsPlumbInstance } from '@jsplumb/browser-ui';
+import { newInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
 import { N8nConnector } from '@/plugins/connectors/N8nCustomConnector';
@@ -32,7 +32,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 
-	const newInstance = ref<BrowserJsPlumbInstance>();
+	const instance = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -73,7 +73,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
-		newInstance.value?.setZoom(zoomLevel);
+		instance.value?.setZoom(zoomLevel);
 		uiStore.nodeViewOffsetPosition = offset;
 	};
 
@@ -137,7 +137,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	function initInstance(container: Element) {
-		newInstance.value = newJsPlumbInstance({
+		instance.value = newInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
@@ -156,7 +156,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
-						newInstance.value?.clearDragSelection();
+						instance.value?.clearDragSelection();
 						uiStore.resetSelectedNodes();
 					}
 
@@ -219,7 +219,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
-		newInstance.value?.setDragConstrainFunction((pos: XYPosition) => {
+		instance.value?.setDragConstrainFunction((pos: XYPosition) => {
 			const isReadOnly = uiStore.isReadOnly;
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
@@ -241,6 +241,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
-		newInstance,
+		instance,
 	};
 });
