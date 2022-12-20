@@ -23,6 +23,7 @@ import { CreateWorkflowsEditorRole1663755770893 } from './1663755770893-CreateWo
 import { CreateCredentialUsageTable1665484192212 } from './1665484192212-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637025 } from './1665754637025-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707126 } from './1669739707126-AddWorkflowVersionIdColumn';
+import { AddTriggerCountColumn1669823906995 } from './1669823906995-AddTriggerCountColumn';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -50,4 +51,5 @@ export const postgresMigrations = [
 	RemoveCredentialUsageTable1665754637025,
 	AddWorkflowVersionIdColumn1669739707126,
 	WorkflowStatistics1664196174001,
+	AddTriggerCountColumn1669823906995,
 ];

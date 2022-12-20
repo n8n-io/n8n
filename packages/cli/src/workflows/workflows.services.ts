@@ -116,7 +116,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overriden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
+	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
@@ -152,12 +152,10 @@ export class WorkflowsService {
 		}
 
 		// safeguard against querying ids not shared with the user
-		if (filter?.id !== undefined) {
-			const workflowId = parseInt(filter.id.toString());
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
-				return [];
-			}
+		const workflowId = filter?.id?.toString();
+		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
+			LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
+			return [];
 		}
 
 		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
