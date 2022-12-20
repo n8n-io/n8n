@@ -97,8 +97,6 @@ test('POST /license/activate does not work for regular users', async () => {
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
-	console.log(response);
-
 	expect(response.statusCode).toBe(403);
 	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
 });
