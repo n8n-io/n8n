@@ -331,7 +331,9 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import {
 	ITimeoutHMS,
+	IUser,
 	IWorkflowDataUpdate,
+	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 	WorkflowCallerPolicyDefaultOption,
@@ -350,6 +352,8 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'WorkflowSettings',
@@ -389,7 +393,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				saveDataSuccessExecution: 'all',
 				saveExecutionProgress: false,
 				saveManualExecutions: false,
-				workflowCallerPolicy: '',
+				workflowCallerPolicy: 'workflowsFromSameOwner',
 			},
 			workflowCallerPolicyOptions: [] as Array<{ key: string; value: string }>,
 			saveDataErrorExecutionOptions: [] as Array<{ key: string; value: string }>,
@@ -408,15 +412,34 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	},
 
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(
+			useRootStore,
+			useUsersStore,
+			useSettingsStore,
+			useWorkflowsStore,
+			useWorkflowsEEStore,
+		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},
 		workflowId(): string {
 			return this.workflowsStore.workflowId;
 		},
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflow;
+		},
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		workflowOwnerName(): string {
+			const fallback = this.$locale.baseText(
+				'workflowSettings.callerPolicy.options.workflowsFromSameOwner.fallback',
+			);
+
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 	},
 	async mounted() {
@@ -516,7 +539,24 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			};
 		},
 		async loadWorkflowCallerPolicyOptions() {
+			const currentUserIsOwner = this.workflow.ownedBy?.id === this.currentUser?.id;
+
 			this.workflowCallerPolicyOptions = [
+				{
+					key: 'workflowsFromSameOwner',
+					value: this.$locale.baseText(
+						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
+						{
+							interpolate: {
+								owner: currentUserIsOwner
+									? this.$locale.baseText(
+											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
+									  )
+									: this.workflowOwnerName,
+							},
+						},
+					),
+				},
 				{
 					key: 'any',
 					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
