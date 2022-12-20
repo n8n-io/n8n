@@ -27,15 +27,11 @@ export class TestWebhooks {
 			timeout: NodeJS.Timeout;
 			workflowData: IWorkflowDb;
 			workflow: Workflow;
+			destinationNode?: string;
 		};
 	} = {};
 
 	private activeWebhooks: ActiveWebhooks | null = null;
-
-	/**
-	 * Whether the next manual execution should run _only_ the executed webhook node.
-	 */
-	isWebhookOnlyExecution = false;
 
 	constructor() {
 		this.activeWebhooks = new ActiveWebhooks();
@@ -133,6 +129,7 @@ export class TestWebhooks {
 						}
 						resolve(data);
 					},
+					this.testWebhookData[webhookKey].destinationNode,
 				);
 
 				if (executionId === undefined) {
@@ -235,6 +232,7 @@ export class TestWebhooks {
 				timeout,
 				workflow,
 				workflowData,
+				destinationNode,
 			};
 
 			try {

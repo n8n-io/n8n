@@ -54,7 +54,6 @@ import * as ActiveExecutions from '@/ActiveExecutions';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
-import * as TestWebhooks from './TestWebhooks';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -143,6 +142,7 @@ export async function executeWebhook(
 	req: express.Request,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -380,9 +380,8 @@ export async function executeWebhook(
 				},
 			} as IRunExecutionData);
 
-		if (TestWebhooks.getInstance().isWebhookOnlyExecution && runExecutionData.startData) {
-			runExecutionData.startData.destinationNode = workflowStartNode.name;
-			TestWebhooks.getInstance().isWebhookOnlyExecution = false; // reset
+		if (destinationNode && runExecutionData.startData) {
+			runExecutionData.startData.destinationNode = destinationNode;
 		}
 
 		if (executionId !== undefined) {
