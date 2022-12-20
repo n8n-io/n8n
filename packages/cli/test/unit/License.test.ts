@@ -10,6 +10,7 @@ const MOCK_INSTANCE_ID = 'instance-id';
 const MOCK_N8N_VERSION = '0.27.0';
 const MOCK_ACTIVATION_KEY = 'activation-key';
 const MOCK_FEATURE_FLAG = 'feat:mock';
+const MOCK_MAIN_PLAN_ID = 1234;
 
 describe('License', () => {
 	beforeAll(() => {
@@ -39,22 +40,10 @@ describe('License', () => {
 		});
 	});
 
-	test('activates license if current license is not valid', async () => {
-		LicenseManager.prototype.isValid.mockReturnValue(false);
-
+	test('attempts to activate license with provided key', async () => {
 		await license.activate(MOCK_ACTIVATION_KEY);
 
-		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
 		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
-	});
-
-	test('does not activate license if current license is valid', async () => {
-		LicenseManager.prototype.isValid.mockReturnValue(true);
-
-		await license.activate(MOCK_ACTIVATION_KEY);
-
-		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
-		expect(LicenseManager.prototype.activate).not.toHaveBeenCalledWith();
 	});
 
 	test('renews license', async () => {
@@ -73,5 +62,46 @@ describe('License', () => {
 		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
+	});
+
+	test('check fetching entitlements', async () => {
+		await license.getCurrentEntitlements();
+
+		expect(LicenseManager.prototype.getCurrentEntitlements).toHaveBeenCalled();
+	});
+
+	test('check fetching feature values', async () => {
+		await license.getFeatureValue(MOCK_FEATURE_FLAG, false);
+
+		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(MOCK_FEATURE_FLAG, false);
+	});
+
+	test('check management jwt', async () => {
+		await license.getManagementJwt();
+
+		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
+	});
+
+	test('check main plan', async () => {
+		// mock entitlements response
+		License.prototype.getCurrentEntitlements = jest.fn().mockReturnValue([
+			{
+				id: MOCK_MAIN_PLAN_ID,
+				productId: '',
+				productMetadata: {
+					terms: {
+						isMainPlan: true,
+					},
+				},
+				features: {},
+				featureOverrides: {},
+				validFrom: new Date(),
+				validTo: new Date(),
+			},
+		]);
+		jest.fn(license.getMainPlan).mockReset();
+
+		const mainPlan = license.getMainPlan();
+		expect(mainPlan.id).toBe(MOCK_MAIN_PLAN_ID);
 	});
 });

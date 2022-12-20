@@ -1,8 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
-export class MessageEventBusDestinations1668516860001 implements MigrationInterface {
-	name = 'MessageEventBusDestinations1668516860001';
+export class MessageEventBusDestinations1671535397530 implements MigrationInterface {
+	name = 'MessageEventBusDestinations1671535397530';
 
 	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);

@@ -160,11 +160,12 @@ import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
-import { eventBus } from './eventbus';
-import { eventBusRouter } from './eventbus/eventBusRoutes';
+import { eventBus } from '@/eventbus';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
-import { isLogStreamingEnabled } from './eventbus/MessageEventBus/MessageEventBusHelper';
-import { corsMiddleware } from './middlewares/cors';
+import { licenseController } from '@/license/license.controller';
+import { corsMiddleware } from '@/middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
@@ -364,6 +365,9 @@ class App {
 				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
 		};
 	}
 
@@ -408,7 +412,11 @@ class App {
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await license.activate(activationKey);
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e);
+			}
 		}
 	}
 
@@ -798,6 +806,11 @@ class App {
 		// Workflow
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
+
+		// ----------------------------------------
+		// License
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
 
 		// ----------------------------------------
 		// Workflow Statistics
@@ -1352,9 +1365,7 @@ class App {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
-						ids.map((id) => id.toString()),
-					);
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 					for (const data of executingWorkflows) {
 						if (

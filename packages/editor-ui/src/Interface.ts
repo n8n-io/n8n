@@ -806,6 +806,10 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
+	hideUsagePage: boolean;
+	license: {
+		environment: 'development' | 'production';
+	};
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -1366,3 +1370,21 @@ export type SchemaType =
 	| 'null'
 	| 'undefined';
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+
+export type UsageState = {
+	loading: boolean;
+	data: {
+		usage: {
+			executions: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
+				warningThreshold: number; // hardcoded value in BE
+			};
+		};
+		license: {
+			planId: string; // community
+			planName: string; // defaults to Community
+		};
+		managementToken?: string;
+	};
+};

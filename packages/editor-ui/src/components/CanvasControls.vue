@@ -20,6 +20,7 @@
 			size="large"
 			:title="$locale.baseText('nodeView.zoomIn')"
 			icon="search-plus"
+			data-test-id="zoom-in-button"
 		/>
 		<n8n-icon-button
 			@click="zoomOut"
@@ -27,6 +28,7 @@
 			size="large"
 			:title="$locale.baseText('nodeView.zoomOut')"
 			icon="search-minus"
+			data-test-id="zoom-out-button"
 		/>
 		<n8n-icon-button
 			v-if="nodeViewScale !== 1 && !isDemo"
@@ -35,6 +37,7 @@
 			size="large"
 			:title="$locale.baseText('nodeView.resetZoom')"
 			icon="undo"
+			data-test-id="reset-zoom-button"
 		/>
 	</div>
 </template>
