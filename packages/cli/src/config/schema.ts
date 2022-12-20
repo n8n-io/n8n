@@ -218,7 +218,7 @@ export const schema = {
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
 			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
-			default: 'any',
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},

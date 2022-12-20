@@ -93,13 +93,18 @@ export class PermissionChecker {
 			return;
 		}
 
-		const policy =
+		let policy =
 			workflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+		if (!isSharingEnabled()) {
+			// Community version allows only same owner workflows
+			policy = 'workflowsFromSameOwner';
+		}
 
 		if (policy === 'none') {
 			throw new SubworkflowOperationError(
-				`Target workflow ID ${workflow.id ?? ''} may not be called by other workflows.`,
-				'Please update the settings of the target workflow or ask its owner to do so.',
+				`Target workflow ID ${workflow.id ?? ''} may not be called by other workflows`,
+				'Please update the settings of the target workflow or ask its owner to do so',
 			);
 		}
 
@@ -108,7 +113,7 @@ export class PermissionChecker {
 				throw new SubworkflowOperationError(
 					`Target workflow ID ${
 						workflow.id ?? ''
-					} may only be called by a list of workflows. The current workflow is not saved, therefore cannot be checked.`,
+					} may only be called by a list of workflows. The current workflow is not saved, therefore cannot be checked`,
 					'Please save the current workflow and try again.',
 				);
 			}
@@ -121,8 +126,8 @@ export class PermissionChecker {
 				throw new SubworkflowOperationError(
 					`Target workflow ID ${
 						workflow.id ?? ''
-					} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
-					'Please update the settings of the target workflow or ask its owner to do so.',
+					} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}`,
+					'Please update the settings of the target workflow or ask its owner to do so',
 				);
 			}
 		}
@@ -139,8 +144,8 @@ export class PermissionChecker {
 				throw new SubworkflowOperationError(
 					`Target workflow ID ${
 						workflow.id ?? ''
-					} may only be called by workflows from the same owner. The current workflow is not shared with the owner of the target workflow.`,
-					'Please share the current workflow with the owner of the target workflow and try again.',
+					} may only be called by workflows from the same owner. The current workflow is not shared with the owner of the target workflow`,
+					'Please update the settings of the target workflow or ask its owner to do so',
 				);
 			}
 		}

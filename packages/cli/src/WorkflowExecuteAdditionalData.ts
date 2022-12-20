@@ -65,6 +65,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
+import { WorkflowsService } from './workflows/workflows.services';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -824,7 +825,6 @@ export async function getRunData(
 
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	userId: string,
 	parentWorkflowId?: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
@@ -841,23 +841,15 @@ export async function getWorkflowData(
 			// to get initialized first
 			await Db.init();
 		}
-		const user = await getUserById(userId);
-		let relations = ['workflow', 'workflow.tags'];
 
-		if (config.getEnv('workflowTagsDisabled')) {
-			relations = relations.filter((relation) => relation !== 'workflow.tags');
-		}
+		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations,
-			where: whereClause({
-				user,
-				entityType: 'workflow',
-				entityId: workflowInfo.id,
-			}),
-		});
-
-		workflowData = shared?.workflow;
+		workflowData = await WorkflowsService.get(
+			{ id: parseInt(workflowInfo.id, 10) },
+			{
+				relations,
+			},
+		);
 
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
@@ -899,12 +891,7 @@ async function executeWorkflow(
 
 	const workflowData =
 		options.loadedWorkflowData ??
-		(await getWorkflowData(
-			workflowInfo,
-			additionalData.userId,
-			options.parentWorkflowId,
-			options.parentWorkflowSettings,
-		));
+		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
