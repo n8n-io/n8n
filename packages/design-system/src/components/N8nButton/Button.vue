@@ -5,7 +5,7 @@
 		:aria-disabled="ariaDisabled"
 		:aria-busy="ariaBusy"
 		aria-live="polite"
-		v-on="$listeners"
+		v-bind="$attrs"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
 			<n8n-spinner v-if="loading" :size="size" />
@@ -18,11 +18,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 import N8nSpinner from '../N8nSpinner';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-button',
 	props: {
 		label: {

@@ -14,7 +14,7 @@
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
 					<n8n-menu-item
 						v-for="item in upperMenuItems"
 						:key="item.id"
@@ -28,7 +28,7 @@
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
-				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-bind="$attrs">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
 						:key="item.id"
@@ -52,13 +52,13 @@
 </template>
 
 <script lang="ts">
-import { Menu as ElMenu } from 'element-ui';
+import { Menu as ElMenu } from 'element-plus';
 import N8nMenuItem from '../N8nMenuItem';
 
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import { IMenuItem } from '../../types';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu',
 	components: {
 		ElMenu,
@@ -115,6 +115,7 @@ export default Vue.extend({
 		}
 
 		this.$emit('input', this.activeTab);
+		this.$emit('update:modelValue', this.activeTab);
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -135,6 +136,7 @@ export default Vue.extend({
 			}
 			this.$emit('select', option);
 			this.$emit('input', this.activeTab);
+			this.$emit('update:modelValue', this.activeTab);
 		},
 	},
 	watch: {

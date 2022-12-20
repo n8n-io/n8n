@@ -1,6 +1,6 @@
 import N8nUsersList from './UsersList.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Modules/UsersList',
@@ -21,7 +21,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nUsersList,
 	},
-	template: '<n8n-users-list v-bind="$props" @reinvite="onReinvite" @delete="onDelete" />',
+	template: '<n8n-users-list v-bind="$attrs" @reinvite="onReinvite" @delete="onDelete" />',
 	methods,
 });
 

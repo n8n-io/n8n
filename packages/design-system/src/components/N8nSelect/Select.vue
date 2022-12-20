@@ -10,12 +10,12 @@
 			<slot name="prepend" />
 		</div>
 		<el-select
-			v-bind="$props"
+			v-bind="$attrs"
 			:value="value"
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			v-on="$listeners"
+			v-bind="$attrs"
 			ref="innerSelect"
 		>
 			<template #prefix>
@@ -32,8 +32,8 @@
 </template>
 
 <script lang="ts">
-import { Select as ElSelect } from 'element-ui';
-import Vue from 'vue';
+import { ElSelect } from 'element-plus';
+import { defineComponent } from 'vue';
 
 export interface IProps {
 	size?: string;
@@ -41,7 +41,7 @@ export interface IProps {
 	popperClass?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect,

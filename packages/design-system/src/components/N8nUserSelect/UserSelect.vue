@@ -32,7 +32,7 @@
 <script lang="ts">
 import 'vue';
 import mixins from 'vue-typed-mixins';
-import { Select as ElSelect, Option as ElOption } from 'element-ui';
+import { ElSelect, ElOption } from 'element-plus';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
 import Locale from '../../mixins/locale';
@@ -124,6 +124,7 @@ export default mixins(Locale).extend({
 		},
 		onChange(value: string) {
 			this.$emit('input', value);
+			this.$emit('update:modelValue', value);
 		},
 		onBlur() {
 			this.$emit('blur');

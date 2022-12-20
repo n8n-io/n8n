@@ -1,7 +1,7 @@
 import N8nRadioButtons from './RadioButtons.vue';
 
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/RadioButtons',
@@ -26,7 +26,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nRadioButtons,
 	},
-	template: `<n8n-radio-buttons v-model="val" v-bind="$props" @input="onInput">
+	template: `<n8n-radio-buttons v-model="val" v-bind="$attrs" @input="onInput">
 		</n8n-radio-buttons>`,
 	methods,
 	data() {

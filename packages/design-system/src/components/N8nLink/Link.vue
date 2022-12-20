@@ -1,5 +1,5 @@
 <template>
-	<n8n-route :to="to" :newWindow="newWindow" v-on="$listeners" class="n8n-link">
+	<n8n-route :to="to" :newWindow="newWindow" v-bind="$attrs" class="n8n-link">
 		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
 			<n8n-text :size="size" :bold="bold">
 				<slot></slot>
@@ -9,11 +9,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-link',
 	props: {
 		size: {

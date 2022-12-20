@@ -18,9 +18,9 @@
 <script lang="ts">
 import RadioButton from './RadioButton.vue';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-radio-buttons',
 	props: {
 		value: {
@@ -43,6 +43,7 @@ export default Vue.extend({
 				return;
 			}
 			this.$emit('input', option.value);
+			this.$emit('update:modelValue', option.value);
 		},
 	},
 });

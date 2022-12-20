@@ -1,6 +1,6 @@
 import N8nInputNumber from './InputNumber.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Input Number',
@@ -57,7 +57,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nInputNumber,
 	},
-	template: '<n8n-input-number v-bind="$props" v-model="val" @input="onInput" />',
+	template: '<n8n-input-number v-bind="$attrs" v-model="val" @input="onInput" />',
 	data() {
 		return {
 			val: null,
@@ -78,7 +78,7 @@ const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 		N8nInputNumber,
 	},
 	template:
-		'<div> <n8n-input-number style="margin-bottom:10px" v-bind="$props" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" size="medium" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" size="small" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$props" v-model="val" size="mini" @input="onInput" /> </div>',
+		'<div> <n8n-input-number style="margin-bottom:10px" v-bind="$attrs" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$attrs" size="medium" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$attrs" size="small" v-model="val" @input="onInput" /> <n8n-input-number style="margin-bottom:10px" v-bind="$attrs" v-model="val" size="mini" @input="onInput" /> </div>',
 	methods,
 	data() {
 		return {

@@ -29,12 +29,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
@@ -95,6 +95,7 @@ export default Vue.extend({
 				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 			};
 			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			this.$emit('update:modelValue', { name, value });
 		},
 		onValidate(name: string, valid: boolean) {
 			Vue.set(this.validity, name, valid);

@@ -71,13 +71,13 @@
 </template>
 
 <script lang="ts">
-import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
+import { ElSubmenu, ElMenuItem } from 'element-plus';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu-item',
 	components: {
 		ElSubmenu,

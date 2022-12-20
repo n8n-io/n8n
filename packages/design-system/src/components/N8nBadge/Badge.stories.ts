@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nBadge from './Badge.vue';
 
 export default {
@@ -21,7 +21,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nBadge,
 	},
-	template: '<n8n-badge v-bind="$props">Badge</n8n-badge>',
+	template: '<n8n-badge v-bind="$attrs">Badge</n8n-badge>',
 });
 
 export const Badge = Template.bind({});

@@ -1,6 +1,6 @@
 import N8nIconButton from './IconButton.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Icon Button',
@@ -31,8 +31,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nIconButton,
 	},
-	template: '<n8n-icon-button v-bind="$props" @click="onClick" />',
-	methods,
+	setup() {
+		return { args, ...methods };
+	},
+	template: '<n8n-icon-button v-bind="args" @click="onClick" />',
 });
 
 export const Button = Template.bind({});
@@ -46,9 +48,17 @@ const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nIconButton,
 	},
-	template:
-		'<div> <n8n-icon-button v-bind="$props" size="xlarge" @click="onClick" /> <n8n-icon-button v-bind="$props" size="large" @click="onClick" />  <n8n-icon-button v-bind="$props" size="medium" @click="onClick" />  <n8n-icon-button v-bind="$props" size="small" @click="onClick" />  <n8n-icon-button v-bind="$props" :loading="true" @click="onClick" />  <n8n-icon-button v-bind="$props" :disabled="true" @click="onClick" /></div>',
-	methods,
+	setup() {
+		return { args, ...methods };
+	},
+	template: `<div>
+		<n8n-icon-button v-bind="args" size="xlarge" @click="onClick" />
+		<n8n-icon-button v-bind="args" size="large" @click="onClick" />
+		<n8n-icon-button v-bind="args" size="medium" @click="onClick" />
+		<n8n-icon-button v-bind="args" size="small" @click="onClick" />
+		<n8n-icon-button v-bind="args" :loading="true" @click="onClick" />
+		<n8n-icon-button v-bind="args" :disabled="true" @click="onClick" />
+	</div>`,
 });
 
 export const Primary = ManyTemplate.bind({});

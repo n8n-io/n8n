@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nUserInfo from './UserInfo.vue';
 
 export default {
@@ -14,7 +14,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nUserInfo,
 	},
-	template: '<n8n-user-info v-bind="$props" />',
+	template: '<n8n-user-info v-bind="$attrs" />',
 });
 
 export const Member = Template.bind({});

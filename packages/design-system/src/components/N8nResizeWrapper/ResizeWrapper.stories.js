@@ -41,7 +41,7 @@ const Template = (args, { argTypes }) => ({
 	},
 	template: `<div style="width: fit-content; height: fit-content">
 			<n8n-resize-wrapper
-				v-bind="$props"
+				v-bind="$attrs"
 				@resize="onResize"
 				@resizeend="onResizeEnd"
 				@resizestart="onResizeStart"

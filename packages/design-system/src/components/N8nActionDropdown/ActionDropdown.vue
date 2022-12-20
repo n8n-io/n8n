@@ -41,12 +41,12 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 import {
 	Dropdown as ElDropdown,
 	DropdownMenu as ElDropdownMenu,
 	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+} from 'element-plus';
 import N8nIcon from '../N8nIcon';
 
 interface IActionDropdownItem {
@@ -64,7 +64,7 @@ interface IActionDropdownItem {
 // by Element UI dropdown component).
 // It can be used in different parts of editor UI while ActionToggle
 // is designed to be used in card components.
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-dropdown',
 	components: {
 		ElDropdown,

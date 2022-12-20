@@ -1,6 +1,6 @@
 import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Input Label',
@@ -18,7 +18,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nInput,
 	},
 	template:
-		'<div style="margin-top:50px"><n8n-input-label v-bind="$props"><n8n-input /></n8n-input-label></div>',
+		'<div style="margin-top:50px"><n8n-input-label v-bind="$attrs"><n8n-input /></n8n-input-label></div>',
 });
 
 export const InputLabel = Template.bind({});

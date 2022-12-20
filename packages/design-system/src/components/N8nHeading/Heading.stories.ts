@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nHeading from './Heading.vue';
 
 export default {
@@ -25,7 +25,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nHeading,
 	},
-	template: '<n8n-heading v-bind="$props">hello world</n8n-heading>',
+	template: '<n8n-heading v-bind="$attrs">hello world</n8n-heading>',
 });
 
 export const Heading = Template.bind({});

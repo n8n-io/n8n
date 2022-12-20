@@ -1,7 +1,7 @@
 import N8nCallout from './Callout.vue';
 import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Callout',
@@ -48,7 +48,7 @@ const template: StoryFn<Args> = (args, { argTypes }) => ({
 		N8nCallout,
 	},
 	template: `
-		<n8n-callout v-bind="$props">
+		<n8n-callout v-bind="$attrs">
 			${args.default}
 			<template #actions v-if="actions">
 				${args.actions}

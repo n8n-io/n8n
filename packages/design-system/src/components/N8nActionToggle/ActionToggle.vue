@@ -38,12 +38,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import {
 	Dropdown as ElDropdown,
 	DropdownMenu as ElDropdownMenu,
 	DropdownItem as ElDropdownItem,
-} from 'element-ui';
+} from 'element-plus';
 import N8nIcon from '../N8nIcon';
 
 interface Action {
@@ -53,7 +53,7 @@ interface Action {
 	type?: 'external-link';
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-toggle',
 	components: {
 		ElDropdown,

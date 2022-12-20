@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import { Skeleton as ElSkeleton, SkeletonItem as ElSkeletonItem } from 'element-ui';
+import { ElSkeleton, ElSkeletonItem } from 'element-plus';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-loading',
 	components: {
 		ElSkeleton,

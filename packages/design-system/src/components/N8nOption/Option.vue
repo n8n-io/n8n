@@ -1,4 +1,4 @@
 <script lang="ts">
-import { Option } from 'element-ui';
-export default Option;
+import { ElOption } from 'element-plus';
+export default ElOption;
 </script>

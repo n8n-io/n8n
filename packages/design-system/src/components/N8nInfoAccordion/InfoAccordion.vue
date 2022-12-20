@@ -41,7 +41,7 @@
 <script lang="ts">
 import N8nText from '../N8nText';
 import N8nIcon from '../N8nIcon';
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
 interface IAccordionItem {
 	id: string;
@@ -49,7 +49,7 @@ interface IAccordionItem {
 	icon: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-info-accordion',
 	components: {
 		N8nText,

@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nInfoTip from './InfoTip.vue';
 
 export default {
@@ -12,7 +12,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nInfoTip,
 	},
 	template:
-		'<n8n-info-tip v-bind="$props">Need help doing something? <a href="/docs" target="_blank">Open docs</a></n8n-info-tip>',
+		'<n8n-info-tip v-bind="$attrs">Need help doing something? <a href="/docs" target="_blank">Open docs</a></n8n-info-tip>',
 });
 
 export const Note = Template.bind({});

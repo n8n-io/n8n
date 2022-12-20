@@ -1,5 +1,5 @@
 import N8nActionDropdown from './ActionDropdown.vue';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionDropdown',
@@ -30,7 +30,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nActionDropdown,
 	},
-	template: `<n8n-action-dropdown v-bind="$props" />`,
+	template: `<n8n-action-dropdown v-bind="$attrs" />`,
 });
 
 export const defaultActionDropdown = template.bind({});

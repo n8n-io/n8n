@@ -1,23 +1,23 @@
+import { app } from '@storybook/vue3';
+
 import './font-awesome-icons';
 import './storybook.scss';
 
-import ElementUI from 'element-ui';
-import lang from 'element-ui/lib/locale/lang/en';
-import locale from 'element-ui/lib/locale';
+import element from 'element-plus';
+import { n8nDesignSystem } from '../src/plugins/n8nComponents';
 
-import designSystemComponents from '../src/plugins/n8nComponents';
+// import lang from 'element-ui/lib/locale/lang/en';
+// import locale from 'element-ui/lib/locale';
 
-import Vue from 'vue';
+app.use(element);
+app.use(n8nDesignSystem);
 
-Vue.use(ElementUI);
-Vue.use(designSystemComponents);
-
-locale.use(lang);
-
-// https://github.com/storybookjs/storybook/issues/6153
-Vue.prototype.toJSON = function () {
-	return this;
-};
+// locale.use(lang);
+//
+// // https://github.com/storybookjs/storybook/issues/6153
+// Vue.prototype.toJSON = function () {
+// 	return this;
+// };
 
 export const parameters = {
 	actions: {

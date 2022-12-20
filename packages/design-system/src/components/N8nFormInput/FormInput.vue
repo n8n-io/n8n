@@ -1,7 +1,7 @@
 <template>
 	<n8n-checkbox
 		v-if="type === 'checkbox'"
-		v-bind="$props"
+		v-bind="$attrs"
 		@input="onInput"
 		@focus="onFocus"
 		ref="inputRef"
@@ -172,6 +172,7 @@ function onBlur() {
 function onInput(value: FormState) {
 	state.isTyping = true;
 	emit('input', value);
+	emit('update:modelValue', value);
 }
 
 function onFocus() {

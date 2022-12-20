@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nLoading from './Loading.vue';
 
 export default {
@@ -35,7 +35,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nLoading,
 	},
-	template: '<n8n-loading v-bind="$props"></n8n-loading>',
+	template: '<n8n-loading v-bind="$attrs"></n8n-loading>',
 });
 
 export const Loading = Template.bind({});

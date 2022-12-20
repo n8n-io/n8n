@@ -1,6 +1,6 @@
 <template>
 	<el-checkbox
-		v-bind="$props"
+		v-bind="$attrs"
 		ref="checkbox"
 		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
@@ -19,11 +19,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { Checkbox as ElCheckbox } from 'element-ui';
+import { defineComponent } from 'vue';
+import { ElCheckbox } from 'element-plus';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-checkbox',
 	components: {
 		ElCheckbox,
@@ -59,6 +59,7 @@ export default Vue.extend({
 	methods: {
 		onChange(event: Event) {
 			this.$emit('input', event);
+			this.$emit('update:modelValue', event);
 		},
 		onLabelClick() {
 			const checkboxComponent = this.$refs.checkbox as ElCheckbox;

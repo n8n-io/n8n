@@ -1,6 +1,6 @@
 import N8nMenuItem from '.';
-import { Menu as ElMenu } from 'element-ui';
-import type { StoryFn } from '@storybook/vue';
+import { ElMenu } from 'element-plus';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/MenuItem',
@@ -16,7 +16,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 	template: `
 		<div style="width: 200px">
 			<el-menu>
-				<n8n-menu-item v-bind="$props" />
+				<n8n-menu-item v-bind="$attrs" />
 			</el-menu>
 		</div>
 	`,

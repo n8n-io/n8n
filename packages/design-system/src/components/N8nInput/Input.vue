@@ -1,11 +1,11 @@
 <template>
 	<el-input
-		v-bind="$props"
+		v-bind="$attrs"
 		:size="computedSize"
 		:class="['n8n-input', ...classes]"
 		:autoComplete="autocomplete"
 		ref="innerInput"
-		v-on="$listeners"
+		v-bind="$attrs"
 		:name="name"
 	>
 		<template #prepend>
@@ -24,10 +24,10 @@
 </template>
 
 <script lang="ts">
-import { Input as ElInput } from 'element-ui';
-import Vue from 'vue';
+import { ElInput } from 'element-plus';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput,

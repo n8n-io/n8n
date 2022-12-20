@@ -7,7 +7,7 @@
 				[$style.disabled]: disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
+			v-bind="$attrs"
 		>
 			<!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
 			<n8n-tooltip placement="top" :disabled="!showTooltip" v-if="showTooltip">
@@ -36,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,

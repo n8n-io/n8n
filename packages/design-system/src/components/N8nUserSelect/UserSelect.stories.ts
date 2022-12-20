@@ -1,6 +1,6 @@
 import N8nUserSelect from './UserSelect.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Modules/UserSelect',
@@ -23,7 +23,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nUserSelect,
 	},
 	template:
-		'<n8n-user-select v-bind="$props" v-model="val" @change="onChange" @blur="onBlur" @focus="onFocus" />',
+		'<n8n-user-select v-bind="$attrs" v-model="val" @change="onChange" @blur="onBlur" @focus="onFocus" />',
 	methods,
 	data() {
 		return {

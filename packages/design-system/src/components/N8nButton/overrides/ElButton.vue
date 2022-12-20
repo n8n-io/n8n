@@ -1,18 +1,18 @@
 <template>
-	<n8n-button ref="button" v-bind="attrs" v-on="$listeners">
+	<n8n-button ref="button" v-bind="attrs" v-bind="$attrs">
 		<slot />
 	</n8n-button>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nButton from '../Button.vue';
 
 const classToTypeMap = {
 	'btn--cancel': 'secondary',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	components: {
 		N8nButton,
 	},

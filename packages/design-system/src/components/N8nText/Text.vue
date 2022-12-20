@@ -1,13 +1,13 @@
 <template>
-	<component :is="tag" :class="['n8n-text', ...classes]" v-on="$listeners">
+	<component :is="tag" :class="['n8n-text', ...classes]" v-bind="$attrs">
 		<slot></slot>
 	</component>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-text',
 	props: {
 		bold: {

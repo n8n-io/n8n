@@ -1,5 +1,5 @@
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import N8nSticky from './Sticky.vue';
 
 export default {
@@ -52,7 +52,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nSticky,
 	},
 	template:
-		'<n8n-sticky v-bind="$props"  @resize="onResize" @resizeend="onResizeEnd" @resizeStart="onResizeStart" @input="onInput"></n8n-sticky>',
+		'<n8n-sticky v-bind="$attrs"  @resize="onResize" @resizeend="onResizeEnd" @resizeStart="onResizeStart" @input="onInput"></n8n-sticky>',
 	methods,
 });
 

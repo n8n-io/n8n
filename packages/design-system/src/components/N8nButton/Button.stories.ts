@@ -1,6 +1,6 @@
 import N8nButton from './Button.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/Button',
@@ -38,8 +38,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nButton,
 	},
-	template: '<n8n-button v-bind="$props" @click="onClick" />',
-	methods,
+	setup() {
+		return { args, ...methods };
+	},
+	template: `<n8n-button v-bind="args" @click="onClick" />`,
 });
 
 export const Button = Template.bind({});
@@ -52,14 +54,16 @@ const AllSizesTemplate: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nButton,
 	},
+	setup() {
+		return { args, ...methods };
+	},
 	template: `<div>
-		<n8n-button v-bind="$props" size="large" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" @click="onClick" />
-		<n8n-button v-bind="$props" :loading="true" @click="onClick" />
-		<n8n-button v-bind="$props" :disabled="true" @click="onClick" />
+		<n8n-button v-bind="args" size="large" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" @click="onClick" />
+		<n8n-button v-bind="args" size="small" @click="onClick" />
+		<n8n-button v-bind="args" :loading="true" @click="onClick" />
+		<n8n-button v-bind="args" :disabled="true" @click="onClick" />
 	</div>`,
-	methods,
 });
 
 const AllColorsAndSizesTemplate: StoryFn = (args, { argTypes }) => ({
@@ -67,31 +71,33 @@ const AllColorsAndSizesTemplate: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nButton,
 	},
+	setup() {
+		return { args, ...methods };
+	},
 	template: `<div>
-		<n8n-button v-bind="$props" size="large" type="primary" @click="onClick" />
-		<n8n-button v-bind="$props" size="large" type="secondary" @click="onClick" />
-		<n8n-button v-bind="$props" size="large" type="tertiary" @click="onClick" />
-		<n8n-button v-bind="$props" size="large" type="success" @click="onClick" />
-		<n8n-button v-bind="$props" size="large" type="warning" @click="onClick" />
-		<n8n-button v-bind="$props" size="large" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="primary" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="secondary" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="tertiary" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="success" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="warning" @click="onClick" />
+		<n8n-button v-bind="args" size="large" type="danger" @click="onClick" />
 		<br/>
 		<br/>
-		<n8n-button v-bind="$props" size="medium" type="primary" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" type="secondary" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" type="tertiary" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" type="success" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" type="warning" @click="onClick" />
-		<n8n-button v-bind="$props" size="medium" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="primary" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="secondary" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="tertiary" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="success" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="warning" @click="onClick" />
+		<n8n-button v-bind="args" size="medium" type="danger" @click="onClick" />
 		<br/>
 		<br/>
-		<n8n-button v-bind="$props" size="small" type="primary" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" type="secondary" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" type="tertiary" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" type="success" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" type="warning" @click="onClick" />
-		<n8n-button v-bind="$props" size="small" type="danger" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="primary" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="secondary" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="tertiary" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="success" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="warning" @click="onClick" />
+		<n8n-button v-bind="args" size="small" type="danger" @click="onClick" />
 	</div>`,
-	methods,
 });
 
 export const Primary = AllSizesTemplate.bind({});

@@ -1,6 +1,6 @@
 import N8nActionBox from './ActionBox.vue';
 import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 
 export default {
 	title: 'Atoms/ActionBox',
@@ -27,7 +27,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nActionBox,
 	},
-	template: '<n8n-action-box v-bind="$props" @click="onClick" />',
+	template: '<n8n-action-box v-bind="$attrs" @click="onClick" />',
 	methods,
 });
 
