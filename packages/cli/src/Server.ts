@@ -165,7 +165,7 @@ require('body-parser-xml')(bodyParser);
 
 const exec = promisify(callbackExec);
 
-export const externalHooks: IExternalHooksClass = ExternalHooks();
+const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;

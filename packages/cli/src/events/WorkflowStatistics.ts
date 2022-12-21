@@ -1,7 +1,8 @@
 import { INode, IRun, IWorkflowBase, LoggerProxy } from 'n8n-workflow';
-import { Db, InternalHooksManager } from '..';
-import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
-import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export async function workflowExecutionCompleted(
 	workflowData: IWorkflowBase,
