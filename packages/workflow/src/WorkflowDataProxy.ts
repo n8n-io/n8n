@@ -501,7 +501,7 @@ export class WorkflowDataProxy {
 						return undefined;
 					}
 
-					const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+					const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
 
 					if (name === 'name') {
 						return sourceData.previousNode;
@@ -993,7 +993,7 @@ export class WorkflowDataProxy {
 										});
 									}
 
-									const sourceData: ISourceData = that.executeData?.source.main![
+									const sourceData: ISourceData = that.executeData.source.main[
 										pairedItem.input || 0
 									] as ISourceData;
 
@@ -1105,7 +1105,7 @@ export class WorkflowDataProxy {
 								});
 							}
 
-							const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+							const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
 
 							if (property === 'context') {
 								return that.nodeContextGetter(sourceData.previousNode);
