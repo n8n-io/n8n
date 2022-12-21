@@ -1,9 +1,16 @@
 <template>
 	<div :class="$style.container">
 		<banner
-			v-show="showValidationWarning && credentialPermissions.isOwner"
+			v-show="showValidationWarning"
 			theme="danger"
-			:message="$locale.baseText('credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow')"
+			:message="
+				$locale.baseText(
+					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
+						credentialPermissions.isOwner ? '' : '.sharee'
+					}`,
+					{ interpolate: { owner: credentialOwnerName } },
+				)
+			"
 		/>
 
 		<banner
