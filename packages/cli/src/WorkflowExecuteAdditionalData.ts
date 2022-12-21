@@ -640,18 +640,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						workflowId: this.workflowData.id,
 						error,
 					});
-					Promise.all([
-						eventBus.sendWorkflowEvent({
-							eventName: 'n8n.workflow.execution.error',
-							payload: {
-								// workflowData: this.workflowData,
-								msg: error,
-								executionId: this.executionId,
-								workflowId: this.workflowData.id,
-							},
-						}),
-					]).catch(() => {});
-
 					if (!isManualMode) {
 						executeErrorWorkflow(
 							this.workflowData,
