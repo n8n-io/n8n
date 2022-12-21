@@ -11,16 +11,8 @@
 	"workspace-default-settings.runOnActivation": true,
 	"eslint.useESLintClass": true,
 	"eslint.alwaysShowStatus": true,
-	"eslint.validate": [
-		"javascript",
-		"typescript",
-		"vue"
-	],
-	"eslint.probe": [
-		"javascript",
-		"typescript",
-		"vue"
-	],
+	"eslint.validate": ["javascript", "typescript", "vue"],
+	"eslint.probe": ["javascript", "typescript", "vue"],
 	"eslint.workingDirectories": [
 		{
 			"mode": "auto"
