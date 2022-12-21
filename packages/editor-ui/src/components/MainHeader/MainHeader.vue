@@ -99,7 +99,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		syncTabsWithRoute(route: Route): void {
 			if (
 				route.name === VIEWS.EXECUTION_HOME ||
-				route.name === VIEWS.EXECUTIONS ||
+				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
 				route.name === VIEWS.EXECUTION_PREVIEW
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
