@@ -66,8 +66,8 @@ import { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useUsersStore } from '@/stores/users';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
+import { useUsersStore } from '@/stores/users';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
 
@@ -928,7 +928,7 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 				this.workflowsStore.setWorkflowVersionId(workflowData.versionId);
 
 				if (
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) &&
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) &&
 					this.usersStore.currentUser
 				) {
 					this.workflowsEEStore.setWorkflowOwnedBy({

@@ -28,7 +28,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 	});
 
 	if (!shared) {
-		LoggerProxy.info('User attempted to read a workflow without permissions', {
+		LoggerProxy.verbose('User attempted to read a workflow without permissions', {
 			workflowId,
 			userId: user.id,
 		});
