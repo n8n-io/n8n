@@ -1,12 +1,12 @@
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SQL_NODES } from './constants';
+import { SQL_NODE_TYPES } from './constants';
 import type { FlaggedLocation } from './types';
 
 export async function reportSqlInjection(workflows: WorkflowEntity[]) {
 	const locations = workflows.reduce<FlaggedLocation[]>((acc, workflow) => {
 		workflow.nodes.forEach((node) => {
 			if (
-				SQL_NODES.includes(node.type) &&
+				SQL_NODE_TYPES.includes(node.type) &&
 				node.parameters !== undefined &&
 				node.parameters.operation === 'executeQuery' &&
 				typeof node.parameters.query === 'string' &&

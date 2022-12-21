@@ -1,4 +1,6 @@
-export const SQL_NODES = [
+/* eslint-disable @typescript-eslint/naming-convention */
+
+export const SQL_NODE_TYPES = [
 	'n8n-nodes-base.postgres',
 	'n8n-nodes-base.mySql',
 	'n8n-nodes-base.microsoftSql',
@@ -20,3 +22,7 @@ export const SENSITIVE_NODE_TYPES = [
 	'n8n-nodes-base.code',
 	'n8n-nodes-base.httpRequest',
 ];
+
+export const REPORT_TITLES = {
+	SQL_INJECTION_RISK: 'SQL injection risk',
+};
