@@ -9,7 +9,7 @@ import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRole, isSharingEnabled } from './UserManagementHelper';
+import { getRole, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/user/user.service';
 
@@ -77,7 +77,7 @@ export class PermissionChecker {
 	}
 
 	static async checkSubworkflowExecutePolicy(
-		workflow: Workflow,
+		subworkflow: Workflow,
 		userId: string,
 		parentWorkflowId?: string,
 	) {
@@ -87,48 +87,44 @@ export class PermissionChecker {
 		 * loaded from a file or code, for instance.
 		 * This is an important topic to keep in mind for all security checks
 		 */
-		if (!workflow.id) {
+		if (!subworkflow.id) {
 			// It's a workflow from code and not loaded from DB
 			// No checks are necessary since it doesn't have any sort of settings
 			return;
 		}
 
 		let policy =
-			workflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+			subworkflow.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
 
 		if (!isSharingEnabled()) {
 			// Community version allows only same owner workflows
 			policy = 'workflowsFromSameOwner';
 		}
 
+		const subworkflowOwner = await getWorkflowOwner(subworkflow.id);
+
+		const errorToThrow = new SubworkflowOperationError(
+			`Target workflow ID ${subworkflow.id ?? ''} may not be called`,
+			subworkflowOwner.id === userId
+				? 'Change the settings of the sub-workflow so it can be called by this one.'
+				: `${subworkflowOwner.firstName} (${subworkflowOwner.email}) can make this change. You may need to tell them the ID of this workflow, which is ${subworkflow.id}`,
+		);
+
 		if (policy === 'none') {
-			throw new SubworkflowOperationError(
-				`Target workflow ID ${workflow.id ?? ''} may not be called by other workflows`,
-				'Please update the settings of the target workflow or ask its owner to do so',
-			);
+			throw errorToThrow;
 		}
 
 		if (policy === 'workflowsFromAList') {
 			if (parentWorkflowId === undefined) {
-				throw new SubworkflowOperationError(
-					`Target workflow ID ${
-						workflow.id ?? ''
-					} may only be called by a list of workflows. The current workflow is not saved, therefore cannot be checked`,
-					'Please save the current workflow and try again.',
-				);
+				throw errorToThrow;
 			}
-			const allowedCallerIds = (workflow.settings.callerIds as string | undefined)
+			const allowedCallerIds = (subworkflow.settings.callerIds as string | undefined)
 				?.split(',')
 				.map((id) => id.trim())
 				.filter((id) => id !== '');
 
 			if (!allowedCallerIds?.includes(parentWorkflowId)) {
-				throw new SubworkflowOperationError(
-					`Target workflow ID ${
-						workflow.id ?? ''
-					} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}`,
-					'Please update the settings of the target workflow or ask its owner to do so',
-				);
+				throw errorToThrow;
 			}
 		}
 
@@ -139,14 +135,9 @@ export class PermissionChecker {
 					'Fatal error: user not found. Please contact the system administrator.',
 				);
 			}
-			const sharing = await WorkflowsService.getSharing(user, workflow.id, ['role']);
+			const sharing = await WorkflowsService.getSharing(user, subworkflow.id, ['role', 'user']);
 			if (!sharing || sharing.role.name !== 'owner') {
-				throw new SubworkflowOperationError(
-					`Target workflow ID ${
-						workflow.id ?? ''
-					} may only be called by workflows from the same owner. The current workflow is not shared with the owner of the target workflow`,
-					'Please update the settings of the target workflow or ask its owner to do so',
-				);
+				throw errorToThrow;
 			}
 		}
 	}
