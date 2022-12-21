@@ -10,7 +10,7 @@ import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { User } from '@db/entities/User';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
@@ -74,7 +74,7 @@ export async function saveCredential(
 		scope: 'credential',
 	});
 
-	await externalHooks.run('credentials.create', [encryptedData]);
+	await ExternalHooks().run('credentials.create', [encryptedData]);
 
 	return Db.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -96,7 +96,7 @@ export async function saveCredential(
 }
 
 export async function removeCredential(credentials: CredentialsEntity): Promise<ICredentialsDb> {
-	await externalHooks.run('credentials.delete', [credentials.id]);
+	await ExternalHooks().run('credentials.delete', [credentials.id]);
 	return Db.collections.Credentials.remove(credentials);
 }
 

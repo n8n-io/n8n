@@ -179,6 +179,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
+		position: XYPosition;
 		[key: string]: IDataObject | XYPosition;
 	};
 }
@@ -234,8 +235,7 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryBufferString(dataPath: string): Promise<string>;
-	getBinaryUrl(dataPath: string): string;
+	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
 }
 
 export interface INodeTranslationHeaders {

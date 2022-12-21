@@ -165,7 +165,7 @@ require('body-parser-xml')(bodyParser);
 
 const exec = promisify(callbackExec);
 
-export const externalHooks: IExternalHooksClass = ExternalHooks();
+const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;
@@ -1515,7 +1515,9 @@ class App {
 					identifier,
 				);
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				if (req.query.mode === 'download' && fileName) {
+					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				}
 				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},
