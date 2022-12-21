@@ -10,7 +10,7 @@ import { validateEntity } from '@/GenericHelpers';
 import type { WorkflowRequest } from '@/requests';
 import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
-import { externalHooks } from '../Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
@@ -117,7 +117,7 @@ EEWorkflowController.post(
 
 		await validateEntity(newWorkflow);
 
-		await externalHooks.run('workflow.create', [newWorkflow]);
+		await ExternalHooks().run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -178,7 +178,7 @@ EEWorkflowController.post(
 			});
 		}
 
-		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
 		const { id, ...rest } = savedWorkflow;
