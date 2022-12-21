@@ -3,7 +3,14 @@
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
-			:message="$locale.baseText('credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow')"
+			:message="
+				$locale.baseText(
+					`credentialEdit.credentialConfig.pleaseCheckTheErrorsBelow${
+						credentialPermissions.isOwner ? '' : '.sharee'
+					}`,
+					{ interpolate: { owner: credentialOwnerName } },
+				)
+			"
 		/>
 
 		<banner
@@ -12,7 +19,7 @@
 			:message="
 				$locale.baseText(
 					`credentialEdit.credentialConfig.couldntConnectWithTheseSettings${
-						!credentialPermissions.isOwner ? '.sharee' : ''
+						credentialPermissions.isOwner ? '' : '.sharee'
 					}`,
 					{ interpolate: { owner: credentialOwnerName } },
 				)
