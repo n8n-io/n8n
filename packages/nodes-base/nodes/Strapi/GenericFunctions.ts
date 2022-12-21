@@ -83,12 +83,12 @@ export async function strapiApiRequestAllItems(
 	headers: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
-	const { apiVersion } = await this.getCredentials('strapiApi');
+	const credentials = await this.getCredentials('strapiApi'); 
 
 	let responseData;
-	if (apiVersion === 'v4') {
+	if (credentials.apiVersion === 'v4') {
 		query['pagination[pageSize]'] = 20;
-		query['pagination[page]'] = 0;
+		query['pagination[page]'] = 1;
 		do {
 			({ data: responseData } = await strapiApiRequest.call(
 				this,
@@ -99,7 +99,7 @@ export async function strapiApiRequestAllItems(
 				undefined,
 				headers,
 			));
-			query['pagination[page]'] += query['pagination[pageSize]'];
+			query['pagination[page]'] += 1;
 			returnData.push.apply(returnData, responseData);
 		} while (responseData.length !== 0);
 	} else {
