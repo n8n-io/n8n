@@ -12,14 +12,14 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import { Role } from './Role';
-import { SharedWorkflow } from './SharedWorkflow';
-import { SharedCredentials } from './SharedCredentials';
+import type { Role } from './Role';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
-import { AuthIdentity } from './AuthIdentity';
+import type { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -75,19 +75,19 @@ export class User extends AbstractEntity implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne(() => Role, (role) => role.globalForUsers, {
+	@ManyToOne('Role', 'globalForUsers', {
 		cascade: true,
 		nullable: false,
 	})
 	globalRole: Role;
 
-	@OneToMany(() => AuthIdentity, (authIdentity) => authIdentity.user)
+	@OneToMany('AuthIdentity', 'user')
 	authIdentities: AuthIdentity[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.user)
+	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
 
-	@OneToMany(() => SharedCredentials, (sharedCredentials) => sharedCredentials.user)
+	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
 
 	@Column({ type: Boolean, default: false })

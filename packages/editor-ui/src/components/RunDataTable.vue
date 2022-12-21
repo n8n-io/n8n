@@ -40,15 +40,7 @@
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
-									<div
-										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-									>
-										{{
-											$locale.baseText('dataMapping.mapKeyToField', {
-												interpolate: { name: shorten(column, 16, 2) },
-											})
-										}}
-									</div>
+									<MappingPill :html="shorten(column, 16, 2)"	:can-drop="canDrop" />
 								</template>
 								<template #default="{ isDragging }">
 									<div
@@ -105,18 +97,7 @@
 				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
-					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-						{{
-							$locale.baseText(
-								tableData.data.length > 1
-									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapKeyToField',
-								{
-									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
-								},
-							)
-						}}
-					</div>
+					<MappingPill :html="shorten(getPathNameFromTarget(el) || '', 16, 2)"	:can-drop="canDrop" />
 				</template>
 				<template>
 					<tr
@@ -185,12 +166,13 @@ import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import MappingPill from './MappingPill.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
-	components: { Draggable },
+	components: { Draggable, MappingPill },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -663,28 +645,6 @@ export default mixins(externalHooks).extend({
 .dragButton {
 	opacity: 0;
 	margin-left: var(--spacing-2xs);
-}
-
-.dragPill {
-	display: flex;
-	height: 24px;
-	align-items: center;
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
-	white-space: nowrap;
-}
-
-.droppablePill {
-	background-color: var(--color-success);
-}
-
-.defaultPill {
-	background-color: var(--color-primary);
-	transform: translate(-50%, -100%);
-	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
 }
 
 .dataKey {

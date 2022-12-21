@@ -43,6 +43,14 @@ export default mixins(userHelpers, pushConnection).extend({
 		sidebarMenuItems(): IMenuItem[] {
 			const menuItems: IMenuItem[] = [
 				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-bar',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					activateOnRouteNames: [VIEWS.USAGE],
+				},
+				{
 					id: 'settings-personal',
 					icon: 'user-circle',
 					label: this.$locale.baseText('settings.personal'),
@@ -120,6 +128,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessLdapSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.LDAP_SETTINGS);
 		},
+		canAccessUsageAndPlan(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USAGE);
+		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
@@ -156,6 +167,11 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
 						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
+					break;
+				case 'settings-usage-and-plan':
+					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
+						this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				default:

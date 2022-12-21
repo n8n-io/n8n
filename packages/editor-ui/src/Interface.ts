@@ -180,6 +180,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
+		position: XYPosition;
 		[key: string]: IDataObject | XYPosition;
 	};
 }
@@ -235,8 +236,7 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryBufferString(dataPath: string): Promise<string>;
-	getBinaryUrl(dataPath: string): string;
+	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -811,6 +811,10 @@ export interface IN8nUISettings {
 	enterprise: Record<string, boolean>;
 	deployment?: {
 		type: string;
+	};
+	hideUsagePage: boolean;
+	license: {
+		environment: 'development' | 'production';
 	};
 }
 
@@ -1420,3 +1424,21 @@ export interface ILdapConfig {
 }
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+
+export type UsageState = {
+	loading: boolean;
+	data: {
+		usage: {
+			executions: {
+				limit: number; // -1 for unlimited, from license
+				value: number;
+				warningThreshold: number; // hardcoded value in BE
+			};
+		};
+		license: {
+			planId: string; // community
+			planName: string; // defaults to Community
+		};
+		managementToken?: string;
+	};
+};

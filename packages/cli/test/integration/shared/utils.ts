@@ -63,6 +63,7 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { licenseController } from '@/license/license.controller';
 
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '../../../src/Ldap/helpers';
@@ -125,6 +126,7 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
+			license: { controller: licenseController, path: 'license' },
 			publicApi: apiRouters,
 			ldap: { controller: ldapController, path: 'ldap' },
 		};
@@ -170,7 +172,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'ldap'];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'ldap', 'license'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),

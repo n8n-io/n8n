@@ -32,6 +32,7 @@ import {
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
+	INodeType,
 } from 'n8n-workflow';
 
 import express from 'express';
@@ -800,6 +801,7 @@ export class ActiveWorkflowRunner {
 
 			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated([
 				'n8n-nodes-base.start',
+				'n8n-nodes-base.manualTrigger',
 			]);
 			if (!canBeActivated) {
 				Logger.error(`Unable to activate workflow "${workflowData.name}"`);
@@ -853,6 +855,18 @@ export class ActiveWorkflowRunner {
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
+			}
+
+			if (workflowInstance.id) {
+				// Sum all triggers in the workflow, EXCLUDING the manual trigger
+				const triggerFilter = (nodeType: INodeType) =>
+					!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
+				const triggerCount =
+					workflowInstance.queryNodes(triggerFilter).length +
+					workflowInstance.getPollNodes().length +
+					WebhookHelpers.getWorkflowWebhooks(workflowInstance, additionalData, undefined, true)
+						.length;
+				await Db.collections.Workflow.update(workflowInstance.id, { triggerCount });
 			}
 		} catch (error) {
 			// There was a problem activating the workflow

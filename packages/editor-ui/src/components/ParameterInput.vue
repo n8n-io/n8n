@@ -492,7 +492,7 @@ export default mixins(
 	computed: {
 		...mapStores(useCredentialsStore, useNodeTypesStore, useNDVStore, useWorkflowsStore),
 		expressionDisplayValue(): string {
-			if (this.activeDrop || this.forceShowExpression) {
+			if (this.forceShowExpression) {
 				return '';
 			}
 

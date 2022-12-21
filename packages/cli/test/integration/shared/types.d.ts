@@ -24,7 +24,8 @@ type EndpointGroup =
 	| 'workflows'
 	| 'publicApi'
 	| 'nodes'
-	| 'ldap';
+	| 'ldap'
+	| 'license';
 
 export type CredentialPayload = {
 	name: string;
