@@ -38,8 +38,13 @@
 				</template>
 			</n8n-info-tip>
 			<n8n-info-tip
+				v-if="
+					!credentialPermissions.isOwner &&
+					!credentialPermissions.isSharee &&
+					credentialPermissions.isInstanceOwner
+				"
+				class="mb-s"
 				:bold="false"
-				v-if="!credentialPermissions.isOwner && credentialPermissions.isInstanceOwner"
 			>
 				{{ $locale.baseText('credentialEdit.credentialSharing.info.instanceOwner') }}
 			</n8n-info-tip>
