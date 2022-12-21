@@ -13,6 +13,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
+import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
 import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -252,8 +253,7 @@ export class WorkflowsService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		const externalHooks = ExternalHooks();
-		await externalHooks.run('workflow.update', [workflow]);
+		await ExternalHooks().run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
@@ -339,13 +339,13 @@ export class WorkflowsService {
 			});
 		}
 
-		await externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await externalHooks.run('workflow.activate', [updatedWorkflow]);
+				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
 				await ActiveWorkflowRunner.getInstance().add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',

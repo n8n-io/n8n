@@ -7,7 +7,7 @@ import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
@@ -49,7 +49,7 @@ export = {
 
 			const createdWorkflow = await createWorkflow(workflow, req.user, role);
 
-			await externalHooks.run('workflow.afterCreate', [createdWorkflow]);
+			await ExternalHooks().run('workflow.afterCreate', [createdWorkflow]);
 			void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, createdWorkflow, true);
 
 			return res.json(createdWorkflow);
@@ -76,7 +76,7 @@ export = {
 			await Db.collections.Workflow.delete(id);
 
 			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, id.toString(), true);
-			await externalHooks.run('workflow.afterDelete', [id.toString()]);
+			await ExternalHooks().run('workflow.afterDelete', [id.toString()]);
 
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -219,7 +219,7 @@ export = {
 
 			const updatedWorkflow = await getWorkflowById(sharedWorkflow.workflowId);
 
-			await externalHooks.run('workflow.afterUpdate', [updateData]);
+			await ExternalHooks().run('workflow.afterUpdate', [updateData]);
 			void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updateData, true);
 
 			return res.json(updatedWorkflow);
