@@ -134,7 +134,7 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, NestedRecord, UIState } from '@/Interface';
+import { IUser, IWorkflowDb, UIState } from '@/Interface';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -146,6 +146,7 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
+import { useUsageStore } from '@/stores/usage';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',
@@ -178,6 +179,7 @@ export default mixins(showMessage).extend({
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
+			useUsageStore,
 			useWorkflowsStore,
 			useWorkflowsEEStore,
 		),
@@ -431,7 +433,12 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			window.open(this.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl, '_blank');
+			let linkUrl = this.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl;
+			if (linkUrl.includes('subscription')) {
+				linkUrl = this.usageStore.viewPlansUrl;
+			}
+
+			window.open(linkUrl, '_blank');
 		},
 	},
 	mounted() {

@@ -73,7 +73,7 @@
 </template>
 
 <script lang="ts">
-import { IUser, NestedRecord, UIState } from '@/Interface';
+import { IUser, UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -81,6 +81,7 @@ import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useUsageStore } from '@/stores/usage';
 import { EnterpriseEditionFeature, VIEWS } from '@/constants';
 
 export default mixins(showMessage).extend({
@@ -94,7 +95,7 @@ export default mixins(showMessage).extend({
 		'modalBus',
 	],
 	computed: {
-		...mapStores(useCredentialsStore, useUsersStore, useUIStore, useSettingsStore),
+		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
 		},
@@ -167,10 +168,12 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			window.open(
-				this.contextBasedTranslationKeys.credentials.sharing.unavailable.linkUrl,
-				'_blank',
-			);
+			let linkUrl = this.contextBasedTranslationKeys.credentials.sharing.unavailable.linkUrl;
+			if (linkUrl.includes('subscription')) {
+				linkUrl = this.usageStore.viewPlansUrl;
+			}
+
+			window.open(linkUrl, '_blank');
 		},
 	},
 	mounted() {
