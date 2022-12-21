@@ -18,6 +18,7 @@ import {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import { AuthProviderType } from '@db/entities/AuthIdentity';
+import { RoleService } from './role/role.service';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
@@ -113,6 +114,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 			(note) => note.overlapping,
 		).length;
 
+		let userRole: 'owner' | 'sharee' | undefined = undefined;
+		if (userId && workflow.id) {
+			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+			if (role) {
+				userRole = role.name === 'owner' ? 'owner' : 'sharee';
+			}
+		}
+
 		return this.telemetry.track(
 			'User saved workflow',
 			{
@@ -124,6 +133,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				version_cli: this.versionCli,
 				num_tags: workflow.tags?.length ?? 0,
 				public_api: publicApi,
+				sharing_role: userRole,
 			},
 			{ withPostHog: true },
 		);
@@ -198,6 +208,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
+				let userRole: 'owner' | 'sharee' | undefined = undefined;
+				if (userId) {
+					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+					if (role) {
+						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+					}
+				}
+
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
 					workflow_id: workflow.id.toString(),
@@ -207,6 +225,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					node_graph_string: properties.node_graph_string as string,
 					error_node_id: properties.error_node_id as string,
 					webhook_domain: null,
+					sharing_role: userRole,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -254,6 +273,16 @@ export class InternalHooksClass implements IInternalHooksClass {
 			BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId),
 			this.telemetry.trackWorkflowExecution(properties),
 		]).then(() => {});
+	}
+
+	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
+		const properties: ITelemetryTrackProperties = {
+			workflow_id: workflowId,
+			user_id_sharer: userId,
+			user_id_list: userList,
+		};
+
+		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
 	}
 
 	async onN8nStop(): Promise<void> {

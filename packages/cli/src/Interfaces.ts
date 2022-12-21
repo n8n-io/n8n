@@ -466,7 +466,11 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
-	workflowCallerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList';
+	workflowCallerPolicyDefaultOption:
+		| 'any'
+		| 'none'
+		| 'workflowsFromAList'
+		| 'workflowsFromSameOwner';
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -510,7 +514,6 @@ export interface IN8nUISettings {
 	};
 	enterprise: {
 		sharing: boolean;
-		workflowSharing: boolean;
 		ldap: boolean;
 	};
 	hideUsagePage: boolean;

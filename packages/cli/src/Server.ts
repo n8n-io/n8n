@@ -363,7 +363,6 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
 				ldap: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -397,7 +396,6 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 			ldap: isLdapEnabled(),
 		});
 
@@ -1027,7 +1025,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});

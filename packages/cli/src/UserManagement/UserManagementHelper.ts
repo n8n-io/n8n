@@ -15,10 +15,13 @@ import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 import { getLicense } from '@/License';
 import { WhereClause } from '@/Interfaces';
+import { RoleService } from '@/role/role.service';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
+	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
+
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflow: { id: workflowId } },
+		where: { workflow: { id: workflowId }, role: workflowOwnerRole },
 		relations: ['user', 'user.globalRole'],
 	});
 

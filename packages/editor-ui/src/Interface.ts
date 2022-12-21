@@ -810,7 +810,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
-		type: string;
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -1085,10 +1085,6 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export interface NestedRecord<T> {
-	[key: string]: T | NestedRecord<T>;
-}
-
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
 export type NodePanelType = 'input' | 'output';
 
@@ -1161,7 +1157,6 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	dynamicTranslations: NestedRecord<string>;
 	draggable: {
 		isDragging: boolean;
 		type: string;

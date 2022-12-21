@@ -306,7 +306,7 @@ export enum VIEWS {
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
-  LDAP_SETTINGS = "LdapSettings",
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
@@ -319,8 +319,6 @@ export enum VIEWS {
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	CREDENTIALS_SHARING = 'credentialsSharing',
-	WORKFLOWS_SHARING = 'workflowsSharing',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -376,7 +374,6 @@ export enum WORKFLOW_MENU_ACTIONS {
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
 	Ldap = 'ldap',
-	WorkflowSharing = 'workflowSharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

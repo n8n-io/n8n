@@ -15,6 +15,7 @@ import type {
 } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { NodeOperationError } from 'n8n-workflow';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async getWorkflowIdsForUser(user: User) {
@@ -189,6 +190,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				allCredentials,
 			);
 		} catch (error) {
+			if (error instanceof NodeOperationError) {
+				throw new ResponseHelper.BadRequestError(error.message);
+			}
 			throw new ResponseHelper.BadRequestError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 			);
