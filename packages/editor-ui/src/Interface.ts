@@ -1152,34 +1152,6 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	contextBasedTranslationKeys: {
-		credentials: {
-			sharing: {
-				unavailable: {
-					title: string;
-					description: string;
-					action: string;
-					button: string;
-					linkUrl: string;
-				};
-			};
-		};
-		workflows: {
-			sharing: {
-				title: string;
-				unavailable: {
-					title: string;
-					description: {
-						modal: string;
-						tooltip: string;
-					};
-					action: string;
-					button: string;
-					linkUrl: string;
-				};
-			};
-		};
-	};
 	draggable: {
 		isDragging: boolean;
 		type: string;
