@@ -83,7 +83,7 @@ export async function strapiApiRequestAllItems(
 	headers: IDataObject = {},
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
-	const credentials = await this.getCredentials('strapiApi'); 
+	const credentials = await this.getCredentials('strapiApi');
 
 	let responseData;
 	if (credentials.apiVersion === 'v4') {
