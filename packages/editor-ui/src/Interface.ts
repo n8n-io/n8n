@@ -805,7 +805,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
-		type: string | 'default' | 'n8n-internal' | 'cloud';
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};
 	hideUsagePage: boolean;
 	license: {
