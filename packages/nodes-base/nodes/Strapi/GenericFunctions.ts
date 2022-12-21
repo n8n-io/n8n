@@ -99,7 +99,7 @@ export async function strapiApiRequestAllItems(
 				undefined,
 				headers,
 			));
-			query['pagination[page]'] += 1;
+			query['pagination[page]']++;
 			returnData.push.apply(returnData, responseData);
 		} while (responseData.length !== 0);
 	} else {
