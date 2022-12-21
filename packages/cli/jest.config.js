@@ -4,6 +4,7 @@ module.exports = {
 	testEnvironmentOptions: {
 		url: 'http://localhost/',
 	},
+	maxConcurrency: 2,
 	globalSetup: '<rootDir>/test/setup.ts',
 	globalTeardown: '<rootDir>/test/teardown.ts',
 	moduleNameMapper: {
