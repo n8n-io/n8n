@@ -24,7 +24,7 @@ test('should report workflows with nodes risking SQL injection', async () => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
 
-	const promises = Object.entries(map).map(async ([nodeTypeName, nodeId]) => {
+	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
 		const details = {
 			name: 'My Test Workflow',
 			active: false,
@@ -34,7 +34,7 @@ test('should report workflows with nodes risking SQL injection', async () => {
 				{
 					id: nodeId,
 					name: 'My Node',
-					type: nodeTypeName,
+					type: nodeType,
 					parameters: {
 						operation: 'executeQuery',
 						query: '=SELECT * FROM {{ $json.table }}',

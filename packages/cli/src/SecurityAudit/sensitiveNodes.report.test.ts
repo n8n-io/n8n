@@ -24,7 +24,7 @@ test('should report workflows with sensitive node types', async () => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
 
-	const promises = Object.entries(map).map(async ([nodeTypeName, nodeId]) => {
+	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
 		const details = {
 			name: 'My Test Workflow',
 			active: true,
@@ -34,7 +34,7 @@ test('should report workflows with sensitive node types', async () => {
 				{
 					id: nodeId,
 					name: 'My Node',
-					type: nodeTypeName,
+					type: nodeType,
 					typeVersion: 1,
 					position: [0, 0] as [number, number],
 				},

@@ -12,6 +12,10 @@ export const SQL_NODE_TYPES = [
 
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 
+/**
+ * Node types presumably used as direct children of a webhook node
+ * to validate its payload before further workflow execution.
+ */
 export const WEBHOOK_VALIDATOR_NODE_TYPES = ['n8n-nodes-base.if', 'n8n-nodes-base.switch'];
 
 export const SENSITIVE_NODE_TYPES = [
