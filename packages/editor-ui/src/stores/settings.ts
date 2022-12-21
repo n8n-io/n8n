@@ -66,6 +66,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
 		},
+		deploymentType(): string {
+			return this.settings.deployment?.type || 'default';
+		},
 		isDesktopDeployment(): boolean {
 			if (!this.settings.deployment) {
 				return false;
