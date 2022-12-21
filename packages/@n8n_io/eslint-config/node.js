@@ -8,8 +8,4 @@ module.exports = {
 		es6: true,
 		node: true,
 	},
-
-	rules: {
-		'import/no-unresolved': 'error',
-	},
 };

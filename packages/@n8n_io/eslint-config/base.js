@@ -323,6 +323,11 @@ const config = (module.exports = {
 		'import/no-default-export': 'error',
 
 		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
+		 */
+		'import/no-unresolved': 'error',
+
+		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
 		 */
 		'import/order': 'error',
