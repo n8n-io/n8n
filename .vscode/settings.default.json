@@ -9,9 +9,6 @@
 	"typescript.format.enable": false,
 	"typescript.tsdk": "node_modules/typescript/lib",
 	"workspace-default-settings.runOnActivation": true,
-	"eslint.useESLintClass": true,
-	"eslint.alwaysShowStatus": true,
-	"eslint.validate": ["javascript", "typescript", "vue"],
 	"eslint.probe": ["javascript", "typescript", "vue"],
 	"eslint.workingDirectories": [
 		{

@@ -1,30 +1,24 @@
 /**
  * @type {(dir: string, mode: 'frontend' | undefined) => import('@types/eslint').ESLint.ConfigData}
  */
-exports.sharedOptions = (tsconfigRootDir, mode) => ({
-	parser: mode === 'frontend' ? 'vue-eslint-parser' : '@typescript-eslint/parser',
+exports.sharedOptions = (tsconfigRootDir, mode) => {
+	const isFrontend = mode === 'frontend';
+	const parser = isFrontend ? 'vue-eslint-parser' : '@typescript-eslint/parser';
+	const extraParserOptions = isFrontend
+		? {
+				extraFileExtensions: ['.vue'],
+				parser: {
+					ts: '@typescript-eslint/parser',
+					js: '@typescript-eslint/parser',
+					vue: 'vue-eslint-parser',
+					template: 'vue-eslint-parser',
+				},
+		  }
+		: {};
 
-	parserOptions:
-		mode === 'frontend'
-			? {
-					tsconfigRootDir,
-					project: ['./tsconfig.json'],
-					extraFileExtensions: ['.vue'],
-					parser: {
-						ts: '@typescript-eslint/parser',
-						js: '@typescript-eslint/parser',
-						vue: 'vue-eslint-parser',
-						template: 'vue-eslint-parser',
-					},
-			  }
-			: {
-					tsconfigRootDir,
-					project: ['./tsconfig.json'],
-			  },
-
-	settings: {
+	const settings = {
 		'import/parsers': {
-			'@typescript-eslint/parser': ['.ts'],
+			'@typescript-eslint/parser': isFrontend ? ['.ts', '.vue'] : ['.ts'],
 		},
 
 		'import/resolver': {
@@ -33,5 +27,15 @@ exports.sharedOptions = (tsconfigRootDir, mode) => ({
 				project: './tsconfig.json',
 			},
 		},
-	},
-});
+	};
+
+	return {
+		parser,
+		parserOptions: {
+			tsconfigRootDir,
+			project: ['./tsconfig.json'],
+			...extraParserOptions,
+		},
+		settings,
+	};
+};
