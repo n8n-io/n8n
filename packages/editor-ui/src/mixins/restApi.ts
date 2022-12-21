@@ -201,10 +201,6 @@ export const restApi = Vue.extend({
 				},
 
 				// Binary data
-				getBinaryBufferString: (dataPath: string): Promise<string> => {
-					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
-				},
-
 				getBinaryUrl: (dataPath: string): string => {
 					return self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}`;
 				},

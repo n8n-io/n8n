@@ -235,7 +235,6 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryBufferString(dataPath: string): Promise<string>;
 	getBinaryUrl(dataPath: string): string;
 }
 
