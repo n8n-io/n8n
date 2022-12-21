@@ -44,6 +44,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows';
+import { useSettingsStore } from './settings';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -145,34 +146,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['settings'],
 			},
 		],
-		contextBasedTranslationKeys: {
-			credentials: {
-				sharing: {
-					unavailable: {
-						title: 'contextual.credentials.sharing.unavailable.title',
-						description: 'contextual.credentials.sharing.unavailable.description',
-						action: 'contextual.credentials.sharing.unavailable.action',
-						button: 'contextual.credentials.sharing.unavailable.button',
-						linkUrl: 'https://subscription.n8n.io/',
-					},
-				},
-			},
-			workflows: {
-				sharing: {
-					title: 'contextual.workflows.sharing.title',
-					unavailable: {
-						title: 'contextual.workflows.sharing.unavailable.title',
-						description: {
-							modal: 'contextual.workflows.sharing.unavailable.description.modal',
-							tooltip: 'contextual.workflows.sharing.unavailable.description.tooltip',
-						},
-						action: 'contextual.workflows.sharing.unavailable.action',
-						button: 'contextual.workflows.sharing.unavailable.button',
-						linkUrl: 'https://subscription.n8n.io/',
-					},
-				},
-			},
-		},
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -192,6 +165,45 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 	}),
 	getters: {
+		contextBasedTranslationKeys() {
+			const settingsStore = useSettingsStore();
+			const deploymentType = settingsStore.deploymentType;
+
+			let contextKey = '';
+			if (deploymentType === 'cloud') {
+				contextKey = '.cloud';
+			} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
+				contextKey = '.desktop';
+			}
+
+			return {
+				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				credentials: {
+					sharing: {
+						unavailable: {
+							title: `contextual.credentials.sharing.unavailable.title${contextKey}`,
+							description: `contextual.credentials.sharing.unavailable.description${contextKey}`,
+							action: `contextual.credentials.sharing.unavailable.action${contextKey}`,
+							button: `contextual.credentials.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+				workflows: {
+					sharing: {
+						title: 'contextual.workflows.sharing.title',
+						unavailable: {
+							title: `contextual.workflows.sharing.unavailable.title${contextKey}`,
+							description: {
+								modal: `contextual.workflows.sharing.unavailable.description.modal${contextKey}`,
+								tooltip: `contextual.workflows.sharing.unavailable.description.tooltip${contextKey}`,
+							},
+							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
+							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+			};
+		},
 		getLastSelectedNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
 			if (this.lastSelectedNode) {

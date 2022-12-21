@@ -84,6 +84,7 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								size="medium"
 								v-model="workflowSettings.callerIds"
@@ -543,6 +544,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			this.workflowCallerPolicyOptions = [
 				{
+					key: 'none',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.none'),
+				},
+				{
 					key: 'workflowsFromSameOwner',
 					value: this.$locale.baseText(
 						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
@@ -558,16 +563,12 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 					),
 				},
 				{
-					key: 'any',
-					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
-				},
-				{
-					key: 'none',
-					value: this.$locale.baseText('workflowSettings.callerPolicy.options.none'),
-				},
-				{
 					key: 'workflowsFromAList',
 					value: this.$locale.baseText('workflowSettings.callerPolicy.options.workflowsFromAList'),
+				},
+				{
+					key: 'any',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
 				},
 			];
 		},

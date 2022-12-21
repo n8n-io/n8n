@@ -804,7 +804,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
-		type: string;
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -1151,34 +1151,6 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	contextBasedTranslationKeys: {
-		credentials: {
-			sharing: {
-				unavailable: {
-					title: string;
-					description: string;
-					action: string;
-					button: string;
-					linkUrl: string;
-				};
-			};
-		};
-		workflows: {
-			sharing: {
-				title: string;
-				unavailable: {
-					title: string;
-					description: {
-						modal: string;
-						tooltip: string;
-					};
-					action: string;
-					button: string;
-					linkUrl: string;
-				};
-			};
-		};
-	};
 	draggable: {
 		isDragging: boolean;
 		type: string;
