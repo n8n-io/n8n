@@ -1467,7 +1467,7 @@
 	"dynamic.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
 	"dynamic.workflows.sharing.unavailable.linkUrl": "https://n8n.cloud",
 	"settings.ldap": "LDAP",
-	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/' target='_blank'>LDAP on the Docs</a>",
+	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/user-management/ldap/' target='_blank'>LDAP in the Docs</a>",
 	"settings.ldap.save": "Save connection",
 	"settings.ldap.connectionTestError": "Problem testing LDAP connection",
 	"settings.ldap.connectionTest": "LDAP connection tested",
