@@ -30,7 +30,11 @@ export const SENSITIVE_NODE_TYPES = [
 export const RISKS = {
 	SQL_INJECTION: 'SQL injection',
 	SENSITIVE_NODES: 'Sensitive nodes',
-	INACTIVE_CREDS: 'Inactive creds',
 	OPEN_WEBHOOKS: 'Open webhooks',
 	OUTDATED_INSTANCE: 'Outdated instance',
+
+	INACTIVE_CREDS: 'Inactive creds',
+	CREDS_NOT_IN_ANY_USE: 'Credentials not used in any workflow',
+	CREDS_NOT_IN_ACTIVE_USE: 'Credentials not used in any active workflow',
+	CREDS_ONLY_USED_IN_ABANDONED_WORKFLOWS: 'Credentials only used in abandoned workflows',
 };

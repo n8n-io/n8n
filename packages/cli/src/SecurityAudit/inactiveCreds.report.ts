@@ -22,10 +22,13 @@ async function getExecutionsNotInPastDays(days: number) {
 }
 
 /**
- * Get IDs of credentials used in worfklows not executed in past n days.
+ * Get IDs of credentials only used in worfklows not executed in past n days.
+ *
+ * @TODO Ensure any such credential is only used there and not elsewhere
  */
 async function getCredsInAbandonedWorfklows(workflowsToCreds: WorkflowsToCreds, days: number) {
 	const executionsNotInPastDays = await getExecutionsNotInPastDays(days);
+	// console.log('executionsNotInPastDays', executionsNotInPastDays);
 
 	const idsOfWorkflowsNotExecutedInPastXDays = executionsNotInPastDays.reduce<Set<string>>(
 		(acc, execution) => {
@@ -102,7 +105,7 @@ export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
 
 	if (credsNotInAnyUse.length > 0) {
 		report.riskTypes.push({
-			riskType: 'Credentials not used in any workflow',
+			riskType: RISKS.CREDS_NOT_IN_ANY_USE,
 			description: [
 				'These credentials are not being used in any workflow at all.',
 				recommendation,
@@ -113,7 +116,7 @@ export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
 
 	if (credsNotInActiveUse.length > 0) {
 		report.riskTypes.push({
-			riskType: 'Credentials not used in any active workflow',
+			riskType: RISKS.CREDS_NOT_IN_ACTIVE_USE,
 			description: [
 				'These credentials are not being used in any active workflow.',
 				recommendation,
@@ -124,7 +127,7 @@ export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
 
 	if (credsInAbandonedWorkflows.length > 0) {
 		report.riskTypes.push({
-			riskType: 'Credentials not used in any active workflow',
+			riskType: RISKS.CREDS_ONLY_USED_IN_ABANDONED_WORKFLOWS,
 			description: [
 				`These credentials are being used in workflows not executed in the past ${days.toString()} days.`,
 				recommendation,

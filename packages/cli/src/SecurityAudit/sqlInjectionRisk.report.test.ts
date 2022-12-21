@@ -68,7 +68,6 @@ test('should report workflows with nodes risking SQL injection', async () => {
 
 test('should not report workflow without node risking SQL injection', async () => {
 	const details = {
-		id: 1,
 		name: 'My Test Workflow',
 		active: false,
 		connections: {},
