@@ -438,7 +438,7 @@ export function usersNamespace(this: N8nApp): void {
 					// workflows and credentials might be a sharee
 					await transactionManager.delete(SharedWorkflow, {
 						user: transferee,
-						workflowId: In(sharedWorkflowIds),
+						workflow: In(sharedWorkflowIds.map((sharedWorkflowId) => ({ id: sharedWorkflowId }))),
 					});
 
 					// Transfer ownership of owned workflows
@@ -463,7 +463,9 @@ export function usersNamespace(this: N8nApp): void {
 					// workflows and credentials might be a sharee
 					await transactionManager.delete(SharedCredentials, {
 						user: transferee,
-						credentialId: In(sharedCredentialIds),
+						credentials: In(
+							sharedCredentialIds.map((sharedCredentialId) => ({ id: sharedCredentialId })),
+						),
 					});
 
 					// Transfer ownership of owned credentials
