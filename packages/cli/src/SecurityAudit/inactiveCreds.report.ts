@@ -1,70 +1,11 @@
-/* eslint-disable @typescript-eslint/no-use-before-define */
 import { In, LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import { RISKS } from './constants';
 import type { InactiveCredsReport, WorkflowIdsToCredIds as WorkflowsToCreds } from './types';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
-import { RISKS } from './constants';
-
-export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
-	const allCredEntities = await Db.collections.Credentials.find();
-	const allCreds = allCredEntities.map((c) => ({ id: c.id.toString(), name: c.name }));
-	const { credsInAnyUse, credsInActiveUse, workflowsToCreds } = await getAllCredsInUse(workflows);
-
-	const credsNotInAnyUse = allCreds.filter((c) => !credsInAnyUse.has(c.id));
-	const credsNotInActiveUse = allCreds.filter((c) => !credsInActiveUse.has(c.id));
-
-	const days = config.getEnv('security.audit.daysAbandonedWorkflow');
-	const credsInAbandonedWorkflows = await getCredsInAbandonedWorfklows(workflowsToCreds, days);
-
-	const credCategories = [credsNotInAnyUse, credsNotInActiveUse, credsInAbandonedWorkflows];
-
-	if (credCategories.every((i) => i.length === 0)) return null;
-
-	const report: InactiveCredsReport = {
-		risk: RISKS.INACTIVE_CREDS,
-		riskTypes: [],
-	};
-
-	const recommendation = 'Consider removing these credentials if you no longer need them.';
-
-	if (credsNotInAnyUse.length > 0) {
-		report.riskTypes.push({
-			riskType: 'Credentials not used in any workflow',
-			description: [
-				'These credentials are not being used in any workflow at all.',
-				recommendation,
-			].join(' '),
-			credentials: credsNotInAnyUse,
-		});
-	}
-
-	if (credsNotInActiveUse.length > 0) {
-		report.riskTypes.push({
-			riskType: 'Credentials not used in any active workflow',
-			description: [
-				'These credentials are not being used in any active workflow.',
-				recommendation,
-			].join(' '),
-			credentials: credsNotInActiveUse,
-		});
-	}
-
-	if (credsInAbandonedWorkflows.length > 0) {
-		report.riskTypes.push({
-			riskType: 'Credentials not used in any active workflow',
-			description: [
-				`These credentials are being used in workflows not executed in the past ${days.toString()} days.`,
-				recommendation,
-			].join(' '),
-			credentials: credsInAbandonedWorkflows,
-		});
-	}
-
-	return report;
-}
 
 async function getExecutionsNotInPastDays(days: number) {
 	const date = new Date();
@@ -135,4 +76,62 @@ async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 	});
 
 	return { credsInAnyUse, credsInActiveUse, workflowsToCreds };
+}
+
+export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
+	const allCredEntities = await Db.collections.Credentials.find();
+	const allCreds = allCredEntities.map((c) => ({ id: c.id.toString(), name: c.name }));
+	const { credsInAnyUse, credsInActiveUse, workflowsToCreds } = await getAllCredsInUse(workflows);
+
+	const credsNotInAnyUse = allCreds.filter((c) => !credsInAnyUse.has(c.id));
+	const credsNotInActiveUse = allCreds.filter((c) => !credsInActiveUse.has(c.id));
+
+	const days = config.getEnv('security.audit.daysAbandonedWorkflow');
+	const credsInAbandonedWorkflows = await getCredsInAbandonedWorfklows(workflowsToCreds, days);
+
+	const credCategories = [credsNotInAnyUse, credsNotInActiveUse, credsInAbandonedWorkflows];
+
+	if (credCategories.every((i) => i.length === 0)) return null;
+
+	const report: InactiveCredsReport = {
+		risk: RISKS.INACTIVE_CREDS,
+		riskTypes: [],
+	};
+
+	const recommendation = 'Consider removing these credentials if you no longer need them.';
+
+	if (credsNotInAnyUse.length > 0) {
+		report.riskTypes.push({
+			riskType: 'Credentials not used in any workflow',
+			description: [
+				'These credentials are not being used in any workflow at all.',
+				recommendation,
+			].join(' '),
+			credentials: credsNotInAnyUse,
+		});
+	}
+
+	if (credsNotInActiveUse.length > 0) {
+		report.riskTypes.push({
+			riskType: 'Credentials not used in any active workflow',
+			description: [
+				'These credentials are not being used in any active workflow.',
+				recommendation,
+			].join(' '),
+			credentials: credsNotInActiveUse,
+		});
+	}
+
+	if (credsInAbandonedWorkflows.length > 0) {
+		report.riskTypes.push({
+			riskType: 'Credentials not used in any active workflow',
+			description: [
+				`These credentials are being used in workflows not executed in the past ${days.toString()} days.`,
+				recommendation,
+			].join(' '),
+			credentials: credsInAbandonedWorkflows,
+		});
+	}
+
+	return report;
 }
