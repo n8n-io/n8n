@@ -2,7 +2,7 @@ import * as Db from '@/Db';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { ResponseHelper } from '@/index';
+import * as ResponseHelper from '@/ResponseHelper';
 
 export const handleEmailLogin = async (
 	email: string,
