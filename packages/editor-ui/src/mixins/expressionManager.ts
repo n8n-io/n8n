@@ -119,14 +119,12 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		 * _part_ of the result, but displayed when they are the _entire_ result.
 		 *
 		 * Example:
-		 * - Expression `This is a {{ null }} test` is displayed as `This is a test`.
-		 * - Expression `{{ null }}` is displayed as `[Object: null]`.
+		 * - Expression `This is a {{ [] }} test` is displayed as `This is a test`.
+		 * - Expression `{{ [] }}` is displayed as `[Array: []]`.
 		 *
 		 * Conditionally displayed segments:
-		 * - `[Object: null]`
 		 * - `[Array: []]`
 		 * - `[empty]` (from `''`, not from `undefined`)
-		 * - `null` (from `NaN`)
 		 *
 		 * Exceptionally, for two segments, display differs based on context:
 		 * - Date is displayed as
@@ -157,9 +155,8 @@ export const expressionManager = mixins(workflowHelpers).extend({
 						this.segments.length > 1 &&
 						s.kind === 'resolvable' &&
 						typeof s.resolved === 'string' &&
-						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
-							s.resolved === this.$locale.baseText('expressionModalInput.empty') ||
-							s.resolved === this.$locale.baseText('expressionModalInput.null'))
+						(s.resolved === '[Array: []]' ||
+							s.resolved === this.$locale.baseText('expressionModalInput.empty'))
 					) {
 						return false;
 					}
