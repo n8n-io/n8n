@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { WEBHOOK_NODE_TYPE, WEBHOOK_VALIDATOR_NODE_TYPES } from './constants';
+import { RISKS, WEBHOOK_NODE_TYPE, WEBHOOK_VALIDATOR_NODE_TYPES } from './constants';
 import type { INode } from 'n8n-workflow';
 import type { FlaggedLocation } from './types';
 
@@ -30,7 +30,7 @@ export async function reportOpenWebhooks(workflows: WorkflowEntity[]) {
 	if (locations.length === 0) return null;
 
 	return {
-		risk: 'Open webhooks',
+		risk: RISKS.OPEN_WEBHOOKS,
 		description:
 			'These active workflows contain at least one Webhook node whose "Authentication" field is "None" and not directly connected to an If or Switch node to validate the payload. Leaving webhooks unprotected allows your workflow to be called by any third party who finds the webhook URL. Consider adding authentication to the workflow or validating the payload.',
 		locations,

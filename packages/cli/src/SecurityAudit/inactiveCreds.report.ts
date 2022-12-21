@@ -6,6 +6,7 @@ import * as Db from '@/Db';
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { InactiveCredsReport, WorkflowIdsToCredIds as WorkflowsToCreds } from './types';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
+import { RISKS } from './constants';
 
 export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
 	const allCredEntities = await Db.collections.Credentials.find();
@@ -23,7 +24,7 @@ export async function reportInactiveCreds(workflows: WorkflowEntity[]) {
 	if (credCategories.every((i) => i.length === 0)) return null;
 
 	const report: InactiveCredsReport = {
-		risk: 'Inactive credentials',
+		risk: RISKS.INACTIVE_CREDS,
 		riskTypes: [],
 	};
 

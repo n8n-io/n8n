@@ -23,6 +23,10 @@ export const SENSITIVE_NODE_TYPES = [
 	'n8n-nodes-base.httpRequest',
 ];
 
-export const REPORT_TITLES = {
-	SQL_INJECTION_RISK: 'SQL injection risk',
+export const RISKS = {
+	SQL_INJECTION: 'SQL injection',
+	SENSITIVE_NODES: 'Sensitive nodes',
+	INACTIVE_CREDS: 'Inactive creds',
+	OPEN_WEBHOOKS: 'Open webhooks',
+	OUTDATED_INSTANCE: 'Outdated instance',
 };

@@ -1,5 +1,5 @@
 import { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
-import { SQL_NODE_TYPES } from './constants';
+import { RISKS, SQL_NODE_TYPES } from './constants';
 import type { FlaggedLocation } from './types';
 
 export async function reportSqlInjection(workflows: WorkflowEntity[]) {
@@ -28,7 +28,7 @@ export async function reportSqlInjection(workflows: WorkflowEntity[]) {
 	if (locations.length === 0) return null;
 
 	return {
-		risk: 'SQL injection risk',
+		risk: RISKS.SQL_INJECTION,
 		description:
 			'These workflows contain at least one SQL node whose "Execute Query" field contains an expression. Building a query with an expression that evaluates arbitrary data may lead to a SQL injection attack. Consider validating the input used to build the query.',
 		locations,

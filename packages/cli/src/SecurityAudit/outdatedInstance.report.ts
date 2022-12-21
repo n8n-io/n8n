@@ -6,6 +6,7 @@ import { GenericHelpers } from '..';
 import config from '@/config';
 import { segregate } from '@/utils';
 import type { Version } from './types';
+import { RISKS } from './constants';
 
 export async function reportOutdatedInstance() {
 	const allPackagesVersions = await GenericHelpers.getVersions();
@@ -28,7 +29,7 @@ export async function reportOutdatedInstance() {
 	);
 
 	return {
-		risk: 'Outdated instance',
+		risk: RISKS.OUTDATED_INSTANCE,
 		description: description.join(' '),
 		nextVersions,
 	};
