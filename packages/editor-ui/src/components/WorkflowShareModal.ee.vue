@@ -433,7 +433,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			let linkUrl = this.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl;
+			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
 				linkUrl = this.usageStore.viewPlansUrl;
 			}

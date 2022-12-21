@@ -168,7 +168,7 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			let linkUrl = this.contextBasedTranslationKeys.credentials.sharing.unavailable.linkUrl;
+			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
 				linkUrl = this.usageStore.viewPlansUrl;
 			}
