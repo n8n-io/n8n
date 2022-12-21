@@ -84,6 +84,7 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								size="medium"
 								v-model="workflowSettings.callerIds"
