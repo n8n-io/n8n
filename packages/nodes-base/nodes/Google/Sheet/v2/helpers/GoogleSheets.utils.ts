@@ -6,7 +6,7 @@ import {
 	INodePropertyOptions,
 	NodeOperationError,
 } from 'n8n-workflow';
-import { GoogleSheet } from './GoogleSheet';
+import type { GoogleSheet } from './GoogleSheet';
 import {
 	RangeDetectionOptions,
 	ResourceLocator,
