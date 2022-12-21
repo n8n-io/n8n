@@ -179,7 +179,7 @@ EEWorkflowController.post(
 		}
 
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
 		const { id, ...rest } = savedWorkflow;
 

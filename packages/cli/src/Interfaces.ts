@@ -368,9 +368,9 @@ export interface IInternalHooksClass {
 		firstWorkflowCreatedAt?: Date,
 	): Promise<unknown[]>;
 	onPersonalizationSurveySubmitted(userId: string, answers: Record<string, string>): Promise<void>;
-	onWorkflowCreated(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
-	onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void>;
-	onWorkflowSaved(userId: string, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
+	onWorkflowCreated(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
+	onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void>;
+	onWorkflowSaved(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void>;
 	onWorkflowBeforeExecute(executionId: string, data: IWorkflowExecutionDataProcess): Promise<void>;
 	onWorkflowPostExecute(
 		executionId: string,

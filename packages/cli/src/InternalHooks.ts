@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
@@ -100,24 +102,19 @@ export class InternalHooksClass implements IInternalHooksClass {
 		);
 	}
 
-	async onWorkflowCreated(
-		userId: string,
-		workflow: IWorkflowBase,
-		publicApi: boolean,
-	): Promise<void> {
+	async onWorkflowCreated(user: User, workflow: IWorkflowBase, publicApi: boolean): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.created',
 				payload: {
-					userId,
+					...userToPayload(user),
 					workflowId: workflow.id,
 					workflowName: workflow.name,
-					publicApi,
 				},
 			}),
 			this.telemetry.track('User created workflow', {
-				user_id: userId,
+				user_id: user.id,
 				workflow_id: workflow.id,
 				node_graph_string: JSON.stringify(nodeGraph),
 				public_api: publicApi,
@@ -126,18 +123,17 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return;
 	}
 
-	async onWorkflowDeleted(userId: string, workflowId: string, publicApi: boolean): Promise<void> {
+	async onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void> {
 		Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.deleted',
 				payload: {
-					userId,
+					...userToPayload(user),
 					workflowId,
-					publicApi,
 				},
 			}),
 			this.telemetry.track('User deleted workflow', {
-				user_id: userId,
+				user_id: user.id,
 				workflow_id: workflowId,
 				public_api: publicApi,
 			}),
@@ -145,7 +141,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return;
 	}
 
-	async onWorkflowSaved(userId: string, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
+	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
 		const { nodeGraph } = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 
 		const notesCount = Object.keys(nodeGraph.notes).length;
@@ -156,16 +152,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.updated',
 				payload: {
-					userId,
+					...userToPayload(user),
 					workflowId: workflow.id,
 					workflowName: workflow.name,
-					publicApi,
 				},
 			}),
 			this.telemetry.track(
 				'User saved workflow',
 				{
-					user_id: userId,
+					user_id: user.id,
 					workflow_id: workflow.id,
 					node_graph_string: JSON.stringify(nodeGraph),
 					notes_count_overlapping: overlappingCount,
@@ -431,7 +426,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				eventName: 'n8n.audit.user.invited',
 				payload: {
 					...userToPayload(userInviteData.user),
-					tagertUserId: userInviteData.target_user_id,
+					targetUserId: userInviteData.target_user_id,
 				},
 			}),
 			this.telemetry.track('User invited new user', {
@@ -453,7 +448,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				eventName: 'n8n.audit.user.reinvited',
 				payload: {
 					...userToPayload(userReinviteData.user),
-					tagertUserId: userReinviteData.target_user_id,
+					targetUserId: userReinviteData.target_user_id,
 				},
 			}),
 			this.telemetry.track('User resent new user invite email', {
