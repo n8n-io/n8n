@@ -935,7 +935,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						requestFilter,
 					);
 				}
-				// context.commit('setTotalFinishedExecutionsCount', finishedExecutions.count);
+				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
 				throw error;
