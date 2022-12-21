@@ -23,7 +23,6 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
-import { ExternalHooks } from '@/ExternalHooks';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
