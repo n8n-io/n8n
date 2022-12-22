@@ -10,6 +10,7 @@ import { telemetry } from '@/plugins/telemetry';
 import { IDataObject } from 'n8n-workflow';
 import { getSchema, isEmpty, mergeDeep } from '@/utils';
 import { i18n } from '@/plugins/i18n';
+import MappingPill from './MappingPill.vue';
 
 type Props = {
 	data: IDataObject[];
@@ -83,11 +84,7 @@ const onDragEnd = (el: HTMLElement) => {
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div
-					v-if="el"
-					:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-					v-html="el.outerHTML"
-				/>
+				<MappingPill v-if="el" :html="el.outerHTML"	:can-drop="canDrop" />
 			</template>
 			<template>
 				<div :class="$style.schema">
@@ -131,43 +128,4 @@ const onDragEnd = (el: HTMLElement) => {
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }
 
-.dragPill {
-	display: inline-flex;
-	height: 24px;
-	padding: 0 var(--spacing-3xs);
-	border: 1px solid var(--color-foreground-light);
-	border-radius: 4px;
-	background: var(--color-background-xlight);
-	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-	white-space: nowrap;
-	align-items: center;
-
-	span {
-		display: flex;
-		height: 100%;
-		align-items: center;
-	}
-}
-
-.droppablePill {
-	&,
-	span span {
-		color: var(--color-success);
-		border-color: var(--color-success-light);
-		background-color: white;
-	}
-}
-
-.defaultPill {
-	transform: translate(-50%, -100%);
-	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-
-	&,
-	span span {
-		color: var(--color-primary);
-		border-color: var(--color-primary-tint-1);
-		background-color: var(--color-primary-tint-3);
-	}
-}
 </style>

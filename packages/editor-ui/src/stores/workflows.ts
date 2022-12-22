@@ -278,7 +278,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			this.workflow = createEmptyWorkflow();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				Vue.set(this.workflow, 'ownedBy', usersStore.currentUser);
 			}
 		},
@@ -827,7 +827,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				(node) => node.type === updateInformation.key,
 			) as INodeUi;
 			const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-			if(!nodeType) return;
+			if (!nodeType) return;
 
 			const nodeParams = NodeHelpers.getNodeParameters(
 				nodeType.properties,

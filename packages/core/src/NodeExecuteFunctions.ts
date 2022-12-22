@@ -836,7 +836,7 @@ export async function getBinaryDataBuffer(
 	propertyName: string,
 	inputIndex: number,
 ): Promise<Buffer> {
-	const binaryData = inputData.main![inputIndex]![itemIndex]!.binary![propertyName]!;
+	const binaryData = inputData.main[inputIndex]![itemIndex]!.binary![propertyName]!;
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 }
 

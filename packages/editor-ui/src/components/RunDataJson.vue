@@ -18,13 +18,7 @@
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-					{{
-						$locale.baseText('dataMapping.mapKeyToField', {
-							interpolate: { name: getShortKey(el) },
-						})
-					}}
-				</div>
+				<MappingPill v-if="el" :html="getShortKey(el)"	:can-drop="canDrop" />
 			</template>
 			<template>
 				<vue-json-pretty
@@ -84,6 +78,7 @@ import { INodeUi } from '@/Interface';
 import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import MappingPill from './MappingPill.vue';
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -93,6 +88,7 @@ export default mixins(externalHooks).extend({
 		VueJsonPretty,
 		Draggable,
 		runDataJsonActions,
+		MappingPill,
 	},
 	props: {
 		editMode: {
@@ -256,27 +252,6 @@ export default mixins(externalHooks).extend({
 	}
 }
 
-.dragPill {
-	display: flex;
-	height: 24px;
-	align-items: center;
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
-	white-space: nowrap;
-}
-
-.droppablePill {
-	background-color: var(--color-success);
-}
-
-.defaultPill {
-	background-color: var(--color-primary);
-	transform: translate(-50%, -100%);
-	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-}
 </style>
 
 <style lang="scss">

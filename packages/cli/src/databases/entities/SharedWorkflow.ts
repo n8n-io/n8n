@@ -1,21 +1,21 @@
 import { Entity, ManyToOne, RelationId } from 'typeorm';
-import { WorkflowEntity } from './WorkflowEntity';
-import { User } from './User';
-import { Role } from './Role';
+import type { WorkflowEntity } from './WorkflowEntity';
+import type { User } from './User';
+import type { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
 export class SharedWorkflow extends AbstractEntity {
-	@ManyToOne(() => Role, (role) => role.sharedWorkflows, { nullable: false })
+	@ManyToOne('Role', 'sharedWorkflows', { nullable: false })
 	role: Role;
 
-	@ManyToOne(() => User, (user) => user.sharedWorkflows, { primary: true })
+	@ManyToOne('User', 'sharedWorkflows', { primary: true })
 	user: User;
 
 	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.user)
 	userId: string;
 
-	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
+	@ManyToOne('WorkflowEntity', 'shared', {
 		primary: true,
 		onDelete: 'CASCADE',
 	})

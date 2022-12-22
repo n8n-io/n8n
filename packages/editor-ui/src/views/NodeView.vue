@@ -18,8 +18,8 @@
 				@mouseup="mouseUp"
 				@wheel="canvasStore.wheelScroll"
 			>
-				<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
-				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView">
+				<div id="node-view-background" class="node-view-background" :style="backgroundStyle" data-test-id="node-view-background" />
+				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView" data-test-id="node-view">
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
 						@click="showTriggerCreator('trigger_placeholder_button')"
@@ -104,6 +104,7 @@
 						icon="play-circle"
 						type="primary"
 						:disabled="isExecutionDisabled"
+						data-test-id="execute-workflow-button"
 					/>
 				</span>
 
@@ -2683,7 +2684,7 @@ export default mixins(
 
 				if (
 					newNodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					newNodeData.credentials = Object.fromEntries(

@@ -9,6 +9,7 @@ import {
 	CredentialsModal,
 	MessageBox,
 } from '../pages';
+import { SettingsUsagePage } from '../pages/settings-usage';
 
 import { MainSidebar, SettingsSidebar } from '../pages/sidebar';
 
@@ -23,6 +24,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 const settingsUsersPage = new SettingsUsersPage();
+const settingsUsagePage = new SettingsUsagePage();
 
 const messageBox = new MessageBox();
 
@@ -82,6 +84,9 @@ describe('Default owner', () => {
 	it('should be able to setup UM from settings', () => {
 		mainSidebar.getters.settings().should('be.visible');
 		mainSidebar.actions.goToSettings();
+		cy.url().should('include', settingsUsagePage.url);
+
+		settingsSidebar.actions.goToUsers();
 		cy.url().should('include', settingsUsersPage.url);
 
 		settingsUsersPage.actions.goToOwnerSetup();
