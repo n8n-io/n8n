@@ -80,7 +80,7 @@ export class CredentialsService {
 			select: SELECT_FIELDS,
 			relations: options?.relations,
 			where: {
-				id: In(userSharings.map((x) => x.credentialId)),
+				id: In(userSharings.map((x) => x.credentialsId)),
 			},
 		});
 	}
