@@ -1,4 +1,4 @@
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeExecutionData, assert } from 'n8n-workflow';
 
 import {
 	AdjustedPutItem,
@@ -82,7 +82,11 @@ function decodeAttribute(type: AttributeValueType, attribute: string | IAttribut
 		case 'NS':
 			return attribute;
 		case 'M':
-			return simplify(attribute as IAttributeValue);
+			assert(
+				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
+				'Attribute must be an object',
+			);
+			return simplify(attribute);
 		default:
 			return null;
 	}
