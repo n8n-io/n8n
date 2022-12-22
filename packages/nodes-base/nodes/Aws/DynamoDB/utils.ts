@@ -70,7 +70,7 @@ export function simplify(item: IAttributeValue): IDataObject {
 	return output;
 }
 
-function decodeAttribute(type: AttributeValueType, attribute: string) {
+function decodeAttribute(type: AttributeValueType, attribute: string | IAttributeValue) {
 	switch (type) {
 		case 'BOOL':
 			return Boolean(attribute);
@@ -82,7 +82,7 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		case 'NS':
 			return attribute;
 		case 'M':
-			return simplify(attribute);
+			return simplify(attribute as IAttributeValue);
 		default:
 			return null;
 	}
