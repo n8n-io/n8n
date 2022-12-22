@@ -5,7 +5,7 @@ export class FacebookGraphAppApi implements ICredentialType {
 
 	displayName = 'Facebook Graph API (App)';
 
-	documentationUrl = 'facebookGraphApp';
+	documentationUrl = 'facebookapp';
 
 	extends = ['facebookGraphApi'];
 
