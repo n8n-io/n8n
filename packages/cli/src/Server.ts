@@ -160,8 +160,7 @@ import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
-
-import './events';
+import { initEvents } from './events';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1750,4 +1749,7 @@ export async function start(): Promise<void> {
 			process.exit(1);
 		}
 	});
+
+	// Set up event handling
+	initEvents();
 }

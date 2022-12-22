@@ -35,6 +35,7 @@ import config from '@/config';
 import { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
+import { initEvents } from '@/events';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -195,6 +196,9 @@ export class ExecuteBatch extends Command {
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
+
+		// Add event handlers
+		initEvents();
 
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
