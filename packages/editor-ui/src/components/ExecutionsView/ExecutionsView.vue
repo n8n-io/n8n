@@ -174,7 +174,13 @@ export default mixins(
 		const shouldUpdate = workflowUpdated && !onNewWorkflow;
 		await this.initView(shouldUpdate);
 		if (!shouldUpdate) {
-			await this.setExecutions();
+			if (this.workflowsStore.currentWorkflowExecutions.length > 0) {
+				const workflowExecutions = await this.loadExecutions();
+				this.workflowsStore.addToCurrentExecutions(workflowExecutions);
+				this.setActiveExecution();
+			} else {
+				await this.setExecutions();
+			}
 		}
 		this.loading = false;
 	},
@@ -186,7 +192,9 @@ export default mixins(
 				}
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
-				this.setExecutions();
+				if(this.workflowsStore.currentWorkflowExecutions.length === 0) {
+					this.setExecutions();
+				}
 				if (this.activeExecution) {
 					this.$router
 						.push({
