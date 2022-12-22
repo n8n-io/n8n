@@ -1688,6 +1688,8 @@ export async function start(): Promise<void> {
 		}
 
 		await app.externalHooks.run('n8n.ready', [app, config]);
+		// Set up event handling
+		initEvents();
 		const cpus = os.cpus();
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		const diagnosticInfo: IDiagnosticInfo = {
@@ -1749,7 +1751,4 @@ export async function start(): Promise<void> {
 			process.exit(1);
 		}
 	});
-
-	// Set up event handling
-	initEvents();
 }
