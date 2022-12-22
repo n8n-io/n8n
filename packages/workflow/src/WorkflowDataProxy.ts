@@ -501,7 +501,7 @@ export class WorkflowDataProxy {
 						return undefined;
 					}
 
-					const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+					const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
 
 					if (name === 'name') {
 						return sourceData.previousNode;
@@ -577,28 +577,6 @@ export class WorkflowDataProxy {
 
 					if (that.workflow.getNode(nodeName) === null) {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
-					}
-
-					if (
-						nodeName !== that.activeNodeName &&
-						!that.runExecutionData?.resultData.runData?.hasOwnProperty(nodeName)
-					) {
-						throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
-					}
-
-					if (
-						nodeName !== that.activeNodeName &&
-						!that.workflow.getNodeConnectionIndexes(that.activeNodeName, nodeName, 'main')
-					) {
-						throw new ExpressionError(`connect "${that.activeNodeName}" to "${nodeName}"`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
 							failExecution: true,
@@ -1015,7 +993,7 @@ export class WorkflowDataProxy {
 										});
 									}
 
-									const sourceData: ISourceData = that.executeData?.source.main![
+									const sourceData: ISourceData = that.executeData.source.main[
 										pairedItem.input || 0
 									] as ISourceData;
 
@@ -1127,7 +1105,7 @@ export class WorkflowDataProxy {
 								});
 							}
 
-							const sourceData: ISourceData = that.executeData?.source.main![0] as ISourceData;
+							const sourceData: ISourceData = that.executeData.source.main[0] as ISourceData;
 
 							if (property === 'context') {
 								return that.nodeContextGetter(sourceData.previousNode);

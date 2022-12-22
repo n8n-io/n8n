@@ -123,7 +123,7 @@ export async function getExecutionsCount(data: {
 
 export async function getExecutionInWorkflows(
 	id: number,
-	workflows: number[],
+	workflows: string[],
 	includeData?: boolean,
 ): Promise<IExecutionResponseApi | undefined> {
 	const execution = await Db.collections.Execution.findOne({

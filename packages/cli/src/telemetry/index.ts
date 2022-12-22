@@ -6,6 +6,8 @@ import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
+import { getLicense } from '@/License';
+import { LicenseService } from '@/license/License.service';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -95,7 +97,14 @@ export class Telemetry {
 		});
 
 		this.executionCountsBuffer = {};
-		allPromises.push(this.track('pulse'));
+
+		// License info
+		const pulsePacket = {
+			plan_name_current: getLicense().getPlanName(),
+			quota: getLicense().getTriggerLimit(),
+			usage: await LicenseService.getActiveTriggerCount(),
+		};
+		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);
 	}
 
@@ -187,15 +196,12 @@ export class Telemetry {
 					properties: updatedProperties,
 				};
 
-				if (withPostHog && this.postHog) {
-					return Promise.all([
-						this.postHog.capture({
-							distinctId: payload.userId,
-							sendFeatureFlags: true,
-							...payload,
-						}),
-						this.rudderStack.track(payload),
-					]).then(() => resolve());
+				if (withPostHog) {
+					this.postHog?.capture({
+						distinctId: payload.userId,
+						sendFeatureFlags: true,
+						...payload,
+					});
 				}
 
 				return this.rudderStack.track(payload, resolve);

@@ -1,16 +1,40 @@
-import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
-import { setCredentialSharedWith } from "@/api/credentials.ee";
-import { getAppNameFromCredType } from "@/utils";
-import { EnterpriseEditionFeature, STORES } from "@/constants";
-import { ICredentialMap, ICredentialsDecryptedResponse, ICredentialsResponse, ICredentialsState, ICredentialTypeMap } from "@/Interface";
-import { i18n } from "@/plugins/i18n";
-import { ICredentialsDecrypted, ICredentialType, INodeCredentialTestResult, INodeProperties, INodeTypeDescription, IUser } from "n8n-workflow";
-import { defineStore } from "pinia";
-import Vue from "vue";
-import { useRootStore } from "./n8nRootStore";
-import { useNodeTypesStore } from "./nodeTypes";
-import { useSettingsStore } from "./settings";
-import { useUsersStore } from "./users";
+import {
+	createNewCredential,
+	deleteCredential,
+	getAllCredentials,
+	getCredentialData,
+	getCredentialsNewName,
+	getCredentialTypes,
+	oAuth1CredentialAuthorize,
+	oAuth2CredentialAuthorize,
+	testCredential,
+	updateCredential,
+} from '@/api/credentials';
+import { setCredentialSharedWith } from '@/api/credentials.ee';
+import { getAppNameFromCredType } from '@/utils';
+import { EnterpriseEditionFeature, STORES } from '@/constants';
+import {
+	ICredentialMap,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+	ICredentialsState,
+	ICredentialTypeMap,
+} from '@/Interface';
+import { i18n } from '@/plugins/i18n';
+import {
+	ICredentialsDecrypted,
+	ICredentialType,
+	INodeCredentialTestResult,
+	INodeProperties,
+	INodeTypeDescription,
+	IUser,
+} from 'n8n-workflow';
+import { defineStore } from 'pinia';
+import Vue from 'vue';
+import { useRootStore } from './n8nRootStore';
+import { useNodeTypesStore } from './nodeTypes';
+import { useSettingsStore } from './settings';
+import { useUsersStore } from './users';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -26,22 +50,27 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			return this.credentialTypes;
 		},
 		allCredentialTypes(): ICredentialType[] {
-			return Object.values(this.credentialTypes)
-				.sort((a, b) => a.displayName.localeCompare(b.displayName));
+			return Object.values(this.credentialTypes).sort((a, b) =>
+				a.displayName.localeCompare(b.displayName),
+			);
 		},
 		allCredentials(): ICredentialsResponse[] {
-			return Object.values(this.credentials)
-				.sort((a, b) => a.name.localeCompare(b.name));
+			return Object.values(this.credentials).sort((a, b) => a.name.localeCompare(b.name));
 		},
-		allCredentialsByType(): {[type: string]: ICredentialsResponse[]} {
+		allCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
 			const credentials = this.allCredentials;
 			const types = this.allCredentialTypes;
 
-			return types.reduce((accu: {[type: string]: ICredentialsResponse[]}, type: ICredentialType) => {
-				accu[type.name] = credentials.filter((cred: ICredentialsResponse) => cred.type === type.name);
+			return types.reduce(
+				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
+					accu[type.name] = credentials.filter(
+						(cred: ICredentialsResponse) => cred.type === type.name,
+					);
 
-				return accu;
-			}, {});
+					return accu;
+				},
+				{},
+			);
 		},
 		getCredentialTypeByName() {
 			return (type: string): ICredentialType => this.credentialTypes[type];
@@ -57,7 +86,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		getCredentialsByType() {
 			return (credentialType: string): ICredentialsResponse[] => {
-				return (this.allCredentialsByType[credentialType] || []);
+				return this.allCredentialsByType[credentialType] || [];
 			};
 		},
 		getNodesWithAccess() {
@@ -71,7 +100,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 					}
 
 					for (const credentialTypeDescription of nodeType.credentials) {
-						if (credentialTypeDescription.name === credentialTypeName ) {
+						if (credentialTypeDescription.name === credentialTypeName) {
 							return true;
 						}
 					}
@@ -120,11 +149,14 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 	},
 	actions: {
 		setCredentialTypes(credentialTypes: ICredentialType[]): void {
-			this.credentialTypes = credentialTypes.reduce((accu: ICredentialTypeMap, cred: ICredentialType) => {
-				accu[cred.name] = cred;
+			this.credentialTypes = credentialTypes.reduce(
+				(accu: ICredentialTypeMap, cred: ICredentialType) => {
+					accu[cred.name] = cred;
 
-				return accu;
-			}, {});
+					return accu;
+				},
+				{},
+			);
 		},
 		setCredentials(credentials: ICredentialsResponse[]): void {
 			this.credentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
@@ -143,7 +175,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		upsertCredential(credential: ICredentialsResponse): void {
 			if (credential.id) {
-				Vue.set(this.credentials, credential.id, { ...this.credentials[credential.id], ...credential });
+				Vue.set(this.credentials, credential.id, {
+					...this.credentials[credential.id],
+					...credential,
+				});
 			}
 		},
 		enableOAuthCredential(credential: ICredentialsResponse): void {
@@ -163,7 +198,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			this.setCredentials(credentials);
 			return credentials;
 		},
-		async getCredentialData({ id }: {id: string}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
+		async getCredentialData({
+			id,
+		}: {
+			id: string;
+		}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
 			const rootStore = useRootStore();
 			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
@@ -194,7 +233,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			}
 			return credential;
 		},
-		async updateCredential(params: {data: ICredentialsDecrypted, id: string}): Promise<ICredentialsResponse> {
+		async updateCredential(params: {
+			data: ICredentialsDecrypted;
+			id: string;
+		}): Promise<ICredentialsResponse> {
 			const { id, data } = params;
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
@@ -223,7 +265,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 			return credential;
 		},
-		async deleteCredential({ id }: {id: string}) {
+		async deleteCredential({ id }: { id: string }) {
 			const rootStore = useRootStore();
 			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
@@ -249,7 +291,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
 					const { displayName } = this.getCredentialTypeByName(credentialTypeName);
 					newName = getAppNameFromCredType(displayName);
-					newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
+					newName =
+						newName.length > 0
+							? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}`
+							: DEFAULT_CREDENTIAL_NAME;
 				}
 				const rootStore = useRootStore();
 				const res = await getCredentialsNewName(rootStore.getRestApiContext, newName);
@@ -260,34 +305,31 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 
 		// Enterprise edition actions
-		setCredentialOwnedBy(payload: { credentialId: string, ownedBy: Partial<IUser> }) {
+		setCredentialOwnedBy(payload: { credentialId: string; ownedBy: Partial<IUser> }) {
 			Vue.set(this.credentials[payload.credentialId], 'ownedBy', payload.ownedBy);
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string; }) {
-			if(useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-				await setCredentialSharedWith(
-					useRootStore().getRestApiContext,
-					payload.credentialId,
-					{
-						shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
-					},
-				);
+		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string }) {
+			if (useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+				await setCredentialSharedWith(useRootStore().getRestApiContext, payload.credentialId, {
+					shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
+				});
 				Vue.set(this.credentials[payload.credentialId], 'sharedWith', payload.sharedWith);
 			}
 		},
-		addCredentialSharee(payload: { credentialId: string, sharee: Partial<IUser> }): void {
+		addCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
 			Vue.set(
 				this.credentials[payload.credentialId],
 				'sharedWith',
 				(this.credentials[payload.credentialId].sharedWith || []).concat([payload.sharee]),
 			);
 		},
-		removeCredentialSharee(payload: { credentialId: string, sharee: Partial<IUser> }): void {
+		removeCredentialSharee(payload: { credentialId: string; sharee: Partial<IUser> }): void {
 			Vue.set(
 				this.credentials[payload.credentialId],
 				'sharedWith',
-				(this.credentials[payload.credentialId].sharedWith || [])
-					.filter((sharee) => sharee.id !== payload.sharee.id),
+				(this.credentials[payload.credentialId].sharedWith || []).filter(
+					(sharee) => sharee.id !== payload.sharee.id,
+				),
 			);
 		},
 	},

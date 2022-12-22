@@ -2,7 +2,7 @@ import {
 	applyForOnboardingCall,
 	fetchNextOnboardingPrompt,
 	submitEmailOnSignup,
-} from "@/api/workflow-webhooks";
+} from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
@@ -26,8 +26,9 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_SHARE_MODAL_KEY,
-} from "@/constants";
+	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
+} from '@/constants';
 import {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
@@ -37,12 +38,13 @@ import {
 	IUser,
 	UIState,
 	XYPosition,
-} from "@/Interface";
-import Vue from "vue";
-import { defineStore } from "pinia";
-import { useRootStore } from "./n8nRootStore";
-import { getCurlToJson } from "@/api/curlHelper";
-import { useWorkflowsStore } from "./workflows";
+} from '@/Interface';
+import Vue from 'vue';
+import { defineStore } from 'pinia';
+import { useRootStore } from './n8nRootStore';
+import { getCurlToJson } from '@/api/curlHelper';
+import { useWorkflowsStore } from './workflows';
+import { useSettingsStore } from './settings';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -143,39 +145,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
 				uiLocations: ['settings'],
 			},
-			{
-				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
-				featureName: 'fakeDoor.credentialEdit.sharing.name',
-				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
-				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-				uiLocations: ['credentialsModal'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.WORKFLOWS_SHARING,
-				featureName: 'fakeDoor.workflowsSharing.name',
-				actionBoxTitle: 'workflows.shareModal.title', // Use this translation in modal title when removing fakeDoor
-				actionBoxDescription: 'fakeDoor.workflowsSharing.description',
-				actionBoxButtonLabel: 'fakeDoor.workflowsSharing.button',
-				linkURL: 'https://n8n.cloud',
-				uiLocations: ['workflowShareModal'],
-			},
 		],
-		dynamicTranslations: {
-			workflows: {
-				shareModal: {
-					title: 'dynamic.workflows.shareModal.title',
-				},
-				sharing: {
-					unavailable: {
-						description: 'dynamic.workflows.sharing.unavailable.description',
-						action: 'dynamic.workflows.sharing.unavailable.action',
-						button: 'dynamic.workflows.sharing.unavailable.button',
-						linkURL: 'https://n8n.cloud',
-					},
-				},
-			},
-		},
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -195,6 +165,45 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 	}),
 	getters: {
+		contextBasedTranslationKeys() {
+			const settingsStore = useSettingsStore();
+			const deploymentType = settingsStore.deploymentType;
+
+			let contextKey = '';
+			if (deploymentType === 'cloud') {
+				contextKey = '.cloud';
+			} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
+				contextKey = '.desktop';
+			}
+
+			return {
+				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				credentials: {
+					sharing: {
+						unavailable: {
+							title: `contextual.credentials.sharing.unavailable.title${contextKey}`,
+							description: `contextual.credentials.sharing.unavailable.description${contextKey}`,
+							action: `contextual.credentials.sharing.unavailable.action${contextKey}`,
+							button: `contextual.credentials.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+				workflows: {
+					sharing: {
+						title: 'contextual.workflows.sharing.title',
+						unavailable: {
+							title: `contextual.workflows.sharing.unavailable.title${contextKey}`,
+							description: {
+								modal: `contextual.workflows.sharing.unavailable.description.modal${contextKey}`,
+								tooltip: `contextual.workflows.sharing.unavailable.description.tooltip${contextKey}`,
+							},
+							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
+							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+			};
+		},
 		getLastSelectedNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
 			if (this.lastSelectedNode) {
@@ -202,16 +211,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			}
 			return null;
 		},
-		getCurlCommand() : string|undefined {
+		getCurlCommand(): string | undefined {
 			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
 		},
-		getHttpNodeParameters() : string|undefined {
+		getHttpNodeParameters(): string | undefined {
 			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
-		areExpressionsDisabled() : boolean {
+		areExpressionsDisabled(): boolean {
 			return this.currentView === VIEWS.DEMO;
 		},
-		isVersionsOpen() : boolean {
+		isVersionsOpen(): boolean {
 			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
 		isModalOpen() {
@@ -230,18 +239,24 @@ export const useUIStore = defineStore(STORES.UI, {
 			return (name: string) => this.modals[name].data;
 		},
 		getFakeDoorByLocation() {
-			return (location: IFakeDoorLocation) => this.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+			return (location: IFakeDoorLocation) =>
+				this.fakeDoorFeatures.filter((fakeDoor) => fakeDoor.uiLocations.includes(location));
 		},
 		getFakeDoorById() {
-			return (id: string) => this.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+			return (id: string) =>
+				this.fakeDoorFeatures.find((fakeDoor) => fakeDoor.id.toString() === id);
 		},
-		isNodeView() : boolean {
-			return [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(this.currentView);
+		isNodeView(): boolean {
+			return [
+				VIEWS.NEW_WORKFLOW.toString(),
+				VIEWS.WORKFLOW.toString(),
+				VIEWS.EXECUTION.toString(),
+			].includes(this.currentView);
 		},
 		isActionActive() {
 			return (action: string) => this.activeActions.includes(action);
 		},
-		getSelectedNodes() : INodeUi[] {
+		getSelectedNodes(): INodeUi[] {
 			const seen = new Set();
 			return this.selectedNodes.filter((node: INodeUi) => {
 				// dedupe for instances when same node is selected in different ways
@@ -265,20 +280,20 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 	},
 	actions: {
-		setMode(name: string, mode: string):  void {
+		setMode(name: string, mode: string): void {
 			Vue.set(this.modals[name], 'mode', mode);
 		},
 		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
-		setModalData (payload: { name: string, data: Record<string, unknown> }) {
+		setModalData(payload: { name: string; data: Record<string, unknown> }) {
 			Vue.set(this.modals[payload.name], 'data', payload.data);
 		},
 		openModal(name: string): void {
 			Vue.set(this.modals[name], 'open', true);
 			this.modalStack = [name].concat(this.modalStack);
 		},
-		openModalWithData (payload: { name: string, data: Record<string, unknown> }): void {
+		openModalWithData(payload: { name: string; data: Record<string, unknown> }): void {
 			this.setModalData(payload);
 			this.openModal(payload.name);
 		},
@@ -395,16 +410,16 @@ export const useUIStore = defineStore(STORES.UI, {
 			const updated = this.sidebarMenuItems.concat(menuItems);
 			Vue.set(this, 'sidebarMenuItems', updated);
 		},
-		setCurlCommand (payload: { name: string, command: string }): void {
+		setCurlCommand(payload: { name: string; command: string }): void {
 			Vue.set(this.modals[payload.name], 'curlCommand', payload.command);
 		},
-		setHttpNodeParameters (payload: { name: string, parameters: string }): void {
+		setHttpNodeParameters(payload: { name: string; parameters: string }): void {
 			Vue.set(this.modals[payload.name], 'httpNodeParameters', payload.parameters);
 		},
-		toggleSidebarMenuCollapse (): void {
+		toggleSidebarMenuCollapse(): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
 		},
-		async getCurlToJson (curlCommand: string): Promise<CurlToJSONResponse> {
+		async getCurlToJson(curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
 			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},

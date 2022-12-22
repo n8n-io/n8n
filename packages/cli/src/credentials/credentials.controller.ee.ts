@@ -1,5 +1,5 @@
 import express from 'express';
-import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -35,7 +35,13 @@ EECredentialsController.get(
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			return allCredentials.map(EECredentials.addOwnerAndSharings);
+			return allCredentials
+				.map((credential: CredentialsEntity & CredentialWithSharings) =>
+					EECredentials.addOwnerAndSharings(credential),
+				)
+				.map(
+					(credential): CredentialWithSharings => ({ ...credential, id: credential.id.toString() }),
+				);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
@@ -91,7 +97,10 @@ EECredentialsController.get(
 		const { id, data: _, ...rest } = credential;
 
 		const key = await EECredentials.getEncryptionKey();
-		const decryptedData = await EECredentials.decrypt(key, credential);
+		const decryptedData = EECredentials.redact(
+			await EECredentials.decrypt(key, credential),
+			credential,
+		);
 
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		return { id: id.toString(), data: decryptedData, ...rest };
@@ -112,8 +121,8 @@ EECredentialsController.post(
 
 		const { ownsCredential } = await EECredentials.isOwned(req.user, credentials.id.toString());
 
+		const sharing = await EECredentials.getSharing(req.user, credentials.id);
 		if (!ownsCredential) {
-			const sharing = await EECredentials.getSharing(req.user, credentials.id);
 			if (!sharing) {
 				throw new ResponseHelper.UnauthorizedError(`Forbidden`);
 			}
@@ -122,7 +131,13 @@ EECredentialsController.post(
 			Object.assign(credentials, { data: decryptedData });
 		}
 
-		return EECredentials.test(req.user, encryptionKey, credentials);
+		const mergedCredentials = deepCopy(credentials);
+		if (mergedCredentials.data && sharing?.credentials) {
+			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
+			mergedCredentials.data = EECredentials.unredact(mergedCredentials.data, decryptedData);
+		}
+
+		return EECredentials.test(req.user, encryptionKey, mergedCredentials);
 	}),
 );
 

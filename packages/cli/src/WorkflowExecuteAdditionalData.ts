@@ -65,6 +65,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
+import { WorkflowsService } from './workflows/workflows.services';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -779,34 +780,6 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	const policy =
-		workflowData.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
-
-	if (policy === 'none') {
-		throw new SubworkflowOperationError(
-			`Target workflow ID ${workflowData.id} may not be called by other workflows.`,
-			'Please update the settings of the target workflow or ask its owner to do so.',
-		);
-	}
-
-	if (
-		policy === 'workflowsFromAList' &&
-		typeof workflowData.settings?.callerIds === 'string' &&
-		parentWorkflowId !== undefined
-	) {
-		const allowedCallerIds = workflowData.settings.callerIds
-			.split(',')
-			.map((id) => id.trim())
-			.filter((id) => id !== '');
-
-		if (!allowedCallerIds.includes(parentWorkflowId)) {
-			throw new SubworkflowOperationError(
-				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
-				'Please update the settings of the target workflow or ask its owner to do so.',
-			);
-		}
-	}
-
 	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
@@ -852,7 +825,6 @@ export async function getRunData(
 
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
-	userId: string,
 	parentWorkflowId?: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
@@ -869,23 +841,15 @@ export async function getWorkflowData(
 			// to get initialized first
 			await Db.init();
 		}
-		const user = await getUserById(userId);
-		let relations = ['workflow', 'workflow.tags'];
 
-		if (config.getEnv('workflowTagsDisabled')) {
-			relations = relations.filter((relation) => relation !== 'workflow.tags');
-		}
+		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations,
-			where: whereClause({
-				user,
-				entityType: 'workflow',
-				entityId: workflowInfo.id,
-			}),
-		});
-
-		workflowData = shared?.workflow;
+		workflowData = await WorkflowsService.get(
+			{ id: parseInt(workflowInfo.id, 10) },
+			{
+				relations,
+			},
+		);
 
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
@@ -911,7 +875,7 @@ export async function getWorkflowData(
 async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
-	options?: {
+	options: {
 		parentWorkflowId?: string;
 		inputData?: INodeExecutionData[];
 		parentExecutionId?: string;
@@ -926,13 +890,8 @@ async function executeWorkflow(
 	const nodeTypes = NodeTypes();
 
 	const workflowData =
-		options?.loadedWorkflowData ??
-		(await getWorkflowData(
-			workflowInfo,
-			additionalData.userId,
-			options?.parentWorkflowId,
-			options?.parentWorkflowSettings,
-		));
+		options.loadedWorkflowData ??
+		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings));
 
 	const workflowName = workflowData ? workflowData.name : undefined;
 	const workflow = new Workflow({
@@ -947,23 +906,28 @@ async function executeWorkflow(
 	});
 
 	const runData =
-		options?.loadedRunData ??
-		(await getRunData(workflowData, additionalData.userId, options?.inputData));
+		options.loadedRunData ??
+		(await getRunData(workflowData, additionalData.userId, options.inputData));
 
 	let executionId;
 
-	if (options?.parentExecutionId !== undefined) {
-		executionId = options?.parentExecutionId;
+	if (options.parentExecutionId !== undefined) {
+		executionId = options.parentExecutionId;
 	} else {
 		executionId =
-			options?.parentExecutionId !== undefined
-				? options?.parentExecutionId
+			options.parentExecutionId !== undefined
+				? options.parentExecutionId
 				: await ActiveExecutions.getInstance().add(runData);
 	}
 
 	let data;
 	try {
 		await PermissionChecker.check(workflow, additionalData.userId);
+		await PermissionChecker.checkSubworkflowExecutePolicy(
+			workflow,
+			additionalData.userId,
+			options.parentWorkflowId,
+		);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -1005,7 +969,7 @@ async function executeWorkflow(
 			runData.executionMode,
 			runExecutionData,
 		);
-		if (options?.parentExecutionId !== undefined) {
+		if (options.parentExecutionId !== undefined) {
 			// Must be changed to become typed
 			return {
 				startedAt: new Date(),
@@ -1049,6 +1013,7 @@ async function executeWorkflow(
 		throw {
 			...error,
 			stack: error.stack,
+			message: error.message,
 		};
 	}
 

@@ -13,7 +13,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
 import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
@@ -22,7 +22,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -116,7 +116,7 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overriden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
+	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
@@ -152,28 +152,32 @@ export class WorkflowsService {
 		}
 
 		// safeguard against querying ids not shared with the user
-		if (filter?.id !== undefined) {
-			const workflowId = parseInt(filter.id.toString());
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
-				return [];
-			}
+		const workflowId = filter?.id?.toString();
+		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
+			LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
+			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const fields: Array<keyof WorkflowEntity> = [
+			'id',
+			'name',
+			'active',
+			'createdAt',
+			'updatedAt',
+			'nodes',
+		];
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
 		}
 
-		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
-		if (isSharingEnabled) {
+		if (isSharingEnabled()) {
 			relations.push('shared', 'shared.user', 'shared.role');
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes', 'versionId'] : fields,
+			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -212,7 +216,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to update a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -248,7 +252,7 @@ export class WorkflowsService {
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		await externalHooks.run('workflow.update', [workflow]);
+		await ExternalHooks().run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
@@ -334,13 +338,13 @@ export class WorkflowsService {
 			});
 		}
 
-		await externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await externalHooks.run('workflow.activate', [updatedWorkflow]);
+				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
 				await ActiveWorkflowRunner.getInstance().add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
@@ -353,7 +357,7 @@ export class WorkflowsService {
 				updatedWorkflow.active = false;
 
 				// Now return the original error for UI to display
-				throw error;
+				throw new ResponseHelper.BadRequestError((error as Error).message);
 			}
 		}
 

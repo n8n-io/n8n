@@ -12,10 +12,10 @@
 			:key="`${item.key}-${index}`"
 			data-test-id="item-iterator-item"
 			:class="{
-				'clickable': !disabled,
+				clickable: !disabled,
 				[$style[item.type]]: true,
 				[$style.active]: activeIndex === index && !disabled,
-				[$style.iteratorItem]: true
+				[$style.iteratorItem]: true,
 			}"
 			ref="iteratorItems"
 			@click="wrappedEmit('selected', item)"
@@ -26,10 +26,7 @@
 				:count="enableGlobalCategoriesCounter ? getCategoryCount(item) : undefined"
 			/>
 
-			<subcategory-item
-				v-else-if="item.type === 'subcategory'"
-				:item="item"
-			/>
+			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item" />
 
 			<node-item
 				v-else-if="item.type === 'node'"
@@ -51,7 +48,7 @@
 		</div>
 		<aside
 			v-for="item in elements.length"
-			v-show="(renderedItems.length < item)"
+			v-show="renderedItems.length < item"
 			:key="item"
 			:class="$style.loadingItem"
 		>
@@ -85,9 +82,9 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'selected', element: INodeCreateElement, $e?: Event): void,
-	(event: 'dragstart', element: INodeCreateElement, $e: Event): void,
-	(event: 'dragend', element: INodeCreateElement, $e: Event): void,
+	(event: 'selected', element: INodeCreateElement, $e?: Event): void;
+	(event: 'dragstart', element: INodeCreateElement, $e: Event): void;
+	(event: 'dragend', element: INodeCreateElement, $e: Event): void;
 }>();
 
 const state = reactive({
@@ -96,10 +93,14 @@ const state = reactive({
 });
 const iteratorItems = ref<HTMLElement[]>([]);
 
-function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INodeCreateElement, $e?: Event) {
+function wrappedEmit(
+	event: 'selected' | 'dragstart' | 'dragend',
+	element: INodeCreateElement,
+	$e?: Event,
+) {
 	if (props.disabled) return;
 
-	emit((event as 'selected' || 'dragstart' || 'dragend'), element, $e);
+	emit((event as 'selected') || 'dragstart' || 'dragend', element, $e);
 }
 function getCategoryCount(item: CategoryCreateElement) {
 	const { categoriesWithNodes } = useNodeTypesStore();
@@ -113,7 +114,7 @@ function getCategoryCount(item: CategoryCreateElement) {
 		const countKeys = NODE_TYPE_COUNT_MAPPER[useNodeCreatorStore().selectedType];
 
 		for (const countKey of countKeys) {
-			accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
+			accu += currentCategory[subcategory][countKey as 'triggerCount' | 'regularCount'];
 		}
 
 		return accu;
@@ -124,13 +125,15 @@ function getCategoryCount(item: CategoryCreateElement) {
 // Lazy render large items lists to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
-	if(props.elements.length <= 20 || props.lazyRender === false) {
+	if (props.elements.length <= 20 || props.lazyRender === false) {
 		state.renderedItems = props.elements;
 		return;
-	};
+	}
 
 	if (state.renderedItems.length < props.elements.length) {
-		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 10));
+		state.renderedItems.push(
+			...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 10),
+		);
 		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
 	}
 }
@@ -138,7 +141,6 @@ function renderItems() {
 function beforeEnter(el: HTMLElement) {
 	el.style.height = '0';
 }
-
 
 function enter(el: HTMLElement) {
 	el.style.height = `${el.scrollHeight}px`;
@@ -163,17 +165,23 @@ onUnmounted(() => {
 
 // Make sure the active item is always visible
 // scroll if needed
-watch(() => props.activeIndex, async () => {
-	if(props.activeIndex === undefined) return;
-	iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
-});
+watch(
+	() => props.activeIndex,
+	async () => {
+		if (props.activeIndex === undefined) return;
+		iteratorItems.value[props.activeIndex]?.scrollIntoView({ block: 'nearest' });
+	},
+);
 
 // Trigger elements re-render when they change
-watch(() => props.elements, async () => {
-	window.cancelAnimationFrame(state.renderAnimationRequest);
-	state.renderedItems = [];
-	renderItems();
-});
+watch(
+	() => props.elements,
+	async () => {
+		window.cancelAnimationFrame(state.renderAnimationRequest);
+		state.renderedItems = [];
+		renderItems();
+	},
+);
 
 const { renderedItems } = toRefs(state);
 </script>
@@ -188,7 +196,7 @@ const { renderedItems } = toRefs(state);
 	margin-left: 1px;
 	position: relative;
 	&::before {
-		content: "";
+		content: '';
 		position: absolute;
 		left: -1px;
 		top: 0;
@@ -199,14 +207,13 @@ const { renderedItems } = toRefs(state);
 		border-color: $node-creator-item-hover-border-color;
 	}
 
-	&.active::before  {
+	&.active::before {
 		border-color: $color-primary !important;
 	}
 
 	&.category.singleCategory {
 		display: none;
 	}
-
 }
 .itemIterator {
 	> *:last-child {

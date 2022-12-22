@@ -25,6 +25,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { RoleService } from '@/role/role.service';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -403,33 +404,94 @@ export function usersNamespace(this: N8nApp): void {
 
 			const userToDelete = users.find((user) => user.id === req.params.id) as User;
 
+			const telemetryData: ITelemetryUserDeletionData = {
+				user_id: req.user.id,
+				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
+				target_user_id: idToDelete,
+			};
+
+			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
+
+			if (transferId) {
+				telemetryData.migration_user_id = transferId;
+			}
+
+			const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
+				RoleService.get({ name: 'owner', scope: 'workflow' }),
+				RoleService.get({ name: 'owner', scope: 'credential' }),
+			]);
+
 			if (transferId) {
 				const transferee = users.find((user) => user.id === transferId);
+
 				await Db.transaction(async (transactionManager) => {
+					// Get all workflow ids belonging to user to delete
+					const sharedWorkflows = await transactionManager.getRepository(SharedWorkflow).find({
+						where: { user: userToDelete, role: workflowOwnerRole },
+					});
+
+					const sharedWorkflowIds = sharedWorkflows.map((sharedWorkflow) =>
+						sharedWorkflow.workflowId.toString(),
+					);
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedWorkflow, {
+						user: transferee,
+						workflowId: In(sharedWorkflowIds),
+					});
+
+					// Transfer ownership of owned workflows
 					await transactionManager.update(
 						SharedWorkflow,
-						{ user: userToDelete },
+						{ user: userToDelete, role: workflowOwnerRole },
 						{ user: transferee },
 					);
+
+					// Now do the same for creds
+
+					// Get all workflow ids belonging to user to delete
+					const sharedCredentials = await transactionManager.getRepository(SharedCredentials).find({
+						where: { user: userToDelete, role: credentialOwnerRole },
+					});
+
+					const sharedCredentialIds = sharedCredentials.map((sharedCredential) =>
+						sharedCredential.credentialsId.toString(),
+					);
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedCredentials, {
+						user: transferee,
+						credentials: In(
+							sharedCredentialIds.map((sharedCredentialId) => ({ id: sharedCredentialId })),
+						),
+					});
+
+					// Transfer ownership of owned credentials
 					await transactionManager.update(
 						SharedCredentials,
-						{ user: userToDelete },
+						{ user: userToDelete, role: credentialOwnerRole },
 						{ user: transferee },
 					);
+
+					// This will remove all shared workflows and credentials not owned
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
 
+				void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 				return { success: true };
 			}
 
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
-					where: { user: userToDelete },
+					where: { user: userToDelete, role: workflowOwnerRole },
 				}),
 				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
-					where: { user: userToDelete },
+					where: { user: userToDelete, role: credentialOwnerRole },
 				}),
 			]);
 
@@ -450,22 +512,8 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
-			const telemetryData: ITelemetryUserDeletionData = {
-				user_id: req.user.id,
-				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
-				target_user_id: idToDelete,
-			};
-
-			telemetryData.migration_strategy = transferId ? 'transfer_data' : 'delete_data';
-
-			if (transferId) {
-				telemetryData.migration_user_id = transferId;
-			}
-
 			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
-
 			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
-
 			return { success: true };
 		}),
 	);

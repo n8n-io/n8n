@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
-import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -88,17 +88,18 @@ credentialsController.get(
 
 		const { credentials: credential } = sharing;
 
-		if (!includeDecryptedData) {
-			const { id, data: _, ...rest } = credential;
+		const { id, data: _, ...rest } = credential;
 
+		if (!includeDecryptedData) {
 			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 			return { id: id.toString(), ...rest };
 		}
 
-		const { id, data: _, ...rest } = credential;
-
 		const key = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(key, credential);
+		const decryptedData = CredentialsService.redact(
+			await CredentialsService.decrypt(key, credential),
+			credential,
+		);
 
 		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 		return { id: id.toString(), data: decryptedData, ...rest };
@@ -116,7 +117,15 @@ credentialsController.post(
 		const { credentials } = req.body;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		return CredentialsService.test(req.user, encryptionKey, credentials);
+		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
+
+		const mergedCredentials = deepCopy(credentials);
+		if (mergedCredentials.data && sharing?.credentials) {
+			const decryptedData = await CredentialsService.decrypt(encryptionKey, sharing.credentials);
+			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
+		}
+
+		return CredentialsService.test(req.user, encryptionKey, mergedCredentials);
 	}),
 );
 

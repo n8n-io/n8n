@@ -1,14 +1,12 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/frontend'],
 
-	parserOptions: {
-		project: ['./tsconfig.json'],
-		tsconfigRootDir: __dirname,
-		extraFileExtensions: ['.vue'],
-	},
+	...sharedOptions(__dirname, 'frontend'),
 
 	ignorePatterns: ['*.d.cts'],
 
@@ -19,7 +17,8 @@ module.exports = {
 		'import/no-default-export': 'off',
 		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'indent': 'off',
+		'import/no-cycle': 'warn',
+		indent: 'off',
 		'prettier/prettier': 'off',
 		'@typescript-eslint/ban-types': 'off',
 		'@typescript-eslint/dot-notation': 'off',
@@ -28,7 +27,6 @@ module.exports = {
 		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
-		'@typescript-eslint/no-explicit-any': 'off',
 		'@typescript-eslint/no-floating-promises': 'off',
 		'@typescript-eslint/no-for-in-array': 'off',
 		'@typescript-eslint/no-loop-func': 'off',

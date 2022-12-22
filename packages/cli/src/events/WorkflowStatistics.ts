@@ -1,7 +1,8 @@
-import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
-import { Db, InternalHooksManager } from '..';
-import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
-import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
+import { INode, IRun, IWorkflowBase, LoggerProxy } from 'n8n-workflow';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export async function workflowExecutionCompleted(
 	workflowData: IWorkflowBase,
@@ -26,7 +27,7 @@ export async function workflowExecutionCompleted(
 		workflowId = parseInt(workflowData.id as string, 10);
 		if (isNaN(workflowId)) throw new Error('not a number');
 	} catch (error) {
-		console.error(`Error "${error as string}" when casting workflow ID to a number`);
+		LoggerProxy.error(`Error "${error as string}" when casting workflow ID to a number`);
 		return;
 	}
 
@@ -67,7 +68,7 @@ export async function nodeFetchedData(workflowId: string, node: INode): Promise<
 		id = parseInt(workflowId, 10);
 		if (isNaN(id)) throw new Error('not a number');
 	} catch (error) {
-		console.error(`Error ${error as string} when casting workflow ID to a number`);
+		LoggerProxy.error(`Error ${error as string} when casting workflow ID to a number`);
 		return;
 	}
 

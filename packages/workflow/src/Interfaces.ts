@@ -10,7 +10,7 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import { ExpressionError } from './ExpressionError';
+import type { ExpressionError } from './ExpressionError';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -27,7 +27,7 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
-export type BinaryFileType = 'text' | 'image' | 'video';
+export type BinaryFileType = 'text' | 'json' | 'image' | 'video';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
@@ -1296,6 +1296,7 @@ export type PostReceiveAction =
 			response: IN8nHttpFullResponse,
 	  ) => Promise<INodeExecutionData[]>)
 	| IPostReceiveBinaryData
+	| IPostReceiveFilter
 	| IPostReceiveLimit
 	| IPostReceiveRootProperty
 	| IPostReceiveSet
@@ -1325,7 +1326,7 @@ export interface IPostReceiveBase {
 	type: string;
 	enabled?: boolean | string;
 	properties: {
-		[key: string]: string | number | IDataObject;
+		[key: string]: string | number | boolean | IDataObject;
 	};
 	errorMessage?: string;
 }
@@ -1334,6 +1335,13 @@ export interface IPostReceiveBinaryData extends IPostReceiveBase {
 	type: 'binaryData';
 	properties: {
 		destinationProperty: string;
+	};
+}
+
+export interface IPostReceiveFilter extends IPostReceiveBase {
+	type: 'filter';
+	properties: {
+		pass: boolean | string;
 	};
 }
 
@@ -1649,7 +1657,7 @@ export interface IWorkflowExecuteAdditionalData {
 	executeWorkflow: (
 		workflowInfo: IExecuteWorkflowInfo,
 		additionalData: IWorkflowExecuteAdditionalData,
-		options?: {
+		options: {
 			parentWorkflowId?: string;
 			inputData?: INodeExecutionData[];
 			parentExecutionId?: string;

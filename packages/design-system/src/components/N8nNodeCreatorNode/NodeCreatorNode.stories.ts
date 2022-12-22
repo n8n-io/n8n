@@ -1,4 +1,3 @@
-/* tslint:disable:variable-name */
 import N8nNodeCreatorNode from './NodeCreatorNode.vue';
 import { StoryFn } from '@storybook/vue';
 

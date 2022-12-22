@@ -217,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -885,12 +885,6 @@ export const schema = {
 				default: false,
 			},
 		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
-		},
 	},
 
 	hiringBanner: {
@@ -1010,5 +1004,12 @@ export const schema = {
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
 		},
+	},
+
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
 	},
 };
