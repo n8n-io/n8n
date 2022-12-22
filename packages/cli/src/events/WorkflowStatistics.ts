@@ -72,16 +72,20 @@ export async function nodeFetchedData(workflowId: string, node: INode): Promise<
 		return;
 	}
 
-	// Update only if necessary
-	const response = await Db.collections.Workflow.update(
-		{ id, dataLoaded: false },
-		{ dataLoaded: true },
-	);
+	// Try to insert the data loaded statistic
+	try {
+		await Db.collections.WorkflowStatistics.insert({
+			workflowId: id,
+			name: StatisticsNames.dataLoaded,
+			count: 1,
+			latestEvent: new Date(),
+		});
+	} catch (error) {
+		// If this fails, it'll be a duplicate key failure. It is safe to return from here
+		return;
+	}
 
-	// If response.affected is 1 then we know this was the first time data was loaded into the workflow; do posthog event here
-	if (!response.affected) return;
-
-	// Compile the metrics
+	// Compile the metrics since this was a new data loaded event
 	const owner = await getWorkflowOwner(workflowId);
 	let metrics = {
 		user_id: owner.id,
