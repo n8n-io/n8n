@@ -628,7 +628,7 @@ export interface ICredentialTestFunctions {
 	};
 }
 
-export interface JSONHelperFunctions {
+export interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
@@ -680,7 +680,11 @@ export interface FunctionsBase {
 	getActivationMode?: () => WorkflowActivateMode;
 }
 
-type BaseExecutionFunctions = RequiredProps<FunctionsBase, 'getMode'> & {
+type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
+	[K in Keys]: NonNullable<FunctionsBase[K]>;
+};
+
+type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	getContext(type: string): IContextObject;
@@ -706,7 +710,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		helpers: RequestHelperFunctions &
 			BinaryHelperFunctions &
-			JSONHelperFunctions & {
+			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -754,7 +758,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 }
 
 export interface IPollFunctions
-	extends RequiredProps<FunctionsBase, 'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
@@ -766,11 +770,11 @@ export interface IPollFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
 export interface ITriggerFunctions
-	extends RequiredProps<FunctionsBase, 'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
@@ -782,11 +786,11 @@ export interface ITriggerFunctions
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
 export interface IHookFunctions
-	extends RequiredProps<FunctionsBase, 'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
 	getWebhookName(): string;
 	getWebhookDescription(name: string): IWebhookDescription | undefined;
 	getNodeWebhookUrl: (name: string) => string | undefined;
@@ -798,7 +802,7 @@ export interface IHookFunctions
 	helpers: RequestHelperFunctions;
 }
 
-export interface IWebhookFunctions extends RequiredProps<FunctionsBase, 'getMode'> {
+export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getNodeParameter(
@@ -816,7 +820,7 @@ export interface IWebhookFunctions extends RequiredProps<FunctionsBase, 'getMode
 		outputData: INodeExecutionData[],
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
-	helpers: RequestHelperFunctions & BinaryHelperFunctions & JSONHelperFunctions;
+	helpers: RequestHelperFunctions & BinaryHelperFunctions & JsonHelperFunctions;
 }
 
 export interface INodeCredentialsDetails {
@@ -1679,10 +1683,6 @@ export type JsonObject = { [key: string]: JsonValue };
 export type AllEntities<M> = M extends { [key: string]: string } ? Entity<M, keyof M> : never;
 
 export type Entity<M, K> = K extends keyof M ? { resource: K; operation: M[K] } : never;
-
-type RequiredProps<F, Required extends keyof F> = F & {
-	[Key in Required]-?: F[Key];
-};
 
 export type PropertiesOf<M extends { resource: string; operation: string }> = Array<
 	Omit<INodeProperties, 'displayOptions'> & {
