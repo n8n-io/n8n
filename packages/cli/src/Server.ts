@@ -161,6 +161,8 @@ import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
 
+import './events';
+
 require('body-parser-xml')(bodyParser);
 
 const exec = promisify(callbackExec);
