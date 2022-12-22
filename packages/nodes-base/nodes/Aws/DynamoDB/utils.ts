@@ -81,6 +81,8 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		case 'SS':
 		case 'NS':
 			return attribute;
+		case 'M':
+			return simplify(attribute);
 		default:
 			return null;
 	}
