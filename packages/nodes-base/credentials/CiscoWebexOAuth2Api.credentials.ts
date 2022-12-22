@@ -7,6 +7,8 @@ export class CiscoWebexOAuth2Api implements ICredentialType {
 
 	displayName = 'Cisco Webex OAuth2 API';
 
+	documentationUrl = 'ciscowebex';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
