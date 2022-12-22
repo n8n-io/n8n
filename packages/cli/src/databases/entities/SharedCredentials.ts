@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, RelationId } from 'typeorm';
+import { Entity, ManyToOne, PrimaryColumn, RelationId } from 'typeorm';
 import type { CredentialsEntity } from './CredentialsEntity';
 import type { User } from './User';
 import type { Role } from './Role';
@@ -12,6 +12,7 @@ export class SharedCredentials extends AbstractEntity {
 	@ManyToOne('User', 'sharedCredentials', { primary: true })
 	user: User;
 
+	@PrimaryColumn()
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.user)
 	userId: string;
 
@@ -21,6 +22,7 @@ export class SharedCredentials extends AbstractEntity {
 	})
 	credentials: CredentialsEntity;
 
+	@PrimaryColumn()
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
-	credentialId: number;
+	credentialsId: number;
 }

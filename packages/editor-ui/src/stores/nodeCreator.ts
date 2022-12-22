@@ -1,4 +1,4 @@
-import startCase from 'lodash.startCase';
+import { startCase } from 'lodash';
 import { defineStore } from 'pinia';
 import {
 	INodePropertyCollection,
