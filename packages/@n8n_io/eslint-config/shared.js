@@ -18,7 +18,7 @@ exports.sharedOptions = (tsconfigRootDir, mode) => {
 
 	const settings = {
 		'import/parsers': {
-			'@typescript-eslint/parser': isFrontend ? ['.ts', '.vue'] : ['.ts'],
+			'@typescript-eslint/parser': ['.ts'],
 		},
 
 		'import/resolver': {
