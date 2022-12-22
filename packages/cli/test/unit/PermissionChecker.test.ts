@@ -1,16 +1,16 @@
 import { v4 as uuid } from 'uuid';
 import { INodeTypeData, INodeTypes, Workflow } from 'n8n-workflow';
 
-import { Db } from '../../src';
+import * as Db from '@/Db';
 import * as testDb from '../integration/shared/testDb';
 import { NodeTypes as MockNodeTypes } from './Helpers';
-import { PermissionChecker } from '../../src/UserManagement/PermissionChecker';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import {
 	randomCredentialPayload as randomCred,
 	randomPositiveDigit,
 } from '../integration/shared/random';
 
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@/databases/entities/Role';
 import type { SaveCredentialFunction } from '../integration/shared/types';
 
 let testDbName = '';

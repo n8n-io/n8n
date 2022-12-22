@@ -22,7 +22,7 @@ import * as GenericHelpers from '@/GenericHelpers';
 export const EEWorkflowController = express.Router();
 
 EEWorkflowController.use((req, res, next) => {
-	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
+	if (!isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
@@ -73,6 +73,12 @@ EEWorkflowController.put(
 				await EEWorkflows.share(trx, workflow, newShareeIds);
 			}
 		});
+
+		void InternalHooksManager.getInstance().onWorkflowSharingUpdate(
+			workflowId,
+			req.user.id,
+			shareWithIds,
+		);
 	}),
 );
 
@@ -81,10 +87,12 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		const workflow = await EEWorkflows.get(
-			{ id: parseInt(workflowId, 10) },
-			{ relations: ['shared', 'shared.user', 'shared.role'] },
-		);
+		const relations = ['shared', 'shared.user', 'shared.role'];
+		if (!config.getEnv('workflowTagsDisabled')) {
+			relations.push('tags');
+		}
+
+		const workflow = await EEWorkflows.get({ id: parseInt(workflowId, 10) }, { relations });
 
 		if (!workflow) {
 			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
@@ -94,7 +102,7 @@ EEWorkflowController.get(
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError(
-				'It looks like you cannot access this workflow. Ask the owner to share it with you.',
+				'You do not have permission to access this workflow. Ask the owner to share it with you',
 			);
 		}
 

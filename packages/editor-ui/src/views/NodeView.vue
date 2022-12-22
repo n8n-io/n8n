@@ -884,6 +884,9 @@ export default mixins(
 		},
 		async openWorkflow(workflowId: string) {
 			this.startLoading();
+
+			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+
 			this.resetWorkspace();
 			let data: IWorkflowDb | undefined;
 			try {
@@ -939,7 +942,12 @@ export default mixins(
 			}
 			this.canvasStore.zoomToFit();
 			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-			this.workflowsStore.activeWorkflowExecution = null;
+			if (selectedExecution?.workflowId !== workflowId) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				this.workflowsStore.currentWorkflowExecutions = [];
+			} else {
+				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+			}
 			this.stopLoading();
 			return data;
 		},
@@ -2684,7 +2692,7 @@ export default mixins(
 
 				if (
 					newNodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					newNodeData.credentials = Object.fromEntries(
