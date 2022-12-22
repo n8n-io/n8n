@@ -66,6 +66,7 @@ import {
 	IPollFunctions,
 	ITriggerFunctions,
 	IWebhookFunctions,
+	BinaryMetadata,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -824,8 +825,21 @@ async function httpRequest(
 }
 
 /**
+ * Returns binary file metadata
+ */
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
+	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+}
+
+/**
+ * Returns binary file stream for piping
+ */
+export function getBinaryStream(binaryDataId: string): Readable {
+	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId);
+}
+
+/**
  * Returns binary data buffer for given item index and property name.
- *
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
@@ -2280,6 +2294,8 @@ export function getExecuteFunctions(
 			helpers: {
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
+				getBinaryStream,
+				getBinaryMetadata,
 				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 				returnJsonArray,

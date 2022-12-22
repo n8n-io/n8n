@@ -40,8 +40,14 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	fileSize?: string;
+	fileSize?: string; // TODO: change this to number and store the actual value
 	id?: string;
+}
+
+export interface BinaryMetadata {
+	fileName?: string;
+	mimeType?: string;
+	fileSize: number;
 }
 
 // All properties in this interface except for
@@ -722,6 +728,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
 
+				getBinaryStream(binaryDataId: string): Readable;
+				getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 			};
 	};
