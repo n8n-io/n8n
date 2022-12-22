@@ -3,12 +3,9 @@
 import express from 'express';
 import {
 	deepCopy,
-	ICredentialType,
 	INodeCredentialTestResult,
 	LoggerProxy,
-	NodeHelpers,
 } from 'n8n-workflow';
-import { Credentials } from 'n8n-core';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -17,7 +14,6 @@ import config from '@/config';
 import { getLogger } from '@/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
-import { CredentialTypes } from '@/CredentialTypes';
 
 import type { ICredentialsResponse } from '@/Interfaces';
 import type { CredentialRequest } from '@/requests';
