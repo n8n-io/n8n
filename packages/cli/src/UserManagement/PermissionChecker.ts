@@ -61,7 +61,7 @@ export class PermissionChecker {
 			credentialsWhereCondition,
 		);
 
-		const accessibleCredIds = credentialSharings.map((s) => s.credentialId.toString());
+		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId.toString());
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 

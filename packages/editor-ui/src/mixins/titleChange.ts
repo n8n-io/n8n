@@ -1,6 +1,6 @@
 import Vue from 'vue';
 
-import { WorkflowTitleStatus } from '../../Interface';
+import { WorkflowTitleStatus } from '@/Interface';
 
 export const titleChange = Vue.extend({
 	methods: {

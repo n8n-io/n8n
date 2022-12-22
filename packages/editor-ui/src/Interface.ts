@@ -42,7 +42,7 @@ import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
-export * from 'n8n-design-system/src/types';
+export * from 'n8n-design-system/types';
 
 declare module 'jsplumb' {
 	interface PaintStyle {
