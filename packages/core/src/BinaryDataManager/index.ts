@@ -1,9 +1,10 @@
 import prettyBytes from 'pretty-bytes';
-import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from '../Constants';
-import type { BinaryMetadata, IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
-import { BinaryDataFileSystem } from './FileSystem';
 import { readFile, stat } from 'fs/promises';
+import type { Readable } from 'stream';
+import type { BinaryMetadata, IBinaryData, INodeExecutionData } from 'n8n-workflow';
+import { BINARY_ENCODING } from '../Constants';
+import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { BinaryDataFileSystem } from './FileSystem';
 
 export class BinaryDataManager {
 	static instance: BinaryDataManager | undefined;
@@ -105,6 +106,15 @@ export class BinaryDataManager {
 		}
 
 		return binaryData;
+	}
+
+	getBinaryStream(identifier: string): Readable {
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].getBinaryStream(id);
+		}
+
+		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {

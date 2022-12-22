@@ -2512,7 +2512,7 @@ export class GoogleDrive implements INodeType {
 						const resolveData = this.getNodeParameter('resolveData', 0);
 
 						let mimeType = 'text/plain';
-						let body;
+						let body, contentLength;
 						let originalFilename: string | undefined;
 						if (this.getNodeParameter('binaryData', i)) {
 							// Is binary file to upload
@@ -2526,7 +2526,8 @@ export class GoogleDrive implements INodeType {
 
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
-							if (item.binary[propertyNameUpload] === undefined) {
+							const binary = item.binary[propertyNameUpload];
+							if (binary === undefined || !binary.id) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${propertyNameUpload}" does not exists on item!`,
@@ -2534,18 +2535,15 @@ export class GoogleDrive implements INodeType {
 								);
 							}
 
-							if (item.binary[propertyNameUpload].mimeType) {
-								mimeType = item.binary[propertyNameUpload].mimeType;
-							}
-
-							if (item.binary[propertyNameUpload].fileName) {
-								originalFilename = item.binary[propertyNameUpload].fileName;
-							}
-
-							body = await this.helpers.getBinaryDataBuffer(i, propertyNameUpload);
+							body = this.helpers.getBinaryStream(binary.id);
+							const metadata = await this.helpers.getBinaryMetadata(binary.id);
+							contentLength = metadata.fileSize;
+							originalFilename = metadata.fileName;
+							if (metadata.mimeType) mimeType = binary.mimeType;
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
+							contentLength = body.byteLength;
 						}
 
 						const name = this.getNodeParameter('name', i) as string;
@@ -2559,7 +2557,7 @@ export class GoogleDrive implements INodeType {
 						const requestOptions = {
 							headers: {
 								'Content-Type': mimeType,
-								'Content-Length': body.byteLength,
+								'Content-Length': contentLength,
 							},
 							encoding: null,
 							json: false,
