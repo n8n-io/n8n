@@ -87,10 +87,12 @@ EEWorkflowController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		const workflow = await EEWorkflows.get(
-			{ id: parseInt(workflowId, 10) },
-			{ relations: ['shared', 'shared.user', 'shared.role'] },
-		);
+		const relations = ['shared', 'shared.user', 'shared.role'];
+		if (!config.getEnv('workflowTagsDisabled')) {
+			relations.push('tags');
+		}
+
+		const workflow = await EEWorkflows.get({ id: parseInt(workflowId, 10) }, { relations });
 
 		if (!workflow) {
 			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
