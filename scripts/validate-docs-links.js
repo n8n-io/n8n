@@ -30,10 +30,20 @@ const validateUrl = async (kind, name, documentationUrl) =>
 	});
 
 const checkLinks = async (kind) => {
-	const types = require(path.join(nodesBaseDir, `dist/types/${kind}.json`));
+	let types = require(path.join(nodesBaseDir, `dist/types/${kind}.json`));
+	if (kind === 'nodes')
+		types = types.filter(({ codex }) => !!codex?.resources?.primaryDocumentation);
 	const limit = pLimit(30);
 	const statuses = await Promise.all(
-		types.map((type) => limit(() => validateUrl(kind, type.displayName, type.documentationUrl))),
+		types.map((type) =>
+			limit(() => {
+				const documentationUrl =
+					kind === 'credentials'
+						? type.documentationUrl
+						: type.codex?.resources?.primaryDocumentation?.[0]?.url;
+				return validateUrl(kind, type.displayName, documentationUrl);
+			}),
+		),
 	);
 
 	const missingDocs = [];
@@ -50,4 +60,5 @@ const checkLinks = async (kind) => {
 
 (async () => {
 	await checkLinks('credentials');
+	await checkLinks('nodes');
 })();
