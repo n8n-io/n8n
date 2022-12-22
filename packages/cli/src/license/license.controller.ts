@@ -4,12 +4,9 @@ import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-import {
-	ILicensePostResponse,
-	ILicenseReadResponse,
-	InternalHooksManager,
-	ResponseHelper,
-} from '..';
+import * as ResponseHelper from '@/ResponseHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
 import { AuthenticatedRequest, LicenseRequest } from '@/requests';

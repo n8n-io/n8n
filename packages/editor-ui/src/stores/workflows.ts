@@ -278,7 +278,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			this.workflow = createEmptyWorkflow();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				Vue.set(this.workflow, 'ownedBy', usersStore.currentUser);
 			}
 		},
@@ -935,7 +935,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						requestFilter,
 					);
 				}
-				// context.commit('setTotalFinishedExecutionsCount', finishedExecutions.count);
+				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
 				throw error;
@@ -947,7 +947,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
 			executions.forEach(execution => {
 				const exists = this.currentWorkflowExecutions.find(ex => ex.id === execution.id);
-				if (!exists) {
+				if (!exists && execution.workflowId === this.workflowId) {
 					this.currentWorkflowExecutions.push(execution);
 				}
 			});

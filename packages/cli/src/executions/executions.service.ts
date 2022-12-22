@@ -8,7 +8,6 @@ import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
 import { User } from '@/databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '@/GenericHelpers';
 import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -22,7 +21,9 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { DatabaseType, Db, GenericHelpers } from '..';
+import type { DatabaseType } from '@/Interfaces';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -174,7 +175,7 @@ export class ExecutionsService {
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)
-			: DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
+			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
 
 		const executingWorkflowIds: string[] = [];
 

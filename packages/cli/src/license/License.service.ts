@@ -1,5 +1,6 @@
 import { getLicense } from '@/License';
-import { Db, ILicenseReadResponse } from '..';
+import type { ILicenseReadResponse } from '@/Interfaces';
+import * as Db from '@/Db';
 
 export class LicenseService {
 	static async getActiveTriggerCount(): Promise<number> {
