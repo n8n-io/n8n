@@ -36,7 +36,9 @@ EECredentialsController.get(
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			return allCredentials
-				.map(EECredentials.addOwnerAndSharings)
+				.map((credential: CredentialsEntity & CredentialWithSharings) =>
+					EECredentials.addOwnerAndSharings(credential),
+				)
 				.map(
 					(credential): CredentialWithSharings => ({ ...credential, id: credential.id.toString() }),
 				);
