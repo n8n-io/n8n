@@ -35,7 +35,11 @@ EECredentialsController.get(
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			return allCredentials.map(EECredentials.addOwnerAndSharings);
+			return allCredentials
+				.map(EECredentials.addOwnerAndSharings)
+				.map(
+					(credential): CredentialWithSharings => ({ ...credential, id: credential.id.toString() }),
+				);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
