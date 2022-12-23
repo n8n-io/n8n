@@ -774,7 +774,7 @@
 	"nodeSettings.useTheHttpRequestNode": "Use the <b>HTTP Request</b> node to make a custom API call. We'll take care of the {nodeTypeDisplayName} auth for you. <a target=\"_blank\" href=\"https://docs.n8n.io/integrations/custom-operations/\">Learn more</a>",
 	"nodeSettings.waitBetweenTries.description": "How long to wait between each attempt (in milliseconds)",
 	"nodeSettings.waitBetweenTries.displayName": "Wait Between Tries (ms)",
-	"nodeSettings.hasForeignCredential": "To edit this node, either:<br/>a) Ask {owner} to share the credential with you, or<br/>b) Duplicate the node and add your own credential",
+	"nodeSettings.hasForeignCredential": "To edit this node, either:<br/>a) Ask credential owner to share the credential with you, or<br/>b) Duplicate the node and add your own credential",
 	"nodeView.addNode": "Add node",
 	"nodeView.addATriggerNodeFirst": "Add a <a data-action='showNodeCreator'>Trigger Node</a> first",
 	"nodeView.addOrEnableTriggerNode": "<a data-action='showNodeCreator'>Add</a> or enable a Trigger node to execute the workflow",
