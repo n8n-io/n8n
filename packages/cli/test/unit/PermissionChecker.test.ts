@@ -226,7 +226,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			id: '2',
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
@@ -252,10 +252,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			active: false,
 			nodeTypes: MockNodeTypes(),
 			id: '2',
-			settings: { userId: 'bcdef' },
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 
 		// Check description
@@ -276,6 +275,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 
 	test('list of ids must include the parent workflow id', async () => {
 		const userId = 'abcde';
+		const invalidParentWorkflowId = 'invalid-workflow-id';
 		const fakeUser = { id: userId };
 		jest
 			.spyOn(UserManagementHelper, 'getWorkflowOwner')
@@ -297,13 +297,12 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodeTypes: MockNodeTypes(),
 			id: '2',
 			settings: {
-				userId: 'bcdef',
 				callerPolicy: 'workflowsFromAList',
 				callerIds: '123,456,bcdef  ',
 			},
 		});
 		await expect(
-			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, invalidParentWorkflowId),
 		).rejects.toThrow(`Target workflow ID ${subworkflow.id} may not be called`);
 	});
 
@@ -329,13 +328,13 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			active: false,
 			nodeTypes: MockNodeTypes(),
 			id: '2',
-			settings: { userId: userId },
 		});
 		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
 	});
 
 	test('workflowsFromAList works when the list contains the parent id', async () => {
 		const userId = 'abcde';
+		const workflowId = 'valid-workflow-id';
 		const fakeUser = { id: userId };
 		jest
 			.spyOn(UserManagementHelper, 'getWorkflowOwner')
@@ -357,12 +356,12 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodeTypes: MockNodeTypes(),
 			id: '2',
 			settings: {
-				userId: 'bcdef',
 				callerPolicy: 'workflowsFromAList',
-				callerIds: `123,456,bcdef,  ${userId}`,
+				callerIds: `123,456,bcdef,  ${workflowId}`,
 			},
 		});
-		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
+		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, workflowId))
+			.resolves;
 	});
 
 	test('should not throw when workflow policy is set to any', async () => {
@@ -388,11 +387,10 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodeTypes: MockNodeTypes(),
 			id: '2',
 			settings: {
-				userId: 'bcdef',
 				callerPolicy: 'any',
 			},
 		});
-		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
+		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId)).resolves;
 	});
 });
 
