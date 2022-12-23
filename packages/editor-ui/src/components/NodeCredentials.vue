@@ -227,7 +227,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			this.credentialsStore.$subscribe((mutation, state) => {
 				// This data pro stores credential type that the component is currently interested in
 				const credentialType = this.subscribedToCredentialType;
-				let credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType];
+				let credentialsOfType = this.credentialsStore.allOwnedCredentialsByType[credentialType];
 
 				if (credentialsOfType) {
 					credentialsOfType = credentialsOfType.sort((a, b) => (a.id < b.id ? -1 : 1));
@@ -251,6 +251,8 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 								);
 							}
 						}
+					} else {
+						this.clearSelectedCredential(credentialType);
 					}
 				}
 				this.subscribedToCredentialType = '';
