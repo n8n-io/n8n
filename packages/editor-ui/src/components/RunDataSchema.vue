@@ -84,7 +84,7 @@ const onDragEnd = (el: HTMLElement) => {
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<MappingPill v-if="el" :html="el.outerHTML"	:can-drop="canDrop" />
+				<MappingPill v-if="el" :html="el.outerHTML" :can-drop="canDrop" />
 			</template>
 			<template>
 				<div :class="$style.schema">
@@ -127,5 +127,4 @@ const onDragEnd = (el: HTMLElement) => {
 	display: inline-block;
 	padding: 0 var(--spacing-s) var(--spacing-s);
 }
-
 </style>

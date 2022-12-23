@@ -211,7 +211,9 @@ export default Vue.extend({
 		},
 		scrollToActiveCard(): void {
 			const executionsList = this.$refs.executionList as HTMLElement;
-			const currentExecutionCard = this.$refs[`execution-${this.workflowsStore.activeWorkflowExecution?.id}`] as Vue[];
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
 
 			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;

@@ -53,7 +53,7 @@ function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return {name: VIEWS.NOT_FOUND};
+		return { name: VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -75,7 +75,7 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect() {
-					return {name: VIEWS.WORKFLOWS};
+					return { name: VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -450,7 +450,10 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.settings.hideUsagePage === true || settingsStore.settings.deployment?.type === 'cloud';
+									return (
+										settingsStore.settings.hideUsagePage === true ||
+										settingsStore.settings.deployment?.type === 'cloud'
+									);
 								},
 							},
 						},

@@ -192,7 +192,7 @@ export default mixins(
 				}
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
-				if(this.workflowsStore.currentWorkflowExecutions.length === 0) {
+				if (this.workflowsStore.currentWorkflowExecutions.length === 0) {
 					this.setExecutions();
 				}
 				if (this.activeExecution) {
