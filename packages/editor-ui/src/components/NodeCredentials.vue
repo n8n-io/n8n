@@ -8,13 +8,7 @@
 			:key="credentialTypeDescription.name"
 		>
 			<n8n-input-label
-				:label="
-					$locale.baseText('nodeCredentials.credentialFor', {
-						interpolate: {
-							credentialType: credentialTypeNames[credentialTypeDescription.name],
-						},
-					})
-				"
+				:label="$locale.baseText('nodeCredentials.credentialsLabel')"
 				:bold="false"
 				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"

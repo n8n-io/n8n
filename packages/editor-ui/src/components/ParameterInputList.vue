@@ -265,6 +265,11 @@ export default mixins(workflowHelpers).extend({
 				return false;
 			}
 
+			// Hide 'authentication' field since it will now be part of credentials modal
+			if (parameter.name === 'authentication') {
+				return false;
+			}
+
 			if (parameter.displayOptions === undefined) {
 				// If it is not defined no need to do a proper check
 				return true;

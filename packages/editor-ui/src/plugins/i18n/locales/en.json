@@ -720,6 +720,7 @@
 	"nodeCreator.triggerHelperPanel.workflowTriggerDescription": "Runs the flow when called by the Execute Workflow node from a different workflow",
 	"nodeCredentials.createNew": "Create New",
 	"nodeCredentials.credentialFor": "Credential for {credentialType}",
+	"nodeCredentials.credentialsLabel": "Credential to connect with",
 	"nodeCredentials.issues": "Issues",
 	"nodeCredentials.selectCredential": "Select Credential",
 	"nodeCredentials.selectedCredentialUnavailable": "{name} (unavailable)",
