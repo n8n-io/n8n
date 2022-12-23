@@ -659,6 +659,18 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
+		},
 		emails: {
 			mode: {
 				doc: 'How to send emails',
@@ -763,6 +775,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
 		},
 	},
 
