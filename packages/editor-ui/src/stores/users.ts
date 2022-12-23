@@ -18,8 +18,9 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import {
+	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IUser,
@@ -89,6 +90,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return [];
 			}
 			return getPersonalizedNodeTypes(answers);
+		},
+		isResourceOwner() {
+			const settingsStore = useSettingsStore();
+
+			return (resource: ICredentialsResponse): boolean => {
+				if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
+					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser?.id);
+				}
+
+				return false;
+			};
 		},
 	},
 	actions: {
