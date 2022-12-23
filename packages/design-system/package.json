@@ -22,7 +22,7 @@
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
     "format": "prettier --write . --ignore-path ../../.prettierignore",
-    "lint": "eslint --ext .js,.ts,.vue src",
+    "lint": "eslint --quiet --ext .js,.ts,.vue src",
     "lintfix": "eslint --ext .js,.ts,.vue src --fix"
   },
   "peerDependencies": {
