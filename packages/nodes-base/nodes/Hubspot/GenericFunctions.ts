@@ -50,15 +50,15 @@ export async function hubspotApiRequest(
 			if (endpoint.includes('webhooks')) {
 				const credentials = await this.getCredentials('hubspotDeveloperApi');
 				options.qs.hapikey = credentials.apiKey as string;
-				return await this.helpers.request!(options);
+				return await this.helpers.request(options);
 			} else {
-				return await this.helpers.requestOAuth2!.call(this, 'hubspotDeveloperApi', options, {
+				return await this.helpers.requestOAuth2.call(this, 'hubspotDeveloperApi', options, {
 					tokenType: 'Bearer',
 					includeCredentialsOnRefreshOnBody: true,
 				});
 			}
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'hubspotOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'hubspotOAuth2Api', options, {
 				tokenType: 'Bearer',
 				includeCredentialsOnRefreshOnBody: true,
 			});
