@@ -143,5 +143,5 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

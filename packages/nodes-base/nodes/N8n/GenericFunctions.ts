@@ -44,7 +44,7 @@ export async function apiRequest(
 	};
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
 	} catch (error) {
 		if (error instanceof NodeApiError) {
 			throw error;
