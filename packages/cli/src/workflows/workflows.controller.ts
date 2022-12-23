@@ -106,12 +106,7 @@ workflowsController.post(
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
-		const { id, ...rest } = savedWorkflow;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(savedWorkflow);
 	}),
 );
 
@@ -121,7 +116,8 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
+		const workflows = await WorkflowsService.getMany(req.user, req.query.filter);
+		return workflows.map((workflow) => WorkflowsService.entityToResponse(workflow));
 	}),
 );
 
@@ -222,14 +218,7 @@ workflowsController.get(
 			);
 		}
 
-		const {
-			workflow: { id, ...rest },
-		} = shared;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(shared.workflow);
 	}),
 );
 
@@ -255,12 +244,7 @@ workflowsController.patch(
 			['owner'],
 		);
 
-		const { id, ...remainder } = updatedWorkflow;
-
-		return {
-			id: id.toString(),
-			...remainder,
-		};
+		return WorkflowsService.entityToResponse(updatedWorkflow);
 	}),
 );
 
