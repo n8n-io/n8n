@@ -364,6 +364,36 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 		});
 		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
 	});
+
+	test('should not throw when workflow policy is set to any', async () => {
+		const userId = 'abcde';
+		const fakeUser = { id: userId };
+		jest
+			.spyOn(UserManagementHelper, 'getWorkflowOwner')
+			.mockImplementation(async (workflowId) => fakeUser);
+		jest.spyOn(UserManagementHelper, 'isSharingEnabled').mockReturnValue(true);
+		jest.spyOn(UserService, 'get').mockImplementation(async () => fakeUser);
+		jest.spyOn(WorkflowsService, 'getSharing').mockImplementation(async () => {
+			return {
+				role: {
+					name: 'not owner',
+				},
+			};
+		});
+
+		const subworkflow = new Workflow({
+			nodes: [],
+			connections: {},
+			active: false,
+			nodeTypes: MockNodeTypes(),
+			id: '2',
+			settings: {
+				userId: 'bcdef',
+				callerPolicy: 'any',
+			},
+		});
+		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
+	});
 });
 
 const MOCK_NODE_TYPES_DATA = ['start', 'actionNetwork'].reduce<INodeTypeData>((acc, nodeName) => {
