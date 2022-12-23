@@ -71,6 +71,7 @@
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
+				:ref="`execution-${execution.id}`"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -95,6 +96,7 @@ import Vue from 'vue';
 import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default Vue.extend({
 	name: 'executions-sidebar',
@@ -127,7 +129,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(useUIStore, useWorkflowsStore),
 		statusFilterApplied(): boolean {
 			return this.filter.status !== '';
 		},
@@ -153,6 +155,7 @@ export default Vue.extend({
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
+		this.scrollToActiveCard();
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -205,6 +208,18 @@ export default Vue.extend({
 				finished: this.filter.status !== 'running',
 				status: this.filter.status,
 			};
+		},
+		scrollToActiveCard(): void {
+			const executionsList = this.$refs.executionList as HTMLElement;
+			const currentExecutionCard = this.$refs[`execution-${this.workflowsStore.activeWorkflowExecution?.id}`] as Vue[];
+
+			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
+				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const cardRect = cardElement.getBoundingClientRect();
+				if (cardRect.top > executionsList.offsetHeight) {
+					executionsList.scrollTo({ top: cardRect.top });
+				}
+			}
 		},
 	},
 });

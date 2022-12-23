@@ -108,7 +108,7 @@ EEWorkflowController.get(
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-		return workflow;
+		return { ...workflow, id: workflow.id.toString() };
 	}),
 );
 
@@ -214,7 +214,7 @@ EEWorkflowController.get(
 				EEWorkflows.addOwnerAndSharings(workflow);
 				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
 				workflow.nodes = [];
-				return workflow;
+				return { ...workflow, id: workflow.id.toString() };
 			}),
 		);
 	}),
