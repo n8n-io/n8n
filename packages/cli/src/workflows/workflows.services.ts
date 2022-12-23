@@ -16,7 +16,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { IWorkflowDb, IWorkflowExecutionDataProcess, IWorkflowResponse } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -115,12 +115,17 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne(workflow, options);
 	}
 
-	// Warning: this function is overriden by EE to disregard role list.
+	// Warning: this function is overridden by EE to disregard role list.
 	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string) {
+	static entityToResponse(entity: WorkflowEntity): IWorkflowResponse {
+		const { id, ...rest } = entity;
+		return { ...rest, id: id.toString() };
+	}
+
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -185,16 +190,7 @@ export class WorkflowsService {
 			},
 		};
 
-		const workflows = await Db.collections.Workflow.find(query);
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
-		});
+		return Db.collections.Workflow.find(query);
 	}
 
 	static async update(
