@@ -1,9 +1,10 @@
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
+import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
 import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
@@ -60,18 +61,26 @@ export const expressionManager = mixins(workflowHelpers).extend({
 
 			const rawSegments: RawSegment[] = [];
 
-			syntaxTree(this.editor.state)
-				.cursor()
-				.iterate((node) => {
-					if (!this.editor || node.type.name === 'Program') return;
+			const fullTree = ensureSyntaxTree(
+				this.editor.state,
+				this.editor.state.doc.length,
+				EXPRESSION_EDITOR_PARSER_TIMEOUT,
+			);
 
-					rawSegments.push({
-						from: node.from,
-						to: node.to,
-						text: this.editor.state.sliceDoc(node.from, node.to),
-						type: node.type.name,
-					});
+			if (fullTree === null) {
+				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
+			}
+
+			fullTree.cursor().iterate((node) => {
+				if (!this.editor || node.type.name === 'Program') return;
+
+				rawSegments.push({
+					from: node.from,
+					to: node.to,
+					text: this.editor.state.sliceDoc(node.from, node.to),
+					type: node.type.name,
 				});
+			});
 
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, type } = segment;
