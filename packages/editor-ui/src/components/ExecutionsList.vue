@@ -273,7 +273,12 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Modal from '@/components/Modal.vue';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY, VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import {
+	WAIT_TIME_UNLIMITED,
+	EXECUTIONS_MODAL_KEY,
+	VIEWS,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/constants';
 
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -435,8 +440,14 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		},
 		convertToDisplayDate,
 		displayExecution(execution: IExecutionsSummary, e: PointerEvent) {
-			if (!this.workflowsStore.workflowId || this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || execution.workflowId !== this.workflowsStore.workflowId) {
-				const workflowExecutions: IExecutionsSummary[] = this.combinedExecutions.filter(ex => ex.workflowId === execution.workflowId);
+			if (
+				!this.workflowsStore.workflowId ||
+				this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+				execution.workflowId !== this.workflowsStore.workflowId
+			) {
+				const workflowExecutions: IExecutionsSummary[] = this.combinedExecutions.filter(
+					(ex) => ex.workflowId === execution.workflowId,
+				);
 				this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
 				this.workflowsStore.activeWorkflowExecution = execution;
 			}
