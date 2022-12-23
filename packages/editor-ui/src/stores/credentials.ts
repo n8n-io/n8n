@@ -72,7 +72,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				{},
 			);
 		},
-		allOwnedCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
+		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
 			const credentials = this.allCredentials;
 			const types = this.allCredentialTypes;
 			const usersStore = useUsersStore();
@@ -81,7 +81,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
 					accu[type.name] = credentials.filter(
 						(cred: ICredentialsResponse) => {
-							return cred.type === type.name && usersStore.isResourceOwner(cred);
+							return cred.type === type.name && usersStore.isResourceAccessible(cred);
 						},
 					);
 
@@ -107,9 +107,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return this.allCredentialsByType[credentialType] || [];
 			};
 		},
-		getOwnedCredentialsByType() {
+		getUsableCredentialByType() {
 			return (credentialType: string): ICredentialsResponse[] => {
-				return this.allOwnedCredentialsByType[credentialType] || [];
+				return this.allUsableCredentialsByType[credentialType] || [];
 			};
 		},
 		getNodesWithAccess() {

@@ -27,6 +27,7 @@ import {
 	IUserResponse,
 	IUsersState,
 } from '@/Interface';
+import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -91,15 +92,11 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			}
 			return getPersonalizedNodeTypes(answers);
 		},
-		isResourceOwner() {
-			const settingsStore = useSettingsStore();
-
+		isResourceAccessible() {
 			return (resource: ICredentialsResponse): boolean => {
-				if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser?.id);
-				}
+				const permissions = getCredentialPermissions(this.currentUser, resource);
 
-				return true;
+				return permissions.use;
 			};
 		},
 	},

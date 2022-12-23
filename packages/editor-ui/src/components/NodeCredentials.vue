@@ -133,9 +133,6 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			useUsersStore,
 			useWorkflowsStore,
 		),
-		allCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
-			return this.credentialsStore.allCredentialsByType;
-		},
 		currentUser(): IUser {
 			return this.usersStore.currentUser || ({} as IUser);
 		},
@@ -182,13 +179,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
-			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter(
-				(credential) => {
-					const permissions = getCredentialPermissions(this.currentUser, credential);
-
-					return permissions.use;
-				},
-			);
+			return this.credentialsStore.allUsableCredentialsByType[type];
 		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {

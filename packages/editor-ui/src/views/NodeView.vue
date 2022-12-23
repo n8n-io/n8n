@@ -1703,7 +1703,7 @@ export default mixins(
 			const credentialPerType =
 				nodeTypeData.credentials &&
 				nodeTypeData.credentials
-					.map((type) => this.credentialsStore.getOwnedCredentialsByType(type.name))
+					.map((type) => this.credentialsStore.getUsableCredentialByType(type.name))
 					.flat();
 
 			if (credentialPerType && credentialPerType.length === 1) {
