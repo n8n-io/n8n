@@ -57,21 +57,22 @@ export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
 export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
-export const BUILTIN_NODES_DOCS_URL = `https://docs.n8n.io/integrations/builtin/`;
-export const BUILTIN_CREDENTIALS_DOCS_URL = `https://docs.n8n.io/integrations/builtin/credentials/`;
-export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
-export const DATA_EDITING_DOCS_URL = 'https://docs.n8n.io/data/data-editing/';
+export const DOCS_DOMAIN = 'docs.n8n.io';
+export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
+export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
+export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
+export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
 export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
 export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
 export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
-export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
+export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
-export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
-export const EXPRESSIONS_DOCS_URL = 'https://docs.n8n.io/code-examples/expressions/';
+export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
+export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
+export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
+export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
