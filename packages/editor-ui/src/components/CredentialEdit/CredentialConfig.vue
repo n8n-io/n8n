@@ -124,7 +124,7 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
+import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -229,20 +229,29 @@ export default mixins(restApi).extend({
 			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
-			if (!type || !type.documentationUrl) {
+			const documentationUrl = type && type.documentationUrl;
+
+			if (!documentationUrl) {
 				return '';
 			}
 
-			if (
-				type.documentationUrl.startsWith('https://') ||
-				type.documentationUrl.startsWith('http://')
-			) {
-				return type.documentationUrl;
+			let url: URL;
+			if (documentationUrl.startsWith('https://') || documentationUrl.startsWith('http://')) {
+				url = new URL(documentationUrl);
+				if (url.hostname !== DOCS_DOMAIN) return documentationUrl;
+			} else {
+				// Don't show documentation link for community nodes if the URL is not an absolute path
+				if (isCommunityNode) return '';
+				else url = new URL(`${BUILTIN_CREDENTIALS_DOCS_URL}${documentationUrl}/`);
 			}
 
-			return isCommunityNode
-				? '' // Don't show documentation link for community nodes if the URL is not an absolute path
-				: `${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			if (url.hostname === DOCS_DOMAIN) {
+				url.searchParams.set('utm_source', 'n8n_app');
+				url.searchParams.set('utm_medium', 'left_nav_menu');
+				url.searchParams.set('utm_campaign', 'create_new_credentials_modal');
+			}
+
+			return url.href;
 		},
 		isGoogleOAuthType(): boolean {
 			return (

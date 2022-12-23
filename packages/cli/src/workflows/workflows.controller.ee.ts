@@ -108,7 +108,7 @@ EEWorkflowController.get(
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-		return workflow;
+		return EEWorkflows.entityToResponse(workflow);
 	}),
 );
 
@@ -189,12 +189,7 @@ EEWorkflowController.post(
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
-		const { id, ...rest } = savedWorkflow;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return EEWorkflows.entityToResponse(savedWorkflow);
 	}),
 );
 
@@ -204,19 +199,14 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = (await EEWorkflows.getMany(
-			req.user,
-			req.query.filter,
-		)) as unknown as WorkflowEntity[];
+		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
+		await EEWorkflows.addCredentialsToWorkflows(workflows, req.user);
 
-		return Promise.all(
-			workflows.map(async (workflow) => {
-				EEWorkflows.addOwnerAndSharings(workflow);
-				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-				workflow.nodes = [];
-				return workflow;
-			}),
-		);
+		return workflows.map((workflow) => {
+			EEWorkflows.addOwnerAndSharings(workflow);
+			workflow.nodes = [];
+			return EEWorkflows.entityToResponse(workflow);
+		});
 	}),
 );
 
@@ -240,12 +230,7 @@ EEWorkflowController.patch(
 			forceSave,
 		);
 
-		const { id, ...remainder } = updatedWorkflow;
-
-		return {
-			id: id.toString(),
-			...remainder,
-		};
+		return EEWorkflows.entityToResponse(updatedWorkflow);
 	}),
 );
 
