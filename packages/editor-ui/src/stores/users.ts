@@ -99,7 +99,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser?.id);
 				}
 
-				return false;
+				return true;
 			};
 		},
 	},
