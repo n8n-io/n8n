@@ -50,7 +50,7 @@ export async function emeliaApiRequest(
 	};
 
 	try {
-		return this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -129,7 +129,7 @@ export async function emeliaApiTest(
 	};
 
 	try {
-		await this.helpers.request!(options);
+		await this.helpers.request(options);
 	} catch (error) {
 		return {
 			status: 'Error',
