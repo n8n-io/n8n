@@ -326,7 +326,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodeTypes: MockNodeTypes(),
 			id: '2',
 		});
-		expect(
+		await expect(
 			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
 		).resolves.not.toThrow();
 	});
@@ -353,7 +353,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 				callerIds: `123,456,bcdef,  ${workflowId}`,
 			},
 		});
-		expect(
+		await expect(
 			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, workflowId),
 		).resolves.not.toThrow();
 	});
@@ -378,7 +378,7 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 				callerPolicy: 'any',
 			},
 		});
-		expect(
+		await expect(
 			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
 		).resolves.not.toThrow();
 	});
