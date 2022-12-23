@@ -294,7 +294,7 @@ export default mixins(showMessage).extend({
 				loginLabel: formInputs.values.loginLabel,
 				connectionUrl: formInputs.values.serverAddress,
 				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
-				connectionPort: formInputs.values.port,
+				connectionPort: +formInputs.values.port,
 				connectionSecurity: formInputs.values.connectionSecurity,
 				baseDn: formInputs.values.baseDn,
 				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
