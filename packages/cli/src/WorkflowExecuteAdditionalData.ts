@@ -37,6 +37,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
 import { LessThanOrEqual } from 'typeorm';
@@ -62,10 +63,17 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import {
+	getInstanceOwner,
+	getUserById,
+	getWorkflowOwner,
+	isSharingEnabled,
+	whereClause,
+} from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -1042,14 +1050,45 @@ async function executeWorkflow(
 	};
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function sendMessageToUI(source: string, messages: any[]) {
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return */
+export async function sendMessageToUI(source: string, messages: any[]): Promise<void> {
 	if (this.sessionId === undefined) {
 		return;
 	}
 
-	// Push data to session which started workflow
 	try {
+		if (isSharingEnabled()) {
+			const owner = await getInstanceOwner();
+			const credentials = await CredentialsService.getAll(owner);
+			const encryptionKey = await CredentialsService.getEncryptionKey();
+			const sharing = await Promise.all(
+				credentials.map(async (credential) =>
+					CredentialsService.getSharing(owner, credential.id, ['credentials', 'role']),
+				),
+			);
+			const sharedCredentials = sharing.filter((s) => s?.role.name !== 'owner');
+			if (sharedCredentials.length > 0) {
+				const sharedDecryptedCredentials = await Promise.all(
+					sharedCredentials.map(async (s) =>
+						s?.credentials ? CredentialsService.decrypt(encryptionKey, s.credentials) : null,
+					),
+				);
+
+				// TODO: Remove or obfuscate shared credential info from messages
+				const removeSharedCredentialsFromMessage = (
+					decryptedCredentials: Array<ICredentialDataDecryptedObject | null>,
+					message: any,
+				): any => {
+					return message;
+				};
+
+				messages = messages.map((message) =>
+					removeSharedCredentialsFromMessage(sharedDecryptedCredentials, message),
+				);
+			}
+		}
+
+		// Push data to session which started workflow
 		const pushInstance = Push.getInstance();
 		pushInstance.send(
 			'sendConsoleMessage',
@@ -1063,6 +1102,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 	}
 }
+/* eslint-enable */
 
 /**
  * Returns the base additional data without webhooks
