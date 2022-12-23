@@ -44,7 +44,7 @@ export async function getAuthorization(
 	};
 
 	try {
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		return response.auth_token;
 	} catch (error) {
@@ -92,7 +92,7 @@ export async function taigaApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
