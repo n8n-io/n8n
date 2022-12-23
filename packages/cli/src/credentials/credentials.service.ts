@@ -125,17 +125,6 @@ export class CredentialsService {
 		return Db.collections.SharedCredentials.findOne(options);
 	}
 
-	static createCredentialsFromCredentialsEntity(
-		credential: CredentialsEntity,
-		encrypt = false,
-	): Credentials {
-		const { id, name, type, nodesAccess, data } = credential;
-		if (encrypt) {
-			return new Credentials({ id: null, name }, type, nodesAccess);
-		}
-		return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
-	}
-
 	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
