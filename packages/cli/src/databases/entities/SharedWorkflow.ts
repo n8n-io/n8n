@@ -1,4 +1,4 @@
-import { Entity, ManyToOne, PrimaryColumn, RelationId } from 'typeorm';
+import { Entity, ManyToOne, RelationId } from 'typeorm';
 import type { WorkflowEntity } from './WorkflowEntity';
 import type { User } from './User';
 import type { Role } from './Role';
@@ -12,7 +12,6 @@ export class SharedWorkflow extends AbstractEntity {
 	@ManyToOne('User', 'sharedWorkflows', { primary: true })
 	user: User;
 
-	@PrimaryColumn()
 	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.user)
 	userId: string;
 
@@ -22,7 +21,6 @@ export class SharedWorkflow extends AbstractEntity {
 	})
 	workflow: WorkflowEntity;
 
-	@PrimaryColumn()
 	@RelationId((sharedWorkflow: SharedWorkflow) => sharedWorkflow.workflow)
 	workflowId: number;
 }
