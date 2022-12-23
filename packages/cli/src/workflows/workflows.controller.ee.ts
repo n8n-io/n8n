@@ -208,11 +208,11 @@ EEWorkflowController.get(
 			req.user,
 			req.query.filter,
 		)) as unknown as WorkflowEntity[];
+		await EEWorkflows.addCredentialsToWorkflows(workflows, req.user);
 
 		return Promise.all(
 			workflows.map(async (workflow) => {
 				EEWorkflows.addOwnerAndSharings(workflow);
-				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
 				workflow.nodes = [];
 				return { ...workflow, id: workflow.id.toString() };
 			}),
