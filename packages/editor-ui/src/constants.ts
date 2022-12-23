@@ -432,3 +432,5 @@ export enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 }
+
+export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
