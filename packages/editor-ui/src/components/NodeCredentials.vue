@@ -215,10 +215,13 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
 		listenForCredentialUpdates() {
 			const getCounts = () => {
-				return Object.keys(this.credentialsStore.allUsableCredentialsByType).reduce((counts: {[key: string]: number}, key: string) => {
-					counts[key] = this.credentialsStore.allUsableCredentialsByType[key].length;
-					return counts;
-				}, {});
+				return Object.keys(this.credentialsStore.allUsableCredentialsByType).reduce(
+					(counts: { [key: string]: number }, key: string) => {
+						counts[key] = this.credentialsStore.allUsableCredentialsByType[key].length;
+						return counts;
+					},
+					{},
+				);
 			};
 
 			let previousCredentialCounts = getCounts();
@@ -229,11 +232,13 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					return;
 				}
 
-				let credentialsOfType = [...(this.credentialsStore.allUsableCredentialsByType[credentialType] || [])];
+				let credentialsOfType = [
+					...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+				];
 				// all credentials were deleted
 				if (credentialsOfType.length === 0) {
-						this.clearSelectedCredential(credentialType);
-						return;
+					this.clearSelectedCredential(credentialType);
+					return;
 				}
 
 				credentialsOfType = credentialsOfType.sort((a, b) => (a.id < b.id ? -1 : 1));

@@ -79,11 +79,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 			return types.reduce(
 				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
-					accu[type.name] = credentials.filter(
-						(cred: ICredentialsResponse) => {
-							return cred.type === type.name && usersStore.isResourceAccessible(cred);
-						},
-					);
+					accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
+						return cred.type === type.name && usersStore.isResourceAccessible(cred);
+					});
 
 					return accu;
 				},
