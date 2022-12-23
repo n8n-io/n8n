@@ -148,9 +148,7 @@ const onDialogOpened = () => {
 			</div>
 		</div>
 
-		<n8n-info-tip>{{
-			locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
-		}}</n8n-info-tip>
+		<n8n-info-tip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
 
 		<div :class="$style.buttons">
 			<n8n-button

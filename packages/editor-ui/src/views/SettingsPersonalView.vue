@@ -119,11 +119,7 @@ export default mixins(showMessage).extend({
 		];
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-			useUsersStore,
-			useSettingsStore,
-		),
+		...mapStores(useUIStore, useUsersStore, useSettingsStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},

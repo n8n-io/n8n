@@ -1,5 +1,11 @@
 import { createApiKey, deleteApiKey, getApiKey } from '@/api/api-keys';
-import { getLdapConfig, getLdapSynchronizations, runLdapSync, testLdapConnection, updateLdapConfig } from "@/api/ldap";
+import {
+	getLdapConfig,
+	getLdapSynchronizations,
+	runLdapSync,
+	testLdapConnection,
+	updateLdapConfig,
+} from '@/api/ldap';
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from '@/api/settings';
 import { testHealthEndpoint } from '@/api/templates';
 import {
@@ -16,7 +22,7 @@ import {
 	IN8nValueSurveyData,
 	ISettingsState,
 	WorkflowCallerPolicyDefaultOption,
-  ILdapConfig,
+	ILdapConfig,
 } from '@/Interface';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';

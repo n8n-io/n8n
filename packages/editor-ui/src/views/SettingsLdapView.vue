@@ -1,151 +1,162 @@
 <template>
-		<div v-if="!isLDAPFeatureEnabled">
-			<div :class="[$style.header, 'mb-2xl']">
+	<div v-if="!isLDAPFeatureEnabled">
+		<div :class="[$style.header, 'mb-2xl']">
+			<n8n-heading size="2xlarge">
+				{{ $locale.baseText('settings.ldap') }}
+			</n8n-heading>
+		</div>
+
+		<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right">
+			<div>
+				LDAP allows users to authenticate with their centralized account. It's compatible with
+				services that provide an LDAP interface like Active Directory, Okta and Jumpcloud.
+			</div>
+			<br />
+		</n8n-info-tip>
+		<n8n-action-box
+			:description="$locale.baseText('settings.ldap.disabled.description')"
+			:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
+			@click="onContactUsClick"
+		>
+			<template #heading>
+				<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
+			</template>
+		</n8n-action-box>
+	</div>
+	<div v-else>
+		<div :class="$style.container">
+			<div :class="$style.header">
 				<n8n-heading size="2xlarge">
 					{{ $locale.baseText('settings.ldap') }}
 				</n8n-heading>
 			</div>
-
-			<n8n-info-tip type="note" theme="info-light" tooltipPlacement="right">
-				<div>
-					LDAP allows users to authenticate with their centralized account. It's compatible with services that provide an LDAP
-interface like Active Directory, Okta and Jumpcloud.
-				</div>
-				<br>
-			</n8n-info-tip>
-			<n8n-action-box
-				:description="$locale.baseText('settings.ldap.disabled.description')"
-				:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
-				@click="onContactUsClick"
-			>
-				<template #heading>
-					<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
-				</template>
-			</n8n-action-box>
+			<div :class="$style.docsInfoTip">
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+					</template>
+				</n8n-info-tip>
 			</div>
-		<div v-else>
-			<div :class="$style.container">
-				<div :class="$style.header">
-					<n8n-heading size="2xlarge">
-						{{ $locale.baseText('settings.ldap') }}
-					</n8n-heading>
-				</div>
-				<div :class="$style.docsInfoTip">
-					<n8n-info-tip theme="info" type="note">
-						<template>
-							<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-						</template>
-					</n8n-info-tip>
-				</div>
-				<div :class="$style.settingsForm">
-					<n8n-form-inputs
-						v-if="formInputs"
-						ref="ldapConfigForm"
-						:inputs="formInputs"
-						:eventBus="formBus"
-						:columnView="true"
-						verticalSpacing="l"
-						@input="onInput"
-						@ready="onReadyToSubmit"
-						@submit="onSubmit"
-					/>
-				</div>
-				<div>
-					<n8n-button
-						v-if="loginEnabled"
-						:label="
-							loadingTestConnection
-								? $locale.baseText('settings.ldap.testingConnection')
-								: $locale.baseText('settings.ldap.testConnection')
-						"
-						size="large"
-						class="mr-s"
-						:disabled="hasAnyChanges || !readyToSubmit"
-						:loading="loadingTestConnection"
-						@click="onTestConnectionClick"
-					/>
-					<n8n-button
-						:label="$locale.baseText('settings.ldap.save')"
-						size="large"
-						:disabled="!hasAnyChanges || !readyToSubmit"
-						@click="onSaveClick"
-					/>
-				</div>
+			<div :class="$style.settingsForm">
+				<n8n-form-inputs
+					v-if="formInputs"
+					ref="ldapConfigForm"
+					:inputs="formInputs"
+					:eventBus="formBus"
+					:columnView="true"
+					verticalSpacing="l"
+					@input="onInput"
+					@ready="onReadyToSubmit"
+					@submit="onSubmit"
+				/>
 			</div>
-			<div v-if="loginEnabled">
-				<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{ $locale.baseText('settings.ldap.section.synchronization.title') }}</n8n-heading>
-				<div :class="$style.syncTable">
-					<el-table
-						v-loading="loadingTable"
-						:border="true"
-						:stripe="true"
-						:data="dataTable"
-						:cell-style="cellClassStyle"
-						style="width: 100%"
-						height="250"
-						:key="tableKey"
+			<div>
+				<n8n-button
+					v-if="loginEnabled"
+					:label="
+						loadingTestConnection
+							? $locale.baseText('settings.ldap.testingConnection')
+							: $locale.baseText('settings.ldap.testConnection')
+					"
+					size="large"
+					class="mr-s"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingTestConnection"
+					@click="onTestConnectionClick"
+				/>
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.save')"
+					size="large"
+					:disabled="!hasAnyChanges || !readyToSubmit"
+					@click="onSaveClick"
+				/>
+			</div>
+		</div>
+		<div v-if="loginEnabled">
+			<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{
+				$locale.baseText('settings.ldap.section.synchronization.title')
+			}}</n8n-heading>
+			<div :class="$style.syncTable">
+				<el-table
+					v-loading="loadingTable"
+					:border="true"
+					:stripe="true"
+					:data="dataTable"
+					:cell-style="cellClassStyle"
+					style="width: 100%"
+					height="250"
+					:key="tableKey"
+				>
+					<el-table-column
+						prop="status"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
 					>
-						<el-table-column
-							prop="status"
-							:label="$locale.baseText('settings.ldap.synchronizationTable.column.status')"
-						>
-						</el-table-column>
-						<el-table-column
-							prop="endedAt"
-							:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
-						>
-						</el-table-column>
-						<el-table-column
-							prop="runMode"
-							:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
-						>
-						</el-table-column>
-						<el-table-column
-							prop="runTime"
-							:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
-						>
-						</el-table-column>
-						<el-table-column
-							prop="details"
-							:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
-						>
-						</el-table-column>
-						<template #empty>{{ $locale.baseText('settings.ldap.synchronizationTable.empty.message') }}</template>
-						<template #append>
+					</el-table-column>
+					<el-table-column
+						prop="endedAt"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.endedAt')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="runMode"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runMode')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="runTime"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.runTime')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="details"
+						:label="$locale.baseText('settings.ldap.synchronizationTable.column.details')"
+					>
+					</el-table-column>
+					<template #empty>{{
+						$locale.baseText('settings.ldap.synchronizationTable.empty.message')
+					}}</template>
+					<template #append>
 						<infinite-loading
 							@infinite="getLdapSynchronizations"
 							force-use-infinite-wrapper=".el-table__body-wrapper"
 						>
 						</infinite-loading>
 					</template>
-					</el-table>
-				</div>
-				<div class="pb-3xl">
-					<n8n-button
-						:label="$locale.baseText('settings.ldap.dryRun')"
-						type="secondary"
-						size="large"
-						class="mr-s"
-						:disabled="hasAnyChanges || !readyToSubmit"
-						:loading="loadingDryRun"
-						@click="onDryRunClick"
-					/>
-					<n8n-button
-						:label="$locale.baseText('settings.ldap.synchronizeNow')"
-						size="large"
-						:disabled="hasAnyChanges || !readyToSubmit"
-						:loading="loadingLiveRun"
-						@click="onLiveRunClick"
-					/>
-				</div>
+				</el-table>
+			</div>
+			<div class="pb-3xl">
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.dryRun')"
+					type="secondary"
+					size="large"
+					class="mr-s"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingDryRun"
+					@click="onDryRunClick"
+				/>
+				<n8n-button
+					:label="$locale.baseText('settings.ldap.synchronizeNow')"
+					size="large"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingLiveRun"
+					@click="onLiveRunClick"
+				/>
 			</div>
 		</div>
+	</div>
 </template>
 
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInput, IFormInputs, IUser } from '@/Interface';
+import {
+	ILdapConfig,
+	ILdapSyncData,
+	ILdapSyncTable,
+	IFormInput,
+	IFormInputs,
+	IUser,
+} from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -181,7 +192,7 @@ type FormValues = {
 	searchTimeout: number;
 	port: number;
 	connectionSecurity: string;
-}
+};
 
 type tableRow = {
 	status: string;
@@ -233,7 +244,7 @@ export default mixins(showMessage).extend({
 	},
 	methods: {
 		onContactUsClick(event: MouseEvent): void {
-			const email = (this.settingsStore.isCloudDeployment) ? N8N_CONTACT_EMAIL : N8N_SALES_EMAIL;
+			const email = this.settingsStore.isCloudDeployment ? N8N_CONTACT_EMAIL : N8N_SALES_EMAIL;
 			location.href = `mailto:${email}`;
 		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
@@ -253,7 +264,7 @@ export default mixins(showMessage).extend({
 			}
 			return {};
 		},
-		onInput(input: { name: string, value: string | number | boolean }) {
+		onInput(input: { name: string; value: string | number | boolean }) {
 			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 				this.loginEnabled = input.value;
 			}
@@ -284,7 +295,7 @@ export default mixins(showMessage).extend({
 		async onSubmit(): Promise<void> {
 			// We want to save all form values (incl. the hidden onces), so we are using
 			// `values` data prop of the `FormInputs` child component since they are all preserved there
-			const formInputs = this.$refs.ldapConfigForm as Vue & { values: FormValues} | undefined;
+			const formInputs = this.$refs.ldapConfigForm as (Vue & { values: FormValues }) | undefined;
 			if (!this.hasAnyChanges || !formInputs) {
 				return;
 			}
@@ -298,7 +309,8 @@ export default mixins(showMessage).extend({
 				connectionSecurity: formInputs.values.connectionSecurity,
 				baseDn: formInputs.values.baseDn,
 				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
-				bindingAdminPassword: formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
+				bindingAdminPassword:
+					formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
 				emailAttribute: formInputs.values.email,
 				firstNameAttribute: formInputs.values.firstName,
 				lastNameAttribute: formInputs.values.lastName,
@@ -318,10 +330,10 @@ export default mixins(showMessage).extend({
 					saveForm = await this.confirmMessage(
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.message'),
 						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.headline'),
-					null,
-					this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText'),
-					this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText'),
-				);
+						null,
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText'),
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText'),
+					);
 				}
 
 				if (!saveForm) {
@@ -401,9 +413,12 @@ export default mixins(showMessage).extend({
 				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.loginEnabled = this.adConfig.loginEnabled;
 				this.syncEnabled = this.adConfig.synchronizationEnabled;
-				const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['loginEnabled'] === true;
-				const whenSyncAndLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['synchronizationEnabled'] === true && values['loginEnabled'] === true;
-				const whenAdminBindingAndLoginEnabled: IFormInput['shouldDisplay'] = (values) => values['bindingType'] === 'admin' && values['loginEnabled'] === true;
+				const whenLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
+					values['loginEnabled'] === true;
+				const whenSyncAndLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
+					values['synchronizationEnabled'] === true && values['loginEnabled'] === true;
+				const whenAdminBindingAndLoginEnabled: IFormInput['shouldDisplay'] = (values) =>
+					values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -639,7 +654,9 @@ export default mixins(showMessage).extend({
 						properties: {
 							type: 'toggle',
 							label: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.label'),
-							tooltipText: this.$locale.baseText('settings.ldap.form.synchronizationEnabled.tooltip'),
+							tooltipText: this.$locale.baseText(
+								'settings.ldap.form.synchronizationEnabled.tooltip',
+							),
 							required: true,
 						},
 						shouldDisplay: whenLoginEnabled,
@@ -650,7 +667,9 @@ export default mixins(showMessage).extend({
 						properties: {
 							type: 'number',
 							label: this.$locale.baseText('settings.ldap.form.synchronizationInterval.label'),
-							infoText: this.$locale.baseText('settings.ldap.form.synchronizationInterval.infoText'),
+							infoText: this.$locale.baseText(
+								'settings.ldap.form.synchronizationInterval.infoText',
+							),
 						},
 						shouldDisplay: whenSyncAndLoginEnabled,
 					},
@@ -759,7 +778,8 @@ export default mixins(showMessage).extend({
 }
 
 .docsInfoTip {
-	&, & > div {
+	&,
+	& > div {
 		margin-bottom: var(--spacing-xl);
 	}
 }
