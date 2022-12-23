@@ -20,7 +20,7 @@ export async function splunkApiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-) {
+): Promise<any> {
 	const { authToken, baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'splunkApi',
 	)) as SplunkCredentials;
