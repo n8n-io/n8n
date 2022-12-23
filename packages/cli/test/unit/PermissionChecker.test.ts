@@ -326,7 +326,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 			nodeTypes: MockNodeTypes(),
 			id: '2',
 		});
-		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId)).resolves;
+		expect(
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, userId),
+		).resolves.not.toThrow();
 	});
 
 	test('workflowsFromAList works when the list contains the parent id', async () => {
@@ -351,8 +353,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 				callerIds: `123,456,bcdef,  ${workflowId}`,
 			},
 		});
-		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, workflowId))
-			.resolves;
+		expect(
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId, workflowId),
+		).resolves.not.toThrow();
 	});
 
 	test('should not throw when workflow policy is set to any', async () => {
@@ -375,7 +378,9 @@ describe('PermissionChecker.checkSubworkflowExecutePolicy', () => {
 				callerPolicy: 'any',
 			},
 		});
-		expect(PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId)).resolves;
+		expect(
+			PermissionChecker.checkSubworkflowExecutePolicy(subworkflow, userId),
+		).resolves.not.toThrow();
 	});
 });
 
