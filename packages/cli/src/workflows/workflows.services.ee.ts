@@ -89,7 +89,9 @@ export class EEWorkflowsService extends WorkflowsService {
 	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
-		workflow.usedCredentials = [];
+		if (!workflow.usedCredentials) {
+			workflow.usedCredentials = [];
+		}
 
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
@@ -168,12 +170,12 @@ export class EEWorkflowsService extends WorkflowsService {
 					return;
 				}
 				Object.keys(node.credentials).forEach((credentialType) => {
-					if (!mapsWorkflowsToUsedCredentials[idx]) {
-						mapsWorkflowsToUsedCredentials[idx] = [];
-					}
 					const credential = node.credentials?.[credentialType];
 					if (!credential?.id) {
 						return;
+					}
+					if (!mapsWorkflowsToUsedCredentials[idx]) {
+						mapsWorkflowsToUsedCredentials[idx] = [];
 					}
 					mapsWorkflowsToUsedCredentials[idx].push(credential.id);
 					allUsedCredentialIds.add(credential.id);
