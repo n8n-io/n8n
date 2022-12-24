@@ -56,7 +56,7 @@ export async function mailchimpApiRequest(
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
 			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'mailchimpOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
@@ -114,7 +114,7 @@ async function getMetadata(
 		url: credentials.metadataUrl as string,
 		json: true,
 	};
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export const campaignFieldsMetadata = [

@@ -93,7 +93,7 @@ importers:
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
-      '@n8n_io/license-sdk': ^1.7.0
+      '@n8n_io/license-sdk': ^1.8.0
       '@oclif/command': ^1.8.16
       '@oclif/core': ^1.16.4
       '@oclif/dev-cli': ^1.22.2
@@ -174,7 +174,7 @@ importers:
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
       n8n-core: ~0.149.1
-      n8n-editor-ui: ~0.175.1
+      n8n-editor-ui: ~0.175.2
       n8n-nodes-base: ~0.207.1
       n8n-workflow: ~0.131.1
       nodemailer: ^6.7.1
@@ -211,7 +211,7 @@ importers:
       winston: ^3.3.3
       yamljs: ^0.3.0
     dependencies:
-      '@n8n_io/license-sdk': 1.7.0
+      '@n8n_io/license-sdk': 1.8.0
       '@oclif/command': 1.8.18_@oclif+config@1.18.5
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
@@ -524,7 +524,7 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.49.1
+      n8n-design-system: ~0.49.2
       n8n-workflow: ~0.131.1
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
@@ -3337,8 +3337,8 @@ packages:
     resolution: {integrity: sha512-H1rQc1ZOHANWBvPcW+JpGwr+juXSxM8Q8YCkm3GhZd8REu1fHR3z99CErO1p9pkcfcxZnMdIZdIsXkOHY0NilA==}
     dev: true
 
-  /@n8n_io/license-sdk/1.7.0:
-    resolution: {integrity: sha512-5Hs+G8xKQXyvODL08NUN4IV0qnJdAWgZo1jRqf8yBhXpFCKFerh5HKZdLdpzpatk5rrRps6pFmcnVwOCcFBrPA==}
+  /@n8n_io/license-sdk/1.8.0:
+    resolution: {integrity: sha512-dSBD6EHTu6kWWz1ILxtCcaQqVZu+p/8J0eQ2ntx7Jk8BYSvn5Hh4Oz5M81ut9Pz+2uak+GnIuI6KeYUe1QBXIQ==}
     engines: {node: '>=14.0.0', npm: '>=7.10.0'}
     dependencies:
       axios: 1.1.3

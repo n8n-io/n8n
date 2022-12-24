@@ -45,7 +45,7 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.error.description === 'Validation failed') {
 			const numberOfErrors = error.error.errors.length;
