@@ -42,11 +42,11 @@ export const alphabetizeKeys = (obj: INode) =>
 			{},
 		);
 
-export const segregate = <T>(array: T[], segregator: (items: T) => boolean) => {
+export const separate = <T>(array: T[], test: (element: T) => boolean) => {
 	const pass: T[] = [];
 	const fail: T[] = [];
 
-	array.forEach((i) => (segregator(i) ? pass : fail).push(i));
+	array.forEach((i) => (test(i) ? pass : fail).push(i));
 
 	return [pass, fail];
 };

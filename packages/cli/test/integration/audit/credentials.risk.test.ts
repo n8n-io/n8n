@@ -1,9 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import * as testDb from '../../test/integration/shared/testDb';
-import { reportInactiveCreds } from './inactiveCreds.report';
-import { RISKS } from './constants';
 import config from '@/config';
+import { audit } from '@/audit';
+import { CREDENTIALS_REPORT } from '@/audit/constants';
+import { getRiskSection } from './utils';
+import * as testDb from '../shared/testDb';
 
 let testDbName = '';
 
@@ -20,7 +21,7 @@ afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test('should report credential not in any use', async () => {
+test('should report credentials not in any use', async () => {
 	const credentialDetails = {
 		name: 'My Slack Credential',
 		data: 'U2FsdGVkX18WjITBG4IDqrGB1xE/uzVNjtwDAG3lP7E=',
@@ -49,29 +50,22 @@ test('should report credential not in any use', async () => {
 		Db.collections.Workflow.save(workflowDetails),
 	]);
 
-	const workflows = await Db.collections.Workflow.find();
+	const testAudit = await audit(['credentials']);
 
-	const report = await reportInactiveCreds(workflows);
+	const section = getRiskSection(
+		testAudit,
+		CREDENTIALS_REPORT.RISK,
+		CREDENTIALS_REPORT.SECTIONS.CREDS_NOT_IN_ANY_USE,
+	);
 
-	if (report === null) {
-		throw new Error(`Report "${RISKS.INACTIVE_CREDS}" should not be null`);
-	}
-
-	expect(report.risk).toBe(RISKS.INACTIVE_CREDS);
-
-	expect(report.riskTypes).toHaveLength(2); // not in any use, not in active use
-
-	const [notInAnyUse] = report.riskTypes;
-
-	expect(notInAnyUse.riskType).toBe(RISKS.CREDS_NOT_IN_ANY_USE);
-	expect(notInAnyUse.credentials).toHaveLength(1);
-	expect(notInAnyUse.credentials[0]).toMatchObject({
+	expect(section.location).toHaveLength(1);
+	expect(section.location[0]).toMatchObject({
 		id: '1',
 		name: 'My Slack Credential',
 	});
 });
 
-test('should report credential not in active use', async () => {
+test('should report credentials not in active use', async () => {
 	const credentialDetails = {
 		name: 'My Slack Credential',
 		data: 'U2FsdGVkX18WjITBG4IDqrGB1xE/uzVNjtwDAG3lP7E=',
@@ -93,41 +87,28 @@ test('should report credential not in active use', async () => {
 				type: 'n8n-nodes-base.slack',
 				typeVersion: 1,
 				position: [0, 0] as [number, number],
-				credentials: {
-					slackApi: {
-						id: credential.id.toString(),
-						name: credential.name,
-					},
-				},
 			},
 		],
 	};
 
 	await Db.collections.Workflow.save(workflowDetails);
 
-	const workflows = await Db.collections.Workflow.find();
+	const testAudit = await audit(['credentials']);
 
-	const report = await reportInactiveCreds(workflows);
+	const section = getRiskSection(
+		testAudit,
+		CREDENTIALS_REPORT.RISK,
+		CREDENTIALS_REPORT.SECTIONS.CREDS_NOT_IN_ACTIVE_USE,
+	);
 
-	if (report === null) {
-		throw new Error(`Report "${RISKS.INACTIVE_CREDS}" should not be null`);
-	}
-
-	expect(report.risk).toBe(RISKS.INACTIVE_CREDS);
-
-	expect(report.riskTypes).toHaveLength(1);
-
-	const [notInActiveUse] = report.riskTypes;
-
-	expect(notInActiveUse.riskType).toBe(RISKS.CREDS_NOT_IN_ACTIVE_USE);
-	expect(notInActiveUse.credentials).toHaveLength(1);
-	expect(notInActiveUse.credentials[0]).toMatchObject({
+	expect(section.location).toHaveLength(1);
+	expect(section.location[0]).toMatchObject({
 		id: credential.id.toString(),
-		name: credential.name,
+		name: 'My Slack Credential',
 	});
 });
 
-test('should report credential only used in abandoned workflow', async () => {
+test('should report credential in not recently executed workflow', async () => {
 	const credentialDetails = {
 		name: 'My Slack Credential',
 		data: 'U2FsdGVkX18WjITBG4IDqrGB1xE/uzVNjtwDAG3lP7E=',
@@ -175,22 +156,70 @@ test('should report credential only used in abandoned workflow', async () => {
 		waitTill: null,
 	});
 
-	const workflows = await Db.collections.Workflow.find();
+	const testAudit = await audit(['credentials']);
 
-	const report = await reportInactiveCreds(workflows);
+	const section = getRiskSection(
+		testAudit,
+		CREDENTIALS_REPORT.RISK,
+		CREDENTIALS_REPORT.SECTIONS.CREDS_NOT_RECENTLY_EXECUTED,
+	);
 
-	if (report === null) {
-		throw new Error(`Report "${RISKS.INACTIVE_CREDS}" should not be null`);
-	}
-
-	expect(report.riskTypes).toHaveLength(2); // not in active use, used in abandoned workflow
-
-	const [_, inAbandonedWorkflows] = report.riskTypes;
-
-	expect(inAbandonedWorkflows.riskType).toBe(RISKS.CREDS_ONLY_USED_IN_ABANDONED_WORKFLOWS);
-	expect(inAbandonedWorkflows.credentials).toHaveLength(1);
-	expect(inAbandonedWorkflows.credentials[0]).toMatchObject({
+	expect(section.location).toHaveLength(1);
+	expect(section.location[0]).toMatchObject({
 		id: credential.id.toString(),
 		name: credential.name,
 	});
+});
+
+test('should not report credentials in recently executed workflow', async () => {
+	const credentialDetails = {
+		name: 'My Slack Credential',
+		data: 'U2FsdGVkX18WjITBG4IDqrGB1xE/uzVNjtwDAG3lP7E=',
+		type: 'slackApi',
+		nodesAccess: [{ nodeType: 'n8n-nodes-base.slack', date: '2022-12-21T11:23:00.561Z' }],
+	};
+
+	const credential = await Db.collections.Credentials.save(credentialDetails);
+
+	const workflowDetails = {
+		name: 'My Test Workflow',
+		active: true,
+		connections: {},
+		nodeTypes: {},
+		nodes: [
+			{
+				id: uuid(),
+				name: 'My Node',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				credentials: {
+					slackApi: {
+						id: credential.id.toString(),
+						name: credential.name,
+					},
+				},
+			},
+		],
+	};
+
+	const workflow = await Db.collections.Workflow.save(workflowDetails);
+
+	const date = new Date();
+	date.setDate(date.getDate() - config.getEnv('security.audit.daysAbandonedWorkflow') + 1);
+
+	await Db.collections.Execution.save({
+		data: '[]',
+		finished: true,
+		mode: 'manual',
+		startedAt: date,
+		stoppedAt: date,
+		workflowData: workflow,
+		workflowId: workflow.id.toString(),
+		waitTill: null,
+	});
+
+	const testAudit = await audit(['credentials']);
+
+	expect(testAudit).toBeNull();
 });
