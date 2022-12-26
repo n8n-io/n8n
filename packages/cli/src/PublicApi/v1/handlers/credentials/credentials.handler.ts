@@ -2,6 +2,7 @@
 import express from 'express';
 
 import type { ICredentialsDb } from '@/Interfaces';
+import { CredentialsService } from '../../../../credentials/credentials.service';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -111,15 +112,14 @@ export = {
 		validCursor,
 		async (req: CredentialPublicRequest.GetAll, res: express.Response): Promise<express.Response> => {
 			const { offset = 0, limit = 100} = req.query;
-			// TODO - what if the user is not the instance owner
 
 			const query: FindManyOptions<ICredentialsDb> = {
 				skip: offset,
 				take: limit,
 			}
 
-			const credentials = <CredentialsEntity[]>(await getAllCredentials(query));
-			const count : number = await countCredentials(query);
+      const credentials = <CredentialsEntity[]>(await CredentialsService.getAll(req.user, { roles: ['owner'] }));
+			const count: number = credentials.length;
 
 			return res.json({
 				data: sanitizeCredentials(credentials),

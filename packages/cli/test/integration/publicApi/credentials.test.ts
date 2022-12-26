@@ -407,6 +407,40 @@ test('GET /credentials should return all creds for owner', async () => {
 	});
 });
 
+test('GET /credentials should only return own creds for member', async () => {
+	const [owner, member] = await Promise.all([
+		testDb.createUser({ globalRole: globalOwnerRole }),
+		testDb.createUser({ globalRole: globalMemberRole }),
+	]);
+
+	const [{ id: savedOwnerCredentialId }, { id: savedMemberCredentialId }] = await Promise.all([
+		saveCredential(randomCredentialPayload(), { user: owner }),
+		saveCredential(randomCredentialPayload(), { user: member }),
+	]);
+
+	let memberShell = await testDb.addApiKey(member);
+
+  const authMemberAgent = utils.createAgent(app, {
+    apiPath: 'public',
+    version: 1,
+    auth: true,
+    user: memberShell,
+  });
+
+  const response = await authMemberAgent.get('/credentials');
+
+  expect(response.statusCode).toBe(200);
+
+  expect(response.body.data.length).toBe(1); // owner retrieved owner cred and member cred
+
+  const savedCredentialsIds = [savedMemberCredentialId];
+  response.body.data.forEach((credential: CredentialsEntity) => {
+    validatePublicCredentialData(credential);
+    expect(credential.data).toBeUndefined();
+    expect(savedCredentialsIds.includes(Number(credential.id))).toBe(true);
+  });
+})
+
 const credentialPayload = (): CredentialPayload => ({
 	name: randomName(),
 	type: 'githubApi',
