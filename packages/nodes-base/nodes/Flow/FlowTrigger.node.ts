@@ -85,6 +85,7 @@ export class FlowTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

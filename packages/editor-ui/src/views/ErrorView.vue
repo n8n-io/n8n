@@ -9,14 +9,11 @@
 			</div>
 			<div>
 				<n8n-text size="large" v-if="errorCode">
-					{{errorCode}} {{ $locale.baseText('error') }}
+					{{ errorCode }} {{ $locale.baseText('error') }}
 				</n8n-text>
 			</div>
 		</div>
-		<n8n-button
-			:label="$locale.baseText(redirectTextKey)"
-			@click="onButtonClick"
-		/>
+		<n8n-button :label="$locale.baseText(redirectTextKey)" @click="onButtonClick" />
 	</div>
 </template>
 

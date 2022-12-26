@@ -391,6 +391,13 @@
 	--color-code-tags-variable: #c82829;
 	--color-code-tags-definition: #4271ae;
 
+	--color-expression-editor-background: #fff;
+	--color-valid-resolvable-foreground: #29a568;
+	--color-valid-resolvable-background: #e1f3d8;
+	--color-invalid-resolvable-foreground: #f45959;
+	--color-invalid-resolvable-background: #fef0f0;
+	--color-expression-syntax-example: #f0f0f0;
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {
@@ -454,6 +461,7 @@
 	--font-weight-regular: 400;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
+	--font-family-monospace: Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--spacing-5xs: 0.125rem;
 	--spacing-4xs: 0.25rem;

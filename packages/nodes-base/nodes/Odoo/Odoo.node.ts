@@ -269,7 +269,7 @@ export class Odoo implements INodeType {
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
-					const result = await this.helpers.request!(options);
+					const result = await this.helpers.request(options);
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
@@ -301,8 +301,8 @@ export class Odoo implements INodeType {
 		const returnData: IDataObject[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const credentials = await this.getCredentials('odooApi');
 		const url = (credentials.url as string).replace(/\/$/, '');

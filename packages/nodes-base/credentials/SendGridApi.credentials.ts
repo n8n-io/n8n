@@ -7,8 +7,11 @@ import {
 
 export class SendGridApi implements ICredentialType {
 	name = 'sendGridApi';
+
 	displayName = 'SendGrid API';
+
 	documentationUrl = 'sendgrid';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -18,6 +21,7 @@ export class SendGridApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

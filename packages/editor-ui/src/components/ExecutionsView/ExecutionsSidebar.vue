@@ -1,13 +1,15 @@
 <template>
 	<div :class="['executions-sidebar', $style.container]">
 		<div :class="$style.heading">
-				<n8n-heading tag="h2" size="medium" color="text-dark">
+			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
-			<n8n-popover trigger="click" >
+			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{
+				$locale.baseText('executionsList.autoRefresh')
+			}}</el-checkbox>
+			<n8n-popover trigger="click">
 				<template #reference>
 					<div :class="$style.filterButton">
 						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
@@ -37,7 +39,8 @@
 								v-for="item in executionStatuses"
 								:key="item.id"
 								:label="item.name"
-								:value="item.id">
+								:value="item.id"
+							>
 							</n8n-option>
 						</n8n-select>
 					</div>
@@ -68,6 +71,7 @@
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
+				:ref="`execution-${execution.id}`"
 				@refresh="onRefresh"
 				@retryExecution="onRetryExecution"
 			/>
@@ -86,12 +90,13 @@ import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import { VIEWS } from '../../constants';
 import { range as _range } from 'lodash';
-import { IExecutionsSummary } from "@/Interface";
+import { IExecutionsSummary } from '@/Interface';
 import { Route } from 'vue-router';
 import Vue from 'vue';
 import { PropType } from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default Vue.extend({
 	name: 'executions-sidebar',
@@ -124,13 +129,11 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useUIStore,
-		),
+		...mapStores(useUIStore, useWorkflowsStore),
 		statusFilterApplied(): boolean {
 			return this.filter.status !== '';
 		},
-		executionStatuses(): Array<{ id: string, name: string }> {
+		executionStatuses(): Array<{ id: string; name: string }> {
 			return [
 				{ id: 'error', name: this.$locale.baseText('executionsList.error') },
 				{ id: 'running', name: this.$locale.baseText('executionsList.running') },
@@ -140,18 +143,19 @@ export default Vue.extend({
 		},
 	},
 	watch: {
-		$route (to: Route, from: Route) {
+		$route(to: Route, from: Route) {
 			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
 				// Skip parent route when navigating through executions with back button
 				this.$router.go(-1);
 			}
-    },
+		},
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
+		this.scrollToActiveCard();
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -164,8 +168,9 @@ export default Vue.extend({
 			if (!this.loading) {
 				const executionsList = this.$refs.executionList as HTMLElement;
 				if (executionsList) {
-					const diff = executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
-					if (diff > -10  && diff < 10) {
+					const diff =
+						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
+					if (diff > -10 && diff < 10) {
 						this.$emit('loadMore');
 					}
 				}
@@ -203,6 +208,20 @@ export default Vue.extend({
 				finished: this.filter.status !== 'running',
 				status: this.filter.status,
 			};
+		},
+		scrollToActiveCard(): void {
+			const executionsList = this.$refs.executionList as HTMLElement;
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
+
+			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
+				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const cardRect = cardElement.getBoundingClientRect();
+				if (cardRect.top > executionsList.offsetHeight) {
+					executionsList.scrollTo({ top: cardRect.top });
+				}
+			}
 		},
 	},
 });
@@ -269,7 +288,7 @@ export default Vue.extend({
 	& > div {
 		width: 309px;
 		background-color: var(--color-background-light);
-		margin-top:  0 !important;
+		margin-top: 0 !important;
 	}
 }
 </style>

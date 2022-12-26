@@ -109,9 +109,10 @@ import type {
 import { userManagementRouter } from '@/UserManagement';
 import { resolveJwt } from '@/UserManagement/auth/jwt';
 
-import { executionsController } from '@/api/executions.api';
+import { executionsController } from '@/executions/executions.controller';
 import { nodeTypesController } from '@/api/nodeTypes.api';
 import { tagsController } from '@/api/tags.api';
+import { workflowStatsController } from '@/api/workflowStats.api';
 import { loadPublicApiVersions } from '@/PublicApi';
 import {
 	getInstanceBaseUrl,
@@ -157,12 +158,14 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
+import { licenseController } from './license/license.controller';
+import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
 const exec = promisify(callbackExec);
 
-export const externalHooks: IExternalHooksClass = ExternalHooks();
+const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;
@@ -353,7 +356,10 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
+			},
+			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
 		};
 	}
@@ -382,7 +388,6 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -398,7 +403,11 @@ class App {
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await license.activate(activationKey);
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e);
+			}
 		}
 	}
 
@@ -623,30 +632,25 @@ class App {
 		this.app.use(cookieParser());
 
 		// Get push connections
-		this.app.use(
-			async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-				if (req.url.indexOf(`/${this.restEndpoint}/push`) === 0) {
-					if (req.query.sessionId === undefined) {
-						next(new Error('The query parameter "sessionId" is missing!'));
-						return;
-					}
+		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
+			const { sessionId } = req.query;
+			if (sessionId === undefined) {
+				next(new Error('The query parameter "sessionId" is missing!'));
+				return;
+			}
 
-					if (isUserManagementEnabled()) {
-						try {
-							const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-							await resolveJwt(authCookie);
-						} catch (error) {
-							res.status(401).send('Unauthorized');
-							return;
-						}
-					}
-
-					this.push.add(req.query.sessionId as string, req, res);
+			if (isUserManagementEnabled()) {
+				try {
+					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+					await resolveJwt(authCookie);
+				} catch (error) {
+					res.status(401).send('Unauthorized');
 					return;
 				}
-				next();
-			},
-		);
+			}
+
+			this.push.add(sessionId as string, req, res);
+		});
 
 		// Compress the response data
 		this.app.use(compression());
@@ -718,19 +722,7 @@ class App {
 			}),
 		);
 
-		if (process.env.NODE_ENV !== 'production') {
-			this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-				// Allow access also from frontend when developing
-				res.header('Access-Control-Allow-Origin', 'http://localhost:8080');
-				res.header('Access-Control-Allow-Credentials', 'true');
-				res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-				res.header(
-					'Access-Control-Allow-Headers',
-					'Origin, X-Requested-With, Content-Type, Accept, sessionid',
-				);
-				next();
-			});
-		}
+		this.app.use(corsMiddleware);
 
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -805,6 +797,16 @@ class App {
 		// Workflow
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
+
+		// ----------------------------------------
+		// License
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
+
+		// ----------------------------------------
+		// Workflow Statistics
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
 		// Tags
@@ -999,7 +1001,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1354,9 +1356,7 @@ class App {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
-						ids.map((id) => id.toString()),
-					);
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 					for (const data of executingWorkflows) {
 						if (
@@ -1513,7 +1513,9 @@ class App {
 					identifier,
 				);
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				if (req.query.mode === 'download' && fileName) {
+					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				}
 				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},

@@ -4,6 +4,12 @@
 import { resolve, join, dirname } from 'path';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 
+const { NODE_ENV, E2E_TESTS } = process.env;
+export const inProduction = NODE_ENV === 'production';
+export const inDevelopment = !NODE_ENV || NODE_ENV === 'development';
+export const inTest = NODE_ENV === 'test';
+export const inE2ETests = E2E_TESTS === 'true';
+
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
@@ -42,11 +48,13 @@ export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 
 export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 
-export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000;
-export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 180000;
+export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
+export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
 }
+
+export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

@@ -55,7 +55,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		description: 'Dummy node used for n8n training',
 		defaults: {
-			name: 'Customer Datastore',
+			name: 'Customer Datastore (n8n training)',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -113,7 +113,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
@@ -124,7 +124,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 			if (operation === 'getAllPeople') {
 				const returnAll = this.getNodeParameter('returnAll', i);
 
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = data;
 				} else {
 					const limit = this.getNodeParameter('limit', i);

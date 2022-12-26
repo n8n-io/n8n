@@ -12,7 +12,6 @@ export async function msg91ApiRequest(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('msg91Api');
 

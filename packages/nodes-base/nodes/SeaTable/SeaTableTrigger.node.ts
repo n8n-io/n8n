@@ -136,7 +136,7 @@ export class SeaTableTrigger implements INodeType {
 
 		if (rows.metadata && rows.results) {
 			const columns = getColumns(rows);
-			if (simple === true) {
+			if (simple) {
 				response = simplify(rows, columns);
 			} else {
 				response = rows.results;

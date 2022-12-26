@@ -675,7 +675,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -848,7 +847,6 @@ export class Pipedrive implements INodeType {
 						name: 'note',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -3763,7 +3761,7 @@ export class Pipedrive implements INodeType {
 					'GET',
 					'/filters',
 					{},
-					{ type: type[resource] as string },
+					{ type: type[resource] },
 				);
 				for (const filter of data) {
 					returnData.push({
@@ -4034,8 +4032,8 @@ export class Pipedrive implements INodeType {
 		let endpoint: string;
 		let returnAll = false;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let customProperties: ICustomProperties | undefined;
 		if (
@@ -4052,7 +4050,7 @@ export class Pipedrive implements INodeType {
 				getCustomProperties = this.getNodeParameter('resolveProperties', 0, false) as boolean;
 			}
 
-			if (getCustomProperties === true) {
+			if (getCustomProperties) {
 				customProperties = await pipedriveGetCustomProperties.call(this, resource);
 			}
 		}
@@ -4106,7 +4104,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4194,7 +4192,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const filters = this.getNodeParameter('filters', i);
@@ -4227,7 +4225,7 @@ export class Pipedrive implements INodeType {
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
 						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4265,7 +4263,7 @@ export class Pipedrive implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4275,7 +4273,7 @@ export class Pipedrive implements INodeType {
 							qs.exclude = additionalFields.exclude as string;
 						}
 
-						if (additionalFields && additionalFields.done !== undefined) {
+						if (additionalFields?.done !== undefined) {
 							qs.done = additionalFields.done === true ? 1 : 0;
 						}
 
@@ -4437,7 +4435,7 @@ export class Pipedrive implements INodeType {
 						endpoint = `/notes`;
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const additionalFields = this.getNodeParameter('additionalFields', i);
@@ -4536,7 +4534,7 @@ export class Pipedrive implements INodeType {
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4627,7 +4625,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4668,7 +4666,7 @@ export class Pipedrive implements INodeType {
 
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4724,7 +4722,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4748,7 +4746,7 @@ export class Pipedrive implements INodeType {
 
 						qs.term = this.getNodeParameter('term', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4797,7 +4795,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -4810,7 +4808,7 @@ export class Pipedrive implements INodeType {
 				}
 
 				let responseData;
-				if (returnAll === true) {
+				if (returnAll) {
 					responseData = await pipedriveApiRequestAllItems.call(
 						this,
 						requestMethod,
@@ -4820,7 +4818,7 @@ export class Pipedrive implements INodeType {
 					);
 				} else {
 					if (customProperties !== undefined) {
-						pipedriveEncodeCustomProperties(customProperties!, body);
+						pipedriveEncodeCustomProperties(customProperties, body);
 					}
 
 					responseData = await pipedriveApiRequest.call(
@@ -4900,7 +4898,7 @@ export class Pipedrive implements INodeType {
 
 		if (customProperties !== undefined) {
 			for (const item of returnData) {
-				await pipedriveResolveCustomProperties(customProperties, item);
+				pipedriveResolveCustomProperties(customProperties, item);
 			}
 		}
 

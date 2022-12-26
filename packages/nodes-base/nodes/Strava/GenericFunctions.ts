@@ -19,12 +19,11 @@ export async function stravaApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -51,7 +50,7 @@ export async function stravaApiRequest(
 				body.client_secret = credentials.clientSecret;
 			}
 			//@ts-ignore
-			return this.helpers?.request(options);
+			return await this.helpers?.request(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {
@@ -67,10 +66,9 @@ export async function stravaApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

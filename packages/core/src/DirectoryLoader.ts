@@ -1,5 +1,5 @@
-import * as path from 'node:path';
-import { readFile } from 'node:fs/promises';
+import * as path from 'path';
+import { readFile } from 'fs/promises';
 import glob from 'fast-glob';
 import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
@@ -43,8 +43,8 @@ export abstract class DirectoryLoader {
 
 	constructor(
 		protected readonly directory: string,
-		private readonly excludeNodes?: string,
-		private readonly includeNodes?: string,
+		protected readonly excludeNodes: string[] = [],
+		protected readonly includeNodes: string[] = [],
 	) {}
 
 	abstract loadAll(): Promise<void>;
@@ -69,11 +69,11 @@ export abstract class DirectoryLoader {
 
 		const fullNodeName = `${packageName}.${tempNode.description.name}`;
 
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+		if (this.includeNodes.length && !this.includeNodes.includes(fullNodeName)) {
 			return;
 		}
 
-		if (this.excludeNodes?.includes(fullNodeName)) {
+		if (this.excludeNodes.includes(fullNodeName)) {
 			return;
 		}
 
@@ -103,6 +103,11 @@ export abstract class DirectoryLoader {
 				? tmpNode.description.version.slice(-1)[0]
 				: tmpNode.description.version;
 		}
+
+		this.known.nodes[fullNodeName] = {
+			className: nodeName,
+			sourcePath: filePath,
+		};
 
 		this.nodeTypes[fullNodeName] = {
 			type: tempNode,
@@ -138,6 +143,11 @@ export abstract class DirectoryLoader {
 				throw e;
 			}
 		}
+
+		this.known.credentials[tempCredential.name] = {
+			className: credentialName,
+			sourcePath: filePath,
+		};
 
 		this.credentialTypes[tempCredential.name] = {
 			type: tempCredential,
@@ -319,11 +329,36 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 		await this.readPackageJson();
 
 		try {
-			this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			const knownNodes: typeof this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			for (const nodeName in knownNodes) {
+				this.known.nodes[`${this.packageName}.${nodeName}`] = knownNodes[nodeName];
+			}
 			this.known.credentials = await this.readJSON('dist/known/credentials.json');
 
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
+
+			if (this.includeNodes.length) {
+				const allowedNodes: typeof this.known.nodes = {};
+				for (const nodeName of this.includeNodes) {
+					allowedNodes[nodeName] = this.known.nodes[nodeName];
+				}
+				this.known.nodes = allowedNodes;
+
+				this.types.nodes = this.types.nodes.filter((nodeType) =>
+					this.includeNodes.includes(nodeType.name),
+				);
+			}
+
+			if (this.excludeNodes.length) {
+				for (const nodeName of this.excludeNodes) {
+					delete this.known.nodes[nodeName];
+				}
+
+				this.types.nodes = this.types.nodes.filter(
+					(nodeType) => !this.excludeNodes.includes(nodeType.name),
+				);
+			}
 
 			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,

@@ -16,7 +16,7 @@
 import express from 'express';
 import get from 'lodash.get';
 
-import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions, eventEmitter } from 'n8n-core';
 
 import {
 	createDeferredPromise,
@@ -58,7 +58,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 /**
- * Returns all the webhooks which should be created for the give workflow
+ * Returns all the webhooks which should be created for the given workflow
  *
  */
 export function getWorkflowWebhooks(
@@ -233,6 +233,7 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
+			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id, workflowStartNode);
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';

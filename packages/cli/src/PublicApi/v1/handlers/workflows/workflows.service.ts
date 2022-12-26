@@ -15,12 +15,12 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
-export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		where: { user },
 	});
 
-	return sharedWorkflows.map((workflow) => workflow.workflowId);
+	return sharedWorkflows.map(({ workflowId }) => workflowId.toString());
 }
 
 export async function getSharedWorkflow(

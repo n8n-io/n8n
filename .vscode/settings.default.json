@@ -6,6 +6,13 @@
 		"dist": true,
 		"pnpm-lock.yaml": true
 	},
+	"typescript.format.enable": false,
 	"typescript.tsdk": "node_modules/typescript/lib",
-	"workspace-default-settings.runOnActivation": true
+	"workspace-default-settings.runOnActivation": true,
+	"eslint.probe": ["javascript", "typescript", "vue"],
+	"eslint.workingDirectories": [
+		{
+			"mode": "auto"
+		}
+	]
 }

@@ -9,8 +9,11 @@ import {
 import jwt from 'jsonwebtoken';
 export class GhostAdminApi implements ICredentialType {
 	name = 'ghostAdminApi';
+
 	displayName = 'Ghost Admin API';
+
 	documentationUrl = 'ghost';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

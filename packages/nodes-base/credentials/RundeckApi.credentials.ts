@@ -7,8 +7,11 @@ import {
 
 export class RundeckApi implements ICredentialType {
 	name = 'rundeckApi';
+
 	displayName = 'Rundeck API';
+
 	documentationUrl = 'rundeck';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Url',

@@ -13,12 +13,11 @@ export async function strapiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('strapiApi');
 
@@ -53,7 +52,6 @@ export async function strapiApiRequest(
 
 export async function getToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('strapiApi');
 	let options = {} as OptionsWithUri;
@@ -72,18 +70,17 @@ export async function getToken(
 				: `${credentials.url}/auth/local`,
 		json: true,
 	};
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export async function strapiApiRequestAllItems(
 	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 	const { apiVersion } = await this.getCredentials('strapiApi');
@@ -125,7 +122,6 @@ export async function strapiApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

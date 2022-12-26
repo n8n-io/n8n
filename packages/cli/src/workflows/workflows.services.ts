@@ -2,6 +2,7 @@ import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
 import pick from 'lodash.pick';
+import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -12,16 +13,16 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { IWorkflowDb, IWorkflowExecutionDataProcess, IWorkflowResponse } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -70,6 +71,11 @@ export class WorkflowsService {
 
 	/**
 	 * Find the pinned trigger to execute the workflow from, if any.
+	 *
+	 * - In a full execution, select the _first_ pinned trigger.
+	 * - In a partial execution,
+	 *   - select the _first_ pinned trigger that leads to the executed node,
+	 *   - else select the executed pinned trigger.
 	 */
 	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
 		if (!pinData || !startNodes) return null;
@@ -87,19 +93,39 @@ export class WorkflowsService {
 
 		const [startNodeName] = startNodes;
 
-		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
+		const parentNames = new Workflow({
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			active: workflow.active,
+			nodeTypes: NodeTypes(),
+		}).getParentNodes(startNodeName);
+
+		let checkNodeName = '';
+
+		if (parentNames.length === 0) {
+			checkNodeName = startNodeName;
+		} else {
+			checkNodeName = parentNames.find((pn) => pn === pinnedTriggers[0].name) as string;
+		}
+
+		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
 		return Db.collections.Workflow.findOne(workflow, options);
 	}
 
-	// Warning: this function is overriden by EE to disregard role list.
-	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
+	// Warning: this function is overridden by EE to disregard role list.
+	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string) {
+	static entityToResponse(entity: WorkflowEntity): IWorkflowResponse {
+		const { id, ...rest } = entity;
+		return { ...rest, id: id.toString() };
+	}
+
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -131,28 +157,32 @@ export class WorkflowsService {
 		}
 
 		// safeguard against querying ids not shared with the user
-		if (filter?.id !== undefined) {
-			const workflowId = parseInt(filter.id.toString());
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
-				return [];
-			}
+		const workflowId = filter?.id?.toString();
+		if (workflowId !== undefined && !sharedWorkflowIds.includes(workflowId)) {
+			LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
+			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const fields: Array<keyof WorkflowEntity> = [
+			'id',
+			'name',
+			'active',
+			'createdAt',
+			'updatedAt',
+			'nodes',
+		];
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
 		}
 
-		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
-		if (isSharingEnabled) {
+		if (isSharingEnabled()) {
 			relations.push('shared', 'shared.user', 'shared.role');
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes'] : fields,
+			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -160,16 +190,7 @@ export class WorkflowsService {
 			},
 		};
 
-		const workflows = await Db.collections.Workflow.find(query);
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
-		});
+		return Db.collections.Workflow.find(query);
 	}
 
 	static async update(
@@ -191,7 +212,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to update a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -200,18 +221,34 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
+		if (
+			!forceSave &&
+			workflow.versionId !== '' &&
+			workflow.versionId !== shared.workflow.versionId
+		) {
 			throw new ResponseHelper.BadRequestError(
-				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
+				100,
 			);
 		}
+
+		// Update the workflow's version
+		workflow.versionId = uuid();
+
+		LoggerProxy.verbose(
+			`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
+			{
+				previousVersionId: shared.workflow.versionId,
+				newVersionId: workflow.versionId,
+			},
+		);
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
 
 		WorkflowHelpers.addNodeIds(workflow);
 
-		await externalHooks.run('workflow.update', [workflow]);
+		await ExternalHooks().run('workflow.update', [workflow]);
 
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
@@ -260,6 +297,7 @@ export class WorkflowsService {
 				'settings',
 				'staticData',
 				'pinData',
+				'versionId',
 			]),
 		);
 
@@ -296,13 +334,13 @@ export class WorkflowsService {
 			});
 		}
 
-		await externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again
 			try {
-				await externalHooks.run('workflow.activate', [updatedWorkflow]);
+				await ExternalHooks().run('workflow.activate', [updatedWorkflow]);
 				await ActiveWorkflowRunner.getInstance().add(
 					workflowId,
 					shared.workflow.active ? 'update' : 'activate',
@@ -315,7 +353,7 @@ export class WorkflowsService {
 				updatedWorkflow.active = false;
 
 				// Now return the original error for UI to display
-				throw error;
+				throw new ResponseHelper.BadRequestError((error as Error).message);
 			}
 		}
 

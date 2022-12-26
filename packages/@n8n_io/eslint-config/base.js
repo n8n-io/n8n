@@ -2,12 +2,6 @@
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 const config = (module.exports = {
-	parser: '@typescript-eslint/parser',
-	parserOptions: {
-		sourceType: 'module',
-		project: ['./tsconfig.json'],
-	},
-
 	ignorePatterns: [
 		'node_modules/**',
 		'dist/**',
@@ -124,7 +118,22 @@ const config = (module.exports = {
 			'undefined',
 		],
 
+		/**
+		 * https://eslint.org/docs/latest/rules/no-void
+		 */
 		'no-void': ['error', { allowAsStatement: true }],
+
+		/**
+		 * https://eslint.org/docs/latest/rules/indent
+		 *
+		 * Delegated to Prettier.
+		 */
+		indent: 'off',
+
+		/**
+		 * https://eslint.org/docs/latest/rules/sort-imports
+		 */
+		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
 
 		// ----------------------------------
 		//        @typescript-eslint
@@ -184,11 +193,6 @@ const config = (module.exports = {
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-assertions.md
 		 */
 		'@typescript-eslint/consistent-type-assertions': 'error',
-
-		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
-		 */
-		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
@@ -299,14 +303,29 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/promise-function-async': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
+		 */
+		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
 
 		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
+		 */
+		'import/no-cycle': 'error',
+
+		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
 		 */
 		'import/no-default-export': 'error',
+
+		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
+		 */
+		'import/no-unresolved': 'error',
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md

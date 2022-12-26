@@ -339,9 +339,6 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Private key to use when signing the string',
 				default: '',
 				required: true,
@@ -475,7 +472,7 @@ export class Crypto implements INodeType {
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 					const privateKey = this.getNodeParameter('privateKey', i) as string;
 					const sign = createSign(algorithm);
-					sign.write(value as string);
+					sign.write(value);
 					sign.end();
 					newValue = sign.sign(privateKey, encoding);
 				}
