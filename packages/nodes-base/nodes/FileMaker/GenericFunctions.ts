@@ -48,7 +48,7 @@ export async function layoutsApiRequest(
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		const items = parseLayouts(responseData.response.layouts);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
@@ -95,7 +95,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		return responseData.response.fieldMetaData;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
@@ -126,7 +126,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		return responseData.response.portalMetaData;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
@@ -156,7 +156,7 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		const items = parseScriptsList(responseData.response.scripts);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
@@ -216,7 +216,7 @@ export async function getToken(
 	};
 
 	try {
-		const response = await this.helpers.request!(requestOptions);
+		const response = await this.helpers.request(requestOptions);
 
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
@@ -252,7 +252,7 @@ export async function logout(
 	};
 
 	try {
-		const response = await this.helpers.request!(requestOptions);
+		const response = await this.helpers.request(requestOptions);
 
 		if (typeof response === 'string') {
 			throw new NodeOperationError(

@@ -173,7 +173,7 @@ export async function validateCredentials(
 		body: signOpts.body,
 	};
 
-	const response = await this.helpers.request!(options);
+	const response = await this.helpers.request(options);
 
 	return new Promise((resolve, reject) => {
 		parseString(response, { explicitArray: false }, (err, data) => {

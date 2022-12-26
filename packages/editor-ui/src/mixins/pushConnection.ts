@@ -1,4 +1,4 @@
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '../../Interface';
+import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IPushData } from '@/Interface';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { nodeHelpers } from '@/mixins/nodeHelpers';

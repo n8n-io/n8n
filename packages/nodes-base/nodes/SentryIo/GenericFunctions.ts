@@ -72,7 +72,7 @@ export async function sentryIoApiRequest(
 			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'sentryIoOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'sentryIoOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

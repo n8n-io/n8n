@@ -1,23 +1,23 @@
 import config from '@/config';
-import { InternalHooksManager } from '../../src';
-import { nodeFetchedData, workflowExecutionCompleted } from '../../src/events/WorkflowStatistics';
-import { WorkflowExecuteMode } from 'n8n-workflow';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
+import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
+import { getLogger } from '@/Logger';
 
 const FAKE_USER_ID = 'abcde-fghij';
 
 const mockedFirstProductionWorkflowSuccess = jest.fn((...args) => {});
 const mockedFirstWorkflowDataLoad = jest.fn((...args) => {});
-const mockedError = jest.spyOn(console, 'error');
 
 jest.spyOn(InternalHooksManager, 'getInstance').mockImplementation((...args) => {
-	const actual = jest.requireActual('../../src/InternalHooks');
+	const actual = jest.requireActual('@/InternalHooks');
 	return {
 		...actual,
 		onFirstProductionWorkflowSuccess: mockedFirstProductionWorkflowSuccess,
 		onFirstWorkflowDataLoad: mockedFirstWorkflowDataLoad,
 	};
 });
-jest.mock('../../src/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Workflow: {
@@ -36,7 +36,7 @@ jest.mock('../../src/Db', () => {
 		},
 	};
 });
-jest.mock('../../src/UserManagement/UserManagementHelper', () => {
+jest.mock('@/UserManagement/UserManagementHelper', () => {
 	return {
 		getWorkflowOwner: jest.fn((workflowId) => {
 			return { id: FAKE_USER_ID };
@@ -48,6 +48,7 @@ describe('Events', () => {
 	beforeAll(() => {
 		config.set('diagnostics.enabled', true);
 		config.set('deployment.type', 'n8n-testing');
+		LoggerProxy.init(getLogger());
 	});
 
 	afterAll(() => {
@@ -58,7 +59,6 @@ describe('Events', () => {
 	beforeEach(() => {
 		mockedFirstProductionWorkflowSuccess.mockClear();
 		mockedFirstWorkflowDataLoad.mockClear();
-		mockedError.mockClear();
 	});
 
 	afterEach(() => {});
@@ -81,7 +81,6 @@ describe('Events', () => {
 				startedAt: new Date(),
 			};
 			await workflowExecutionCompleted(workflow, runData);
-			expect(mockedError).toBeCalledTimes(1);
 		});
 
 		test('should create metrics for production successes', async () => {
@@ -164,7 +163,6 @@ describe('Events', () => {
 				parameters: {},
 			};
 			await nodeFetchedData(workflowId, node);
-			expect(mockedError).toBeCalledTimes(1);
 		});
 
 		test('should create metrics when the db is updated', async () => {

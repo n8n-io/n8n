@@ -16,7 +16,6 @@ import {
 	ISettingsState,
 	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
-import { store } from '@/store';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -66,6 +65,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		showSetupPage(): boolean {
 			return this.userManagement.showSetupOnFirstLoad === true;
+		},
+		deploymentType(): string {
+			return this.settings.deployment?.type || 'default';
 		},
 		isDesktopDeployment(): boolean {
 			if (!this.settings.deployment) {

@@ -17,7 +17,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
 import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
@@ -57,7 +57,7 @@ workflowsController.post(
 
 		await validateEntity(newWorkflow);
 
-		await externalHooks.run('workflow.create', [newWorkflow]);
+		await ExternalHooks().run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -103,15 +103,10 @@ workflowsController.post(
 			});
 		}
 
-		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
-		const { id, ...rest } = savedWorkflow;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(savedWorkflow);
 	}),
 );
 
@@ -121,7 +116,8 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
+		const workflows = await WorkflowsService.getMany(req.user, req.query.filter);
+		return workflows.map((workflow) => WorkflowsService.entityToResponse(workflow));
 	}),
 );
 
@@ -213,7 +209,7 @@ workflowsController.get(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to access a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -222,14 +218,7 @@ workflowsController.get(
 			);
 		}
 
-		const {
-			workflow: { id, ...rest },
-		} = shared;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(shared.workflow);
 	}),
 );
 
@@ -255,12 +244,7 @@ workflowsController.patch(
 			['owner'],
 		);
 
-		const { id, ...remainder } = updatedWorkflow;
-
-		return {
-			id: id.toString(),
-			...remainder,
-		};
+		return WorkflowsService.entityToResponse(updatedWorkflow);
 	}),
 );
 
@@ -273,7 +257,7 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		await externalHooks.run('workflow.delete', [workflowId]);
+		await ExternalHooks().run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow', 'role'],
@@ -286,7 +270,7 @@ workflowsController.delete(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to delete a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
@@ -303,7 +287,7 @@ workflowsController.delete(
 		await Db.collections.Workflow.delete(workflowId);
 
 		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
-		await externalHooks.run('workflow.afterDelete', [workflowId]);
+		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
 	}),
