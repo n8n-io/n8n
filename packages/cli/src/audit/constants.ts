@@ -1,8 +1,3 @@
-import { reportCredentialsRisk } from '@/audit/risks/credentials.risk';
-import { reportDatabaseRisk } from '@/audit/risks/database.risk';
-import { reportExecutionRisk } from '@/audit/risks/execution.risk';
-import { reportFilesystemRisk } from '@/audit/risks/filesystem.risk';
-import { reportInstanceRisk } from '@/audit/risks/instance.risk';
 import type { Risk } from '@/audit/types';
 
 /**
@@ -16,17 +11,6 @@ export const RISK_CATEGORIES: Risk.Category[] = [
 	'instance',
 	'filesystem',
 ];
-
-export const SYNC_MAP: Record<string, Risk.SyncReportFn> = {
-	database: reportDatabaseRisk,
-	filesystem: reportFilesystemRisk,
-};
-
-export const ASYNC_MAP: Record<string, Risk.AsyncReportFn> = {
-	credentials: reportCredentialsRisk,
-	execution: reportExecutionRisk,
-	instance: reportInstanceRisk,
-};
 
 /**
  * Node types

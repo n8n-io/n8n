@@ -1,8 +1,26 @@
 import * as Db from '@/Db';
 import { separate } from '@/utils';
-import { RISK_CATEGORIES, ASYNC_MAP, SYNC_MAP } from '@/audit/constants';
-import { isAsync, toReportTitle } from '@/audit/utils';
+import { RISK_CATEGORIES } from '@/audit/constants';
+import { toReportTitle } from '@/audit/utils';
+import { reportCredentialsRisk } from '@/audit/risks/credentials.risk';
+import { reportDatabaseRisk } from '@/audit/risks/database.risk';
+import { reportExecutionRisk } from '@/audit/risks/execution.risk';
+import { reportFilesystemRisk } from '@/audit/risks/filesystem.risk';
+import { reportInstanceRisk } from '@/audit/risks/instance.risk';
 import type { Risk } from '@/audit/types';
+
+export const SYNC_MAP: Record<string, Risk.SyncReportFn> = {
+	database: reportDatabaseRisk,
+	filesystem: reportFilesystemRisk,
+};
+
+export const ASYNC_MAP: Record<string, Risk.AsyncReportFn> = {
+	credentials: reportCredentialsRisk,
+	execution: reportExecutionRisk,
+	instance: reportInstanceRisk,
+};
+
+export const isAsync = (c: Risk.Category) => Object.keys(ASYNC_MAP).includes(c);
 
 export async function audit(categories: Risk.Category[] = RISK_CATEGORIES) {
 	if (categories.length === 0) categories = RISK_CATEGORIES;

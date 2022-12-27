@@ -1,5 +1,4 @@
 import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
-import { ASYNC_MAP } from '@/audit/constants';
 import { Risk } from './types';
 
 export const toFlaggedNode = ({
@@ -16,8 +15,6 @@ export const toFlaggedNode = ({
 	nodeName: node.name,
 	nodeType: node.type,
 });
-
-export const isAsync = (c: Risk.Category) => Object.keys(ASYNC_MAP).includes(c);
 
 export const toReportTitle = (riskCategory: Risk.Category) =>
 	riskCategory.charAt(0).toUpperCase() + riskCategory.slice(1) + ' Risk Report';
