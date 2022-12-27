@@ -2,12 +2,6 @@
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 const config = (module.exports = {
-	parser: '@typescript-eslint/parser',
-	parserOptions: {
-		sourceType: 'module',
-		project: ['./tsconfig.json'],
-	},
-
 	ignorePatterns: [
 		'node_modules/**',
 		'dist/**',
@@ -319,9 +313,19 @@ const config = (module.exports = {
 		// ----------------------------------
 
 		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
+		 */
+		'import/no-cycle': 'error',
+
+		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
 		 */
 		'import/no-default-export': 'error',
+
+		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
+		 */
+		'import/no-unresolved': 'error',
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md

@@ -200,7 +200,7 @@ export class Mocean implements INodeType {
 					json: true,
 				};
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 				} catch (error) {
 					return {
 						status: 'Error',

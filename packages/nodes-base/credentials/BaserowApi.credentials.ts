@@ -7,6 +7,8 @@ export class BaserowApi implements ICredentialType {
 
 	displayName = 'Baserow API';
 
+	documentationUrl = 'baserow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',
