@@ -1,285 +1,267 @@
 <template>
-	<Modal
-		:name="EXECUTIONS_MODAL_KEY"
-		width="80%"
-		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${
-			combinedExecutions.length
-		}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
-		:eventBus="modalBus"
-	>
-		<template #content>
-			<div class="filters">
-				<el-row>
-					<el-col :span="2" class="filter-headline">
-						{{ $locale.baseText('executionsList.filters') }}:
-					</el-col>
-					<el-col :span="7">
-						<n8n-select
-							v-model="filter.workflowId"
-							:placeholder="$locale.baseText('executionsList.selectWorkflow')"
-							size="medium"
-							filterable
-							@change="handleFilterChanged"
-						>
-							<div class="ph-no-capture">
-								<n8n-option
-									v-for="item in workflows"
-									:key="item.id"
-									:label="item.name"
-									:value="item.id"
-								>
-								</n8n-option>
-							</div>
-						</n8n-select>
-					</el-col>
-					<el-col :span="5" :offset="1">
-						<n8n-select
-							v-model="filter.status"
-							:placeholder="$locale.baseText('executionsList.selectStatus')"
-							size="medium"
-							filterable
-							@change="handleFilterChanged"
-						>
+	<div>
+		<n8n-heading tag="h1" size="2xlarge">
+			{{
+				`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
+					finishedExecutionsCountEstimated === true ? '~' : ''
+				}${combinedExecutionsCount}`
+			}}
+		</n8n-heading>
+		<div class="filters">
+			<el-row>
+				<el-col :span="2" class="filter-headline">
+					{{ $locale.baseText('executionsList.filters') }}:
+				</el-col>
+				<el-col :span="7">
+					<n8n-select
+						v-model="filter.workflowId"
+						:placeholder="$locale.baseText('executionsList.selectWorkflow')"
+						size="medium"
+						filterable
+						@change="handleFilterChanged"
+					>
+						<div class="ph-no-capture">
 							<n8n-option
-								v-for="item in statuses"
+								v-for="item in workflows"
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
 							>
 							</n8n-option>
-						</n8n-select>
-					</el-col>
-					<el-col :span="4" :offset="5" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{
-							$locale.baseText('executionsList.autoRefresh')
-						}}</el-checkbox>
-					</el-col>
-				</el-row>
-			</div>
-
-			<div class="selection-options">
-				<span v-if="checkAll === true || isIndeterminate === true">
-					{{ $locale.baseText('executionsList.selected') }}: {{ numSelected }} /
-					<span v-if="finishedExecutionsCountEstimated === true">~</span
-					>{{ finishedExecutionsCount }}
-					<n8n-icon-button
-						:title="$locale.baseText('executionsList.deleteSelected')"
-						icon="trash"
-						size="mini"
-						@click="handleDeleteSelected"
-					/>
-				</span>
-			</div>
-
-			<el-table
-				:data="combinedExecutions"
-				stripe
-				v-loading="isDataLoading"
-				:row-class-name="getRowClass"
-			>
-				<el-table-column label="" width="30">
-					<!-- eslint-disable-next-line vue/no-unused-vars -->
-					<template #header="scope">
-						<el-checkbox
-							:indeterminate="isIndeterminate"
-							v-model="checkAll"
-							@change="handleCheckAllChange"
-							label=" "
-						></el-checkbox>
-					</template>
-					<template #default="scope">
-						<el-checkbox
-							v-if="scope.row.stoppedAt !== undefined && scope.row.id"
-							:value="selectedItems[scope.row.id.toString()] || checkAll"
-							@change="handleCheckboxChanged(scope.row.id)"
-							label=" "
-						></el-checkbox>
-					</template>
-				</el-table-column>
-				<el-table-column
-					property="startedAt"
-					:label="$locale.baseText('executionsList.startedAtId')"
-					width="205"
-				>
-					<template #default="scope">
-						{{ convertToDisplayDate(scope.row.startedAt) }}<br />
-						<small v-if="scope.row.id">ID: {{ scope.row.id }}</small>
-					</template>
-				</el-table-column>
-				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
-					<template #default="scope">
-						<div class="ph-no-capture">
-							<span class="workflow-name">
-								{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
-							</span>
 						</div>
+					</n8n-select>
+				</el-col>
+				<el-col :span="5" :offset="1">
+					<n8n-select
+						v-model="filter.status"
+						:placeholder="$locale.baseText('executionsList.selectStatus')"
+						size="medium"
+						filterable
+						@change="handleFilterChanged"
+					>
+						<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id">
+						</n8n-option>
+					</n8n-select>
+				</el-col>
+				<el-col :span="4" :offset="5" class="autorefresh">
+					<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
+						{{ $locale.baseText('executionsList.autoRefresh') }}
+					</el-checkbox>
+				</el-col>
+			</el-row>
+		</div>
 
-						<span v-if="scope.row.stoppedAt === undefined">
-							({{ $locale.baseText('executionsList.running') }})
-						</span>
-						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small
-								>{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"</small
-							>
-						</span>
-						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small
-								>{{ $locale.baseText('executionsList.successRetry') }} "{{
-									scope.row.retrySuccessId
-								}}"</small
-							>
-						</span>
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="$locale.baseText('executionsList.status')"
-					width="122"
-					align="center"
-				>
-					<template #default="scope" align="center">
-						<n8n-tooltip placement="top">
-							<template #content>
-								<div v-html="statusTooltipText(scope.row)"></div>
-							</template>
-							<span class="status-badge running" v-if="scope.row.waitTill">
-								{{ $locale.baseText('executionsList.waiting') }}
-							</span>
-							<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
-								{{ $locale.baseText('executionsList.running') }}
-							</span>
-							<span class="status-badge success" v-else-if="scope.row.finished">
-								{{ $locale.baseText('executionsList.success') }}
-							</span>
-							<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
-								{{ $locale.baseText('executionsList.error') }}
-							</span>
-							<span class="status-badge warning" v-else>
-								{{ $locale.baseText('executionsList.unknown') }}
-							</span>
-						</n8n-tooltip>
-
-						<el-dropdown trigger="click" @command="handleRetryClick">
-							<span class="retry-button">
-								<n8n-icon-button
-									v-if="
-										scope.row.stoppedAt !== undefined &&
-										!scope.row.finished &&
-										scope.row.retryOf === undefined &&
-										scope.row.retrySuccessId === undefined &&
-										!scope.row.waitTill
-									"
-									:type="scope.row.stoppedAt === null ? 'warning' : 'danger'"
-									class="ml-3xs"
-									size="mini"
-									:title="$locale.baseText('executionsList.retryExecution')"
-									icon="redo"
-								/>
-							</span>
-							<template #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item :command="{ command: 'currentlySaved', row: scope.row }">
-										{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-									</el-dropdown-item>
-									<el-dropdown-item :command="{ command: 'original', row: scope.row }">
-										{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-									</el-dropdown-item>
-								</el-dropdown-menu>
-							</template>
-						</el-dropdown>
-					</template>
-				</el-table-column>
-				<el-table-column
-					property="mode"
-					:label="$locale.baseText('executionsList.mode')"
-					width="100"
-					align="center"
-				>
-					<template #default="scope">
-						{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
-					</template>
-				</el-table-column>
-				<el-table-column
-					:label="$locale.baseText('executionsList.runningTime')"
-					width="150"
-					align="center"
-				>
-					<template #default="scope">
-						<span v-if="scope.row.stoppedAt === undefined">
-							<font-awesome-icon icon="spinner" spin />
-							<execution-time :start-time="scope.row.startedAt" />
-						</span>
-						<!-- stoppedAt will be null if process crashed -->
-						<span v-else-if="scope.row.stoppedAt === null"> -- </span>
-						<span v-else>
-							{{
-								displayTimer(
-									new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
-									true,
-								)
-							}}
-						</span>
-					</template>
-				</el-table-column>
-				<el-table-column label="" width="100" align="center">
-					<template #default="scope">
-						<div class="actions-container">
-							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-								<n8n-icon-button
-									icon="stop"
-									size="small"
-									:title="$locale.baseText('executionsList.stopExecution')"
-									@click.stop="stopExecution(scope.row.id)"
-									:loading="stoppingExecutions.includes(scope.row.id)"
-								/>
-							</span>
-							<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
-								<n8n-icon-button
-									icon="folder-open"
-									size="small"
-									:title="$locale.baseText('executionsList.openPastExecution')"
-									@click.stop="(e) => displayExecution(scope.row, e)"
-								/>
-							</span>
-						</div>
-					</template>
-				</el-table-column>
-			</el-table>
-
-			<div
-				class="load-more"
-				v-if="
-					finishedExecutionsCount > finishedExecutions.length ||
-					finishedExecutionsCountEstimated === true
-				"
-			>
-				<n8n-button
-					icon="sync"
-					:title="$locale.baseText('executionsList.loadMore')"
-					:label="$locale.baseText('executionsList.loadMore')"
-					@click="loadMore()"
-					:loading="isDataLoading"
+		<div class="selection-options">
+			<span v-if="checkAll === true || isIndeterminate === true">
+				{{ $locale.baseText('executionsList.selected') }}: {{ numSelected }} /
+				<span v-if="finishedExecutionsCountEstimated === true">~</span>{{ finishedExecutionsCount }}
+				<n8n-icon-button
+					:title="$locale.baseText('executionsList.deleteSelected')"
+					icon="trash"
+					size="mini"
+					@click="handleDeleteSelected"
 				/>
-			</div>
-		</template>
-	</Modal>
+			</span>
+		</div>
+
+		<el-table
+			:data="combinedExecutions"
+			stripe
+			v-loading="isDataLoading"
+			:row-class-name="getRowClass"
+		>
+			<el-table-column label="" width="30">
+				<!-- eslint-disable-next-line vue/no-unused-vars -->
+				<template #header="scope">
+					<el-checkbox
+						:indeterminate="isIndeterminate"
+						v-model="checkAll"
+						@change="handleCheckAllChange"
+						label=" "
+					></el-checkbox>
+				</template>
+				<template #default="scope">
+					<el-checkbox
+						v-if="scope.row.stoppedAt !== undefined && scope.row.id"
+						:value="selectedItems[scope.row.id.toString()] || checkAll"
+						@change="handleCheckboxChanged(scope.row.id)"
+						label=" "
+					></el-checkbox>
+				</template>
+			</el-table-column>
+			<el-table-column
+				property="startedAt"
+				:label="$locale.baseText('executionsList.startedAtId')"
+				width="205"
+			>
+				<template #default="scope">
+					{{ convertToDisplayDate(scope.row.startedAt) }}<br />
+					<small v-if="scope.row.id">ID: {{ scope.row.id }}</small>
+				</template>
+			</el-table-column>
+			<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
+				<template #default="scope">
+					<div class="ph-no-capture">
+						<span class="workflow-name">
+							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
+						</span>
+					</div>
+
+					<span v-if="scope.row.stoppedAt === undefined">
+						({{ $locale.baseText('executionsList.running') }})
+					</span>
+					<span v-if="scope.row.retryOf !== undefined">
+						<br />
+						<small>
+							{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"
+						</small>
+					</span>
+					<span v-else-if="scope.row.retrySuccessId !== undefined">
+						<br />
+						<small>
+							{{ $locale.baseText('executionsList.successRetry') }} "{{ scope.row.retrySuccessId }}"
+						</small>
+					</span>
+				</template>
+			</el-table-column>
+			<el-table-column
+				:label="$locale.baseText('executionsList.status')"
+				width="122"
+				align="center"
+			>
+				<template #default="scope" align="center">
+					<n8n-tooltip placement="top">
+						<template #content>
+							<div v-html="statusTooltipText(scope.row)"></div>
+						</template>
+						<span class="status-badge running" v-if="scope.row.waitTill">
+							{{ $locale.baseText('executionsList.waiting') }}
+						</span>
+						<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
+							{{ $locale.baseText('executionsList.running') }}
+						</span>
+						<span class="status-badge success" v-else-if="scope.row.finished">
+							{{ $locale.baseText('executionsList.success') }}
+						</span>
+						<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
+							{{ $locale.baseText('executionsList.error') }}
+						</span>
+						<span class="status-badge warning" v-else>
+							{{ $locale.baseText('executionsList.unknown') }}
+						</span>
+					</n8n-tooltip>
+
+					<el-dropdown trigger="click" @command="handleRetryClick">
+						<span class="retry-button">
+							<n8n-icon-button
+								v-if="
+									scope.row.stoppedAt !== undefined &&
+									!scope.row.finished &&
+									scope.row.retryOf === undefined &&
+									scope.row.retrySuccessId === undefined &&
+									!scope.row.waitTill
+								"
+								:type="scope.row.stoppedAt === null ? 'warning' : 'danger'"
+								class="ml-3xs"
+								size="mini"
+								:title="$locale.baseText('executionsList.retryExecution')"
+								icon="redo"
+							/>
+						</span>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item :command="{ command: 'currentlySaved', row: scope.row }">
+									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+								</el-dropdown-item>
+								<el-dropdown-item :command="{ command: 'original', row: scope.row }">
+									{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+								</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
+					</el-dropdown>
+				</template>
+			</el-table-column>
+			<el-table-column
+				property="mode"
+				:label="$locale.baseText('executionsList.mode')"
+				width="100"
+				align="center"
+			>
+				<template #default="scope">
+					{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
+				</template>
+			</el-table-column>
+			<el-table-column
+				:label="$locale.baseText('executionsList.runningTime')"
+				width="150"
+				align="center"
+			>
+				<template #default="scope">
+					<span v-if="scope.row.stoppedAt === undefined">
+						<font-awesome-icon icon="spinner" spin />
+						<execution-time :start-time="scope.row.startedAt" />
+					</span>
+					<!-- stoppedAt will be null if process crashed -->
+					<span v-else-if="scope.row.stoppedAt === null"> -- </span>
+					<span v-else>
+						{{
+							displayTimer(
+								new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
+								true,
+							)
+						}}
+					</span>
+				</template>
+			</el-table-column>
+			<el-table-column label="" width="100" align="center">
+				<template #default="scope">
+					<div class="actions-container">
+						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
+							<n8n-icon-button
+								icon="stop"
+								size="small"
+								:title="$locale.baseText('executionsList.stopExecution')"
+								@click.stop="stopExecution(scope.row.id)"
+								:loading="stoppingExecutions.includes(scope.row.id)"
+							/>
+						</span>
+						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
+							<n8n-icon-button
+								icon="folder-open"
+								size="small"
+								:title="$locale.baseText('executionsList.openPastExecution')"
+								@click.stop="(e) => displayExecution(scope.row, e)"
+							/>
+						</span>
+					</div>
+				</template>
+			</el-table-column>
+		</el-table>
+
+		<div
+			class="load-more"
+			v-if="
+				finishedExecutionsCount > finishedExecutions.length ||
+				finishedExecutionsCountEstimated === true
+			"
+		>
+			<n8n-button
+				icon="sync"
+				:title="$locale.baseText('executionsList.loadMore')"
+				:label="$locale.baseText('executionsList.loadMore')"
+				@click="loadMore()"
+				:loading="isDataLoading"
+			/>
+		</div>
+	</div>
 </template>
 
 <script lang="ts">
-/* eslint-disable prefer-spread */
 import Vue from 'vue';
-
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import Modal from '@/components/Modal.vue';
-
 import { externalHooks } from '@/mixins/externalHooks';
-import {
-	WAIT_TIME_UNLIMITED,
-	EXECUTIONS_MODAL_KEY,
-	VIEWS,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/constants';
-
+import { WAIT_TIME_UNLIMITED, VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -291,13 +273,9 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-
 import { convertToDisplayDate } from '@/utils';
-
 import { IDataObject } from 'n8n-workflow';
-
 import { range as _range } from 'lodash';
-
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -308,7 +286,6 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	components: {
 		ExecutionTime,
 		WorkflowActivator,
-		Modal,
 	},
 	data() {
 		return {
@@ -333,8 +310,6 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			stoppingExecutions: [] as string[],
 			workflows: [] as IWorkflowShortResponse[],
-			modalBus: new Vue(),
-			EXECUTIONS_MODAL_KEY,
 		};
 	},
 	async created() {
@@ -436,7 +411,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	},
 	methods: {
 		closeDialog() {
-			this.modalBus.$emit('close');
+			this.$emit('closeModal');
 		},
 		convertToDisplayDate,
 		displayExecution(execution: IExecutionsSummary, e: PointerEvent) {
@@ -468,7 +443,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 					params: { name: execution.workflowId, executionId: execution.id },
 				})
 				.catch(() => {});
-			this.modalBus.$emit('closeAll');
+			this.$emit('closeModal');
 		},
 		handleAutoRefreshToggle() {
 			if (this.autoRefreshInterval) {
