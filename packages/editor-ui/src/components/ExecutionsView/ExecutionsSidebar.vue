@@ -1,5 +1,5 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]">
+	<div :class="['executions-sidebar', $style.container]" ref="container">
 		<div :class="$style.heading">
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
@@ -60,7 +60,7 @@
 				</n8n-link>
 			</n8n-info-tip>
 		</div>
-		<div :class="$style.executionList" ref="executionList" @scroll="loadMore">
+		<div :class="$style.executionList" ref="executionList" @scroll="loadMore(20)">
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
@@ -149,12 +149,19 @@ export default Vue.extend({
 				this.$router.go(-1);
 			}
 		},
+		'workflowsStore.activeWorkflowExecution'() {
+			this.checkListSize();
+			this.scrollToActiveCard();
+		},
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
+		// On larger screens, we need to load more then first page of executions
+		// for the scroll bar to appear and infinite scrolling is enabled
+		this.checkListSize();
 		this.scrollToActiveCard();
 	},
 	beforeDestroy() {
@@ -164,14 +171,14 @@ export default Vue.extend({
 		}
 	},
 	methods: {
-		loadMore(): void {
+		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsList = this.$refs.executionList as HTMLElement;
 				if (executionsList) {
 					const diff =
 						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
 					if (diff > -10 && diff < 10) {
-						this.$emit('loadMore');
+						this.$emit('loadMore', limit);
 					}
 				}
 			}
@@ -209,6 +216,23 @@ export default Vue.extend({
 				status: this.filter.status,
 			};
 		},
+		checkListSize(): void {
+			const sidebarContainer = this.$refs.container as HTMLElement;
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
+
+			// Find out how many execution card can fit into list
+			// and load more if needed
+			if (sidebarContainer && currentExecutionCard) {
+				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
+
+				if (listCapacity > this.executions.length) {
+					this.$emit('loadMore', listCapacity - this.executions.length);
+				}
+			}
+		},
 		scrollToActiveCard(): void {
 			const executionsList = this.$refs.executionList as HTMLElement;
 			const currentExecutionCard = this.$refs[
@@ -218,8 +242,9 @@ export default Vue.extend({
 			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
+				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsList.offsetHeight) {
-					executionsList.scrollTo({ top: cardRect.top });
+					executionsList.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
 				}
 			}
 		},

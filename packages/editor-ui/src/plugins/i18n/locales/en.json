@@ -487,6 +487,7 @@
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",
 	"executionView.onPaste.message": "This view is read-only. Switch to <i>Workflow</i> tab to be able to edit the current workflow",
+	"executionView.notFound.message": "Execution with id '{executionId}' could not be found!",
 	"expressionEdit.anythingInside": "Anything inside",
 	"expressionEdit.isJavaScript": "is JavaScript.",
 	"expressionEdit.learnMore": "Learn more",
