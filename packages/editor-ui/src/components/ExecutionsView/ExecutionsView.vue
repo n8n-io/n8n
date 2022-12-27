@@ -210,7 +210,7 @@ export default mixins(
 				this.callDebounced('loadMore', { debounceTime: 1000 });
 			}
 		},
-		async loadMore(): Promise<void> {
+		async loadMore(limit = 20): Promise<void> {
 			if (
 				this.filter.status === 'running' ||
 				this.loadedFinishedExecutionsCount >= this.totalFinishedExecutionsCount
@@ -233,7 +233,7 @@ export default mixins(
 			}
 			let data: IExecutionsListResponse;
 			try {
-				data = await this.restApi().getPastExecutions(requestFilter, 20, lastId);
+				data = await this.restApi().getPastExecutions(requestFilter, limit, lastId);
 			} catch (error) {
 				this.loadingMore = false;
 				this.$showError(error, this.$locale.baseText('executionsList.showError.loadMore.title'));

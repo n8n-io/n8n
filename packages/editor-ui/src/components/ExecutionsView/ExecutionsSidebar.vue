@@ -60,7 +60,7 @@
 				</n8n-link>
 			</n8n-info-tip>
 		</div>
-		<div :class="$style.executionList" ref="executionList" @scroll="loadMore">
+		<div :class="$style.executionList" ref="executionList" @scroll="loadMore(20)">
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
@@ -167,14 +167,14 @@ export default Vue.extend({
 		}
 	},
 	methods: {
-		loadMore(): void {
+		loadMore(limit = 20): void {
 			if (!this.loading) {
 				const executionsList = this.$refs.executionList as HTMLElement;
 				if (executionsList) {
 					const diff =
 						executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
 					if (diff > -10 && diff < 10) {
-						this.$emit('loadMore');
+						this.$emit('loadMore', limit);
 					}
 				}
 			}
@@ -225,7 +225,7 @@ export default Vue.extend({
 				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
-					this.loadMore();
+					this.loadMore(listCapacity - this.executions.length);
 				}
 			}
 		},
