@@ -163,7 +163,7 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 				sentenceStart(unprotectedWebhooks),
 				'the "Authentication" field set to "None" and are not directly connected to a node to validate the payload. Every unprotected webhook allows your workflow to be called by any third party who knows the webhook URL.',
 			].join(' '),
-			recommendation: `Consider setting the "Authentication" field in Webhook node to an option other than "None", or validating the payload with one of the following nodes: ${recommendedValidators}.`,
+			recommendation: `Consider setting the "Authentication" field to an option other than "None", or validating the payload with one of the following nodes: ${recommendedValidators}.`,
 			location: unprotectedWebhooks,
 		});
 	}
