@@ -10,8 +10,7 @@
 		"baseUrl": "src",
 		"paths": {
 			"@/*": ["./*"],
-			"@db/*": ["./databases/*"],
-			"@commands/*": ["./commands/*"]
+			"@db/*": ["./databases/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line

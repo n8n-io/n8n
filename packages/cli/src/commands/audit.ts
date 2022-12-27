@@ -1,6 +1,6 @@
 import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
-import { BaseCommand } from '@/commands/BaseCommand';
+import { BaseCommand } from './BaseCommand';
 import { audit } from '@/audit';
 import { InternalHooksManager } from '@/InternalHooksManager';
 
