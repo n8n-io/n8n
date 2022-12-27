@@ -430,8 +430,8 @@ export function usersNamespace(this: N8nApp): void {
 						where: { user: userToDelete, role: workflowOwnerRole },
 					});
 
-					const sharedWorkflowIds = sharedWorkflows.map((sharedWorkflow) =>
-						sharedWorkflow.workflowId.toString(),
+					const sharedWorkflowIds = sharedWorkflows.map(
+						(sharedWorkflow) => sharedWorkflow.workflowId,
 					);
 
 					// Prevents issues with unique key constraints since user being assigned
@@ -455,8 +455,8 @@ export function usersNamespace(this: N8nApp): void {
 						where: { user: userToDelete, role: credentialOwnerRole },
 					});
 
-					const sharedCredentialIds = sharedCredentials.map((sharedCredential) =>
-						sharedCredential.credentialsId.toString(),
+					const sharedCredentialIds = sharedCredentials.map(
+						(sharedCredential) => sharedCredential.credentialsId,
 					);
 
 					// Prevents issues with unique key constraints since user being assigned
@@ -500,7 +500,7 @@ export function usersNamespace(this: N8nApp): void {
 					ownedSharedWorkflows.map(async ({ workflow }) => {
 						if (workflow.active) {
 							// deactivate before deleting
-							await this.activeWorkflowRunner.remove(workflow.id.toString());
+							await this.activeWorkflowRunner.remove(workflow.id);
 						}
 						return workflow;
 					}),

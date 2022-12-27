@@ -122,7 +122,7 @@ export async function getExecutionsCount(data: {
 }
 
 export async function getExecutionInWorkflows(
-	id: number,
+	id: string,
 	workflows: string[],
 	includeData?: boolean,
 ): Promise<IExecutionResponseApi | undefined> {

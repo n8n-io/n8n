@@ -84,7 +84,7 @@ export interface IDatabaseCollections {
 }
 
 export interface IWebhookDb {
-	workflowId: number | string;
+	workflowId: string;
 	webhookPath: string;
 	method: string;
 	node: string;
@@ -97,14 +97,14 @@ export interface IWebhookDb {
 // ----------------------------------
 
 export interface ITagDb {
-	id: number;
+	id: string;
 	name: string;
 	createdAt: Date;
 	updatedAt: Date;
 }
 
 export interface ITagToImport {
-	id: string | number;
+	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
@@ -121,12 +121,12 @@ export type ITagWithCountDb = ITagDb & UsageCount;
 // ----------------------------------
 
 export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string;
+	id?: string;
 }
 
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string;
+	id: string;
 	tags?: ITagDb[];
 }
 
@@ -148,17 +148,13 @@ export interface ICredentialsBase {
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
-	id: number | string;
+	id: string;
 	name: string;
 	shared?: SharedCredentials[];
 }
 
-export interface ICredentialsResponse extends ICredentialsDb {
-	id: string;
-}
-
 export interface ICredentialsDecryptedDb extends ICredentialsBase, ICredentialsDecrypted {
-	id: number | string;
+	id: string;
 }
 
 export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
@@ -169,7 +165,7 @@ export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: number | string;
+	id?: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
@@ -208,7 +204,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string;
+	id: string;
 	data: string;
 	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
@@ -220,7 +216,7 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 }
 
 export interface IExecutionResponseApi {
-	id: number | string;
+	id: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date;

@@ -113,7 +113,7 @@ export class ActiveWorkflowRunner {
 					workflowId: workflowData.id,
 				});
 				try {
-					await this.add(workflowData.id.toString(), 'init', workflowData);
+					await this.add(workflowData.id, 'init', workflowData);
 					Logger.verbose(`Successfully started workflow "${workflowData.name}"`, {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
@@ -164,10 +164,7 @@ export class ActiveWorkflowRunner {
 		}
 
 		const activeWorkflows = await this.getActiveWorkflows();
-		activeWorkflowIds = [
-			...activeWorkflowIds,
-			...activeWorkflows.map((workflow) => workflow.id.toString()),
-		];
+		activeWorkflowIds = [...activeWorkflowIds, ...activeWorkflows.map((workflow) => workflow.id)];
 
 		// Make sure IDs are unique
 		activeWorkflowIds = Array.from(new Set(activeWorkflowIds));
@@ -279,7 +276,7 @@ export class ActiveWorkflowRunner {
 
 		const nodeTypes = NodeTypes();
 		const workflow = new Workflow({
-			id: webhook.workflowId.toString(),
+			id: webhook.workflowId,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
@@ -712,15 +709,15 @@ export class ActiveWorkflowRunner {
 					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
 						nodeName: node.name,
-						workflowId: workflowData.id.toString(),
+						workflowId: workflowData.id,
 						workflowName: workflowData.name,
 					},
 				);
 
 				// Remove the workflow as "active"
 
-				await this.activeWorkflows?.remove(workflowData.id.toString());
-				this.activationErrors[workflowData.id.toString()] = {
+				await this.activeWorkflows?.remove(workflowData.id);
+				this.activationErrors[workflowData.id] = {
 					time: new Date().getTime(),
 					error: {
 						message: error.message,
@@ -896,7 +893,7 @@ export class ActiveWorkflowRunner {
 		activationMode: WorkflowActivateMode,
 		workflowData: IWorkflowDb,
 	): void {
-		const workflowId = workflowData.id.toString();
+		const workflowId = workflowData.id;
 		const workflowName = workflowData.name;
 
 		const retryFunction = async () => {

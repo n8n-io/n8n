@@ -212,7 +212,7 @@ export class TestWebhooks {
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
-			this.cancelTestWebhook(workflowData.id.toString());
+			this.cancelTestWebhook(workflowData.id);
 		}, 120000);
 
 		let key: string;
@@ -259,7 +259,7 @@ export class TestWebhooks {
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			const webhookData = this.testWebhookData[webhookKey];
 
-			if (webhookData.workflowData.id.toString() !== workflowId) {
+			if (webhookData.workflowData.id !== workflowId) {
 				// eslint-disable-next-line no-continue
 				continue;
 			}

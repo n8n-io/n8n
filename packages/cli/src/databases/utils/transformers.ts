@@ -3,8 +3,9 @@ import { ValueTransformer } from 'typeorm';
 import config from '@/config';
 
 export const idStringifier = {
-	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
-	to: (value: string): number | string => (typeof value === 'string' ? Number(value) : value),
+	from: (value: number): string => value?.toString(),
+	to: (value: string | unknown): number | unknown =>
+		typeof value === 'string' ? Number(value) : value,
 };
 
 export const lowerCaser = {

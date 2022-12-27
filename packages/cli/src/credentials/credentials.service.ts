@@ -10,7 +10,7 @@ import {
 	LoggerProxy,
 	NodeHelpers,
 } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In } from 'typeorm';
+import { FindConditions, FindManyOptions, In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -59,22 +59,13 @@ export class CredentialsService {
 		}
 
 		// if member, return credentials owned by or shared with member
-
-		const whereConditions: FindManyOptions = {
+		const userSharings = await Db.collections.SharedCredentials.find({
 			where: {
-				user,
+				userId: user.id,
+				...(options?.roles?.length ? { role: { name: In(options.roles) } } : {}),
 			},
-		};
-
-		if (options?.roles?.length) {
-			whereConditions.where = {
-				...whereConditions.where,
-				role: { name: In(options.roles) },
-			} as FindManyOptions;
-			whereConditions.relations = ['role'];
-		}
-
-		const userSharings = await Db.collections.SharedCredentials.find(whereConditions);
+			relations: options?.roles?.length ? ['role'] : [],
+		});
 
 		return Db.collections.Credentials.find({
 			select: SELECT_FIELDS,
@@ -94,35 +85,26 @@ export class CredentialsService {
 	 */
 	static async getSharing(
 		user: User,
-		credentialId: number | string,
+		credentialsId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
-		const options: FindOneOptions = {
-			where: {
-				credentials: { id: credentialId },
-			},
-		};
+		const where: FindConditions<SharedCredentials> = { credentialsId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			options.where = {
-				...options.where,
-				user: { id: user.id },
+			Object.assign(where, {
+				userId: user.id,
 				role: { name: 'owner' },
-			} as FindOneOptions;
+			});
 			if (!relations.includes('role')) {
 				relations.push('role');
 			}
 		}
 
-		if (relations?.length) {
-			options.relations = relations;
-		}
-
-		return Db.collections.SharedCredentials.findOne(options);
+		return Db.collections.SharedCredentials.findOne({ where, relations });
 	}
 
 	static async prepareCreateData(
@@ -132,7 +114,7 @@ export class CredentialsService {
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
+		// types are compatible for this case.
 		const newCredentials = Db.collections.Credentials.create(
 			rest as ICredentialsDb,
 		) as CredentialsEntity;
@@ -220,17 +202,17 @@ export class CredentialsService {
 	}
 
 	static async update(
-		credentialId: string,
+		credentialsId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | undefined> {
 		await ExternalHooks().run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialId, newCredentialData);
+		await Db.collections.Credentials.update(credentialsId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialId);
+		return Db.collections.Credentials.findOne(credentialsId);
 	}
 
 	static async save(
@@ -267,7 +249,7 @@ export class CredentialsService {
 			return savedCredential;
 		});
 		LoggerProxy.verbose('New credential created', {
-			credentialId: newCredential.id,
+			credentialsId: newCredential.id,
 			ownerId: user.id,
 		});
 		return result;

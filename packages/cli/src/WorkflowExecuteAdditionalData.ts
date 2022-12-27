@@ -107,7 +107,7 @@ export function executeErrorWorkflow(
 					retryOf,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					id: workflowData.id !== undefined ? workflowData.id : undefined,
 					name: workflowData.name,
 				},
 			};
@@ -119,7 +119,7 @@ export function executeErrorWorkflow(
 					mode,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					id: workflowData.id !== undefined ? workflowData.id : undefined,
 					name: workflowData.name,
 				},
 			};
@@ -134,7 +134,7 @@ export function executeErrorWorkflow(
 			!(
 				mode === 'error' &&
 				workflowData.id &&
-				workflowData.settings.errorWorkflow.toString() === workflowData.id.toString()
+				workflowData.settings.errorWorkflow.toString() === workflowData.id
 			)
 		) {
 			Logger.verbose(`Start external error workflow`, {
@@ -219,7 +219,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			}, timeout * 1000);
 			// Mark binary data for deletion for all executions
 			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-				executions.map(({ id }) => id.toString()),
+				executions.map(({ id }) => id),
 			);
 		} catch (error) {
 			ErrorReporter.error(error);
@@ -505,7 +505,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				try {
 					if (
 						!isManualMode &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) &&
+						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) &&
 						newStaticData
 					) {
 						// Workflow is saved so update in database
@@ -593,17 +593,15 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (
-						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
-					) {
-						fullExecutionData.workflowId = this.workflowData.id.toString();
+					const workflowId = this.workflowData.id;
+					if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+						fullExecutionData.workflowId = workflowId;
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
 					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, {
 						executionId: this.executionId,
-						workflowId: this.workflowData.id,
+						workflowId,
 						finished: fullExecutionData.finished,
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
@@ -685,7 +683,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				newStaticData: IDataObject,
 			): Promise<void> {
 				try {
-					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) && newStaticData) {
+					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -726,11 +724,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (
-						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
-					) {
-						fullExecutionData.workflowId = this.workflowData.id.toString();
+					const workflowId = this.workflowData.id;
+					if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+						fullExecutionData.workflowId = workflowId;
 					}
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
@@ -844,12 +840,7 @@ export async function getWorkflowData(
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		workflowData = await WorkflowsService.get(
-			{ id: parseInt(workflowInfo.id, 10) },
-			{
-				relations,
-			},
-		);
+		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
@@ -1004,7 +995,7 @@ async function executeWorkflow(
 			workflowData,
 		};
 		if (workflowData.id) {
-			fullExecutionData.workflowId = workflowData.id as string;
+			fullExecutionData.workflowId = workflowData.id;
 		}
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);

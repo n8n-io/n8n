@@ -9,10 +9,8 @@ import { AbstractEntity } from './AbstractEntity';
 @Entity()
 export class TagEntity extends AbstractEntity implements ITagDb {
 	@Generated()
-	@PrimaryColumn({
-		transformer: idStringifier,
-	})
-	id: number;
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column({ length: 24 })
 	@Index({ unique: true })

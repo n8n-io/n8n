@@ -36,7 +36,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id.toString());
+			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id);
 
 			await deleteExecution(execution);
 
@@ -110,7 +110,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? 0 : (executions.slice(-1)[0].id as number);
+			const newLastId = !executions.length ? 0 : Number(executions.slice(-1)[0].id);
 
 			filters.lastId = newLastId;
 

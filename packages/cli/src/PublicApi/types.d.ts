@@ -56,7 +56,7 @@ export declare namespace ExecutionRequest {
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, { includeData?: boolean }>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 }
 
@@ -81,9 +81,9 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: number }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 }
 

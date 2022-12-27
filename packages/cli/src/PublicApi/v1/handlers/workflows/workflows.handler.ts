@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
+import { FindConditions, FindManyOptions, In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -60,7 +60,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -70,13 +70,13 @@ export = {
 
 			if (sharedWorkflow.workflow.active) {
 				// deactivate before deleting
-				await ActiveWorkflowRunner.getInstance().remove(id.toString());
+				await ActiveWorkflowRunner.getInstance().remove(id);
 			}
 
 			await Db.collections.Workflow.delete(id);
 
-			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, id.toString(), true);
-			await ExternalHooks().run('workflow.afterDelete', [id.toString()]);
+			void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, id, true);
+			await ExternalHooks().run('workflow.afterDelete', [id]);
 
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -86,7 +86,7 @@ export = {
 		async (req: WorkflowRequest.Get, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -111,26 +111,27 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
+			const where: FindConditions<WorkflowEntity> = {
+				...(active !== undefined && { active }),
+			};
+			const query: FindManyOptions<WorkflowEntity> = {
 				skip: offset,
 				take: limit,
-				where: {
-					...(active !== undefined && { active }),
-				},
+				where,
 				...(!config.getEnv('workflowTagsDisabled') && { relations: ['tags'] }),
 			};
 
 			if (isInstanceOwner(req.user)) {
 				if (tags) {
 					const workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
-					Object.assign(query.where, { id: In(workflowIds) });
+					Object.assign(where, { id: In(workflowIds) });
 				}
 
 				workflows = await getWorkflows(query);
 
 				count = await getWorkflowsCount(query);
 			} else {
-				const options: { workflowIds?: number[] } = {};
+				const options: { workflowIds?: string[] } = {};
 
 				if (tags) {
 					options.workflowIds = await getWorkflowIdsViaTags(parseTagNames(tags));
@@ -147,7 +148,7 @@ export = {
 
 				const workflowsIds = sharedWorkflows.map((shareWorkflow) => shareWorkflow.workflowId);
 
-				Object.assign(query.where, { id: In(workflowsIds) });
+				Object.assign(where, { id: In(workflowsIds) });
 
 				workflows = await getWorkflows(query);
 
@@ -176,7 +177,7 @@ export = {
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -196,7 +197,7 @@ export = {
 			if (sharedWorkflow.workflow.active) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
-				await workflowRunner.remove(id.toString());
+				await workflowRunner.remove(id);
 			}
 
 			try {
@@ -209,7 +210,7 @@ export = {
 
 			if (sharedWorkflow.workflow.active) {
 				try {
-					await workflowRunner.add(sharedWorkflow.workflowId.toString(), 'update');
+					await workflowRunner.add(sharedWorkflow.workflowId, 'update');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -230,7 +231,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -240,10 +241,7 @@ export = {
 
 			if (!sharedWorkflow.workflow.active) {
 				try {
-					await ActiveWorkflowRunner.getInstance().add(
-						sharedWorkflow.workflowId.toString(),
-						'activate',
-					);
+					await ActiveWorkflowRunner.getInstance().add(sharedWorkflow.workflowId, 'activate');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -267,7 +265,7 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const sharedWorkflow = await getSharedWorkflow(req.user, id.toString());
+			const sharedWorkflow = await getSharedWorkflow(req.user, id);
 
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
@@ -278,7 +276,7 @@ export = {
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
 			if (sharedWorkflow.workflow.active) {
-				await workflowRunner.remove(sharedWorkflow.workflowId.toString());
+				await workflowRunner.remove(sharedWorkflow.workflowId);
 
 				await setWorkflowAsInactive(sharedWorkflow.workflow);
 

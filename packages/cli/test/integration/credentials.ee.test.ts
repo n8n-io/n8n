@@ -351,7 +351,7 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 
 	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
-	expect(responseAbc.statusCode).toBe(400);
+	expect(responseAbc.statusCode).toBe(404);
 
 	// because EE router has precedence, check if forwards this route
 	const responseNew = await authAgent(ownerShell).get('/credentials/new');
