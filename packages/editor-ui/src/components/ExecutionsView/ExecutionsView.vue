@@ -177,7 +177,7 @@ export default mixins(
 			if (this.workflowsStore.currentWorkflowExecutions.length > 0) {
 				const workflowExecutions = await this.loadExecutions();
 				this.workflowsStore.addToCurrentExecutions(workflowExecutions);
-				this.setActiveExecution();
+				await this.setActiveExecution();
 			} else {
 				await this.setExecutions();
 			}
@@ -316,7 +316,7 @@ export default mixins(
 		async setExecutions(): Promise<void> {
 			const workflowExecutions = await this.loadExecutions();
 			this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
-			this.setActiveExecution();
+			await this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
@@ -404,14 +404,17 @@ export default mixins(
 				return [];
 			}
 		},
-		setActiveExecution(): void {
+		async setActiveExecution(): Promise<void> {
 			const activeExecutionId = this.$route.params.executionId;
 			if (activeExecutionId) {
 				const execution = this.workflowsStore.getExecutionDataById(activeExecutionId);
 				if (execution) {
 					this.workflowsStore.activeWorkflowExecution = execution;
+				} else {
+					await this.tryToFindExecution(activeExecutionId);
 				}
 			}
+
 			// If there is no execution in the route, select the first one
 			if (this.workflowsStore.activeWorkflowExecution === null && this.executions.length > 0) {
 				this.workflowsStore.activeWorkflowExecution = this.executions[0];
@@ -421,6 +424,36 @@ export default mixins(
 						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 					})
 					.catch(() => {});
+			}
+		},
+		async tryToFindExecution(executionId: string, skipCheck = false): Promise<void> {
+			if (!skipCheck) {
+				const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
+				console.log(executionExists);
+				if (!executionExists) {
+					this.workflowsStore.activeWorkflowExecution = null;
+					this.$showError(
+						new Error(
+							this.$locale.baseText('executionView.notFound.message', {
+								interpolate: { executionId },
+							}),
+						),
+						this.$locale.baseText('nodeView.showError.openExecution.title'),
+					);
+					return;
+				}
+			}
+			// Fetch next batch of executions
+			await this.loadMore(100);
+			const execution = this.workflowsStore.getExecutionDataById(executionId);
+			if (!execution) {
+				// If it's not there load next until found
+				await this.$nextTick();
+				await this.tryToFindExecution(executionId, true);
+			} else {
+				// When found set execution as active...
+				this.workflowsStore.activeWorkflowExecution = execution;
+				return;
 			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {

@@ -149,6 +149,10 @@ export default Vue.extend({
 				this.$router.go(-1);
 			}
 		},
+		'workflowsStore.activeWorkflowExecution'() {
+			this.checkListSize();
+			this.scrollToActiveCard();
+		},
 	},
 	mounted() {
 		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
@@ -225,7 +229,7 @@ export default Vue.extend({
 				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
-					this.loadMore(listCapacity - this.executions.length);
+					this.$emit('loadMore', this.executions.length);
 				}
 			}
 		},
@@ -238,8 +242,9 @@ export default Vue.extend({
 			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
+				const LIST_HEADER_OFFSET = 200;
 				if (cardRect.top > executionsList.offsetHeight) {
-					executionsList.scrollTo({ top: cardRect.top });
+					executionsList.scrollTo({ top: cardRect.top - LIST_HEADER_OFFSET });
 				}
 			}
 		},
