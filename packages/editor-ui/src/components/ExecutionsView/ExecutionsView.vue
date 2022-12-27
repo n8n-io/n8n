@@ -430,7 +430,6 @@ export default mixins(
 			// First check if executions exists in the DB at all
 			if (!skipCheck) {
 				const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
-				console.log(executionExists);
 				if (!executionExists) {
 					this.workflowsStore.activeWorkflowExecution = null;
 					this.$showError(
