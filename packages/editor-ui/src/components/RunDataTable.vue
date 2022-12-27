@@ -482,8 +482,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 
