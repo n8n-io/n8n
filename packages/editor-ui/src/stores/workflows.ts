@@ -942,7 +942,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				throw error;
 			}
 		},
-		async fetchExecutionDataById(executionId: string) : Promise<IExecutionResponse | null> {
+		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
 			const rootStore = useRootStore();
 			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
