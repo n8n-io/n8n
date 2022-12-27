@@ -5,6 +5,7 @@ import config from '@/config';
 import { toFlaggedNode } from '@/audit/utils';
 import { separate } from '@/utils';
 import {
+	SELF_HOSTED_AUTH_DOCS_URL,
 	ENV_VARS_DOCS_URL,
 	INSTANCE_REPORT,
 	WEBHOOK_NODE_TYPE,
@@ -17,27 +18,43 @@ import type { Risk, n8n } from '@/audit/types';
 function getSecuritySettings() {
 	if (config.getEnv('deployment.type') === 'cloud') return null;
 
-	return {
-		features: {
-			communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
-			versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			templatesEnabled: config.getEnv('templates.enabled'),
-			publicApiEnabled: !config.getEnv('publicApi.disabled'),
-			userManagementEnabled: !config.getEnv('userManagement.disabled'),
-		},
-		auth: {
-			authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
-			basicAuthActive: config.getEnv('security.basicAuth.active'),
-			jwtAuthActive: config.getEnv('security.jwtAuth.active'),
-		},
-		nodes: {
-			nodesExclude: config.getEnv('nodes.exclude') ?? 'none',
-			nodesInclude: config.getEnv('nodes.include') ?? 'none',
-		},
-		telemetry: {
-			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
-		},
+	const userManagementEnabled = !config.getEnv('userManagement.disabled');
+	const basicAuthActive = config.getEnv('security.basicAuth.active');
+	const jwtAuthActive = config.getEnv('security.jwtAuth.active');
+
+	const isInstanceOpen = !userManagementEnabled && !basicAuthActive && !jwtAuthActive;
+
+	const settings: Record<string, unknown> = {};
+
+	if (isInstanceOpen) {
+		settings.PUBLICLY_ACCESSIBLE_INSTANCE =
+			'IMPORTANT! YOUR N8N INSTANCE IS PUBLICLY ACCESSIBLE. ANY THIRD PARTY WHO KNOWS YOUR INSTANCE URL CAN ACCESS YOUR DATA.';
+	}
+
+	settings.features = {
+		communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+		versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
+		templatesEnabled: config.getEnv('templates.enabled'),
+		publicApiEnabled: !config.getEnv('publicApi.disabled'),
+		userManagementEnabled,
 	};
+
+	settings.auth = {
+		authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
+		basicAuthActive,
+		jwtAuthActive,
+	};
+
+	settings.nodes = {
+		nodesExclude: config.getEnv('nodes.exclude') ?? 'none',
+		nodesInclude: config.getEnv('nodes.include') ?? 'none',
+	};
+
+	settings.telemetry = {
+		diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
+	};
+
+	return settings;
 }
 
 function hasValidatorChild({
@@ -182,7 +199,9 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 		report.sections.push({
 			title: INSTANCE_REPORT.SECTIONS.SECURITY_SETTINGS,
 			description: 'This n8n instance has the following security settings.',
-			recommendation: `Consider adjusting the security settings for your n8n instance. See: ${ENV_VARS_DOCS_URL}`,
+			recommendation: securitySettings.PUBLICLY_ACCESSIBLE_INSTANCE
+				? `IMPORTANT! SET UP USER MANAGEMENT OR BASIC/JWT AUTH TO PROTECT ACCESS TO YOUR N8N INSTANCE See: ${SELF_HOSTED_AUTH_DOCS_URL}`
+				: `Consider adjusting the security settings for your n8n instance based on your needs. See: ${ENV_VARS_DOCS_URL}`,
 			settings: securitySettings,
 		});
 	}
