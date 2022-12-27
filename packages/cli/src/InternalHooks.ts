@@ -538,7 +538,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 	/**
 	 * Audit
 	 */
-	async onAuditGeneratedViaCli(): Promise<void> {
+	async onAuditGeneratedViaCli() {
 		return this.telemetry.track('Instance generated security audit via CLI command');
 	}
 }
