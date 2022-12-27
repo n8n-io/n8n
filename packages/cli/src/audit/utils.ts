@@ -1,5 +1,5 @@
 import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
-import { Risk } from './types';
+import type { Risk } from '@/audit/types';
 
 export const toFlaggedNode = ({
 	node,
