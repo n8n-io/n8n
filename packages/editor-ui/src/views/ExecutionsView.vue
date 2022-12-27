@@ -1,9 +1,13 @@
 <template>
 	<page-view-layout>
 		<template>
-			<n8n-heading tag="h1" size="2xlarge">{{ `${$locale.baseText('executionsList.workflowExecutions')} ${
-				combinedExecutions.length
-			}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}` }}</n8n-heading>
+			<n8n-heading tag="h1" size="2xlarge">
+				{{
+					`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${
+						finishedExecutionsCountEstimated === true ? '~' : ''
+					}${combinedExecutionsCount}`
+				}}
+			</n8n-heading>
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
@@ -46,9 +50,9 @@
 						</n8n-select>
 					</el-col>
 					<el-col :span="4" :offset="5" class="autorefresh">
-						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{
-								$locale.baseText('executionsList.autoRefresh')
-							}}</el-checkbox>
+						<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
+							{{ $locale.baseText('executionsList.autoRefresh') }}
+						</el-checkbox>
 					</el-col>
 				</el-row>
 			</div>
@@ -114,16 +118,18 @@
 							({{ $locale.baseText('executionsList.running') }})
 						</span>
 						<span v-if="scope.row.retryOf !== undefined">
-							<br /><small
-						>{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"</small
-						>
+							<br />
+							<small>
+								{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"
+							</small>
 						</span>
 						<span v-else-if="scope.row.retrySuccessId !== undefined">
-							<br /><small
-						>{{ $locale.baseText('executionsList.successRetry') }} "{{
-								scope.row.retrySuccessId
-							}}"</small
-						>
+							<br />
+							<small>
+								{{ $locale.baseText('executionsList.successRetry') }} "{{
+									scope.row.retrySuccessId
+								}}"
+							</small>
 						</span>
 					</template>
 				</el-table-column>
