@@ -229,7 +229,7 @@ export default Vue.extend({
 				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
 
 				if (listCapacity > this.executions.length) {
-					this.$emit('loadMore', this.executions.length);
+					this.$emit('loadMore', listCapacity - this.executions.length);
 				}
 			}
 		},
