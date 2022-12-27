@@ -152,6 +152,7 @@ const onDialogOpened = () => {
 
 		<div :class="$style.buttons">
 			<n8n-button
+				:class="$style.buttonTertiary"
 				@click="onAddActivationKey"
 				v-if="usageStore.canUserActivateLicense"
 				type="tertiary"
@@ -278,6 +279,13 @@ const onDialogOpened = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
+}
+
+.buttonTertiary {
+	&,
+	&:hover {
+		background: transparent;
+	}
 }
 </style>
 
