@@ -5,8 +5,30 @@ post:
     - Audit
   summary: Generate an audit
   description: Generate a security audit for your n8n instance.
+  requestBody:
+    description: Filters for specific risk categories.
+    required: false
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            filters:
+              type: object
+              properties:
+                categories:
+                  type: array
+                  items:
+                    type: string
+                    enum: ['credentials', 'database', 'execution', 'filesystem', 'instance']
   responses:
     '200':
       description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/audit.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '500':
+      description: Internal server error.
