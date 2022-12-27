@@ -1,5 +1,5 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]">
+	<div :class="['executions-sidebar', $style.container]" ref="container">
 		<div :class="$style.heading">
 			<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
@@ -155,6 +155,9 @@ export default Vue.extend({
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
+		// On larger screens, we need to load more then first page of executions
+		// for the scroll bar to appear and infinite scrolling is enabled
+		this.checkListSize();
 		this.scrollToActiveCard();
 	},
 	beforeDestroy() {
@@ -208,6 +211,23 @@ export default Vue.extend({
 				finished: this.filter.status !== 'running',
 				status: this.filter.status,
 			};
+		},
+		checkListSize(): void {
+			const sidebarContainer = this.$refs.container as HTMLElement;
+			const currentExecutionCard = this.$refs[
+				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
+			] as Vue[];
+
+			// Find out how many execution card can fit into list
+			// and load more if needed
+			if (sidebarContainer && currentExecutionCard) {
+				const cardElement = currentExecutionCard[0].$el as HTMLElement;
+				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
+
+				if (listCapacity > this.executions.length) {
+					this.loadMore();
+				}
+			}
 		},
 		scrollToActiveCard(): void {
 			const executionsList = this.$refs.executionList as HTMLElement;
