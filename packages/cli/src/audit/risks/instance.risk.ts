@@ -200,7 +200,7 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 			title: INSTANCE_REPORT.SECTIONS.SECURITY_SETTINGS,
 			description: 'This n8n instance has the following security settings.',
 			recommendation: securitySettings.PUBLICLY_ACCESSIBLE_INSTANCE
-				? `IMPORTANT! SET UP USER MANAGEMENT OR BASIC/JWT AUTH TO PROTECT ACCESS TO YOUR N8N INSTANCE See: ${SELF_HOSTED_AUTH_DOCS_URL}`
+				? `IMPORTANT! SET UP USER MANAGEMENT OR BASIC/JWT AUTH TO PROTECT ACCESS TO YOUR N8N INSTANCE. See: ${SELF_HOSTED_AUTH_DOCS_URL}`
 				: `Consider adjusting the security settings for your n8n instance based on your needs. See: ${ENV_VARS_DOCS_URL}`,
 			settings: securitySettings,
 		});
