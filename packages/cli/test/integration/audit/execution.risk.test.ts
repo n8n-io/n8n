@@ -73,9 +73,7 @@ test('should not report non-risky nodes from n8n-nodes-base', async () => {
 
 	const report = testAudit?.[toReportTitle('execution')];
 
-	if (!report) {
-		fail('Expected test audit to have instance risk report');
-	}
+	if (!report) return;
 
 	for (const section of report.sections) {
 		expect(section.title).not.toBe(EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES);
