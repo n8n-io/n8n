@@ -2,6 +2,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 import { BaseCommand } from '@/commands/BaseCommand';
 import { audit } from '@/audit';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export class SecurityAuditCommand extends BaseCommand {
 	static description = 'Generate a security audit report for this n8n instance';
@@ -15,6 +16,8 @@ export class SecurityAuditCommand extends BaseCommand {
 		const result = await audit();
 
 		process.stdout.write(JSON.stringify(result, null, 2));
+
+		void InternalHooksManager.getInstance().onAuditGeneratedViaCli();
 	}
 
 	async catch(error: Error) {
