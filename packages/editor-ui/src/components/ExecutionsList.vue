@@ -361,10 +361,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			const returnData: IExecutionsSummary[] = [];
 
 			if (['ALL', 'running'].includes(this.filter.status)) {
-				returnData.push.apply(returnData, this.activeExecutions);
+				returnData.push(...this.activeExecutions);
 			}
 			if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
-				returnData.push.apply(returnData, this.finishedExecutions);
+				returnData.push(...this.finishedExecutions);
 			}
 
 			return returnData;
@@ -738,7 +738,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				return { ...execution, mode: execution.mode };
 			});
 
-			this.finishedExecutions.push.apply(this.finishedExecutions, data.results);
+			this.finishedExecutions.push(...data.results);
 			this.finishedExecutionsCount = data.count;
 			this.finishedExecutionsCountEstimated = data.estimated;
 
