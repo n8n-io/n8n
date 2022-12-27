@@ -32,9 +32,9 @@ export async function mondayComApiRequest(
 
 			options.headers = { Authorization: `Bearer ${credentials.apiToken}` };
 
-			return this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return this.helpers.requestOAuth2!.call(this, 'mondayComOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'mondayComOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

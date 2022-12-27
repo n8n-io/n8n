@@ -17,6 +17,7 @@ import {
 	CALENDLY_TRIGGER_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	WEBHOOK_NODE_TYPE,
+	STICKY_NODE_TYPE,
 } from '@/constants';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useWorkflowsStore } from './workflows';
@@ -342,9 +343,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
+				const isStickyNode = nodeType === STICKY_NODE_TYPE;
 
 				const nodeTypes =
-					!isTrigger && !workflowContainsTrigger && isTriggerPanel
+					!isTrigger && !workflowContainsTrigger && isTriggerPanel && !isStickyNode
 						? [MANUAL_TRIGGER_NODE_TYPE, nodeType]
 						: [nodeType];
 

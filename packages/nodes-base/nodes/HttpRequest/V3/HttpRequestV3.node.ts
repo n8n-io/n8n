@@ -17,7 +17,9 @@ import { OptionsWithUri } from 'request-promise-native';
 import {
 	binaryContentTypes,
 	getOAuth2AdditionalParameters,
+	IAuthDataSanitizeKeys,
 	replaceNullValues,
+	sanitizeUiMessage,
 } from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
@@ -1208,21 +1210,26 @@ export class HttpRequestV3 implements INodeType {
 				requestOptions.headers['Content-Type'] = rawContentType;
 			}
 
+			const authDataKeys: IAuthDataSanitizeKeys = {};
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpBasicAuth.user as string,
 					pass: httpBasicAuth.password as string,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+				authDataKeys.headers = [httpHeaderAuth.name as string];
 			}
 			if (httpQueryAuth !== undefined) {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
+				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -1230,6 +1237,7 @@ export class HttpRequestV3 implements INodeType {
 					pass: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
@@ -1245,15 +1253,7 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			try {
-				let sendRequest: any = requestOptions;
-				// Protect browser from sending large binary data
-				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-					sendRequest = {
-						...requestOptions,
-						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
-					};
-				}
-				this.sendMessageToUI(sendRequest);
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
 
 			if (authentication === 'genericCredentialType' || authentication === 'none') {

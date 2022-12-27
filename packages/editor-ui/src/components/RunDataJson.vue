@@ -18,7 +18,7 @@
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<MappingPill v-if="el" :html="getShortKey(el)"	:can-drop="canDrop" />
+				<MappingPill v-if="el" :html="getShortKey(el)" :can-drop="canDrop" />
 			</template>
 			<template>
 				<vue-json-pretty
@@ -251,7 +251,6 @@ export default mixins(externalHooks).extend({
 		background-color: var(--color-primary-tint-2);
 	}
 }
-
 </style>
 
 <style lang="scss">

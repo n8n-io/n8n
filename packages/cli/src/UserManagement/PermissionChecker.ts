@@ -5,7 +5,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
+import { FindConditions, In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -47,19 +47,16 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhereCondition: FindManyOptions<SharedCredentials> & { where: ObjectLiteral } =
-			{
-				where: { user: In(workflowUserIds) },
-			};
+		const credentialsWhere: FindConditions<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
 			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhereCondition.where.role = await getRole('credential', 'owner');
+			credentialsWhere.role = await getRole('credential', 'owner');
 		}
 
-		const credentialSharings = await Db.collections.SharedCredentials.find(
-			credentialsWhereCondition,
-		);
+		const credentialSharings = await Db.collections.SharedCredentials.find({
+			where: credentialsWhere,
+		});
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId.toString());
 

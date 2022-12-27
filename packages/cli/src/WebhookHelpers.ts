@@ -142,6 +142,7 @@ export async function executeWebhook(
 	req: express.Request,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -378,6 +379,10 @@ export async function executeWebhook(
 					waitingExecution: {},
 				},
 			} as IRunExecutionData);
+
+		if (destinationNode && runExecutionData.startData) {
+			runExecutionData.startData.destinationNode = destinationNode;
+		}
 
 		if (executionId !== undefined) {
 			// Set the data the webhook node did return on the waiting node if executionId
