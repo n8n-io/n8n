@@ -38,7 +38,7 @@ import mixins from 'vue-typed-mixins';
 
 import { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
@@ -55,10 +55,7 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 		title(): string {
 			if (this.settingsStore.promptsData && this.settingsStore.promptsData.title) {
 				return this.settingsStore.promptsData.title;
@@ -88,7 +85,9 @@ export default mixins(workflowHelpers).extend({
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response = await this.settingsStore.submitContactInfo(this.email) as IN8nPromptResponse;
+				const response = (await this.settingsStore.submitContactInfo(
+					this.email,
+				)) as IN8nPromptResponse;
 
 				if (response.updated) {
 					this.$telemetry.track('User closed email modal', {

@@ -19,6 +19,7 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
+		data-test-id="ndv-output-panel"
 	>
 		<template #header>
 			<div :class="$style.titleSection">
@@ -38,26 +39,30 @@
 					v-if="hasNodeRun && staleData"
 				>
 					<template>
-						<span v-html="$locale.baseText(
-							hasPinData ? 'ndv.output.staleDataWarning.pinData' : 'ndv.output.staleDataWarning.regular'
-						)"></span>
+						<span
+							v-html="
+								$locale.baseText(
+									hasPinData
+										? 'ndv.output.staleDataWarning.pinData'
+										: 'ndv.output.staleDataWarning.regular',
+								)
+							"
+						></span>
 					</template>
 				</n8n-info-tip>
 			</div>
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning">
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{
+				$locale.baseText('ndv.output.waitingToRun')
+			}}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
-					<br>
+					<br />
 					{{ $locale.baseText('generic.or') }}
-					<n8n-text
-						tag="a"
-						size="medium"
-						color="primary"
-					>
+					<n8n-text tag="a" size="medium" color="primary">
 						{{ $locale.baseText('ndv.output.insertTestData') }}
 					</n8n-text>
 				</span>
@@ -65,10 +70,14 @@
 		</template>
 
 		<template #no-output-data>
-			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
+			<n8n-text :bold="true" color="text-dark" size="large">{{
+				$locale.baseText('ndv.output.noOutputData.title')
+			}}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
-				<a @click="openSettings">{{ $locale.baseText('ndv.output.noOutputData.message.settings') }}</a>
+				<a @click="openSettings">{{
+					$locale.baseText('ndv.output.noOutputData.message.settings')
+				}}</a>
 				{{ $locale.baseText('ndv.output.noOutputData.message.settingsOption') }}
 			</n8n-text>
 		</template>
@@ -85,7 +94,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/components/mixins/pinData";
+import { pinData } from '@/mixins/pinData';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -95,9 +104,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
-export default mixins(
-	pinData,
-).extend({
+export default mixins(pinData).extend({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo },
 	props: {
@@ -126,35 +133,30 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNodeTypesStore,
-			useNDVStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNodeTypesStore, useNDVStore, useUIStore, useWorkflowsStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
-		nodeType (): INodeTypeDescription | null {
+		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
 				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
-		isTriggerNode (): boolean {
+		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
-		isPollingTypeNode (): boolean {
+		isPollingTypeNode(): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
 		},
-		isScheduleTrigger (): boolean {
+		isScheduleTrigger(): boolean {
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
 			const executingNode = this.workflowsStore.executingNode;
 			return this.node && executingNode === this.node.name;
 		},
-		workflowRunning (): boolean {
+		workflowRunning(): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -222,7 +224,7 @@ export default mixins(
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
 		},
-		outputPanelEditMode(): { enabled: boolean; value: string; } {
+		outputPanelEditMode(): { enabled: boolean; value: string } {
 			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
@@ -284,5 +286,4 @@ export default mixins(
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-s);
 }
-
 </style>

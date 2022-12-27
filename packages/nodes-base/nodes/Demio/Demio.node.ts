@@ -109,8 +109,8 @@ export class Demio implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -138,7 +138,7 @@ export class Demio implements INodeType {
 
 						responseData = await demioApiRequest.call(this, 'GET', `/events`, {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -159,8 +159,8 @@ export class Demio implements INodeType {
 
 						if (additionalFields.customFieldsUi) {
 							const customFields =
-								(((additionalFields.customFieldsUi as IDataObject) || {})
-									.customFieldsValues as IDataObject[]) || [];
+								((additionalFields.customFieldsUi as IDataObject)
+									?.customFieldsValues as IDataObject[]) || [];
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.value }),
 								{},

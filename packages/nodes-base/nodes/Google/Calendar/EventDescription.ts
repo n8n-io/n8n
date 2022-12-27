@@ -1,5 +1,7 @@
 import { INodeProperties } from 'n8n-workflow';
 
+import { TIMEZONE_VALIDATION_REGEX } from './GenericFunctions';
+
 export const eventOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -52,21 +54,50 @@ export const eventFields: INodeProperties[] = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar Name or ID',
+		displayName: 'Calendar',
 		name: 'calendar',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		description: 'Google Calendar to operate on',
+		modes: [
+			{
+				displayName: 'Calendar',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Calendar...',
+				typeOptions: {
+					searchListMethod: 'getCalendars',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							// calendar ids are emails. W3C email regex with optional trailing whitespace.
+							regex:
+								'(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*(?:[ \t]+)*$)',
+							errorMessage: 'Not a valid Google Calendar ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)',
+				},
+				placeholder: 'name@google.com',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['event'],
 			},
 		},
-		default: '',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -199,9 +230,6 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -526,15 +554,43 @@ export const eventFields: INodeProperties[] = [
 					'The maximum number of attendees to include in the response. If there are more than the specified number of attendees, only the participant is returned.',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				description:
-					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Time zone used in the response. The default is the time zone of the calendar.',
+				modes: [
+					{
+						displayName: 'Timezone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Timezone...',
+						typeOptions: {
+							searchListMethod: 'getTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: TIMEZONE_VALIDATION_REGEX,
+									errorMessage: 'Not a valid Timezone',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '([-+/_a-zA-Z0-9]*)',
+						},
+						placeholder: 'Europe/Berlin',
+					},
+				],
 			},
 		],
 	},
@@ -667,15 +723,43 @@ export const eventFields: INodeProperties[] = [
 				description: "Lower bound (exclusive) for an event's end time to filter by",
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				description:
-					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'Time zone used in the response. The default is the time zone of the calendar.',
+				modes: [
+					{
+						displayName: 'Timezone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Timezone...',
+						typeOptions: {
+							searchListMethod: 'getTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: TIMEZONE_VALIDATION_REGEX,
+									errorMessage: 'Not a valid Timezone',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '([-+/_a-zA-Z0-9]*)',
+						},
+						placeholder: 'Europe/Berlin',
+					},
+				],
 			},
 			{
 				displayName: 'Updated Min',
@@ -772,9 +856,6 @@ export const eventFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

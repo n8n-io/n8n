@@ -1,10 +1,29 @@
 <template>
 	<div>
-		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
-			<div :class="$style.nodeCreatorButton">
-				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
-				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
+		<div
+			v-if="!createNodeActive"
+			:class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']"
+			@mouseenter="onCreateMenuHoverIn"
+		>
+			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
+				<n8n-icon-button
+					size="xlarge"
+					icon="plus"
+					type="tertiary"
+					:class="$style.nodeCreatorPlus"
+					@click="openNodeCreator"
+					:title="$locale.baseText('nodeView.addNode')"
+				/>
+				<div
+					:class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']"
+					@click="addStickyNote"
+				>
+					<n8n-icon-button
+						size="medium"
+						type="tertiary"
+						:icon="['far', 'note-sticky']"
+						:title="$locale.baseText('nodeView.addSticky')"
+					/>
 				</div>
 			</div>
 		</div>
@@ -17,11 +36,11 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import * as CanvasHelpers from "@/views/canvasHelpers";
-import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
-import { mapStores } from "pinia";
-import { useUIStore } from "@/stores/ui";
+import Vue from 'vue';
+import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
+import { DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'node-creation',
@@ -61,7 +80,11 @@ export default Vue.extend({
 					const wrapperLeftFar = wrapperLeftNear + wrapperW;
 					const wrapperTopNear = wrapperBounds.top;
 					const wrapperTopFar = wrapperTopNear + wrapperH;
-					const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
+					const inside =
+						mousemoveEvent.pageX > wrapperLeftNear &&
+						mousemoveEvent.pageX < wrapperLeftFar &&
+						mousemoveEvent.pageY > wrapperTopNear &&
+						mousemoveEvent.pageY < wrapperTopFar;
 					if (!inside) {
 						this.showStickyButton = false;
 						document.removeEventListener('mousemove', moveCallback, false);
@@ -78,22 +101,27 @@ export default Vue.extend({
 				(document.activeElement as HTMLElement).blur();
 			}
 
-			const offset: [number, number] = [...(this.uiStore.nodeViewOffsetPosition)];
+			const offset: [number, number] = [...this.uiStore.nodeViewOffsetPosition];
 
-			const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+			const position = getMidCanvasPosition(this.nodeViewScale, offset);
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 
-			this.$emit('addNode', {
-				nodeTypeName: STICKY_NODE_TYPE,
-				position,
-			});
+			this.$emit('addNode', [
+				{
+					nodeTypeName: STICKY_NODE_TYPE,
+					position,
+				},
+			]);
 		},
 		closeNodeCreator() {
 			this.$emit('toggleNodeCreator', { createNodeActive: false });
 		},
-		nodeTypeSelected(nodeTypeName: string) {
-			this.$emit('addNode', { nodeTypeName });
+		nodeTypeSelected(nodeTypeNames: string[]) {
+			this.$emit(
+				'addNode',
+				nodeTypeNames.map((nodeTypeName) => ({ nodeTypeName })),
+			);
 			this.closeNodeCreator();
 		},
 	},
@@ -113,7 +141,7 @@ export default Vue.extend({
 .addStickyButton {
 	margin-top: var(--spacing-2xs);
 	opacity: 0;
-	transition: .1s;
+	transition: 0.1s;
 	transition-timing-function: linear;
 }
 

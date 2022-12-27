@@ -623,8 +623,7 @@ export const certificateFields: INodeProperties[] = [
 				resource: ['certificate'],
 			},
 		},
-		description:
-			'The name of the input field containing the binary file data to be uploaded',
+		description: 'The name of the input field containing the binary file data to be uploaded',
 	},
 	{
 		displayName: 'Additional Fields',

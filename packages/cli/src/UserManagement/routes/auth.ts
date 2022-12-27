@@ -43,11 +43,7 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			if (!user?.password || !(await compareHash(req.body.password, user.password))) {
-				// password is empty until user signs up
-				const error = new Error('Wrong username or password. Do you have caps lock on?');
-				// @ts-ignore
-				error.httpStatusCode = 401;
-				throw error;
+				throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
 			}
 
 			await issueCookie(res, user);
@@ -77,22 +73,21 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			if (config.get('userManagement.isInstanceOwnerSetUp')) {
-				const error = new Error('Not logged in');
-				// @ts-ignore
-				error.httpStatusCode = 401;
-				throw error;
+				throw new ResponseHelper.AuthError('Not logged in');
 			}
 
 			try {
 				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
 			} catch (error) {
-				throw new Error(
+				throw new ResponseHelper.InternalServerError(
 					'No users found in database - did you wipe the users table? Create at least one user.',
 				);
 			}
 
 			if (user.email || user.password) {
-				throw new Error('Invalid database state - user has password set.');
+				throw new ResponseHelper.InternalServerError(
+					'Invalid database state - user has password set.',
+				);
 			}
 
 			await issueCookie(res, user);

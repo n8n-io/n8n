@@ -31,20 +31,19 @@
 
 <script lang="ts">
 import 'vue';
+import mixins from 'vue-typed-mixins';
+import { Select as ElSelect, Option as ElOption } from 'element-ui';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
-import ElSelect from 'element-ui/lib/select';
-import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
 
 export default mixins(Locale).extend({
 	name: 'n8n-user-select',
 	components: {
 		N8nUserInfo,
-		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSelect,
+		ElOption,
 	},
 	props: {
 		users: {
@@ -73,7 +72,7 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
-			validator: (value: string): boolean => ['mini', 'small', 'large'].includes(value),
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
 	data() {

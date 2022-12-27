@@ -8,7 +8,11 @@ import { useNodeTypesStore } from './nodeTypes';
 export const useRootStore = defineStore(STORES.ROOT, {
 	state: (): RootState => ({
 		// @ts-ignore
-		baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
+		baseUrl: import.meta.env.VUE_APP_URL_BASE_API
+			? import.meta.env.VUE_APP_URL_BASE_API
+			: window.BASE_PATH === '/%BASE_PATH%/'
+			? '/'
+			: window.BASE_PATH,
 		defaultLocale: 'en',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
@@ -26,6 +30,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		instanceId: '',
 	}),
 	getters: {
+		getBaseUrl(): string {
+			return this.baseUrl;
+		},
+
 		getWebhookUrl(): string {
 			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
 		},
@@ -52,11 +60,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 				sessionId: this.sessionId,
 			};
 		},
-		// TODO: Waiting for nodeTypes store
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
-		 nativelyNumberSuffixedDefaults: (): string[] => {
+		nativelyNumberSuffixedDefaults: (): string[] => {
 			return useNodeTypesStore().allNodeTypes.reduce<string[]>((acc, cur) => {
 				if (/\d$/.test(cur.defaults.name as string)) acc.push(cur.defaults.name as string);
 				return acc;

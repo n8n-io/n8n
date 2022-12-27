@@ -14,10 +14,9 @@ export async function jenkinsApiRequest(
 	method: string,
 	uri: string,
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
+
 	body: any = '',
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('jenkinsApi');
 	let options: OptionsWithUri = {
@@ -36,7 +35,7 @@ export async function jenkinsApiRequest(
 	};
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

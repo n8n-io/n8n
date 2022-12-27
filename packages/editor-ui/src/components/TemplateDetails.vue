@@ -50,7 +50,7 @@
 import Vue, { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
+import { abbreviateNumber, filterTemplateNodes } from '@/utils';
 import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';
@@ -72,9 +72,7 @@ export default Vue.extend({
 		TemplateDetailsBlock,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 	},
 	methods: {
 		abbreviateNumber,

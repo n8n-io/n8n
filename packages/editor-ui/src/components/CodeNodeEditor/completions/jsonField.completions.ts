@@ -9,10 +9,7 @@ import { useNDVStore } from '@/stores/ndv';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
 		/**

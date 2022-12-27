@@ -21,26 +21,21 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useNodeTypesStore,
-			useRootStore,
-		),
+		...mapStores(useCredentialsStore, useNodeTypesStore, useRootStore),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
 
 		filePath(): string | null {
-			if (!this.credentialWithIcon || !this.credentialWithIcon.icon || !this.credentialWithIcon.icon.startsWith('file:')) {
+			const iconUrl = this.credentialWithIcon?.iconUrl;
+			if (!iconUrl) {
 				return null;
 			}
-
-			const restUrl = this.rootStore.getRestUrl;
-
-			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
+			return this.rootStore.getBaseUrl + iconUrl;
 		},
-		relevantNode(): INodeTypeDescription | null	 {
-			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
+
+		relevantNode(): INodeTypeDescription | null {
+			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
@@ -65,13 +60,13 @@ export default Vue.extend({
 				return null;
 			}
 
-			if (type.icon) {
+			if (type.icon || type.iconUrl) {
 				return type;
 			}
 
 			if (type.extends) {
 				let parentCred = null;
-				type.extends.forEach(name => {
+				type.extends.forEach((name) => {
 					parentCred = this.getCredentialWithIcon(name);
 					if (parentCred !== null) return;
 				});

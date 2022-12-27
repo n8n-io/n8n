@@ -9,11 +9,15 @@
 		minHeight="250px"
 	>
 		<template #header>
-			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+			</h2>
 		</template>
 		<template #content>
 			<div>
-				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+				</div>
 				<n8n-select
 					filterable
 					defaultFirstOption
@@ -22,6 +26,7 @@
 					ref="select"
 					:value="selected"
 					@change="onSelect"
+					data-test-id="new-credential-type-select"
 				>
 					<template #prefix>
 						<font-awesome-icon icon="search" />
@@ -32,6 +37,7 @@
 						:key="credential.name"
 						:label="credential.displayName"
 						filterable
+						data-test-id="new-credential-type-select-option"
 					/>
 				</n8n-select>
 			</div>
@@ -44,6 +50,7 @@
 					size="large"
 					:disabled="!selected"
 					@click="openCredentialType"
+					data-test-id="new-credential-type-button"
 				/>
 			</div>
 		</template>
@@ -56,7 +63,7 @@ import mixins from 'vue-typed-mixins';
 
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -70,8 +77,7 @@ export default mixins(externalHooks).extend({
 	async mounted() {
 		try {
 			await this.credentialsStore.fetchCredentialTypes(false);
-		} catch (e) {
-		}
+		} catch (e) {}
 		this.loading = false;
 
 		setTimeout(() => {
@@ -90,17 +96,13 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),
 	},
 	methods: {
 		onSelect(type: string) {
 			this.selected = type;
 		},
-		openCredentialType () {
+		openCredentialType() {
 			this.modalBus.$emit('close');
 			this.uiStore.openNewCredential(this.selected);
 

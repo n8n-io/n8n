@@ -1,7 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
-	IDataObject,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
 	INodeType,
@@ -264,7 +263,7 @@ export class MailchimpTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const webhookData = this.getWorkflowStaticData('node') as IDataObject;
+		const webhookData = this.getWorkflowStaticData('node');
 		const webhookName = this.getWebhookName();
 		if (webhookName === 'setup') {
 			// Is a create webhook confirmation request

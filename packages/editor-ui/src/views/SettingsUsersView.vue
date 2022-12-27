@@ -3,29 +3,36 @@
 		<div>
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 			<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
-					<n8n-tooltip :disabled="settingsStore.isSmtpSetup" placement="bottom">
-						<template #content>
-							<i18n path="settings.users.setupSMTPToInviteUsers" tag="span">
-								<template #action>
-									<a
-										href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-										target="_blank"
-										v-text="$locale.baseText('settings.users.setupSMTPToInviteUsers.instructions')"
-									/>
-								</template>
-							</i18n>
-						</template>
-						<div>
-							<n8n-button :label="$locale.baseText('settings.users.invite')" @click="onInvite" size="large" :disabled="!settingsStore.isSmtpSetup" />
-						</div>
-					</n8n-tooltip>
+				<n8n-tooltip :disabled="settingsStore.isSmtpSetup" placement="bottom">
+					<template #content>
+						<i18n path="settings.users.setupSMTPToInviteUsers" tag="span">
+							<template #action>
+								<a
+									href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
+									target="_blank"
+									v-text="$locale.baseText('settings.users.setupSMTPToInviteUsers.instructions')"
+								/>
+							</template>
+						</i18n>
+					</template>
+					<div>
+						<n8n-button
+							:label="$locale.baseText('settings.users.invite')"
+							@click="onInvite"
+							size="large"
+							:disabled="!settingsStore.isSmtpSetup"
+						/>
+					</div>
+				</n8n-tooltip>
 			</div>
 		</div>
 		<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
 			<n8n-action-box
 				:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 				:buttonText="$locale.baseText('settings.users.setupMyAccount')"
-				:description="$locale.baseText('settings.users.setupToInviteUsersInfo')"
+				:description="`${
+					isSharingEnabled ? '' : $locale.baseText('settings.users.setupToInviteUsersInfo')
+				}${$locale.baseText('settings.users.setupSMTPInfo')}`"
 				@click="redirectToSetup"
 			/>
 		</div>
@@ -35,18 +42,23 @@
 				:message="$locale.baseText('settings.users.smtpToAddUsersWarning')"
 				:popupClass="$style.alert"
 			/>
-			<n8n-users-list :users="usersStore.allUsers" :currentUserId="usersStore.currentUserId" @delete="onDelete" @reinvite="onReinvite" />
+			<n8n-users-list
+				:users="usersStore.allUsers"
+				:currentUserId="usersStore.currentUserId"
+				@delete="onDelete"
+				@reinvite="onReinvite"
+			/>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import { INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -63,15 +75,14 @@ export default mixins(showMessage).extend({
 		}
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useUIStore, useUsersStore),
+		isSharingEnabled() {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
 	},
 	methods: {
 		redirectToSetup() {
-			this.$router.push({name: VIEWS.SETUP});
+			this.$router.push({ name: VIEWS.SETUP });
 		},
 		onInvite() {
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
@@ -91,10 +102,9 @@ export default mixins(showMessage).extend({
 					this.$showToast({
 						type: 'success',
 						title: this.$locale.baseText('settings.users.inviteResent'),
-						message: this.$locale.baseText(
-							'settings.users.emailSentTo',
-							{ interpolate: { email: user.email || '' } },
-						),
+						message: this.$locale.baseText('settings.users.emailSentTo', {
+							interpolate: { email: user.email || '' },
+						}),
 					});
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
@@ -136,5 +146,4 @@ export default mixins(showMessage).extend({
 .alert {
 	left: calc(50% + 100px);
 }
-
 </style>

@@ -1,6 +1,11 @@
 <template>
-	<div :class="{
-		'node-settings': true, 'dragging': dragging }" @keydown.stop>
+	<div
+		:class="{
+			'node-settings': true,
+			dragging: dragging,
+		}"
+		@keydown.stop
+	>
 		<div :class="$style.header">
 			<div class="header-side-menu">
 				<NodeTitle
@@ -10,7 +15,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="executable">
+				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -40,12 +45,17 @@
 			</div>
 			<div v-if="isCommunityNode" :class="$style.descriptionContainer">
 				<div class="mb-l">
-					<i18n path="nodeSettings.communityNodeUnknown.description" tag="span" @click="onMissingNodeTextClick">
+					<i18n
+						path="nodeSettings.communityNodeUnknown.description"
+						tag="span"
+						@click="onMissingNodeTextClick"
+					>
 						<template #action>
 							<a
 								:href="`https://www.npmjs.com/package/${node.type.split('.')[0]}`"
 								target="_blank"
-							>{{ node.type.split('.')[0] }}</a>
+								>{{ node.type.split('.')[0] }}</a
+							>
 						</template>
 					</i18n>
 				</div>
@@ -66,11 +76,15 @@
 				</template>
 			</i18n>
 		</div>
-		<div
-			class="node-parameters-wrapper"
-			data-test-id="node-parameters"
-			v-if="node && nodeValid"
-		>
+		<div class="node-parameters-wrapper" data-test-id="node-parameters" v-if="node && nodeValid">
+			<n8n-notice
+				v-if="hasForeignCredential"
+				:content="
+					$locale.baseText('nodeSettings.hasForeignCredential', {
+						interpolate: { owner: workflowOwnerName },
+					})
+				"
+			/>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -83,7 +97,11 @@
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-					<node-credentials :node="node" :readonly="isReadOnly" @credentialSelected="credentialSelected" />
+					<node-credentials
+						:node="node"
+						:readonly="isReadOnly"
+						@credentialSelected="credentialSelected"
+					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -150,17 +168,20 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useHistoryStore } from '@/stores/history';
+import { RenameNodeCommand } from '@/models/history';
+import useWorkflowsEEStore from '@/stores/workflows.ee';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -175,13 +196,21 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useHistoryStore,
 			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
+			useWorkflowsEEStore,
 		),
 		isCurlImportModalOpen(): boolean {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
+		},
+		isReadOnly(): boolean {
+			return this.readOnly || this.hasForeignCredential;
+		},
+		isExecutable(): boolean {
+			return this.executable || this.hasForeignCredential;
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
@@ -245,6 +274,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		isTriggerNode(): boolean {
 			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
+		workflowOwnerName(): string {
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowsStore.workflowId}`);
+		},
 	},
 	props: {
 		eventBus: {},
@@ -257,8 +289,13 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
 		},
-		isReadOnly: {
+		readOnly: {
 			type: Boolean,
+			default: false,
+		},
+		hasForeignCredential: {
+			type: Boolean,
+			default: false,
 		},
 		blockUI: {
 			type: Boolean,
@@ -391,6 +428,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				try {
 					parameters = JSON.parse(parameters) as {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						[key: string]: any;
 					};
 
@@ -483,6 +521,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
+			if (this.node) {
+				this.historyStore.pushCommandToUndo(new RenameNodeCommand(this.node.name, name, this));
+			}
 			// @ts-ignore
 			this.valueChanged({
 				value: name,
@@ -519,7 +560,6 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				};
 				this.$emit('valueChanged', sendData);
 			} else if (parameterData.name === 'parameters') {
-
 				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
@@ -790,7 +830,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				node_type: this.node.type,
 			});
 		},
-		onStopExecution(){
+		onStopExecution() {
 			this.$emit('stopExecution');
 		},
 	},
@@ -801,6 +841,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.openPanel = 'settings';
 			});
 		}
+
+		this.updateNodeParameterIssues(this.node as INodeUi, this.nodeType);
 	},
 });
 </script>
@@ -822,7 +864,6 @@ export default mixins(externalHooks, nodeHelpers).extend({
 </style>
 
 <style lang="scss">
-
 .node-settings {
 	overflow: hidden;
 	background-color: var(--color-background-xlight);

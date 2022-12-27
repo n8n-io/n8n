@@ -47,7 +47,7 @@ import {
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
@@ -67,10 +67,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useUIStore,
-		),
+		...mapStores(useNDVStore, useUIStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

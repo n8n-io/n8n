@@ -13,7 +13,9 @@
 				</div>
 			</div>
 			<div :class="$style.notFound" v-else>
-				<n8n-text color="text-base">{{ $locale.baseText('templates.collectionsNotFound') }}</n8n-text>
+				<n8n-text color="text-base">{{
+					$locale.baseText('templates.collectionsNotFound')
+				}}</n8n-text>
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
@@ -52,7 +54,7 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -61,7 +63,7 @@ import {
 } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';
@@ -74,9 +76,7 @@ export default mixins(workflowHelpers).extend({
 		TemplatesView,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 		collection(): null | ITemplatesCollectionFull {
 			return this.templatesStore.getCollectionById(this.collectionId);
 		},
@@ -110,10 +110,10 @@ export default mixins(workflowHelpers).extend({
 				}
 			}, 50);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
-		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
+		onUseWorkflow({ event, id }: { event: MouseEvent; id: string }) {
 			const telemetryPayload = {
 				template_id: id,
 				wf_template_repo_session_id: this.workflowsStore.currentSessionId,
@@ -138,8 +138,7 @@ export default mixins(workflowHelpers).extend({
 		collection(collection: ITemplatesCollection) {
 			if (collection) {
 				setPageTitle(`n8n - Template collection: ${collection.name}`);
-			}
-			else {
+			} else {
 				setPageTitle(`n8n - Templates`);
 			}
 		},

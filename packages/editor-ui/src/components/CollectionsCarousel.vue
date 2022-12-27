@@ -1,9 +1,16 @@
 <template>
 	<div :class="$style.container" v-show="loading || collections.length">
-		<agile ref="slider" :dots="false" :navButtons="false" :infinite="false" :slides-to-show="4" @after-change="updateCarouselScroll">
-			<Card v-for="n in (loading ? 4: 0)" :key="`loading-${n}`" :loading="loading" />
+		<agile
+			ref="slider"
+			:dots="false"
+			:navButtons="false"
+			:infinite="false"
+			:slides-to-show="4"
+			@after-change="updateCarouselScroll"
+		>
+			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
 			<CollectionCard
-				v-for="collection in (loading? []: collections)"
+				v-for="collection in loading ? [] : collections"
 				:key="collection.id"
 				:collection="collection"
 				@click="(e) => onCardClick(e, collection.id)"
@@ -19,13 +26,13 @@
 </template>
 
 <script lang="ts">
-import { PropType } from "vue";
-import { ITemplatesCollection } from "@/Interface";
+import { PropType } from 'vue';
+import { ITemplatesCollection } from '@/Interface';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({
@@ -75,7 +82,7 @@ export default mixins(genericHelpers).extend({
 			}
 		},
 		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openCollection', {event, id});
+			this.$emit('openCollection', { event, id });
 		},
 		scrollLeft() {
 			if (this.listElement) {
@@ -144,9 +151,21 @@ export default mixins(genericHelpers).extend({
 
 	&:after {
 		left: 27px;
-		background: linear-gradient(270deg,
-			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
-			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
+		background: linear-gradient(
+			270deg,
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				50%
+			),
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				100%
+			)
+		);
 	}
 }
 
@@ -155,9 +174,21 @@ export default mixins(genericHelpers).extend({
 	right: -30px;
 	&:after {
 		right: 27px;
-		background: linear-gradient(90deg,
-			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
-			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
+		background: linear-gradient(
+			90deg,
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				50%
+			),
+			hsla(
+				var(--color-background-light-h),
+				var(--color-background-light-s),
+				var(--color-background-light-l),
+				100%
+			)
+		);
 	}
 }
 </style>

@@ -7,6 +7,7 @@
 		"build": {
 			"dependsOn": ["^build"]
 		},
+		"typecheck": {},
 		"format": {},
 		"lint": {},
 		"lintfix": {},

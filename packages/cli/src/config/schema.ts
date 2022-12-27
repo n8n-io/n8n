@@ -1,8 +1,32 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import path from 'path';
-import * as core from 'n8n-core';
+import convict from 'convict';
+import { UserSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+convict.addFormat({
+	name: 'nodes-list',
+	// @ts-ignore
+	validate(values: string[], { env }: { env: string }): void {
+		try {
+			if (!Array.isArray(values)) {
+				throw new Error();
+			}
+
+			for (const value of values) {
+				if (typeof value !== 'string') {
+					throw new Error();
+				}
+			}
+		} catch (error) {
+			throw new TypeError(`${env} is not a valid Array of strings.`);
+		}
+	},
+	coerce(rawValue: string): string[] {
+		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
+	},
+});
 
 export const schema = {
 	database: {
@@ -193,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -580,9 +604,9 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
-		skipWebhoooksDeregistrationOnShutdown: {
+		skipWebhooksDeregistrationOnShutdown: {
 			/**
-			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
 			 * We don't have to worry about startup as it always
@@ -634,6 +658,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
 		},
 		emails: {
 			mode: {
@@ -716,47 +752,14 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: function check(rawValue: string): void {
-				if (rawValue === '') {
-					return;
-				}
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
-				}
-			},
+			format: 'nodes-list',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: function check(rawValue: string): void {
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
-				}
-			},
-			default: '[]',
+			format: 'nodes-list',
+			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {
@@ -772,6 +775,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
 		},
 	},
 
@@ -804,7 +813,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -861,7 +870,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
@@ -893,12 +902,6 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
-		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
 		},
 	},
 
@@ -1013,5 +1016,18 @@ export const schema = {
 			env: 'N8N_LICENSE_ACTIVATION_KEY',
 			doc: 'Activation key to initialize license',
 		},
+		tenantId: {
+			format: Number,
+			default: 1,
+			env: 'N8N_LICENSE_TENANT_ID',
+			doc: 'Tenant id used by the license manager',
+		},
+	},
+
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
 	},
 };

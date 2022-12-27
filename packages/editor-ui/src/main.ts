@@ -11,14 +11,14 @@ import 'vue-json-pretty/lib/styles.css';
 import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
 
-import "@fontsource/open-sans/latin-400.css";
-import "@fontsource/open-sans/latin-600.css";
-import "@fontsource/open-sans/latin-700.css";
+import '@fontsource/open-sans/latin-400.css';
+import '@fontsource/open-sans/latin-600.css';
+import '@fontsource/open-sans/latin-700.css';
 
 import App from '@/App.vue';
 import router from './router';
 
-import { runExternalHook } from './components/mixins/externalHooks';
+import { runExternalHook } from '@/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
@@ -38,7 +38,7 @@ new Vue({
 	i18n: i18nInstance,
 	router,
 	pinia,
-	render: h => h(App),
+	render: (h) => h(App),
 }).$mount('#app');
 
 router.afterEach((to, from) => {

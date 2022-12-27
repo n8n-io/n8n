@@ -20,7 +20,7 @@ export async function kitemakerRequest(
 		json: true,
 	};
 
-	const responseData = await this.helpers.request!.call(this, options);
+	const responseData = await this.helpers.request.call(this, options);
 
 	if (responseData.errors) {
 		throw new NodeApiError(this.getNode(), responseData);
@@ -36,7 +36,7 @@ export async function kitemakerRequestAllItems(
 	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
 	const [group, items] = getGroupAndItems(resource);
 
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	const returnData: IDataObject[] = [];
@@ -62,7 +62,7 @@ function getGroupAndItems(resource: 'space' | 'user' | 'workItem') {
 		workItem: { group: 'workItems', items: 'workItems' },
 	};
 
-	return [map[resource]['group'], map[resource]['items']];
+	return [map[resource].group, map[resource].items];
 }
 
 export function createLoadOptions(

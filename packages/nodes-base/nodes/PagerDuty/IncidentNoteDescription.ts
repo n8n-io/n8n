@@ -21,7 +21,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many incident\'s notes',
+				description: "Get many incident's notes",
 				action: 'Get many incident notes',
 			},
 		],
@@ -51,9 +51,6 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {

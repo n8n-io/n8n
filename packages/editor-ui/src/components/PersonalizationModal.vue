@@ -22,7 +22,12 @@
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
-				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
+				<n8n-form-inputs
+					:inputs="survey"
+					:columnView="true"
+					:eventBus="formBus"
+					@submit="onSubmit"
+				/>
 			</div>
 		</template>
 		<template #footer>
@@ -113,12 +118,17 @@ import {
 	USAGE_MODE_BUILD_BE_SERVICES,
 	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
+import {
+	IFormInputs,
+	IPersonalizationLatestVersion,
+	IPersonalizationSurveyAnswersV3,
+	IUser,
+} from '@/Interface';
 import Vue from 'vue';
-import { getAccountAge } from '@/stores/userHelpers';
+import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -142,12 +152,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useUsersStore),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -266,8 +271,14 @@ export default mixins(showMessage, workflowHelpers).extend({
 					},
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
-						const companyIndustry = (values as IPersonalizationLatestVersion)[COMPANY_INDUSTRY_EXTENDED_KEY];
-						return companyType === OTHER_COMPANY_TYPE && !!companyIndustry && companyIndustry.includes(OTHER_INDUSTRY_OPTION);
+						const companyIndustry = (values as IPersonalizationLatestVersion)[
+							COMPANY_INDUSTRY_EXTENDED_KEY
+						];
+						return (
+							companyType === OTHER_COMPANY_TYPE &&
+							!!companyIndustry &&
+							companyIndustry.includes(OTHER_INDUSTRY_OPTION)
+						);
 					},
 				},
 				{
@@ -336,7 +347,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 					shouldDisplay(values): boolean {
 						const companyType = (values as IPersonalizationLatestVersion)[COMPANY_TYPE_KEY];
 						const automationGoal = (values as IPersonalizationLatestVersion)[AUTOMATION_GOAL_KEY];
-						return companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL;
+						return (
+							companyType !== PERSONAL_COMPANY_TYPE && automationGoal === OTHER_AUTOMATION_GOAL
+						);
 					},
 				},
 				{
@@ -384,7 +397,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 				{
 					name: OTHER_MARKETING_AUTOMATION_GOAL_KEY,
 					properties: {
-						placeholder: this.$locale.baseText('personalizationModal.specifyOtherSalesAndMarketingGoal'),
+						placeholder: this.$locale.baseText(
+							'personalizationModal.specifyOtherSalesAndMarketingGoal',
+						),
 					},
 					shouldDisplay(values): boolean {
 						const goals = (values as IPersonalizationLatestVersion)[MARKETING_AUTOMATION_GOAL_KEY];
@@ -476,7 +491,9 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
-				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationSurveyAnswersV3);
+				await this.usersStore.submitPersonalizationSurvey(
+					survey as IPersonalizationSurveyAnswersV3,
+				);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
@@ -491,9 +508,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		async fetchOnboardingPrompt() {
-			if (this.settingsStore.onboardingCallPromptEnabled && getAccountAge(this.usersStore.currentUser || {} as IUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+			if (
+				this.settingsStore.onboardingCallPromptEnabled &&
+				getAccountAge(this.usersStore.currentUser || ({} as IUser)) <= ONBOARDING_PROMPT_TIMEBOX
+			) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
-				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
+				const promptTimeout =
+					onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
 					setTimeout(async () => {

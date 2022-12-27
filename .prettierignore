@@ -1,9 +1,4 @@
+coverage
 dist
-packages/editor-ui
 package.json
-
-!packages/nodes-base/src
-!packages/nodes-base/test
-!packages/nodes-base/nodes
-
-packages/nodes-base/nodes/UProc/Json/Tools.ts
+.pnpm-lock.yml

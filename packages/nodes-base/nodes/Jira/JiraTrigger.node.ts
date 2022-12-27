@@ -285,9 +285,6 @@ export class JiraTrigger implements INodeType {
 						displayName: 'Filter',
 						name: 'filter',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						placeholder: 'Project = JRA AND resolution = Fixed',
 						description:
@@ -420,7 +417,6 @@ export class JiraTrigger implements INodeType {
 					body.excludeBody = additionalFields.excludeBody as boolean;
 				}
 
-				// tslint:disable-next-line: no-any
 				const parameters: any = {};
 
 				if (incomingAuthentication === 'queryAuth') {
@@ -430,7 +426,7 @@ export class JiraTrigger implements INodeType {
 					} catch (e) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Could not retrieve HTTP Query Auth credentials: ${e}`,
+							new Error('Could not retrieve HTTP Query Auth credentials', { cause: e }),
 						);
 					}
 					if (!httpQueryAuth.name && !httpQueryAuth.value) {

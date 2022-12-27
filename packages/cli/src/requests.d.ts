@@ -10,7 +10,7 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
@@ -339,4 +339,12 @@ export declare namespace NodeRequest {
 
 export declare namespace CurlHelper {
 	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
+}
+
+// ----------------------------------
+//           /license
+// ----------------------------------
+
+export declare namespace LicenseRequest {
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }

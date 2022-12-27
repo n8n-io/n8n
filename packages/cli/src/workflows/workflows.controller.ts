@@ -1,6 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import express from 'express';
+import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
@@ -16,7 +17,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { validateEntity } from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import { getLogger } from '@/Logger';
 import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
@@ -52,9 +53,11 @@ workflowsController.post(
 
 		Object.assign(newWorkflow, req.body);
 
+		newWorkflow.versionId = uuid();
+
 		await validateEntity(newWorkflow);
 
-		await externalHooks.run('workflow.create', [newWorkflow]);
+		await ExternalHooks().run('workflow.create', [newWorkflow]);
 
 		const { tags: tagIds } = req.body;
 
@@ -91,7 +94,7 @@ workflowsController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError('Failed to save workflow');
+			throw new ResponseHelper.InternalServerError('Failed to save workflow');
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
@@ -100,15 +103,10 @@ workflowsController.post(
 			});
 		}
 
-		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
-		const { id, ...rest } = savedWorkflow;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(savedWorkflow);
 	}),
 );
 
@@ -118,7 +116,8 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		return WorkflowsService.getMany(req.user, req.query.filter);
+		const workflows = await WorkflowsService.getMany(req.user, req.query.filter);
+		return workflows.map((workflow) => WorkflowsService.entityToResponse(workflow));
 	}),
 );
 
@@ -152,13 +151,11 @@ workflowsController.get(
 	`/from-url`,
 	ResponseHelper.send(async (req: express.Request): Promise<IWorkflowResponse> => {
 		if (req.query.url === undefined) {
-			throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`The parameter "url" is missing!`);
 		}
 		if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`,
-				undefined,
-				400,
 			);
 		}
 		let workflowData: IWorkflowResponse | undefined;
@@ -166,11 +163,7 @@ workflowsController.get(
 			const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
 			workflowData = data;
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				`The URL does not point to valid JSON file!`,
-				undefined,
-				400,
-			);
+			throw new ResponseHelper.BadRequestError(`The URL does not point to valid JSON file!`);
 		}
 
 		// Do a very basic check if it is really a n8n-workflow-json
@@ -182,10 +175,8 @@ workflowsController.get(
 			typeof workflowData.connections !== 'object' ||
 			Array.isArray(workflowData.connections)
 		) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The data in the file does not seem to be a n8n workflow JSON file!`,
-				undefined,
-				400,
 			);
 		}
 
@@ -218,25 +209,16 @@ workflowsController.get(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to access a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to access a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Could not load the workflow - you can only access workflows owned by you',
 			);
 		}
 
-		const {
-			workflow: { id, ...rest },
-		} = shared;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return WorkflowsService.entityToResponse(shared.workflow);
 	}),
 );
 
@@ -258,16 +240,11 @@ workflowsController.patch(
 			updateData,
 			workflowId,
 			tags,
-			false,
+			true,
 			['owner'],
 		);
 
-		const { id, ...remainder } = updatedWorkflow;
-
-		return {
-			id: id.toString(),
-			...remainder,
-		};
+		return WorkflowsService.entityToResponse(updatedWorkflow);
 	}),
 );
 
@@ -280,7 +257,7 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		await externalHooks.run('workflow.delete', [workflowId]);
+		await ExternalHooks().run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow', 'role'],
@@ -293,14 +270,12 @@ workflowsController.delete(
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to delete a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be deleted.`,
-				undefined,
-				400,
+			throw new ResponseHelper.BadRequestError(
+				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
 
@@ -312,7 +287,7 @@ workflowsController.delete(
 		await Db.collections.Workflow.delete(workflowId);
 
 		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
-		await externalHooks.run('workflow.afterDelete', [workflowId]);
+		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
 	}),

@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import RudderStack from '@rudderstack/rudder-sdk-node';
-import PostHog from 'posthog-node';
+import { PostHog } from 'posthog-node';
 import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
+import { getLicense } from '@/License';
+import { LicenseService } from '@/license/License.service';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -20,6 +22,7 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		user_id: string | undefined;
 	};
 }
 
@@ -80,17 +83,28 @@ export class Telemetry {
 		}
 
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
-			const promise = this.track('Workflow execution count', {
-				event_version: '2',
-				workflow_id: workflowId,
-				...this.executionCountsBuffer[workflowId],
-			});
+			const promise = this.track(
+				'Workflow execution count',
+				{
+					event_version: '2',
+					workflow_id: workflowId,
+					...this.executionCountsBuffer[workflowId],
+				},
+				{ withPostHog: true },
+			);
 
 			return promise;
 		});
 
 		this.executionCountsBuffer = {};
-		allPromises.push(this.track('pulse'));
+
+		// License info
+		const pulsePacket = {
+			plan_name_current: getLicense().getPlanName(),
+			quota: getLicense().getTriggerLimit(),
+			usage: await LicenseService.getActiveTriggerCount(),
+		};
+		allPromises.push(this.track('pulse', pulsePacket));
 		return Promise.all(allPromises);
 	}
 
@@ -99,7 +113,9 @@ export class Telemetry {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
 
-			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {};
+			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {
+				user_id: properties.user_id,
+			};
 
 			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
 				properties.success ? 'success' : 'error'
@@ -180,14 +196,12 @@ export class Telemetry {
 					properties: updatedProperties,
 				};
 
-				if (withPostHog && this.postHog) {
-					return Promise.all([
-						this.postHog.capture({
-							distinctId: payload.userId,
-							...payload,
-						}),
-						this.rudderStack.track(payload),
-					]).then(() => resolve());
+				if (withPostHog) {
+					this.postHog?.capture({
+						distinctId: payload.userId,
+						sendFeatureFlags: true,
+						...payload,
+					});
 				}
 
 				return this.rudderStack.track(payload, resolve);
@@ -200,7 +214,7 @@ export class Telemetry {
 	async isFeatureFlagEnabled(
 		featureFlagName: string,
 		{ user_id: userId }: ITelemetryTrackProperties = {},
-	): Promise<boolean> {
+	): Promise<boolean | undefined> {
 		if (!this.postHog) return Promise.resolve(false);
 
 		const fullId = [this.instanceId, userId].join('#');

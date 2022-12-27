@@ -16,12 +16,12 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import ExpandableInputBase from "./ExpandableInputBase.vue";
+import Vue from 'vue';
+import ExpandableInputBase from './ExpandableInputBase.vue';
 
 export default Vue.extend({
 	components: { ExpandableInputBase },
-	name: "ExpandableInputEdit",
+	name: 'ExpandableInputEdit',
 	props: ['value', 'placeholder', 'maxlength', 'autofocus', 'eventBus'],
 	mounted() {
 		// autofocus on input element is not reliable
