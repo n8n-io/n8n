@@ -19,23 +19,23 @@ function getSecuritySettings() {
 
 	return {
 		features: {
-			communityPackagesEnabled: process.env.N8N_COMMUNITY_PACKAGES_ENABLED,
-			versionNotificationsEnabled: process.env.N8N_VERSION_NOTIFICATIONS_ENABLED,
-			templatesEnabled: process.env.N8N_TEMPLATES_ENABLED,
-			publicApiDisabled: process.env.N8N_PUBLIC_API_DISABLED,
-			userManagementDisabled: process.env.N8N_USER_MANAGEMENT_DISABLED,
+			communityPackagesEnabled: config.getEnv('nodes.communityPackages.enabled'),
+			versionNotificationsEnabled: config.getEnv('versionNotifications.enabled'),
+			templatesEnabled: config.getEnv('templates.enabled'),
+			publicApiEnabled: !config.getEnv('publicApi.disabled'),
+			userManagementEnabled: !config.getEnv('userManagement.disabled'),
 		},
 		auth: {
-			authExcludeEndpoints: process.env.N8N_AUTH_EXCLUDE_ENDPOINTS,
-			basicAuthActive: process.env.N8N_BASIC_AUTH_ACTIVE,
-			jwtAuthActive: process.env.N8N_JWT_AUTH_ACTIVE,
+			authExcludeEndpoints: config.getEnv('security.excludeEndpoints') || 'none',
+			basicAuthActive: config.getEnv('security.basicAuth.active'),
+			jwtAuthActive: config.getEnv('security.jwtAuth.active'),
 		},
 		nodes: {
-			nodesInclude: process.env.NODES_INCLUDE,
-			nodesExclude: process.env.NODES_EXCLUDE,
+			nodesExclude: config.getEnv('nodes.exclude') ?? 'none',
+			nodesInclude: config.getEnv('nodes.include') ?? 'none',
 		},
 		telemetry: {
-			diagnosticsEnabled: process.env.N8N_DIAGNOSTICS_ENABLED,
+			diagnosticsEnabled: config.getEnv('diagnostics.enabled'),
 		},
 	};
 }
