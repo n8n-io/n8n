@@ -223,3 +223,30 @@ test('should not report outdated instance when up to date', async () => {
 		expect(section.title).not.toBe(INSTANCE_REPORT.SECTIONS.OUTDATED_INSTANCE);
 	}
 });
+
+test('should report security settings', async () => {
+	const testAudit = await audit(['instance']);
+
+	const section = getRiskSection(
+		testAudit,
+		INSTANCE_REPORT.RISK,
+		INSTANCE_REPORT.SECTIONS.SECURITY_SETTINGS,
+	);
+
+	expect(section.settings).toMatchObject({
+		features: {
+			communityPackagesEnabled: true,
+			versionNotificationsEnabled: true,
+			templatesEnabled: true,
+			publicApiEnabled: true,
+			userManagementEnabled: true,
+		},
+		auth: {
+			authExcludeEndpoints: 'none',
+			basicAuthActive: false,
+			jwtAuthActive: false,
+		},
+		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
+		telemetry: { diagnosticsEnabled: true },
+	});
+});
