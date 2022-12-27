@@ -16,13 +16,13 @@ import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
-import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { IWorkflowDb, IWorkflowExecutionDataProcess, IWorkflowResponse } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -115,12 +115,17 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne(workflow, options);
 	}
 
-	// Warning: this function is overriden by EE to disregard role list.
+	// Warning: this function is overridden by EE to disregard role list.
 	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
 	}
 
-	static async getMany(user: User, rawFilter: string) {
+	static entityToResponse(entity: WorkflowEntity): IWorkflowResponse {
+		const { id, ...rest } = entity;
+		return { ...rest, id: id.toString() };
+	}
+
+	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
 		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
@@ -158,20 +163,26 @@ export class WorkflowsService {
 			return [];
 		}
 
-		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const fields: Array<keyof WorkflowEntity> = [
+			'id',
+			'name',
+			'active',
+			'createdAt',
+			'updatedAt',
+			'nodes',
+		];
 		const relations: string[] = [];
 
 		if (!config.getEnv('workflowTagsDisabled')) {
 			relations.push('tags');
 		}
 
-		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
-		if (isSharingEnabled) {
+		if (isSharingEnabled()) {
 			relations.push('shared', 'shared.user', 'shared.role');
 		}
 
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: isSharingEnabled ? [...fields, 'nodes', 'versionId'] : fields,
+			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
@@ -179,16 +190,7 @@ export class WorkflowsService {
 			},
 		};
 
-		const workflows = await Db.collections.Workflow.find(query);
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
-		});
+		return Db.collections.Workflow.find(query);
 	}
 
 	static async update(
@@ -210,7 +212,7 @@ export class WorkflowsService {
 		});
 
 		if (!shared) {
-			LoggerProxy.info('User attempted to update a workflow without permissions', {
+			LoggerProxy.verbose('User attempted to update a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
@@ -351,7 +353,7 @@ export class WorkflowsService {
 				updatedWorkflow.active = false;
 
 				// Now return the original error for UI to display
-				throw error;
+				throw new ResponseHelper.BadRequestError((error as Error).message);
 			}
 		}
 

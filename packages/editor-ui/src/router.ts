@@ -466,7 +466,10 @@ const router = new Router({
 							deny: {
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
-									return settingsStore.settings.hideUsagePage === true;
+									return (
+										settingsStore.settings.hideUsagePage === true ||
+										settingsStore.settings.deployment?.type === 'cloud'
+									);
 								},
 							},
 						},

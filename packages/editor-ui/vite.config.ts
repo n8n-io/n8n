@@ -36,7 +36,7 @@ function renderChunks() {
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
-const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map((name) => ({
+const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCase'].map((name) => ({
 	find: new RegExp(`^lodash.${name}$`, 'i'),
 	replacement: require.resolve(`lodash-es/${name}`),
 }));

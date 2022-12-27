@@ -56,7 +56,7 @@ export default mixins(restApi).extend({
 			}
 		} else {
 			try {
-				const binaryUrl = this.restApi().getBinaryUrl(id);
+				const binaryUrl = this.restApi().getBinaryUrl(id, 'view');
 				if (isJSONData) {
 					this.jsonData = await (await fetch(binaryUrl)).json();
 				} else {

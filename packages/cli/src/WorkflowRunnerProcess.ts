@@ -48,6 +48,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { getLicense } from './License';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -118,48 +119,11 @@ class WorkflowRunnerProcess {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
-		// Credentials should now be loaded from database.
-		// We check if any node uses credentials. If it does, then
-		// init database.
-		let shouldInitializeDb = false;
-		// eslint-disable-next-line array-callback-return
-		inputData.workflowData.nodes.map((node) => {
-			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
-				shouldInitializeDb = true;
-			}
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
-				// With UM, child workflows from arbitrary JSON
-				// Should be persisted by the child process,
-				// so DB needs to be initialized
-				shouldInitializeDb = true;
-			}
-		});
+		// Init db since we need to read the license.
+		await Db.init();
 
-		// This code has been split into 4 ifs just to make it easier to understand
-		// Can be made smaller but in the end it will make it impossible to read.
-		if (shouldInitializeDb) {
-			// initialize db as we need to load credentials
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress === true
-		) {
-			// Workflow settings specifying it should save
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings === undefined &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		}
+		const license = getLicense();
+		await license.init(instanceId, cli);
 
 		// Start timeout for the execution
 		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
@@ -245,7 +209,6 @@ class WorkflowRunnerProcess {
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				userId,
 				options?.parentWorkflowId,
 				options?.parentWorkflowSettings,
 			);

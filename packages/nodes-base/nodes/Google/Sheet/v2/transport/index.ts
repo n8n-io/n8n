@@ -53,9 +53,9 @@ export async function apiRequest(
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'googleSheetsOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -150,5 +150,5 @@ export async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

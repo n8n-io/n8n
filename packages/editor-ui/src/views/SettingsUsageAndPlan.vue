@@ -148,12 +148,11 @@ const onDialogOpened = () => {
 			</div>
 		</div>
 
-		<n8n-info-tip>{{
-			locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
-		}}</n8n-info-tip>
+		<n8n-info-tip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
 
 		<div :class="$style.buttons">
 			<n8n-button
+				:class="$style.buttonTertiary"
 				@click="onAddActivationKey"
 				v-if="usageStore.canUserActivateLicense"
 				type="tertiary"
@@ -280,6 +279,13 @@ const onDialogOpened = () => {
 div[class*='info'] > span > span:last-child {
 	line-height: 1.4;
 	padding: 0 0 0 var(--spacing-4xs);
+}
+
+.buttonTertiary {
+	&,
+	&:hover {
+		background: transparent;
+	}
 }
 </style>
 

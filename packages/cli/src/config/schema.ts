@@ -217,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -659,6 +659,18 @@ export const schema = {
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
 		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
+		},
 		emails: {
 			mode: {
 				doc: 'How to send emails',
@@ -763,6 +775,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
 		},
 	},
 
@@ -884,12 +902,6 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
-		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
 		},
 	},
 

@@ -153,9 +153,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return this.workflowsStore.allWorkflows;
 		},
 		isShareable(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.WorkflowSharing,
-			);
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [

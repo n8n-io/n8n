@@ -41,7 +41,7 @@ import {
 import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
-export * from 'n8n-design-system/src/types';
+export * from 'n8n-design-system/types';
 
 declare module 'jsplumb' {
 	interface PaintStyle {
@@ -235,8 +235,7 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryBufferString(dataPath: string): Promise<string>;
-	getBinaryUrl(dataPath: string): string;
+	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -805,7 +804,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
-		type: string;
+		type: string | 'default' | 'n8n-internal' | 'cloud' | 'desktop_mac' | 'desktop_win';
 	};
 	hideUsagePage: boolean;
 	license: {
@@ -1080,10 +1079,6 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export interface NestedRecord<T> {
-	[key: string]: T | NestedRecord<T>;
-}
-
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
 export type NodePanelType = 'input' | 'output';
 
@@ -1156,7 +1151,6 @@ export interface UIState {
 	currentView: string;
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
-	dynamicTranslations: NestedRecord<string>;
 	draggable: {
 		isDragging: boolean;
 		type: string;
