@@ -27,6 +27,7 @@ export class TestWebhooks {
 			timeout: NodeJS.Timeout;
 			workflowData: IWorkflowDb;
 			workflow: Workflow;
+			destinationNode?: string;
 		};
 	} = {};
 
@@ -128,6 +129,7 @@ export class TestWebhooks {
 						}
 						resolve(data);
 					},
+					this.testWebhookData[webhookKey].destinationNode,
 				);
 
 				if (executionId === undefined) {
@@ -230,6 +232,7 @@ export class TestWebhooks {
 				timeout,
 				workflow,
 				workflowData,
+				destinationNode,
 			};
 
 			try {
