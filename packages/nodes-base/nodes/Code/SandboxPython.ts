@@ -2,8 +2,7 @@ import { normalizeItems } from 'n8n-core';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
 import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
-
-const { python, builtins } = require('pythonia');
+import type { python, py } from 'pythonia';
 
 import type {
 	IDataObject,
@@ -12,27 +11,26 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// export class SandboxPython extends NodeVM {
 export class SandboxPython {
 	private code = '';
 
 	private itemIndex: number | undefined = undefined;
 
-	// private context: ReturnType<typeof getSandboxContextPython>;
-	private nodeMode: CodeNodeMode;
+	private python: python;
 
-	private workflowMode: WorkflowExecuteMode;
+	private exec: py['exec'];
 
-	constructor(workflowMode: WorkflowExecuteMode, nodeMode: CodeNodeMode) {
-		this.nodeMode = nodeMode;
-		this.workflowMode = workflowMode;
+	constructor(private workflowMode: WorkflowExecuteMode, private nodeMode: CodeNodeMode) {
+		const { python, builtins } = require('pythonia');
+		this.python = python;
+		this.exec = builtins.exec;
 	}
 
 	close() {
-		python.exit();
+		this.python.exit();
 	}
 
-	async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
+	private async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
 		const runCode = `
 # Because of a bug in pythonia do we have to wrap it to make it work
 def _(node_name):
@@ -78,7 +76,7 @@ responseCallback(cleanup_proxy_data(main()))
 
 		try {
 			// python.setFastMode(false);
-			await builtins.exec(runCode, {
+			await this.exec(runCode, {
 				...context,
 				responseCallback,
 			});
