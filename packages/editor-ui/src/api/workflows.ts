@@ -27,3 +27,7 @@ export async function getCurrentExecutions(context: IRestApiContext, filter: IDa
 export async function getFinishedExecutions(context: IRestApiContext, filter: IDataObject) {
 	return await makeRestApiRequest(context, 'GET', '/executions', { filter });
 }
+
+export async function getExecutionData(context: IRestApiContext, executionId: string) {
+	return await makeRestApiRequest(context, 'GET', `/executions/${executionId}`);
+}
