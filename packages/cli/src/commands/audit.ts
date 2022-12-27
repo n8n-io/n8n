@@ -14,9 +14,7 @@ export class SecurityAuditCommand extends BaseCommand {
 
 		const result = await audit();
 
-		process.stdout.write(JSON.stringify(result, null, 2));
-
-		this.logger.info('Successfully generated security audit report');
+		this.logger.info(JSON.stringify(result, null, 2));
 	}
 
 	async catch(error: Error) {
