@@ -182,7 +182,9 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 			title: INSTANCE_REPORT.SECTIONS.UNPROTECTED_WEBHOOKS,
 			description: [
 				sentenceStart(unprotectedWebhooks),
-				'the "Authentication" field set to "None" and are not directly connected to a node to validate the payload. Every unprotected webhook allows your workflow to be called by any third party who knows the webhook URL.',
+				`the "Authentication" field set to "None" and ${
+					unprotectedWebhooks.length > 1 ? 'are' : 'is'
+				} not directly connected to a node to validate the payload. Every unprotected webhook allows your workflow to be called by any third party who knows the webhook URL.`,
 			].join(' '),
 			recommendation: `Consider setting the "Authentication" field to an option other than "None", or validating the payload with one of the following nodes: ${recommendedValidators}.`,
 			location: unprotectedWebhooks,
@@ -205,7 +207,7 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 			description: 'This n8n instance has the following security settings.',
 			recommendation: securitySettings.publiclyAccessibleInstance
 				? [
-						'Important! Set up user management or basic/JWT auth to protect access to your n8n instance.'.toUpperCase(),
+						'Important! Your n8n instance is publicly accessible. Set up user management or basic/JWT auth to protect access to your n8n instance.'.toUpperCase(),
 						`See: ${SELF_HOSTED_AUTH_DOCS_URL}`,
 				  ].join(' ')
 				: `Consider adjusting the security settings for your n8n instance based on your needs. See: ${ENV_VARS_DOCS_URL}`,
