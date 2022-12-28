@@ -126,7 +126,7 @@ export async function getOutdatedState() {
 	const allPackagesVersions = await GenericHelpers.getVersions();
 	const currentVersionName = allPackagesVersions.cli;
 
-	let versions = []; // API returns current version and its next versions
+	let versions = [];
 
 	try {
 		versions = await getNextVersions(currentVersionName).then(removeIconData);
@@ -137,6 +137,7 @@ export async function getOutdatedState() {
 		return null;
 	}
 
+	// API returns current version and any next versions
 	const { currentVersion, nextVersions } = classify(versions, currentVersionName);
 
 	const nextVersionsNumber = nextVersions.length;
