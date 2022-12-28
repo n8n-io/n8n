@@ -18,6 +18,7 @@ import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { createWriteStream } from 'fs';
 import {
 	access as fsAccess,
+	chmod,
 	copyFile,
 	mkdir,
 	readdir as fsReaddir,
@@ -323,6 +324,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		this.types.credentials = this.types.credentials.concat(types.credentials);
 
 		// Copy over all icons and set `iconUrl` for the frontend
+		let seen = new Set();
 		const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
 			typesArr.map((type) => {
 				if (!type.icon?.startsWith('file:')) return;
@@ -332,9 +334,15 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				type.iconUrl = iconUrl;
 				const source = path.join(dir, icon);
 				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
-				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
-					copyFile(source, destination),
-				);
+				if (!seen.has(destination)) {
+					seen.add(destination);
+					return mkdir(path.dirname(destination), { recursive: true }).then(async () => {
+						await copyFile(source, destination);
+						await chmod(destination, 0o644);
+					});
+				} else {
+					return Promise.resolve();
+				}
 			}),
 		);
 
