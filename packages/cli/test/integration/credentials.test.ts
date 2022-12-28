@@ -81,7 +81,7 @@ test('GET /credentials should return all creds for owner', async () => {
 	response.body.data.forEach((credential: CredentialsEntity) => {
 		validateMainCredentialData(credential);
 		expect(credential.data).toBeUndefined();
-		expect(savedCredentialsIds.includes(credential.id)).toBe(true);
+		expect(savedCredentialsIds).toContain(credential.id);
 	});
 });
 

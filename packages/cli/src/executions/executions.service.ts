@@ -461,7 +461,7 @@ export class ExecutionsService {
 			};
 
 			let query = Db.collections.Execution.createQueryBuilder()
-				.select()
+				.select('id')
 				.where({
 					...filters,
 					workflowId: In(sharedWorkflowIds),

@@ -160,7 +160,7 @@ describe('PermissionChecker.check()', () => {
 		const memberCred = await saveCredential(randomCred(), { user: member });
 
 		const workflowDetails = {
-			id: `${randomPositiveDigit()}`,
+			id: randomPositiveDigit().toString(),
 			name: 'test',
 			active: false,
 			connections: {},
@@ -205,7 +205,7 @@ describe('PermissionChecker.check()', () => {
 			role: workflowOwnerRole,
 		});
 
-		const workflow = new Workflow({ ...workflowDetails, id: workflowDetails.id });
+		const workflow = new Workflow(workflowDetails);
 
 		expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
 	});

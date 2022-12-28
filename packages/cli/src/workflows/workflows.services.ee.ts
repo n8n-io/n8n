@@ -56,7 +56,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	): Promise<DeleteResult> {
 		return transaction.delete(SharedWorkflow, {
 			workflowId,
-			user: { id: Not(In(userIds)) },
+			userId: Not(In(userIds)),
 		});
 	}
 
@@ -231,10 +231,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = node.credentials?.[credentialType].id ?? '';
-				const matchedCredential = allowedCredentials.find(
-					(credential) => credential.id === credentialId,
-				);
+				const credentialId = node.credentials?.[credentialType].id;
+				if (credentialId === undefined) return;
+				const matchedCredential = allowedCredentials.find(({ id }) => id === credentialId);
 				if (!matchedCredential) {
 					throw new Error('The workflow contains credentials that you do not have access to');
 				}
