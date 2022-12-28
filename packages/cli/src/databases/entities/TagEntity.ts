@@ -1,13 +1,12 @@
 import { Column, Entity, Generated, Index, ManyToMany, PrimaryColumn } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
-import type { ITagDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
 import type { WorkflowEntity } from './WorkflowEntity';
 import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
-export class TagEntity extends AbstractEntity implements ITagDb {
+export class TagEntity extends AbstractEntity {
 	@Generated()
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;

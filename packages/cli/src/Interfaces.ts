@@ -88,13 +88,6 @@ export interface IDatabaseCollections {
 //               tags
 // ----------------------------------
 
-export interface ITagDb {
-	id: string;
-	name: string;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
 export interface ITagToImport {
 	id: string;
 	name: string;
@@ -106,7 +99,7 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = ITagDb & UsageCount;
+export type ITagWithCountDb = TagEntity & UsageCount;
 
 // ----------------------------------
 //            workflows
@@ -119,7 +112,7 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: string;
-	tags?: ITagDb[];
+	tags?: TagEntity[];
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
