@@ -348,8 +348,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				if (!nodeType) return [];
 
 				const { workflowTriggerNodes } = useWorkflowsStore();
-				const isTrigger =
-					nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
+				const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;
