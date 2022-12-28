@@ -3,7 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
+import {
+	deepCopy,
+	IDataObject,
+	IWorkflowBase,
+	LoggerProxy,
+	JsonObject,
+	jsonParse,
+	Workflow,
+} from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
@@ -12,7 +20,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';

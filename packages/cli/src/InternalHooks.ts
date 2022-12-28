@@ -5,6 +5,7 @@ import {
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
+	IWorkflowBase,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
@@ -12,7 +13,6 @@ import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
-	IWorkflowBase,
 	IWorkflowDb,
 	IExecutionTrackProperties,
 } from '@/Interfaces';

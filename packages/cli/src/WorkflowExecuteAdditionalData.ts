@@ -27,13 +27,13 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
-	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -51,7 +51,6 @@ import {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IPushDataExecutionFinished,
-	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
@@ -62,7 +61,7 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
@@ -94,6 +93,7 @@ export function executeErrorWorkflow(
 
 	if (fullRunData.data.resultData.error !== undefined) {
 		let workflowErrorData: IWorkflowErrorData;
+		const workflowId = workflowData.id;
 
 		if (executionId) {
 			// The error did happen in an execution
@@ -107,7 +107,7 @@ export function executeErrorWorkflow(
 					retryOf,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id : undefined,
+					id: workflowId !== undefined ? workflowId : undefined,
 					name: workflowData.name,
 				},
 			};
@@ -119,7 +119,7 @@ export function executeErrorWorkflow(
 					mode,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id : undefined,
+					id: workflowId !== undefined ? workflowId : undefined,
 					name: workflowData.name,
 				},
 			};
@@ -128,30 +128,28 @@ export function executeErrorWorkflow(
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-			workflowData.settings !== undefined &&
-			workflowData.settings.errorWorkflow &&
+			workflowData.settings?.errorWorkflow &&
 			!(
 				mode === 'error' &&
-				workflowData.id &&
-				workflowData.settings.errorWorkflow.toString() === workflowData.id
+				workflowId &&
+				workflowData.settings.errorWorkflow.toString() === workflowId
 			)
 		) {
 			Logger.verbose(`Start external error workflow`, {
 				executionId,
 				errorWorkflowId: workflowData.settings.errorWorkflow.toString(),
-				workflowId: workflowData.id,
+				workflowId,
 			});
 			// If a specific error workflow is set run only that one
 
 			// First, do permission checks.
-			if (!workflowData.id) {
+			if (!workflowId) {
 				// Manual executions do not trigger error workflows
 				// So this if should never happen. It was added to
 				// make sure there are no possible security gaps
 				return;
 			}
-			getWorkflowOwner(workflowData.id)
+			getWorkflowOwner(workflowId)
 				.then((user) => {
 					void WorkflowHelpers.executeErrorWorkflow(
 						workflowData.settings!.errorWorkflow as string,
@@ -166,7 +164,7 @@ export function executeErrorWorkflow(
 						{
 							executionId,
 							errorWorkflowId: workflowData.settings!.errorWorkflow!.toString(),
-							workflowId: workflowData.id,
+							workflowId,
 							error,
 							workflowErrorData,
 						},
@@ -174,16 +172,12 @@ export function executeErrorWorkflow(
 				});
 		} else if (
 			mode !== 'error' &&
-			workflowData.id !== undefined &&
+			workflowId !== undefined &&
 			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
 		) {
-			Logger.verbose(`Start internal error workflow`, { executionId, workflowId: workflowData.id });
-			void getWorkflowOwner(workflowData.id).then((user) => {
-				void WorkflowHelpers.executeErrorWorkflow(
-					workflowData.id!.toString(),
-					workflowErrorData,
-					user,
-				);
+			Logger.verbose(`Start internal error workflow`, { executionId, workflowId });
+			void getWorkflowOwner(workflowId).then((user) => {
+				void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
 			});
 		}
 	}

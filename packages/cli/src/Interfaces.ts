@@ -14,7 +14,7 @@ import type {
 	ITaskData,
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
-	IWorkflowBase as IWorkflowBaseWorkflow,
+	IWorkflowBase,
 	CredentialLoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
@@ -105,10 +105,6 @@ export type ITagWithCountDb = TagEntity & UsageCount;
 //            workflows
 // ----------------------------------
 
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: string;
-}
-
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: string;
@@ -138,13 +134,9 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	shared?: SharedCredentials[];
 }
 
-export interface ICredentialsDecryptedDb extends ICredentialsBase, ICredentialsDecrypted {
-	id: string;
-}
+export type ICredentialsDecryptedDb = ICredentialsBase & ICredentialsDecrypted;
 
-export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
-	id: string;
-}
+export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
