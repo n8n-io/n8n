@@ -57,6 +57,9 @@ function getSecuritySettings() {
 	return settings;
 }
 
+/**
+ * Whether a webhook node has a direct child assumed to validate its payload.
+ */
 function hasValidatorChild({
 	node,
 	workflow,
