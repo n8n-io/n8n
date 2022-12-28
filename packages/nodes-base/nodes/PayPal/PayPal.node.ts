@@ -113,7 +113,7 @@ export class PayPal implements INodeType {
 				};
 
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 					return {
 						status: 'OK',
 						message: 'Authentication successful!',

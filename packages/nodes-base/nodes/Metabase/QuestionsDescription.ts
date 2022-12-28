@@ -82,7 +82,7 @@ export const questionsOperations: INodeProperties[] = [
 										items[i].binary!.data = await this.helpers.prepareBinaryData(
 											response.body as Buffer,
 											'data',
-											response.headers['content-type'],
+											response.headers['content-type'] as string,
 										);
 									}
 									result.push(items[i]);

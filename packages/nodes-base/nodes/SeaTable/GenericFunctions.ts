@@ -58,7 +58,7 @@ export async function seaTableApiRequest(
 
 	try {
 		//@ts-ignore
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -154,7 +154,7 @@ export async function getBaseAccessToken(
 		json: true,
 	};
 
-	ctx.base = await this.helpers.request!(options);
+	ctx.base = await this.helpers.request(options);
 }
 
 export function resolveBaseUri(ctx: ICtx) {
