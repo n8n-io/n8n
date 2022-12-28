@@ -53,34 +53,36 @@ const onLicenseActivation = async () => {
 };
 
 onMounted(async () => {
-	usageStore.setLoading(true);
-	if (route.query.key) {
+	if (!usageStore.isDesktop) {
+		usageStore.setLoading(true);
+		if (route.query.key) {
+			try {
+				await usageStore.activateLicense(route.query.key as string);
+				await router.replace({ query: {} });
+				showActivationSuccess();
+				usageStore.setLoading(false);
+				return;
+			} catch (error) {
+				showActivationError(error);
+			}
+		}
 		try {
-			await usageStore.activateLicense(route.query.key as string);
-			await router.replace({ query: {} });
-			showActivationSuccess();
+			if (!route.query.key && usageStore.canUserActivateLicense) {
+				await usageStore.refreshLicenseManagementToken();
+			} else {
+				await usageStore.getLicenseInfo();
+			}
 			usageStore.setLoading(false);
-			return;
 		} catch (error) {
-			showActivationError(error);
+			if (!error.name) {
+				error.name = locale.baseText('settings.usageAndPlan.error');
+			}
+			Notification.error({
+				title: error.name,
+				message: error.message,
+				position: 'bottom-right',
+			});
 		}
-	}
-	try {
-		if (!route.query.key && usageStore.canUserActivateLicense) {
-			await usageStore.refreshLicenseManagementToken();
-		} else {
-			await usageStore.getLicenseInfo();
-		}
-		usageStore.setLoading(false);
-	} catch (error) {
-		if (!error.name) {
-			error.name = locale.baseText('settings.usageAndPlan.error');
-		}
-		Notification.error({
-			title: error.name,
-			message: error.message,
-			position: 'bottom-right',
-		});
 	}
 });
 
@@ -110,98 +112,121 @@ const onDialogClosed = () => {
 const onDialogOpened = () => {
 	activationKeyInput.value?.focus();
 };
+
+const openPricingPage = () => {
+	sendUsageTelemetry('desktop_view_plans');
+	window.open('https://n8n.io/pricing', '_blank');
+};
 </script>
 
 <template>
-	<div v-if="!usageStore.isLoading">
+	<div>
 		<n8n-heading size="2xlarge">{{ locale.baseText('settings.usageAndPlan.title') }}</n8n-heading>
-		<n8n-heading :class="$style.title" size="large">
-			<i18n path="settings.usageAndPlan.description">
-				<template #name>{{ usageStore.planName }}</template>
-				<template #type>
-					<span v-if="usageStore.planId">{{ locale.baseText('settings.usageAndPlan.plan') }}</span>
-					<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
-				</template>
-			</i18n>
-		</n8n-heading>
-
-		<div :class="$style.quota">
-			<n8n-text size="medium" color="text-light">
-				{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
-			</n8n-text>
-			<div :class="$style.chart">
-				<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
-					<span
-						:class="$style.chartBar"
-						:style="{ width: `${usageStore.executionPercentage}%` }"
-					></span>
-				</span>
-				<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
-					<template #count>{{ usageStore.executionCount }}</template>
-					<template #limit>
-						<span v-if="usageStore.executionLimit < 0">{{
-							locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
+		<n8n-action-box
+			v-if="usageStore.isDesktop"
+			:class="$style.actionBox"
+			:heading="locale.baseText('settings.usageAndPlan.desktop.title')"
+			:description="locale.baseText('settings.usageAndPlan.desktop.description')"
+			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
+			@click="openPricingPage"
+		/>
+		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
+			<n8n-heading :class="$style.title" size="large">
+				<i18n path="settings.usageAndPlan.description">
+					<template #name>{{ usageStore.planName }}</template>
+					<template #type>
+						<span v-if="usageStore.planId">{{
+							locale.baseText('settings.usageAndPlan.plan')
 						}}</span>
-						<span v-else>{{ usageStore.executionLimit }}</span>
+						<span v-else>{{ locale.baseText('settings.usageAndPlan.edition') }}</span>
 					</template>
 				</i18n>
+			</n8n-heading>
+
+			<div :class="$style.quota">
+				<n8n-text size="medium" color="text-light">
+					{{ locale.baseText('settings.usageAndPlan.activeWorkflows') }}
+				</n8n-text>
+				<div :class="$style.chart">
+					<span v-if="usageStore.executionLimit > 0" :class="$style.chartLine">
+						<span
+							:class="$style.chartBar"
+							:style="{ width: `${usageStore.executionPercentage}%` }"
+						></span>
+					</span>
+					<i18n :class="$style.count" path="settings.usageAndPlan.activeWorkflows.count">
+						<template #count>{{ usageStore.executionCount }}</template>
+						<template #limit>
+							<span v-if="usageStore.executionLimit < 0">{{
+								locale.baseText('settings.usageAndPlan.activeWorkflows.unlimited')
+							}}</span>
+							<span v-else>{{ usageStore.executionLimit }}</span>
+						</template>
+					</i18n>
+				</div>
 			</div>
-		</div>
 
-		<n8n-info-tip>{{ locale.baseText('settings.usageAndPlan.activeWorkflows.hint') }}</n8n-info-tip>
+			<n8n-info-tip>{{
+				locale.baseText('settings.usageAndPlan.activeWorkflows.hint')
+			}}</n8n-info-tip>
 
-		<div :class="$style.buttons">
-			<n8n-button
-				:class="$style.buttonTertiary"
-				@click="onAddActivationKey"
-				v-if="usageStore.canUserActivateLicense"
-				type="tertiary"
-				size="large"
+			<div :class="$style.buttons">
+				<n8n-button
+					:class="$style.buttonTertiary"
+					@click="onAddActivationKey"
+					v-if="usageStore.canUserActivateLicense"
+					type="tertiary"
+					size="large"
+				>
+					<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
+				</n8n-button>
+				<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
+					<a :href="managePlanUrl" target="_blank">{{
+						locale.baseText('settings.usageAndPlan.button.manage')
+					}}</a>
+				</n8n-button>
+				<n8n-button v-else @click="onViewPlans" size="large">
+					<a :href="viewPlansUrl" target="_blank">{{
+						locale.baseText('settings.usageAndPlan.button.plans')
+					}}</a>
+				</n8n-button>
+			</div>
+
+			<el-dialog
+				width="480px"
+				top="0"
+				@closed="onDialogClosed"
+				@opened="onDialogOpened"
+				:visible.sync="activationKeyModal"
+				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 			>
-				<strong>{{ locale.baseText('settings.usageAndPlan.button.activation') }}</strong>
-			</n8n-button>
-			<n8n-button v-if="usageStore.managementToken" @click="onManagePlan" size="large">
-				<a :href="managePlanUrl" target="_blank">{{
-					locale.baseText('settings.usageAndPlan.button.manage')
-				}}</a>
-			</n8n-button>
-			<n8n-button v-else @click="onViewPlans" size="large">
-				<a :href="viewPlansUrl" target="_blank">{{
-					locale.baseText('settings.usageAndPlan.button.plans')
-				}}</a>
-			</n8n-button>
+				<template #default>
+					<n8n-input
+						ref="activationKeyInput"
+						v-model="activationKey"
+						size="medium"
+						:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
+					/>
+				</template>
+				<template #footer>
+					<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
+						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
+					</n8n-button>
+					<n8n-button @click="onLicenseActivation" size="medium">
+						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
+					</n8n-button>
+				</template>
+			</el-dialog>
 		</div>
-
-		<el-dialog
-			width="480px"
-			top="0"
-			@closed="onDialogClosed"
-			@opened="onDialogOpened"
-			:visible.sync="activationKeyModal"
-			:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
-		>
-			<template #default>
-				<n8n-input
-					ref="activationKeyInput"
-					v-model="activationKey"
-					size="medium"
-					:placeholder="locale.baseText('settings.usageAndPlan.dialog.activation.label')"
-				/>
-			</template>
-			<template #footer>
-				<n8n-button @click="activationKeyModal = false" size="medium" type="secondary">
-					{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
-				</n8n-button>
-				<n8n-button @click="onLicenseActivation" size="medium">
-					{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
-				</n8n-button>
-			</template>
-		</el-dialog>
 	</div>
 </template>
 
 <style lang="scss" module>
 @import '@/styles/css-animation-helpers.scss';
+
+.actionBox {
+	margin: var(--spacing-2xl) 0 0;
+}
 
 .spacedFlex {
 	display: flex;
