@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.175.2",
+  "version": "0.175.3",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -57,8 +57,8 @@
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
     "monaco-editor": "^0.33.0",
-    "n8n-design-system": "~0.49.2",
-    "n8n-workflow": "~0.131.1",
+    "n8n-design-system": "~0.49.3",
+    "n8n-workflow": "~0.131.2",
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.0.22",
     "prismjs": "^1.17.1",
