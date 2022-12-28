@@ -399,6 +399,7 @@ export async function getSharedWorkflowIds(user: User, roles?: string[]): Promis
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		relations: ['workflow', 'role'],
 		where: whereClause({ user, entityType: 'workflow', roles }),
+		select: ['workflowId'],
 	});
 
 	return sharedWorkflows.map(({ workflowId }) => workflowId);
@@ -417,9 +418,12 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 		scope: 'workflow',
 	});
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
-		user,
-		role: workflowOwnerRole,
-	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+		where: {
+			user,
+			role: workflowOwnerRole,
+		},
+		select: ['workflowId'],
+	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
 
 	if (ownedWorkflowsIds.length > 15) {
 		belowThreshold = false;

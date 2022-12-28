@@ -123,14 +123,14 @@ export async function getExecutionsCount(data: {
 
 export async function getExecutionInWorkflows(
 	id: string,
-	workflows: string[],
+	workflowIds: string[],
 	includeData?: boolean,
 ): Promise<IExecutionResponseApi | undefined> {
 	const execution = await Db.collections.Execution.findOne({
 		select: getExecutionSelectableProperties(includeData),
 		where: {
 			id,
-			workflowId: In(workflows),
+			workflowId: In(workflowIds),
 		},
 	});
 
