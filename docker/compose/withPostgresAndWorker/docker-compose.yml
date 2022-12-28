@@ -17,9 +17,6 @@ x-shared: &shared
     - EXECUTIONS_MODE=queue
     - QUEUE_BULL_REDIS_HOST=redis
     - QUEUE_HEALTH_CHECK_ACTIVE=true
-    - N8N_BASIC_AUTH_ACTIVE=true
-    - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
-    - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
   links:
     - postgres
     - redis
@@ -71,9 +68,6 @@ services:
       - N8N_HOST
       - N8N_EDITOR_BASE_URL
       - N8N_PERSONALIZATION_ENABLED
-      - N8N_BASIC_AUTH_ACTIVE
-      - N8N_BASIC_AUTH_USER
-      - N8N_BASIC_AUTH_PASSWORD
     ports:
       - 5678:5678
 
