@@ -6,7 +6,6 @@ post:
   summary: Generate an audit
   description: Generate a security audit for your n8n instance.
   requestBody:
-    description: Filters for specific risk categories.
     required: false
     content:
       application/json:
@@ -15,6 +14,7 @@ post:
           properties:
             filters:
               type: object
+              description: Filters for specific risk categories.
               properties:
                 categories:
                   type: array
