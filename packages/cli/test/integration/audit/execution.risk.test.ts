@@ -23,7 +23,7 @@ afterAll(async () => {
 });
 
 test('should report risky official nodes', async () => {
-	const map = OFFICIAL_RISKY_NODE_TYPES.reduce<{ [nodeType: string]: string }>((acc, cur) => {
+	const map = [...OFFICIAL_RISKY_NODE_TYPES].reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
 
@@ -57,7 +57,7 @@ test('should report risky official nodes', async () => {
 		EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
 	);
 
-	expect(section.location).toHaveLength(OFFICIAL_RISKY_NODE_TYPES.length);
+	expect(section.location).toHaveLength(OFFICIAL_RISKY_NODE_TYPES.size);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {

@@ -72,7 +72,7 @@ function hasValidatorChild({
 	if (!childNodeNames) return false;
 
 	return childNodeNames.some((name) =>
-		workflow.nodes.find((n) => n.name === name && WEBHOOK_VALIDATOR_NODE_TYPES.includes(n.type)),
+		workflow.nodes.find((n) => n.name === name && WEBHOOK_VALIDATOR_NODE_TYPES.has(n.type)),
 	);
 }
 
@@ -174,9 +174,9 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 		const sentenceStart = ({ length }: { length: number }) =>
 			length > 1 ? 'These webhook nodes have' : 'This webhook node has';
 
-		const recommendedValidators = WEBHOOK_VALIDATOR_NODE_TYPES.filter(
-			(nodeType) => !nodeType.endsWith('function') || !nodeType.endsWith('functionItem'),
-		).join(',');
+		const recommendedValidators = [...WEBHOOK_VALIDATOR_NODE_TYPES]
+			.filter((nodeType) => !nodeType.endsWith('function') || !nodeType.endsWith('functionItem'))
+			.join(',');
 
 		report.sections.push({
 			title: INSTANCE_REPORT.SECTIONS.UNPROTECTED_WEBHOOKS,

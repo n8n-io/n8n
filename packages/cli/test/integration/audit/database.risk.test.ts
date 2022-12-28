@@ -25,7 +25,7 @@ afterAll(async () => {
 });
 
 test('should report expressions in queries', async () => {
-	const map = SQL_NODE_TYPES.reduce<{ [nodeType: string]: string }>((acc, cur) => {
+	const map = [...SQL_NODE_TYPES].reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
 
@@ -64,7 +64,7 @@ test('should report expressions in queries', async () => {
 		DATABASE_REPORT.SECTIONS.EXPRESSIONS_IN_QUERIES,
 	);
 
-	expect(section.location).toHaveLength(SQL_NODE_TYPES.length);
+	expect(section.location).toHaveLength(SQL_NODE_TYPES.size);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {
@@ -74,7 +74,7 @@ test('should report expressions in queries', async () => {
 });
 
 test('should report expressions in query params', async () => {
-	const map = SQL_NODE_TYPES_WITH_QUERY_PARAMS.reduce<{ [nodeType: string]: string }>(
+	const map = [...SQL_NODE_TYPES_WITH_QUERY_PARAMS].reduce<{ [nodeType: string]: string }>(
 		(acc, cur) => {
 			return (acc[cur] = uuid()), acc;
 		},
@@ -118,7 +118,7 @@ test('should report expressions in query params', async () => {
 		DATABASE_REPORT.SECTIONS.EXPRESSIONS_IN_QUERY_PARAMS,
 	);
 
-	expect(section.location).toHaveLength(SQL_NODE_TYPES_WITH_QUERY_PARAMS.length);
+	expect(section.location).toHaveLength(SQL_NODE_TYPES_WITH_QUERY_PARAMS.size);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {
@@ -128,7 +128,7 @@ test('should report expressions in query params', async () => {
 });
 
 test('should report unused query params', async () => {
-	const map = SQL_NODE_TYPES_WITH_QUERY_PARAMS.reduce<{ [nodeType: string]: string }>(
+	const map = [...SQL_NODE_TYPES_WITH_QUERY_PARAMS].reduce<{ [nodeType: string]: string }>(
 		(acc, cur) => {
 			return (acc[cur] = uuid()), acc;
 		},
@@ -169,7 +169,7 @@ test('should report unused query params', async () => {
 		DATABASE_REPORT.SECTIONS.UNUSED_QUERY_PARAMS,
 	);
 
-	expect(section.location).toHaveLength(SQL_NODE_TYPES_WITH_QUERY_PARAMS.length);
+	expect(section.location).toHaveLength(SQL_NODE_TYPES_WITH_QUERY_PARAMS.size);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {

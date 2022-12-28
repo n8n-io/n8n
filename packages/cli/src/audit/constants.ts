@@ -16,39 +16,39 @@ export const RISK_CATEGORIES: Risk.Category[] = [
  * Node types
  */
 
-export const SQL_NODE_TYPES_WITH_QUERY_PARAMS = [
+export const SQL_NODE_TYPES_WITH_QUERY_PARAMS = new Set([
 	'n8n-nodes-base.postgres',
 	'n8n-nodes-base.crateDb',
 	'n8n-nodes-base.questDb',
 	'n8n-nodes-base.timescaleDb',
-];
+]);
 
-export const SQL_NODE_TYPES = [
+export const SQL_NODE_TYPES = new Set([
 	...SQL_NODE_TYPES_WITH_QUERY_PARAMS,
 	'n8n-nodes-base.mySql',
 	'n8n-nodes-base.microsoftSql',
 	'n8n-nodes-base.snowflake',
-];
+]);
 
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 
-export const WEBHOOK_VALIDATOR_NODE_TYPES = [
+export const WEBHOOK_VALIDATOR_NODE_TYPES = new Set([
 	'n8n-nodes-base.if',
 	'n8n-nodes-base.switch',
 	'n8n-nodes-base.code',
 	'n8n-nodes-base.function',
 	'n8n-nodes-base.functionItem',
-];
+]);
 
-export const FILESYSTEM_INTERACTION_NODE_TYPES = [
+export const FILESYSTEM_INTERACTION_NODE_TYPES = new Set([
 	'n8n-nodes-base.readPdf',
 	'n8n-nodes-base.readBinaryFile',
 	'n8n-nodes-base.readBinaryFiles',
 	'n8n-nodes-base.spreadsheetFile',
 	'n8n-nodes-base.writeBinaryFile',
-];
+]);
 
-export const OFFICIAL_RISKY_NODE_TYPES = [
+export const OFFICIAL_RISKY_NODE_TYPES = new Set([
 	'n8n-nodes-base.executeCommand',
 	'n8n-nodes-base.code',
 	'n8n-nodes-base.function',
@@ -56,7 +56,7 @@ export const OFFICIAL_RISKY_NODE_TYPES = [
 	'n8n-nodes-base.httpRequest',
 	'n8n-nodes-base.ssh',
 	'n8n-nodes-base.ftp',
-];
+]);
 
 /**
  * Risk reports

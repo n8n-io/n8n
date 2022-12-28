@@ -16,7 +16,7 @@ import type { Risk } from '@/audit/types';
 function getOfficialRiskyNodeTypes(workflows: WorkflowEntity[]) {
 	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
 		workflow.nodes.forEach((node) => {
-			if (OFFICIAL_RISKY_NODE_TYPES.includes(node.type)) {
+			if (OFFICIAL_RISKY_NODE_TYPES.has(node.type)) {
 				acc.push(toFlaggedNode({ node, workflow }));
 			}
 		});

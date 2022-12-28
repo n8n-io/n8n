@@ -6,7 +6,7 @@ import type { Risk } from '@/audit/types';
 function getFilesystemInteractionNodeTypes(workflows: WorkflowEntity[]) {
 	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
 		workflow.nodes.forEach((node) => {
-			if (FILESYSTEM_INTERACTION_NODE_TYPES.includes(node.type)) {
+			if (FILESYSTEM_INTERACTION_NODE_TYPES.has(node.type)) {
 				acc.push(toFlaggedNode({ node, workflow }));
 			}
 		});

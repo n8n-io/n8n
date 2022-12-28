@@ -12,7 +12,7 @@ function getIssues(workflows: Workflow[]) {
 	return workflows.reduce<{ [sectionTitle: string]: Risk.NodeLocation[] }>(
 		(acc, workflow) => {
 			workflow.nodes.forEach((node) => {
-				if (!SQL_NODE_TYPES.includes(node.type)) return;
+				if (!SQL_NODE_TYPES.has(node.type)) return;
 				if (node.parameters === undefined) return;
 				if (node.parameters.operation !== 'executeQuery') return;
 
@@ -20,7 +20,7 @@ function getIssues(workflows: Workflow[]) {
 					acc.expressionsInQueries.push(toFlaggedNode({ node, workflow }));
 				}
 
-				if (!SQL_NODE_TYPES_WITH_QUERY_PARAMS.includes(node.type)) return;
+				if (!SQL_NODE_TYPES_WITH_QUERY_PARAMS.has(node.type)) return;
 
 				if (!node.parameters.additionalFields) {
 					acc.unusedQueryParams.push(toFlaggedNode({ node, workflow }));

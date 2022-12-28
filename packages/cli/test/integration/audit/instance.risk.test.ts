@@ -115,7 +115,7 @@ test('should not report webhooks having basic or header auth', async () => {
 });
 
 test('should not report webhooks validated by direct children', async () => {
-	const promises = WEBHOOK_VALIDATOR_NODE_TYPES.map(async (nodeType) => {
+	const promises = [...WEBHOOK_VALIDATOR_NODE_TYPES].map(async (nodeType) => {
 		const details = {
 			name: 'My Test Workflow',
 			active: true,

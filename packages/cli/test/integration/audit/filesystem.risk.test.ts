@@ -21,7 +21,7 @@ afterAll(async () => {
 });
 
 test('should report filesystem interaction nodes', async () => {
-	const map = FILESYSTEM_INTERACTION_NODE_TYPES.reduce<{ [nodeType: string]: string }>(
+	const map = [...FILESYSTEM_INTERACTION_NODE_TYPES].reduce<{ [nodeType: string]: string }>(
 		(acc, cur) => {
 			return (acc[cur] = uuid()), acc;
 		},
@@ -58,7 +58,7 @@ test('should report filesystem interaction nodes', async () => {
 		FILESYSTEM_REPORT.SECTIONS.FILESYSTEM_INTERACTION_NODES,
 	);
 
-	expect(section.location).toHaveLength(FILESYSTEM_INTERACTION_NODE_TYPES.length);
+	expect(section.location).toHaveLength(FILESYSTEM_INTERACTION_NODE_TYPES.size);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {
