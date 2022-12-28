@@ -6,7 +6,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
@@ -202,6 +201,9 @@ export class Webhook extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
+
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					const { default: Redis } = await import('ioredis');
 
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect

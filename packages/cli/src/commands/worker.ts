@@ -299,7 +299,8 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
-				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
+				const queue = await Queue.getInstance();
+				Worker.jobQueue = queue.getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 

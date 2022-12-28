@@ -12,7 +12,6 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-import Redis from 'ioredis';
 import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
@@ -393,6 +392,9 @@ export class Start extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
+
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					const { default: Redis } = await import('ioredis');
 
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect
