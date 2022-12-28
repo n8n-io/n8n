@@ -637,6 +637,14 @@ export const schema = {
 			env: 'N8N_PUBLIC_API_ENDPOINT',
 			doc: 'Path for the public api endpoints',
 		},
+		swaggerUi: {
+			disabled: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				doc: 'Whether to disable the Swagger UI for the Public API',
+			},
+		},
 	},
 
 	workflowTagsDisabled: {
