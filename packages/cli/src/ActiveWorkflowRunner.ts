@@ -42,7 +42,6 @@ import {
 	IActivationError,
 	IQueuedWorkflowActivations,
 	IResponseCallbackData,
-	IWebhookDb,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
@@ -53,7 +52,8 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import config from '@/config';
 import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from '@/constants';
@@ -202,10 +202,10 @@ export class ActiveWorkflowRunner {
 			path = path.slice(0, -1);
 		}
 
-		let webhook = (await Db.collections.Webhook.findOne({
+		let webhook = await Db.collections.Webhook.findOne({
 			webhookPath: path,
 			method: httpMethod,
-		})) as IWebhookDb;
+		});
 		let webhookId: string | undefined;
 
 		// check if path is dynamic
@@ -415,12 +415,12 @@ export class ActiveWorkflowRunner {
 
 			path = webhookData.path;
 
-			const webhook = {
+			const webhook: WebhookEntity = {
 				workflowId: webhookData.workflowId,
 				webhookPath: path,
 				node: node.name,
 				method: webhookData.httpMethod,
-			} as IWebhookDb;
+			};
 
 			if (webhook.webhookPath.startsWith('/')) {
 				webhook.webhookPath = webhook.webhookPath.slice(1);
@@ -545,11 +545,9 @@ export class ActiveWorkflowRunner {
 
 		await WorkflowHelpers.saveStaticData(workflow);
 
-		const webhook = {
+		await Db.collections.Webhook.delete({
 			workflowId: workflowData.id,
-		} as IWebhookDb;
-
-		await Db.collections.Webhook.delete(webhook);
+		});
 	}
 
 	/**
