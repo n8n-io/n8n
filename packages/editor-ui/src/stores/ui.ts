@@ -283,7 +283,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		setMode(name: string, mode: string): void {
 			Vue.set(this.modals[name], 'mode', mode);
 		},
-		setActiveId(name: string, id: string): void {
+		setActiveId(name: string, id: string | null): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
 		setModalData(payload: { name: string; data: Record<string, unknown> }) {
@@ -345,7 +345,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
 		openNewCredential(type: string): void {
-			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
+			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, null);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},

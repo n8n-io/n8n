@@ -71,10 +71,13 @@
 						:parentTypes="parentTypes"
 						:requiredPropertiesFilled="requiredPropertiesFilled"
 						:credentialPermissions="credentialPermissions"
+						:mode="mode"
+						:selectedCredential="selectedCredential"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scrollToTop="scrollToTop"
+						@authTypeChanged="onAuthTypeChanged"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
@@ -116,8 +119,11 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
+	INodeCredentialDescription,
 	INodeParameters,
 	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 	NodeHelpers,
@@ -139,7 +145,6 @@ import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import { getCredentialPermissions, IPermissions } from '@/permissions';
 import { IMenuItem } from 'n8n-design-system';
-import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
@@ -172,7 +177,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		activeId: {
 			type: [String, Number],
-			required: true,
+			required: false,
 		},
 		mode: {
 			type: String,
@@ -196,6 +201,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			testedSuccessfully: false,
 			isRetesting: false,
 			EnterpriseEditionFeature,
+			selectedCredential: '',
 		};
 	},
 	async mounted() {
@@ -264,6 +270,47 @@ export default mixins(showMessage, nodeHelpers).extend({
 			useUsersStore,
 			useWorkflowsStore,
 		),
+		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
+			if (this.activeNodeType) {
+				const authProp = this.activeNodeType.properties.find(
+					(prop) => prop.name === 'authentication',
+				);
+				if (authProp) {
+					return authProp.options || [];
+				}
+			}
+			return [];
+		},
+		activeNodeType(): INodeTypeDescription | null {
+			const activeNode = this.ndvStore.activeNode;
+
+			if (activeNode) {
+				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			}
+			return null;
+		},
+		selectedCredentialType(): INodeCredentialDescription | null {
+			if (this.mode !== 'new') {
+				return null;
+			}
+
+			// If there is already selected type, use it
+			if (this.selectedCredential !== '') {
+				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential);
+			}
+
+			// Otherwise, use credential type that corresponds to the first auth option in the node definition
+			if (this.nodeAuthOptions.length > 0 && this.activeNodeType?.credentials) {
+				return (
+					this.activeNodeType.credentials.find(
+						(cred) =>
+							cred.displayOptions?.show &&
+							cred.displayOptions.show['authentication']?.includes(this.nodeAuthOptions[0].value),
+					) || null
+				);
+			}
+			return null;
+		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
@@ -282,7 +329,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				return null;
 			}
-
+			if (this.selectedCredentialType) {
+				return this.selectedCredentialType.name;
+			}
 			return `${this.activeId}`;
 		},
 		credentialType(): ICredentialType | null {
@@ -944,6 +993,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 
 			window.addEventListener('message', receiveMessage, false);
+		},
+		onAuthTypeChanged(type: string): void {
+			if (this.activeNodeType?.credentials) {
+				const credentialsForType = this.activeNodeType.credentials.find(
+					(creds) =>
+						creds.displayOptions?.show &&
+						creds.displayOptions.show['authentication']?.includes(type),
+				);
+				this.selectedCredential = credentialsForType?.name || '';
+			}
 		},
 	},
 });

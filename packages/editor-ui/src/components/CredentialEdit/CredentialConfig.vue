@@ -62,6 +62,19 @@
 				</span>
 			</n8n-notice>
 
+			<div v-if="mode === 'new'" :class="$style.authTypeContainer">
+				<el-radio
+					v-for="prop in nodeAuthOptions"
+					:key="prop.value"
+					v-model="selectedCredentialType"
+					:label="prop.value"
+					:class="$style.authRadioButton"
+					border
+					@change="onAuthTypeChange"
+					>{{ prop.name }}</el-radio
+				>
+			</div>
+
 			<CopyInput
 				v-if="isOAuthType && credentialProperties.length"
 				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
@@ -114,7 +127,7 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType } from 'n8n-workflow';
+import { ICredentialType, INodeProperties, INodePropertyCollection, INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
 import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
@@ -132,6 +145,8 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { ICredentialsResponse } from '@/Interface';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -182,10 +197,15 @@ export default mixins(restApi).extend({
 		requiredPropertiesFilled: {
 			type: Boolean,
 		},
+		mode: {
+			type: String,
+			required: true,
+		},
 	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
+			selectedCredentialType: '',
 		};
 	},
 	async beforeMount() {
@@ -204,8 +224,50 @@ export default mixins(restApi).extend({
 			this.rootStore.defaultLocale,
 		);
 	},
+	mounted() {
+		// Select auth type radio button based on the selected credential type and it's
+		if (this.activeNodeType?.credentials) {
+			const credentialsForType = this.activeNodeType.credentials.find(
+				(cred) => cred.name === this.credentialType.name,
+			);
+			if (credentialsForType?.displayOptions && credentialsForType.displayOptions.show) {
+				this.selectedCredentialType =
+					this.nodeAuthOptions.find(
+						(option) =>
+							credentialsForType.displayOptions?.show &&
+							credentialsForType.displayOptions.show['authentication']?.includes(option.value),
+					)?.value || '';
+			}
+		}
+	},
 	computed: {
-		...mapStores(useCredentialsStore, useNDVStore, useRootStore, useUIStore, useWorkflowsStore),
+		...mapStores(
+			useCredentialsStore,
+			useNDVStore,
+			useNodeTypesStore,
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		activeNodeType(): INodeTypeDescription | null {
+			const activeNode = this.ndvStore.activeNode;
+
+			if (activeNode) {
+				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
+			}
+			return null;
+		},
+		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
+			if (this.activeNodeType) {
+				const authProp = this.activeNodeType.properties.find(
+					(prop) => prop.name === 'authentication',
+				);
+				if (authProp) {
+					return authProp.options || [];
+				}
+			}
+			return [];
+		},
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
@@ -276,6 +338,9 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
+		getCredentialOptions(type: string): ICredentialsResponse[] {
+			return this.credentialsStore.allUsableCredentialsByType[type];
+		},
 		onDataChange(event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
@@ -286,6 +351,9 @@ export default mixins(restApi).extend({
 				source: 'modal',
 				workflow_id: this.workflowsStore.workflowId,
 			});
+		},
+		onAuthTypeChange(newType: string): void {
+			this.$emit('authTypeChanged', newType);
 		},
 	},
 	watch: {
@@ -303,6 +371,13 @@ export default mixins(restApi).extend({
 	--notice-margin: 0;
 	> * {
 		margin-bottom: var(--spacing-l);
+	}
+}
+
+.authRadioButton {
+	margin-right: 0 !important;
+	& + & {
+		margin-left: 8px !important;
 	}
 }
 </style>
