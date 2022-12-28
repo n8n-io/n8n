@@ -107,7 +107,7 @@ export function executeErrorWorkflow(
 					retryOf,
 				},
 				workflow: {
-					id: workflowId !== undefined ? workflowId : undefined,
+					id: workflowId,
 					name: workflowData.name,
 				},
 			};
@@ -119,7 +119,7 @@ export function executeErrorWorkflow(
 					mode,
 				},
 				workflow: {
-					id: workflowId !== undefined ? workflowId : undefined,
+					id: workflowId,
 					name: workflowData.name,
 				},
 			};
@@ -588,7 +588,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 
@@ -719,7 +719,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 					}
 
 					const workflowId = this.workflowData.id;
-					if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 						fullExecutionData.workflowId = workflowId;
 					}
 
