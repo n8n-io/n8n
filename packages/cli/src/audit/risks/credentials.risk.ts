@@ -83,7 +83,7 @@ export async function reportCredentialsRisk(workflows: WorkflowEntity[]) {
 
 	const sections = [credsNotInAnyUse, credsNotInActiveUse, credsNotRecentlyExecuted];
 
-	if (sections.every((i) => i.length === 0)) return null;
+	if (sections.every((s) => s.length === 0)) return null;
 
 	const report: Risk.StandardReport = {
 		risk: CREDENTIALS_REPORT.RISK,
