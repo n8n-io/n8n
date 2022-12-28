@@ -54,6 +54,7 @@
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
 							@valueChanged="valueChanged"
+							@textInput="onTextInput"
 							@focus="onFocus"
 							@blur="onBlur"
 							@drop="onDrop"
@@ -206,6 +207,13 @@ export default mixins(showMessage).extend({
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('valueChanged', parameterData);
+		},
+		onTextInput(parameterData: IUpdateInformation) {
+			const param = this.$refs.param as Vue | undefined;
+
+			if (isValueExpression(this.parameter, parameterData.value)) {
+				param?.$emit('optionSelected', 'addExpression');
+			}
 		},
 		onDrop(data: string) {
 			this.forceShowExpression = true;
