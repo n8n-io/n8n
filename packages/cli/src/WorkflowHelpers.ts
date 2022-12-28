@@ -101,7 +101,7 @@ export async function executeErrorWorkflow(
 				workflowData = await Db.collections.Workflow.findOne({ id: workflowId });
 			} else {
 				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
-					where: { workflowId, user },
+					where: { workflowId, userId: user.id },
 					relations: ['workflow'],
 				});
 				if (sharedWorkflowData) {
