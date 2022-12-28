@@ -1425,7 +1425,7 @@ export interface IWorkflowDataProxyData {
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
 
 export interface IWorkflowMetadata {
-	id?: number | string;
+	id?: string;
 	name?: string;
 	active: boolean;
 }

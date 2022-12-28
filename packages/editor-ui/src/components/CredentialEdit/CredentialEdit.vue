@@ -171,7 +171,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			required: true,
 		},
 		activeId: {
-			type: [String, Number],
+			type: [String],
 			required: true,
 		},
 		mode: {

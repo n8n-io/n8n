@@ -217,8 +217,8 @@ export interface IRestApi {
 	getPastExecutions(
 		filter: object,
 		limit: number,
-		lastId?: string | number,
-		firstId?: string | number,
+		lastId?: string,
+		firstId?: string,
 	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
@@ -276,7 +276,7 @@ export interface IVariableSelectorOption {
 
 // Simple version of n8n-workflow.Workflow
 export interface IWorkflowData {
-	id?: string | number;
+	id?: string;
 	name?: string;
 	active?: boolean;
 	nodes: INode[];
@@ -288,7 +288,7 @@ export interface IWorkflowData {
 }
 
 export interface IWorkflowDataUpdate {
-	id?: string | number;
+	id?: string;
 	name?: string;
 	nodes?: INode[];
 	connections?: IConnections;
@@ -391,7 +391,7 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 }
 
 export interface IExecutionBase {
-	id?: number | string;
+	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
