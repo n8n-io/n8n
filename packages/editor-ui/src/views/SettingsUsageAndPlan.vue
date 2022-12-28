@@ -130,7 +130,7 @@ const openPricingPage = () => {
 			:buttonText="locale.baseText('settings.usageAndPlan.button.plans')"
 			@click="openPricingPage"
 		/>
-		<div v-if="!usageStore.isLoading">
+		<div v-if="!usageStore.isDesktop && !usageStore.isLoading">
 			<n8n-heading :class="$style.title" size="large">
 				<i18n path="settings.usageAndPlan.description">
 					<template #name>{{ usageStore.planName }}</template>
