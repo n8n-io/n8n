@@ -66,6 +66,11 @@ services:
     image: n8nio/n8n
     command: /bin/sh -c "n8n start --tunnel"
     hostname: n8nlocal
+    environment:
+      - VUE_APP_URL_BASE_API
+      - N8N_HOST
+      - N8N_EDITOR_BASE_URL
+      - N8N_PERSONALIZATION_ENABLED
     ports:
       - 5678:5678
 
