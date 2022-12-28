@@ -130,6 +130,7 @@ import { Component } from 'vue';
 import { mapState, mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { AUTHENTICATION_FIELD_NAME } from '@/utils';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -266,7 +267,7 @@ export default mixins(workflowHelpers).extend({
 			}
 
 			// Hide 'authentication' field since it will now be part of credentials modal
-			if (parameter.name === 'authentication') {
+			if (parameter.name === AUTHENTICATION_FIELD_NAME) {
 				return false;
 			}
 

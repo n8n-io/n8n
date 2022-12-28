@@ -127,8 +127,19 @@
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeProperties, INodePropertyCollection, INodePropertyOptions, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
+import {
+	ICredentialType,
+	INodeProperties,
+	INodePropertyCollection,
+	INodePropertyOptions,
+	INodeTypeDescription,
+} from 'n8n-workflow';
+import {
+	getAppNameFromCredType,
+	isCommunityPackageName,
+	getNodeAuthOptions,
+	getAuthTypeForNodeCredential,
+} from '@/utils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
@@ -225,19 +236,16 @@ export default mixins(restApi).extend({
 		);
 	},
 	mounted() {
-		// Select auth type radio button based on the selected credential type and it's
+		// Select auth type radio button based on the selected credential type and it's display options
 		if (this.activeNodeType?.credentials) {
-			const credentialsForType = this.activeNodeType.credentials.find(
-				(cred) => cred.name === this.credentialType.name,
+			const credentialsForType =
+				this.activeNodeType.credentials.find((cred) => cred.name === this.credentialType.name) ||
+				null;
+			const authOptionForCred = getAuthTypeForNodeCredential(
+				this.activeNodeType,
+				credentialsForType,
 			);
-			if (credentialsForType?.displayOptions && credentialsForType.displayOptions.show) {
-				this.selectedCredentialType =
-					this.nodeAuthOptions.find(
-						(option) =>
-							credentialsForType.displayOptions?.show &&
-							credentialsForType.displayOptions.show['authentication']?.includes(option.value),
-					)?.value || '';
-			}
+			this.selectedCredentialType = authOptionForCred?.value || '';
 		}
 	},
 	computed: {
@@ -258,15 +266,7 @@ export default mixins(restApi).extend({
 			return null;
 		},
 		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
-			if (this.activeNodeType) {
-				const authProp = this.activeNodeType.properties.find(
-					(prop) => prop.name === 'authentication',
-				);
-				if (authProp) {
-					return authProp.options || [];
-				}
-			}
-			return [];
+			return getNodeAuthOptions(this.activeNodeType);
 		},
 		appName(): string {
 			if (!this.credentialType) {

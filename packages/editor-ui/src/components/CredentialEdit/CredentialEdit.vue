@@ -122,8 +122,6 @@ import {
 	INodeCredentialDescription,
 	INodeParameters,
 	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 	NodeHelpers,
@@ -152,7 +150,11 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
-import { isValidCredentialResponse } from '@/utils';
+import {
+	isValidCredentialResponse,
+	getNodeAuthOptions,
+	getNodeCredentialForAuthType,
+} from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -270,17 +272,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			useUsersStore,
 			useWorkflowsStore,
 		),
-		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
-			if (this.activeNodeType) {
-				const authProp = this.activeNodeType.properties.find(
-					(prop) => prop.name === 'authentication',
-				);
-				if (authProp) {
-					return authProp.options || [];
-				}
-			}
-			return [];
-		},
 		activeNodeType(): INodeTypeDescription | null {
 			const activeNode = this.ndvStore.activeNode;
 
@@ -300,14 +291,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 
 			// Otherwise, use credential type that corresponds to the first auth option in the node definition
-			if (this.nodeAuthOptions.length > 0 && this.activeNodeType?.credentials) {
-				return (
-					this.activeNodeType.credentials.find(
-						(cred) =>
-							cred.displayOptions?.show &&
-							cred.displayOptions.show['authentication']?.includes(this.nodeAuthOptions[0].value),
-					) || null
-				);
+			const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
+			if (nodeAuthOptions.length > 0 && this.activeNodeType?.credentials) {
+				return getNodeCredentialForAuthType(this.activeNodeType, nodeAuthOptions[0].value);
 			}
 			return null;
 		},
@@ -996,11 +982,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onAuthTypeChanged(type: string): void {
 			if (this.activeNodeType?.credentials) {
-				const credentialsForType = this.activeNodeType.credentials.find(
-					(creds) =>
-						creds.displayOptions?.show &&
-						creds.displayOptions.show['authentication']?.includes(type),
-				);
+				const credentialsForType = getNodeCredentialForAuthType(this.activeNodeType, type);
 				this.selectedCredential = credentialsForType?.name || '';
 			}
 		},

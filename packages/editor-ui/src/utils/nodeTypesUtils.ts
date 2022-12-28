@@ -1,3 +1,4 @@
+import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
 	RECOMMENDED_CATEGORY,
@@ -27,6 +28,8 @@ import {
 	INodeTypeDescription,
 	INodeActionTypeDescription,
 	NodeParameterValueType,
+	INodePropertyOptions,
+	INodePropertyCollection,
 } from 'n8n-workflow';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 
@@ -38,6 +41,8 @@ import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export const AUTHENTICATION_FIELD_NAME = 'authentication';
 
 const addNodeToCategory = (
 	accu: ICategoriesWithNodes,
@@ -304,4 +309,46 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 		parameter.modes.length === 1 &&
 		parameter.modes[0].name === 'list'
 	);
+};
+
+export const getNodeAuthOptions = (
+	nodeType: INodeTypeDescription | null,
+): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> => {
+	if (nodeType) {
+		const authProp = nodeType.properties.find((prop) => prop.name === AUTHENTICATION_FIELD_NAME);
+		if (authProp) {
+			return authProp.options || [];
+		}
+	}
+	return [];
+};
+
+export const getNodeCredentialForAuthType = (
+	nodeType: INodeTypeDescription,
+	authType: string,
+): INodeCredentialDescription | null => {
+	return (
+		nodeType.credentials?.find(
+			(cred) =>
+				cred.displayOptions?.show &&
+				cred.displayOptions.show[AUTHENTICATION_FIELD_NAME]?.includes(authType),
+		) || null
+	);
+};
+
+export const getAuthTypeForNodeCredential = (
+	nodeType: INodeTypeDescription | null,
+	credentialType: INodeCredentialDescription | null,
+): INodePropertyOptions | INodeProperties | INodePropertyCollection | null => {
+	if (nodeType && credentialType) {
+		const nodeAuthOptions = getNodeAuthOptions(nodeType);
+		return (
+			nodeAuthOptions.find(
+				(option) =>
+					credentialType.displayOptions?.show &&
+					credentialType.displayOptions?.show[AUTHENTICATION_FIELD_NAME]?.includes(option.value),
+			) || null
+		);
+	}
+	return null;
 };
