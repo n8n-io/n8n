@@ -180,7 +180,7 @@ export default mixins(workflowHelpers).extend({
 
 			this.filteredParameters.forEach((prop, propIndex) => {
 				if (credentialsDependencies.has(prop.name)) {
-					index = propIndex + 1;
+					index = propIndex;
 				}
 			});
 
