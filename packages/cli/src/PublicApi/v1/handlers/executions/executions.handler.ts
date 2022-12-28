@@ -97,7 +97,7 @@ export = {
 			// get running workflows so we exclude them from the result
 			const runningExecutionsIds = ActiveExecutions.getInstance()
 				.getActiveExecutions()
-				.map(({ id }) => Number(id));
+				.map(({ id }) => id);
 
 			const filters = {
 				status,
@@ -110,7 +110,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? 0 : Number(executions.slice(-1)[0].id);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 

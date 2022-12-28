@@ -37,7 +37,7 @@ export type PaginatatedRequest = AuthenticatedRequest<
 		limit?: number;
 		cursor?: string;
 		offset?: number;
-		lastId?: number;
+		lastId?: string;
 	}
 >;
 export declare namespace ExecutionRequest {
@@ -51,8 +51,8 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
-			workflowId?: number;
-			lastId?: number;
+			workflowId?: string;
+			lastId?: string;
 		}
 	>;
 
@@ -140,11 +140,11 @@ type PaginationBase = { limit: number };
 
 type PaginationOffsetDecoded = PaginationBase & { offset: number };
 
-type PaginationCursorDecoded = PaginationBase & { lastId: number };
+type PaginationCursorDecoded = PaginationBase & { lastId: string };
 
 type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
-type CursorPagination = PaginationBase & { lastId: number; numberOfNextRecords: number };
+type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
 	not?: { required?: string[] };

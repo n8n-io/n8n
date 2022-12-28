@@ -60,14 +60,14 @@ function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IE
 export async function getExecutions(params: {
 	limit: number;
 	includeData?: boolean;
-	lastId?: number;
-	workflowIds?: number[];
+	lastId?: string;
+	workflowIds?: string[];
 	status?: ExecutionStatus;
-	excludedExecutionsIds?: number[];
+	excludedExecutionsIds?: string[];
 }): Promise<IExecutionResponseApi[]> {
 	type WhereClause = Record<
 		string,
-		string | boolean | FindOperator<number | Partial<ExecutionEntity>>
+		string | boolean | FindOperator<string | Partial<ExecutionEntity>>
 	>;
 
 	let where: WhereClause = {};
@@ -103,10 +103,10 @@ export async function getExecutions(params: {
 
 export async function getExecutionsCount(data: {
 	limit: number;
-	lastId?: number;
-	workflowIds?: number[];
+	lastId?: string;
+	workflowIds?: string[];
 	status?: ExecutionStatus;
-	excludedWorkflowIds?: number[];
+	excludedWorkflowIds?: string[];
 }): Promise<number> {
 	const executions = await Db.collections.Execution.count({
 		where: {
