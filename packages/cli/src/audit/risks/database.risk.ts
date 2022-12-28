@@ -95,7 +95,7 @@ export function reportDatabaseRisk(workflows: Workflow[]) {
 			title: DATABASE_REPORT.SECTIONS.UNUSED_QUERY_PARAMS,
 			description: [
 				sentenceStart(unusedQueryParams),
-				'no "Query Parameters" field in an "Execute Query" operation. Building a SQL query with unsanitized data may lead to a SQL injection attack.',
+				'no "Query Parameters" field in the "Execute Query" operation. Building a SQL query with unsanitized data may lead to a SQL injection attack.',
 			].join(' '),
 			recommendation: `Consider using the "Query Parameters" field to sanitize parameters passed to the query. See: ${DB_QUERY_PARAMS_DOCS_URL}`,
 			location: unusedQueryParams,
