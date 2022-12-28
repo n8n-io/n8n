@@ -50,7 +50,7 @@ export async function saveManualTriggerWorkflow() {
 		],
 	};
 
-	await Db.collections.Workflow.save(details);
+	return Db.collections.Workflow.save(details);
 }
 
 export const MOCK_09990_N8N_VERSION = {
