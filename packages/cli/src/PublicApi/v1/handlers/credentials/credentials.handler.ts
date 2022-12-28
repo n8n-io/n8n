@@ -77,8 +77,6 @@ export = {
 			}
 
 			await removeCredential(credential);
-			credential.id = credentialId;
-
 			return res.json(sanitizeCredentials(credential));
 		},
 	],
