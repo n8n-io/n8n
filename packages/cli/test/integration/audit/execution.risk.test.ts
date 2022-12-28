@@ -22,7 +22,7 @@ afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test('should report risky nodes from n8n-nodes-base', async () => {
+test('should report risky official nodes', async () => {
 	const map = OFFICIAL_RISKY_NODE_TYPES.reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
@@ -66,7 +66,7 @@ test('should report risky nodes from n8n-nodes-base', async () => {
 	}
 });
 
-test('should not report non-risky nodes from n8n-nodes-base', async () => {
+test('should not report non-risky official nodes', async () => {
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['execution']);
