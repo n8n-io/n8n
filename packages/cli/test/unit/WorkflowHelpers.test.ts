@@ -146,9 +146,9 @@ describe('WorkflowHelpers', () => {
 	});
 });
 
-function generateCredentialEntity(credentialsId: string) {
+function generateCredentialEntity(credentialId: string) {
 	const credentialEntity = new CredentialsEntity();
-	credentialEntity.id = credentialsId;
+	credentialEntity.id = credentialId;
 	return credentialEntity;
 }
 

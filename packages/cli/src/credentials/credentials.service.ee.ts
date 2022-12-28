@@ -12,9 +12,9 @@ import type { CredentialWithSharings } from './credentials.types';
 export class EECredentialsService extends CredentialsService {
 	static async isOwned(
 		user: User,
-		credentialsId: string,
+		credentialId: string,
 	): Promise<{ ownsCredential: boolean; credential?: CredentialsEntity }> {
-		const sharing = await this.getSharing(user, credentialsId, ['credentials', 'role'], {
+		const sharing = await this.getSharing(user, credentialId, ['credentials', 'role'], {
 			allowGlobalOwner: false,
 		});
 
@@ -30,11 +30,11 @@ export class EECredentialsService extends CredentialsService {
 	 */
 	static async getSharing(
 		user: User,
-		credentialsId: string,
+		credentialId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
-		const where: FindConditions<SharedCredentials> = { credentialsId };
+		const where: FindConditions<SharedCredentials> = { credentialsId: credentialId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -51,10 +51,10 @@ export class EECredentialsService extends CredentialsService {
 
 	static async getSharings(
 		transaction: EntityManager,
-		credentialsId: string,
+		credentialId: string,
 	): Promise<SharedCredentials[]> {
 		const credential = await transaction.findOne(CredentialsEntity, {
-			where: { id: credentialsId },
+			where: { id: credentialId },
 			relations: ['shared'],
 		});
 		return credential?.shared ?? [];
@@ -62,13 +62,14 @@ export class EECredentialsService extends CredentialsService {
 
 	static async pruneSharings(
 		transaction: EntityManager,
-		credentialsId: string,
+		credentialId: string,
 		userIds: string[],
 	): Promise<DeleteResult> {
-		return transaction.delete(SharedCredentials, {
-			credentialsId,
+		const conditions: FindConditions<SharedCredentials> = {
+			credentialsId: credentialId,
 			userId: Not(In(userIds)),
-		});
+		};
+		return transaction.delete(SharedCredentials, conditions);
 	}
 
 	static async share(

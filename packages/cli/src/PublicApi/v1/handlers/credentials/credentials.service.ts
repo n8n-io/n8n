@@ -10,16 +10,16 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
-export async function getCredentials(credentialsId: string): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialsId);
+export async function getCredentials(credentialId: string): Promise<ICredentialsDb | undefined> {
+	return Db.collections.Credentials.findOne(credentialId);
 }
 
 export async function getSharedCredentials(
 	userId: string,
-	credentialsId: string,
+	credentialId: string,
 	relations?: string[],
 ): Promise<SharedCredentials | undefined> {
-	const where: FindConditions<SharedCredentials> = { userId, credentialsId };
+	const where: FindConditions<SharedCredentials> = { userId, credentialsId: credentialId };
 	return Db.collections.SharedCredentials.findOne({ where, relations });
 }
 

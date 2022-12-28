@@ -739,7 +739,7 @@ export class CredentialsHelper extends ICredentialsHelper {
  * Get a credential if it has been shared with a user.
  */
 export async function getCredentialForUser(
-	credentialsId: string,
+	credentialId: string,
 	user: User,
 ): Promise<ICredentialsDb | null> {
 	const sharedCredential = await Db.collections.SharedCredentials.findOne({
@@ -747,7 +747,7 @@ export async function getCredentialForUser(
 		where: whereClause({
 			user,
 			entityType: 'credentials',
-			entityId: credentialsId,
+			entityId: credentialId,
 		}),
 	});
 
@@ -760,9 +760,9 @@ export async function getCredentialForUser(
  * Get a credential without user check
  */
 export async function getCredentialWithoutUser(
-	credentialsId: string,
+	credentialId: string,
 ): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialsId);
+	return Db.collections.Credentials.findOne(credentialId);
 }
 
 export function createCredentialsFromCredentialsEntity(

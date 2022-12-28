@@ -85,11 +85,11 @@ export class CredentialsService {
 	 */
 	static async getSharing(
 		user: User,
-		credentialsId: string,
+		credentialId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
-		const where: FindConditions<SharedCredentials> = { credentialsId };
+		const where: FindConditions<SharedCredentials> = { credentialsId: credentialId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -164,11 +164,11 @@ export class CredentialsService {
 
 	static createEncryptedData(
 		encryptionKey: string,
-		credentialsId: string | null,
+		credentialId: string | null,
 		data: CredentialsEntity,
 	): ICredentialsDb {
 		const credentials = new Credentials(
-			{ id: credentialsId, name: data.name },
+			{ id: credentialId, name: data.name },
 			data.type,
 			data.nodesAccess,
 		);
@@ -202,17 +202,17 @@ export class CredentialsService {
 	}
 
 	static async update(
-		credentialsId: string,
+		credentialId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | undefined> {
 		await ExternalHooks().run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
-		await Db.collections.Credentials.update(credentialsId, newCredentialData);
+		await Db.collections.Credentials.update(credentialId, newCredentialData);
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialsId);
+		return Db.collections.Credentials.findOne(credentialId);
 	}
 
 	static async save(
