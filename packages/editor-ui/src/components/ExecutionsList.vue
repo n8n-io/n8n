@@ -43,7 +43,7 @@
 						</n8n-option>
 					</n8n-select>
 				</el-col>
-				<el-col :span="4" :offset="5" class="autorefresh">
+				<el-col :span="5" :offset="5" class="autorefresh">
 					<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
@@ -64,12 +64,7 @@
 			</span>
 		</div>
 
-		<el-table
-			:data="combinedExecutions"
-			stripe
-			v-loading="isDataLoading"
-			:row-class-name="getRowClass"
-		>
+		<el-table :data="combinedExecutions" v-loading="isDataLoading" :row-class-name="getRowClass">
 			<el-table-column label="" width="30">
 				<!-- eslint-disable-next-line vue/no-unused-vars -->
 				<template #header="scope">
@@ -89,20 +84,10 @@
 					></el-checkbox>
 				</template>
 			</el-table-column>
-			<el-table-column
-				property="startedAt"
-				:label="$locale.baseText('executionsList.startedAtId')"
-				width="205"
-			>
-				<template #default="scope">
-					{{ convertToDisplayDate(scope.row.startedAt) }}<br />
-					<small v-if="scope.row.id">ID: {{ scope.row.id }}</small>
-				</template>
-			</el-table-column>
 			<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 				<template #default="scope">
 					<div class="ph-no-capture">
-						<span class="workflow-name">
+						<span>
 							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
 						</span>
 					</div>
@@ -125,11 +110,24 @@
 				</template>
 			</el-table-column>
 			<el-table-column
+				property="startedAt"
+				:label="$locale.baseText('executionsList.startedAt')"
+				width="205"
+			>
+				<template #default="scope">
+					{{ convertToDisplayDate(scope.row.startedAt) }}
+				</template>
+			</el-table-column>
+			<el-table-column
 				:label="$locale.baseText('executionsList.status')"
 				width="122"
 				align="center"
 			>
 				<template #default="scope" align="center">
+					<span v-if="scope.row.stoppedAt === undefined">
+						<font-awesome-icon icon="spinner" spin />
+						<execution-time :start-time="scope.row.startedAt" />
+					</span>
 					<n8n-tooltip placement="top">
 						<template #content>
 							<div v-html="statusTooltipText(scope.row)"></div>
@@ -151,6 +149,57 @@
 						</span>
 					</n8n-tooltip>
 
+					<span v-if="scope.row.stoppedAt === null"> -- </span>
+					<span v-else>
+						{{
+							displayTimer(
+								new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
+								true,
+							)
+						}}
+					</span>
+				</template>
+			</el-table-column>
+			<el-table-column :label="$locale.baseText('executionsList.id')" width="150" align="center">
+				<template #default="scope">
+					<span v-if="scope.row.id">#{{ scope.row.id }}</span>
+				</template>
+			</el-table-column>
+			<el-table-column
+				property="mode"
+				:label="$locale.baseText('executionsList.mode')"
+				width="100"
+				align="center"
+			>
+				<template #default="scope">
+					{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
+				</template>
+			</el-table-column>
+			<el-table-column label="" width="100" align="center">
+				<template #default="scope">
+					<div class="actions-container">
+						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
+							<n8n-icon-button
+								icon="stop"
+								size="small"
+								:title="$locale.baseText('executionsList.stopExecution')"
+								@click.stop="stopExecution(scope.row.id)"
+								:loading="stoppingExecutions.includes(scope.row.id)"
+							/>
+						</span>
+						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
+							<n8n-icon-button
+								icon="folder-open"
+								size="small"
+								:title="$locale.baseText('executionsList.openPastExecution')"
+								@click.stop="(e) => displayExecution(scope.row, e)"
+							/>
+						</span>
+					</div>
+				</template>
+			</el-table-column>
+			<el-table-column label="" width="100" align="center">
+				<template #default="scope">
 					<el-dropdown trigger="click" @command="handleRetryClick">
 						<span class="retry-button">
 							<n8n-icon-button
@@ -179,61 +228,6 @@
 							</el-dropdown-menu>
 						</template>
 					</el-dropdown>
-				</template>
-			</el-table-column>
-			<el-table-column
-				property="mode"
-				:label="$locale.baseText('executionsList.mode')"
-				width="100"
-				align="center"
-			>
-				<template #default="scope">
-					{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
-				</template>
-			</el-table-column>
-			<el-table-column
-				:label="$locale.baseText('executionsList.runningTime')"
-				width="150"
-				align="center"
-			>
-				<template #default="scope">
-					<span v-if="scope.row.stoppedAt === undefined">
-						<font-awesome-icon icon="spinner" spin />
-						<execution-time :start-time="scope.row.startedAt" />
-					</span>
-					<!-- stoppedAt will be null if process crashed -->
-					<span v-else-if="scope.row.stoppedAt === null"> -- </span>
-					<span v-else>
-						{{
-							displayTimer(
-								new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
-								true,
-							)
-						}}
-					</span>
-				</template>
-			</el-table-column>
-			<el-table-column label="" width="100" align="center">
-				<template #default="scope">
-					<div class="actions-container">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-							<n8n-icon-button
-								icon="stop"
-								size="small"
-								:title="$locale.baseText('executionsList.stopExecution')"
-								@click.stop="stopExecution(scope.row.id)"
-								:loading="stoppingExecutions.includes(scope.row.id)"
-							/>
-						</span>
-						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
-							<n8n-icon-button
-								icon="folder-open"
-								size="small"
-								:title="$locale.baseText('executionsList.openPastExecution')"
-								@click.stop="(e) => displayExecution(scope.row, e)"
-							/>
-						</span>
-					</div>
 				</template>
 			</el-table-column>
 		</el-table>
@@ -946,10 +940,6 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		background-color: var(--color-warning-tint-2);
 		color: var(--color-warning);
 	}
-}
-
-.workflow-name {
-	font-weight: bold;
 }
 
 .actions-container > * {
