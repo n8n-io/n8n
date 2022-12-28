@@ -8,7 +8,7 @@ import {
 import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
-function getSections(workflows: Workflow[]) {
+function getIssues(workflows: Workflow[]) {
 	return workflows.reduce<{ [sectionTitle: string]: Risk.NodeLocation[] }>(
 		(acc, workflow) => {
 			workflow.nodes.forEach((node) => {
@@ -50,11 +50,11 @@ function getSections(workflows: Workflow[]) {
 
 export function reportDatabaseRisk(workflows: Workflow[]) {
 	const { expressionsInQueries, expressionsInQueryParams, unusedQueryParams } =
-		getSections(workflows);
+		getIssues(workflows);
 
-	const sections = [expressionsInQueries, expressionsInQueryParams, unusedQueryParams];
+	const issues = [expressionsInQueries, expressionsInQueryParams, unusedQueryParams];
 
-	if (sections.every((s) => s.length === 0)) return null;
+	if (issues.every((i) => i.length === 0)) return null;
 
 	const report: Risk.StandardReport = {
 		risk: DATABASE_REPORT.RISK,

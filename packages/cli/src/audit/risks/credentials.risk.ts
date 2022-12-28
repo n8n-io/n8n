@@ -81,9 +81,9 @@ export async function reportCredentialsRisk(workflows: WorkflowEntity[]) {
 	const credsNotInActiveUse = allExistingCreds.filter((c) => !credsInActiveUse.has(c.id));
 	const credsNotRecentlyExecuted = allExistingCreds.filter((c) => !recentlyExecutedCreds.has(c.id));
 
-	const sections = [credsNotInAnyUse, credsNotInActiveUse, credsNotRecentlyExecuted];
+	const issues = [credsNotInAnyUse, credsNotInActiveUse, credsNotRecentlyExecuted];
 
-	if (sections.every((s) => s.length === 0)) return null;
+	if (issues.every((i) => i.length === 0)) return null;
 
 	const report: Risk.StandardReport = {
 		risk: CREDENTIALS_REPORT.RISK,
