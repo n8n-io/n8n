@@ -4,7 +4,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { toFlaggedNode } from '@/audit/utils';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import {
-	BASE_RISKY_NODE_TYPES,
+	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
 	EXECUTION_REPORT,
 	COMMUNITY_NODES_RISKS_URL,
@@ -16,7 +16,7 @@ import type { Risk } from '@/audit/types';
 function getOfficialRiskyNodeTypes(workflows: WorkflowEntity[]) {
 	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
 		workflow.nodes.forEach((node) => {
-			if (BASE_RISKY_NODE_TYPES.includes(node.type)) {
+			if (OFFICIAL_RISKY_NODE_TYPES.includes(node.type)) {
 				acc.push(toFlaggedNode({ node, workflow }));
 			}
 		});

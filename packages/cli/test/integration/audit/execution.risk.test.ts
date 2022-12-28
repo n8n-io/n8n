@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { audit } from '@/audit';
 import * as packageModel from '@/CommunityNodes/packageModel';
-import { BASE_RISKY_NODE_TYPES, EXECUTION_REPORT } from '@/audit/constants';
+import { OFFICIAL_RISKY_NODE_TYPES, EXECUTION_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
@@ -23,7 +23,7 @@ afterAll(async () => {
 });
 
 test('should report risky nodes from n8n-nodes-base', async () => {
-	const map = BASE_RISKY_NODE_TYPES.reduce<{ [nodeType: string]: string }>((acc, cur) => {
+	const map = OFFICIAL_RISKY_NODE_TYPES.reduce<{ [nodeType: string]: string }>((acc, cur) => {
 		return (acc[cur] = uuid()), acc;
 	}, {});
 
@@ -57,7 +57,7 @@ test('should report risky nodes from n8n-nodes-base', async () => {
 		EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
 	);
 
-	expect(section.location).toHaveLength(BASE_RISKY_NODE_TYPES.length);
+	expect(section.location).toHaveLength(OFFICIAL_RISKY_NODE_TYPES.length);
 
 	for (const loc of section.location) {
 		if (loc.kind === 'node') {

@@ -48,7 +48,7 @@ export const FILESYSTEM_INTERACTION_NODE_TYPES = [
 	'n8n-nodes-base.writeBinaryFile',
 ];
 
-export const BASE_RISKY_NODE_TYPES = [
+export const OFFICIAL_RISKY_NODE_TYPES = [
 	'n8n-nodes-base.executeCommand',
 	'n8n-nodes-base.code',
 	'n8n-nodes-base.function',
