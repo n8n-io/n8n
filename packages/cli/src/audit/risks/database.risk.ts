@@ -5,10 +5,10 @@ import {
 	DB_QUERY_PARAMS_DOCS_URL,
 	SQL_NODE_TYPES_WITH_QUERY_PARAMS,
 } from '@/audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
-function getSections(workflows: WorkflowEntity[]) {
+function getSections(workflows: Workflow[]) {
 	return workflows.reduce<{ [sectionTitle: string]: Risk.NodeLocation[] }>(
 		(acc, workflow) => {
 			workflow.nodes.forEach((node) => {
@@ -48,7 +48,7 @@ function getSections(workflows: WorkflowEntity[]) {
 	);
 }
 
-export function reportDatabaseRisk(workflows: WorkflowEntity[]) {
+export function reportDatabaseRisk(workflows: Workflow[]) {
 	const { expressionsInQueries, expressionsInQueryParams, unusedQueryParams } =
 		getSections(workflows);
 
