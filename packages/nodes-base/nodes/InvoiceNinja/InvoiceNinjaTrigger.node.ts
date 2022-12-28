@@ -139,11 +139,11 @@ export class InvoiceNinjaTrigger implements INodeType {
 					},
 					{
 						name: 'Quote Accepted',
-						value: 'accept_quote',
+						value: 'accept_invoice',
 					},
 					{
 						name: 'Quote Expired',
-						value: 'expire_quote',
+						value: 'expire_invoice',
 					},
 					{
 						name: 'Quote Deleted',
