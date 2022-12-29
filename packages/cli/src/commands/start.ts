@@ -55,10 +55,10 @@ export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
 
 	static examples = [
-		`$ n8n start`,
-		`$ n8n start --tunnel`,
-		`$ n8n start -o`,
-		`$ n8n start --tunnel -o`,
+		'$ n8n start',
+		'$ n8n start --tunnel',
+		'$ n8n start -o',
+		'$ n8n start --tunnel -o',
 	];
 
 	static flags = {
@@ -117,7 +117,7 @@ export class Start extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				console.log(`process exited after 30s`);
+				console.log('process exited after 30s');
 				exit();
 			}, 30000);
 
@@ -499,7 +499,7 @@ export class Start extends Command {
 					if (flags.open) {
 						Start.openBrowser();
 					}
-					this.log(`\nPress "o" to open in Browser.`);
+					this.log('\nPress "o" to open in Browser.');
 					process.stdin.on('data', (key: string) => {
 						if (key === 'o') {
 							Start.openBrowser();

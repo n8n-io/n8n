@@ -1031,7 +1031,7 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
+						throw new ResponseHelper.BadRequestError('Invalid cURL command');
 					}
 				},
 			),
