@@ -37,6 +37,7 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IDisplayOptions,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
@@ -1382,4 +1383,10 @@ export type UsageState = {
 		};
 		managementToken?: string;
 	};
+};
+
+export type NodeAuthenticationOption = {
+	name: string;
+	value: string;
+	displayOptions?: IDisplayOptions;
 };

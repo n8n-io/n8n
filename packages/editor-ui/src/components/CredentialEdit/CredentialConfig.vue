@@ -66,7 +66,7 @@
 				<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
 					<parameter-input-full
 						:parameter="parameter"
-						:value="authRelatedFieldsValues[parameter.name]"
+						:value="authRelatedFieldsValues[parameter.name] || parameter.default"
 						:path="parameter.name"
 						:displayOptions="false"
 						@valueChanged="valueChanged"
@@ -82,7 +82,7 @@
 					/>
 				</div>
 				<el-radio
-					v-for="prop in nodeAuthOptions"
+					v-for="prop in filteredNodeAuthOptions"
 					:key="prop.value"
 					v-model="selectedCredentialType"
 					:label="prop.value"
@@ -149,17 +149,16 @@ import Vue from 'vue';
 import {
 	ICredentialType,
 	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
 	INodeTypeDescription,
+	NodeParameterValue,
 } from 'n8n-workflow';
 import {
 	getAppNameFromCredType,
 	isCommunityPackageName,
 	getNodeAuthOptions,
 	getAuthTypeForNodeCredential,
-getNodeAuthFields,
-isAuthRelatedParameter,
+	getNodeAuthFields,
+	isAuthRelatedParameter,
 } from '@/utils';
 
 import Banner from '../Banner.vue';
@@ -178,7 +177,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialsResponse, IUpdateInformation } from '@/Interface';
+import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { ElRadio } from 'element-ui/types/radio';
 
@@ -241,7 +240,7 @@ export default mixins(restApi).extend({
 		return {
 			EnterpriseEditionFeature,
 			selectedCredentialType: '',
-			authRelatedFieldsValues: {} as { [key: string]: unknown },
+			authRelatedFieldsValues: {} as { [key: string]: NodeParameterValue },
 		};
 	},
 	async beforeMount() {
@@ -272,6 +271,10 @@ export default mixins(restApi).extend({
 			);
 			this.selectedCredentialType = authOptionForCred?.value || '';
 		}
+		// Populate default values of related fields
+		this.authRelatedFields.forEach((field) => {
+			Vue.set(this.authRelatedFieldsValues, field.name, field.default);
+		});
 	},
 	computed: {
 		...mapStores(
@@ -290,10 +293,11 @@ export default mixins(restApi).extend({
 			}
 			return null;
 		},
-		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
-			return getNodeAuthOptions(this.activeNodeType).filter((option) =>
-				this.shouldShowAuthOption(option),
-			);
+		nodeAuthOptions(): NodeAuthenticationOption[] {
+			return getNodeAuthOptions(this.activeNodeType);
+		},
+		filteredNodeAuthOptions(): NodeAuthenticationOption[] {
+			return this.nodeAuthOptions.filter((option) => this.shouldShowAuthOption(option));
 		},
 		appName(): string {
 			if (!this.credentialType) {
@@ -363,6 +367,9 @@ export default mixins(restApi).extend({
 				!this.authError
 			);
 		},
+		// These are node properties that authentication fields depend on
+		// (have them in their display options). They all are show here
+		// instead of in the NDV
 		authRelatedFields(): INodeProperties[] {
 			const nodeAuthFields = getNodeAuthFields(this.activeNodeType);
 			return (
@@ -396,10 +403,26 @@ export default mixins(restApi).extend({
 		getValue(paramName: string): unknown {
 			return this.authRelatedFieldsValues[paramName];
 		},
-		shouldShowAuthOption(
-			prop: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-		): boolean {
-			return true;
+		shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
+			// Node auth radio button should be shown if any of the fields that it depends on
+			// has value specified in it's displayOptions.show
+			if (this.authRelatedFields.length === 0) {
+				// If there are no related fields, show option
+				return true;
+			}
+
+			let shouldDisplay = false;
+			Object.keys(this.authRelatedFieldsValues).forEach((fieldName) => {
+				if (option.displayOptions && option.displayOptions.show) {
+					if (
+						option.displayOptions.show[fieldName]?.includes(this.authRelatedFieldsValues[fieldName])
+					) {
+						shouldDisplay = true;
+						return;
+					}
+				}
+			});
+			return shouldDisplay;
 		},
 	},
 	watch: {

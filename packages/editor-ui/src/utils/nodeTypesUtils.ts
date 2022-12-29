@@ -20,6 +20,7 @@ import {
 	INodeUi,
 	ITemplatesNode,
 	INodeItemProps,
+	NodeAuthenticationOption,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -311,14 +312,24 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	);
 };
 
+// Gets all authentication types that a given node type supports
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
-): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> => {
+): NodeAuthenticationOption[] => {
 	if (nodeType) {
-		let options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> = [];
+		let options: NodeAuthenticationOption[] = [];
 		const authProps = getNodeAuthFields(nodeType);
 		authProps.forEach((field) => {
-			options = options.concat(field.options || []);
+			if (field.options) {
+				options = options.concat(
+					field.options.map((option) => ({
+						name: option.name,
+						value: option.value,
+						// Also add in the display options so we can hide/show the option if necessary
+						displayOptions: field.displayOptions,
+					})) || [],
+				);
+			}
 		});
 		return options;
 	}
