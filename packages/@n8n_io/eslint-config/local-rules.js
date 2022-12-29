@@ -158,7 +158,7 @@ module.exports = {
 				Literal(node) {
 					if (typeof node.value !== 'string') return;
 
-					if (/\$\{[a-zA-Z0-9_$]*\}/.test(node.value)) {
+					if (/\$\{/.test(node.value)) {
 						context.report({
 							messageId: 'useBackticks',
 							node,
