@@ -87,6 +87,10 @@ export class GoogleCalendarTrigger implements INodeType {
 						value: 'eventCreated',
 					},
 					{
+						name: 'Event Deleted',
+						value: 'eventDeleted',
+					},
+					{
 						name: 'Event Ended',
 						value: 'eventEnded',
 					},
@@ -151,9 +155,7 @@ export class GoogleCalendarTrigger implements INodeType {
 
 		const endDate = now;
 
-		const qs: IDataObject = {
-			showDeleted: false,
-		};
+		const qs: IDataObject = {};
 
 		if (matchTerm !== '') {
 			qs.q = matchTerm;
@@ -165,6 +167,13 @@ export class GoogleCalendarTrigger implements INodeType {
 			Object.assign(qs, {
 				updatedMin: startDate,
 				orderBy: 'updated',
+				showDeleted: false,
+			});
+		} else if (triggerOn === 'eventDeleted') {
+			Object.assign(qs, {
+				updatedMin: startDate,
+				orderBy: 'updated',
+				showDeleted: true,
 			});
 		} else if (triggerOn === 'eventStarted' || triggerOn === 'eventEnded') {
 			Object.assign(qs, {
@@ -204,10 +213,17 @@ export class GoogleCalendarTrigger implements INodeType {
 				);
 			} else if (triggerOn === 'eventUpdated') {
 				events = events.filter(
-					(event: { created: string; updated: string }) =>
+					(event: { created: string; updated: string; status: string }) =>
 						!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
 							moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
-						),
+						) && event.status !== 'cancelled',
+				);
+			} else if (triggerOn === 'eventDeleted') {
+				events = events.filter(
+					(event: { created: string; updated: string; status: string }) =>
+						!moment(moment(event.created).format('YYYY-MM-DDTHH:mm:ss')).isSame(
+							moment(event.updated).format('YYYY-MM-DDTHH:mm:ss'),
+						) && event.status === 'cancelled',
 				);
 			} else if (triggerOn === 'eventStarted') {
 				events = events.filter((event: { start: { dateTime: string } }) =>
