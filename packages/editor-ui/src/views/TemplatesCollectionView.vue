@@ -139,7 +139,7 @@ export default mixins(workflowHelpers).extend({
 			if (collection) {
 				setPageTitle(`n8n - Template collection: ${collection.name}`);
 			} else {
-				setPageTitle(`n8n - Templates`);
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},

@@ -255,7 +255,7 @@ export class MicrosoftOutlook implements INodeType {
 							body.attachments = await binaryToAttachments.call(this, attachments, items, i);
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
+						responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
 
 						returnData.push(responseData);
 					} catch (error) {
@@ -539,7 +539,7 @@ export class MicrosoftOutlook implements INodeType {
 							saveToSentItems,
 						};
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
+						responseData = await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {

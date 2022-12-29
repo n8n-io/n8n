@@ -369,7 +369,7 @@ export class JiraTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhooks = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
 
@@ -389,7 +389,7 @@ export class JiraTrigger implements INodeType {
 
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhookData = this.getWorkflowStaticData('node');
 
@@ -430,7 +430,7 @@ export class JiraTrigger implements INodeType {
 						);
 					}
 					if (!httpQueryAuth.name && !httpQueryAuth.value) {
-						throw new NodeOperationError(this.getNode(), `HTTP Query Auth credentials are empty`);
+						throw new NodeOperationError(this.getNode(), 'HTTP Query Auth credentials are empty');
 					}
 					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
 						httpQueryAuth.value as string,
