@@ -99,8 +99,8 @@ importers:
       '@oclif/dev-cli': ^1.22.2
       '@oclif/errors': ^1.3.6
       '@rudderstack/rudder-sdk-node': 1.0.6
-      '@sentry/integrations': ^7.17.3
-      '@sentry/node': ^7.17.3
+      '@sentry/integrations': ^7.28.1
+      '@sentry/node': ^7.28.1
       '@types/basic-auth': ^1.1.2
       '@types/bcryptjs': ^2.4.2
       '@types/compression': 1.0.1
@@ -215,8 +215,8 @@ importers:
       '@oclif/core': 1.16.6
       '@oclif/errors': 1.3.6
       '@rudderstack/rudder-sdk-node': 1.0.6
-      '@sentry/integrations': 7.18.0
-      '@sentry/node': 7.18.0
+      '@sentry/integrations': 7.28.1
+      '@sentry/node': 7.28.1
       axios: 0.21.4
       basic-auth: 2.0.1
       bcryptjs: 2.4.3
@@ -3750,32 +3750,32 @@ packages:
       selderee: 0.6.0
     dev: false
 
-  /@sentry/core/7.18.0:
-    resolution: {integrity: sha512-erDEMGM+9Msvz/fQaKlYHD8vXDs/Mv5trZc6rlS/gnlaIPQQ8cALH7UdH2UO0eoCLH3/pEYTsa4Qh8AMz6Y86w==}
+  /@sentry/core/7.28.1:
+    resolution: {integrity: sha512-7wvnuvn/mrAfcugWoCG/3pqDIrUgH5t+HisMJMGw0h9Tc33KqrmqMDCQVvjlrr2pWrw/vuUCFdm8CbUHJ832oQ==}
     engines: {node: '>=8'}
     dependencies:
-      '@sentry/types': 7.18.0
-      '@sentry/utils': 7.18.0
+      '@sentry/types': 7.28.1
+      '@sentry/utils': 7.28.1
       tslib: 1.14.1
     dev: false
 
-  /@sentry/integrations/7.18.0:
-    resolution: {integrity: sha512-vmJWfybbanfHoy47U8IU50FuEN3GwywP/jFvh7Owll9GuPP9B6spmndZwK+raTisDoDOp3201uC1Bfx0cjl4MQ==}
+  /@sentry/integrations/7.28.1:
+    resolution: {integrity: sha512-opeXVR1L9mZmZcpAs9kX+4JPY7pXhVupy17Sbz+43zd5CshYTveIcttGNPp+EPT3j7mMU+1TMAYZspKqJXtEBQ==}
     engines: {node: '>=8'}
     dependencies:
-      '@sentry/types': 7.18.0
-      '@sentry/utils': 7.18.0
+      '@sentry/types': 7.28.1
+      '@sentry/utils': 7.28.1
       localforage: 1.10.0
       tslib: 1.14.1
     dev: false
 
-  /@sentry/node/7.18.0:
-    resolution: {integrity: sha512-bc/cta6hnyqaGKECl2Ycffb7L6b+Xy4wzDR5j49FepCCYkXC3CcR/879AIf3sb0/TXP2QMIyfGN8TKlHigX6bA==}
+  /@sentry/node/7.28.1:
+    resolution: {integrity: sha512-n7AbpJqZJjWPpKNGc55mP7AdQ+XSomS9MZJuZ+Xt2AU52aVwGPI4z9aHUJFSDGaMHHiu/toyPnoUES+XZf6/hw==}
     engines: {node: '>=8'}
     dependencies:
-      '@sentry/core': 7.18.0
-      '@sentry/types': 7.18.0
-      '@sentry/utils': 7.18.0
+      '@sentry/core': 7.28.1
+      '@sentry/types': 7.28.1
+      '@sentry/utils': 7.28.1
       cookie: 0.4.2
       https-proxy-agent: 5.0.1
       lru_map: 0.3.3
@@ -3784,16 +3784,16 @@ packages:
       - supports-color
     dev: false
 
-  /@sentry/types/7.18.0:
-    resolution: {integrity: sha512-bOnyoK1S1chPJ+dAeWJo0srxZ9U48WE5dZFtvKeXoog6JNHY3nqAR/P/uxh9djB4bbwQRMdnGk1zm0bxhOOC6w==}
+  /@sentry/types/7.28.1:
+    resolution: {integrity: sha512-DvSplMVrVEmOzR2M161V5+B8Up3vR71xMqJOpWTzE9TqtFJRGPtqT/5OBsNJJw1+/j2ssMcnKwbEo9Q2EGeS6g==}
     engines: {node: '>=8'}
     dev: false
 
-  /@sentry/utils/7.18.0:
-    resolution: {integrity: sha512-nIIIF9FZ2rrw9OFIAfnSEK6TbHLii3ZtahVdcw6Jk9LscL2HMkgdmgroiNfFxhGYNqfWsaxVgMW+IdnkrHsqXQ==}
+  /@sentry/utils/7.28.1:
+    resolution: {integrity: sha512-75/jzLUO9HH09iC9TslNimGbxOP3jgn89P+q7uR+rp2fJfRExHVeKJZQdK0Ij4/SmE7TJ3Uh2r154N0INZEx1g==}
     engines: {node: '>=8'}
     dependencies:
-      '@sentry/types': 7.18.0
+      '@sentry/types': 7.28.1
       tslib: 1.14.1
     dev: false
 
