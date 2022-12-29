@@ -68,10 +68,10 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return jsonParse(await fs.readFile(this.getMetadataPath(identifier), { encoding: 'utf-8' }));
 	}
 
-	async storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string> {
+	async storeBinaryData(input: Buffer | Readable, executionId: string): Promise<string> {
 		const binaryDataId = this.generateFileName(executionId);
 		await this.addBinaryIdToPersistMeta(executionId, binaryDataId);
-		await this.saveToLocalStorage(binaryBuffer, binaryDataId);
+		await this.saveToLocalStorage(input, binaryDataId);
 		return binaryDataId;
 	}
 
@@ -240,7 +240,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		await fs.cp(source, this.getBinaryPath(identifier));
 	}
 
-	private async saveToLocalStorage(data: Buffer, identifier: string) {
+	private async saveToLocalStorage(data: Buffer | Readable, identifier: string) {
 		await fs.writeFile(this.getBinaryPath(identifier), data);
 	}
 

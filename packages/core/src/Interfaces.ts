@@ -63,7 +63,7 @@ export interface IBinaryDataManager {
 	copyBinaryFile(filePath: string, executionId: string): Promise<string>;
 	storeBinaryMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
 	getBinaryMetadata(identifier: string): Promise<BinaryMetadata>;
-	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
+	storeBinaryData(input: Buffer | Readable, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	getBinaryPath(identifier: string): string;
 	getBinaryStream(identifier: string): Readable;

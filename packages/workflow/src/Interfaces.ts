@@ -640,9 +640,16 @@ export interface JsonHelperFunctions {
 }
 
 export interface BinaryHelperFunctions {
-	prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
+	prepareBinaryData(
+		binaryData: Buffer | Readable,
+		filePath?: string,
+		mimeType?: string,
+	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+
+	getBinaryStream(binaryDataId: string): Readable;
+	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
 
 export interface RequestHelperFunctions {
@@ -723,9 +730,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
-
-				getBinaryStream(binaryDataId: string): Readable;
-				getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 			};
 	};

@@ -463,7 +463,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 		}
 	}
 
-	if (requestObject.encoding === null) {
+	if (requestObject.useStream) {
+		axiosConfig.responseType = 'stream';
+	} else if (requestObject.encoding === null) {
 		// When downloading files, return an arrayBuffer.
 		axiosConfig.responseType = 'arraybuffer';
 	}
@@ -855,12 +857,12 @@ export async function getBinaryDataBuffer(
  *
  * @export
  * @param {IBinaryData} data
- * @param {Buffer} binaryData
+ * @param {Buffer | Readable} binaryData
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
 	data: IBinaryData,
-	binaryData: Buffer,
+	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
 	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
@@ -922,7 +924,7 @@ export async function copyBinaryFile(
  * base64 and adds metadata.
  */
 async function prepareBinaryData(
-	binaryData: Buffer,
+	binaryData: Buffer | Readable,
 	executionId: string,
 	filePath?: string,
 	mimeType?: string,
@@ -939,7 +941,8 @@ async function prepareBinaryData(
 			}
 		}
 
-		if (!mimeType) {
+		// TODO: detect filetype from streams
+		if (!mimeType && Buffer.isBuffer(binaryData)) {
 			// Use buffer to guess mime type
 			const fileTypeData = await FileType.fromBuffer(binaryData);
 			if (fileTypeData) {
@@ -2001,6 +2004,8 @@ const getRequestHelperFunctions = (
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+	getBinaryStream,
+	getBinaryMetadata,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
@@ -2292,8 +2297,6 @@ export function getExecuteFunctions(
 			helpers: {
 				...getRequestHelperFunctions(workflow, node, additionalData),
 				...getBinaryHelperFunctions(additionalData),
-				getBinaryStream,
-				getBinaryMetadata,
 				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),
 				returnJsonArray,
