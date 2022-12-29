@@ -916,6 +916,7 @@ export class Workflow {
 		const startingNodeTypes = [
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.errorTrigger',
 			'n8n-nodes-base.start',
 		];
 
