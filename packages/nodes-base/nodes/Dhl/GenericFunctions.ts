@@ -66,7 +66,7 @@ export async function validateCredentials(
 			trackingNumber: 123,
 		},
 		method: 'GET',
-		uri: `https://api-eu.dhl.com/track/shipments`,
+		uri: 'https://api-eu.dhl.com/track/shipments',
 		json: true,
 	};
 

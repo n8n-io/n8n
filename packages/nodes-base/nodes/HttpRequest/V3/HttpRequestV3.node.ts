@@ -1106,7 +1106,7 @@ export class HttpRequestV3 implements INodeType {
 					} catch (_) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`JSON parameter need to be an valid JSON`,
+							'JSON parameter need to be an valid JSON',
 							{
 								runIndex: itemIndex,
 							},
@@ -1156,7 +1156,7 @@ export class HttpRequestV3 implements INodeType {
 					} catch (_) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`JSON parameter need to be an valid JSON`,
+							'JSON parameter need to be an valid JSON',
 							{
 								runIndex: itemIndex,
 							},
@@ -1181,7 +1181,7 @@ export class HttpRequestV3 implements INodeType {
 					} catch (_) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`JSON parameter need to be an valid JSON`,
+							'JSON parameter need to be an valid JSON',
 							{
 								runIndex: itemIndex,
 							},

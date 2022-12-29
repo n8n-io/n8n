@@ -56,7 +56,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	}
 
 	//endpoint
-	const endpoint = `files`;
+	const endpoint = 'files';
 	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
 	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop() });
 }

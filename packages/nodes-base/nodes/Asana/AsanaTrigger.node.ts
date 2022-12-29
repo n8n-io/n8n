@@ -152,7 +152,7 @@ export class AsanaTrigger implements INodeType {
 
 				const resource = this.getNodeParameter('resource') as string;
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const body = {
 					resource,

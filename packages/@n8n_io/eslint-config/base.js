@@ -339,6 +339,8 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 
+		'n8n-local-rules/no-unneeded-backticks': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
