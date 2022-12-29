@@ -439,6 +439,7 @@ export class JiraTrigger implements INodeType {
 
 				if (additionalFields.includeFields) {
 					for (const field of additionalFields.includeFields as string[]) {
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						parameters[field] = '${' + field + '}';
 					}
 				}
