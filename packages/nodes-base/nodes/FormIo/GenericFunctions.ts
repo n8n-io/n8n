@@ -38,7 +38,7 @@ async function getToken(
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
 		throw new Error(
-			`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`,
+			'Authentication Failed for Form.io. Please provide valid credentails/ endpoint details',
 		);
 	}
 }

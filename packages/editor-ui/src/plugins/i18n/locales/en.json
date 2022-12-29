@@ -1148,6 +1148,8 @@
 	"settings.usageAndPlan.license.activation.error.title": "Activation failed",
 	"settings.usageAndPlan.license.activation.success.title": "License activated",
 	"settings.usageAndPlan.license.activation.success.message": "Your {name} {type} has been successfully activated.",
+	"settings.usageAndPlan.desktop.title": "Upgrade to n8n Cloud for the full experience",
+	"settings.usageAndPlan.desktop.description": "Cloud plans allow you to collaborate with teammates. Plus you don’t need to leave this app open all the time for your workflows to run.",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
 	"showMessage.showDetails": "Show Details",

@@ -23,7 +23,7 @@ export async function monicaCrmApiRequest(
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
-	let baseUrl = `https://app.monicahq.com`;
+	let baseUrl = 'https://app.monicahq.com';
 
 	if (credentials.environment === 'selfHosted') {
 		baseUrl = credentials.domain;

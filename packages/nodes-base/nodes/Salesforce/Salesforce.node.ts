@@ -891,7 +891,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/account/describe`,
+					'/sobjects/account/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -912,7 +912,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/attachment/describe`,
+					'/sobjects/attachment/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -930,7 +930,7 @@ export class Salesforce implements INodeType {
 			async getCaseFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/case/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/case/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -947,7 +947,7 @@ export class Salesforce implements INodeType {
 			async getLeadFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/lead/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/lead/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -967,7 +967,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/opportunity/describe`,
+					'/sobjects/opportunity/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;
@@ -985,7 +985,7 @@ export class Salesforce implements INodeType {
 			async getTaskFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/task/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/task/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1002,7 +1002,7 @@ export class Salesforce implements INodeType {
 			async getUserFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				// TODO: find a way to filter this object to get just the lead sources instead of the whole object
-				const { fields } = await salesforceApiRequest.call(this, 'GET', `/sobjects/user/describe`);
+				const { fields } = await salesforceApiRequest.call(this, 'GET', '/sobjects/user/describe');
 				for (const field of fields) {
 					const fieldName = field.label;
 					const fieldId = field.name;
@@ -1022,7 +1022,7 @@ export class Salesforce implements INodeType {
 				const { fields } = await salesforceApiRequest.call(
 					this,
 					'GET',
-					`/sobjects/contact/describe`,
+					'/sobjects/contact/describe',
 				);
 				for (const field of fields) {
 					const fieldName = field.label;

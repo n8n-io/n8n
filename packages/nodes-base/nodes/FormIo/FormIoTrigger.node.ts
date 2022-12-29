@@ -157,7 +157,7 @@ export class FormIoTrigger implements INodeType {
 				const method = this.getNodeParameter('events') as string[];
 				const payload = {
 					data: {
-						name: `webhook`,
+						name: 'webhook',
 						title: `webhook-n8n:${webhookUrl}`,
 						method,
 						handler: ['after'],

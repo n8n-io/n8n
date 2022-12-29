@@ -147,7 +147,7 @@ export async function validateCredentials(
 
 	// Concatenate path and instantiate URL object so it parses correctly query strings
 	const endpoint = new URL(
-		getEndpointForService(service, credentials) + `?Action=GetCallerIdentity&Version=2011-06-15`,
+		getEndpointForService(service, credentials) + '?Action=GetCallerIdentity&Version=2011-06-15',
 	);
 
 	// Sign AWS API request with the user credentials

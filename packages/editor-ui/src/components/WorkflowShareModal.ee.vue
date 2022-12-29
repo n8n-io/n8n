@@ -370,7 +370,7 @@ export default mixins(showMessage).extend({
 			if (!isNewSharee && isLastUserWithAccessToCredentials) {
 				confirm = await this.confirmMessage(
 					this.$locale.baseText(
-						`workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message`,
+						'workflows.shareModal.list.delete.confirm.lastUserWithAccessToCredentials.message',
 						{
 							interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 						},

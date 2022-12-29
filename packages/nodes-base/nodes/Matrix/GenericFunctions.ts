@@ -75,7 +75,7 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
@@ -214,7 +214,7 @@ export async function handleMatrixCall(
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
 				'POST',
-				`/upload`,
+				'/upload',
 				body,
 				qs,
 				headers,
