@@ -139,6 +139,36 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-interpolation-in-regular-string': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'String interpolation `${...}` requires backticks, not single or double quotes.',
+				recommended: 'error',
+			},
+			messages: {
+				useBackticks: 'Use backticks to interpolate',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				Literal(node) {
+					if (typeof node.value !== 'string') return;
+
+					if (/\$\{/.test(node.value)) {
+						context.report({
+							messageId: 'useBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(node, `\`${node.value}\``),
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>
