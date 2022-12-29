@@ -34,6 +34,10 @@
 							:label="item.name"
 							:value="item.id"
 						>
+							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+								<n8n-text bold>{{ item.name }}</n8n-text>
+								<n8n-text size="small">{{ item.typeDisplayName }}</n8n-text>
+							</div>
 						</n8n-option>
 						<n8n-option
 							:key="NEW_CREDENTIALS_TEXT"
@@ -92,7 +96,6 @@ import { showMessage } from '@/mixins/showMessage';
 import TitledList from '@/components/TitledList.vue';
 
 import mixins from 'vue-typed-mixins';
-import { getCredentialPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
@@ -100,6 +103,10 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
+
+interface CredentialDropdownOption extends ICredentialsResponse {
+	typeDisplayName: string;
+}
 
 export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
 	name: 'NodeCredentials',
@@ -184,9 +191,12 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 	},
 
 	methods: {
-		getCredentialOptions(type: string): ICredentialsResponse[] {
+		getCredentialOptions(type: string): CredentialDropdownOption[] {
 			if (!this.showAll) {
-				return this.credentialsStore.allUsableCredentialsByType[type];
+				return this.credentialsStore.allUsableCredentialsByType[type].map((option) => ({
+					...option,
+					typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
+				}));
 			}
 
 			const activeNode = this.ndvStore.activeNode;
@@ -196,10 +206,14 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					activeNode.typeVersion,
 				);
 				if (activeNodeType && activeNodeType.credentials) {
-					let credTypes: ICredentialsResponse[] = [];
+					let credTypes: CredentialDropdownOption[] = [];
 					activeNodeType.credentials.forEach((cred) => {
 						credTypes = credTypes.concat(
-							this.credentialsStore.allUsableCredentialsByType[cred.name],
+							this.credentialsStore.allUsableCredentialsByType[cred.name].map((option) => ({
+								...option,
+								typeDisplayName: this.credentialsStore.getCredentialTypeByName(cred.name)
+									.displayName,
+							})),
 						);
 					});
 					return credTypes;
@@ -413,7 +427,6 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			if (!node.issues.credentials.hasOwnProperty(credentialTypeName)) {
 				return [];
 			}
-
 			return node.issues.credentials[credentialTypeName];
 		},
 
@@ -481,5 +494,10 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 .hasIssues {
 	composes: input;
 	--input-border-color: var(--color-danger);
+}
+
+.credentialOption {
+	display: flex;
+	flex-direction: column;
 }
 </style>

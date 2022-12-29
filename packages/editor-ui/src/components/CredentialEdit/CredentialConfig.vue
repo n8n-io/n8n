@@ -64,10 +64,11 @@
 
 			<div v-if="mode === 'new' && nodeAuthOptions.length > 0" :class="$style.authTypeContainer">
 				<div class="mb-2xs">
-					<n8n-text :bold="true">{{
-						$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')
-					}}</n8n-text>
-					<n8n-text :bold="true" color="primary"> *</n8n-text>
+					<n8n-input-label
+						:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
+						:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+						:required="true"
+					/>
 				</div>
 				<el-radio
 					v-for="prop in nodeAuthOptions"
