@@ -6,7 +6,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { readFile as fsReadFile } from 'fs/promises';
+import { createReadStream } from 'fs';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,7 +58,7 @@ export class ReadBinaryFile implements INodeType {
 
 				let data;
 				try {
-					data = await fsReadFile(filePath);
+					data = createReadStream(filePath);
 				} catch (error) {
 					if (error.code === 'ENOENT') {
 						throw new NodeOperationError(
