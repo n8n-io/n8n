@@ -143,7 +143,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/TicketType`,
+					'/TicketType',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -178,7 +178,7 @@ export class HaloPSA implements INodeType {
 				const response = (await haloPSAApiRequest.call(
 					this,
 					'GET',
-					`/agent`,
+					'/agent',
 					tokens.access_token,
 					{},
 				)) as IDataObject[];
@@ -294,7 +294,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'clients',
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -305,7 +305,7 @@ export class HaloPSA implements INodeType {
 							const { clients } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/client`,
+								'/client',
 								tokens.access_token,
 								{},
 								qs,
@@ -401,7 +401,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'sites',
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -412,7 +412,7 @@ export class HaloPSA implements INodeType {
 							const { sites } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/site`,
+								'/site',
 								tokens.access_token,
 								{},
 								qs,
@@ -510,7 +510,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'tickets',
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -521,7 +521,7 @@ export class HaloPSA implements INodeType {
 							const { tickets } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/tickets`,
+								'/tickets',
 								tokens.access_token,
 								{},
 								qs,
@@ -618,7 +618,7 @@ export class HaloPSA implements INodeType {
 								this,
 								'users',
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,
@@ -629,7 +629,7 @@ export class HaloPSA implements INodeType {
 							const { users } = await haloPSAApiRequest.call(
 								this,
 								'GET',
-								`/users`,
+								'/users',
 								tokens.access_token,
 								{},
 								qs,

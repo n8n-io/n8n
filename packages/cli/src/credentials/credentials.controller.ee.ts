@@ -69,7 +69,7 @@ EECredentialsController.get(
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(`Forbidden.`);
+			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
 		credential = EECredentials.addOwnerAndSharings(credential);
@@ -109,7 +109,7 @@ EECredentialsController.post(
 		const sharing = await EECredentials.getSharing(req.user, credentialsId);
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError(`Forbidden`);
+				throw new ResponseHelper.UnauthorizedError('Forbidden');
 			}
 
 			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);

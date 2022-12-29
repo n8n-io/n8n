@@ -162,7 +162,7 @@ export class ExecutionsService {
 					filter: req.query.filter,
 				});
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -218,7 +218,7 @@ export class ExecutionsService {
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
@@ -442,7 +442,7 @@ export class ExecutionsService {
 				}
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}

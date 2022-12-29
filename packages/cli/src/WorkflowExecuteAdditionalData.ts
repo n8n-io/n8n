@@ -135,7 +135,7 @@ export function executeErrorWorkflow(
 				workflowData.settings.errorWorkflow.toString() === workflowId
 			)
 		) {
-			Logger.verbose(`Start external error workflow`, {
+			Logger.verbose('Start external error workflow', {
 				executionId,
 				errorWorkflowId: workflowData.settings.errorWorkflow.toString(),
 				workflowId,
@@ -175,7 +175,7 @@ export function executeErrorWorkflow(
 			workflowId !== undefined &&
 			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
 		) {
-			Logger.verbose(`Start internal error workflow`, { executionId, workflowId });
+			Logger.verbose('Start internal error workflow', { executionId, workflowId });
 			void getWorkflowOwner(workflowId).then((user) => {
 				void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
 			});
@@ -287,7 +287,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 		],
 		workflowExecuteBefore: [
 			async function (this: WorkflowHooks): Promise<void> {
-				Logger.debug(`Executing hook (hookFunctionsPush)`, {
+				Logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId: this.executionId,
 					sessionId: this.sessionId,
 					workflowId: this.workflowData.id,
@@ -318,7 +318,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				fullRunData: IRun,
 				newStaticData: IDataObject,
 			): Promise<void> {
-				Logger.debug(`Executing hook (hookFunctionsPush)`, {
+				Logger.debug('Executing hook (hookFunctionsPush)', {
 					executionId: this.executionId,
 					sessionId: this.sessionId,
 					workflowId: this.workflowData.id,
@@ -484,7 +484,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				fullRunData: IRun,
 				newStaticData: IDataObject,
 			): Promise<void> {
-				Logger.debug(`Executing hook (hookFunctionsSave)`, {
+				Logger.debug('Executing hook (hookFunctionsSave)', {
 					executionId: this.executionId,
 					workflowId: this.workflowData.id,
 				});
@@ -820,7 +820,7 @@ export async function getWorkflowData(
 ): Promise<IWorkflowBase> {
 	if (workflowInfo.id === undefined && workflowInfo.code === undefined) {
 		throw new Error(
-			`No information about the workflow to execute found. Please provide either the "id" or "code"!`,
+			'No information about the workflow to execute found. Please provide either the "id" or "code"!',
 		);
 	}
 

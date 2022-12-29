@@ -512,7 +512,7 @@ function digestAuthAxiosConfig(
 		.split(',')
 		.map((v: string) => v.split('='));
 	if (authDetails) {
-		const nonceCount = `000000001`;
+		const nonceCount = '000000001';
 		const cnonce = crypto.randomBytes(24).toString('hex');
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]

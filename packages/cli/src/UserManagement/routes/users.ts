@@ -127,7 +127,7 @@ export function usersNamespace(this: N8nApp): void {
 			const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
 			const total = usersToSetUp.length;
 
-			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
+			Logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 			try {
 				await Db.transaction(async (transactionManager) => {
@@ -156,7 +156,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
-			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
+			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
 
@@ -200,7 +200,7 @@ export function usersNamespace(this: N8nApp): void {
 							domain: baseUrl,
 							email,
 						});
-						resp.error = `Email could not be sent`;
+						resp.error = 'Email could not be sent';
 					}
 					return resp;
 				}),
@@ -211,7 +211,7 @@ export function usersNamespace(this: N8nApp): void {
 			Logger.debug(
 				usersPendingSetup.length > 1
 					? `Sent ${usersPendingSetup.length} invite emails successfully`
-					: `Sent 1 invite email successfully`,
+					: 'Sent 1 invite email successfully',
 				{ userShells: createUsers },
 			);
 

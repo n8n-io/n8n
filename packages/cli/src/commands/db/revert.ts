@@ -31,7 +31,7 @@ export class DbRevertMigrationCommand extends Command {
 			connection = Db.collections.Credentials.manager.connection;
 
 			if (!connection) {
-				throw new Error(`No database connection available.`);
+				throw new Error('No database connection available.');
 			}
 
 			const connectionOptions: ConnectionOptions = Object.assign(connection.options, {
