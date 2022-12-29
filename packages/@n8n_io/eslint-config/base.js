@@ -341,6 +341,8 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-unneeded-backticks': 'error',
 
+		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
