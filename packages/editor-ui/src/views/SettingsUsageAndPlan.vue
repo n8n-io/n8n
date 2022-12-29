@@ -5,8 +5,7 @@ import { Notification } from 'element-ui';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
-
-const PRICING_PAGE_URL = 'https://n8n.io/pricing';
+import { N8N_PRICING_PAGE_URL } from '@/constants';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -119,7 +118,7 @@ const onDialogOpened = () => {
 
 const openPricingPage = () => {
 	sendUsageTelemetry('desktop_view_plans');
-	window.open(PRICING_PAGE_URL, '_blank');
+	window.open(N8N_PRICING_PAGE_URL, '_blank');
 };
 </script>
 
