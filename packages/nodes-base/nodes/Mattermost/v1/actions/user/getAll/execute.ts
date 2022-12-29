@@ -87,7 +87,7 @@ export async function getAll(
 		} else {
 			throw new NodeOperationError(
 				this.getNode(),
-				`When sort is defined either 'in team' or 'in channel' must be defined`,
+				"When sort is defined either 'in team' or 'in channel' must be defined",
 				{ itemIndex: index },
 			);
 		}

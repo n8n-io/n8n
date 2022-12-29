@@ -244,7 +244,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificaterequests`,
+							'/outagedetection/v1/certificaterequests',
 							body,
 							qs,
 						);
@@ -274,7 +274,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificateRequests',
 								'GET',
-								`/outagedetection/v1/certificaterequests`,
+								'/outagedetection/v1/certificaterequests',
 								{},
 								qs,
 							);
@@ -283,7 +283,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/outagedetection/v1/certificaterequests`,
+								'/outagedetection/v1/certificaterequests',
 								{},
 								qs,
 							);
@@ -301,7 +301,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificates/deletion`,
+							'/outagedetection/v1/certificates/deletion',
 							{ certificateIds: [certificateId] },
 						);
 
@@ -417,7 +417,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								this,
 								'certificates',
 								'GET',
-								`/outagedetection/v1/certificates`,
+								'/outagedetection/v1/certificates',
 								{},
 								qs,
 							);
@@ -426,7 +426,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/outagedetection/v1/certificates`,
+								'/outagedetection/v1/certificates',
 								{},
 								qs,
 							);
@@ -464,7 +464,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/outagedetection/v1/certificaterequests`,
+							'/outagedetection/v1/certificaterequests',
 							body,
 							qs,
 						);
