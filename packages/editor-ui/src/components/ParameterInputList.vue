@@ -112,6 +112,7 @@ import {
 	deepCopy,
 	INodeParameters,
 	INodeProperties,
+	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 
@@ -126,10 +127,10 @@ import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { Component } from 'vue';
-import { mapState, mapStores } from 'pinia';
+import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { AUTHENTICATION_FIELD_NAME } from '@/utils';
+import { AUTHENTICATION_FIELD_NAME, isAuthRelatedParameter, getNodeAuthFields } from '@/utils';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -162,6 +163,12 @@ export default mixins(workflowHelpers).extend({
 			}
 			return '';
 		},
+		nodeType(): INodeTypeDescription | null {
+			if (this.node) {
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			}
+			return null;
+		},
 		filteredParameters(): INodeProperties[] {
 			return this.parameters.filter((parameter: INodeProperties) =>
 				this.displayNodeParameter(parameter),
@@ -172,6 +179,9 @@ export default mixins(workflowHelpers).extend({
 		},
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
+		},
+		nodeAuthFields(): INodeProperties[] {
+			return getNodeAuthFields(this.nodeType);
 		},
 		indexToShowSlotAt(): number {
 			let index = 0;
@@ -252,7 +262,6 @@ export default mixins(workflowHelpers).extend({
 
 			return !MUST_REMAIN_VISIBLE.includes(parameter.name);
 		},
-
 		displayNodeParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
 				return false;
@@ -266,7 +275,10 @@ export default mixins(workflowHelpers).extend({
 			}
 
 			// Hide 'authentication' field since it will now be part of credentials modal
-			if (parameter.name === AUTHENTICATION_FIELD_NAME) {
+			if (
+				parameter.name === AUTHENTICATION_FIELD_NAME ||
+				isAuthRelatedParameter(this.nodeAuthFields, parameter)
+			) {
 				return false;
 			}
 

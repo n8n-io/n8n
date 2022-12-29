@@ -63,10 +63,21 @@
 			</n8n-notice>
 
 			<div v-if="mode === 'new' && nodeAuthOptions.length > 0" :class="$style.authTypeContainer">
+				<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
+					<parameter-input-full
+						:parameter="parameter"
+						:value="authRelatedFieldsValues[parameter.name]"
+						:path="parameter.name"
+						:displayOptions="false"
+						@valueChanged="valueChanged"
+					/>
+				</div>
 				<div class="mb-2xs">
 					<n8n-input-label
 						:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-						:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+						:tooltipText="
+							$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')
+						"
 						:required="true"
 					/>
 				</div>
@@ -134,6 +145,7 @@
 </template>
 
 <script lang="ts">
+import Vue from 'vue';
 import {
 	ICredentialType,
 	INodeProperties,
@@ -146,6 +158,8 @@ import {
 	isCommunityPackageName,
 	getNodeAuthOptions,
 	getAuthTypeForNodeCredential,
+getNodeAuthFields,
+isAuthRelatedParameter,
 } from '@/utils';
 
 import Banner from '../Banner.vue';
@@ -164,7 +178,9 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { ICredentialsResponse } from '@/Interface';
+import { ICredentialsResponse, IUpdateInformation } from '@/Interface';
+import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import { ElRadio } from 'element-ui/types/radio';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -173,6 +189,7 @@ export default mixins(restApi).extend({
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
+		ParameterInputFull,
 	},
 	props: {
 		credentialType: {
@@ -224,6 +241,7 @@ export default mixins(restApi).extend({
 		return {
 			EnterpriseEditionFeature,
 			selectedCredentialType: '',
+			authRelatedFieldsValues: {} as { [key: string]: unknown },
 		};
 	},
 	async beforeMount() {
@@ -273,7 +291,9 @@ export default mixins(restApi).extend({
 			return null;
 		},
 		nodeAuthOptions(): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> {
-			return getNodeAuthOptions(this.activeNodeType);
+			return getNodeAuthOptions(this.activeNodeType).filter((option) =>
+				this.shouldShowAuthOption(option),
+			);
 		},
 		appName(): string {
 			if (!this.credentialType) {
@@ -343,6 +363,14 @@ export default mixins(restApi).extend({
 				!this.authError
 			);
 		},
+		authRelatedFields(): INodeProperties[] {
+			const nodeAuthFields = getNodeAuthFields(this.activeNodeType);
+			return (
+				this.activeNodeType?.properties.filter((prop) =>
+					isAuthRelatedParameter(nodeAuthFields, prop),
+				) || []
+			);
+		},
 	},
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
@@ -361,6 +389,17 @@ export default mixins(restApi).extend({
 		},
 		onAuthTypeChange(newType: string): void {
 			this.$emit('authTypeChanged', newType);
+		},
+		valueChanged(data: IUpdateInformation): void {
+			Vue.set(this.authRelatedFieldsValues, data.name, data.value);
+		},
+		getValue(paramName: string): unknown {
+			return this.authRelatedFieldsValues[paramName];
+		},
+		shouldShowAuthOption(
+			prop: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+		): boolean {
+			return true;
 		},
 	},
 	watch: {

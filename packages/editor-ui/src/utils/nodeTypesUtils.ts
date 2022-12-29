@@ -315,10 +315,12 @@ export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
 ): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> => {
 	if (nodeType) {
-		const authProp = nodeType.properties.find((prop) => prop.name === AUTHENTICATION_FIELD_NAME);
-		if (authProp) {
-			return authProp.options || [];
-		}
+		let options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> = [];
+		const authProps = getNodeAuthFields(nodeType);
+		authProps.forEach((field) => {
+			options = options.concat(field.options || []);
+		});
+		return options;
 	}
 	return [];
 };
@@ -351,4 +353,29 @@ export const getAuthTypeForNodeCredential = (
 		);
 	}
 	return null;
+};
+
+export const isAuthRelatedParameter = (
+	authFields: INodeProperties[],
+	parameter: INodeProperties,
+): boolean => {
+	let isRelated = false;
+	authFields.forEach((prop) => {
+		if (
+			prop.displayOptions &&
+			prop.displayOptions.show &&
+			parameter.name in prop.displayOptions.show
+		) {
+			isRelated = true;
+			return;
+		}
+	});
+	return isRelated;
+};
+
+export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeProperties[] => {
+	if (nodeType) {
+		return nodeType.properties.filter((prop) => prop.name === AUTHENTICATION_FIELD_NAME);
+	}
+	return [];
 };
