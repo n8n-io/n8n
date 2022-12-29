@@ -210,13 +210,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								`/search`,
+								'/search',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -262,7 +262,7 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
 					}
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
@@ -444,13 +444,13 @@ export class Box implements INodeType {
 								this,
 								'entries',
 								'GET',
-								`/search`,
+								'/search',
 								{},
 								qs,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequest.call(this, 'GET', '/search', {}, qs);
 							responseData = responseData.entries;
 						}
 					}
@@ -496,7 +496,7 @@ export class Box implements INodeType {
 							body.accessible_by.id = this.getNodeParameter('groupId', i) as string;
 						}
 
-						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
+						responseData = await boxApiRequest.call(this, 'POST', '/collaborations', body, qs);
 					}
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {

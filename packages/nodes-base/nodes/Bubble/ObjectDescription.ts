@@ -422,7 +422,8 @@ export const objectFields: INodeProperties[] = [
 						'/jsonParameters': [true],
 					},
 				},
-				placeholder: `[ { "key": "name", "constraint_type": "text contains", "value": "cafe" } , { "key": "address", "constraint_type": "geographic_search", "value": { "range":10, "origin_address":"New York" } } ]`,
+				placeholder:
+					'[ { "key": "name", "constraint_type": "text contains", "value": "cafe" } , { "key": "address", "constraint_type": "geographic_search", "value": { "range":10, "origin_address":"New York" } } ]',
 				description:
 					'Refine the list that is returned by the Data API with search constraints, exactly as you define a search in Bubble. See <a href="https://manual.bubble.io/core-resources/api/data-api#search-constraints">link</a>.',
 			},
