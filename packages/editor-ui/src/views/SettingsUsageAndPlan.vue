@@ -5,6 +5,7 @@ import { Notification } from 'element-ui';
 import { UsageTelemetry, useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
+import { N8N_PRICING_PAGE_URL } from '@/constants';
 
 const usageStore = useUsageStore();
 const route = useRoute();
@@ -53,36 +54,38 @@ const onLicenseActivation = async () => {
 };
 
 onMounted(async () => {
-	if (!usageStore.isDesktop) {
-		usageStore.setLoading(true);
-		if (route.query.key) {
-			try {
-				await usageStore.activateLicense(route.query.key as string);
-				await router.replace({ query: {} });
-				showActivationSuccess();
-				usageStore.setLoading(false);
-				return;
-			} catch (error) {
-				showActivationError(error);
-			}
-		}
+	if (usageStore.isDesktop) {
+		return;
+	}
+
+	usageStore.setLoading(true);
+	if (route.query.key) {
 		try {
-			if (!route.query.key && usageStore.canUserActivateLicense) {
-				await usageStore.refreshLicenseManagementToken();
-			} else {
-				await usageStore.getLicenseInfo();
-			}
+			await usageStore.activateLicense(route.query.key as string);
+			await router.replace({ query: {} });
+			showActivationSuccess();
 			usageStore.setLoading(false);
+			return;
 		} catch (error) {
-			if (!error.name) {
-				error.name = locale.baseText('settings.usageAndPlan.error');
-			}
-			Notification.error({
-				title: error.name,
-				message: error.message,
-				position: 'bottom-right',
-			});
+			showActivationError(error);
 		}
+	}
+	try {
+		if (!route.query.key && usageStore.canUserActivateLicense) {
+			await usageStore.refreshLicenseManagementToken();
+		} else {
+			await usageStore.getLicenseInfo();
+		}
+		usageStore.setLoading(false);
+	} catch (error) {
+		if (!error.name) {
+			error.name = locale.baseText('settings.usageAndPlan.error');
+		}
+		Notification.error({
+			title: error.name,
+			message: error.message,
+			position: 'bottom-right',
+		});
 	}
 });
 
@@ -115,7 +118,7 @@ const onDialogOpened = () => {
 
 const openPricingPage = () => {
 	sendUsageTelemetry('desktop_view_plans');
-	window.open('https://n8n.io/pricing', '_blank');
+	window.open(N8N_PRICING_PAGE_URL, '_blank');
 };
 </script>
 
