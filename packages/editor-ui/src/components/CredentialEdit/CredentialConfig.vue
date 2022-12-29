@@ -62,7 +62,7 @@
 				</span>
 			</n8n-notice>
 
-			<div v-if="mode === 'new'" :class="$style.authTypeContainer">
+			<div v-if="mode === 'new' && nodeAuthOptions.length > 0" :class="$style.authTypeContainer">
 				<div class="mb-2xs">
 					<n8n-text :bold="true">{{
 						$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')

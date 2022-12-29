@@ -292,8 +292,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			// Otherwise, use credential type that corresponds to the first auth option in the node definition
 			const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
-			if (nodeAuthOptions.length > 0 && this.activeNodeType?.credentials) {
-				return getNodeCredentialForAuthType(this.activeNodeType, nodeAuthOptions[0].value);
+			if (this.activeNodeType?.credentials) {
+				if (nodeAuthOptions.length > 0) {
+					return getNodeCredentialForAuthType(this.activeNodeType, nodeAuthOptions[0].value);
+				} else {
+					// If there are no muliple auth options, use first node credential
+					return this.activeNodeType.credentials[0];
+				}
 			}
 			return null;
 		},
