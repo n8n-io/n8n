@@ -99,14 +99,25 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
 	name: 'NodeCredentials',
-	props: [
-		'readonly',
-		'node', // INodeUi
-		'overrideCredType', // cred type
-	],
+	props: {
+		readonly: {
+			type: Boolean,
+		},
+		node: {
+			type: Object as () => INodeUi,
+		},
+		overrideCredType: {
+			type: String,
+		},
+		showAll: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	components: {
 		TitledList,
 	},
@@ -123,6 +134,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		...mapStores(
 			useCredentialsStore,
 			useNodeTypesStore,
+			useNDVStore,
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
@@ -173,7 +185,27 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
-			return this.credentialsStore.allUsableCredentialsByType[type];
+			if (!this.showAll) {
+				return this.credentialsStore.allUsableCredentialsByType[type];
+			}
+
+			const activeNode = this.ndvStore.activeNode;
+			if (activeNode) {
+				const activeNodeType = this.nodeTypesStore.getNodeType(
+					activeNode.type,
+					activeNode.typeVersion,
+				);
+				if (activeNodeType && activeNodeType.credentials) {
+					let credTypes: ICredentialsResponse[] = [];
+					activeNodeType.credentials.forEach((cred) => {
+						credTypes = credTypes.concat(
+							this.credentialsStore.allUsableCredentialsByType[cred.name],
+						);
+					});
+					return credTypes;
+				}
+			}
+			return [];
 		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {

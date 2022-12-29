@@ -100,6 +100,7 @@
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
+						:showAll="true"
 						@credentialSelected="credentialSelected"
 					/>
 				</parameter-input-list>
