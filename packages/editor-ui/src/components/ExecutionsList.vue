@@ -7,7 +7,7 @@
 				}${combinedExecutionsCount}`
 			}}
 		</n8n-heading>
-		<div class="filters">
+		<div :class="$style.filters">
 			<el-row>
 				<el-col :span="2" class="filter-headline">
 					{{ $locale.baseText('executionsList.filters') }}:
@@ -43,7 +43,7 @@
 						</n8n-option>
 					</n8n-select>
 				</el-col>
-				<el-col :span="5" :offset="5" class="autorefresh">
+				<el-col :span="4" :offset="5" :class="$style.autoRefresh">
 					<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
 						{{ $locale.baseText('executionsList.autoRefresh') }}
 					</el-checkbox>
@@ -51,7 +51,7 @@
 			</el-row>
 		</div>
 
-		<div class="selection-options">
+		<div :class="$style.selectionOptions">
 			<span v-if="checkAll === true || isIndeterminate === true">
 				{{ $locale.baseText('executionsList.selected') }}: {{ numSelected }} /
 				<span v-if="finishedExecutionsCountEstimated === true">~</span>{{ finishedExecutionsCount }}
@@ -64,7 +64,12 @@
 			</span>
 		</div>
 
-		<el-table :data="combinedExecutions" v-loading="isDataLoading" :row-class-name="getRowClass">
+		<el-table
+			:class="$style.execTable"
+			:data="combinedExecutions"
+			v-loading="isDataLoading"
+			:row-class-name="getRowClass"
+		>
 			<el-table-column label="" width="30">
 				<!-- eslint-disable-next-line vue/no-unused-vars -->
 				<template #header="scope">
@@ -128,23 +133,23 @@
 						<font-awesome-icon icon="spinner" spin />
 						<execution-time :start-time="scope.row.startedAt" />
 					</span>
-					<n8n-tooltip placement="top">
+					<n8n-tooltip placement="top" :class="$style.status">
 						<template #content>
 							<div v-html="statusTooltipText(scope.row)"></div>
 						</template>
-						<span class="status-badge running" v-if="scope.row.waitTill">
+						<span v-if="scope.row.waitTill">
 							{{ $locale.baseText('executionsList.waiting') }}
 						</span>
-						<span class="status-badge running" v-else-if="scope.row.stoppedAt === undefined">
+						<span v-else-if="scope.row.stoppedAt === undefined">
 							{{ $locale.baseText('executionsList.running') }}
 						</span>
-						<span class="status-badge success" v-else-if="scope.row.finished">
+						<span v-else-if="scope.row.finished">
 							{{ $locale.baseText('executionsList.success') }}
 						</span>
-						<span class="status-badge error" v-else-if="scope.row.stoppedAt !== null">
+						<span v-else-if="scope.row.stoppedAt !== null">
 							{{ $locale.baseText('executionsList.error') }}
 						</span>
-						<span class="status-badge warning" v-else>
+						<span v-else>
 							{{ $locale.baseText('executionsList.unknown') }}
 						</span>
 					</n8n-tooltip>
@@ -177,7 +182,7 @@
 			</el-table-column>
 			<el-table-column label="" width="100" align="center">
 				<template #default="scope">
-					<div class="actions-container">
+					<div :class="$style.actionsContainer">
 						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
 							<n8n-icon-button
 								icon="stop"
@@ -233,7 +238,7 @@
 		</el-table>
 
 		<div
-			class="load-more"
+			:class="$style.loadMore"
 			v-if="
 				finishedExecutionsCount > finishedExecutions.length ||
 				finishedExecutionsCountEstimated === true
@@ -568,9 +573,18 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			});
 		},
 		getRowClass(data: IDataObject): string {
-			const classes: string[] = [];
-			if ((data.row as IExecutionsSummary).stoppedAt === undefined) {
-				classes.push('currently-running');
+			const classes: string[] = [this.$style.execRow];
+			const execution = data.row as IExecutionsSummary;
+			if (execution.waitTill) {
+				classes.push(this.$style.waiting);
+			} else if (execution.stoppedAt === undefined) {
+				classes.push(this.$style.running);
+			} else if (execution.finished) {
+				classes.push(this.$style.success);
+			} else if (execution.stoppedAt !== null) {
+				classes.push(this.$style.failed);
+			} else {
+				classes.push(this.$style.unknown);
 			}
 
 			return classes.join(' ');
@@ -886,16 +900,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 });
 </script>
 
-<style scoped lang="scss">
-.autorefresh {
+<style module lang="scss">
+.autoRefresh {
 	padding-right: 0.5em;
 	text-align: right;
-}
-
-.execution-actions {
-	button {
-		margin: 0 0.25em;
-	}
 }
 
 .filters {
@@ -906,53 +914,70 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	}
 }
 
-.load-more {
+.loadMore {
 	margin: 2em 0 0 0;
 	width: 100%;
 	text-align: center;
 }
 
-.selection-options {
+.selectionOptions {
 	height: 2em;
 }
 
-.status-badge {
-	position: relative;
-	display: inline-block;
-	padding: 0 10px;
+.status {
 	line-height: 22.6px;
-	border-radius: 15px;
 	text-align: center;
 	font-size: var(--font-size-s);
+	font-weight: var(--font-weight-bold);
 
-	&.error {
-		background-color: var(--color-danger-tint-1);
+	.failed & {
 		color: var(--color-danger);
 	}
 
-	&.success {
-		background-color: var(--color-success-tint-1);
-		color: var(--color-success);
+	.success & {
+		font-weight: var(--font-weight-normal);
 	}
 
-	&.running,
-	&.warning {
-		background-color: var(--color-warning-tint-2);
+	.running & {
 		color: var(--color-warning);
 	}
 }
 
-.actions-container > * {
+.actionsContainer > * {
 	margin-left: 5px;
 }
-</style>
 
-<style lang="scss">
-.currently-running {
-	background-color: var(--color-primary-tint-3) !important;
-}
+.execTable {
+	background: transparent;
 
-.el-table tr:hover.currently-running td {
-	background-color: var(--color-primary-tint-2) !important;
+	table {
+		border-collapse: separate;
+		border-spacing: 0 var(--spacing-m);
+		background: transparent;
+	}
+
+	.execRow {
+		background: transparent;
+
+		td {
+			background: #fff;
+
+			&:first-child {
+				border-left: var(--spacing-4xs) solid var(--color-background-dark);
+			}
+		}
+
+		&.failed td:first-child {
+			border-color: var(--color-danger);
+		}
+
+		&.success td:first-child {
+			border-color: var(--color-success);
+		}
+
+		&.running td:first-child {
+			border-color: var(--color-warning);
+		}
+	}
 }
 </style>
