@@ -112,7 +112,6 @@ import {
 	deepCopy,
 	INodeParameters,
 	INodeProperties,
-	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
 

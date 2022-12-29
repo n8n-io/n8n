@@ -295,7 +295,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				this.subscribedToCredentialType = credentialType;
 			}
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.uiStore.openNewCredential(credentialType);
+				this.uiStore.openNewCredential(null);
 				this.$telemetry.track('User opened Credential modal', {
 					credential_type: credentialType,
 					source: 'node',
