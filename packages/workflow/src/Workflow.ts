@@ -318,7 +318,7 @@ export class Workflow {
 		} else if (type === 'node') {
 			if (node === undefined) {
 				throw new Error(
-					`The request data of context type "node" the node parameter has to be set!`,
+					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;

@@ -1997,7 +1997,7 @@ export async function validateCredentials(
 	const options: OptionsWithUri = {
 		method: 'GET',
 		headers: {},
-		uri: `https://api.hubapi.com/deals/v1/deal/paged`,
+		uri: 'https://api.hubapi.com/deals/v1/deal/paged',
 		json: true,
 	};
 
