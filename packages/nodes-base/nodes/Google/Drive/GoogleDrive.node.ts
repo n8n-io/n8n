@@ -13,6 +13,7 @@ import {
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
+import type { Readable } from 'stream';
 
 interface GoogleDriveFilesItem {
 	id: string;
@@ -2306,6 +2307,7 @@ export class GoogleDrive implements INodeType {
 						const downloadOptions = this.getNodeParameter('options', i);
 
 						const requestOptions = {
+							useStream: true,
 							resolveWithFullResponse: true,
 							encoding: null,
 							json: false,
@@ -2316,7 +2318,7 @@ export class GoogleDrive implements INodeType {
 							'GET',
 							`/drive/v3/files/${fileId}`,
 							{},
-							{ fields: 'mimeType', supportsTeamDrives: true },
+							{ fields: 'mimeType,name', supportsTeamDrives: true },
 						);
 						let response;
 
@@ -2370,15 +2372,8 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						let mimeType: string | undefined;
-						let fileName: string | undefined = undefined;
-						if (response.headers['content-type']) {
-							mimeType = response.headers['content-type'];
-						}
-
-						if (downloadOptions.fileName) {
-							fileName = downloadOptions.fileName as string;
-						}
+						const mimeType = file.mimeType ?? response.headers['content-type'] ?? undefined;
+						const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
@@ -2400,10 +2395,8 @@ export class GoogleDrive implements INodeType {
 							i,
 						) as string;
 
-						const data = Buffer.from(response.body as string);
-
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
-							data as unknown as Buffer,
+							response.body as unknown as Readable,
 							fileName,
 							mimeType,
 						);

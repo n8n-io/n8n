@@ -88,6 +88,7 @@ export class BinaryDataManager {
 		const manager = this.managers[this.binaryDataMode];
 		if (manager) {
 			const identifier = await manager.storeBinaryData(input, executionId);
+
 			// Add data manager reference id.
 			binaryData.id = this.generateBinaryId(identifier);
 
