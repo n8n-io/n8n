@@ -139,7 +139,7 @@ export class Execute extends Command {
 
 		const instanceId = await UserSettings.getInstanceId();
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

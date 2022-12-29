@@ -92,7 +92,7 @@ export class Webhook extends Command {
 		process.once('SIGTERM', Webhook.stopProcess);
 		process.once('SIGINT', Webhook.stopProcess);
 
-		initErrorHandling();
+		await initErrorHandling();
 		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
@@ -152,7 +152,7 @@ export class Webhook extends Command {
 
 				const instanceId = await UserSettings.getInstanceId();
 				const { cli } = await GenericHelpers.getVersions();
-				InternalHooksManager.init(instanceId, cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);

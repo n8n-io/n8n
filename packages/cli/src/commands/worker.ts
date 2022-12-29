@@ -307,7 +307,7 @@ export class Worker extends Command {
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
-				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);

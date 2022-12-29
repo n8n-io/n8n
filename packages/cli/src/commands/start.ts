@@ -224,7 +224,7 @@ export class Start extends Command {
 		LoggerProxy.init(logger);
 		logger.info('Initializing n8n process');
 
-		initErrorHandling();
+		await initErrorHandling();
 		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -468,7 +468,7 @@ export class Start extends Command {
 
 				const instanceId = await UserSettings.getInstanceId();
 				const { cli } = await GenericHelpers.getVersions();
-				InternalHooksManager.init(instanceId, cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig, true);
