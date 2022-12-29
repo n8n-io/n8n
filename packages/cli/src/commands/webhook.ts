@@ -31,7 +31,7 @@ let processExitCode = 0;
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
-	static examples = [`$ n8n webhook`];
+	static examples = ['$ n8n webhook'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -44,7 +44,7 @@ export class Webhook extends Command {
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
-		LoggerProxy.info(`\nStopping n8n...`);
+		LoggerProxy.info('\nStopping n8n...');
 
 		const exit = () => {
 			CrashJournal.cleanup().finally(() => {

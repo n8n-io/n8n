@@ -13,7 +13,7 @@ export class Push {
 		this.channel.on('disconnect', (channel: string, res: Response) => {
 			if (res.req !== undefined) {
 				const { sessionId } = res.req.query;
-				Logger.debug(`Remove editor-UI session`, { sessionId });
+				Logger.debug('Remove editor-UI session', { sessionId });
 				delete this.connections[sessionId as string];
 			}
 		});
@@ -27,7 +27,7 @@ export class Push {
 	 * @param {Response} res The response
 	 */
 	add(sessionId: string, req: Request, res: Response) {
-		Logger.debug(`Add editor-UI session`, { sessionId });
+		Logger.debug('Add editor-UI session', { sessionId });
 
 		if (this.connections[sessionId] !== undefined) {
 			// Make sure to remove existing connection with the same session

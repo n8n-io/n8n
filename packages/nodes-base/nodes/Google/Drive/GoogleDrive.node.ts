@@ -2041,7 +2041,7 @@ export class GoogleDrive implements INodeType {
 				if (filter) {
 					query.push(`name contains '${filter.replace("'", "\\'")}'`);
 				}
-				query.push(`mimeType != 'application/vnd.google-apps.folder'`);
+				query.push("mimeType != 'application/vnd.google-apps.folder'");
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
 					pageToken: paginationToken,
@@ -2066,7 +2066,7 @@ export class GoogleDrive implements INodeType {
 				if (filter) {
 					query.push(`name contains '${filter.replace("'", "\\'")}'`);
 				}
-				query.push(`mimeType = 'application/vnd.google-apps.folder'`);
+				query.push("mimeType = 'application/vnd.google-apps.folder'");
 				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
 					q: query.join(' and '),
 					pageToken: paginationToken,
@@ -2137,7 +2137,7 @@ export class GoogleDrive implements INodeType {
 
 						Object.assign(body, options);
 
-						const response = await googleApiRequest.call(this, 'POST', `/drive/v3/drives`, body, {
+						const response = await googleApiRequest.call(this, 'POST', '/drive/v3/drives', body, {
 							requestId: uuid(),
 						});
 
@@ -2211,13 +2211,13 @@ export class GoogleDrive implements INodeType {
 								this,
 								'drives',
 								'GET',
-								`/drive/v3/drives`,
+								'/drive/v3/drives',
 								{},
 								qs,
 							);
 						} else {
 							qs.pageSize = this.getNodeParameter('limit', i);
-							const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
+							const data = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', {}, qs);
 							response = data.drives as IDataObject[];
 						}
 
@@ -2489,7 +2489,7 @@ export class GoogleDrive implements INodeType {
 							supportsAllDrives: queryCorpora !== '' || driveId !== '',
 						};
 
-						const response = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+						const response = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
 
 						const files = response.files;
 
@@ -2568,7 +2568,7 @@ export class GoogleDrive implements INodeType {
 						let response = await googleApiRequest.call(
 							this,
 							'POST',
-							`/upload/drive/v3/files`,
+							'/upload/drive/v3/files',
 							body,
 							qs,
 							undefined,
