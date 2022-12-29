@@ -1,3 +1,40 @@
+## [0.209.4](https://github.com/n8n-io/n8n/compare/n8n@0.209.3...n8n@0.209.4) (2022-12-28)
+
+
+### Bug Fixes
+
+* **editor:** Add sticky note without manual trigger ([#5039](https://github.com/n8n-io/n8n/issues/5039)) ([18140e0](https://github.com/n8n-io/n8n/commit/18140e059bd95d51ad24a4ef4d6e6c72ce3137f3))
+* **editor:** Display default missing value in table view as `undefined` ([#5038](https://github.com/n8n-io/n8n/issues/5038)) ([33d7a13](https://github.com/n8n-io/n8n/commit/33d7a13e73dffc72b1a9aa4cf603e7758c65e40c))
+* **editor:** Fix displaying of some trigger nodes in the creator panel ([#5040](https://github.com/n8n-io/n8n/issues/5040)) ([4daf905](https://github.com/n8n-io/n8n/commit/4daf905ce264f6f76045a508e2f9ed849f2b1f5e))
+* **editor:** Fix trigger node type identification on add to canvas ([#5043](https://github.com/n8n-io/n8n/issues/5043)) ([2aba0c6](https://github.com/n8n-io/n8n/commit/2aba0c6d47d6d87038db6877a29e15ed079d712b))
+* **editor:** Usage and plans page on Desktop ([#5045](https://github.com/n8n-io/n8n/issues/5045)) ([26e2321](https://github.com/n8n-io/n8n/commit/26e2321a710d7b42559492a6605cef3a248d918e))
+
+
+### Features
+
+* **editor:** Switch to expression on `=` input ([#5044](https://github.com/n8n-io/n8n/issues/5044)) ([16bd761](https://github.com/n8n-io/n8n/commit/16bd7610fc337fa5ba9b0088b91396bb13570bcb))
+
+
+
+## [0.209.3](https://github.com/n8n-io/n8n/compare/n8n@0.209.2...n8n@0.209.3) (2022-12-27)
+
+
+### Bug Fixes
+
+* **core:** Do not send credentials to browser console ([#5031](https://github.com/n8n-io/n8n/issues/5031)) ([afc5297](https://github.com/n8n-io/n8n/commit/afc529799d5049e1ccaf249d191dce7ff237ee96))
+* **core:** Non owner should be permitted to use their own credentials ([#5036](https://github.com/n8n-io/n8n/issues/5036)) ([6efbac3](https://github.com/n8n-io/n8n/commit/6efbac307fb7b0e8436ad1dbd8662b8d1a2167f6))
+* **editor:** Fix for loading executions that are not on the current executions list ([#5035](https://github.com/n8n-io/n8n/issues/5035)) ([d0865e2](https://github.com/n8n-io/n8n/commit/d0865e28ffe78ce5ec201dab12b634cbdafcb4e8))
+* **editor:** Transparentize tertiary button on Usage page ([#5033](https://github.com/n8n-io/n8n/issues/5033)) ([d6bc760](https://github.com/n8n-io/n8n/commit/d6bc760ab4b003d6233df8428f373b4c8f760a7c))
+* **editor:** Update credential owner warning when sharing ([#5029](https://github.com/n8n-io/n8n/issues/5029)) ([a8f4efa](https://github.com/n8n-io/n8n/commit/a8f4efaf3ebc349c6ee073200e19ac57eb961ce9))
+
+
+### Features
+
+* **core:** Implement webhook-only manual execution ([#4960](https://github.com/n8n-io/n8n/issues/4960)) ([d113977](https://github.com/n8n-io/n8n/commit/d113977b10ffe1db879e7fa0807da8147e52ca5d))
+* **editor:** Improve UX for brace completion from selection ([#5024](https://github.com/n8n-io/n8n/issues/5024)) ([52077e2](https://github.com/n8n-io/n8n/commit/52077e2c45fca3d5830a39ca3416b073f783fbf5))
+
+
+
 ## [0.209.2](https://github.com/n8n-io/n8n/compare/n8n@0.209.1...n8n@0.209.2) (2022-12-23)
 
 
