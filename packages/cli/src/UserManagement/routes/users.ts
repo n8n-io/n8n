@@ -430,7 +430,7 @@ export function usersNamespace(this: N8nApp): void {
 						.getRepository(SharedWorkflow)
 						.find({
 							select: ['workflowId'],
-							where: { user: userToDelete, role: workflowOwnerRole },
+							where: { userId: userToDelete.id, role: workflowOwnerRole },
 						})
 						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 

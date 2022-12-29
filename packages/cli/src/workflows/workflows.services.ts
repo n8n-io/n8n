@@ -55,7 +55,7 @@ export class WorkflowsService {
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			where.user = { id: user.id };
+			where.userId = user.id;
 		}
 
 		return Db.collections.SharedWorkflow.findOne({ where, relations });

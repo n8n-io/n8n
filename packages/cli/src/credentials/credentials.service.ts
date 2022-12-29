@@ -249,7 +249,7 @@ export class CredentialsService {
 			return savedCredential;
 		});
 		LoggerProxy.verbose('New credential created', {
-			credentialsId: newCredential.id,
+			credentialId: newCredential.id,
 			ownerId: user.id,
 		});
 		return result;

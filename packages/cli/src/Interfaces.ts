@@ -148,8 +148,8 @@ export interface IExecutionBase {
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
-	retryOf?: number | string; // If it is a retry, the id of the execution it is a retry of.
-	retrySuccessId?: number | string; // If it failed and a retry did succeed. The id of the successful retry.
+	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
+	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 }
 
 // Data in regular format with references
@@ -199,8 +199,8 @@ export interface IExecutionResponseApi {
 	stoppedAt?: Date;
 	workflowId?: string;
 	finished: boolean;
-	retryOf?: number | string;
-	retrySuccessId?: number | string;
+	retryOf?: string;
+	retrySuccessId?: string;
 	data?: object;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
@@ -655,7 +655,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
-	retryOf?: number | string;
+	retryOf?: string;
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;

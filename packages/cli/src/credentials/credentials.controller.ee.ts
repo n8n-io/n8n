@@ -103,10 +103,10 @@ EECredentialsController.post(
 
 		const encryptionKey = await EECredentials.getEncryptionKey();
 
-		const credentialsId = credentials.id;
-		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialsId);
+		const credentialId = credentials.id;
+		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
-		const sharing = await EECredentials.getSharing(req.user, credentialsId);
+		const sharing = await EECredentials.getSharing(req.user, credentialId);
 		if (!ownsCredential) {
 			if (!sharing) {
 				throw new ResponseHelper.UnauthorizedError('Forbidden');
