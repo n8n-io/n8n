@@ -1,4 +1,4 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -2520,7 +2520,7 @@ export class GoogleDrive implements INodeType {
 							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
 
 							const binary = item.binary[propertyNameUpload];
-							if (binary === undefined || !binary.id) {
+							if (binary === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
 									`No binary data property "${propertyNameUpload}" does not exists on item!`,
@@ -2528,11 +2528,18 @@ export class GoogleDrive implements INodeType {
 								);
 							}
 
-							body = this.helpers.getBinaryStream(binary.id);
-							const metadata = await this.helpers.getBinaryMetadata(binary.id);
-							contentLength = metadata.fileSize;
-							originalFilename = metadata.fileName;
-							if (metadata.mimeType) mimeType = binary.mimeType;
+							if (binary.id) {
+								body = this.helpers.getBinaryStream(binary.id);
+								const metadata = await this.helpers.getBinaryMetadata(binary.id);
+								contentLength = metadata.fileSize;
+								originalFilename = metadata.fileName;
+								if (metadata.mimeType) mimeType = binary.mimeType;
+							} else {
+								body = Buffer.from(binary.data, BINARY_ENCODING);
+								contentLength = body.length;
+								originalFilename = binary.fileName;
+								mimeType = binary.mimeType;
+							}
 						} else {
 							// Is text file
 							body = Buffer.from(this.getNodeParameter('fileContent', i) as string, 'utf8');
