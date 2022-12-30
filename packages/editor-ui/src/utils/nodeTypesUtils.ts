@@ -317,16 +317,22 @@ export const getNodeAuthOptions = (
 	if (nodeType) {
 		let options: NodeAuthenticationOption[] = [];
 		const authProp = getMainAuthField(nodeType);
-		if (authProp && authProp.options) {
-			options = options.concat(
-				authProp.options.map((option) => ({
-					name: option.name,
-					value: option.value,
-					// Also add in the display options so we can hide/show the option if necessary
-					displayOptions: authProp.displayOptions,
-				})) || [],
-			);
-		}
+		// Some nodes have multiple auth fields with same name but different display options so need
+		// take them all into account
+		const authProps = getNodeAuthFields(nodeType).filter((prop) => prop.name === authProp?.name);
+
+		authProps.forEach((field) => {
+			if (field.options) {
+				options = options.concat(
+					field.options.map((option) => ({
+						name: option.name,
+						value: option.value,
+						// Also add in the display options so we can hide/show the option if necessary
+						displayOptions: field.displayOptions,
+					})) || [],
+				);
+			}
+		});
 		return options;
 	}
 	return [];
@@ -403,9 +409,13 @@ export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeP
 		nodeType.credentials.forEach((cred) => {
 			if (cred.displayOptions && cred.displayOptions.show) {
 				Object.keys(cred.displayOptions.show).forEach((option) => {
-					const nodeFieldForName = nodeType.properties.find((prop) => prop.name === option);
-					if (nodeFieldForName && !authFields.find((f) => f.name === option)) {
-						authFields.push(nodeFieldForName);
+					const nodeFieldsForName = nodeType.properties.filter((prop) => prop.name === option);
+					if (nodeFieldsForName) {
+						nodeFieldsForName.forEach((nodeField) => {
+							if (!authFields.includes(nodeField)) {
+								authFields.push(nodeField);
+							}
+						});
 					}
 				});
 			}
