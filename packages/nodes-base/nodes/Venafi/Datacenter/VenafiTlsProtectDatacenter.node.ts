@@ -87,7 +87,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Request`,
+							'/vedsdk/Certificates/Request',
 							body,
 							qs,
 						);
@@ -127,7 +127,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Retrieve`,
+							'/vedsdk/Certificates/Retrieve',
 							body,
 						);
 
@@ -170,7 +170,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 								this,
 								'Certificates',
 								'GET',
-								`/vedsdk/Certificates`,
+								'/vedsdk/Certificates',
 								{},
 								qs,
 							);
@@ -179,7 +179,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/vedsdk/Certificates`,
+								'/vedsdk/Certificates',
 								{},
 								qs,
 							);
@@ -202,7 +202,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Renew`,
+							'/vedsdk/Certificates/Renew',
 							{},
 							qs,
 						);
@@ -224,7 +224,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/CheckPolicy`,
+							'/vedsdk/Certificates/CheckPolicy',
 							body,
 							qs,
 						);

@@ -58,12 +58,12 @@ export class ExecuteBatch extends Command {
 	static instanceOwner: User;
 
 	static examples = [
-		`$ n8n executeBatch`,
-		`$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt`,
-		`$ n8n executeBatch --debug --output=/data/output.json`,
-		`$ n8n executeBatch --ids=10,13,15 --shortOutput`,
-		`$ n8n executeBatch --snapshot=/data/snapshots --shallow`,
-		`$ n8n executeBatch --compare=/data/previousExecutionData --retries=2`,
+		'$ n8n executeBatch',
+		'$ n8n executeBatch --concurrency=10 --skipList=/data/skipList.txt',
+		'$ n8n executeBatch --debug --output=/data/output.json',
+		'$ n8n executeBatch --ids=10,13,15 --shortOutput',
+		'$ n8n executeBatch --snapshot=/data/snapshots --shallow',
+		'$ n8n executeBatch --compare=/data/previousExecutionData --retries=2',
 	];
 
 	static flags = {
@@ -205,11 +205,11 @@ export class ExecuteBatch extends Command {
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
 				if (!fs.lstatSync(flags.snapshot).isDirectory()) {
-					console.log(`The parameter --snapshot must be an existing directory`);
+					console.log('The parameter --snapshot must be an existing directory');
 					return;
 				}
 			} else {
-				console.log(`The parameter --snapshot must be an existing directory`);
+				console.log('The parameter --snapshot must be an existing directory');
 				return;
 			}
 
@@ -218,11 +218,11 @@ export class ExecuteBatch extends Command {
 		if (flags.compare !== undefined) {
 			if (fs.existsSync(flags.compare)) {
 				if (!fs.lstatSync(flags.compare).isDirectory()) {
-					console.log(`The parameter --compare must be an existing directory`);
+					console.log('The parameter --compare must be an existing directory');
 					return;
 				}
 			} else {
-				console.log(`The parameter --compare must be an existing directory`);
+				console.log('The parameter --compare must be an existing directory');
 				return;
 			}
 
@@ -232,7 +232,7 @@ export class ExecuteBatch extends Command {
 		if (flags.output !== undefined) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.log(`The parameter --output must be a writable file`);
+					console.log('The parameter --output must be a writable file');
 					return;
 				}
 			}
@@ -251,7 +251,7 @@ export class ExecuteBatch extends Command {
 
 				if (matchedIds.length === 0) {
 					console.log(
-						`The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.`,
+						'The parameter --ids must be a list of numeric IDs separated by a comma or a file with this content.',
 					);
 					return;
 				}
@@ -294,11 +294,11 @@ export class ExecuteBatch extends Command {
 		const query = Db.collections.Workflow.createQueryBuilder('workflows');
 
 		if (ids.length > 0) {
-			query.andWhere(`workflows.id in (:...ids)`, { ids });
+			query.andWhere('workflows.id in (:...ids)', { ids });
 		}
 
 		if (skipIds.length > 0) {
-			query.andWhere(`workflows.id not in (:...skipIds)`, { skipIds });
+			query.andWhere('workflows.id not in (:...skipIds)', { skipIds });
 		}
 
 		// eslint-disable-next-line prefer-const

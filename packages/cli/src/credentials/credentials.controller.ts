@@ -75,7 +75,7 @@ credentialsController.get(
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.BadRequestError(`Credential ID must be a number.`);
+			throw new ResponseHelper.BadRequestError('Credential ID must be a number.');
 		}
 
 		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);

@@ -26,7 +26,7 @@ import { findCliWorkflowStart } from '@/utils';
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
 
-	static examples = [`$ n8n execute --id=5`, `$ n8n execute --file=workflow.json`];
+	static examples = ['$ n8n execute --id=5', '$ n8n execute --file=workflow.json'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -59,12 +59,12 @@ export class Execute extends Command {
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
 
 		if (!flags.id && !flags.file) {
-			console.info(`Either option "--id" or "--file" have to be set!`);
+			console.info('Either option "--id" or "--file" have to be set!');
 			return;
 		}
 
 		if (flags.id && flags.file) {
-			console.info(`Either "id" or "file" can be set never both!`);
+			console.info('Either "id" or "file" can be set never both!');
 			return;
 		}
 

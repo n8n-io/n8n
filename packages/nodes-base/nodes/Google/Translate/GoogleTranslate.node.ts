@@ -195,7 +195,7 @@ export class GoogleTranslate implements INodeType {
 					const text = this.getNodeParameter('text', i) as string;
 					const translateTo = this.getNodeParameter('translateTo', i) as string;
 
-					const response = await googleApiRequest.call(this, 'POST', `/language/translate/v2`, {
+					const response = await googleApiRequest.call(this, 'POST', '/language/translate/v2', {
 						q: text,
 						target: translateTo,
 					});

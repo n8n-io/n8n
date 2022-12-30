@@ -124,7 +124,7 @@ export async function emeliaApiTest(
 		},
 		method: 'POST',
 		body,
-		uri: `https://graphql.emelia.io/graphql`,
+		uri: 'https://graphql.emelia.io/graphql',
 		json: true,
 	};
 

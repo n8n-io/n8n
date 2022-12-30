@@ -238,7 +238,7 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 			}
 			break;
 		case 'function':
-			schema = { type: 'function', value: ``, path };
+			schema = { type: 'function', value: '', path };
 			break;
 		default:
 			schema = { type: typeof input, value: String(input), path };
