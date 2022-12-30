@@ -43,8 +43,6 @@ const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
-export const AUTHENTICATION_FIELD_NAME = 'authentication';
-
 const addNodeToCategory = (
 	accu: ICategoriesWithNodes,
 	nodeType: INodeTypeDescription | INodeActionTypeDescription,
@@ -318,33 +316,46 @@ export const getNodeAuthOptions = (
 ): NodeAuthenticationOption[] => {
 	if (nodeType) {
 		let options: NodeAuthenticationOption[] = [];
-		const authProps = getNodeAuthFields(nodeType);
-		authProps.forEach((field) => {
-			if (field.options) {
-				options = options.concat(
-					field.options.map((option) => ({
-						name: option.name,
-						value: option.value,
-						// Also add in the display options so we can hide/show the option if necessary
-						displayOptions: field.displayOptions,
-					})) || [],
-				);
-			}
-		});
+		const authProp = getMainAuthField(nodeType);
+		if (authProp && authProp.options) {
+			options = options.concat(
+				authProp.options.map((option) => ({
+					name: option.name,
+					value: option.value,
+					// Also add in the display options so we can hide/show the option if necessary
+					displayOptions: authProp.displayOptions,
+				})) || [],
+			);
+		}
 		return options;
 	}
 	return [];
 };
 
+// TODO: Need a better way to find which auth field is main
+// for now taking only the first one
+export const getMainAuthField = (nodeType?: INodeTypeDescription): INodeProperties | null => {
+	if (!nodeType) {
+		return null;
+	}
+	const authProps = getNodeAuthFields(nodeType);
+	// Resource is not an auth field but some nodes use it to filter credentials
+	if (authProps.length > 0 && authProps[0].name !== 'resource') {
+		return authProps[0];
+	}
+	return null;
+}
+
 export const getNodeCredentialForAuthType = (
 	nodeType: INodeTypeDescription,
 	authType: string,
 ): INodeCredentialDescription | null => {
+	const authField = getMainAuthField(nodeType);
+	const authFieldName = authField ? authField.name : '';
 	return (
 		nodeType.credentials?.find(
 			(cred) =>
-				cred.displayOptions?.show &&
-				cred.displayOptions.show[AUTHENTICATION_FIELD_NAME]?.includes(authType),
+				cred.displayOptions?.show && cred.displayOptions.show[authFieldName]?.includes(authType),
 		) || null
 	);
 };
@@ -354,12 +365,14 @@ export const getAuthTypeForNodeCredential = (
 	credentialType: INodeCredentialDescription | null,
 ): INodePropertyOptions | INodeProperties | INodePropertyCollection | null => {
 	if (nodeType && credentialType) {
+		const authField = getMainAuthField(nodeType);
+		const authFieldName = authField ? authField.name : '';
 		const nodeAuthOptions = getNodeAuthOptions(nodeType);
 		return (
 			nodeAuthOptions.find(
 				(option) =>
 					credentialType.displayOptions?.show &&
-					credentialType.displayOptions?.show[AUTHENTICATION_FIELD_NAME]?.includes(option.value),
+					credentialType.displayOptions?.show[authFieldName]?.includes(option.value),
 			) || null
 		);
 	}
@@ -385,8 +398,18 @@ export const isAuthRelatedParameter = (
 };
 
 export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeProperties[] => {
-	if (nodeType) {
-		return nodeType.properties.filter((prop) => prop.name === AUTHENTICATION_FIELD_NAME);
+	const authFields: INodeProperties[] = [];
+	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+		nodeType.credentials.forEach((cred) => {
+			if (cred.displayOptions && cred.displayOptions.show) {
+				Object.keys(cred.displayOptions.show).forEach((option) => {
+					const nodeFieldForName = nodeType.properties.find((prop) => prop.name === option);
+					if (nodeFieldForName && !authFields.find((f) => f.name === option)) {
+						authFields.push(nodeFieldForName);
+					}
+				});
+			}
+		});
 	}
-	return [];
+	return authFields;
 };

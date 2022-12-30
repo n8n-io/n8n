@@ -296,7 +296,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				if (nodeAuthOptions.length > 0) {
 					return getNodeCredentialForAuthType(this.activeNodeType, nodeAuthOptions[0].value);
 				} else {
-					// If there are no muliple auth options, use first node credential
+					// If there are no multiple auth options, use first node credential
 					return this.activeNodeType.credentials[0];
 				}
 			}

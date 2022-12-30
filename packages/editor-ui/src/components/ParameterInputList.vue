@@ -130,7 +130,7 @@ import { Component } from 'vue';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { AUTHENTICATION_FIELD_NAME, isAuthRelatedParameter, getNodeAuthFields } from '@/utils';
+import { isAuthRelatedParameter, getNodeAuthFields, getMainAuthField } from '@/utils';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
@@ -198,6 +198,9 @@ export default mixins(workflowHelpers).extend({
 			});
 
 			return index < this.filteredParameters.length ? index : this.filteredParameters.length - 1;
+		},
+		mainNodeAuthField(): INodeProperties | null {
+			return getMainAuthField(this.nodeType || undefined);
 		},
 	},
 	methods: {
@@ -278,10 +281,10 @@ export default mixins(workflowHelpers).extend({
 				return false;
 			}
 
-			// Hide 'authentication' field since it will now be part of credentials modal
+			// Hide authentication related fields since it will now be part of credentials modal
 			if (
 				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
-				(parameter.name === AUTHENTICATION_FIELD_NAME ||
+				(parameter.name === (this.mainNodeAuthField?.name || '') ||
 					isAuthRelatedParameter(this.nodeAuthFields, parameter))
 			) {
 				return false;
@@ -357,6 +360,9 @@ export default mixins(workflowHelpers).extend({
 			if (action === 'activate') {
 				this.$emit('activate');
 			}
+		},
+		isNodeAuthField(name: string): boolean {
+			return this.nodeAuthFields.find((field) => field.name === name) !== undefined;
 		},
 	},
 	watch: {
