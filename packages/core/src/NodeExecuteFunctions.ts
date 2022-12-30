@@ -836,8 +836,8 @@ export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMet
 /**
  * Returns binary file stream for piping
  */
-export function getBinaryStream(binaryDataId: string): Readable {
-	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId);
+export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
 }
 
 /**

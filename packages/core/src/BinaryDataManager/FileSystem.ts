@@ -75,8 +75,8 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		return binaryDataId;
 	}
 
-	getBinaryStream(identifier: string): Readable {
-		return createReadStream(this.getBinaryPath(identifier));
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		return createReadStream(this.getBinaryPath(identifier), { highWaterMark: chunkSize });
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {

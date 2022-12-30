@@ -66,7 +66,7 @@ export interface IBinaryDataManager {
 	storeBinaryData(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	getBinaryPath(identifier: string): string;
-	getBinaryStream(identifier: string): Readable;
+	getBinaryStream(identifier: string, chunkSize?: number): Readable;
 	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;

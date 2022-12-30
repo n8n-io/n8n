@@ -116,10 +116,10 @@ export class BinaryDataManager {
 		return binaryData;
 	}
 
-	getBinaryStream(identifier: string): Readable {
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
 		const { mode, id } = this.splitBinaryModeFileId(identifier);
 		if (this.managers[mode]) {
-			return this.managers[mode].getBinaryStream(id);
+			return this.managers[mode].getBinaryStream(id, chunkSize);
 		}
 
 		throw new Error('Storage mode used to store binary data not available');
