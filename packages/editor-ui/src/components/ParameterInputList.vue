@@ -285,7 +285,7 @@ export default mixins(workflowHelpers).extend({
 			if (
 				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
 				(parameter.name === (this.mainNodeAuthField?.name || '') ||
-					isAuthRelatedParameter(this.nodeAuthFields, parameter))
+					this.shouldHideAuthRelatedParameter(parameter))
 			) {
 				return false;
 			}
@@ -363,6 +363,12 @@ export default mixins(workflowHelpers).extend({
 		},
 		isNodeAuthField(name: string): boolean {
 			return this.nodeAuthFields.find((field) => field.name === name) !== undefined;
+		},
+		shouldHideAuthRelatedParameter(parameter: INodeProperties): boolean {
+			// TODO: For now, hide all fields that are used in authentication fields displayOptions
+			// Ideally, we should check if any non-auth field depends on it before hiding it but
+			// since there is no such case, omitting it to avoid additional computation
+			return isAuthRelatedParameter(this.nodeAuthFields, parameter);
 		},
 	},
 	watch: {
