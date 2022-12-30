@@ -55,7 +55,7 @@ export function abbreviateNumber(num: number) {
 }
 
 export function convertToDisplayDate(epochTime: number) {
-	return dateformat(epochTime, 'yyyy-mm-dd HH:MM:ss');
+	return dateformat(epochTime, 'HH:MM:ss d mmm, yyyy');
 }
 
 export function convertToHumanReadableDate(epochTime: number) {

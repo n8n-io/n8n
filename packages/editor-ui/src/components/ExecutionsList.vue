@@ -124,49 +124,34 @@
 					{{ convertToDisplayDate(scope.row.startedAt) }}
 				</template>
 			</el-table-column>
-			<el-table-column
-				:label="$locale.baseText('executionsList.status')"
-				width="122"
-				align="center"
-			>
-				<template #default="scope" align="center">
-					<span v-if="scope.row.stoppedAt === undefined">
-						<font-awesome-icon icon="spinner" spin />
-						<execution-time :start-time="scope.row.startedAt" />
-					</span>
-					<n8n-tooltip placement="top" :class="$style.status">
-						<template #content>
-							<div v-html="statusTooltipText(scope.row)"></div>
-						</template>
-						<span v-if="scope.row.waitTill">
-							{{ $locale.baseText('executionsList.waiting') }}
+			<el-table-column :label="$locale.baseText('executionsList.status')" width="170">
+				<template #default="scope">
+					<div :class="$style.statusColumn">
+						<span v-if="scope.row.stoppedAt === undefined">
+							<font-awesome-icon icon="spinner" spin />
+							<execution-time :start-time="scope.row.startedAt" />
 						</span>
-						<span v-else-if="scope.row.stoppedAt === undefined">
-							{{ $locale.baseText('executionsList.running') }}
-						</span>
-						<span v-else-if="scope.row.finished">
-							{{ $locale.baseText('executionsList.success') }}
-						</span>
-						<span v-else-if="scope.row.stoppedAt !== null">
-							{{ $locale.baseText('executionsList.error') }}
-						</span>
-						<span v-else>
-							{{ $locale.baseText('executionsList.unknown') }}
-						</span>
-					</n8n-tooltip>
-
-					<span v-if="scope.row.stoppedAt === null"> -- </span>
-					<span v-else>
-						{{
-							displayTimer(
-								new Date(scope.row.stoppedAt).getTime() - new Date(scope.row.startedAt).getTime(),
-								true,
-							)
-						}}
-					</span>
+						&nbsp;
+						<i18n :path="getStatusTextTranslationPath(scope.row)">
+							<template #status>
+								<span :class="$style.status">{{ getStatusText(scope.row) }}</span>
+							</template>
+							<template v-if="scope.row.stoppedAt !== null" #time>
+								<span>
+									{{
+										displayTimer(
+											new Date(scope.row.stoppedAt).getTime() -
+												new Date(scope.row.startedAt).getTime(),
+											true,
+										)
+									}}
+								</span>
+							</template>
+						</i18n>
+					</div>
 				</template>
 			</el-table-column>
-			<el-table-column :label="$locale.baseText('executionsList.id')" width="150" align="center">
+			<el-table-column :label="$locale.baseText('executionsList.id')" width="150">
 				<template #default="scope">
 					<span v-if="scope.row.id">#{{ scope.row.id }}</span>
 				</template>
@@ -185,19 +170,19 @@
 				<template #default="scope">
 					<div :class="$style.actionsContainer">
 						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-							<n8n-icon-button
-								icon="stop"
+							<n8n-button
 								size="small"
-								:title="$locale.baseText('executionsList.stopExecution')"
+								outline
+								:label="$locale.baseText('executionsList.stop')"
 								@click.stop="stopExecution(scope.row.id)"
 								:loading="stoppingExecutions.includes(scope.row.id)"
 							/>
 						</span>
 						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
-							<n8n-icon-button
-								icon="folder-open"
+							<n8n-button
 								size="small"
-								:title="$locale.baseText('executionsList.openPastExecution')"
+								outline
+								:label="$locale.baseText('executionsList.view')"
 								@click.stop="(e) => displayExecution(scope.row, e)"
 							/>
 						</span>
@@ -216,11 +201,12 @@
 									scope.row.retrySuccessId === undefined &&
 									!scope.row.waitTill
 								"
-								:type="scope.row.stoppedAt === null ? 'warning' : 'danger'"
+								text
+								type="tertiary"
 								class="ml-3xs"
 								size="mini"
 								:title="$locale.baseText('executionsList.retryExecution')"
-								icon="redo"
+								icon="ellipsis-v"
 							/>
 						</span>
 						<template #dropdown>
@@ -261,7 +247,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { WAIT_TIME_UNLIMITED, VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -273,13 +259,13 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { convertToDisplayDate } from '@/utils';
 import { IDataObject } from 'n8n-workflow';
 import { range as _range } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import dateformat from 'dateformat';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'ExecutionsList',
@@ -413,7 +399,11 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		closeDialog() {
 			this.$emit('closeModal');
 		},
-		convertToDisplayDate,
+		convertToDisplayDate(epochTime: number) {
+			const time = dateformat(epochTime, 'HH:MM:ss');
+			const date = dateformat(epochTime, 'd mmm, yyyy');
+			return this.$locale.baseText('executionsList.started', { interpolate: { time, date } });
+		},
 		displayExecution(execution: IExecutionsSummary, e: PointerEvent) {
 			if (
 				!this.workflowsStore.workflowId ||
@@ -823,51 +813,39 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			this.isDataLoading = false;
 		},
-		statusTooltipText(entry: IExecutionsSummary): string {
-			if (entry.waitTill) {
-				const waitDate = new Date(entry.waitTill);
-				if (waitDate.toISOString() === WAIT_TIME_UNLIMITED) {
-					return this.$locale.baseText(
-						'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
-					);
-				}
+		getStatusText(entry: IExecutionsSummary): string {
+			let text = '';
 
-				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowIsWaitingTill', {
-					interpolate: {
-						waitDateDate: waitDate.toLocaleDateString(),
-						waitDateTime: waitDate.toLocaleTimeString(),
-					},
-				});
+			if (entry.waitTill) {
+				text = this.$locale.baseText('executionsList.waiting');
 			} else if (entry.stoppedAt === undefined) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowIsCurrentlyExecuting',
-				);
-			} else if (entry.finished === true && entry.retryOf !== undefined) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndItWasSuccessful',
-					{ interpolate: { entryRetryOf: entry.retryOf } },
-				);
-			} else if (entry.finished === true) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowExecutionWasSuccessful',
-				);
-			} else if (entry.retryOf !== undefined) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowExecutionWasARetryOfAndFailed',
-					{ interpolate: { entryRetryOf: entry.retryOf } },
-				);
-			} else if (entry.retrySuccessId !== undefined) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowExecutionFailedButTheRetryWasSuccessful',
-					{ interpolate: { entryRetrySuccessId: entry.retrySuccessId } },
-				);
-			} else if (entry.stoppedAt === null) {
-				return this.$locale.baseText(
-					'executionsList.statusTooltipText.theWorkflowExecutionIsProbablyStillRunning',
-				);
+				text = this.$locale.baseText('executionsList.running');
+			} else if (entry.finished) {
+				text = this.$locale.baseText('executionsList.succeeded');
+			} else if (entry.stoppedAt !== null) {
+				text = this.$locale.baseText('executionsList.error');
 			} else {
-				return this.$locale.baseText('executionsList.statusTooltipText.theWorkflowExecutionFailed');
+				text = this.$locale.baseText('executionsList.unknown');
 			}
+
+			return text;
+		},
+		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+			let path = '';
+
+			if (entry.waitTill) {
+				path = 'executionsList.statusWaiting';
+			} else if (entry.stoppedAt === undefined) {
+				path = 'executionsList.statusRunning';
+			} else if (entry.finished) {
+				path = 'executionsList.statusText';
+			} else if (entry.stoppedAt !== null) {
+				path = 'executionsList.statusText';
+			} else {
+				path = 'executionsList.statusUnknown';
+			}
+
+			return path;
 		},
 		async stopExecution(activeExecutionId: string) {
 			try {
@@ -925,6 +903,11 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	height: 2em;
 }
 
+.statusColumn {
+	display: flex;
+	white-space: nowrap;
+}
+
 .status {
 	line-height: 22.6px;
 	text-align: center;
@@ -951,23 +934,25 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 .execTable {
 	.execRow {
 		td {
-			background: #fff;
-
 			&:first-child {
 				border-left: var(--spacing-4xs) solid var(--color-background-dark);
 			}
 		}
 
 		&.failed td:first-child {
-			border-color: var(--color-danger);
+			border-left-color: var(--color-danger);
 		}
 
 		&.success td:first-child {
-			border-color: var(--color-success);
+			border-left-color: var(--color-success);
 		}
 
 		&.running td:first-child {
-			border-color: var(--color-warning);
+			border-left-color: var(--color-warning);
+		}
+
+		&.waiting td:first-child {
+			border-left-color: var(--color-secondary);
 		}
 	}
 }
