@@ -67,6 +67,7 @@
 		<el-table
 			:class="$style.execTable"
 			:data="combinedExecutions"
+			stripe
 			v-loading="isDataLoading"
 			:row-class-name="getRowClass"
 		>
@@ -948,17 +949,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 }
 
 .execTable {
-	background: transparent;
-
-	table {
-		border-collapse: separate;
-		border-spacing: 0 var(--spacing-m);
-		background: transparent;
-	}
-
 	.execRow {
-		background: transparent;
-
 		td {
 			background: #fff;
 
