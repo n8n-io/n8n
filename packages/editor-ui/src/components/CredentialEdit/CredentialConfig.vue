@@ -179,7 +179,6 @@ import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
-import { ElRadio } from 'element-ui/types/radio';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',

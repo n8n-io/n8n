@@ -131,6 +131,9 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { AUTHENTICATION_FIELD_NAME, isAuthRelatedParameter, getNodeAuthFields } from '@/utils';
+import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
+
+const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -276,8 +279,9 @@ export default mixins(workflowHelpers).extend({
 
 			// Hide 'authentication' field since it will now be part of credentials modal
 			if (
-				parameter.name === AUTHENTICATION_FIELD_NAME ||
-				isAuthRelatedParameter(this.nodeAuthFields, parameter)
+				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
+				(parameter.name === AUTHENTICATION_FIELD_NAME ||
+					isAuthRelatedParameter(this.nodeAuthFields, parameter))
 			) {
 				return false;
 			}
