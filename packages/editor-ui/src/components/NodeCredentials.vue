@@ -8,7 +8,7 @@
 			:key="credentialTypeDescription.name"
 		>
 			<n8n-input-label
-				:label="$locale.baseText('nodeCredentials.credentialsLabel')"
+				:label="getCredentialsFieldLabel(credentialTypeNames[credentialTypeDescription.name])"
 				:bold="false"
 				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"
@@ -103,6 +103,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -455,6 +456,16 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.subscribedToCredentialType = credentialType;
+		},
+		getCredentialsFieldLabel(credentialType: string): string {
+			if (KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '')) {
+				return this.$locale.baseText('nodeCredentials.credentialFor', {
+					interpolate: {
+						credentialType,
+					},
+				});
+			}
+			return this.$locale.baseText('nodeCredentials.credentialsLabel');
 		},
 	},
 });

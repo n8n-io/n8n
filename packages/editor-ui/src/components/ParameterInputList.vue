@@ -131,9 +131,7 @@ import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { AUTHENTICATION_FIELD_NAME, isAuthRelatedParameter, getNodeAuthFields } from '@/utils';
-import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/constants';
-
-const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ParameterInputList',
@@ -188,11 +186,14 @@ export default mixins(workflowHelpers).extend({
 		},
 		indexToShowSlotAt(): number {
 			let index = 0;
+			// For nodes that use old credentials UI, keep credentials below authentication field in NDV
+			// otherwise credentials will use auth filed position since the auth field is moved to credentials modal
+			const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.nodeType?.name || '') ? 1 : 0;
 			const credentialsDependencies = this.getCredentialsDependencies();
 
 			this.filteredParameters.forEach((prop, propIndex) => {
 				if (credentialsDependencies.has(prop.name)) {
-					index = propIndex;
+					index = propIndex + fieldOffset;
 				}
 			});
 
