@@ -227,9 +227,7 @@ const {
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
 
-const {
-	getNodeType,
-} = useNodeTypesStore();
+const { getNodeType } = useNodeTypesStore();
 
 const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();

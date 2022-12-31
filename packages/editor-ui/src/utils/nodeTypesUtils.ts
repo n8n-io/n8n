@@ -350,7 +350,7 @@ export const getMainAuthField = (nodeType?: INodeTypeDescription): INodeProperti
 		return authProps[0];
 	}
 	return null;
-}
+};
 
 export const getNodeCredentialForAuthType = (
 	nodeType: INodeTypeDescription,
