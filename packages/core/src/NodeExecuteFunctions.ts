@@ -642,7 +642,7 @@ async function proxyRequestToAxios(
 						body,
 						headers: response.headers,
 						statusCode: response.status,
-						statusMessage: response.getStatusText,
+						statusMessage: response.statusText,
 						request: response.request,
 					});
 				} else {
@@ -815,7 +815,7 @@ async function httpRequest(
 			body: result.data,
 			headers: result.headers,
 			statusCode: result.status,
-			statusMessage: result.getStatusText,
+			statusMessage: result.statusText,
 		};
 	}
 	return result.data;
