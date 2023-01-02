@@ -7,6 +7,7 @@ import { brandfetchApiRequest } from './GenericFunctions';
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'Brandfetch',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',

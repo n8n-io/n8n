@@ -707,7 +707,7 @@ importers:
       chokidar: 3.5.2
       cron: ~1.7.2
       currency-codes: ^2.1.0
-      eslint-plugin-n8n-nodes-base: ^1.11.1
+      eslint-plugin-n8n-nodes-base: ^1.12.0
       eventsource: ^2.0.2
       fast-glob: ^3.2.5
       fflate: ^0.7.0
@@ -844,7 +844,7 @@ importers:
       '@types/tmp': 0.2.3
       '@types/uuid': 8.3.4
       '@types/xml2js': 0.4.11
-      eslint-plugin-n8n-nodes-base: 1.11.1_zksrc6ykdxhogxjbhb5axiabwi
+      eslint-plugin-n8n-nodes-base: 1.12.0_zksrc6ykdxhogxjbhb5axiabwi
       gulp: 4.0.2
       n8n-workflow: link:../workflow
 
@@ -10994,8 +10994,8 @@ packages:
     resolution: {integrity: sha512-qe6sVFDP1Vj5eXlqZxYZpIjwYvhuqXlI0P8OfPyhiPOhMkFtr0TpFphD8/6WCzkm7LJCvG1eJEzURCtMIsFTAg==}
     dev: true
 
-  /eslint-plugin-n8n-nodes-base/1.11.1_zksrc6ykdxhogxjbhb5axiabwi:
-    resolution: {integrity: sha512-m1MIvB47rxVFI7xb0brw4K9CPywbz0pHhv6kpvZiV2nppvKrg+S+bP0Dqofz/ZzAcC35sRbfrC1il3xx9Wno6A==}
+  /eslint-plugin-n8n-nodes-base/1.12.0_zksrc6ykdxhogxjbhb5axiabwi:
+    resolution: {integrity: sha512-AotXR6IsxLNnxp4OxhD33xcmRFwVq7ZImBd0mTgpirV3VX8pCJDdiDlI2zCAICcICZxtOdbVtHOMhhnMjTh71A==}
     dependencies:
       '@typescript-eslint/utils': 5.45.0_zksrc6ykdxhogxjbhb5axiabwi
       camel-case: 4.1.2
