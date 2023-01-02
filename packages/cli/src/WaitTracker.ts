@@ -77,7 +77,7 @@ export class WaitTrackerClass {
 			return;
 		}
 
-		const executionIds = executions.map((execution) => execution.id.toString()).join(', ');
+		const executionIds = executions.map((execution) => execution.id).join(', ');
 		Logger.debug(
 			`Wait tracker found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
 		);
@@ -85,7 +85,7 @@ export class WaitTrackerClass {
 		// Add timers for each waiting execution that they get started at the correct time
 		// eslint-disable-next-line no-restricted-syntax
 		for (const execution of executions) {
-			const executionId = execution.id.toString();
+			const executionId = execution.id;
 			if (this.waitingExecutions[executionId] === undefined) {
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
@@ -161,7 +161,7 @@ export class WaitTrackerClass {
 			if (!fullExecutionData.workflowData.id) {
 				throw new Error('Only saved workflows can be resumed.');
 			}
-			const user = await getWorkflowOwner(fullExecutionData.workflowData.id.toString());
+			const user = await getWorkflowOwner(fullExecutionData.workflowData.id);
 
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: fullExecutionData.mode,

@@ -27,13 +27,13 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
-	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -51,7 +51,6 @@ import {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IPushDataExecutionFinished,
-	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
 	IWorkflowErrorData,
@@ -62,7 +61,7 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 import { WorkflowsService } from './workflows/workflows.services';
@@ -94,6 +93,7 @@ export function executeErrorWorkflow(
 
 	if (fullRunData.data.resultData.error !== undefined) {
 		let workflowErrorData: IWorkflowErrorData;
+		const workflowId = workflowData.id;
 
 		if (executionId) {
 			// The error did happen in an execution
@@ -107,7 +107,7 @@ export function executeErrorWorkflow(
 					retryOf,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					id: workflowId,
 					name: workflowData.name,
 				},
 			};
@@ -119,7 +119,7 @@ export function executeErrorWorkflow(
 					mode,
 				},
 				workflow: {
-					id: workflowData.id !== undefined ? workflowData.id.toString() : undefined,
+					id: workflowId,
 					name: workflowData.name,
 				},
 			};
@@ -128,30 +128,28 @@ export function executeErrorWorkflow(
 		// Run the error workflow
 		// To avoid an infinite loop do not run the error workflow again if the error-workflow itself failed and it is its own error-workflow.
 		if (
-			// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
-			workflowData.settings !== undefined &&
-			workflowData.settings.errorWorkflow &&
+			workflowData.settings?.errorWorkflow &&
 			!(
 				mode === 'error' &&
-				workflowData.id &&
-				workflowData.settings.errorWorkflow.toString() === workflowData.id.toString()
+				workflowId &&
+				workflowData.settings.errorWorkflow.toString() === workflowId
 			)
 		) {
 			Logger.verbose('Start external error workflow', {
 				executionId,
 				errorWorkflowId: workflowData.settings.errorWorkflow.toString(),
-				workflowId: workflowData.id,
+				workflowId,
 			});
 			// If a specific error workflow is set run only that one
 
 			// First, do permission checks.
-			if (!workflowData.id) {
+			if (!workflowId) {
 				// Manual executions do not trigger error workflows
 				// So this if should never happen. It was added to
 				// make sure there are no possible security gaps
 				return;
 			}
-			getWorkflowOwner(workflowData.id)
+			getWorkflowOwner(workflowId)
 				.then((user) => {
 					void WorkflowHelpers.executeErrorWorkflow(
 						workflowData.settings!.errorWorkflow as string,
@@ -166,7 +164,7 @@ export function executeErrorWorkflow(
 						{
 							executionId,
 							errorWorkflowId: workflowData.settings!.errorWorkflow!.toString(),
-							workflowId: workflowData.id,
+							workflowId,
 							error,
 							workflowErrorData,
 						},
@@ -174,16 +172,12 @@ export function executeErrorWorkflow(
 				});
 		} else if (
 			mode !== 'error' &&
-			workflowData.id !== undefined &&
+			workflowId !== undefined &&
 			workflowData.nodes.some((node) => node.type === ERROR_TRIGGER_TYPE)
 		) {
-			Logger.verbose('Start internal error workflow', { executionId, workflowId: workflowData.id });
-			void getWorkflowOwner(workflowData.id).then((user) => {
-				void WorkflowHelpers.executeErrorWorkflow(
-					workflowData.id!.toString(),
-					workflowErrorData,
-					user,
-				);
+			Logger.verbose('Start internal error workflow', { executionId, workflowId });
+			void getWorkflowOwner(workflowId).then((user) => {
+				void WorkflowHelpers.executeErrorWorkflow(workflowId, workflowErrorData, user);
 			});
 		}
 	}
@@ -219,7 +213,7 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 			}, timeout * 1000);
 			// Mark binary data for deletion for all executions
 			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-				executions.map(({ id }) => id.toString()),
+				executions.map(({ id }) => id),
 			);
 		} catch (error) {
 			ErrorReporter.error(error);
@@ -505,7 +499,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				try {
 					if (
 						!isManualMode &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) &&
+						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) &&
 						newStaticData
 					) {
 						// Workflow is saved so update in database
@@ -593,17 +587,15 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (
-						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
-					) {
-						fullExecutionData.workflowId = this.workflowData.id.toString();
+					const workflowId = this.workflowData.id;
+					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+						fullExecutionData.workflowId = workflowId;
 					}
 
 					// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
 					Logger.debug(`Save execution data to database for execution ID ${this.executionId}`, {
 						executionId: this.executionId,
-						workflowId: this.workflowData.id,
+						workflowId,
 						finished: fullExecutionData.finished,
 						stoppedAt: fullExecutionData.stoppedAt,
 					});
@@ -685,7 +677,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 				newStaticData: IDataObject,
 			): Promise<void> {
 				try {
-					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id as string) && newStaticData) {
+					if (WorkflowHelpers.isWorkflowIdValid(this.workflowData.id) && newStaticData) {
 						// Workflow is saved so update in database
 						try {
 							await WorkflowHelpers.saveStaticDataById(
@@ -726,11 +718,9 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						fullExecutionData.retryOf = this.retryOf.toString();
 					}
 
-					if (
-						this.workflowData.id !== undefined &&
-						WorkflowHelpers.isWorkflowIdValid(this.workflowData.id.toString())
-					) {
-						fullExecutionData.workflowId = this.workflowData.id.toString();
+					const workflowId = this.workflowData.id;
+					if (WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+						fullExecutionData.workflowId = workflowId;
 					}
 
 					const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);
@@ -844,12 +834,7 @@ export async function getWorkflowData(
 
 		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
-		workflowData = await WorkflowsService.get(
-			{ id: parseInt(workflowInfo.id, 10) },
-			{
-				relations,
-			},
-		);
+		workflowData = await WorkflowsService.get({ id: workflowInfo.id }, { relations });
 
 		if (workflowData === undefined) {
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
@@ -1004,7 +989,7 @@ async function executeWorkflow(
 			workflowData,
 		};
 		if (workflowData.id) {
-			fullExecutionData.workflowId = workflowData.id as string;
+			fullExecutionData.workflowId = workflowData.id;
 		}
 
 		const executionData = ResponseHelper.flattenExecutionData(fullExecutionData);

@@ -1,8 +1,4 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-import { FindOneOptions } from 'typeorm';
+import type { FindConditions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
@@ -14,29 +10,17 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
-export async function getCredentials(
-	credentialId: number | string,
-): Promise<ICredentialsDb | undefined> {
+export async function getCredentials(credentialId: string): Promise<ICredentialsDb | undefined> {
 	return Db.collections.Credentials.findOne(credentialId);
 }
 
 export async function getSharedCredentials(
 	userId: string,
-	credentialId: number | string,
+	credentialId: string,
 	relations?: string[],
 ): Promise<SharedCredentials | undefined> {
-	const options: FindOneOptions = {
-		where: {
-			user: { id: userId },
-			credentials: { id: credentialId },
-		},
-	};
-
-	if (relations) {
-		options.relations = relations;
-	}
-
-	return Db.collections.SharedCredentials.findOne(options);
+	const where: FindConditions<SharedCredentials> = { userId, credentialsId: credentialId };
+	return Db.collections.SharedCredentials.findOne({ where, relations });
 }
 
 export async function createCredential(

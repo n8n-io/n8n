@@ -196,10 +196,9 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		const workflowId = data.workflowData.id;
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		const nodeTypes = NodeTypes();
@@ -218,7 +217,7 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({
-			id: data.workflowData.id as string | undefined,
+			id: workflowId,
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
@@ -596,13 +595,12 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const workflowId = data.workflowData.id;
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		// Register the active execution

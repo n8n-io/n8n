@@ -14,7 +14,7 @@ import type {
 	ITaskData,
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
-	IWorkflowBase as IWorkflowBaseWorkflow,
+	IWorkflowBase,
 	CredentialLoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
@@ -38,6 +38,7 @@ import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
 import type { User } from '@db/entities/User';
+import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WorkflowStatistics } from '@db/entities/WorkflowStatistics';
 
@@ -71,7 +72,7 @@ export interface IDatabaseCollections {
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
-	Webhook: Repository<IWebhookDb>;
+	Webhook: Repository<WebhookEntity>;
 	Tag: Repository<TagEntity>;
 	Role: Repository<Role>;
 	User: Repository<User>;
@@ -83,28 +84,12 @@ export interface IDatabaseCollections {
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 }
 
-export interface IWebhookDb {
-	workflowId: number | string;
-	webhookPath: string;
-	method: string;
-	node: string;
-	webhookId?: string;
-	pathLength?: number;
-}
-
 // ----------------------------------
 //               tags
 // ----------------------------------
 
-export interface ITagDb {
-	id: number;
-	name: string;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
 export interface ITagToImport {
-	id: string | number;
+	id: string;
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
@@ -114,20 +99,16 @@ export type UsageCount = {
 	usageCount: number;
 };
 
-export type ITagWithCountDb = ITagDb & UsageCount;
+export type ITagWithCountDb = TagEntity & UsageCount;
 
 // ----------------------------------
 //            workflows
 // ----------------------------------
 
-export interface IWorkflowBase extends IWorkflowBaseWorkflow {
-	id?: number | string;
-}
-
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
-	id: number | string;
-	tags?: ITagDb[];
+	id: string;
+	tags?: TagEntity[];
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
@@ -148,35 +129,27 @@ export interface ICredentialsBase {
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
-	id: number | string;
+	id: string;
 	name: string;
 	shared?: SharedCredentials[];
 }
 
-export interface ICredentialsResponse extends ICredentialsDb {
-	id: string;
-}
+export type ICredentialsDecryptedDb = ICredentialsBase & ICredentialsDecrypted;
 
-export interface ICredentialsDecryptedDb extends ICredentialsBase, ICredentialsDecrypted {
-	id: number | string;
-}
-
-export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
-	id: string;
-}
+export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {
-	id?: number | string;
+	id?: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date; // empty value means execution is still running
 	workflowId?: string; // To be able to filter executions easily //
 	finished: boolean;
-	retryOf?: number | string; // If it is a retry, the id of the execution it is a retry of.
-	retrySuccessId?: number | string; // If it failed and a retry did succeed. The id of the successful retry.
+	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
+	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 }
 
 // Data in regular format with references
@@ -208,7 +181,7 @@ export interface IExecutionFlatted extends IExecutionBase {
 }
 
 export interface IExecutionFlattedDb extends IExecutionBase {
-	id: number | string;
+	id: string;
 	data: string;
 	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
@@ -220,14 +193,14 @@ export interface IExecutionFlattedResponse extends IExecutionFlatted {
 }
 
 export interface IExecutionResponseApi {
-	id: number | string;
+	id: string;
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date;
 	workflowId?: string;
 	finished: boolean;
-	retryOf?: number | string;
-	retrySuccessId?: number | string;
+	retryOf?: string;
+	retrySuccessId?: string;
 	data?: object;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
@@ -685,7 +658,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
 	pinData?: IPinData;
-	retryOf?: number | string;
+	retryOf?: string;
 	sessionId?: string;
 	startNodes?: string[];
 	workflowData: IWorkflowBase;

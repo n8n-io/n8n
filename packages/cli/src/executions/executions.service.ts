@@ -3,7 +3,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
+import {
+	deepCopy,
+	IDataObject,
+	IWorkflowBase,
+	LoggerProxy,
+	JsonObject,
+	jsonParse,
+	Workflow,
+} from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
@@ -12,7 +20,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -31,7 +38,7 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
-	workflowId?: number | string;
+	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
 }
@@ -247,7 +254,7 @@ export class ExecutionsService {
 
 		const formattedExecutions = executions.map((execution) => {
 			return {
-				id: execution.id.toString(),
+				id: execution.id,
 				finished: execution.finished,
 				mode: execution.mode,
 				retryOf: execution.retryOf?.toString(),
@@ -255,7 +262,7 @@ export class ExecutionsService {
 				waitTill: execution.waitTill as Date | undefined,
 				startedAt: execution.startedAt,
 				stoppedAt: execution.stoppedAt,
-				workflowId: execution.workflowData?.id?.toString() ?? '',
+				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
 			};
 		});
@@ -293,13 +300,8 @@ export class ExecutionsService {
 			return ResponseHelper.unflattenExecutionData(execution);
 		}
 
-		const { id, ...rest } = execution;
-
 		// @ts-ignore
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return execution;
 	}
 
 	static async retryExecution(req: ExecutionRequest.Retry): Promise<boolean> {
@@ -460,7 +462,7 @@ export class ExecutionsService {
 			};
 
 			let query = Db.collections.Execution.createQueryBuilder()
-				.select()
+				.select('id')
 				.where({
 					...filters,
 					workflowId: In(sharedWorkflowIds),
@@ -474,7 +476,7 @@ export class ExecutionsService {
 
 			if (!executions.length) return;
 
-			const idsToDelete = executions.map(({ id }) => id.toString());
+			const idsToDelete = executions.map(({ id }) => id);
 
 			await Promise.all(
 				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
@@ -503,7 +505,7 @@ export class ExecutionsService {
 				return;
 			}
 
-			const idsToDelete = executions.map(({ id }) => id.toString());
+			const idsToDelete = executions.map(({ id }) => id);
 
 			await Promise.all(
 				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),

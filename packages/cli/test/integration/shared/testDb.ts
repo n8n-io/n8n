@@ -474,7 +474,7 @@ export async function createExecution(
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 	});
