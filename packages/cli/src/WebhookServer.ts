@@ -213,7 +213,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		setupErrorMiddleware(this.app);
+		void setupErrorMiddleware(this.app);
 	}
 
 	/**
