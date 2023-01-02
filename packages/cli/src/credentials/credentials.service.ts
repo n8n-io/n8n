@@ -20,7 +20,7 @@ import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants'
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '../Server';
+import { ExternalHooks } from '@/ExternalHooks';
 
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
@@ -80,7 +80,7 @@ export class CredentialsService {
 			select: SELECT_FIELDS,
 			relations: options?.relations,
 			where: {
-				id: In(userSharings.map((x) => x.credentialId)),
+				id: In(userSharings.map((x) => x.credentialsId)),
 			},
 		});
 	}
@@ -123,17 +123,6 @@ export class CredentialsService {
 		}
 
 		return Db.collections.SharedCredentials.findOne(options);
-	}
-
-	static createCredentialsFromCredentialsEntity(
-		credential: CredentialsEntity,
-		encrypt = false,
-	): Credentials {
-		const { id, name, type, nodesAccess, data } = credential;
-		if (encrypt) {
-			return new Credentials({ id: null, name }, type, nodesAccess);
-		}
-		return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
 	}
 
 	static async prepareCreateData(
@@ -234,7 +223,7 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 	): Promise<ICredentialsDb | undefined> {
-		await externalHooks.run('credentials.update', [newCredentialData]);
+		await ExternalHooks().run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
 		await Db.collections.Credentials.update(credentialId, newCredentialData);
@@ -253,7 +242,7 @@ export class CredentialsService {
 		const newCredential = new CredentialsEntity();
 		Object.assign(newCredential, credential, encryptedData);
 
-		await externalHooks.run('credentials.create', [encryptedData]);
+		await ExternalHooks().run('credentials.create', [encryptedData]);
 
 		const role = await Db.collections.Role.findOneOrFail({
 			name: 'owner',
@@ -285,7 +274,7 @@ export class CredentialsService {
 	}
 
 	static async delete(credentials: CredentialsEntity): Promise<void> {
-		await externalHooks.run('credentials.delete', [credentials.id]);
+		await ExternalHooks().run('credentials.delete', [credentials.id]);
 
 		await Db.collections.Credentials.remove(credentials);
 	}

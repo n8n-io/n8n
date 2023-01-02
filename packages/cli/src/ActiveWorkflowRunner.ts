@@ -32,6 +32,7 @@ import {
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
+	INodeType,
 } from 'n8n-workflow';
 
 import express from 'express';
@@ -61,7 +62,8 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
 import { whereClause } from './UserManagement/UserManagementHelper';
 
-const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
+const WEBHOOK_PROD_UNREGISTERED_HINT =
+	"The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)";
 
 export class ActiveWorkflowRunner {
 	private activeWorkflows: ActiveWorkflows | null = null;
@@ -117,11 +119,11 @@ export class ActiveWorkflowRunner {
 						workflowName: workflowData.name,
 						workflowId: workflowData.id,
 					});
-					console.log(`     => Started`);
+					console.log('     => Started');
 				} catch (error) {
 					ErrorReporter.error(error);
 					console.log(
-						`     => ERROR: Workflow could not be activated on first try, keep on trying`,
+						'     => ERROR: Workflow could not be activated on first try, keep on trying',
 					);
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					console.log(`               ${error.message}`);
@@ -772,7 +774,7 @@ export class ActiveWorkflowRunner {
 		workflowData?: IWorkflowDb,
 	): Promise<void> {
 		if (this.activeWorkflows === null) {
-			throw new Error(`The "activeWorkflows" instance did not get initialized yet.`);
+			throw new Error('The "activeWorkflows" instance did not get initialized yet.');
 		}
 
 		let workflowInstance: Workflow;
@@ -800,11 +802,12 @@ export class ActiveWorkflowRunner {
 
 			const canBeActivated = workflowInstance.checkIfWorkflowCanBeActivated([
 				'n8n-nodes-base.start',
+				'n8n-nodes-base.manualTrigger',
 			]);
 			if (!canBeActivated) {
 				Logger.error(`Unable to activate workflow "${workflowData.name}"`);
 				throw new Error(
-					`The workflow can not be activated because it does not contain any nodes which could start the workflow. Only workflows which have trigger or webhook nodes can be activated.`,
+					'The workflow can not be activated because it does not contain any nodes which could start the workflow. Only workflows which have trigger or webhook nodes can be activated.',
 				);
 			}
 
@@ -853,6 +856,18 @@ export class ActiveWorkflowRunner {
 			if (this.activationErrors[workflowId] !== undefined) {
 				// If there were activation errors delete them
 				delete this.activationErrors[workflowId];
+			}
+
+			if (workflowInstance.id) {
+				// Sum all triggers in the workflow, EXCLUDING the manual trigger
+				const triggerFilter = (nodeType: INodeType) =>
+					!!nodeType.trigger && !nodeType.description.name.includes('manualTrigger');
+				const triggerCount =
+					workflowInstance.queryNodes(triggerFilter).length +
+					workflowInstance.getPollNodes().length +
+					WebhookHelpers.getWorkflowWebhooks(workflowInstance, additionalData, undefined, true)
+						.length;
+				await Db.collections.Workflow.update(workflowInstance.id, { triggerCount });
 			}
 		} catch (error) {
 			// There was a problem activating the workflow
@@ -987,7 +1002,7 @@ export class ActiveWorkflowRunner {
 			return;
 		}
 
-		throw new Error(`The "activeWorkflows" instance did not get initialized yet.`);
+		throw new Error('The "activeWorkflows" instance did not get initialized yet.');
 	}
 }
 

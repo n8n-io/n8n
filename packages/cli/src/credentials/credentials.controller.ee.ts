@@ -35,7 +35,13 @@ EECredentialsController.get(
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			return allCredentials.map(EECredentials.addOwnerAndSharings);
+			return allCredentials
+				.map((credential: CredentialsEntity & CredentialWithSharings) =>
+					EECredentials.addOwnerAndSharings(credential),
+				)
+				.map(
+					(credential): CredentialWithSharings => ({ ...credential, id: credential.id.toString() }),
+				);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
@@ -54,7 +60,7 @@ EECredentialsController.get(
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.BadRequestError(`Credential ID must be a number.`);
+			throw new ResponseHelper.BadRequestError('Credential ID must be a number.');
 		}
 
 		let credential = (await EECredentials.get(
@@ -71,7 +77,7 @@ EECredentialsController.get(
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(`Forbidden.`);
+			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
 		credential = EECredentials.addOwnerAndSharings(credential);
@@ -118,7 +124,7 @@ EECredentialsController.post(
 		const sharing = await EECredentials.getSharing(req.user, credentials.id);
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError(`Forbidden`);
+				throw new ResponseHelper.UnauthorizedError('Forbidden');
 			}
 
 			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);

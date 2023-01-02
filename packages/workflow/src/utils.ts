@@ -74,3 +74,21 @@ export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefin
 	if (mimeType.startsWith('text/')) return 'text';
 	return;
 }
+
+export function assert<T>(condition: T, msg?: string): asserts condition {
+	if (!condition) {
+		const error = new Error(msg ?? 'Invalid assertion');
+		// hide assert stack frame if supported
+		if (Error.hasOwnProperty('captureStackTrace')) {
+			// V8 only - https://nodejs.org/api/errors.html#errors_error_capturestacktrace_targetobject_constructoropt
+			Error.captureStackTrace(error, assert);
+		} else if (error.stack) {
+			// fallback for IE and Firefox
+			error.stack = error.stack
+				.split('\n')
+				.slice(1) // skip assert function from stack frames
+				.join('\n');
+		}
+		throw error;
+	}
+}

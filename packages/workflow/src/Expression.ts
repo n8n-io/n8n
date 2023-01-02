@@ -278,10 +278,6 @@ export class Expression {
 					throw error;
 				}
 			}
-
-			if (error instanceof Error && error.name === 'SyntaxError') {
-				throw new Error('invalid syntax');
-			}
 		}
 
 		return null;

@@ -122,7 +122,7 @@ export async function odooJSONRPCRequest(
 			json: true,
 		};
 
-		const responce = await this.helpers.request!(options);
+		const responce = await this.helpers.request(options);
 		if (responce.error) {
 			throw new NodeApiError(this.getNode(), responce.error.data, {
 				message: responce.error.data.message,
@@ -305,7 +305,7 @@ export async function odooUpdate(
 		if (!Object.keys(fieldsToUpdate).length) {
 			throw new NodeApiError(this.getNode(), {
 				status: 'Error',
-				message: `Please specify at least one field to update`,
+				message: 'Please specify at least one field to update',
 			});
 		}
 		if (!/^\d+$/.test(itemsID) || !parseInt(itemsID, 10)) {

@@ -8,7 +8,6 @@ import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
 import { User } from '@/databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '@/GenericHelpers';
 import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
@@ -22,7 +21,9 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { DatabaseType, Db, GenericHelpers } from '..';
+import type { DatabaseType } from '@/Interfaces';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -154,7 +155,7 @@ export class ExecutionsService {
 					filter: req.query.filter,
 				});
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}
@@ -174,12 +175,13 @@ export class ExecutionsService {
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)
-			: DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
+			: GenericHelpers.DEFAULT_EXECUTIONS_GET_ALL_LIMIT;
 
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+			const queue = await Queue.getInstance();
+			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
 
@@ -210,7 +212,7 @@ export class ExecutionsService {
 		}
 
 		if (executingWorkflowIds.length > 0) {
-			rangeQuery.push(`id NOT IN (:...executingWorkflowIds)`);
+			rangeQuery.push('id NOT IN (:...executingWorkflowIds)');
 			rangeQueryParams.executingWorkflowIds = executingWorkflowIds;
 		}
 
@@ -439,7 +441,7 @@ export class ExecutionsService {
 				}
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
-					`Parameter "filter" contained invalid JSON string.`,
+					'Parameter "filter" contained invalid JSON string.',
 				);
 			}
 		}

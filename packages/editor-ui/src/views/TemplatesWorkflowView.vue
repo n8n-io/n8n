@@ -127,7 +127,7 @@ export default mixins(workflowHelpers).extend({
 			if (template) {
 				setPageTitle(`n8n - Template template: ${template.name}`);
 			} else {
-				setPageTitle(`n8n - Templates`);
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},

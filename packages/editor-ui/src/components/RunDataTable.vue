@@ -40,7 +40,7 @@
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
 								<template #preview="{ canDrop }">
-									<MappingPill :html="shorten(column, 16, 2)"	:can-drop="canDrop" />
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
 								</template>
 								<template #default="{ isDragging }">
 									<div
@@ -97,7 +97,10 @@
 				ref="draggable"
 			>
 				<template #preview="{ canDrop, el }">
-					<MappingPill :html="shorten(getPathNameFromTarget(el) || '', 16, 2)"	:can-drop="canDrop" />
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
 				</template>
 				<template>
 					<tr
@@ -479,8 +482,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 

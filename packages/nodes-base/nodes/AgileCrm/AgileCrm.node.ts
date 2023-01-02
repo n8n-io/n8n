@@ -172,7 +172,7 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequestAllItems.call(
 							this,
 							'POST',
-							`api/filters/filter/dynamic-filter`,
+							'api/filters/filter/dynamic-filter',
 							body,
 							undefined,
 							undefined,
@@ -183,7 +183,7 @@ export class AgileCrm implements INodeType {
 						responseData = await agileCrmApiRequest.call(
 							this,
 							'POST',
-							`api/filters/filter/dynamic-filter`,
+							'api/filters/filter/dynamic-filter',
 							body,
 							undefined,
 							undefined,

@@ -38,6 +38,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
+		cy.get('.connection-actions .add').invoke('show');
 		cy.get('.connection-actions .add').should('be.visible');
 		cy.get('.connection-actions .add').click();
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);

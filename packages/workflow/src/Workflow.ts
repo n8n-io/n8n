@@ -318,7 +318,7 @@ export class Workflow {
 		} else if (type === 'node') {
 			if (node === undefined) {
 				throw new Error(
-					`The request data of context type "node" the node parameter has to be set!`,
+					'The request data of context type "node" the node parameter has to be set!',
 				);
 			}
 			key = `node:${node.name}`;
@@ -916,6 +916,7 @@ export class Workflow {
 		const startingNodeTypes = [
 			'n8n-nodes-base.manualTrigger',
 			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.errorTrigger',
 			'n8n-nodes-base.start',
 		];
 
