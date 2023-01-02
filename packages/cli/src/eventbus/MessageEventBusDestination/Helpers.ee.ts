@@ -1,8 +1,8 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
-import { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
-import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
+import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
+import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook.ee';

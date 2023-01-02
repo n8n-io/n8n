@@ -8,7 +8,7 @@ export class MessageEventBusDestinations1671535397530 implements MigrationInterf
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
-			`CREATE TABLE ${tablePrefix}eventdestinations_entity (` +
+			`CREATE TABLE ${tablePrefix}event_destinations (` +
 				`"id" UUID PRIMARY KEY NOT NULL,` +
 				`"destination" JSONB NOT NULL,` +
 				`"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,` +
@@ -21,7 +21,7 @@ export class MessageEventBusDestinations1671535397530 implements MigrationInterf
 	async down(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
 		const tablePrefix = getTablePrefix();
-		await queryRunner.query(`DROP TABLE "${tablePrefix}eventdestinations_entity"`);
+		await queryRunner.query(`DROP TABLE "${tablePrefix}event_destinations"`);
 		logMigrationEnd(this.name);
 	}
 }

@@ -1,7 +1,7 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import { EventMessageTypeNames, IWorkflowBase, JsonObject } from 'n8n-workflow';
-import { AbstractEventPayload } from './AbstractEventPayload';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -20,8 +20,7 @@ export interface EventPayloadWorkflow extends AbstractEventPayload {
 
 	execution_id?: string;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	workflow_id?: number | string | any;
+	workflow_id?: number | string;
 }
 
 export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions {
@@ -31,7 +30,6 @@ export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions
 }
 
 export class EventMessageWorkflow extends AbstractEventMessage {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type: string = EventMessageTypeNames.workflow;
 
 	eventName: EventNamesWorkflowType;

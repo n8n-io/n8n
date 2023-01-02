@@ -11,8 +11,8 @@ import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
-import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
-import { EventMessageTypes } from '../EventMessageClasses';
+import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
+import type { EventMessageTypes } from '../EventMessageClasses';
 import {
 	EventMessageConfirm,
 	EventMessageConfirmSource,
@@ -165,7 +165,6 @@ export class MessageEventBusLogWriter {
 			case 'sent':
 				return results.sentMessages;
 		}
-		return [];
 	}
 
 	async readLoggedMessagesFromFile(

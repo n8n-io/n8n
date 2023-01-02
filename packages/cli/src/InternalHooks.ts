@@ -191,8 +191,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflow: IWorkflowBase,
 		nodeName: string,
 	): Promise<void> {
-		Promise.all([
-			eventBus.sendNodeEvent({
+		eventBus
+			.sendNodeEvent({
 				eventName: 'n8n.node.started',
 				payload: {
 					executionId,
@@ -200,8 +200,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 					workflowId: workflow.id?.toString(),
 					workflowName: workflow.name,
 				},
-			}),
-		]).catch((error) => console.log(error));
+			})
+			.catch((error) => console.log(error));
 		return;
 	}
 
@@ -210,8 +210,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflow: IWorkflowBase,
 		nodeName: string,
 	): Promise<void> {
-		Promise.all([
-			eventBus.sendNodeEvent({
+		eventBus
+			.sendNodeEvent({
 				eventName: 'n8n.node.finished',
 				payload: {
 					executionId,
@@ -219,8 +219,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 					workflowId: workflow.id?.toString(),
 					workflowName: workflow.name,
 				},
-			}),
-		]).catch((error) => console.log(error));
+			})
+			.catch((error) => console.log(error));
 		return;
 	}
 

@@ -1,6 +1,6 @@
-import { EventMessageTypes } from '.';
+import type { EventMessageTypes } from '.';
 import { EventMessageGeneric, EventMessageGenericOptions } from './EventMessageGeneric';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import { EventMessageWorkflow, EventMessageWorkflowOptions } from './EventMessageWorkflow';
 import { EventMessageTypeNames } from 'n8n-workflow';
 
@@ -8,10 +8,8 @@ export const getEventMessageObjectByType = (
 	message: AbstractEventMessageOptions,
 ): EventMessageTypes | null => {
 	switch (message.__type as EventMessageTypeNames) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		case EventMessageTypeNames.generic:
 			return new EventMessageGeneric(message as EventMessageGenericOptions);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		case EventMessageTypeNames.workflow:
 			return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
 		default:

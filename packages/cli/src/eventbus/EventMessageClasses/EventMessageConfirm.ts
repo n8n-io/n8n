@@ -7,7 +7,6 @@ export interface EventMessageConfirmSource extends JsonObject {
 }
 
 export class EventMessageConfirm {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type = EventMessageTypeNames.confirm;
 
 	readonly confirm: string;
@@ -25,7 +24,6 @@ export class EventMessageConfirm {
 	serialize(): JsonValue {
 		// TODO: filter payload for sensitive info here?
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			__type: this.__type,
 			confirm: this.confirm,
 			ts: this.ts.toISO(),

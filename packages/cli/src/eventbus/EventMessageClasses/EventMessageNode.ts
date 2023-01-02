@@ -1,7 +1,7 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
-import { AbstractEventPayload } from './AbstractEventPayload';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
 export type EventNamesNodeType = typeof eventNamesNode[number];
@@ -20,7 +20,6 @@ export interface EventMessageNodeOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageNode extends AbstractEventMessage {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type: string = EventMessageTypeNames.node;
 
 	eventName: EventNamesNodeType;

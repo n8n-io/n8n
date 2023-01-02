@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
-import { JsonObject } from 'n8n-workflow';
+import type { JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { AbstractEventPayload } from './AbstractEventPayload';
-import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import type { AbstractEventPayload } from './AbstractEventPayload';
+import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
-// TODO: temporarily added here, until merged via license manager
 function modifyUnderscoredKeys(
 	input: { [key: string]: any },
-	modifier: (secret: string) => string | undefined,
+	modifier: (secret: string) => string | undefined = () => '*',
 ) {
 	const result: { [key: string]: any } = {};
 	if (!input) return input;
@@ -104,12 +103,11 @@ export abstract class AbstractEventMessage {
 		this.setOptionsOrDefault(options);
 	}
 
-	// abstract serialize(): EventMessageSerialized;
 	abstract deserialize(data: JsonObject): this;
 	abstract setPayload(payload: AbstractEventPayload): this;
 
 	anonymize(): AbstractEventPayload {
-		const anonymizedPayload = modifyUnderscoredKeys(this.payload, () => '*');
+		const anonymizedPayload = modifyUnderscoredKeys(this.payload);
 		return anonymizedPayload;
 	}
 

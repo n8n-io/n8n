@@ -1,11 +1,11 @@
 import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
-import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
+import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'node:events';
 import config from '@/config';
-import { Db } from '@/index';
+import * as Db from '@/Db';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
 import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';

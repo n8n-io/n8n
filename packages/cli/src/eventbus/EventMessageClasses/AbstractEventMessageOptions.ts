@@ -1,5 +1,5 @@
-import { DateTime } from 'luxon';
-import { AbstractEventPayload } from './AbstractEventPayload';
+import type { DateTime } from 'luxon';
+import type { AbstractEventPayload } from './AbstractEventPayload';
 
 export interface AbstractEventMessageOptions {
 	__type?: string;

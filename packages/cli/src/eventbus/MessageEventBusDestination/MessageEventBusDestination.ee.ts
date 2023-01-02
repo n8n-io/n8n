@@ -7,7 +7,7 @@ import {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import { Db } from '../..';
+import * as Db from '@/Db';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
