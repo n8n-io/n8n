@@ -1,4 +1,4 @@
-import { INodeCredentials } from '.';
+import { INodeCredentials } from './Interfaces';
 
 // ===============================
 // General Enums And Interfaces
