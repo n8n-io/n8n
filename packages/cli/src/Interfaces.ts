@@ -504,6 +504,9 @@ export interface IPublicApiSettings {
 	enabled: boolean;
 	latestVersion: number;
 	path: string;
+	swaggerUi: {
+		enabled: boolean;
+	};
 }
 
 export interface IPackageVersions {
