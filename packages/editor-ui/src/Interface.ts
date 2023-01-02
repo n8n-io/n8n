@@ -796,6 +796,9 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+		swaggerUi: {
+			enabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1204,6 +1207,9 @@ export interface ISettingsState {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+		swaggerUi: {
+			enabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
