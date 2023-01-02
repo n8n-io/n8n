@@ -564,7 +564,7 @@ const router = new Router({
 							},
 							deny: {
 								shouldDeny: () => {
-									const settingsStore =  useSettingsStore();
+									const settingsStore = useSettingsStore();
 									return settingsStore.isPublicApiEnabled === false;
 								},
 							},

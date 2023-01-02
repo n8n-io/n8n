@@ -65,7 +65,6 @@ import { useWorkflowsEEStore } from '@/stores/workflows.ee';
 import { useUsersStore } from '@/stores/users';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { ICredentialsResponse } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;

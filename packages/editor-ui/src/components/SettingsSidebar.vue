@@ -89,27 +89,23 @@ export default mixins(userHelpers, pushConnection).extend({
 				}
 			}
 
-			menuItems.push(
-				{
-					id: 'settings-logstreaming',
-					icon: 'sign-in-alt',
-					label: this.$locale.baseText('settings.logstreaming'),
-					position: 'top',
-					available: this.canAccessApiSettings(),
-					activateOnRouteNames: [ VIEWS.LOGSTREAMING_SETTINGS ],
-				},
-			);
+			menuItems.push({
+				id: 'settings-logstreaming',
+				icon: 'sign-in-alt',
+				label: this.$locale.baseText('settings.logstreaming'),
+				position: 'top',
+				available: this.canAccessApiSettings(),
+				activateOnRouteNames: [VIEWS.LOGSTREAMING_SETTINGS],
+			});
 
-			menuItems.push(
-				{
-					id: 'settings-community-nodes',
-					icon: 'cube',
-					label: this.$locale.baseText('settings.communityNodes'),
-					position: 'top',
-					available: this.canAccessCommunityNodes(),
-					activateOnRouteNames: [ VIEWS.COMMUNITY_NODES ],
-				},
-			);
+			menuItems.push({
+				id: 'settings-community-nodes',
+				icon: 'cube',
+				label: this.$locale.baseText('settings.communityNodes'),
+				position: 'top',
+				available: this.canAccessCommunityNodes(),
+				activateOnRouteNames: [VIEWS.COMMUNITY_NODES],
+			});
 
 			return menuItems;
 		},

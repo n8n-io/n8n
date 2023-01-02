@@ -1,4 +1,4 @@
-import { INodeProperties } from "n8n-workflow";
+import { INodeProperties } from 'n8n-workflow';
 
 export const webhookModalDescription = [
 	{
@@ -263,8 +263,7 @@ export const webhookModalDescription = [
 				type: 'boolean',
 				noDataExpression: true,
 				default: false,
-				description:
-					'Whether to ignore SSL certificate validation',
+				description: 'Whether to ignore SSL certificate validation',
 			},
 			{
 				displayName: 'Array Format in Query Parameters',
@@ -371,16 +370,14 @@ export const webhookModalDescription = [
 								name: 'host',
 								type: 'string',
 								default: '127.0.0.1',
-								description:
-									'Proxy Host (without protocol or port)',
+								description: 'Proxy Host (without protocol or port)',
 							},
 							{
 								displayName: 'Port',
 								name: 'port',
 								type: 'number',
 								default: 9000,
-								description:
-									'Proxy Port',
+								description: 'Proxy Port',
 							},
 						],
 					},
@@ -402,73 +399,73 @@ export const webhookModalDescription = [
 ] as INodeProperties[];
 
 export const syslogModalDescription = [
-				{
-					displayName: 'Host',
-					name: 'host',
-					type: 'string',
-					default: '127.0.0.1',
-					placeholder: '127.0.0.1',
-					description: 'The IP or host name to make the request to',
-					noDataExpression: true,
-				},
-				{
-					displayName: 'Port',
-					name: 'port',
-					type: 'number',
-					default: '514',
-					placeholder: '514',
-					description: 'The port number to make the request to',
-					noDataExpression: true,
-				},
-				{
-					displayName: 'Protocol',
-					name: 'protocol',
-					type: 'options',
-					options: [
-						{
-							name: 'TCP',
-							value: 'tcp',
-						},
-						{
-							name: 'UDP',
-							value: 'udp',
-						},
-					],
-					default: 'udp',
-					description: 'The protocol to use for the connection',
-				},
-				{
-					displayName: 'Facility',
-					name: 'facility',
-					type: 'options',
-					options: [
-						{name: 'Kernel', value:  0},
-						{name: 'User',   value:  1},
-						{name: 'System', value:  3},
-						{name: 'Audit',  value: 13},
-						{name: 'Alert',  value: 14},
-						{name: 'Local0', value: 16},
-						{name: 'Local1', value: 17},
-						{name: 'Local2', value: 18},
-						{name: 'Local3', value: 19},
-						{name: 'Local4', value: 20},
-						{name: 'Local5', value: 21},
-						{name: 'Local6', value: 22},
-						{name: 'Local7', value: 23},
-					],
-					default: '16',
-					description: 'Syslog facility parameter',
-				},
-				{
-					displayName: 'App Name',
-					name: 'app_name',
-					type: 'string',
-					default: 'n8n',
-					placeholder: 'n8n',
-					noDataExpression: true,
-					description: 'Syslog app name parameter',
-				},
-			] as INodeProperties[];
+	{
+		displayName: 'Host',
+		name: 'host',
+		type: 'string',
+		default: '127.0.0.1',
+		placeholder: '127.0.0.1',
+		description: 'The IP or host name to make the request to',
+		noDataExpression: true,
+	},
+	{
+		displayName: 'Port',
+		name: 'port',
+		type: 'number',
+		default: '514',
+		placeholder: '514',
+		description: 'The port number to make the request to',
+		noDataExpression: true,
+	},
+	{
+		displayName: 'Protocol',
+		name: 'protocol',
+		type: 'options',
+		options: [
+			{
+				name: 'TCP',
+				value: 'tcp',
+			},
+			{
+				name: 'UDP',
+				value: 'udp',
+			},
+		],
+		default: 'udp',
+		description: 'The protocol to use for the connection',
+	},
+	{
+		displayName: 'Facility',
+		name: 'facility',
+		type: 'options',
+		options: [
+			{ name: 'Kernel', value: 0 },
+			{ name: 'User', value: 1 },
+			{ name: 'System', value: 3 },
+			{ name: 'Audit', value: 13 },
+			{ name: 'Alert', value: 14 },
+			{ name: 'Local0', value: 16 },
+			{ name: 'Local1', value: 17 },
+			{ name: 'Local2', value: 18 },
+			{ name: 'Local3', value: 19 },
+			{ name: 'Local4', value: 20 },
+			{ name: 'Local5', value: 21 },
+			{ name: 'Local6', value: 22 },
+			{ name: 'Local7', value: 23 },
+		],
+		default: '16',
+		description: 'Syslog facility parameter',
+	},
+	{
+		displayName: 'App Name',
+		name: 'app_name',
+		type: 'string',
+		default: 'n8n',
+		placeholder: 'n8n',
+		noDataExpression: true,
+		description: 'Syslog app name parameter',
+	},
+] as INodeProperties[];
 
 export const sentryModalDescription = [
 	{

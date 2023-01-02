@@ -1,5 +1,5 @@
-import { deepCopy, MessageEventBusDestinationOptions } from "n8n-workflow";
-import { defineStore } from "pinia";
+import { deepCopy, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { defineStore } from 'pinia';
 
 export interface EventSelectionItem {
 	selected: boolean;
@@ -12,25 +12,23 @@ export interface EventSelectionGroup extends EventSelectionItem {
 	children: EventSelectionItem[];
 }
 
-
 export interface TreeAndSelectionStoreItem {
-		destination: MessageEventBusDestinationOptions,
-		selectedEvents: Set<string>,
-		eventGroups: EventSelectionGroup[],
+	destination: MessageEventBusDestinationOptions;
+	selectedEvents: Set<string>;
+	eventGroups: EventSelectionGroup[];
 }
 
 export interface DestinationSettingsStore {
-	[key:string]: TreeAndSelectionStoreItem
+	[key: string]: TreeAndSelectionStoreItem;
 }
 
 export const useLogStreamingStore = defineStore('logStreaming', {
-  state: () => ({
+	state: () => ({
 		items: {} as DestinationSettingsStore,
 		eventNames: new Set<string>(),
 	}),
-  getters: {
-  },
-  actions: {
+	getters: {},
+	actions: {
 		addDestination(destination: MessageEventBusDestinationOptions) {
 			if (destination.id && destination.id in this.items) {
 				this.items[destination.id].destination = destination;
@@ -53,21 +51,23 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			return destinations;
 		},
 		updateDestination(destination: MessageEventBusDestinationOptions) {
-				this.$patch((state)=>{
-					if (destination.id && destination.id in this.items) {
-						state.items[destination.id].destination = destination;
-					}
-					// to trigger refresh
-					state.items = deepCopy(state.items);
-				});
+			this.$patch((state) => {
+				if (destination.id && destination.id in this.items) {
+					state.items[destination.id].destination = destination;
+				}
+				// to trigger refresh
+				state.items = deepCopy(state.items);
+			});
 		},
 		removeDestination(destinationId: string) {
 			if (!destinationId) return;
 			delete this.items[destinationId];
 			if (destinationId in this.items) {
-				this.$patch({items: {
-					...this.items,
-				}});
+				this.$patch({
+					items: {
+						...this.items,
+					},
+				});
 			}
 		},
 		clearDestinations() {
@@ -82,11 +82,11 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		clearEventNames() {
 			this.eventNames.clear();
 		},
-		addSelectedEvent(id:string, name: string) {
+		addSelectedEvent(id: string, name: string) {
 			this.items[id]?.selectedEvents?.add(name);
 			this.setSelectedInGroup(id, name, true);
 		},
-		removeSelectedEvent(id:string, name: string) {
+		removeSelectedEvent(id: string, name: string) {
 			this.items[id]?.selectedEvents?.delete(name);
 			this.setSelectedInGroup(id, name, false);
 		},
@@ -109,23 +109,34 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		setSelectedInGroup(destinationId: string, name: string, isSelected: boolean) {
 			if (destinationId in this.items) {
 				const groupName = eventGroupFromEventName(name);
-				const groupIndex = this.items[destinationId].eventGroups.findIndex(e=>e.name === groupName);
+				const groupIndex = this.items[destinationId].eventGroups.findIndex(
+					(e) => e.name === groupName,
+				);
 				if (groupIndex > -1) {
 					if (groupName === name) {
-						this.$patch((state)=>{
+						this.$patch((state) => {
 							state.items[destinationId].eventGroups[groupIndex].selected = isSelected;
 						});
 					} else {
-						const eventIndex = this.items[destinationId].eventGroups[groupIndex].children.findIndex(e=>e.name === name);
+						const eventIndex = this.items[destinationId].eventGroups[groupIndex].children.findIndex(
+							(e) => e.name === name,
+						);
 						if (eventIndex > -1) {
-							this.$patch((state)=>{
-								state.items[destinationId].eventGroups[groupIndex].children[eventIndex].selected = isSelected;
+							this.$patch((state) => {
+								state.items[destinationId].eventGroups[groupIndex].children[eventIndex].selected =
+									isSelected;
 								if (isSelected) {
 									state.items[destinationId].eventGroups[groupIndex].indeterminate = isSelected;
 								} else {
 									let anySelected = false;
-									for (let i=0; i < state.items[destinationId].eventGroups[groupIndex].children.length; i++) {
-										anySelected = anySelected || state.items[destinationId].eventGroups[groupIndex].children[i].selected;
+									for (
+										let i = 0;
+										i < state.items[destinationId].eventGroups[groupIndex].children.length;
+										i++
+									) {
+										anySelected =
+											anySelected ||
+											state.items[destinationId].eventGroups[groupIndex].children[i].selected;
 									}
 									state.items[destinationId].eventGroups[groupIndex].indeterminate = anySelected;
 								}
@@ -156,13 +167,16 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 						this.items[destination.id]?.selectedEvents?.add(eventName);
 					}
 				}
-				this.items[destination.id].eventGroups = eventGroupsFromStringList(this.eventNames, this.items[destination.id]?.selectedEvents);
+				this.items[destination.id].eventGroups = eventGroupsFromStringList(
+					this.eventNames,
+					this.items[destination.id]?.selectedEvents,
+				);
 			}
 		},
 	},
 });
 
-export function eventGroupFromEventName(eventName:string): string | undefined {
+export function eventGroupFromEventName(eventName: string): string | undefined {
 	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
 	if (matches && matches?.length > 0) {
 		return matches[0];
@@ -179,7 +193,10 @@ function prettifyEventName(label: string, group = ''): string {
 	return label;
 }
 
-export function eventGroupsFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
+export function eventGroupsFromStringList(
+	dottedList: Set<string>,
+	selectionList: Set<string> = new Set(),
+) {
 	const result = [] as EventSelectionGroup[];
 	const eventNameArray = Array.from(dottedList.values());
 
@@ -204,7 +221,7 @@ export function eventGroupsFromStringList(dottedList: Set<string>, selectionList
 			selected: selectionList.has(group),
 			indeterminate: false,
 		};
-		const eventsOfGroup = eventNameArray.filter(e=>e.startsWith(group));
+		const eventsOfGroup = eventNameArray.filter((e) => e.startsWith(group));
 		for (const event of eventsOfGroup) {
 			if (!collection.selected && selectionList.has(event)) {
 				collection.indeterminate = true;

@@ -11,8 +11,10 @@ export const genericHelpers = mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		isReadOnly (): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOGSTREAMING_SETTINGS].includes(this.$route.name as VIEWS);
+		isReadOnly(): boolean {
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOGSTREAMING_SETTINGS].includes(
+				this.$route.name as VIEWS,
+			);
 		},
 	},
 	methods: {

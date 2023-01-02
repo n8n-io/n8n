@@ -100,14 +100,13 @@
 		<ModalRoot :name="LOG_STREAM_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<EventDestinationSettingsModal
-				:modalName="modalName"
-				:destination="data.destination"
-				:isNew="data.isNew"
-				:eventBus="data.eventBus"
+					:modalName="modalName"
+					:destination="data.destination"
+					:isNew="data.isNew"
+					:eventBus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>
-
 	</div>
 </template>
 
