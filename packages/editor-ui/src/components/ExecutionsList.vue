@@ -72,8 +72,7 @@
 			:row-class-name="getRowClass"
 		>
 			<el-table-column label="" width="30">
-				<!-- eslint-disable-next-line vue/no-unused-vars -->
-				<template #header="scope">
+				<template>
 					<el-checkbox
 						:indeterminate="isIndeterminate"
 						v-model="checkAll"
@@ -97,22 +96,6 @@
 							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
 						</span>
 					</div>
-
-					<span v-if="scope.row.stoppedAt === undefined">
-						({{ $locale.baseText('executionsList.running') }})
-					</span>
-					<span v-if="scope.row.retryOf !== undefined">
-						<br />
-						<small>
-							{{ $locale.baseText('executionsList.retryOf') }} "{{ scope.row.retryOf }}"
-						</small>
-					</span>
-					<span v-else-if="scope.row.retrySuccessId !== undefined">
-						<br />
-						<small>
-							{{ $locale.baseText('executionsList.successRetry') }} "{{ scope.row.retrySuccessId }}"
-						</small>
-					</span>
 				</template>
 			</el-table-column>
 			<el-table-column
@@ -154,6 +137,20 @@
 			<el-table-column :label="$locale.baseText('executionsList.id')" width="150">
 				<template #default="scope">
 					<span v-if="scope.row.id">#{{ scope.row.id }}</span>
+					<span v-if="scope.row.retryOf !== undefined">
+						<br />
+						<small>
+							({{ $locale.baseText('executionsList.retryOf') }} #{{ scope.row.retryOf }})
+						</small>
+					</span>
+					<span v-else-if="scope.row.retrySuccessId !== undefined">
+						<br />
+						<small>
+							({{ $locale.baseText('executionsList.successRetry') }} #{{
+								scope.row.retrySuccessId
+							}})
+						</small>
+					</span>
 				</template>
 			</el-table-column>
 			<el-table-column
