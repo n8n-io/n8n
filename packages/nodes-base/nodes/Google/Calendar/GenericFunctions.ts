@@ -40,7 +40,7 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'googleCalendarOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -23,15 +23,15 @@ jest.mock('@/Db', () => {
 		collections: {
 			Workflow: {
 				update: jest.fn(({ id, dataLoaded }, updateArgs) => {
-					if (id === 1) return { affected: 1 };
+					if (id === '1') return { affected: 1 };
 					return { affected: 0 };
 				}),
 			},
 			WorkflowStatistics: {
 				// Have made a tech debt ticket to refactor this test suite for later
 				insert: jest.fn(({ count, name, workflowId }) => {
-					if (workflowId === -1) throw new Error('test error');
-					else if (name === StatisticsNames.dataLoaded && workflowId === 2)
+					if (workflowId === '-1') throw new Error('test error');
+					else if (name === StatisticsNames.dataLoaded && workflowId === '2')
 						throw new Error('test error 2');
 					return null;
 				}),
@@ -108,7 +108,7 @@ describe('Events', () => {
 			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(1);
 			expect(mockedFirstProductionWorkflowSuccess).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflow.id, 10),
+				workflow_id: workflow.id,
 			});
 		});
 
@@ -184,7 +184,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 			});
@@ -211,7 +211,7 @@ describe('Events', () => {
 			expect(mockedFirstWorkflowDataLoad).toBeCalledTimes(1);
 			expect(mockedFirstWorkflowDataLoad).toHaveBeenNthCalledWith(1, {
 				user_id: FAKE_USER_ID,
-				workflow_id: parseInt(workflowId, 10),
+				workflow_id: workflowId,
 				node_type: node.type,
 				node_id: node.id,
 				credential_type: 'testCredentials',

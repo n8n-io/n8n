@@ -54,7 +54,7 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v9/sync`,
+		uri: 'https://api.todoist.com/sync/v9/sync',
 		json: true,
 	};
 

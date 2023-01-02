@@ -275,7 +275,7 @@ export class ZendeskTrigger implements INodeType {
 					return false;
 				}
 
-				endpoint = `/triggers/active`;
+				endpoint = '/triggers/active';
 				const triggers = await zendeskApiRequestAllItems.call(this, 'triggers', 'GET', endpoint);
 
 				for (const trigger of triggers) {

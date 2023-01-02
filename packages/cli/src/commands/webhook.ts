@@ -6,7 +6,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
@@ -31,7 +30,7 @@ let processExitCode = 0;
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
 
-	static examples = [`$ n8n webhook`];
+	static examples = ['$ n8n webhook'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -44,7 +43,7 @@ export class Webhook extends Command {
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
-		LoggerProxy.info(`\nStopping n8n...`);
+		LoggerProxy.info('\nStopping n8n...');
 
 		const exit = () => {
 			CrashJournal.cleanup().finally(() => {
@@ -93,7 +92,7 @@ export class Webhook extends Command {
 		process.once('SIGTERM', Webhook.stopProcess);
 		process.once('SIGINT', Webhook.stopProcess);
 
-		initErrorHandling();
+		await initErrorHandling();
 		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
@@ -153,7 +152,7 @@ export class Webhook extends Command {
 
 				const instanceId = await UserSettings.getInstanceId();
 				const { cli } = await GenericHelpers.getVersions();
-				InternalHooksManager.init(instanceId, cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
@@ -202,6 +201,9 @@ export class Webhook extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
+
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					const { default: Redis } = await import('ioredis');
 
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect

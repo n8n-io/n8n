@@ -92,7 +92,7 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const workflow = await EEWorkflows.get({ id: parseInt(workflowId, 10) }, { relations });
+		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
 
 		if (!workflow) {
 			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
@@ -108,7 +108,7 @@ EEWorkflowController.get(
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-		return { ...workflow, id: workflow.id.toString() };
+		return workflow;
 	}),
 );
 
@@ -189,12 +189,7 @@ EEWorkflowController.post(
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
 		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
 
-		const { id, ...rest } = savedWorkflow;
-
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return savedWorkflow;
 	}),
 );
 
@@ -204,19 +199,14 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = (await EEWorkflows.getMany(
-			req.user,
-			req.query.filter,
-		)) as unknown as WorkflowEntity[];
+		const workflows = await EEWorkflows.getMany(req.user, req.query.filter);
+		await EEWorkflows.addCredentialsToWorkflows(workflows, req.user);
 
-		return Promise.all(
-			workflows.map(async (workflow) => {
-				EEWorkflows.addOwnerAndSharings(workflow);
-				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-				workflow.nodes = [];
-				return { ...workflow, id: workflow.id.toString() };
-			}),
-		);
+		return workflows.map((workflow) => {
+			EEWorkflows.addOwnerAndSharings(workflow);
+			workflow.nodes = [];
+			return workflow;
+		});
 	}),
 );
 
@@ -240,12 +230,7 @@ EEWorkflowController.patch(
 			forceSave,
 		);
 
-		const { id, ...remainder } = updatedWorkflow;
-
-		return {
-			id: id.toString(),
-			...remainder,
-		};
+		return updatedWorkflow;
 	}),
 );
 
@@ -259,11 +244,7 @@ EEWorkflowController.post(
 		Object.assign(workflow, req.body.workflowData);
 
 		if (workflow.id !== undefined) {
-			const safeWorkflow = await EEWorkflows.preventTampering(
-				workflow,
-				workflow.id.toString(),
-				req.user,
-			);
+			const safeWorkflow = await EEWorkflows.preventTampering(workflow, workflow.id, req.user);
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 

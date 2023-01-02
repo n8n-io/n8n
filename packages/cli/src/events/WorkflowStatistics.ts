@@ -1,4 +1,4 @@
-import { INode, IRun, IWorkflowBase, LoggerProxy } from 'n8n-workflow';
+import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
@@ -22,14 +22,8 @@ export async function workflowExecutionCompleted(
 	}
 
 	// Get the workflow id
-	let workflowId: number;
-	try {
-		workflowId = parseInt(workflowData.id as string, 10);
-		if (isNaN(workflowId)) throw new Error('not a number');
-	} catch (error) {
-		LoggerProxy.error(`Error "${error as string}" when casting workflow ID to a number`);
-		return;
-	}
+	const workflowId = workflowData.id;
+	if (workflowId === undefined) return;
 
 	// Try insertion and if it fails due to key conflicts then update the existing entry instead
 	try {
@@ -62,20 +56,10 @@ export async function workflowExecutionCompleted(
 }
 
 export async function nodeFetchedData(workflowId: string, node: INode): Promise<void> {
-	// Get the workflow id
-	let id: number;
-	try {
-		id = parseInt(workflowId, 10);
-		if (isNaN(id)) throw new Error('not a number');
-	} catch (error) {
-		LoggerProxy.error(`Error ${error as string} when casting workflow ID to a number`);
-		return;
-	}
-
 	// Try to insert the data loaded statistic
 	try {
 		await Db.collections.WorkflowStatistics.insert({
-			workflowId: id,
+			workflowId,
 			name: StatisticsNames.dataLoaded,
 			count: 1,
 			latestEvent: new Date(),
@@ -89,7 +73,7 @@ export async function nodeFetchedData(workflowId: string, node: INode): Promise<
 	const owner = await getWorkflowOwner(workflowId);
 	let metrics = {
 		user_id: owner.id,
-		workflow_id: id,
+		workflow_id: workflowId,
 		node_type: node.type,
 		node_id: node.id,
 	};
