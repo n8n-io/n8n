@@ -1127,6 +1127,8 @@
 	"settings.api.view.info.webhook": "webhook node",
 	"settings.api.view.myKey": "My API Key",
 	"settings.api.view.tryapi": "Try it out using the",
+	"settings.api.view.more-details": "You can find more details in",
+	"settings.api.view.external-docs": "the API documentation",
 	"settings.api.view.error": "Could not check if an api key already exists.",
 	"settings.version": "Version",
 	"settings.usageAndPlan.title": "Usage and plan",

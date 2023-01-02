@@ -3,27 +3,25 @@ import express, { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
-import * as OpenApiValidator from 'express-openapi-validator';
-import { HttpError } from 'express-openapi-validator/dist/framework/types';
-import { OpenAPIV3 } from 'openapi-types';
-import swaggerUi from 'swagger-ui-express';
-import validator from 'validator';
-import YAML from 'yamljs';
+import type { HttpError } from 'express-openapi-validator/dist/framework/types';
+import type { OpenAPIV3 } from 'openapi-types';
+import type { JsonObject } from 'swagger-ui-express';
 
 import config from '@/config';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
-function createApiRouter(
+async function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	handlersDirectory: string,
 	swaggerThemeCss: string,
 	publicApiEndpoint: string,
-): Router {
+): Promise<Router> {
 	const n8nPath = config.getEnv('path');
-	const swaggerDocument = YAML.load(openApiSpecPath) as swaggerUi.JsonObject;
+	const YAML = await import('yamljs');
+	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
 	swaggerDocument.server = [
@@ -33,21 +31,26 @@ function createApiRouter(
 	];
 	const apiController = express.Router();
 
-	apiController.use(
-		`/${publicApiEndpoint}/${version}/docs`,
-		swaggerUi.serveFiles(swaggerDocument),
-		swaggerUi.setup(swaggerDocument, {
-			customCss: swaggerThemeCss,
-			customSiteTitle: 'n8n Public API UI',
-			customfavIcon: `${n8nPath}favicon.ico`,
-		}),
-	);
+	if (!config.getEnv('publicApi.swaggerUi.disabled')) {
+		const { serveFiles, setup } = await import('swagger-ui-express');
 
-	apiController.use(`/${publicApiEndpoint}/${version}`, express.json());
+		apiController.use(
+			`/${publicApiEndpoint}/${version}/docs`,
+			serveFiles(swaggerDocument),
+			setup(swaggerDocument, {
+				customCss: swaggerThemeCss,
+				customSiteTitle: 'n8n Public API UI',
+				customfavIcon: `${n8nPath}favicon.ico`,
+			}),
+		);
+	}
 
+	const { default: validator } = await import('validator');
+	const { middleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
-		OpenApiValidator.middleware({
+		express.json(),
+		middleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
@@ -131,10 +134,12 @@ export const loadPublicApiVersions = async (
 	const css = (await fs.readFile(swaggerThemePath)).toString();
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
-	const apiRouters = versions.map((version) => {
-		const openApiPath = path.join(__dirname, version, 'openapi.yml');
-		return createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint);
-	});
+	const apiRouters = await Promise.all(
+		versions.map(async (version) => {
+			const openApiPath = path.join(__dirname, version, 'openapi.yml');
+			return createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint);
+		}),
+	);
 
 	return {
 		apiRouters,

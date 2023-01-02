@@ -270,7 +270,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		setupErrorMiddleware(this.app);
+		void setupErrorMiddleware(this.app);
 
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
@@ -332,9 +332,12 @@ class App {
 				smtpSetup: isEmailSetUp(),
 			},
 			publicApi: {
-				enabled: config.getEnv('publicApi.disabled') === false,
+				enabled: !config.getEnv('publicApi.disabled'),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
+				swaggerUi: {
+					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
@@ -1299,7 +1302,8 @@ class App {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+						const queue = await Queue.getInstance();
+						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
 
@@ -1428,14 +1432,15 @@ class App {
 						} as IExecutionsStopData;
 					}
 
-					const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+					const queue = await Queue.getInstance();
+					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
 
 					if (!job) {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
 					} else {
-						await Queue.getInstance().stopJob(job);
+						await queue.stopJob(job);
 					}
 
 					const executionDb = (await Db.collections.Execution.findOne(

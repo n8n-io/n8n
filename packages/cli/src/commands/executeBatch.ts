@@ -327,7 +327,7 @@ export class ExecuteBatch extends Command {
 
 		const instanceId = await UserSettings.getInstanceId();
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);
