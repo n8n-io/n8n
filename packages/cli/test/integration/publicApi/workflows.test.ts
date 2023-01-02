@@ -195,7 +195,7 @@ test('GET /workflows should return all owned workflows with pagination', async (
 	}
 
 	// check that we really received a different result
-	expect(response.body.data[0].id).toBeLessThan(response2.body.data[0].id);
+	expect(Number(response.body.data[0].id)).toBeLessThan(Number(response2.body.data[0].id));
 });
 
 test('GET /workflows should return all owned workflows filtered by tag', async () => {
@@ -690,7 +690,7 @@ test('POST /workflows/:id/activate should set workflow as active', async () => {
 	expect(sharedWorkflow?.workflow.active).toBe(true);
 
 	// check whether the workflow is on the active workflow runner
-	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
+	expect(await workflowRunner.isActive(workflow.id)).toBe(true);
 });
 
 test('POST /workflows/:id/activate should set non-owned workflow as active when owner', async () => {
@@ -744,7 +744,7 @@ test('POST /workflows/:id/activate should set non-owned workflow as active when 
 	expect(sharedWorkflow?.workflow.active).toBe(true);
 
 	// check whether the workflow is on the active workflow runner
-	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(true);
+	expect(await workflowRunner.isActive(workflow.id)).toBe(true);
 });
 
 test('POST /workflows/:id/deactivate should fail due to missing API Key', async () => {
@@ -835,7 +835,7 @@ test('POST /workflows/:id/deactivate should deactivate workflow', async () => {
 	// check whether the workflow is deactivated in the database
 	expect(sharedWorkflow?.workflow.active).toBe(false);
 
-	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
+	expect(await workflowRunner.isActive(workflow.id)).toBe(false);
 });
 
 test('POST /workflows/:id/deactivate should deactivate non-owned workflow when owner', async () => {
@@ -888,7 +888,7 @@ test('POST /workflows/:id/deactivate should deactivate non-owned workflow when o
 
 	expect(sharedWorkflow?.workflow.active).toBe(false);
 
-	expect(await workflowRunner.isActive(workflow.id.toString())).toBe(false);
+	expect(await workflowRunner.isActive(workflow.id)).toBe(false);
 });
 
 test('POST /workflows should fail due to missing API Key', async () => {

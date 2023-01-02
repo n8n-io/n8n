@@ -179,8 +179,8 @@ export const restApi = Vue.extend({
 				getPastExecutions: (
 					filter: object,
 					limit: number,
-					lastId?: string | number,
-					firstId?: string | number,
+					lastId?: string,
+					firstId?: string,
 				): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {

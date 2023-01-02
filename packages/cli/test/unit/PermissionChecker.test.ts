@@ -129,7 +129,7 @@ describe('PermissionChecker.check()', () => {
 					position: [0, 0],
 					credentials: {
 						actionNetworkApi: {
-							id: ownerCred.id.toString(),
+							id: ownerCred.id,
 							name: ownerCred.name,
 						},
 					},
@@ -143,7 +143,7 @@ describe('PermissionChecker.check()', () => {
 					position: [0, 0],
 					credentials: {
 						actionNetworkApi: {
-							id: memberCred.id.toString(),
+							id: memberCred.id,
 							name: memberCred.name,
 						},
 					},
@@ -160,7 +160,7 @@ describe('PermissionChecker.check()', () => {
 		const memberCred = await saveCredential(randomCred(), { user: member });
 
 		const workflowDetails = {
-			id: randomPositiveDigit(),
+			id: randomPositiveDigit().toString(),
 			name: 'test',
 			active: false,
 			connections: {},
@@ -175,7 +175,7 @@ describe('PermissionChecker.check()', () => {
 					position: [0, 0] as [number, number],
 					credentials: {
 						actionNetworkApi: {
-							id: memberCred.id.toString(),
+							id: memberCred.id,
 							name: memberCred.name,
 						},
 					},
@@ -205,7 +205,7 @@ describe('PermissionChecker.check()', () => {
 			role: workflowOwnerRole,
 		});
 
-		const workflow = new Workflow({ ...workflowDetails, id: workflowDetails.id.toString() });
+		const workflow = new Workflow(workflowDetails);
 
 		expect(PermissionChecker.check(workflow, member.id)).rejects.toThrow();
 	});

@@ -219,7 +219,7 @@ export default mixins(
 			}
 			this.loadingMore = true;
 
-			let lastId: string | number | undefined;
+			let lastId: string | undefined;
 			if (this.executions.length !== 0) {
 				const lastItem = this.executions.slice(-1)[0];
 				lastId = lastItem.id;
