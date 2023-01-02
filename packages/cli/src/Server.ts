@@ -991,8 +991,7 @@ class App {
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
 				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-
-				return activeWorkflows.map(({ id }) => id.toString());
+				return activeWorkflows.map(({ id }) => id);
 			}),
 		);
 
@@ -1373,22 +1372,21 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							(data.workflowId !== undefined &&
-								!sharedWorkflowIds.includes(data.workflowId.toString()))
+							(data.workflowId !== undefined && !sharedWorkflowIds.includes(data.workflowId))
 						) {
 							continue;
 						}
 
 						returnData.push({
-							id: data.id.toString(),
-							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							id: data.id,
+							workflowId: data.workflowId === undefined ? '' : data.workflowId,
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
 						});
 					}
 
-					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+					returnData.sort((a, b) => Number(b.id) - Number(a.id));
 
 					return returnData;
 				},
@@ -1443,7 +1441,7 @@ class App {
 					const queue = await Queue.getInstance();
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
+					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
