@@ -37,6 +37,7 @@ import {
 export class HaloPSA implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'HaloPSA',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'haloPSA',
 		icon: 'file:halopsa.svg',
 		group: ['input'],
