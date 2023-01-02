@@ -332,9 +332,12 @@ class App {
 				smtpSetup: isEmailSetUp(),
 			},
 			publicApi: {
-				enabled: config.getEnv('publicApi.disabled') === false,
+				enabled: !config.getEnv('publicApi.disabled'),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
+				swaggerUi: {
+					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
