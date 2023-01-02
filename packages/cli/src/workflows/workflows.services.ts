@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import { FindConditions, In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -16,7 +16,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { ExternalHooks } from '@/ExternalHooks';
 import * as TagHelpers from '@/TagHelpers';
 import { WorkflowRequest } from '@/requests';
-import { IWorkflowDb, IWorkflowExecutionDataProcess, IWorkflowResponse } from '@/Interfaces';
+import type { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -25,7 +25,7 @@ import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { isSharingEnabled, whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
-	id?: number | string;
+	id?: string;
 	name?: string;
 	active?: boolean;
 }
@@ -45,28 +45,20 @@ const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFil
 export class WorkflowsService {
 	static async getSharing(
 		user: User,
-		workflowId: number | string,
+		workflowId: string,
 		relations: string[] = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedWorkflow | undefined> {
-		const options: FindOneOptions<SharedWorkflow> & { where: ObjectLiteral } = {
-			where: {
-				workflow: { id: workflowId },
-			},
-		};
+		const where: FindConditions<SharedWorkflow> = { workflowId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// workflows they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			options.where.user = { id: user.id };
+			where.userId = user.id;
 		}
 
-		if (relations?.length) {
-			options.relations = relations;
-		}
-
-		return Db.collections.SharedWorkflow.findOne(options);
+		return Db.collections.SharedWorkflow.findOne({ where, relations });
 	}
 
 	/**
@@ -118,11 +110,6 @@ export class WorkflowsService {
 	// Warning: this function is overridden by EE to disregard role list.
 	static async getWorkflowIdsForUser(user: User, roles?: string[]): Promise<string[]> {
 		return getSharedWorkflowIds(user, roles);
-	}
-
-	static entityToResponse(entity: WorkflowEntity): IWorkflowResponse {
-		const { id, ...rest } = entity;
-		return { ...rest, id: id.toString() };
 	}
 
 	static async getMany(user: User, rawFilter: string): Promise<WorkflowEntity[]> {
@@ -181,16 +168,14 @@ export class WorkflowsService {
 			relations.push('shared', 'shared.user', 'shared.role');
 		}
 
-		const query: FindManyOptions<WorkflowEntity> = {
+		return Db.collections.Workflow.find({
 			select: isSharingEnabled() ? [...fields, 'versionId'] : fields,
 			relations,
 			where: {
 				id: In(sharedWorkflowIds),
 				...filter,
 			},
-		};
-
-		return Db.collections.Workflow.find(query);
+		});
 	}
 
 	static async update(
@@ -310,17 +295,11 @@ export class WorkflowsService {
 			}
 		}
 
-		const options: FindManyOptions<WorkflowEntity> = {
-			relations: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete options.relations;
-		}
+		const relations = config.getEnv('workflowTagsDisabled') ? [] : ['tags'];
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
+		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, { relations });
 
 		if (updatedWorkflow === undefined) {
 			throw new ResponseHelper.BadRequestError(

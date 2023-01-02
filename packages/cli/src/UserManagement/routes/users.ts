@@ -426,13 +426,13 @@ export function usersNamespace(this: N8nApp): void {
 
 				await Db.transaction(async (transactionManager) => {
 					// Get all workflow ids belonging to user to delete
-					const sharedWorkflows = await transactionManager.getRepository(SharedWorkflow).find({
-						where: { user: userToDelete, role: workflowOwnerRole },
-					});
-
-					const sharedWorkflowIds = sharedWorkflows.map((sharedWorkflow) =>
-						sharedWorkflow.workflowId.toString(),
-					);
+					const sharedWorkflowIds = await transactionManager
+						.getRepository(SharedWorkflow)
+						.find({
+							select: ['workflowId'],
+							where: { userId: userToDelete.id, role: workflowOwnerRole },
+						})
+						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
 					// Prevents issues with unique key constraints since user being assigned
 					// workflows and credentials might be a sharee
@@ -451,21 +451,21 @@ export function usersNamespace(this: N8nApp): void {
 					// Now do the same for creds
 
 					// Get all workflow ids belonging to user to delete
-					const sharedCredentials = await transactionManager.getRepository(SharedCredentials).find({
-						where: { user: userToDelete, role: credentialOwnerRole },
-					});
-
-					const sharedCredentialIds = sharedCredentials.map((sharedCredential) =>
-						sharedCredential.credentialsId.toString(),
-					);
+					const sharedCredentialIds = await transactionManager
+						.getRepository(SharedCredentials)
+						.find({
+							select: ['credentialsId'],
+							where: { user: userToDelete, role: credentialOwnerRole },
+						})
+						.then((sharedCredentials) =>
+							sharedCredentials.map(({ credentialsId }) => credentialsId),
+						);
 
 					// Prevents issues with unique key constraints since user being assigned
 					// workflows and credentials might be a sharee
 					await transactionManager.delete(SharedCredentials, {
 						user: transferee,
-						credentials: In(
-							sharedCredentialIds.map((sharedCredentialId) => ({ id: sharedCredentialId })),
-						),
+						credentialsId: In(sharedCredentialIds),
 					});
 
 					// Transfer ownership of owned credentials
@@ -500,7 +500,7 @@ export function usersNamespace(this: N8nApp): void {
 					ownedSharedWorkflows.map(async ({ workflow }) => {
 						if (workflow.active) {
 							// deactivate before deleting
-							await this.activeWorkflowRunner.remove(workflow.id.toString());
+							await this.activeWorkflowRunner.remove(workflow.id);
 						}
 						return workflow;
 					}),
