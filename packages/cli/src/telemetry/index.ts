@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import RudderStack from '@rudderstack/rudder-sdk-node';
-import { PostHog } from 'posthog-node';
+import type RudderStack from '@rudderstack/rudder-sdk-node';
+import type { PostHog } from 'posthog-node';
 import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { IExecutionTrackProperties } from '@/Interfaces';
@@ -31,20 +31,14 @@ export class Telemetry {
 
 	private postHog?: PostHog;
 
-	private instanceId: string;
-
-	private versionCli: string;
-
 	private pulseIntervalReference: NodeJS.Timeout;
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(instanceId: string, versionCli: string) {
-		this.instanceId = instanceId;
-		this.versionCli = versionCli;
+	constructor(private instanceId: string, private versionCli: string) {}
 
+	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
-		const logLevel = config.getEnv('logs.level');
 		if (enabled) {
 			const conf = config.getEnv('diagnostics.config.backend');
 			const [key, url] = conf.split(';');
@@ -56,19 +50,18 @@ export class Telemetry {
 				return;
 			}
 
-			this.rudderStack = this.initRudderStack(key, url, logLevel);
-			this.postHog = this.initPostHog();
+			const logLevel = config.getEnv('logs.level');
+
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { default: RudderStack } = await import('@rudderstack/rudder-sdk-node');
+			this.rudderStack = new RudderStack(key, url, { logLevel });
+
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { PostHog } = await import('posthog-node');
+			this.postHog = new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'));
 
 			this.startPulse();
 		}
-	}
-
-	private initRudderStack(key: string, url: string, logLevel: string): RudderStack {
-		return new RudderStack(key, url, { logLevel });
-	}
-
-	private initPostHog(): PostHog {
-		return new PostHog(config.getEnv('diagnostics.config.posthog.apiKey'));
 	}
 
 	private startPulse() {
