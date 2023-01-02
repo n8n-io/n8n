@@ -2,8 +2,6 @@ import { LicenseManager } from '@n8n_io/license-sdk';
 import config from '@/config';
 import { License } from '@/License';
 
-jest.mock('@n8n_io/license-sdk');
-
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';

@@ -6,11 +6,7 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { LicenseManager } from '@n8n_io/license-sdk';
 import { License } from '@/License';
-
-jest.mock('@/telemetry');
-jest.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;

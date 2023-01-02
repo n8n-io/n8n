@@ -1,7 +1,9 @@
 import express from 'express';
+import axios from 'axios';
+import syslog from 'syslog-client';
+import { SuperAgentTest } from 'supertest';
+
 import config from '@/config';
-import * as utils from './shared/utils';
-import * as testDb from './shared/testDb';
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import {
@@ -13,19 +15,16 @@ import {
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
-import { SuperAgentTest } from 'supertest';
-import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
-import axios from 'axios';
-import syslog from 'syslog-client';
-import * as Sentry from '@sentry/node';
-import { MessageEventBusDestinationSyslog } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
-import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
+import * as utils from './shared/utils';
+import * as testDb from './shared/testDb';
 
-jest.mock('@/telemetry');
-// mocking Sentry to prevent destination constructor from throwing an errorn due to missing DSN
-jest.mock('@sentry/node');
+jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
+
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
