@@ -362,6 +362,7 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
+				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
