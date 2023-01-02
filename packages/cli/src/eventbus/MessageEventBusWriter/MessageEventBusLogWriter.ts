@@ -7,7 +7,7 @@ import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker';
 import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, LoggerProxy } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
@@ -101,9 +101,8 @@ export class MessageEventBusLogWriter {
 			new Worker(`${parse(__filename).name}Worker`),
 		);
 		if (this.#worker) {
-			// Thread.events(this.#worker).subscribe((event) => {});
 			Thread.errors(this.#worker).subscribe(async (error) => {
-				console.error('Event Bus Log Writer thread error:', error);
+				LoggerProxy.error('Event Bus Log Writer thread error', error);
 				await MessageEventBusLogWriter.#instance.#startThread();
 			});
 			return true;
@@ -197,14 +196,16 @@ export class MessageEventBusLogWriter {
 								results.sentMessages.push(...removedMessage);
 							}
 						}
-					} catch (error) {
-						console.log(error, line);
+					} catch {
+						LoggerProxy.error(
+							`Error reading line messages from file: ${logFileName}, line: ${line}`,
+						);
 					}
 				});
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
-			} catch (error) {
-				console.log(error);
+			} catch {
+				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return results;
