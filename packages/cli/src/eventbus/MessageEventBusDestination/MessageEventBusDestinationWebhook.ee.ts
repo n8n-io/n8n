@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -9,7 +10,6 @@ import axios, { AxiosRequestConfig, Method } from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import {
-	deepCopy,
 	jsonParse,
 	LoggerProxy,
 	MessageEventBusDestinationOptions,
@@ -192,7 +192,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonQuery);
 				} catch (_) {
-					console.log(`JSON parameter need to be an valid JSON`);
+					console.log('JSON parameter need to be an valid JSON');
 				}
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -212,7 +212,7 @@ export class MessageEventBusDestinationWebhook
 				try {
 					JSON.parse(this.jsonHeaders);
 				} catch (_) {
-					console.log(`JSON parameter need to be an valid JSON`);
+					console.log('JSON parameter need to be an valid JSON');
 				}
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

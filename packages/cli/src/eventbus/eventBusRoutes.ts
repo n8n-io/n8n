@@ -75,7 +75,7 @@ const isMessageEventBusDestinationOptions = (
 // Events
 // ----------------------------------------
 eventBusRouter.get(
-	`/event`,
+	'/event',
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isWithQueryString(req.query)) {
 			switch (req.query.query as EventMessageReturnMode) {
@@ -92,7 +92,7 @@ eventBusRouter.get(
 );
 
 eventBusRouter.post(
-	`/event`,
+	'/event',
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageOptions(req.body)) {
 			let msg;
@@ -121,7 +121,7 @@ eventBusRouter.post(
 // ----------------------------------------
 
 eventBusRouter.get(
-	`/destination`,
+	'/destination',
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		let result = [];
@@ -136,7 +136,7 @@ eventBusRouter.get(
 );
 
 eventBusRouter.post(
-	`/destination`,
+	'/destination',
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
@@ -171,14 +171,14 @@ eventBusRouter.post(
 				await result.saveToDb();
 				return result;
 			}
-			throw new BadRequestError(`There was an error adding the destination`);
+			throw new BadRequestError('There was an error adding the destination');
 		}
-		throw new BadRequestError(`Body is not configuring MessageEventBusDestinationOptions`);
+		throw new BadRequestError('Body is not configuring MessageEventBusDestinationOptions');
 	}),
 );
 
 eventBusRouter.get(
-	`/testmessage`,
+	'/testmessage',
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		let result = false;
@@ -190,7 +190,7 @@ eventBusRouter.get(
 );
 
 eventBusRouter.delete(
-	`/destination`,
+	'/destination',
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
@@ -212,7 +212,7 @@ eventBusRouter.delete(
 // ----------------------------------------
 
 eventBusRouter.get(
-	`/eventnames`,
+	'/eventnames',
 	ResponseHelper.send(async (): Promise<any> => {
 		return eventNamesAll;
 	}),

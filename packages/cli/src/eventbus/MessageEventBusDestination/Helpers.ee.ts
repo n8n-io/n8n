@@ -1,3 +1,4 @@
+/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
