@@ -145,7 +145,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		body.properties.autoRecalc = options.autoRecalc ? (options.autoRecalc as string) : undefined;
 		body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-		const response = await apiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+		const response = await apiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 		returnData.push(response);
 	}
 

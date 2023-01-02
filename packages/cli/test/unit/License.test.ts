@@ -19,7 +19,7 @@ describe('License', () => {
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 	});
 
-	let license;
+	let license: License;
 
 	beforeEach(async () => {
 		license = new License();
@@ -102,6 +102,6 @@ describe('License', () => {
 		jest.fn(license.getMainPlan).mockReset();
 
 		const mainPlan = license.getMainPlan();
-		expect(mainPlan.id).toBe(MOCK_MAIN_PLAN_ID);
+		expect(mainPlan?.id).toBe(MOCK_MAIN_PLAN_ID);
 	});
 });

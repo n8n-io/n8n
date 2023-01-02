@@ -18,7 +18,8 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
-const WEBHOOK_TEST_UNREGISTERED_HINT = `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`;
+const WEBHOOK_TEST_UNREGISTERED_HINT =
+	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
 export class TestWebhooks {
 	private testWebhookData: {
@@ -27,6 +28,7 @@ export class TestWebhooks {
 			timeout: NodeJS.Timeout;
 			workflowData: IWorkflowDb;
 			workflow: Workflow;
+			destinationNode?: string;
 		};
 	} = {};
 
@@ -128,6 +130,7 @@ export class TestWebhooks {
 						}
 						resolve(data);
 					},
+					this.testWebhookData[webhookKey].destinationNode,
 				);
 
 				if (executionId === undefined) {
@@ -230,6 +233,7 @@ export class TestWebhooks {
 				timeout,
 				workflow,
 				workflowData,
+				destinationNode,
 			};
 
 			try {

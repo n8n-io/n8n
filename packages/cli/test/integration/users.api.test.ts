@@ -161,13 +161,13 @@ test('DELETE /users/:id should delete the user', async () => {
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		relations: ['user'],
-		where: { user: userToDelete },
+		where: { user: userToDelete, role: workflowOwnerRole },
 	});
 	expect(sharedWorkflow).toBeUndefined(); // deleted
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['user'],
-		where: { user: userToDelete },
+		where: { user: userToDelete, role: credentialOwnerRole },
 	});
 	expect(sharedCredential).toBeUndefined(); // deleted
 

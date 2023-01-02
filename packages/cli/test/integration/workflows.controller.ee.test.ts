@@ -47,8 +47,6 @@ beforeAll(async () => {
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
-	config.set('enterprise.workflowSharingEnabled', true); // @TODO: Remove once temp flag is removed
-
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 
@@ -666,7 +664,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		expect(response.statusCode).toBe(400);
 	});
 
-	it('Should succeed but prevent modifying nodes that are read-only for the requester', async () => {
+	it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
 		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -676,7 +674,9 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			{
 				id: 'uuid-1234',
 				name: 'Start',
-				parameters: {},
+				parameters: {
+					firstParam: 123,
+				},
 				position: [-20, 260],
 				type: 'n8n-nodes-base.start',
 				typeVersion: 1,
@@ -693,8 +693,10 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			{
 				id: 'uuid-1234',
 				name: 'End',
-				parameters: {},
-				position: [-20, 260],
+				parameters: {
+					firstParam: 456,
+				},
+				position: [-20, 555],
 				type: 'n8n-nodes-base.no-op',
 				typeVersion: 1,
 				credentials: {
@@ -703,6 +705,27 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 						name: 'fake credential',
 					},
 				},
+				disabled: true,
+			},
+		];
+
+		const expectedNodes: INode[] = [
+			{
+				id: 'uuid-1234',
+				name: 'End',
+				parameters: {
+					firstParam: 123,
+				},
+				position: [-20, 555],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				credentials: {
+					default: {
+						id: savedCredential.id.toString(),
+						name: savedCredential.name,
+					},
+				},
+				disabled: true,
 			},
 		];
 
@@ -726,7 +749,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.nodes).toMatchObject(originalNodes);
+		expect(response.body.data.nodes).toMatchObject(expectedNodes);
 	});
 });
 

@@ -10,6 +10,8 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 
 	displayName = 'Venafi TLS Protect Cloud';
 
+	documentationUrl = 'venafitlsprotectcloud';
+
 	properties = [
 		{
 			displayName: 'API Key',

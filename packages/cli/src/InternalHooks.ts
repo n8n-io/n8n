@@ -20,6 +20,7 @@ import {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
+import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import { User } from './databases/entities/User';
 
@@ -150,6 +151,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 		).length;
 		Promise.all([
 			eventBus.sendAuditEvent({
+		let userRole: 'owner' | 'sharee' | undefined = undefined;
+		if (userId && workflow.id) {
+			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+			if (role) {
+				userRole = role.name === 'owner' ? 'owner' : 'sharee';
+			}
+		}
+
 				eventName: 'n8n.audit.workflow.updated',
 				payload: {
 					...userToPayload(user),
@@ -168,7 +177,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 					version_cli: this.versionCli,
 					num_tags: workflow.tags?.length ?? 0,
 					public_api: publicApi,
-				},
+					sharing_role: userRole,
+			},
 				{ withPostHog: true },
 			),
 		]).catch((error) => console.log(error));
@@ -301,6 +311,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes);
 				}
 
+				let userRole: 'owner' | 'sharee' | undefined = undefined;
+				if (userId) {
+					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+					if (role) {
+						userRole = role.name === 'owner' ? 'owner' : 'sharee';
+					}
+				}
+
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
 					workflow_id: workflow.id.toString(),
@@ -310,6 +328,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					node_graph_string: properties.node_graph_string as string,
 					error_node_id: properties.error_node_id as string,
 					webhook_domain: null,
+					sharing_role: userRole,
 				};
 
 				if (!manualExecEventProperties.node_graph_string) {
@@ -383,6 +402,26 @@ export class InternalHooksClass implements IInternalHooksClass {
 			this.telemetry.trackWorkflowExecution(properties),
 		]).catch((error) => console.log(error));
 		return;
+	}
+
+	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
+		const properties: ITelemetryTrackProperties = {
+			workflow_id: workflowId,
+			user_id_sharer: userId,
+			user_id_list: userList,
+		};
+
+		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
+	}
+
+	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
+		const properties: ITelemetryTrackProperties = {
+			workflow_id: workflowId,
+			user_id_sharer: userId,
+			user_id_list: userList,
+		};
+
+		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
 	}
 
 	async onN8nStop(): Promise<void> {

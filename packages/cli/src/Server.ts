@@ -362,7 +362,6 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -396,7 +395,6 @@ class App {
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -1010,7 +1008,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1040,7 +1038,7 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
+						throw new ResponseHelper.BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -1522,7 +1520,9 @@ class App {
 					identifier,
 				);
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				if (req.query.mode === 'download' && fileName) {
+					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				}
 				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},

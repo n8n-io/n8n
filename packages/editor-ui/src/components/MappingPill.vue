@@ -7,7 +7,6 @@ type Props = {
 withDefaults(defineProps<Props>(), {
 	canDrop: false,
 });
-
 </script>
 
 <template>

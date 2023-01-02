@@ -71,7 +71,7 @@ export async function msGraphSecurityApiRequest(
 }
 
 export function tolerateDoubleQuotes(filterQueryParameter: string) {
-	return filterQueryParameter.replace(/"/g, `'`);
+	return filterQueryParameter.replace(/"/g, "'");
 }
 
 export function throwOnEmptyUpdate(this: IExecuteFunctions) {

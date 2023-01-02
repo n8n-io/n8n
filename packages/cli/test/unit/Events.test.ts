@@ -1,6 +1,6 @@
 import config from '@/config';
-import { InternalHooksManager } from '../../src';
-import { nodeFetchedData, workflowExecutionCompleted } from '../../src/events/WorkflowStatistics';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
 
@@ -10,14 +10,14 @@ const mockedFirstProductionWorkflowSuccess = jest.fn((...args) => {});
 const mockedFirstWorkflowDataLoad = jest.fn((...args) => {});
 
 jest.spyOn(InternalHooksManager, 'getInstance').mockImplementation((...args) => {
-	const actual = jest.requireActual('../../src/InternalHooks');
+	const actual = jest.requireActual('@/InternalHooks');
 	return {
 		...actual,
 		onFirstProductionWorkflowSuccess: mockedFirstProductionWorkflowSuccess,
 		onFirstWorkflowDataLoad: mockedFirstWorkflowDataLoad,
 	};
 });
-jest.mock('../../src/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Workflow: {
@@ -36,7 +36,7 @@ jest.mock('../../src/Db', () => {
 		},
 	};
 });
-jest.mock('../../src/UserManagement/UserManagementHelper', () => {
+jest.mock('@/UserManagement/UserManagementHelper', () => {
 	return {
 		getWorkflowOwner: jest.fn((workflowId) => {
 			return { id: FAKE_USER_ID };

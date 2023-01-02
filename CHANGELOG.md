@@ -1,3 +1,93 @@
+## [0.209.4](https://github.com/n8n-io/n8n/compare/n8n@0.209.3...n8n@0.209.4) (2022-12-28)
+
+
+### Bug Fixes
+
+* **editor:** Add sticky note without manual trigger ([#5039](https://github.com/n8n-io/n8n/issues/5039)) ([18140e0](https://github.com/n8n-io/n8n/commit/18140e059bd95d51ad24a4ef4d6e6c72ce3137f3))
+* **editor:** Display default missing value in table view as `undefined` ([#5038](https://github.com/n8n-io/n8n/issues/5038)) ([33d7a13](https://github.com/n8n-io/n8n/commit/33d7a13e73dffc72b1a9aa4cf603e7758c65e40c))
+* **editor:** Fix displaying of some trigger nodes in the creator panel ([#5040](https://github.com/n8n-io/n8n/issues/5040)) ([4daf905](https://github.com/n8n-io/n8n/commit/4daf905ce264f6f76045a508e2f9ed849f2b1f5e))
+* **editor:** Fix trigger node type identification on add to canvas ([#5043](https://github.com/n8n-io/n8n/issues/5043)) ([2aba0c6](https://github.com/n8n-io/n8n/commit/2aba0c6d47d6d87038db6877a29e15ed079d712b))
+* **editor:** Usage and plans page on Desktop ([#5045](https://github.com/n8n-io/n8n/issues/5045)) ([26e2321](https://github.com/n8n-io/n8n/commit/26e2321a710d7b42559492a6605cef3a248d918e))
+
+
+### Features
+
+* **editor:** Switch to expression on `=` input ([#5044](https://github.com/n8n-io/n8n/issues/5044)) ([16bd761](https://github.com/n8n-io/n8n/commit/16bd7610fc337fa5ba9b0088b91396bb13570bcb))
+
+
+
+## [0.209.3](https://github.com/n8n-io/n8n/compare/n8n@0.209.2...n8n@0.209.3) (2022-12-27)
+
+
+### Bug Fixes
+
+* **core:** Do not send credentials to browser console ([#5031](https://github.com/n8n-io/n8n/issues/5031)) ([afc5297](https://github.com/n8n-io/n8n/commit/afc529799d5049e1ccaf249d191dce7ff237ee96))
+* **core:** Non owner should be permitted to use their own credentials ([#5036](https://github.com/n8n-io/n8n/issues/5036)) ([6efbac3](https://github.com/n8n-io/n8n/commit/6efbac307fb7b0e8436ad1dbd8662b8d1a2167f6))
+* **editor:** Fix for loading executions that are not on the current executions list ([#5035](https://github.com/n8n-io/n8n/issues/5035)) ([d0865e2](https://github.com/n8n-io/n8n/commit/d0865e28ffe78ce5ec201dab12b634cbdafcb4e8))
+* **editor:** Transparentize tertiary button on Usage page ([#5033](https://github.com/n8n-io/n8n/issues/5033)) ([d6bc760](https://github.com/n8n-io/n8n/commit/d6bc760ab4b003d6233df8428f373b4c8f760a7c))
+* **editor:** Update credential owner warning when sharing ([#5029](https://github.com/n8n-io/n8n/issues/5029)) ([a8f4efa](https://github.com/n8n-io/n8n/commit/a8f4efaf3ebc349c6ee073200e19ac57eb961ce9))
+
+
+### Features
+
+* **core:** Implement webhook-only manual execution ([#4960](https://github.com/n8n-io/n8n/issues/4960)) ([d113977](https://github.com/n8n-io/n8n/commit/d113977b10ffe1db879e7fa0807da8147e52ca5d))
+* **editor:** Improve UX for brace completion from selection ([#5024](https://github.com/n8n-io/n8n/issues/5024)) ([52077e2](https://github.com/n8n-io/n8n/commit/52077e2c45fca3d5830a39ca3416b073f783fbf5))
+
+
+
+## [0.209.2](https://github.com/n8n-io/n8n/compare/n8n@0.209.1...n8n@0.209.2) (2022-12-23)
+
+
+### Bug Fixes
+
+* **editor:** Ensure full tree on expression editor parse ([#5027](https://github.com/n8n-io/n8n/issues/5027)) ([47854eb](https://github.com/n8n-io/n8n/commit/47854ebc36c115110bd3cc65b3f1fd95a89fdb9d))
+* Fix automatic credential selection when credentials are shared ([#5020](https://github.com/n8n-io/n8n/issues/5020)) ([6a8448d](https://github.com/n8n-io/n8n/commit/6a8448da5fceae393a31f222981a33263de72c1a))
+
+
+### Performance Improvements
+
+* Improve workflows list performance ([#5021](https://github.com/n8n-io/n8n/issues/5021)) ([bb0eeda](https://github.com/n8n-io/n8n/commit/bb0eedada9afcae589c968ffcb583fae7b6e1959))
+
+
+
+## [0.209.1](https://github.com/n8n-io/n8n/compare/n8n@0.209.0...n8n@0.209.1) (2022-12-22)
+
+
+### Bug Fixes
+
+* **AWS DynamoDB Node:** Fix issue pagination and simplify issue [#4956](https://github.com/n8n-io/n8n/issues/4956) [#4957](https://github.com/n8n-io/n8n/issues/4957) ([#4959](https://github.com/n8n-io/n8n/issues/4959)) ([a43ea17](https://github.com/n8n-io/n8n/commit/a43ea177ebcc983ccc440662f397bf8b1698b4df))
+* DynamoDB node type issues ([#5002](https://github.com/n8n-io/n8n/issues/5002)) ([9568b74](https://github.com/n8n-io/n8n/commit/9568b747c74cd72fb7629e95a7555878b4ac4afb))
+* **editor:** Fix for executions preview scroll load and wrong execution displayed ([#4994](https://github.com/n8n-io/n8n/issues/4994)) ([bd0c2af](https://github.com/n8n-io/n8n/commit/bd0c2afaac37194efec8872f9fdb0a37a3f74c40))
+* **editor:** Force parse on long expressions ([#5009](https://github.com/n8n-io/n8n/issues/5009)) ([22fcc8f](https://github.com/n8n-io/n8n/commit/22fcc8f2be64fb381a64f12485d81b598ef406e5))
+* Issue with credentials and workflows not being matched correctly due to incorrect typing ([#5011](https://github.com/n8n-io/n8n/issues/5011)) ([746e848](https://github.com/n8n-io/n8n/commit/746e8487d250d77d91dabd8463f869a3e96d0fc2))
+* Restore missing tags in workflow retrieve ([#5004](https://github.com/n8n-io/n8n/issues/5004)) ([87d8865](https://github.com/n8n-io/n8n/commit/87d8865ad38e1e5b4a3bca7d807536975116ba82))
+* Show trigger actions again in nodes panel ([#5016](https://github.com/n8n-io/n8n/issues/5016)) ([e7cb190](https://github.com/n8n-io/n8n/commit/e7cb1907cdf90e9497c24f39f3e9b53e5470762c)), closes [#4976](https://github.com/n8n-io/n8n/issues/4976)
+
+
+
+# [0.209.0](https://github.com/n8n-io/n8n/compare/n8n@0.208.1...n8n@0.209.0) (2022-12-21)
+
+
+### Bug Fixes
+
+* **editor:** Correctly display trigger nodes without actions and with related regular node in the "On App Events" category ([#4976](https://github.com/n8n-io/n8n/issues/4976)) ([445463a](https://github.com/n8n-io/n8n/commit/445463a605f5f327f897b23a9b4504939358d0df))
+* Fix stickies resize ([#4986](https://github.com/n8n-io/n8n/issues/4986)) ([82f7635](https://github.com/n8n-io/n8n/commit/82f763589b21815e5ba91c10a4676d25f843eddd))
+* Hide trigger tooltip for nodes with static test output ([#4970](https://github.com/n8n-io/n8n/issues/4970)) ([5b11dc3](https://github.com/n8n-io/n8n/commit/5b11dc3ff9ff75eb7c65721e0d6c03707039e7ff))
+* Keep expression when dropping mapped value ([#4981](https://github.com/n8n-io/n8n/issues/4981)) ([87c7643](https://github.com/n8n-io/n8n/commit/87c76434a294f10474711ba3f023f2f4ca47f14d))
+* Prevent keyboard shortcuts in expression editor modal ([#4984](https://github.com/n8n-io/n8n/issues/4984)) ([29364ea](https://github.com/n8n-io/n8n/commit/29364ea7026e5e2a288b1866956f01e380ff05a0))
+* Redirect home to workflows always ([#4968](https://github.com/n8n-io/n8n/issues/4968)) ([90bfdfd](https://github.com/n8n-io/n8n/commit/90bfdfd577c02aee520545cf8758019042cdf99c))
+* Update mapping gifs ([#4982](https://github.com/n8n-io/n8n/issues/4982)) ([9d00b47](https://github.com/n8n-io/n8n/commit/9d00b4748b39f5c2b08721c5ee73e47b43230b9d))
+* Upgrade amqplib to address CVE-2022-0686 ([#4972](https://github.com/n8n-io/n8n/issues/4972)) ([570ed3b](https://github.com/n8n-io/n8n/commit/570ed3b52191cf3a162fcdaaabc8ab15fb0ef08c))
+* View option for binary-data shouldn't download the file on Chrome/Edge ([#4995](https://github.com/n8n-io/n8n/issues/4995)) ([e225c31](https://github.com/n8n-io/n8n/commit/e225c3190ea4cb5f68f642aab455ed0044fdecf9))
+
+
+### Features
+
+* **editor:** Add usage and plan pages ([#4819](https://github.com/n8n-io/n8n/issues/4819)) ([0da338f](https://github.com/n8n-io/n8n/commit/0da338f9b5f850b25e97383ae1f4cec8d0e4c17b)), closes [#4793](https://github.com/n8n-io/n8n/issues/4793) [#4842](https://github.com/n8n-io/n8n/issues/4842) [#4866](https://github.com/n8n-io/n8n/issues/4866) [#4875](https://github.com/n8n-io/n8n/issues/4875) [#4958](https://github.com/n8n-io/n8n/issues/4958) [#4979](https://github.com/n8n-io/n8n/issues/4979)
+* Update mapping pill for table/json views ([#4965](https://github.com/n8n-io/n8n/issues/4965)) ([343f53b](https://github.com/n8n-io/n8n/commit/343f53bf5393e86eb850d07de85b762476294656))
+
+
+
 ## [0.208.1](https://github.com/n8n-io/n8n/compare/n8n@0.208.0...n8n@0.208.1) (2022-12-19)
 
 
@@ -24,7 +114,6 @@
 * **editor:** Fix an issue where some node actions wouldn't select default params correctly ([#4946](https://github.com/n8n-io/n8n/issues/4946)) ([626879b](https://github.com/n8n-io/n8n/commit/626879b3a2f8f4fb6b1c365297d752f456a47610))
 * **editor:** Fix typo in retry-button option "Retry with original workflow" ([#4528](https://github.com/n8n-io/n8n/issues/4528)) ([76a3f13](https://github.com/n8n-io/n8n/commit/76a3f1345877599d46691f37878e3fc3fa062243))
 * Update permission for showing workflow caller policy ([#4916](https://github.com/n8n-io/n8n/issues/4916)) ([f73267f](https://github.com/n8n-io/n8n/commit/f73267ffa5b4a265ab6be52e887747487cae10c5))
-* Update pnpm-lock to fix build ([#4910](https://github.com/n8n-io/n8n/issues/4910)) ([66fdc53](https://github.com/n8n-io/n8n/commit/66fdc538085368921b10a123e11c45ba72061b8a))
 
 
 ### Features
@@ -66,7 +155,6 @@
 - Stop returning `UNKNOWN ERROR` in the response if an actual error message is available ([#4859](https://github.com/n8n-io/n8n/issues/4859)) ([4cb4c5e](https://github.com/n8n-io/n8n/commit/4cb4c5e8188fd930312e3bf720472af35731a968))
 - Update duplicate action ([#4858](https://github.com/n8n-io/n8n/issues/4858)) ([19e0e96](https://github.com/n8n-io/n8n/commit/19e0e962710070d4517b20b8c8b2b57392f2100a))
 - Upgrade sse-channel to mitigate CVE-2019-10744 ([#4835](https://github.com/n8n-io/n8n/issues/4835)) ([7e1a13f](https://github.com/n8n-io/n8n/commit/7e1a13f9b2cc110343f3dc1f26c9a0703eeee588))
-- Use license-sdk v1.6.1 ([#4872](https://github.com/n8n-io/n8n/issues/4872)) ([ebad81a](https://github.com/n8n-io/n8n/commit/ebad81a68beb787cd0146e2439872ae369c81aa5))
 
 ### Features
 
