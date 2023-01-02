@@ -1556,10 +1556,6 @@ class App {
 		// add Event Bus REST endpoints
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
-		if (process.env.NODE_ENV !== 'production') {
-			config.set('enterprise.features.logStreaming', true);
-		}
-
 		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------

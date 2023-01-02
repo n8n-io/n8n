@@ -574,6 +574,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: {
 		sharing: boolean;
+		logStreaming: boolean;
 	};
 	hideUsagePage: boolean;
 	license: {
