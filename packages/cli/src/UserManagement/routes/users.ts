@@ -480,7 +480,11 @@ export function usersNamespace(this: N8nApp): void {
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
 
-				void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+				void InternalHooksManager.getInstance().onUserDeletion({
+					user: req.user,
+					telemetryData,
+					publicApi: false,
+				});
 				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 				return { success: true };
 			}

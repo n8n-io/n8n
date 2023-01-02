@@ -149,16 +149,17 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const overlappingCount = Object.values(nodeGraph.notes).filter(
 			(note) => note.overlapping,
 		).length;
-		Promise.all([
-			eventBus.sendAuditEvent({
+
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
-		if (userId && workflow.id) {
-			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+		if (user.id && workflow.id) {
+			const role = await RoleService.getUserRoleForWorkflow(user.id, workflow.id.toString());
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
 		}
 
+		Promise.all([
+			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.workflow.updated',
 				payload: {
 					...userToPayload(user),
@@ -178,7 +179,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 					num_tags: workflow.tags?.length ?? 0,
 					public_api: publicApi,
 					sharing_role: userRole,
-			},
+				},
 				{ withPostHog: true },
 			),
 		]).catch((error) => console.log(error));
@@ -402,16 +403,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 			this.telemetry.trackWorkflowExecution(properties),
 		]).catch((error) => console.log(error));
 		return;
-	}
-
-	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
-		const properties: ITelemetryTrackProperties = {
-			workflow_id: workflowId,
-			user_id_sharer: userId,
-			user_id_list: userList,
-		};
-
-		return this.telemetry.track('User updated workflow sharing', properties, { withPostHog: true });
 	}
 
 	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {

@@ -140,8 +140,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
 				uiLocations: ['settings'],
 			},
-
-			},
 		],
 		draggable: {
 			isDragging: false,
