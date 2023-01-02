@@ -180,7 +180,8 @@ export class ExecutionsService {
 		const executingWorkflowIds: string[] = [];
 
 		if (config.getEnv('executions.mode') === 'queue') {
-			const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+			const queue = await Queue.getInstance();
+			const currentJobs = await queue.getJobs(['active', 'waiting']);
 			executingWorkflowIds.push(...currentJobs.map(({ data }) => data.executionId));
 		}
 

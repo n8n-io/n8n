@@ -76,13 +76,11 @@ class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
-	constructor() {
-		initErrorHandling();
-	}
-
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
+
+		await initErrorHandling();
 
 		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
@@ -114,7 +112,7 @@ class WorkflowRunnerProcess {
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
 		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
