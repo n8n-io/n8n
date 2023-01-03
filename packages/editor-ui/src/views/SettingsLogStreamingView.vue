@@ -11,7 +11,7 @@
 				</template>
 			</div>
 		</div>
-		<template v-if="isLicensed()">
+		<template v-if="isLicensed">
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
@@ -116,10 +116,12 @@ export default mixins(restApi).extend({
 		};
 	},
 	async mounted() {
+		if (!this.isLicensed) return;
+
 		this.isInstanceOwner = this.usersStore.currentUser?.globalRole?.name === 'owner';
 		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
-		const result = await this.credentialsStore.fetchAllCredentials();
+		await this.credentialsStore.fetchAllCredentials();
 		this.uiStore.nodeViewInitialized = false;
 
 		// fetch Destination data from the backend
@@ -166,6 +168,10 @@ export default mixins(restApi).extend({
 		environment() {
 			return process.env.NODE_ENV;
 		},
+		isLicensed(): boolean {
+			if (this.disableLicense === true) return false;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
+		},
 	},
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
@@ -196,10 +202,6 @@ export default mixins(restApi).extend({
 		},
 		storeHasItems(): boolean {
 			return this.logStreamingStore.items && Object.keys(this.logStreamingStore.items).length > 0;
-		},
-		isLicensed(): boolean {
-			if (this.disableLicense === true) return false;
-			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.LogStreaming);
 		},
 		async addDestination() {
 			const newDestination = deepCopy(defaultMessageEventBusDestinationOptions);
