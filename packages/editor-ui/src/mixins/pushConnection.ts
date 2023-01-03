@@ -64,8 +64,9 @@ export const pushConnection = mixins(
 			// always close the ws so that we do not end up with multiple ones
 			this.pushDisconnect();
 
-			// TODO: make this configurable
-			const connectionUrl = `ws://localhost:5678/rest/push?sessionId=${this.sessionId}`;
+			const connectionUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${
+				window.location.host + this.rootStore.getRestUrl
+			}/push?sessionId=${this.sessionId}`;
 
 			this.webSocket = new WebSocket(connectionUrl);
 			this.webSocket.addEventListener('message', this.pushMessageReceived, false);
