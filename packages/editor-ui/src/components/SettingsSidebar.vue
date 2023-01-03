@@ -146,7 +146,6 @@ export default mixins(userHelpers, pushConnection).extend({
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'environments':
 				case 'logging':
-				case 'sso':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
 					break;
 				case 'settings-community-nodes':
