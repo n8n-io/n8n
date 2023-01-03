@@ -219,7 +219,6 @@ class MessageEventBus extends EventEmitter {
 			case 'unsent':
 				queryResult = await this.logWriter?.getMessagesUnsent();
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}

@@ -122,7 +122,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: publicApi,
 			}),
 		]);
-		return;
 	}
 
 	async onWorkflowDeleted(user: User, workflowId: string, publicApi: boolean): Promise<void> {
@@ -140,7 +139,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: publicApi,
 			}),
 		]);
-		return;
 	}
 
 	async onWorkflowSaved(user: User, workflow: IWorkflowDb, publicApi: boolean): Promise<void> {
@@ -184,7 +182,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				{ withPostHog: true },
 			),
 		]);
-		return;
 	}
 
 	async onNodeBeforeExecute(
@@ -201,7 +198,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				workflowName: workflow.name,
 			},
 		});
-		return;
 	}
 
 	async onNodePostExecute(
@@ -209,18 +205,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflow: IWorkflowBase,
 		nodeName: string,
 	): Promise<void> {
-		eventBus
-			.sendNodeEvent({
-				eventName: 'n8n.node.finished',
-				payload: {
-					executionId,
-					nodeName,
-					workflowId: workflow.id?.toString(),
-					workflowName: workflow.name,
-				},
-			})
-			.catch((error) => console.log(error));
-		return;
+		void eventBus.sendNodeEvent({
+			eventName: 'n8n.node.finished',
+			payload: {
+				executionId,
+				nodeName,
+				workflowId: workflow.id?.toString(),
+				workflowName: workflow.name,
+			},
+		});
 	}
 
 	async onWorkflowBeforeExecute(
@@ -239,7 +232,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				},
 			}),
 		]);
-		return;
 	}
 
 	async onWorkflowPostExecute(
@@ -400,12 +392,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 				  }),
 		);
 
-		Promise.all([
-			...promises,
-			BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId),
-			this.telemetry.trackWorkflowExecution(properties),
-		]).catch((error) => console.log(error));
-		return;
+		await BinaryDataManager.getInstance().persistBinaryDataForExecutionId(executionId);
+
+		void Promise.all([...promises, this.telemetry.trackWorkflowExecution(properties)]);
 	}
 
 	async onWorkflowSharingUpdate(workflowId: string, userId: string, userList: string[]) {
@@ -446,7 +435,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: userDeletionData.publicApi,
 			}),
 		]);
-		return;
 	}
 
 	async onUserInvite(userInviteData: {
@@ -468,7 +456,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: userInviteData.public_api,
 			}),
 		]);
-		return;
 	}
 
 	async onUserReinvite(userReinviteData: {
@@ -490,7 +477,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: userReinviteData.public_api,
 			}),
 		]);
-		return;
 	}
 
 	async onUserRetrievedUser(userRetrievedData: {
@@ -549,7 +535,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				fields_changed: userUpdateData.fields_changed,
 			}),
 		]);
-		return;
 	}
 
 	async onUserInviteEmailClick(userInviteClickData: {
@@ -572,7 +557,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userInviteClickData.invitee.id,
 			}),
 		]);
-		return;
 	}
 
 	async onUserPasswordResetEmailClick(userPasswordResetData: { user: User }): Promise<void> {
@@ -587,7 +571,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userPasswordResetData.user.id,
 			}),
 		]);
-		return;
 	}
 
 	async onUserTransactionalEmail(userTransactionalEmailData: {
@@ -623,7 +606,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				public_api: apiKeyDeletedData.public_api,
 			}),
 		]);
-		return;
 	}
 
 	async onApiKeyCreated(apiKeyCreatedData: { user: User; public_api: boolean }): Promise<void> {
@@ -653,7 +635,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userPasswordResetData.user.id,
 			}),
 		]);
-		return;
 	}
 
 	async onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }): Promise<void> {
@@ -672,7 +653,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userSignupData.user.id,
 			}),
 		]);
-		return;
 	}
 
 	async onEmailFailed(failedEmailData: {
@@ -692,7 +672,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: failedEmailData.user.id,
 			}),
 		]);
-		return;
 	}
 
 	/**
@@ -723,7 +702,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				instance_id: this.instanceId,
 			}),
 		]);
-		return;
 	}
 
 	async onUserSharedCredentials(userSharedCredentialsData: {
@@ -758,7 +736,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				instance_id: this.instanceId,
 			}),
 		]);
-		return;
 	}
 
 	/**
@@ -803,7 +780,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				failure_reason: installationData.failure_reason,
 			}),
 		]);
-		return;
 	}
 
 	async onCommunityPackageUpdateFinished(updateData: {
@@ -838,7 +814,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				package_author_email: updateData.package_author_email,
 			}),
 		]);
-		return;
 	}
 
 	async onCommunityPackageDeleteFinished(deleteData: {
@@ -870,7 +845,6 @@ export class InternalHooksClass implements IInternalHooksClass {
 				package_author_email: deleteData.package_author_email,
 			}),
 		]);
-		return;
 	}
 
 	/**
