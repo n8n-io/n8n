@@ -92,10 +92,10 @@ class MessageEventBus extends EventEmitter {
 		const unsentMessages = await this.getEventsUnsent();
 		LoggerProxy.debug(
 			`Start logging into ${
-				(await this.logWriter.getThread()?.getLogFileName()) ?? 'unknown filename'
+				(await this.logWriter?.getThread()?.getLogFileName()) ?? 'unknown filename'
 			} `,
 		);
-		await this.logWriter.startLogging();
+		await this.logWriter?.startLogging();
 		await this.send(unsentMessages);
 
 		// if configured, run this test every n ms
@@ -154,7 +154,7 @@ class MessageEventBus extends EventEmitter {
 
 	async close() {
 		LoggerProxy.debug('Shutting down event writer...');
-		await this.logWriter.close();
+		await this.logWriter?.close();
 		for (const destinationName of Object.keys(this.destinations)) {
 			LoggerProxy.debug(
 				`Shutting down event destination ${this.destinations[destinationName].getId()}...`,
@@ -169,7 +169,7 @@ class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
-			await this.logWriter.putMessage(msg);
+			await this.logWriter?.putMessage(msg);
 			await this.#emitMessage(msg);
 		}
 	}
@@ -187,7 +187,7 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	async confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
-		await this.logWriter.confirmMessageSent(msg.id, source);
+		await this.logWriter?.confirmMessageSent(msg.id, source);
 	}
 
 	async #emitMessage(msg: EventMessageTypes) {
@@ -211,13 +211,13 @@ class MessageEventBus extends EventEmitter {
 		let queryResult: EventMessageTypes[];
 		switch (mode) {
 			case 'all':
-				queryResult = await this.logWriter.getMessages();
+				queryResult = await this.logWriter?.getMessages();
 				break;
 			case 'sent':
-				queryResult = await this.logWriter.getMessagesSent();
+				queryResult = await this.logWriter?.getMessagesSent();
 				break;
 			case 'unsent':
-				queryResult = await this.logWriter.getMessagesUnsent();
+				queryResult = await this.logWriter?.getMessagesUnsent();
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		const filtered = uniqby(queryResult, 'id');
