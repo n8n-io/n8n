@@ -229,7 +229,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: this.node.name,
 				properties: {
-					position: { position },
+					position,
 				},
 			};
 

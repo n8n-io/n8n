@@ -158,13 +158,14 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
+import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
 const exec = promisify(callbackExec);
 
-export const externalHooks: IExternalHooksClass = ExternalHooks();
+const externalHooks: IExternalHooksClass = ExternalHooks();
 
 class App {
 	app: express.Application;
@@ -269,7 +270,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		setupErrorMiddleware(this.app);
+		void setupErrorMiddleware(this.app);
 
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
@@ -331,9 +332,12 @@ class App {
 				smtpSetup: isEmailSetUp(),
 			},
 			publicApi: {
-				enabled: config.getEnv('publicApi.disabled') === false,
+				enabled: !config.getEnv('publicApi.disabled'),
 				latestVersion: 1,
 				path: config.getEnv('publicApi.path'),
+				swaggerUi: {
+					enabled: !config.getEnv('publicApi.swaggerUi.disabled'),
+				},
 			},
 			workflowTagsDisabled: config.getEnv('workflowTagsDisabled'),
 			logLevel: config.getEnv('logs.level'),
@@ -355,9 +359,11 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
-				workflowSharing: false,
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
+			license: {
+				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
+			},
 		};
 	}
 
@@ -385,7 +391,6 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
-			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -401,7 +406,11 @@ class App {
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await license.activate(activationKey);
+			try {
+				await license.activate(activationKey);
+			} catch (e) {
+				LoggerProxy.error('Could not activate license', e);
+			}
 		}
 	}
 
@@ -793,6 +802,11 @@ class App {
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
 
 		// ----------------------------------------
+		// License
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
+
+		// ----------------------------------------
 		// Workflow Statistics
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
@@ -969,8 +983,7 @@ class App {
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
 				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-
-				return activeWorkflows.map(({ id }) => id.toString());
+				return activeWorkflows.map(({ id }) => id);
 			}),
 		);
 
@@ -990,7 +1003,7 @@ class App {
 				});
 
 				if (!shared) {
-					LoggerProxy.info('User attempted to access workflow errors without permissions', {
+					LoggerProxy.verbose('User attempted to access workflow errors without permissions', {
 						workflowId,
 						userId: req.user.id,
 					});
@@ -1020,7 +1033,7 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
+						throw new ResponseHelper.BadRequestError('Invalid cURL command');
 					}
 				},
 			),
@@ -1288,7 +1301,8 @@ class App {
 			ResponseHelper.send(
 				async (req: ExecutionRequest.GetAllCurrent): Promise<IExecutionsSummary[]> => {
 					if (config.getEnv('executions.mode') === 'queue') {
-						const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+						const queue = await Queue.getInstance();
+						const currentJobs = await queue.getJobs(['active', 'waiting']);
 
 						const currentlyRunningQueueIds = currentJobs.map((job) => job.data.executionId);
 
@@ -1345,29 +1359,26 @@ class App {
 
 					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
-					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
-						ids.map((id) => id.toString()),
-					);
+					const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							(data.workflowId !== undefined &&
-								!sharedWorkflowIds.includes(data.workflowId.toString()))
+							(data.workflowId !== undefined && !sharedWorkflowIds.includes(data.workflowId))
 						) {
 							continue;
 						}
 
 						returnData.push({
-							id: data.id.toString(),
-							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							id: data.id,
+							workflowId: data.workflowId === undefined ? '' : data.workflowId,
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
 						});
 					}
 
-					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+					returnData.sort((a, b) => Number(b.id) - Number(a.id));
 
 					return returnData;
 				},
@@ -1419,14 +1430,15 @@ class App {
 						} as IExecutionsStopData;
 					}
 
-					const currentJobs = await Queue.getInstance().getJobs(['active', 'waiting']);
+					const queue = await Queue.getInstance();
+					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
+					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
 					} else {
-						await Queue.getInstance().stopJob(job);
+						await queue.stopJob(job);
 					}
 
 					const executionDb = (await Db.collections.Execution.findOne(
@@ -1504,7 +1516,9 @@ class App {
 					identifier,
 				);
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				if (req.query.mode === 'download' && fileName) {
+					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				}
 				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},

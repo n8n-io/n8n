@@ -14,9 +14,8 @@ import type {
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from './Interfaces';
-
-const inDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+} from '@/Interfaces';
+import { inDevelopment } from '@/constants';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -226,7 +225,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	};
 
 	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
+		returnData.id = fullExecutionData.id;
 	}
 
 	if (fullExecutionData.retryOf !== undefined) {
@@ -247,7 +246,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
+		id: fullExecutionData.id,
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,

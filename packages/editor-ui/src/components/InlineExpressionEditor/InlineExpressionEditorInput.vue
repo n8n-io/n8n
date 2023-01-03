@@ -39,19 +39,32 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
-			const range = this.editor?.state.selection.ranges[0];
+			const payload: Record<string, unknown> = {
+				changes: {
+					from: 0,
+					to: this.editor?.state.doc.length,
+					insert: newValue,
+				},
+				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
+			};
 
-			if (range !== undefined && range.from !== range.to) return;
+			/**
+			 * If completion from selection, preserve selection.
+			 */
+			if (this.editor) {
+				const [range] = this.editor.state.selection.ranges;
+
+				const isBraceAutoinsertion =
+					this.editor.state.sliceDoc(range.from - 1, range.from) === '{' &&
+					this.editor.state.sliceDoc(range.to, range.to + 1) === '}';
+
+				if (isBraceAutoinsertion) {
+					payload.selection = { anchor: range.from, head: range.to };
+				}
+			}
 
 			try {
-				this.editor?.dispatch({
-					changes: {
-						from: 0,
-						to: this.editor.state.doc.length,
-						insert: newValue,
-					},
-					selection: { anchor: this.cursorPosition, head: this.cursorPosition },
-				});
+				this.editor?.dispatch(payload);
 			} catch (_) {
 				// ignore out-of-range selection error on drop
 			}

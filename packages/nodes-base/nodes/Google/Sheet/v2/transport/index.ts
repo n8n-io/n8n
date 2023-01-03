@@ -55,11 +55,11 @@ export async function apiRequest(
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 
-			return this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else if (authenticationMethod === 'triggerOAuth2') {
-			return this.helpers.requestOAuth2!.call(this, 'googleSheetsTriggerOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleSheetsTriggerOAuth2Api', options);
 		} else {
-			return this.helpers.requestOAuth2!.call(this, 'googleSheetsOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleSheetsOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -105,7 +105,8 @@ export async function getAccessToken(
 		| IExecuteFunctions
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
-		| ICredentialTestFunctions,
+		| ICredentialTestFunctions
+		| IPollFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
@@ -126,7 +127,7 @@ export async function getAccessToken(
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -154,5 +155,5 @@ export async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

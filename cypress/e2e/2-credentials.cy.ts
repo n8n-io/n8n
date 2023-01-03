@@ -1,5 +1,5 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
-import { randFirstName, randLastName } from "@ngneat/falso";
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
+import { randFirstName, randLastName } from '@ngneat/falso';
 import { CredentialsPage, CredentialsModal } from '../pages';
 
 const email = DEFAULT_USER_EMAIL;
@@ -20,7 +20,7 @@ describe('Credentials', () => {
 			expect(err.message).to.include('Not logged in');
 
 			return false;
-		})
+		});
 
 		cy.signin({ email, password });
 		cy.visit(credentialsPage.url);

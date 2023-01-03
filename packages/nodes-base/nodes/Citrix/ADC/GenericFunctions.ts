@@ -35,7 +35,7 @@ export async function citrixADCApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'citrixAdcApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'citrixAdcApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

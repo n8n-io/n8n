@@ -13,10 +13,16 @@ export class InternalHooksManager {
 		throw new Error('InternalHooks not initialized');
 	}
 
-	static init(instanceId: string, versionCli: string, nodeTypes: INodeTypes): InternalHooksClass {
+	static async init(
+		instanceId: string,
+		versionCli: string,
+		nodeTypes: INodeTypes,
+	): Promise<InternalHooksClass> {
 		if (!this.internalHooksInstance) {
+			const telemetry = new Telemetry(instanceId, versionCli);
+			await telemetry.init();
 			this.internalHooksInstance = new InternalHooksClass(
-				new Telemetry(instanceId, versionCli),
+				telemetry,
 				instanceId,
 				versionCli,
 				nodeTypes,

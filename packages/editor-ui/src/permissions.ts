@@ -12,7 +12,7 @@ export enum UserRole {
 	InstanceOwner = 'isInstanceOwner',
 	ResourceOwner = 'isOwner',
 	ResourceEditor = 'isEditor',
-	ResourceReader = 'isReader',
+	ResourceSharee = 'isSharee',
 }
 
 export type IPermissions = Record<string, boolean>;
@@ -65,7 +65,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 				!isSharingEnabled,
 		},
 		{
-			name: UserRole.ResourceReader,
+			name: UserRole.ResourceSharee,
 			test: () =>
 				!!(
 					credential &&
@@ -75,7 +75,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		},
 		{
 			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader],
+			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
 		},
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -83,7 +83,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 		{ name: 'updateSharing', test: [UserRole.ResourceOwner] },
 		{ name: 'updateNodeAccess', test: [UserRole.ResourceOwner] },
 		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
-		{ name: 'use', test: [UserRole.ResourceOwner, UserRole.ResourceReader] },
+		{ name: 'use', test: [UserRole.ResourceOwner, UserRole.ResourceSharee] },
 	];
 
 	return parsePermissionsTable(user, table);
@@ -92,7 +92,7 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
 	const isSharingEnabled = settingsStore.isEnterpriseFeatureEnabled(
-		EnterpriseEditionFeature.WorkflowSharing,
+		EnterpriseEditionFeature.Sharing,
 	);
 	const isNewWorkflow = workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 
@@ -104,7 +104,7 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 				!isSharingEnabled,
 		},
 		{
-			name: UserRole.ResourceReader,
+			name: UserRole.ResourceSharee,
 			test: () =>
 				!!(
 					workflow &&
@@ -114,7 +114,7 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		},
 		{
 			name: 'read',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader],
+			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
 		},
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -124,7 +124,7 @@ export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb
 		{ name: 'delete', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{
 			name: 'use',
-			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader],
+			test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceSharee],
 		},
 	];
 

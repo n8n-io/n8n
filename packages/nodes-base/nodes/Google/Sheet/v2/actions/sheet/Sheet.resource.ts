@@ -155,13 +155,15 @@ export const descriptions: INodeProperties[] = [
 				type: 'string',
 				extractValue: {
 					type: 'regex',
-					regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+					regex:
+						'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 				},
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+							regex:
+								'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 							errorMessage: 'Not a valid Sheet URL',
 						},
 					},

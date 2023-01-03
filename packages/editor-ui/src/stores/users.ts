@@ -18,14 +18,16 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import {
+	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IUser,
 	IUserResponse,
 	IUsersState,
 } from '@/Interface';
+import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -61,6 +63,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		canUserDeleteTags(): boolean {
 			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
 		},
+		canUserActivateLicense(): boolean {
+			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
+		},
 		canUserAccessSidebarUserInfo() {
 			if (this.currentUser) {
 				const currentUser: IUser = this.currentUser;
@@ -86,6 +91,13 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return [];
 			}
 			return getPersonalizedNodeTypes(answers);
+		},
+		isResourceAccessible() {
+			return (resource: ICredentialsResponse): boolean => {
+				const permissions = getCredentialPermissions(this.currentUser, resource);
+
+				return permissions.use;
+			};
 		},
 	},
 	actions: {

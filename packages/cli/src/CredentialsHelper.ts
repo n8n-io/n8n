@@ -279,7 +279,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credential = userId
 			? await Db.collections.SharedCredentials.findOneOrFail({
 					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					where: { credentials: { id: nodeCredential.id, type }, userId },
 			  }).then((shared) => shared.credentials)
 			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
 
@@ -290,7 +290,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return new Credentials(
-			{ id: credential.id.toString(), name: credential.name },
+			{ id: credential.id, name: credential.name },
 			credential.type,
 			credential.nodesAccess,
 			credential.data,
@@ -581,7 +581,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			position: [0, 0],
 			credentials: {
 				[credentialType]: {
-					id: credentialsDecrypted.id.toString(),
+					id: credentialsDecrypted.id,
 					name: credentialsDecrypted.name,
 				},
 			},
@@ -762,8 +762,7 @@ export async function getCredentialForUser(
 export async function getCredentialWithoutUser(
 	credentialId: string,
 ): Promise<ICredentialsDb | undefined> {
-	const credential = await Db.collections.Credentials.findOne(credentialId);
-	return credential;
+	return Db.collections.Credentials.findOne(credentialId);
 }
 
 export function createCredentialsFromCredentialsEntity(
@@ -774,5 +773,5 @@ export function createCredentialsFromCredentialsEntity(
 	if (encrypt) {
 		return new Credentials({ id: null, name }, type, nodesAccess);
 	}
-	return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
+	return new Credentials({ id, name }, type, nodesAccess, data);
 }
