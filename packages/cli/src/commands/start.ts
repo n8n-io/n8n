@@ -17,7 +17,7 @@ import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
 
-import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
+import { LoggerProxy, sleep } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
@@ -329,82 +329,13 @@ export class Start extends Command {
 						LoggerProxy.error('n8n was unable to install the missing packages.');
 					}
 				}
-			}
-			if (missingPackages.size) {
+
 				config.set(
 					'nodes.packagesMissing',
 					Array.from(missingPackages)
 						.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
 						.join(' '),
 				);
-			}
-
-			if (config.getEnv('executions.mode') === 'queue') {
-				const redisHost = config.getEnv('queue.bull.redis.host');
-				const redisUsername = config.getEnv('queue.bull.redis.username');
-				const redisPassword = config.getEnv('queue.bull.redis.password');
-				const redisPort = config.getEnv('queue.bull.redis.port');
-				const redisDB = config.getEnv('queue.bull.redis.db');
-				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-				let lastTimer = 0;
-				let cumulativeTimeout = 0;
-
-				const settings = {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					retryStrategy: (times: number): number | null => {
-						const now = Date.now();
-						if (now - lastTimer > 30000) {
-							// Means we had no timeout at all or last timeout was temporary and we recovered
-							lastTimer = now;
-							cumulativeTimeout = 0;
-						} else {
-							cumulativeTimeout += now - lastTimer;
-							lastTimer = now;
-							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								logger.error(
-									// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-								);
-								process.exit(1);
-							}
-						}
-						return 500;
-					},
-				} as IDataObject;
-
-				if (redisHost) {
-					settings.host = redisHost;
-				}
-				if (redisUsername) {
-					settings.username = redisUsername;
-				}
-				if (redisPassword) {
-					settings.password = redisPassword;
-				}
-				if (redisPort) {
-					settings.port = redisPort;
-				}
-				if (redisDB) {
-					settings.db = redisDB;
-				}
-
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				const { default: Redis } = await import('ioredis');
-
-				// This connection is going to be our heartbeat
-				// IORedis automatically pings redis and tries to reconnect
-				// We will be using the retryStrategy above
-				// to control how and when to exit.
-				const redis = new Redis(settings);
-
-				redis.on('error', (error) => {
-					if (error.toString().includes('ECONNREFUSED') === true) {
-						logger.warn('Redis unavailable - trying to reconnect...');
-					} else {
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-						logger.warn('Error with Redis: ', error);
-					}
-				});
 			}
 
 			const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;

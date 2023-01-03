@@ -82,8 +82,7 @@ export class Webhook extends Command {
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		const isQueueMode = config.getEnv('executions.mode') === 'queue';
-		if (!isQueueMode) {
+		if (config.getEnv('executions.mode') !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
 			 * there are 2 known bugs when running in this mode:
@@ -146,73 +145,6 @@ export class Webhook extends Command {
 
 			const binaryDataConfig = config.getEnv('binaryDataManager');
 			await BinaryDataManager.init(binaryDataConfig);
-
-			if (isQueueMode) {
-				const redisHost = config.getEnv('queue.bull.redis.host');
-				const redisUsername = config.getEnv('queue.bull.redis.username');
-				const redisPassword = config.getEnv('queue.bull.redis.password');
-				const redisPort = config.getEnv('queue.bull.redis.port');
-				const redisDB = config.getEnv('queue.bull.redis.db');
-				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
-				let lastTimer = 0;
-				let cumulativeTimeout = 0;
-
-				const settings = {
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
-					retryStrategy: (times: number): number | null => {
-						const now = Date.now();
-						if (now - lastTimer > 30000) {
-							// Means we had no timeout at all or last timeout was temporary and we recovered
-							lastTimer = now;
-							cumulativeTimeout = 0;
-						} else {
-							cumulativeTimeout += now - lastTimer;
-							lastTimer = now;
-							if (cumulativeTimeout > redisConnectionTimeoutLimit) {
-								logger.error(
-									// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-									`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
-								);
-								process.exit(1);
-							}
-						}
-						return 500;
-					},
-				} as IDataObject;
-
-				if (redisHost) {
-					settings.host = redisHost;
-				}
-				if (redisUsername) {
-					settings.username = redisUsername;
-				}
-				if (redisPassword) {
-					settings.password = redisPassword;
-				}
-				if (redisPort) {
-					settings.port = redisPort;
-				}
-				if (redisDB) {
-					settings.db = redisDB;
-				}
-
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				const { default: Redis } = await import('ioredis');
-
-				// This connection is going to be our heartbeat
-				// IORedis automatically pings redis and tries to reconnect
-				// We will be using the retryStrategy above
-				// to control how and when to exit.
-				const redis = new Redis(settings);
-
-				redis.on('error', (error) => {
-					if (error.toString().includes('ECONNREFUSED') === true) {
-						logger.warn('Redis unavailable - trying to reconnect...');
-					} else {
-						logger.warn('Error with Redis: ', error);
-					}
-				});
-			}
 
 			const server = new WebhookServer();
 			await server.start();

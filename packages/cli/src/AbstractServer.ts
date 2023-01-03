@@ -7,6 +7,8 @@ import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
 import { getConnectionManager } from 'typeorm';
+import type { RedisOptions } from 'ioredis';
+
 import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
@@ -149,7 +151,7 @@ export abstract class AbstractServer {
 		this.app.use(corsMiddleware);
 	}
 
-	private setupHealthCheck() {
+	private async setupHealthCheck() {
 		this.app.use((req, res, next) => {
 			if (!Db.isInitialized) {
 				sendErrorResponse(res, new ServiceUnavailableError('Database is not ready!'));
@@ -177,6 +179,60 @@ export abstract class AbstractServer {
 
 			Logger.debug('Health check completed successfully!');
 			sendSuccessResponse(res, { status: 'ok' }, true, 200);
+		});
+
+		if (config.getEnv('executions.mode') === 'queue') {
+			await this.setupRedisChecks();
+		}
+	}
+
+	// This connection is going to be our heartbeat
+	// IORedis automatically pings redis and tries to reconnect
+	// We will be using a retryStrategy to control how and when to exit.
+	private async setupRedisChecks() {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Redis } = await import('ioredis');
+
+		let lastTimer = 0;
+		let cumulativeTimeout = 0;
+		const { host, port, username, password, db }: RedisOptions = config.getEnv('queue.bull.redis');
+		const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
+
+		const redis = new Redis({
+			host,
+			port,
+			db,
+			username,
+			password,
+			retryStrategy: (): number | null => {
+				const now = Date.now();
+				if (now - lastTimer > 30000) {
+					// Means we had no timeout at all or last timeout was temporary and we recovered
+					lastTimer = now;
+					cumulativeTimeout = 0;
+				} else {
+					cumulativeTimeout += now - lastTimer;
+					lastTimer = now;
+					if (cumulativeTimeout > redisConnectionTimeoutLimit) {
+						Logger.error(
+							`Unable to connect to Redis after ${redisConnectionTimeoutLimit}. Exiting process.`,
+						);
+						process.exit(1);
+					}
+				}
+				return 500;
+			},
+		});
+
+		redis.on('close', () => {
+			Logger.warn('Redis unavailable - trying to reconnect...');
+		});
+
+		redis.on('error', (error) => {
+			if (!String(error).includes('ECONNREFUSED')) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+				Logger.warn('Error with Redis: ', error);
+			}
 		});
 	}
 
@@ -374,7 +430,7 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		this.setupHealthCheck();
+		await this.setupHealthCheck();
 
 		await this.configure();
 
