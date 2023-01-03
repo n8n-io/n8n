@@ -29,6 +29,7 @@ export function walk<T extends RangeNode>(
 	return found as T[];
 }
 
+// @TODO: Dup - remove
 export const isAllowedInDotNotation = (str: string) => {
 	const DOT_NOTATION_BANNED_CHARS = /^(\d)|[\\ `!@#$%^&*()_+\-=[\]{};':"\\|,.<>?~]/g;
 
