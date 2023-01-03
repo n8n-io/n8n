@@ -354,6 +354,7 @@ export class Start extends Command {
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisUsername = config.getEnv('queue.bull.redis.username');
 					const redisPassword = config.getEnv('queue.bull.redis.password');
 					const redisPort = config.getEnv('queue.bull.redis.port');
 					const redisDB = config.getEnv('queue.bull.redis.db');
@@ -386,6 +387,9 @@ export class Start extends Command {
 
 					if (redisHost) {
 						settings.host = redisHost;
+					}
+					if (redisUsername) {
+						settings.username = redisUsername;
 					}
 					if (redisPassword) {
 						settings.password = redisPassword;
