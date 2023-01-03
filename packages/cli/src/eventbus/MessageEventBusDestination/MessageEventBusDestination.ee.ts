@@ -18,7 +18,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
 
-	__type: string;
+	__type: MessageEventBusDestinationTypeNames;
 
 	label: string;
 

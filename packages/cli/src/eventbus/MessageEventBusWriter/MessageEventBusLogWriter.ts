@@ -32,7 +32,7 @@ interface MessageEventBusLogWriterOptions {
  * MessageEventBusWriter for Files
  */
 export class MessageEventBusLogWriter {
-	static #instance: MessageEventBusLogWriter;
+	private static instance: MessageEventBusLogWriter;
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
@@ -47,8 +47,8 @@ export class MessageEventBusLogWriter {
 	static async getInstance(
 		options?: MessageEventBusLogWriterOptions,
 	): Promise<MessageEventBusLogWriter> {
-		if (!MessageEventBusLogWriter.#instance) {
-			MessageEventBusLogWriter.#instance = new MessageEventBusLogWriter();
+		if (!MessageEventBusLogWriter.instance) {
+			MessageEventBusLogWriter.instance = new MessageEventBusLogWriter();
 			MessageEventBusLogWriter.options = {
 				logBaseName: options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
 				logBasePath: options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
@@ -58,9 +58,9 @@ export class MessageEventBusLogWriter {
 				maxFileSizeInKB:
 					options?.maxFileSizeInKB ?? config.getEnv('eventBus.logWriter.maxFileSizeInKB'),
 			};
-			await MessageEventBusLogWriter.#instance.#startThread();
+			await MessageEventBusLogWriter.instance.startThread();
 		}
-		return MessageEventBusLogWriter.#instance;
+		return MessageEventBusLogWriter.instance;
 	}
 
 	/**
@@ -68,22 +68,22 @@ export class MessageEventBusLogWriter {
 	 *  then starts logging events into a fresh event log
 	 */
 	async startLogging() {
-		await MessageEventBusLogWriter.#instance.getThread()?.startLogging();
+		await MessageEventBusLogWriter.instance.getThread()?.startLogging();
 	}
 
 	/**
 	 *  Pauses all logging. Events are still received by the worker, they just are not logged any more
 	 */
 	async pauseLogging() {
-		await MessageEventBusLogWriter.#instance.getThread()?.pauseLogging();
+		await MessageEventBusLogWriter.instance.getThread()?.pauseLogging();
 	}
 
-	async #startThread() {
+	private async startThread() {
 		if (this.#worker) {
 			await this.close();
 		}
-		await MessageEventBusLogWriter.#instance.#spawnThread();
-		await MessageEventBusLogWriter.#instance
+		await MessageEventBusLogWriter.instance.spawnThread();
+		await MessageEventBusLogWriter.instance
 			.getThread()
 			?.initialize(
 				path.join(
@@ -96,14 +96,14 @@ export class MessageEventBusLogWriter {
 			);
 	}
 
-	async #spawnThread(): Promise<boolean> {
+	private async spawnThread(): Promise<boolean> {
 		this.#worker = await spawn<MessageEventBusLogWriterWorker>(
 			new Worker(`${parse(__filename).name}Worker`),
 		);
 		if (this.#worker) {
 			Thread.errors(this.#worker).subscribe(async (error) => {
 				LoggerProxy.error('Event Bus Log Writer thread error', error);
-				await MessageEventBusLogWriter.#instance.#startThread();
+				await MessageEventBusLogWriter.instance.startThread();
 			});
 			return true;
 		}
@@ -140,9 +140,9 @@ export class MessageEventBusLogWriter {
 		mode: EventMessageReturnMode = 'all',
 		includePreviousLog = true,
 	): Promise<EventMessageTypes[]> {
-		const logFileName0 = await MessageEventBusLogWriter.#instance.getThread()?.getLogFileName();
+		const logFileName0 = await MessageEventBusLogWriter.instance.getThread()?.getLogFileName();
 		const logFileName1 = includePreviousLog
-			? await MessageEventBusLogWriter.#instance.getThread()?.getLogFileName(1)
+			? await MessageEventBusLogWriter.instance.getThread()?.getLogFileName(1)
 			: undefined;
 		const results: {
 			loggedMessages: EventMessageTypes[];

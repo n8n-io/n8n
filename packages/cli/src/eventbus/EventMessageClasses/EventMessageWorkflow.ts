@@ -32,7 +32,7 @@ export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions
 }
 
 export class EventMessageWorkflow extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.workflow;
+	readonly __type = EventMessageTypeNames.workflow;
 
 	eventName: EventNamesWorkflowType;
 

@@ -108,7 +108,6 @@ importers:
       '@types/convict': ^4.2.1
       '@types/cookie-parser': ^1.4.2
       '@types/express': ^4.17.6
-      '@types/ioredis': ^4.0.0
       '@types/json-diff': ^0.5.1
       '@types/jsonwebtoken': ^8.5.2
       '@types/localtunnel': ^1.9.0
@@ -318,7 +317,6 @@ importers:
       '@types/convict': 4.2.1
       '@types/cookie-parser': 1.4.3
       '@types/express': 4.17.14
-      '@types/ioredis': 4.28.10
       '@types/json-diff': 0.5.2
       '@types/jsonwebtoken': 8.5.9
       '@types/localtunnel': 1.9.0
@@ -5760,12 +5758,6 @@ packages:
     dependencies:
       '@types/through': 0.0.30
       rxjs: 6.6.7
-    dev: true
-
-  /@types/ioredis/4.28.10:
-    resolution: {integrity: sha512-69LyhUgrXdgcNDv7ogs1qXZomnfOEnSmrmMFqKgt1XMJxmoOSG/u3wYy13yACIfKuMJ8IhKgHafDO3sx19zVQQ==}
-    dependencies:
-      '@types/node': 16.11.65
     dev: true
 
   /@types/is-function/1.0.1:

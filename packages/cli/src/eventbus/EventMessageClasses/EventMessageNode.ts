@@ -20,7 +20,7 @@ export interface EventMessageNodeOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageNode extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.node;
+	readonly __type = EventMessageTypeNames.node;
 
 	eventName: EventNamesNodeType;
 

@@ -14,7 +14,7 @@ export interface EventMessageGenericOptions extends AbstractEventMessageOptions 
 }
 
 export class EventMessageGeneric extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.generic;
+	readonly __type = EventMessageTypeNames.generic;
 
 	payload: EventPayloadGeneric;
 

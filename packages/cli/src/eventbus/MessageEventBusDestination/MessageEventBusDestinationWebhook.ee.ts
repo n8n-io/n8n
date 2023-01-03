@@ -37,8 +37,6 @@ export class MessageEventBusDestinationWebhook
 	extends MessageEventBusDestination
 	implements MessageEventBusDestinationWebhookOptions
 {
-	__type: string = MessageEventBusDestinationTypeNames.webhook;
-
 	url: string;
 
 	responseCodeMustMatch = false;
@@ -81,7 +79,7 @@ export class MessageEventBusDestinationWebhook
 		super(options);
 		this.url = options.url;
 		this.label = options.label ?? 'Webhook Endpoint';
-		if (options.__type) this.__type = options.__type;
+		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.webhook;
 		if (options.responseCodeMustMatch) this.responseCodeMustMatch = options.responseCodeMustMatch;
 		if (options.expectedStatusCode) this.expectedStatusCode = options.expectedStatusCode;
 		if (options.method) this.method = options.method;

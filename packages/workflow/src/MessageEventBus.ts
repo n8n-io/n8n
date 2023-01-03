@@ -25,7 +25,7 @@ export enum MessageEventBusDestinationTypeNames {
 // ===============================
 
 export interface MessageEventBusDestinationOptions {
-	__type?: string;
+	__type?: MessageEventBusDestinationTypeNames;
 	id?: string;
 	label?: string;
 	enabled?: boolean;

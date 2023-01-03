@@ -27,7 +27,7 @@ import {
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
 class MessageEventBus extends EventEmitter {
-	static #instance: MessageEventBus;
+	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
 
@@ -37,7 +37,7 @@ class MessageEventBus extends EventEmitter {
 		[key: string]: MessageEventBusDestination;
 	} = {};
 
-	#pushIntervalTimer: NodeJS.Timer;
+	private pushIntervalTimer: NodeJS.Timer;
 
 	constructor() {
 		super();
@@ -45,10 +45,10 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	static getInstance(): MessageEventBus {
-		if (!MessageEventBus.#instance) {
-			MessageEventBus.#instance = new MessageEventBus();
+		if (!MessageEventBus.instance) {
+			MessageEventBus.instance = new MessageEventBus();
 		}
-		return MessageEventBus.#instance;
+		return MessageEventBus.instance;
 	}
 
 	/**
@@ -100,11 +100,11 @@ class MessageEventBus extends EventEmitter {
 
 		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
-			if (this.#pushIntervalTimer) {
-				clearInterval(this.#pushIntervalTimer);
+			if (this.pushIntervalTimer) {
+				clearInterval(this.pushIntervalTimer);
 			}
-			this.#pushIntervalTimer = setInterval(async () => {
-				await this.#trySendingUnsent();
+			this.pushIntervalTimer = setInterval(async () => {
+				await this.trySendingUnsent();
 			}, config.getEnv('eventBus.checkUnsentInterval'));
 		}
 
@@ -141,13 +141,13 @@ class MessageEventBus extends EventEmitter {
 		return result;
 	}
 
-	async #trySendingUnsent(msgs?: EventMessageTypes[]) {
+	private async trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
 			LoggerProxy.debug(`Found unsent event messages: ${unsentMessages.length}`);
 			for (const unsentMsg of unsentMessages) {
 				LoggerProxy.debug(`Retrying: ${unsentMsg.id} ${unsentMsg.__type}`);
-				await this.#emitMessage(unsentMsg);
+				await this.emitMessage(unsentMsg);
 			}
 		}
 	}
@@ -170,7 +170,7 @@ class MessageEventBus extends EventEmitter {
 		}
 		for (const msg of msgs) {
 			await this.logWriter?.putMessage(msg);
-			await this.#emitMessage(msg);
+			await this.emitMessage(msg);
 		}
 	}
 
@@ -190,7 +190,7 @@ class MessageEventBus extends EventEmitter {
 		await this.logWriter?.confirmMessageSent(msg.id, source);
 	}
 
-	async #emitMessage(msg: EventMessageTypes) {
+	private async emitMessage(msg: EventMessageTypes) {
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emit('message', msg);
