@@ -852,7 +852,7 @@ importers:
 
   packages/workflow:
     specifiers:
-      '@n8n_io/riot-tmpl': ^1.0.1
+      '@n8n_io/riot-tmpl': ^2.0.0
       '@types/express': ^4.17.6
       '@types/jmespath': ^0.15.0
       '@types/lodash.get': ^4.4.6
@@ -869,7 +869,7 @@ importers:
       luxon: ~2.3.0
       xml2js: ^0.4.23
     dependencies:
-      '@n8n_io/riot-tmpl': 1.0.1
+      '@n8n_io/riot-tmpl': 2.0.0
       jmespath: 0.16.0
       lodash.get: 4.4.2
       lodash.isequal: 4.5.0
@@ -3397,8 +3397,8 @@ packages:
       - debug
     dev: false
 
-  /@n8n_io/riot-tmpl/1.0.1:
-    resolution: {integrity: sha512-+ig7/rafN3LGthGEi8fs1N5XxPndmRq5YAX92DWOar9mrMDrYyIjK5XAQaTnTMDQgmKKllrAl+bVRmQXKcLFuw==}
+  /@n8n_io/riot-tmpl/2.0.0:
+    resolution: {integrity: sha512-gQNJYlek30YIWLru2CdyFgU/0uvPAbbQwt2G5EN0PDxXD1rGAYWZsd2c94bW3YlvXT6V2GEd7Bt/gT6QUwhzfQ==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
