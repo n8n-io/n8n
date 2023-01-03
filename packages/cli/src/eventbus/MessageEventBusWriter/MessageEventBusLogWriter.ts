@@ -36,7 +36,7 @@ export class MessageEventBusLogWriter {
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
-	#worker: ModuleThread<MessageEventBusLogWriterWorker> | null;
+	private worker: ModuleThread<MessageEventBusLogWriterWorker> | null;
 
 	/**
 	 * Instantiates the Writer and the corresponding worker thread.
@@ -79,7 +79,7 @@ export class MessageEventBusLogWriter {
 	}
 
 	private async startThread() {
-		if (this.#worker) {
+		if (this.worker) {
 			await this.close();
 		}
 		await MessageEventBusLogWriter.instance.spawnThread();
@@ -97,11 +97,11 @@ export class MessageEventBusLogWriter {
 	}
 
 	private async spawnThread(): Promise<boolean> {
-		this.#worker = await spawn<MessageEventBusLogWriterWorker>(
+		this.worker = await spawn<MessageEventBusLogWriterWorker>(
 			new Worker(`${parse(__filename).name}Worker`),
 		);
-		if (this.#worker) {
-			Thread.errors(this.#worker).subscribe(async (error) => {
+		if (this.worker) {
+			Thread.errors(this.worker).subscribe(async (error) => {
 				LoggerProxy.error('Event Bus Log Writer thread error', error);
 				await MessageEventBusLogWriter.instance.startThread();
 			});
@@ -111,28 +111,28 @@ export class MessageEventBusLogWriter {
 	}
 
 	getThread(): ModuleThread<MessageEventBusLogWriterWorker> | undefined {
-		if (this.#worker) {
-			return this.#worker;
+		if (this.worker) {
+			return this.worker;
 		}
 		return;
 	}
 
 	async close(): Promise<void> {
-		if (this.#worker) {
-			await Thread.terminate(this.#worker);
-			this.#worker = null;
+		if (this.worker) {
+			await Thread.terminate(this.worker);
+			this.worker = null;
 		}
 	}
 
 	async putMessage(msg: EventMessageTypes): Promise<void> {
-		if (this.#worker) {
-			await this.#worker.appendMessageToLog(msg.serialize());
+		if (this.worker) {
+			await this.worker.appendMessageToLog(msg.serialize());
 		}
 	}
 
 	async confirmMessageSent(msgId: string, source?: EventMessageConfirmSource): Promise<void> {
-		if (this.#worker) {
-			await this.#worker.confirmMessageSent(new EventMessageConfirm(msgId, source).serialize());
+		if (this.worker) {
+			await this.worker.confirmMessageSent(new EventMessageConfirm(msgId, source).serialize());
 		}
 	}
 
