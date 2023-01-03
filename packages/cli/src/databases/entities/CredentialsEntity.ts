@@ -1,14 +1,16 @@
 import type { ICredentialNodeAccess } from 'n8n-workflow';
-import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Generated, Index, OneToMany, PrimaryColumn } from 'typeorm';
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
 import type { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { ICredentialsDb } from '@/Interfaces';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	@Column({ length: 128 })
 	@IsString({ message: 'Credential `name` must be of type string.' })

@@ -463,7 +463,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
 	const response = await authOwnerAgent.get(`/executions`).query({
-		workflowId: workflow.id.toString(),
+		workflowId: workflow.id,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -490,7 +490,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 		expect(retryOf).toBeNull();
 		expect(startedAt).not.toBeNull();
 		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(workflow.id.toString());
+		expect(workflowId).toBe(workflow.id);
 		expect(waitTill).toBeNull();
 	}
 });

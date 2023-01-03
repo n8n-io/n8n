@@ -1,12 +1,10 @@
-import * as Sentry from '@sentry/node';
-import { RewriteFrames } from '@sentry/integrations';
 import type { Application } from 'express';
 import config from '@/config';
 import { ErrorReporterProxy } from 'n8n-workflow';
 
 let initialized = false;
 
-export const initErrorHandling = () => {
+export const initErrorHandling = async () => {
 	if (initialized) return;
 
 	if (!config.getEnv('diagnostics.enabled')) {
@@ -20,7 +18,11 @@ export const initErrorHandling = () => {
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
-	Sentry.init({
+	const { init, captureException } = await import('@sentry/node');
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	const { RewriteFrames } = await import('@sentry/integrations');
+
+	init({
 		dsn,
 		release,
 		environment,
@@ -37,14 +39,16 @@ export const initErrorHandling = () => {
 	});
 
 	ErrorReporterProxy.init({
-		report: (error, options) => Sentry.captureException(error, options),
+		report: (error, options) => captureException(error, options),
 	});
 
 	initialized = true;
 };
 
-export const setupErrorMiddleware = (app: Application) => {
-	const { requestHandler, errorHandler } = Sentry.Handlers;
+export const setupErrorMiddleware = async (app: Application) => {
+	const {
+		Handlers: { requestHandler, errorHandler },
+	} = await import('@sentry/node');
 	app.use(requestHandler());
 	app.use(errorHandler());
 };

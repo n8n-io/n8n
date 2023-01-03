@@ -10,16 +10,6 @@ jest.mock('@/license/License.service', () => {
 	};
 });
 
-jest.mock('posthog-node');
-
-jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
-	return {
-		flush: () => {},
-		identify: () => {},
-		track: () => {},
-	};
-});
-
 describe('Telemetry', () => {
 	let startPulseSpy: jest.SpyInstance;
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
@@ -49,6 +39,11 @@ describe('Telemetry', () => {
 	beforeEach(() => {
 		spyTrack.mockClear();
 		telemetry = new Telemetry(instanceId, n8nVersion);
+		(telemetry as any).rudderStack = {
+			flush: () => {},
+			identify: () => {},
+			track: () => {},
+		};
 	});
 
 	afterEach(() => {

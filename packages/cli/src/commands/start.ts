@@ -12,7 +12,6 @@ import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-import Redis from 'ioredis';
 import stream from 'stream';
 import replaceStream from 'replacestream';
 import { promisify } from 'util';
@@ -225,7 +224,7 @@ export class Start extends Command {
 		LoggerProxy.init(logger);
 		logger.info('Initializing n8n process');
 
-		initErrorHandling();
+		await initErrorHandling();
 		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
@@ -351,6 +350,7 @@ export class Start extends Command {
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
+					const redisUsername = config.getEnv('queue.bull.redis.username');
 					const redisPassword = config.getEnv('queue.bull.redis.password');
 					const redisPort = config.getEnv('queue.bull.redis.port');
 					const redisDB = config.getEnv('queue.bull.redis.db');
@@ -384,6 +384,9 @@ export class Start extends Command {
 					if (redisHost) {
 						settings.host = redisHost;
 					}
+					if (redisUsername) {
+						settings.username = redisUsername;
+					}
 					if (redisPassword) {
 						settings.password = redisPassword;
 					}
@@ -393,6 +396,9 @@ export class Start extends Command {
 					if (redisDB) {
 						settings.db = redisDB;
 					}
+
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					const { default: Redis } = await import('ioredis');
 
 					// This connection is going to be our heartbeat
 					// IORedis automatically pings redis and tries to reconnect
@@ -466,7 +472,7 @@ export class Start extends Command {
 
 				const instanceId = await UserSettings.getInstanceId();
 				const { cli } = await GenericHelpers.getVersions();
-				InternalHooksManager.init(instanceId, cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig, true);
