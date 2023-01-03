@@ -161,7 +161,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[0-9]{2,}',
+									regex: '[0-9]{1,}',
 									errorMessage: 'Not a valid Sheet ID',
 								},
 							},
@@ -177,19 +177,15 @@ export class GoogleSheetsTrigger implements INodeType {
 					"It will be triggered also by newly created columns (if the 'Columns to Watch' option is not set)",
 				options: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Row(s) added',
+						name: 'Rows Added',
 						value: 'rowAdded',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Rows(s) updated',
+						name: 'Rows Updated',
 						value: 'rowUpdate',
 					},
-					// eslint-disable-next-line n8n-nodes-base/node-param-option-value-duplicate
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Rows(s) added or updated',
+						name: 'Rows Added or Updated',
 						value: 'anyUpdate',
 					},
 				],
@@ -463,6 +459,12 @@ export class GoogleSheetsTrigger implements INodeType {
 				const rangeDefinition = locationDefine.rangeDefinition as string;
 
 				if (rangeDefinition === 'specifyRangeA1') {
+					if (locationDefine.range === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							"The field 'Range' is empty, please provide a range",
+						);
+					}
 					range = locationDefine.range as string;
 					isRangeDefinedInOptions = true;
 				}
@@ -476,13 +478,12 @@ export class GoogleSheetsTrigger implements INodeType {
 				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 
-				if (cellDataFrom[2] !== undefined) {
+				if (rangeDefinition === 'specifyRangeA1' && cellDataFrom[2] !== undefined) {
 					keyRow = +cellDataFrom[2];
 					startIndex = +cellDataFrom[2] + 1;
 				} else {
 					range = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
 				}
-
 				keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
 				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
 			}
@@ -518,8 +519,6 @@ export class GoogleSheetsTrigger implements INodeType {
 				);
 
 				const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
-
-				console.log('addedRows', addedRows);
 
 				if (Array.isArray(sheetData)) {
 					const returnData = arrayOfArraysToJson(addedRows, columns);
@@ -602,12 +601,16 @@ export class GoogleSheetsTrigger implements INodeType {
 				!(error.error.error.message as string).toLocaleLowerCase().includes('unknown error') &&
 				!(error.error.error.message as string).toLocaleLowerCase().includes('bad request')
 			) {
-				const [message, ...description] = (error.error.error.message as string).split('. ');
+				// eslint-disable-next-line prefer-const
+				let [message, ...description] = (error.error.error.message as string).split('. ');
+				if (message.toLowerCase() === 'access not configured') {
+					message = 'Missing Google Drive API';
+				}
 				throw new NodeOperationError(this.getNode(), message, {
 					description: description.join('.\n '),
 				});
 			}
-			throw new NodeOperationError(this.getNode(), error);
+			throw error;
 		}
 		return null;
 	}

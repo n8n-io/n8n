@@ -115,12 +115,8 @@ export function compareRevisions(
 
 		// if columnsToWatch is defined, only compare those columns
 		if (columnsToWatch?.length) {
-			const currentRow = current[i]
-				? columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1])
-				: [];
-			const previousRow = previous[i]
-				? columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1])
-				: [];
+			const currentRow = getSpecificColumns(current[i], columnsToWatch, columns);
+			const previousRow = getSpecificColumns(previous[i], columnsToWatch, columns);
 
 			if (isEqual(currentRow, previousRow)) continue;
 		} else {
@@ -130,8 +126,17 @@ export function compareRevisions(
 		if (event === 'rowUpdate' && (!previous[i] || previous[i].every((cell) => cell === '')))
 			continue;
 
+		let changeType = 'updated';
 		if (previous[i] === undefined) {
 			previous[i] = current[i].map(() => '');
+			changeType = 'added';
+		}
+
+		if (current[i] === undefined) continue;
+
+		if (event === 'anyUpdate') {
+			current[i].push(changeType);
+			previous[i].push(changeType);
 		}
 
 		diffData.push({
@@ -139,6 +144,10 @@ export function compareRevisions(
 			previous: previous[i],
 			current: current[i],
 		});
+	}
+
+	if (event === 'anyUpdate') {
+		columns.push('change_type');
 	}
 
 	if (includeInOutput === 'old') {
@@ -198,3 +207,11 @@ export function columnNumberToLetter(colNumber: number) {
 	}
 	return colName;
 }
+
+const getSpecificColumns = (
+	row: SheetDataRow,
+	selectedColumns: SheetDataRow,
+	columns: SheetDataRow,
+) => {
+	return row ? selectedColumns.map((column) => row[columns.indexOf(column) - 1]) : [];
+};
