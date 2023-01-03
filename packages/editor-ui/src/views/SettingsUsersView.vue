@@ -49,6 +49,12 @@
 				@reinvite="onReinvite"
 			/>
 		</div>
+		<feature-coming-soon
+			v-for="fakeDoorFeature in fakeDoorFeatures"
+			:key="fakeDoorFeature.id"
+			:featureId="fakeDoorFeature.id"
+			showTitle
+		/>
 	</div>
 </template>
 
@@ -56,7 +62,8 @@
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
-import { IUser } from '@/Interface';
+import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
+import { IFakeDoor, IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -68,6 +75,7 @@ export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
 	components: {
 		PageAlert,
+		FeatureComingSoon,
 	},
 	async mounted() {
 		if (!this.usersStore.showUMSetupWarning) {
@@ -78,6 +86,9 @@ export default mixins(showMessage).extend({
 		...mapStores(useSettingsStore, useUIStore, useUsersStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		fakeDoorFeatures(): IFakeDoor[] {
+			return this.uiStore.getFakeDoorByLocation('settings/users');
 		},
 	},
 	methods: {
@@ -126,8 +137,6 @@ export default mixins(showMessage).extend({
 }
 
 .usersContainer {
-	padding-bottom: 100px;
-
 	> * {
 		margin-bottom: var(--spacing-2xs);
 	}
