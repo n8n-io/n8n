@@ -71,16 +71,8 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
  *
  * @param {(string | null | undefined)} id The id to check
  */
-export function isWorkflowIdValid(id: string | null | undefined | number): boolean {
-	if (typeof id === 'string') {
-		id = parseInt(id, 10);
-	}
-
-	// eslint-disable-next-line no-restricted-globals
-	if (isNaN(id as number)) {
-		return false;
-	}
-	return true;
+export function isWorkflowIdValid(id: string | null | undefined): boolean {
+	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
 }
 
 /**
@@ -97,7 +89,7 @@ export async function executeErrorWorkflow(
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
 		let workflowData;
-		if (workflowId.toString() !== workflowErrorData.workflow.id?.toString()) {
+		if (workflowId !== workflowErrorData.workflow.id) {
 			// To make this code easier to understand, we split it in 2 parts:
 			// 1) Fetch the owner of the errored workflows and then
 			// 2) if now instance owner, then check if the user has access to the
@@ -106,13 +98,10 @@ export async function executeErrorWorkflow(
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+				workflowData = await Db.collections.Workflow.findOne({ id: workflowId });
 			} else {
 				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
-					where: {
-						workflow: { id: workflowId },
-						user,
-					},
+					where: { workflowId, userId: user.id },
 					relations: ['workflow'],
 				});
 				if (sharedWorkflowData) {
@@ -120,7 +109,7 @@ export async function executeErrorWorkflow(
 				}
 			}
 		} else {
-			workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+			workflowData = await Db.collections.Workflow.findOne({ id: workflowId });
 		}
 
 		if (workflowData === undefined) {
@@ -250,11 +239,11 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 /**
  * Saves the given static data on workflow
  *
- * @param {(string | number)} workflowId The id of the workflow to save data on
+ * @param {(string)} workflowId The id of the workflow to save data on
  * @param {IDataObject} newStaticData The static data to save
  */
 export async function saveStaticDataById(
-	workflowId: string | number,
+	workflowId: string,
 	newStaticData: IDataObject,
 ): Promise<void> {
 	await Db.collections.Workflow.update(workflowId, {
@@ -265,10 +254,10 @@ export async function saveStaticDataById(
 /**
  * Returns the static data of workflow
  *
- * @param {(string | number)} workflowId The id of the workflow to get static data of
+ * @param {(string)} workflowId The id of the workflow to get static data of
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getStaticDataById(workflowId: string | number) {
+export async function getStaticDataById(workflowId: string) {
 	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
 		select: ['staticData'],
 	});
@@ -329,7 +318,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
 						credentialsByName[nodeCredentialType][name] = {
-							id: credentials[0].id.toString(),
+							id: credentials[0].id,
 							name: credentials[0].name,
 						};
 						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
@@ -364,7 +353,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 				});
 				if (credentials) {
 					credentialsById[nodeCredentialType][nodeCredentials.id] = {
-						id: credentials.id.toString(),
+						id: credentials.id,
 						name: credentials.name,
 					};
 					node.credentials[nodeCredentialType] =
@@ -380,7 +369,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 				if (credsByName?.length === 1) {
 					// add found credential to cache
 					credentialsById[nodeCredentialType][credsByName[0].id] = {
-						id: credsByName[0].id.toString(),
+						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
 					node.credentials[nodeCredentialType] =
@@ -410,9 +399,10 @@ export async function getSharedWorkflowIds(user: User, roles?: string[]): Promis
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
 		relations: ['workflow', 'role'],
 		where: whereClause({ user, entityType: 'workflow', roles }),
+		select: ['workflowId'],
 	});
 
-	return sharedWorkflows.map(({ workflowId }) => workflowId.toString());
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 /**
@@ -428,9 +418,12 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 		scope: 'workflow',
 	});
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
-		user,
-		role: workflowOwnerRole,
-	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+		where: {
+			user,
+			role: workflowOwnerRole,
+		},
+		select: ['workflowId'],
+	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
 
 	if (ownedWorkflowsIds.length > 15) {
 		belowThreshold = false;
@@ -538,7 +531,7 @@ export function validateWorkflowCredentialUsage(
 	 * - It's a new node which indicates tampering and therefore must fail saving
 	 */
 
-	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id.toString());
+	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
 	const nodesWithCredentialsUserDoesNotHaveAccessTo = getNodesWithInaccessibleCreds(
 		newWorkflowVersion,

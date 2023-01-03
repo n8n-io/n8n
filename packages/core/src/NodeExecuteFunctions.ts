@@ -91,6 +91,8 @@ import axios, {
 	Method,
 } from 'axios';
 import url, { URL, URLSearchParams } from 'url';
+import type { Readable } from 'stream';
+
 import { BinaryDataManager } from './BinaryDataManager';
 import type { IResponseError, IWorkflowSettings } from './Interfaces';
 import { extractValue } from './ExtractValue';
@@ -840,12 +842,12 @@ export async function getBinaryDataBuffer(
  *
  * @export
  * @param {IBinaryData} data
- * @param {Buffer} binaryData
+ * @param {Buffer | Readable} binaryData
  * @returns {Promise<IBinaryData>}
  */
 export async function setBinaryDataBuffer(
 	data: IBinaryData,
-	binaryData: Buffer,
+	binaryData: Buffer | Readable,
 	executionId: string,
 ): Promise<IBinaryData> {
 	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
@@ -907,7 +909,7 @@ export async function copyBinaryFile(
  * base64 and adds metadata.
  */
 async function prepareBinaryData(
-	binaryData: Buffer,
+	binaryData: Buffer | Readable,
 	executionId: string,
 	filePath?: string,
 	mimeType?: string,
@@ -924,7 +926,8 @@ async function prepareBinaryData(
 			}
 		}
 
-		if (!mimeType) {
+		// TODO: detect filetype from streams
+		if (!mimeType && Buffer.isBuffer(binaryData)) {
 			// Use buffer to guess mime type
 			const fileTypeData = await FileType.fromBuffer(binaryData);
 			if (fileTypeData) {

@@ -1,4 +1,5 @@
-import {
+import type { Readable } from 'stream';
+import type {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
@@ -67,7 +68,7 @@ export interface IBinaryDataManager {
 	copyBinaryFile(filePath: string, executionId: string): Promise<string>;
 	storeBinaryMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
 	getBinaryMetadata(identifier: string): Promise<BinaryMetadata>;
-	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
+	storeBinaryData(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	getBinaryPath(identifier: string): string;
 	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
