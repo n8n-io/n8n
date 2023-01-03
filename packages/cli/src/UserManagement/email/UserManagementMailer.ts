@@ -44,13 +44,16 @@ export class UserManagementMailer {
 
 	constructor() {
 		// Other implementations can be used in the future.
-		if (config.getEnv('userManagement.emails.mode') === 'smtp') {
+		if (
+			config.getEnv('userManagement.emails.mode') === 'smtp' &&
+			config.getEnv('userManagement.emails.smtp.host') !== ''
+		) {
 			this.mailer = new NodeMailer();
 		}
 	}
 
 	async verifyConnection(): Promise<void> {
-		if (!this.mailer) return Promise.reject();
+		if (!this.mailer) throw new Error('No mailer configured.');
 
 		return this.mailer.verifyConnection();
 	}

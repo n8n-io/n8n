@@ -153,13 +153,14 @@ export function usersNamespace(this: N8nApp): void {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
 					const resp: {
-						user: { id: string | null; email: string; inviteAcceptUrl: string };
+						user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
 						error?: string;
 					} = {
 						user: {
 							id,
 							email,
 							inviteAcceptUrl,
+							emailSent: false,
 						},
 					};
 					try {
@@ -169,6 +170,7 @@ export function usersNamespace(this: N8nApp): void {
 							domain: baseUrl,
 						});
 						if (result.emailSent) {
+							resp.user.emailSent = true;
 							void InternalHooksManager.getInstance().onUserTransactionalEmail({
 								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 								user_id: id!,
