@@ -7,3 +7,9 @@ export interface IUser {
 	isOwner: boolean;
 	isPendingUser: boolean;
 }
+
+export interface IUserListAction {
+	label: string;
+	value: string;
+	guard?: (user: IUser) => boolean;
+}
