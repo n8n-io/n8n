@@ -18,21 +18,14 @@ import {
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
 import { RoleService } from './role/role.service';
+import { N8N_VERSION } from './constants';
 
 export class InternalHooksClass implements IInternalHooksClass {
-	private versionCli: string;
-
-	private nodeTypes: INodeTypes;
-
 	constructor(
 		private telemetry: Telemetry,
 		private instanceId: string,
-		versionCli: string,
-		nodeTypes: INodeTypes,
-	) {
-		this.versionCli = versionCli;
-		this.nodeTypes = nodeTypes;
-	}
+		private nodeTypes: INodeTypes,
+	) {}
 
 	async onServerStarted(
 		diagnosticInfo: IDiagnosticInfo,
@@ -128,7 +121,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				node_graph_string: JSON.stringify(nodeGraph),
 				notes_count_overlapping: overlappingCount,
 				notes_count_non_overlapping: notesCount - overlappingCount,
-				version_cli: this.versionCli,
+				version_cli: N8N_VERSION,
 				num_tags: workflow.tags?.length ?? 0,
 				public_api: publicApi,
 				sharing_role: userRole,
@@ -152,7 +145,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		const properties: IExecutionTrackProperties = {
 			workflow_id: workflow.id,
 			is_manual: false,
-			version_cli: this.versionCli,
+			version_cli: N8N_VERSION,
 			success: false,
 		};
 

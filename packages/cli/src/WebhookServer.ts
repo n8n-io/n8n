@@ -28,6 +28,7 @@ import config from '@/config';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { corsMiddleware } from './middlewares/cors';
+import { N8N_VERSION } from './constants';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -174,8 +175,6 @@ class App {
 
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 
-	versions: IPackageVersions | undefined;
-
 	restEndpoint: string;
 
 	protocol: string;
@@ -225,8 +224,6 @@ class App {
 	}
 
 	async config(): Promise<void> {
-		this.versions = await GenericHelpers.getVersions();
-
 		// Compress the response data
 		this.app.use(compression());
 
@@ -347,9 +344,8 @@ export async function start(): Promise<void> {
 	}
 
 	server.listen(PORT, ADDRESS, async () => {
-		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
-		console.log(`Version: ${versions.cli}`);
+		console.log(`Version: ${N8N_VERSION}`);
 
 		await app.externalHooks.run('n8n.ready', [app, config]);
 	});

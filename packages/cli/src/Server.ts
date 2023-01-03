@@ -92,6 +92,7 @@ import {
 	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	N8N_VERSION,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -205,8 +206,6 @@ class App {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
 
 	push: Push.Push;
-
-	versions: IPackageVersions | undefined;
 
 	restEndpoint: string;
 
@@ -402,7 +401,7 @@ class App {
 
 	async initLicense(): Promise<void> {
 		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+		await license.init(this.frontendSettings.instanceId);
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
@@ -429,8 +428,7 @@ class App {
 			.then(() => true)
 			.catch(() => false);
 
-		this.versions = await GenericHelpers.getVersions();
-		this.frontendSettings.versionCli = this.versions.cli;
+		this.frontendSettings.versionCli = N8N_VERSION;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
@@ -1679,9 +1677,8 @@ export async function start(): Promise<void> {
 	}
 
 	server.listen(PORT, ADDRESS, async () => {
-		const versions = await GenericHelpers.getVersions();
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
-		console.log(`Version: ${versions.cli}`);
+		console.log(`Version: ${N8N_VERSION}`);
 
 		const defaultLocale = config.getEnv('defaultLocale');
 
@@ -1699,7 +1696,7 @@ export async function start(): Promise<void> {
 				'endpoints.disableProductionWebhooksOnMainProcess',
 			),
 			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			versionCli: versions.cli,
+			versionCli: N8N_VERSION,
 			systemInfo: {
 				os: {
 					type: os.type(),

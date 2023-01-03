@@ -5,15 +5,12 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import express from 'express';
-import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
-import type { n8n } from 'n8n-core';
 import {
 	ExecutionError,
 	IDataObject,
 	INode,
 	IRunExecutionData,
-	jsonParse,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -34,7 +31,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { TagEntity } from '@db/entities/TagEntity';
 import { User } from '@db/entities/User';
-import { CLI_DIR } from '@/constants';
+import { N8N_VERSION } from '@/constants';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -63,26 +60,7 @@ export function getSessionId(req: express.Request): string | undefined {
 }
 
 /**
- * Returns information which version of the packages are installed
- */
-export async function getVersions(): Promise<IPackageVersions> {
-	if (versionCache !== undefined) {
-		return versionCache;
-	}
-
-	const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
-	const packageData = jsonParse<n8n.PackageJson>(packageFile);
-
-	versionCache = {
-		cli: packageData.version,
-	};
-
-	return versionCache;
-}
-
-/**
  * Extracts configuration schema for key
- *
  */
 function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
 	const configKeyParts = configKey.split('.');
