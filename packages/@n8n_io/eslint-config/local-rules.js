@@ -106,6 +106,69 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-unneeded-backticks': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Template literal backticks may only be used for string interpolation or multiline strings.',
+				recommended: 'error',
+			},
+			messages: {
+				noUneededBackticks: 'Use single or double quotes, not backticks',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				TemplateLiteral(node) {
+					if (node.expressions.length > 0) return;
+					if (node.quasis.every((q) => q.loc.start.line !== q.loc.end.line)) return;
+
+					node.quasis.forEach((q) => {
+						const escaped = q.value.raw.replace(/(?<!\\)'/g, "\\'");
+
+						context.report({
+							messageId: 'noUneededBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(q, `'${escaped}'`),
+						});
+					});
+				},
+			};
+		},
+	},
+
+	'no-interpolation-in-regular-string': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'String interpolation `${...}` requires backticks, not single or double quotes.',
+				recommended: 'error',
+			},
+			messages: {
+				useBackticks: 'Use backticks to interpolate',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				Literal(node) {
+					if (typeof node.value !== 'string') return;
+
+					if (/\$\{/.test(node.value)) {
+						context.report({
+							messageId: 'useBackticks',
+							node,
+							fix: (fixer) => fixer.replaceText(node, `\`${node.value}\``),
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>

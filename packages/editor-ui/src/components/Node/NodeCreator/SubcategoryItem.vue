@@ -1,5 +1,5 @@
 <template>
-	<div :class="{[$style.subcategory]: true, [$style.subcategoryWithIcon]: hasIcon}">
+	<div :class="{ [$style.subcategory]: true, [$style.subcategoryWithIcon]: hasIcon }">
 		<node-icon v-if="hasIcon" :class="$style.subcategoryIcon" :nodeType="itemProperties" />
 		<div :class="$style.details">
 			<div :class="$style.title">
@@ -32,7 +32,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		itemProperties() : ISubcategoryItemProps {
+		itemProperties(): ISubcategoryItemProps {
 			return this.item.properties as ISubcategoryItemProps;
 		},
 		subcategoryName(): string {
@@ -44,7 +44,6 @@ export default Vue.extend({
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .subcategoryIcon {
@@ -95,5 +94,4 @@ export default Vue.extend({
 	width: 12px;
 	color: $node-creator-arrow-color;
 }
-
 </style>

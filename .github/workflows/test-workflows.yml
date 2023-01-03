@@ -101,3 +101,4 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Test workflows failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

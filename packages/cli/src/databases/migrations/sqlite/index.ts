@@ -22,6 +22,7 @@ import { CreateWorkflowsEditorRole1663755770892 } from './1663755770892-CreateWo
 import { CreateCredentialUsageTable1665484192211 } from './1665484192211-CreateCredentialUsageTable';
 import { RemoveCredentialUsageTable1665754637024 } from './1665754637024-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707124 } from './1669739707124-AddWorkflowVersionIdColumn';
+import { AddTriggerCountColumn1669823906993 } from './1669823906993-AddTriggerCountColumn';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -47,6 +48,7 @@ const sqliteMigrations = [
 	CreateCredentialUsageTable1665484192211,
 	RemoveCredentialUsageTable1665754637024,
 	AddWorkflowVersionIdColumn1669739707124,
+	AddTriggerCountColumn1669823906993,
 	WorkflowStatistics1664196174000,
 ];
 
