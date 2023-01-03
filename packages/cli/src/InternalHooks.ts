@@ -313,7 +313,8 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id as string);
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}
