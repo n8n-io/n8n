@@ -145,6 +145,16 @@ export const useUIStore = defineStore(STORES.UI, {
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
 				uiLocations: ['settings'],
 			},
+			{
+				id: FAKE_DOOR_FEATURES.SSO,
+				featureName: 'fakeDoor.settings.sso.name',
+				icon: 'key',
+				infoText: 'fakeDoor.settings.sso.infoText',
+				actionBoxTitle: 'fakeDoor.settings.sso.actionBox.title',
+				actionBoxDescription: 'fakeDoor.settings.sso.actionBox.description',
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sso',
+				uiLocations: ['settings'],
+			},
 		],
 		draggable: {
 			isDragging: false,
