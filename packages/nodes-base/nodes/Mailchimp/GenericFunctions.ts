@@ -29,7 +29,7 @@ export async function mailchimpApiRequest(
 		method,
 		qs,
 		body,
-		url: ``,
+		url: '',
 		json: true,
 	};
 

@@ -47,7 +47,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
 
-	static examples = [`$ n8n worker --concurrency=5`];
+	static examples = ['$ n8n worker --concurrency=5'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -72,7 +72,7 @@ export class Worker extends Command {
 	 * get removed.
 	 */
 	static async stopProcess() {
-		LoggerProxy.info(`Stopping n8n...`);
+		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -299,14 +299,15 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const redisConnectionTimeoutLimit = config.getEnv('queue.bull.redis.timeoutThreshold');
 
-				Worker.jobQueue = Queue.getInstance().getBullObjectInstance();
+				const queue = await Queue.getInstance();
+				Worker.jobQueue = queue.getBullObjectInstance();
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
 				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
-				InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);

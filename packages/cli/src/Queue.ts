@@ -1,9 +1,9 @@
-import Bull from 'bull';
+import type Bull from 'bull';
+import type { RedisOptions } from 'ioredis';
 import { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import { RedisOptions } from 'ioredis';
 
 export type Job = Bull.Job<JobData>;
 export type JobQueue = Bull.Queue<JobData>;
@@ -23,37 +23,17 @@ export interface WebhookResponse {
 }
 
 export class Queue {
-	private activeExecutions: ActiveExecutions.ActiveExecutions;
-
 	private jobQueue: JobQueue;
 
-	constructor() {
-		this.activeExecutions = ActiveExecutions.getInstance();
+	constructor(private activeExecutions: ActiveExecutions.ActiveExecutions) {}
 
+	async init() {
 		const prefix = config.getEnv('queue.bull.prefix');
-		const redisHost = config.getEnv('queue.bull.redis.host');
-		const redisUsername = config.getEnv('queue.bull.redis.username');
-		const redisPassword = config.getEnv('queue.bull.redis.password');
-		const redisPort = config.getEnv('queue.bull.redis.port');
-		const redisDB = config.getEnv('queue.bull.redis.db');
-		// retro-compatibility with redis < 6
-		// prepare new redis options setting in order to define only set values
-		const redisOptions: RedisOptions = {};
-		if (redisHost) {
-			redisOptions.host = redisHost;
-		}
-		if (redisUsername) {
-			redisOptions.username = redisUsername;
-		}
-		if (redisPassword) {
-			redisOptions.password = redisPassword;
-		}
-		if (redisPort) {
-			redisOptions.port = redisPort;
-		}
-		if (redisDB) {
-			redisOptions.db = redisDB;
-		}
+		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
+
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		const { default: Bull } = await import('bull');
+
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
 		// for some time. With it enabled, worker might take minutes to realize
@@ -112,9 +92,10 @@ export class Queue {
 
 let activeQueueInstance: Queue | undefined;
 
-export function getInstance(): Queue {
+export async function getInstance(): Promise<Queue> {
 	if (activeQueueInstance === undefined) {
-		activeQueueInstance = new Queue();
+		activeQueueInstance = new Queue(ActiveExecutions.getInstance());
+		await activeQueueInstance.init();
 	}
 
 	return activeQueueInstance;

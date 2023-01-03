@@ -742,7 +742,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			this.isDataLoading = true;
 
 			const filter = this.workflowFilterPast;
-			let lastId: string | number | undefined;
+			let lastId: string | undefined;
 
 			if (this.finishedExecutions.length !== 0) {
 				const lastItem = this.finishedExecutions.slice(-1)[0];

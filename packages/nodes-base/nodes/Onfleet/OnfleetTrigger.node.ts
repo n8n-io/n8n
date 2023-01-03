@@ -91,7 +91,7 @@ export class OnfleetTrigger implements INodeType {
 					newWebhookName = `n8n-webhook:${name}`;
 				}
 
-				const path = `/webhooks`;
+				const path = '/webhooks';
 				const body = {
 					name: newWebhookName,
 					url: webhookUrl,

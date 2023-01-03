@@ -5,6 +5,7 @@ import {
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
+	IWorkflowBase,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
@@ -12,7 +13,6 @@ import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
-	IWorkflowBase,
 	IWorkflowDb,
 	IExecutionTrackProperties,
 } from '@/Interfaces';
@@ -114,7 +114,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 		let userRole: 'owner' | 'sharee' | undefined = undefined;
 		if (userId && workflow.id) {
-			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+			const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id);
 			if (role) {
 				userRole = role.name === 'owner' ? 'owner' : 'sharee';
 			}
@@ -150,7 +150,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		}
 
 		const properties: IExecutionTrackProperties = {
-			workflow_id: workflow.id.toString(),
+			workflow_id: workflow.id,
 			is_manual: false,
 			version_cli: this.versionCli,
 			success: false,
@@ -208,7 +208,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 				let userRole: 'owner' | 'sharee' | undefined = undefined;
 				if (userId) {
-					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id.toString());
+					const role = await RoleService.getUserRoleForWorkflow(userId, workflow.id);
 					if (role) {
 						userRole = role.name === 'owner' ? 'owner' : 'sharee';
 					}
@@ -216,7 +216,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 				const manualExecEventProperties: ITelemetryTrackProperties = {
 					user_id: userId,
-					workflow_id: workflow.id.toString(),
+					workflow_id: workflow.id,
 					status: properties.success ? 'success' : 'failed',
 					error_message: properties.error_message as string,
 					error_node_type: properties.error_node_type,
@@ -512,14 +512,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 	 */
 	async onFirstProductionWorkflowSuccess(data: {
 		user_id: string;
-		workflow_id: string | number;
+		workflow_id: string;
 	}): Promise<void> {
 		return this.telemetry.track('Workflow first prod success', data, { withPostHog: true });
 	}
 
 	async onFirstWorkflowDataLoad(data: {
 		user_id: string;
-		workflow_id: string | number;
+		workflow_id: string;
 		node_type: string;
 		node_id: string;
 		credential_type?: string;
