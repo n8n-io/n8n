@@ -16,7 +16,6 @@ import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
-import SettingsSidebar from '@/components/SettingsSidebar.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -617,23 +616,6 @@ const router = new Router({
 					},
 				},
 			],
-		},
-		{
-			path: '/change-password',
-			name: VIEWS.CHANGE_PASSWORD,
-			components: {
-				default: ChangePasswordView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'auth',
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedOut],
-					},
-				},
-			},
 		},
 		{
 			path: '*',
