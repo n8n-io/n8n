@@ -1,33 +1,39 @@
+import { randFirstName, randLastName } from '@ngneat/falso';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { SettingsLogStreamingPage } from '../pages';
 
+const email = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
 const settingsLogStreamingPage = new SettingsLogStreamingPage();
 
-describe('Default owner', () => {
+describe('Log Streaming Settings', () => {
 	before(() => {
 		cy.resetAll();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
-	it('should skip owner setup', () => {
-		cy.skipSetup();
+	beforeEach(() => {
+		cy.signin({ email, password });
 	});
 
-	it('should be shown unlicensed view', () => {
+	it('should show the unlicensed view when the feature is disabled', () => {
 		cy.visit('/settings/log-streaming');
-		// force license to be disabled
-		settingsLogStreamingPage.getters.getDisableLicenseToggle().click();
 		settingsLogStreamingPage.getters.getActionBoxUnlicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getContactUsButton().should('be.visible');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('not.exist');
 	});
 
-	it('should be shown licensed view', () => {
+	it('should show the licensed view when the feature is enabled', () => {
+		cy.enableFeature('logStreaming');
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getAddFirstDestinationButton().should('be.visible');
 		settingsLogStreamingPage.getters.getActionBoxUnlicensed().should('not.exist');
 	});
 
-	it('should be shown the add destination modal', () => {
+	it('should show the add destination modal', () => {
 		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);

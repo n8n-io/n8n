@@ -1,9 +1,8 @@
 import { BasePage } from './base';
 
 export class SettingsLogStreamingPage extends BasePage {
-	url = '/settings/users';
+	url = '/settings/log-streaming';
 	getters = {
-		getDisableLicenseToggle: () => cy.getByTestId('disable-license-toggle'),
 		getActionBoxUnlicensed: () => cy.getByTestId('action-box-unlicensed'),
 		getActionBoxLicensed: () => cy.getByTestId('action-box-licensed'),
 		getDestinationModal: () => cy.getByTestId('destination-modal'),

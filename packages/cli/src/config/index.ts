@@ -30,7 +30,6 @@ const config = convict(schema);
 
 if (inE2ETests) {
 	config.set('enterprise.features.sharing', true);
-	config.set('enterprise.features.logStreaming', true);
 }
 
 config.getEnv = config.get;
