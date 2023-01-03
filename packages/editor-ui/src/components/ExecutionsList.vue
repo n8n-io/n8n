@@ -71,13 +71,14 @@
 			v-loading="isDataLoading"
 			:row-class-name="getRowClass"
 		>
-			<el-table-column width="40" align="right">
-				<template>
+			<el-table-column align="right" width="40">
+				<!-- eslint-disable-next-line vue/no-unused-vars -->
+				<template #header="scope">
 					<el-checkbox
 						:indeterminate="isIndeterminate"
 						v-model="checkAll"
 						@change="handleCheckAllChange"
-						label=" "
+						label=""
 					></el-checkbox>
 				</template>
 				<template #default="scope">
@@ -85,11 +86,15 @@
 						v-if="scope.row.stoppedAt !== undefined && scope.row.id"
 						:value="selectedItems[scope.row.id.toString()] || checkAll"
 						@change="handleCheckboxChanged(scope.row.id)"
-						label=" "
+						label=""
 					></el-checkbox>
 				</template>
 			</el-table-column>
-			<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
+			<el-table-column
+				width="auto"
+				property="workflowName"
+				:label="$locale.baseText('executionsList.name')"
+			>
 				<template #default="scope">
 					<div class="ph-no-capture">
 						<span>{{
@@ -149,7 +154,7 @@
 					</span>
 				</template>
 			</el-table-column>
-			<el-table-column property="mode" align="right">
+			<el-table-column property="mode" align="right" width="36">
 				<template #default="scope">
 					<font-awesome-icon v-if="scope.row.mode === 'manual'" icon="flask" />
 				</template>
@@ -177,7 +182,7 @@
 					</div>
 				</template>
 			</el-table-column>
-			<el-table-column align="right">
+			<el-table-column align="right" width="42">
 				<template #default="scope">
 					<el-dropdown trigger="click" @command="handleRetryClick">
 						<span class="retry-button">
