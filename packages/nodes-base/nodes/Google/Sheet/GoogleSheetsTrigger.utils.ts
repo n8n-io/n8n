@@ -13,7 +13,7 @@ export async function getRevisionFile(this: IPollFunctions, exportLink: string) 
 	const response = await apiRequest.call(
 		this,
 		'GET',
-		``,
+		'',
 		undefined,
 		{ mimeType },
 		exportLink,

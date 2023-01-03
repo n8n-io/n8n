@@ -139,13 +139,15 @@ export class GoogleSheetsTrigger implements INodeType {
 						type: 'string',
 						extractValue: {
 							type: 'regex',
-							regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+							regex:
+								'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 						},
 						validation: [
 							{
 								type: 'regex',
 								properties: {
-									regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+									regex:
+										'https:\\/\\/docs\\.google\\.com/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)',
 									errorMessage: 'Not a valid Sheet URL',
 								},
 							},
@@ -410,7 +412,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				const { revisions, nextPageToken } = await apiRequest.call(
 					this,
 					'GET',
-					``,
+					'',
 					undefined,
 					{
 						fields: 'revisions(id, exportLinks), nextPageToken',
