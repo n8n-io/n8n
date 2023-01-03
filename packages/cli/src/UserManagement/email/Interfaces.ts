@@ -20,8 +20,7 @@ export type PasswordResetData = {
 };
 
 export type SendEmailResult = {
-	success: boolean;
-	error?: Error;
+	emailSent: boolean;
 };
 
 export type MailData = {

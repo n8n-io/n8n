@@ -56,45 +56,37 @@ export class UserManagementMailer {
 	}
 
 	async invite(inviteEmailData: InviteEmailData): Promise<SendEmailResult> {
-		if (!this.mailer) return Promise.reject();
-
 		const template = await getTemplate('invite');
-		const result = await this.mailer.sendMail({
+		const result = await this.mailer?.sendMail({
 			emailRecipients: inviteEmailData.email,
 			subject: 'You have been invited to n8n',
 			body: template(inviteEmailData),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
-		return result ?? { success: true };
+		// No error, just say no email was sent.
+		return result ?? { emailSent: false };
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		if (!this.mailer) return Promise.reject();
-
 		const template = await getTemplate('passwordReset');
-		const result = await this.mailer.sendMail({
+		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template(passwordResetData),
 		});
 
 		// If mailer does not exist it means mail has been disabled.
-		return result ?? { success: true };
+		// No error, just say no email was sent.
+		return result ?? { emailSent: false };
 	}
 }
 
 let mailerInstance: UserManagementMailer | undefined;
 
-export async function getInstance(): Promise<UserManagementMailer> {
+export function getInstance(): UserManagementMailer {
 	if (mailerInstance === undefined) {
 		mailerInstance = new UserManagementMailer();
-		try {
-			await mailerInstance.verifyConnection();
-		} catch (error) {
-			mailerInstance = undefined;
-			throw error;
-		}
 	}
 	return mailerInstance;
 }

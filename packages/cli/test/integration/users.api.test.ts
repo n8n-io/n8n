@@ -571,12 +571,11 @@ test('POST /users/:id/reinvite should send reinvite, but fail if user already ac
 test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
 	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
 
-	// NodeMailer.verifyConnection called 1 time
 	const userManagementMailer = UserManagementMailer.getInstance();
-	// NodeMailer.verifyConnection called 2 time
+	// NodeMailer.verifyConnection gets called only explicitly
 	(await userManagementMailer).verifyConnection();
 
-	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(1);
 
 	// @ts-ignore
 	NodeMailer.prototype.verifyConnection.mockRestore();

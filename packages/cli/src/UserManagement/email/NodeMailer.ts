@@ -57,12 +57,9 @@ export class NodeMailer implements UserManagementMailerImplementation {
 		} catch (error) {
 			ErrorReporter.error(error);
 			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
-			return {
-				success: false,
-				error,
-			};
+			throw error;
 		}
 
-		return { success: true };
+		return { emailSent: true };
 	}
 }
