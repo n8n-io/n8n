@@ -33,9 +33,7 @@ export class MessageEventBusDestinationSentry
 
 	sendPayload: boolean;
 
-	sentryInitSuccessful = false;
-
-	sentryClient: Sentry.NodeClient;
+	sentryClient?: Sentry.NodeClient;
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
@@ -59,17 +57,15 @@ export class MessageEventBusDestinationSentry
 					stackParser: Sentry.defaultStackParser,
 				});
 				LoggerProxy.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
-				this.sentryInitSuccessful = true;
 			})
 			.catch((error) => {
-				this.sentryInitSuccessful = false;
 				console.error(error);
 			});
 	}
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
 		let sendResult = false;
-		if (!this.sentryInitSuccessful) return sendResult;
+		if (!this.sentryClient) return sendResult;
 		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
 			if (!isLogStreamingEnabled()) return sendResult;
 			if (!this.hasSubscribedToEvent(msg)) return sendResult;
@@ -136,7 +132,6 @@ export class MessageEventBusDestinationSentry
 
 	async close() {
 		await super.close();
-		// await Sentry.close();
-		await this.sentryClient.close();
+		await this.sentryClient?.close();
 	}
 }
