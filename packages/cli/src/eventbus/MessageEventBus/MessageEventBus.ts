@@ -3,7 +3,7 @@ import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
-import EventEmitter from 'node:events';
+import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';

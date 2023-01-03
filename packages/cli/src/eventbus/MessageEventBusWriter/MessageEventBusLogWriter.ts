@@ -18,7 +18,7 @@ import {
 	EventMessageConfirmSource,
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
-import { once as eventOnce } from 'node:events';
+import { once as eventOnce } from 'events';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'node:fs';
-import { appendFile, stat } from 'node:fs/promises';
+import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
+import { appendFile, stat } from 'fs/promises';
 import { expose, isWorkerRuntime } from 'threads/worker';
 
 // -----------------------------------------
