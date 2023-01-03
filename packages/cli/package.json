@@ -109,6 +109,7 @@
     "@rudderstack/rudder-sdk-node": "1.0.6",
     "@sentry/integrations": "^7.28.1",
     "@sentry/node": "^7.28.1",
+    "@types/express-ws": "^3.0.1",
     "axios": "^0.21.1",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
@@ -129,6 +130,7 @@
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
     "express-openapi-validator": "^4.13.6",
+    "express-ws": "^5.0.2",
     "fast-glob": "^3.2.5",
     "flatted": "^3.2.4",
     "google-timezones-json": "^1.0.2",
@@ -179,6 +181,7 @@
     "uuid": "^8.3.2",
     "validator": "13.7.0",
     "winston": "^3.3.3",
+    "ws": "^8.11.0",
     "yamljs": "^0.3.0"
   }
 }

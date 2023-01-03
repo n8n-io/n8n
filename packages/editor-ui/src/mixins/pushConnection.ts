@@ -34,7 +34,7 @@ export const pushConnection = mixins(
 ).extend({
 	data() {
 		return {
-			eventSource: null as EventSource | null,
+			webSocket: null as WebSocket | null,
 			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
@@ -58,19 +58,19 @@ export const pushConnection = mixins(
 		},
 
 		/**
-		 * Connect to server to receive data via EventSource
+		 * Connect to server to receive data via a WebSocket
 		 */
 		pushConnect(): void {
-			// Make sure existing event-source instances get
-			// always removed that we do not end up with multiple ones
+			// always close the ws so that we do not end up with multiple ones
 			this.pushDisconnect();
 
-			const connectionUrl = `${this.rootStore.getRestUrl}/push?sessionId=${this.sessionId}`;
+			// TODO: make this configurable
+			const connectionUrl = `ws://localhost:5678/rest/push?sessionId=${this.sessionId}`;
 
-			this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
-			this.eventSource.addEventListener('message', this.pushMessageReceived, false);
+			this.webSocket = new WebSocket(connectionUrl);
+			this.webSocket.addEventListener('message', this.pushMessageReceived, false);
 
-			this.eventSource.addEventListener(
+			this.webSocket.addEventListener(
 				'open',
 				() => {
 					this.rootStore.pushConnectionActive = true;
@@ -82,7 +82,7 @@ export const pushConnection = mixins(
 				false,
 			);
 
-			this.eventSource.addEventListener(
+			this.webSocket.addEventListener(
 				'error',
 				() => {
 					this.pushDisconnect();
@@ -103,9 +103,9 @@ export const pushConnection = mixins(
 		 * Close connection to server
 		 */
 		pushDisconnect(): void {
-			if (this.eventSource !== null) {
-				this.eventSource.close();
-				this.eventSource = null;
+			if (this.webSocket !== null) {
+				this.webSocket.close();
+				this.webSocket = null;
 
 				this.rootStore.pushConnectionActive = false;
 			}

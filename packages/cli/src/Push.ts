@@ -1,52 +1,44 @@
-import SSEChannel from 'sse-channel';
-import type { Request, Response } from 'express';
-
+import * as WebSocket from 'ws';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { IPushData, IPushDataType } from '@/Interfaces';
 
 export class Push {
-	private channel = new SSEChannel();
+	// Holds all active connections
+	private connections: Record<string, WebSocket> = {};
 
-	private connections: Record<string, Response> = {};
+	/**
+	 * Adds a new push connection
+	 *
+	 * @param {WebSocket} ws The websocket connection
+	 * @param {string} sessionId The session id of the client
+	 */
+	add(ws: WebSocket, sessionId: string) {
+		Logger.debug('Add editor-UI session', { sessionId });
 
-	constructor() {
-		this.channel.on('disconnect', (channel: string, res: Response) => {
-			if (res.req !== undefined) {
-				const { sessionId } = res.req.query;
+		if (this.connections[sessionId] !== undefined) {
+			// Make sure to remove existing connection with the same id
+			this.connections[sessionId].close();
+			delete this.connections[sessionId];
+		}
+
+		this.connections[sessionId] = ws;
+
+		// Makes sure to remove the session if the connection is closed
+		ws.on('close', () => {
+			if (sessionId !== undefined) {
 				Logger.debug('Remove editor-UI session', { sessionId });
-				delete this.connections[sessionId as string];
+				delete this.connections[sessionId];
 			}
 		});
 	}
 
 	/**
-	 * Adds a new push connection
-	 *
-	 * @param {string} sessionId The id of the session
-	 * @param {Request} req The request
-	 * @param {Response} res The response
-	 */
-	add(sessionId: string, req: Request, res: Response) {
-		Logger.debug('Add editor-UI session', { sessionId });
-
-		if (this.connections[sessionId] !== undefined) {
-			// Make sure to remove existing connection with the same session
-			// id if one exists already
-			this.connections[sessionId].end();
-			this.channel.removeClient(this.connections[sessionId]);
-		}
-
-		this.connections[sessionId] = res;
-		this.channel.addClient(req, res);
-	}
-
-	/**
 	 * Sends data to the client which is connected via a specific session
 	 *
-	 * @param {string} sessionId The session id of client to send data to
-	 * @param {string} type Type of data to send
+	 * @param {IPushDataType} type The type of data to send
+	 * @param {*} data The data to send
+	 * @param {string} [sessionId] The session id of the client to send to
 	 */
-
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	send(type: IPushDataType, data: any, sessionId?: string) {
 		if (sessionId !== undefined && this.connections[sessionId] === undefined) {
@@ -62,12 +54,15 @@ export class Push {
 			data,
 		};
 
+		// TODO: Check if this is still needed
 		if (sessionId === undefined) {
 			// Send to all connected clients
-			this.channel.send(JSON.stringify(sendData));
+			Object.values(this.connections).forEach((ws) => {
+				ws.send(JSON.stringify(sendData));
+			});
 		} else {
 			// Send only to a specific client
-			this.channel.send(JSON.stringify(sendData), [this.connections[sessionId]]);
+			this.connections[sessionId].send(JSON.stringify(sendData));
 		}
 	}
 }

@@ -36,6 +36,7 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import expressWs from 'express-ws';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
@@ -634,26 +635,7 @@ class App {
 		// Parse cookies for easier access
 		this.app.use(cookieParser());
 
-		// Get push connections
-		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
-			const { sessionId } = req.query;
-			if (sessionId === undefined) {
-				next(new Error('The query parameter "sessionId" is missing!'));
-				return;
-			}
-
-			if (isUserManagementEnabled()) {
-				try {
-					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
-					await resolveJwt(authCookie);
-				} catch (error) {
-					res.status(401).send('Unauthorized');
-					return;
-				}
-			}
-
-			this.push.add(sessionId as string, req, res);
-		});
+		// WS here!
 
 		// Compress the response data
 		this.app.use(compression());
@@ -1655,6 +1637,44 @@ class App {
 			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
+
+	configWebSocket(server: any) {
+		// Add websocket middleware
+		const app = expressWs(this.app, server).app;
+
+		// Push connection endpoint
+		app.ws(`/${this.restEndpoint}/push`, async (ws, req, next) => {
+			ws.send('connected to n8n :)');
+
+			const { sessionId } = req.query;
+			if (sessionId === undefined) {
+				// TODO: Test if expected
+				next(new Error('The query parameter "sessionId" is missing!'));
+				ws.close();
+				return;
+			}
+
+			// Handle authentication
+			if (isUserManagementEnabled()) {
+				try {
+					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
+					await resolveJwt(authCookie);
+				} catch (error) {
+					ws.send('401 Unauthorized :(');
+					ws.close();
+					return;
+				}
+			}
+
+			// Add the connection to the push service
+			try {
+				await this.push.add(ws, sessionId as string);
+			} catch (error) {
+				next(error);
+				ws.close();
+			}
+		});
+	}
 }
 
 export async function start(): Promise<void> {
@@ -1677,6 +1697,8 @@ export async function start(): Promise<void> {
 		const http = require('http');
 		server = http.createServer(app.app);
 	}
+
+	app.configWebSocket(server);
 
 	server.listen(PORT, ADDRESS, async () => {
 		const versions = await GenericHelpers.getVersions();
