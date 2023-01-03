@@ -434,7 +434,6 @@
 	"executionsList.error": "Failed",
 	"executionsList.filters": "Filters",
 	"executionsList.loadMore": "Load More",
-	"executionsList.mode": "Mode",
 	"executionsList.modes.error": "error",
 	"executionsList.modes.integrated": "integrated",
 	"executionsList.modes.manual": "manual",

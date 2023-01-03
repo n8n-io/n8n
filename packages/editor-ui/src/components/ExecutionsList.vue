@@ -71,7 +71,7 @@
 			v-loading="isDataLoading"
 			:row-class-name="getRowClass"
 		>
-			<el-table-column label="" width="30">
+			<el-table-column width="40" align="right">
 				<template>
 					<el-checkbox
 						:indeterminate="isIndeterminate"
@@ -92,22 +92,18 @@
 			<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 				<template #default="scope">
 					<div class="ph-no-capture">
-						<span>
-							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
-						</span>
+						<span>{{
+							scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
+						}}</span>
 					</div>
 				</template>
 			</el-table-column>
-			<el-table-column
-				property="startedAt"
-				:label="$locale.baseText('executionsList.startedAt')"
-				width="205"
-			>
+			<el-table-column property="startedAt" :label="$locale.baseText('executionsList.startedAt')">
 				<template #default="scope">
 					{{ convertToDisplayDate(scope.row.startedAt) }}
 				</template>
 			</el-table-column>
-			<el-table-column :label="$locale.baseText('executionsList.status')" width="170">
+			<el-table-column :label="$locale.baseText('executionsList.status')">
 				<template #default="scope">
 					<div :class="$style.statusColumn">
 						<span v-if="scope.row.stoppedAt === undefined">
@@ -134,7 +130,7 @@
 					</div>
 				</template>
 			</el-table-column>
-			<el-table-column :label="$locale.baseText('executionsList.id')" width="150">
+			<el-table-column :label="$locale.baseText('executionsList.id')">
 				<template #default="scope">
 					<span v-if="scope.row.id">#{{ scope.row.id }}</span>
 					<span v-if="scope.row.retryOf !== undefined">
@@ -153,17 +149,12 @@
 					</span>
 				</template>
 			</el-table-column>
-			<el-table-column
-				property="mode"
-				:label="$locale.baseText('executionsList.mode')"
-				width="100"
-				align="center"
-			>
+			<el-table-column property="mode" align="right">
 				<template #default="scope">
-					{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
+					<font-awesome-icon v-if="scope.row.mode === 'manual'" icon="flask" />
 				</template>
 			</el-table-column>
-			<el-table-column label="" width="100" align="center">
+			<el-table-column align="right">
 				<template #default="scope">
 					<div :class="$style.actionsContainer">
 						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
@@ -186,7 +177,7 @@
 					</div>
 				</template>
 			</el-table-column>
-			<el-table-column label="" width="100" align="center">
+			<el-table-column align="right">
 				<template #default="scope">
 					<el-dropdown trigger="click" @command="handleRetryClick">
 						<span class="retry-button">
@@ -200,7 +191,6 @@
 								"
 								text
 								type="tertiary"
-								class="ml-3xs"
 								size="mini"
 								:title="$locale.baseText('executionsList.retryExecution')"
 								icon="ellipsis-v"
@@ -356,21 +346,18 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			return 0 + this.activeExecutions.length + this.finishedExecutionsCount;
 		},
 		numSelected(): number {
-			if (this.checkAll === true) {
+			if (this.checkAll) {
 				return this.finishedExecutionsCount;
 			}
 
 			return Object.keys(this.selectedItems).length;
 		},
 		isIndeterminate(): boolean {
-			if (this.checkAll === true) {
+			if (this.checkAll) {
 				return false;
 			}
 
-			if (this.numSelected > 0) {
-				return true;
-			}
-			return false;
+			return this.numSelected > 0;
 		},
 		workflowFilterCurrent(): IDataObject {
 			const filter: IDataObject = {};
@@ -922,6 +909,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	.running & {
 		color: var(--color-warning);
 	}
+
+	.unknown & {
+		color: var(--color-background-dark);
+	}
 }
 
 .actionsContainer > * {
@@ -929,7 +920,22 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 }
 
 .execTable {
+	table {
+		th,
+		td {
+			&:not(:first-child) {
+				&,
+				div,
+				span {
+					white-space: nowrap;
+				}
+			}
+		}
+	}
+
 	.execRow {
+		color: var(--color-text-base);
+
 		td {
 			&:first-child {
 				border-left: var(--spacing-4xs) solid var(--color-background-dark);
@@ -950,6 +956,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 		&.waiting td:first-child {
 			border-left-color: var(--color-secondary);
+		}
+
+		&.unknown td:first-child {
+			border-left-color: var(--color-background-dark);
 		}
 	}
 }
