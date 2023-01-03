@@ -1643,13 +1643,12 @@ class App {
 		const app = expressWs(this.app, server).app;
 
 		// Push connection endpoint
-		app.ws(`/${this.restEndpoint}/push`, async (ws, req, next) => {
+		app.ws(`/${this.restEndpoint}/push`, async (ws, req) => {
 			ws.send('connected to n8n :)');
 
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
-				// TODO: Test if expected
-				next(new Error('The query parameter "sessionId" is missing!'));
+				ws.send('400 - The query parameter "sessionId" is missing!');
 				ws.close();
 				return;
 			}
@@ -1670,7 +1669,7 @@ class App {
 			try {
 				await this.push.add(ws, sessionId as string);
 			} catch (error) {
-				next(error);
+				ws.send('500 - Internal Server Error');
 				ws.close();
 			}
 		});
