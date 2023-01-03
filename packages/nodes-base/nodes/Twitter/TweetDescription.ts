@@ -19,6 +19,12 @@ export const tweetOperations: INodeProperties[] = [
 				action: 'Create a Tweet',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a Tweet',
+				action: 'Delete a Tweet',
+			},
+			{
 				name: 'Like',
 				value: 'like',
 				description: 'Like a Tweet',
@@ -29,12 +35,6 @@ export const tweetOperations: INodeProperties[] = [
 				value: 'search',
 				description: 'Search for Tweets from the last seven days',
 				action: 'Search Tweets',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a Tweet',
-				action: 'Like a Tweet',
 			},
 		],
 		default: 'create',
@@ -49,7 +49,7 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-        typeOptions: {
+		typeOptions: {
 			rows: 2, // Text area rows
 		},
 		default: '', // Default value (no placeholder)
@@ -174,6 +174,42 @@ export const tweetFields: INodeProperties[] = [
 						url: '',
 					},
 				],
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet',
+		name: 'tweetDeleteId',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		description: 'The Tweet to delete',
+		displayOptions: {
+			show: {
+				resource: ['tweet'],
+				operation: ['delete'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. 1187836157394112513',
+				url: '',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
+				url: '',
 			},
 		],
 	},
@@ -391,42 +427,6 @@ export const tweetFields: INodeProperties[] = [
 				default: [],
 				description:
 					'The fields to add to each returned Tweet object. Default fields are: ID, text, edit_history_tweet_ids.',
-			},
-		],
-	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                                tweet:delete                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Tweet',
-		name: 'tweetDeleteId',
-		type: 'resourceLocator',
-		default: { mode: 'id', value: '' },
-		required: true,
-		description: 'The Tweet to delete',
-		displayOptions: {
-			show: {
-				resource: ['tweet'],
-				operation: ['delete'],
-			},
-		},
-		modes: [
-			{
-				displayName: 'By ID',
-				name: 'id',
-				type: 'string',
-				validation: [],
-				placeholder: 'e.g. 1187836157394112513',
-				url: '',
-			},
-			{
-				displayName: 'By URL',
-				name: 'url',
-				type: 'string',
-				validation: [],
-				placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
-				url: '',
 			},
 		],
 	},
