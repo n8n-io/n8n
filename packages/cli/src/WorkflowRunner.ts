@@ -133,8 +133,6 @@ export class WorkflowRunner {
 			this.jobQueue = queue.getBullObjectInstance();
 		}
 
-		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId ?? '', data);
-
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
@@ -150,6 +148,8 @@ export class WorkflowRunner {
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
+
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 

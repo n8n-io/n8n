@@ -369,6 +369,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				? eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.success',
 						payload: {
+							executionId,
 							success: properties.success,
 							userId: properties.user_id,
 							workflowId: properties.workflow_id,
@@ -379,6 +380,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				: eventBus.sendWorkflowEvent({
 						eventName: 'n8n.workflow.failed',
 						payload: {
+							executionId,
 							success: properties.success,
 							userId: properties.user_id,
 							workflowId: properties.workflow_id,

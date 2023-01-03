@@ -279,12 +279,14 @@ export class MessageEventBusDestinationWebhook
 			if (this.sendPayload) {
 				this.axiosRequestOptions.data = {
 					...msg,
+					__type: undefined,
 					payload,
 					ts: msg.ts.toISO(),
 				};
 			} else {
 				this.axiosRequestOptions.data = {
 					...msg,
+					__type: undefined,
 					payload: undefined,
 					ts: msg.ts.toISO(),
 				};

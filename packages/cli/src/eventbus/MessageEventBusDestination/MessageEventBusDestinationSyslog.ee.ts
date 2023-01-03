@@ -82,6 +82,7 @@ export class MessageEventBusDestinationSyslog
 			if (this.anonymizeAuditMessages) {
 				serializedMessage.payload = msg.anonymize();
 			}
+			delete serializedMessage.__type;
 			this.client.log(
 				JSON.stringify(serializedMessage),
 				{

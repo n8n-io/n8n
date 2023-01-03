@@ -29,7 +29,7 @@ import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
+import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
 import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
@@ -548,7 +548,14 @@ const router = new Router({
 						settingsView: SettingsLogStreamingView,
 					},
 					meta: {
-						fullWidthPage: false,
+						enterprise: {
+							logStreaming: () => {
+								const settingsStore = useSettingsStore();
+								return useSettingsStore().isEnterpriseFeatureEnabled(
+									EnterpriseEditionFeature.LogStreaming,
+								);
+							},
+						},
 						telemetry: {
 							pageCategory: 'settings',
 						},
