@@ -28,7 +28,6 @@ import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
-import type { Request } from 'express';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';

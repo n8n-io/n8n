@@ -1,4 +1,3 @@
-import type { Application } from 'express';
 import config from '@/config';
 import { ErrorReporterProxy } from 'n8n-workflow';
 

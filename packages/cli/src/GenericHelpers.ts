@@ -17,13 +17,7 @@ import {
 import { validate } from 'class-validator';
 import config from '@/config';
 import * as Db from '@/Db';
-import {
-	ICredentialsDb,
-	IExecutionDb,
-	IExecutionFlattedDb,
-	IPackageVersions,
-	IWorkflowDb,
-} from '@/Interfaces';
+import { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
@@ -31,9 +25,6 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { TagEntity } from '@db/entities/TagEntity';
 import { User } from '@db/entities/User';
-import { N8N_VERSION } from '@/constants';
-
-let versionCache: IPackageVersions | undefined;
 
 /**
  * Returns the base URL n8n is reachable from

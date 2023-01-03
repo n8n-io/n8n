@@ -7,7 +7,7 @@
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 
-import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
+import { LoggerProxy, sleep } from 'n8n-workflow';
 import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
