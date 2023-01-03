@@ -22,7 +22,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { ABOUT_MODAL_KEY, FAKE_DOOR_FEATURES, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
+import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from '@/mixins/userHelpers';
 import { pushConnection } from '@/mixins/pushConnection';
 import { IFakeDoor } from '@/Interface';
