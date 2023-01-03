@@ -54,7 +54,6 @@ export class Push {
 			data,
 		};
 
-		// TODO: Check if this is still needed
 		if (sessionId === undefined) {
 			// Send to all connected clients
 			Object.values(this.connections).forEach((ws) => {
