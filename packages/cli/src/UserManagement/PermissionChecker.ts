@@ -42,7 +42,7 @@ export class PermissionChecker {
 		if (workflow.id && isSharingEnabled()) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
-				where: { workflow: { id: Number(workflow.id) } },
+				where: { workflowId: workflow.id },
 			});
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
@@ -58,7 +58,7 @@ export class PermissionChecker {
 			where: credentialsWhere,
 		});
 
-		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId.toString());
+		const accessibleCredIds = credentialSharings.map((s) => s.credentialsId);
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 

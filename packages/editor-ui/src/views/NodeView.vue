@@ -3503,6 +3503,9 @@ export default mixins(
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
 
+			this.onToggleNodeCreator({ createNodeActive: false });
+			this.nodeCreatorStore.setShowScrim(false);
+
 			// Reset nodes
 			this.deleteEveryEndpoint();
 

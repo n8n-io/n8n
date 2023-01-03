@@ -63,7 +63,7 @@ tagsController.post(
 
 // Updates a tag
 tagsController.patch(
-	'/:id',
+	'/:id(\\d+)',
 	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity | void> => {
 		const { name } = req.body;
@@ -86,7 +86,7 @@ tagsController.patch(
 );
 
 tagsController.delete(
-	'/:id',
+	'/:id(\\d+)',
 	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: TagsRequest.Delete): Promise<boolean> => {
 		if (
@@ -98,7 +98,7 @@ tagsController.delete(
 				'Only owners can remove tags',
 			);
 		}
-		const id = Number(req.params.id);
+		const id = req.params.id;
 
 		await externalHooks.run('tag.beforeDelete', [id]);
 
