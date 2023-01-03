@@ -548,14 +548,6 @@ const router = new Router({
 						settingsView: SettingsLogStreamingView,
 					},
 					meta: {
-						enterprise: {
-							logStreaming: () => {
-								const settingsStore = useSettingsStore();
-								return useSettingsStore().isEnterpriseFeatureEnabled(
-									EnterpriseEditionFeature.LogStreaming,
-								);
-							},
-						},
 						telemetry: {
 							pageCategory: 'settings',
 						},
