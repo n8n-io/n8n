@@ -44,11 +44,3 @@ export const initErrorHandling = async () => {
 
 	initialized = true;
 };
-
-export const setupErrorMiddleware = async (app: Application) => {
-	const {
-		Handlers: { requestHandler, errorHandler },
-	} = await import('@sentry/node');
-	app.use(requestHandler());
-	app.use(errorHandler());
-};
