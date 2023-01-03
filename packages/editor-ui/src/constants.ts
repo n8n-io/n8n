@@ -325,7 +325,7 @@ export enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	USAGE = 'Usage',
-	LOGSTREAMING_SETTINGS = 'LogStreamingSettingsView',
+	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
 
 export enum FAKE_DOOR_FEATURES {

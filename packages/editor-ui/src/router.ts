@@ -543,7 +543,7 @@ const router = new Router({
 				},
 				{
 					path: 'logstreaming',
-					name: VIEWS.LOGSTREAMING_SETTINGS,
+					name: VIEWS.LOG_STREAMING_SETTINGS,
 					components: {
 						settingsView: SettingsLogStreamingView,
 					},
@@ -551,21 +551,14 @@ const router = new Router({
 						fullWidthPage: false,
 						telemetry: {
 							pageCategory: 'settings',
-							getProperties(route: Route) {
-								return {
-									feature: 'logstreaming',
-								};
-							},
 						},
 						permissions: {
 							allow: {
 								loginStatus: [LOGIN_STATUS.LoggedIn],
+								role: [ROLE.Owner],
 							},
 							deny: {
-								shouldDeny: () => {
-									const settingsStore = useSettingsStore();
-									return settingsStore.isPublicApiEnabled === false;
-								},
+								role: [ROLE.Default],
 							},
 						},
 					},

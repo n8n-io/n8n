@@ -94,8 +94,8 @@ export default mixins(userHelpers, pushConnection).extend({
 				icon: 'sign-in-alt',
 				label: this.$locale.baseText('settings.logstreaming'),
 				position: 'top',
-				available: this.canAccessApiSettings(),
-				activateOnRouteNames: [VIEWS.LOGSTREAMING_SETTINGS],
+				available: this.canAccessLogStreamingSettings(),
+				activateOnRouteNames: [VIEWS.LOG_STREAMING_SETTINGS],
 			});
 
 			menuItems.push({
@@ -126,6 +126,9 @@ export default mixins(userHelpers, pushConnection).extend({
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessLogStreamingSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
+		},
 		canAccessUsageAndPlan(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.USAGE);
 		},
@@ -153,8 +156,8 @@ export default mixins(userHelpers, pushConnection).extend({
 					}
 					break;
 				case 'settings-logstreaming':
-					if (this.$router.currentRoute.name !== VIEWS.LOGSTREAMING_SETTINGS) {
-						this.$router.push({ name: VIEWS.LOGSTREAMING_SETTINGS });
+					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
+						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}
 					break;
 				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud

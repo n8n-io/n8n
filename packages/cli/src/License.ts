@@ -94,7 +94,7 @@ export class License {
 	}
 
 	isLogStreamingEnabled() {
-		return this.isFeatureEnabled(LICENSE_FEATURES.LOGSTREAMING);
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
 	}
 
 	getCurrentEntitlements() {
