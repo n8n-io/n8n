@@ -90,9 +90,9 @@ export default mixins(userHelpers, pushConnection).extend({
 			}
 
 			menuItems.push({
-				id: 'settings-logstreaming',
+				id: 'settings-log-streaming',
 				icon: 'sign-in-alt',
-				label: this.$locale.baseText('settings.logstreaming'),
+				label: this.$locale.baseText('settings.log-streaming'),
 				position: 'top',
 				available: this.canAccessLogStreamingSettings(),
 				activateOnRouteNames: [VIEWS.LOG_STREAMING_SETTINGS],
@@ -155,7 +155,7 @@ export default mixins(userHelpers, pushConnection).extend({
 						this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
-				case 'settings-logstreaming':
+				case 'settings-log-streaming':
 					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
 						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
 					}

@@ -121,7 +121,7 @@ export default mixins(showMessage, restApi).extend({
 			return actions;
 		},
 		typeLabelName(): BaseTextKey {
-			return `settings.logstreaming.${this.destination.__type}` as BaseTextKey;
+			return `settings.log-streaming.${this.destination.__type}` as BaseTextKey;
 		},
 	},
 	methods: {
@@ -149,13 +149,13 @@ export default mixins(showMessage, restApi).extend({
 				this.$emit('edit', this.destination.id);
 			} else if (action === DESTINATION_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
-					this.$locale.baseText('settings.logstreaming.destinationDelete.message', {
+					this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 						interpolate: { destinationName: this.destination.label },
 					}),
-					this.$locale.baseText('settings.logstreaming.destinationDelete.headline'),
+					this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
 					'warning',
-					this.$locale.baseText('settings.logstreaming.destinationDelete.confirmButtonText'),
-					this.$locale.baseText('settings.logstreaming.destinationDelete.cancelButtonText'),
+					this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
+					this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
 				);
 
 				if (deleteConfirmed === false) {

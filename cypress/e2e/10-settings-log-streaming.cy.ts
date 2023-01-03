@@ -12,7 +12,7 @@ describe('Default owner', () => {
 	});
 
 	it('should be shown unlicensed view', () => {
-		cy.visit('/settings/logstreaming');
+		cy.visit('/settings/log-streaming');
 		// force license to be disabled
 		settingsLogStreamingPage.getters.getDisableLicenseToggle().click();
 		settingsLogStreamingPage.getters.getActionBoxUnlicensed().should('be.visible');
@@ -21,14 +21,14 @@ describe('Default owner', () => {
 	});
 
 	it('should be shown licensed view', () => {
-		cy.visit('/settings/logstreaming');
+		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.getters.getActionBoxLicensed().should('be.visible');
 		settingsLogStreamingPage.getters.getAddFirstDestinationButton().should('be.visible');
 		settingsLogStreamingPage.getters.getActionBoxUnlicensed().should('not.exist');
 	});
 
 	it('should be shown the add destination modal', () => {
-		cy.visit('/settings/logstreaming');
+		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
@@ -50,7 +50,7 @@ describe('Default owner', () => {
 	});
 
 	it('should create a destination and delete it', () => {
-		cy.visit('/settings/logstreaming');
+		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
@@ -75,7 +75,7 @@ describe('Default owner', () => {
 	});
 
 	it('should create a destination and delete it via card actions', () => {
-		cy.visit('/settings/logstreaming');
+		cy.visit('/settings/log-streaming');
 		settingsLogStreamingPage.actions.clickAddFirstDestination();
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');

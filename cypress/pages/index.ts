@@ -6,5 +6,5 @@ export * from './workflows';
 export * from './workflow';
 export * from './modals';
 export * from './settings-users';
-export * from './settings-logstreaming';
+export * from './settings-log-streaming';
 export * from './ndv';

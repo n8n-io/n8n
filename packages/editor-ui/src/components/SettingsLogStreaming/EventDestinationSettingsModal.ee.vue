@@ -49,7 +49,7 @@
 						<template v-if="isInstanceOwner">
 							<n8n-icon-button
 								v-if="nodeParameters && hasOnceBeenSaved"
-								:title="$locale.baseText('settings.logstreaming.delete')"
+								:title="$locale.baseText('settings.log-streaming.delete')"
 								icon="trash"
 								size="medium"
 								type="tertiary"
@@ -61,7 +61,7 @@
 							<SaveButton
 								:saved="unchanged && hasOnceBeenSaved"
 								:disabled="isTypeAbstract || unchanged"
-								:savingLabel="$locale.baseText('settings.logstreaming.saving')"
+								:savingLabel="$locale.baseText('settings.log-streaming.saving')"
 								@click="saveDestination"
 								data-test-id="destination-save-button"
 							/>
@@ -76,8 +76,8 @@
 				<template v-if="isTypeAbstract">
 					<n8n-input-label
 						:class="$style.typeSelector"
-						:label="$locale.baseText('settings.logstreaming.selecttype')"
-						:tooltipText="$locale.baseText('settings.logstreaming.selecttypehint')"
+						:label="$locale.baseText('settings.log-streaming.selecttype')"
+						:tooltipText="$locale.baseText('settings.log-streaming.selecttypehint')"
 						:bold="false"
 						size="medium"
 						:underline="false"
@@ -104,7 +104,7 @@
 								data-test-id="select-destination-button"
 								:disabled="!typeSelectValue"
 							>
-								{{ $locale.baseText(`settings.logstreaming.continue`) }}
+								{{ $locale.baseText(`settings.log-streaming.continue`) }}
 							</n8n-button>
 						</div>
 					</n8n-input-label>
@@ -150,7 +150,7 @@
 							<div class="">
 								<n8n-input-label
 									class="mb-m mt-m"
-									:label="$locale.baseText('settings.logstreaming.tab.events.title')"
+									:label="$locale.baseText('settings.log-streaming.tab.events.title')"
 									:bold="true"
 									size="medium"
 									:underline="false"
@@ -267,7 +267,7 @@ export default mixins(showMessage, restApi).extend({
 				}
 				options.push({
 					value: t,
-					label: `settings.logstreaming.${t}` as BaseTextKey,
+					label: `settings.log-streaming.${t}` as BaseTextKey,
 				});
 			}
 			return options;
@@ -288,20 +288,20 @@ export default mixins(showMessage, restApi).extend({
 			return destinationToFakeINodeUi(this.nodeParameters);
 		},
 		typeLabelName(): BaseTextKey {
-			return `settings.logstreaming.${this.nodeParameters.__type}` as BaseTextKey;
+			return `settings.log-streaming.${this.nodeParameters.__type}` as BaseTextKey;
 		},
 		sidebarItems(): IMenuItem[] {
 			const items: IMenuItem[] = [
 				{
 					id: 'settings',
-					label: this.$locale.baseText('settings.logstreaming.tab.settings'),
+					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
 					position: 'top',
 				},
 			];
 			if (!this.isTypeAbstract) {
 				items.push({
 					id: 'events',
-					label: this.$locale.baseText('settings.logstreaming.tab.events'),
+					label: this.$locale.baseText('settings.log-streaming.tab.events'),
 					position: 'top',
 				});
 			}
@@ -310,11 +310,11 @@ export default mixins(showMessage, restApi).extend({
 		tabItems(): ITab[] {
 			return [
 				{
-					label: this.$locale.baseText('settings.logstreaming.tab.settings'),
+					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
 					value: 'settings',
 				},
 				{
-					label: this.$locale.baseText('settings.logstreaming.tab.events'),
+					label: this.$locale.baseText('settings.log-streaming.tab.events'),
 					value: 'events',
 				},
 			];
@@ -437,13 +437,13 @@ export default mixins(showMessage, restApi).extend({
 		},
 		async removeThis() {
 			const deleteConfirmed = await this.confirmMessage(
-				this.$locale.baseText('settings.logstreaming.destinationDelete.message', {
+				this.$locale.baseText('settings.log-streaming.destinationDelete.message', {
 					interpolate: { destinationName: this.destination.label },
 				}),
-				this.$locale.baseText('settings.logstreaming.destinationDelete.headline'),
+				this.$locale.baseText('settings.log-streaming.destinationDelete.headline'),
 				'warning',
-				this.$locale.baseText('settings.logstreaming.destinationDelete.confirmButtonText'),
-				this.$locale.baseText('settings.logstreaming.destinationDelete.cancelButtonText'),
+				this.$locale.baseText('settings.log-streaming.destinationDelete.confirmButtonText'),
+				this.$locale.baseText('settings.log-streaming.destinationDelete.cancelButtonText'),
 			);
 
 			if (deleteConfirmed === false) {

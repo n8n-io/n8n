@@ -3,7 +3,7 @@
 		<div :class="$style.header">
 			<div class="mb-2xl">
 				<n8n-heading size="2xlarge">
-					{{ $locale.baseText(`settings.logstreaming.heading`) }}
+					{{ $locale.baseText(`settings.log-streaming.heading`) }}
 				</n8n-heading>
 				<template v-if="environment !== 'production'">
 					<strong>&nbsp;&nbsp;&nbsp;&nbsp;Disable License ({{ environment }})&nbsp;</strong>
@@ -15,7 +15,7 @@
 			<div class="mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
-						<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 					</template>
 				</n8n-info-tip>
 			</div>
@@ -38,39 +38,39 @@
 				</el-row>
 				<div class="mt-m text-right">
 					<n8n-button v-if="isInstanceOwner" size="large" @click="addDestination">
-						{{ $locale.baseText(`settings.logstreaming.add`) }}
+						{{ $locale.baseText(`settings.log-streaming.add`) }}
 					</n8n-button>
 				</div>
 			</template>
 			<template v-else>
 				<div :class="$style.actionBoxContainer" data-test-id="action-box-licensed">
 					<n8n-action-box
-						:buttonText="$locale.baseText(`settings.logstreaming.add`)"
+						:buttonText="$locale.baseText(`settings.log-streaming.add`)"
 						@click="addDestination"
 					>
 						<template #heading>
-							<span v-html="$locale.baseText(`settings.logstreaming.addFirstTitle`)" />
+							<span v-html="$locale.baseText(`settings.log-streaming.addFirstTitle`)" />
 						</template>
 					</n8n-action-box>
 				</div>
 			</template>
 		</template>
 		<template v-else>
-			<div v-if="$locale.baseText('settings.logstreaming.infoText')" class="mb-l">
+			<div v-if="$locale.baseText('settings.log-streaming.infoText')" class="mb-l">
 				<n8n-info-tip theme="info" type="note">
 					<template>
-						<span v-html="$locale.baseText('settings.logstreaming.infoText')"></span>
+						<span v-html="$locale.baseText('settings.log-streaming.infoText')"></span>
 					</template>
 				</n8n-info-tip>
 			</div>
 			<div :class="$style.actionBoxContainer" data-test-id="action-box-unlicensed">
 				<n8n-action-box
-					:description="$locale.baseText('settings.logstreaming.actionBox.description')"
-					:buttonText="$locale.baseText('settings.logstreaming.actionBox.button')"
+					:description="$locale.baseText('settings.log-streaming.actionBox.description')"
+					:buttonText="$locale.baseText('settings.log-streaming.actionBox.button')"
 					@click="onContactUsClicked"
 				>
 					<template #heading>
-						<span v-html="$locale.baseText('settings.logstreaming.actionBox.title')" />
+						<span v-html="$locale.baseText('settings.log-streaming.actionBox.title')" />
 					</template>
 				</n8n-action-box>
 			</div>

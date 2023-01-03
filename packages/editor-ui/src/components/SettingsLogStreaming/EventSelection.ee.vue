@@ -33,11 +33,11 @@
 				@change="anonymizeAuditMessagesChanged"
 				:disabled="readonly"
 			>
-				{{ $locale.baseText('settings.logstreaming.tab.events.anonymize') }}
+				{{ $locale.baseText('settings.log-streaming.tab.events.anonymize') }}
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
 					<template #content>
-						{{ $locale.baseText('settings.logstreaming.tab.events.anonymize.info') }}
+						{{ $locale.baseText('settings.log-streaming.tab.events.anonymize.info') }}
 					</template>
 				</n8n-tooltip>
 			</checkbox>
@@ -111,10 +111,10 @@ export default {
 			this.$forceUpdate();
 		},
 		groupLabelName(t: string): string {
-			return this.$locale.baseText(`settings.logstreaming.eventGroup.${t}` as BaseTextKey) ?? t;
+			return this.$locale.baseText(`settings.log-streaming.eventGroup.${t}` as BaseTextKey) ?? t;
 		},
 		groupLabelInfo(t: string): string | undefined {
-			const labelInfo = `settings.logstreaming.eventGroup.${t}.info`;
+			const labelInfo = `settings.log-streaming.eventGroup.${t}.info`;
 			const infoText = this.$locale.baseText(labelInfo as BaseTextKey);
 			if (infoText === labelInfo || infoText === '') return;
 			return infoText;

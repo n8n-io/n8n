@@ -542,7 +542,7 @@ const router = new Router({
 					},
 				},
 				{
-					path: 'logstreaming',
+					path: 'log-streaming',
 					name: VIEWS.LOG_STREAMING_SETTINGS,
 					components: {
 						settingsView: SettingsLogStreamingView,
