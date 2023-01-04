@@ -6,6 +6,7 @@ export interface IUser {
 	email?: string;
 	isOwner: boolean;
 	isPendingUser: boolean;
+	inviteAcceptUrl?: string;
 }
 
 export interface IUserListAction {

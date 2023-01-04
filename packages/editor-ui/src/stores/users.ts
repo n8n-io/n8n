@@ -256,10 +256,6 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const rootStore = useRootStore();
 			await reinvite(rootStore.getRestApiContext, params);
 		},
-		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
-			const rootStore = useRootStore();
-			return await getInviteLink(rootStore.getRestApiContext, params);
-		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();
 			await submitPersonalizationSurvey(rootStore.getRestApiContext, results);
