@@ -1,7 +1,7 @@
 <template>
 	<span :class="$style.container" data-test-id="node-title-container" @click="onEdit">
 		<span :class="$style.iconWrapper"><NodeIcon :nodeType="nodeType" :size="18" /></span>
-		<n8n-popover placement="right" width="200" :value="editName" :disabled="readOnly">
+		<n8n-popover placement="right" width="200" :value="editName" :disabled="!editable">
 			<div
 				:class="$style.editContainer"
 				@keydown.enter="onRename"
@@ -28,10 +28,10 @@
 				</div>
 			</div>
 			<template #reference>
-				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: !readOnly }">
+				<div class="ph-no-capture" :class="{ [$style.title]: true, [$style.hoverable]: editable }">
 					{{ value }}
 					<div :class="$style.editIconContainer">
-						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="!readOnly" />
+						<font-awesome-icon :class="$style.editIcon" icon="pencil-alt" v-if="editable" />
 					</div>
 				</div>
 			</template>
@@ -59,6 +59,11 @@ export default Vue.extend({
 			editName: false,
 			newName: '',
 		};
+	},
+	computed: {
+		editable(): boolean {
+			return !this.readOnly && window === window.parent;
+		},
 	},
 	methods: {
 		onEdit() {

@@ -35,7 +35,9 @@ EECredentialsController.get(
 			});
 
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			return allCredentials.map(EECredentials.addOwnerAndSharings);
+			return allCredentials.map((credential: CredentialsEntity & CredentialWithSharings) =>
+				EECredentials.addOwnerAndSharings(credential),
+			);
 		} catch (error) {
 			LoggerProxy.error('Request to list credentials failed', error as Error);
 			throw error;
@@ -47,15 +49,11 @@ EECredentialsController.get(
  * GET /credentials/:id
  */
 EECredentialsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
-
-		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.BadRequestError(`Credential ID must be a number.`);
-		}
 
 		let credential = (await EECredentials.get(
 			{ id: credentialId },
@@ -71,24 +69,17 @@ EECredentialsController.get(
 		const userSharing = credential.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.UnauthorizedError(`Forbidden.`);
+			throw new ResponseHelper.UnauthorizedError('Forbidden.');
 		}
 
 		credential = EECredentials.addOwnerAndSharings(credential);
 
-		// @ts-ignore @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-		credential.id = credential.id.toString();
-
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			const { id, data: _, ...rest } = credential;
-
-			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-			return { id: id.toString(), ...rest };
+			const { data: _, ...rest } = credential;
+			return { ...rest };
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		const { id, data: _, ...rest } = credential;
+		const { data: _, ...rest } = credential;
 
 		const key = await EECredentials.getEncryptionKey();
 		const decryptedData = EECredentials.redact(
@@ -96,8 +87,7 @@ EECredentialsController.get(
 			credential,
 		);
 
-		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-		return { id: id.toString(), data: decryptedData, ...rest };
+		return { data: decryptedData, ...rest };
 	}),
 );
 
@@ -113,12 +103,13 @@ EECredentialsController.post(
 
 		const encryptionKey = await EECredentials.getEncryptionKey();
 
-		const { ownsCredential } = await EECredentials.isOwned(req.user, credentials.id.toString());
+		const credentialId = credentials.id;
+		const { ownsCredential } = await EECredentials.isOwned(req.user, credentialId);
 
-		const sharing = await EECredentials.getSharing(req.user, credentials.id);
+		const sharing = await EECredentials.getSharing(req.user, credentialId);
 		if (!ownsCredential) {
 			if (!sharing) {
-				throw new ResponseHelper.UnauthorizedError(`Forbidden`);
+				throw new ResponseHelper.UnauthorizedError('Forbidden');
 			}
 
 			const decryptedData = await EECredentials.decrypt(encryptionKey, sharing.credentials);
@@ -155,7 +146,6 @@ EECredentialsController.put(
 		}
 
 		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
-
 		if (!ownsCredential || !credential) {
 			throw new ResponseHelper.UnauthorizedError('Forbidden');
 		}
@@ -184,8 +174,10 @@ EECredentialsController.put(
 		});
 
 		void InternalHooksManager.getInstance().onUserSharedCredentials({
+			user: req.user,
+			credential_name: credential.name,
 			credential_type: credential.type,
-			credential_id: credential.id.toString(),
+			credential_id: credential.id,
 			user_id_sharer: req.user.id,
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,

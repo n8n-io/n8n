@@ -25,6 +25,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { RoleService } from '@/role/role.service';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -126,7 +127,7 @@ export function usersNamespace(this: N8nApp): void {
 			const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
 			const total = usersToSetUp.length;
 
-			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
+			Logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 			try {
 				await Db.transaction(async (transactionManager) => {
@@ -144,7 +145,7 @@ export function usersNamespace(this: N8nApp): void {
 				});
 
 				void InternalHooksManager.getInstance().onUserInvite({
-					user_id: req.user.id,
+					user: req.user,
 					target_user_id: Object.values(createUsers) as string[],
 					public_api: false,
 				});
@@ -155,7 +156,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
-			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
+			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
 
@@ -189,7 +190,7 @@ export function usersNamespace(this: N8nApp): void {
 						});
 					} else {
 						void InternalHooksManager.getInstance().onEmailFailed({
-							user_id: req.user.id,
+							user: req.user,
 							message_type: 'New user invite',
 							public_api: false,
 						});
@@ -199,7 +200,7 @@ export function usersNamespace(this: N8nApp): void {
 							domain: baseUrl,
 							email,
 						});
-						resp.error = `Email could not be sent`;
+						resp.error = 'Email could not be sent';
 					}
 					return resp;
 				}),
@@ -210,7 +211,7 @@ export function usersNamespace(this: N8nApp): void {
 			Logger.debug(
 				usersPendingSetup.length > 1
 					? `Sent ${usersPendingSetup.length} invite emails successfully`
-					: `Sent 1 invite email successfully`,
+					: 'Sent 1 invite email successfully',
 				{ userShells: createUsers },
 			);
 
@@ -281,7 +282,8 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserInviteEmailClick({
-				user_id: inviteeId,
+				inviter,
+				invitee,
 			});
 
 			const { firstName, lastName } = inviter;
@@ -347,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 			await issueCookie(res, updatedUser);
 
 			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: invitee.id,
+				user: updatedUser,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -403,53 +405,6 @@ export function usersNamespace(this: N8nApp): void {
 
 			const userToDelete = users.find((user) => user.id === req.params.id) as User;
 
-			if (transferId) {
-				const transferee = users.find((user) => user.id === transferId);
-				await Db.transaction(async (transactionManager) => {
-					await transactionManager.update(
-						SharedWorkflow,
-						{ user: userToDelete },
-						{ user: transferee },
-					);
-					await transactionManager.update(
-						SharedCredentials,
-						{ user: userToDelete },
-						{ user: transferee },
-					);
-					await transactionManager.delete(User, { id: userToDelete.id });
-				});
-
-				return { success: true };
-			}
-
-			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-				Db.collections.SharedWorkflow.find({
-					relations: ['workflow'],
-					where: { user: userToDelete },
-				}),
-				Db.collections.SharedCredentials.find({
-					relations: ['credentials'],
-					where: { user: userToDelete },
-				}),
-			]);
-
-			await Db.transaction(async (transactionManager) => {
-				const ownedWorkflows = await Promise.all(
-					ownedSharedWorkflows.map(async ({ workflow }) => {
-						if (workflow.active) {
-							// deactivate before deleting
-							await this.activeWorkflowRunner.remove(workflow.id.toString());
-						}
-						return workflow;
-					}),
-				);
-				await transactionManager.remove(ownedWorkflows);
-				await transactionManager.remove(
-					ownedSharedCredentials.map(({ credentials }) => credentials),
-				);
-				await transactionManager.delete(User, { id: userToDelete.id });
-			});
-
 			const telemetryData: ITelemetryUserDeletionData = {
 				user_id: req.user.id,
 				target_user_old_status: userToDelete.isPending ? 'invited' : 'active',
@@ -462,10 +417,113 @@ export function usersNamespace(this: N8nApp): void {
 				telemetryData.migration_user_id = transferId;
 			}
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+			const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
+				RoleService.get({ name: 'owner', scope: 'workflow' }),
+				RoleService.get({ name: 'owner', scope: 'credential' }),
+			]);
+
+			if (transferId) {
+				const transferee = users.find((user) => user.id === transferId);
+
+				await Db.transaction(async (transactionManager) => {
+					// Get all workflow ids belonging to user to delete
+					const sharedWorkflowIds = await transactionManager
+						.getRepository(SharedWorkflow)
+						.find({
+							select: ['workflowId'],
+							where: { userId: userToDelete.id, role: workflowOwnerRole },
+						})
+						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedWorkflow, {
+						user: transferee,
+						workflowId: In(sharedWorkflowIds),
+					});
+
+					// Transfer ownership of owned workflows
+					await transactionManager.update(
+						SharedWorkflow,
+						{ user: userToDelete, role: workflowOwnerRole },
+						{ user: transferee },
+					);
+
+					// Now do the same for creds
+
+					// Get all workflow ids belonging to user to delete
+					const sharedCredentialIds = await transactionManager
+						.getRepository(SharedCredentials)
+						.find({
+							select: ['credentialsId'],
+							where: { user: userToDelete, role: credentialOwnerRole },
+						})
+						.then((sharedCredentials) =>
+							sharedCredentials.map(({ credentialsId }) => credentialsId),
+						);
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedCredentials, {
+						user: transferee,
+						credentialsId: In(sharedCredentialIds),
+					});
+
+					// Transfer ownership of owned credentials
+					await transactionManager.update(
+						SharedCredentials,
+						{ user: userToDelete, role: credentialOwnerRole },
+						{ user: transferee },
+					);
+
+					// This will remove all shared workflows and credentials not owned
+					await transactionManager.delete(User, { id: userToDelete.id });
+				});
+
+				void InternalHooksManager.getInstance().onUserDeletion({
+					user: req.user,
+					telemetryData,
+					publicApi: false,
+				});
+				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+				return { success: true };
+			}
+
+			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
+				Db.collections.SharedWorkflow.find({
+					relations: ['workflow'],
+					where: { user: userToDelete, role: workflowOwnerRole },
+				}),
+				Db.collections.SharedCredentials.find({
+					relations: ['credentials'],
+					where: { user: userToDelete, role: credentialOwnerRole },
+				}),
+			]);
+
+			await Db.transaction(async (transactionManager) => {
+				const ownedWorkflows = await Promise.all(
+					ownedSharedWorkflows.map(async ({ workflow }) => {
+						if (workflow.active) {
+							// deactivate before deleting
+							await this.activeWorkflowRunner.remove(workflow.id);
+						}
+						return workflow;
+					}),
+				);
+				await transactionManager.remove(ownedWorkflows);
+				await transactionManager.remove(
+					ownedSharedCredentials.map(({ credentials }) => credentials),
+				);
+				await transactionManager.delete(User, { id: userToDelete.id });
+			});
+
+			void InternalHooksManager.getInstance().onUserDeletion({
+				user: req.user,
+				telemetryData,
+				publicApi: false,
+			});
 
 			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
-
 			return { success: true };
 		}),
 	);
@@ -522,7 +580,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!result?.success) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: req.user.id,
+					user: reinvitee,
 					message_type: 'Resend invite',
 					public_api: false,
 				});
@@ -535,7 +593,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserReinvite({
-				user_id: req.user.id,
+				user: reinvitee,
 				target_user_id: reinvitee.id,
 				public_api: false,
 			});

@@ -41,7 +41,7 @@ export async function payPalApiRequest(
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -82,7 +82,7 @@ async function getAccessToken(
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeOperationError(this.getNode(), error);
 	}

@@ -1,8 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import glob from 'fast-glob';
-
-import { readFile as fsReadFile } from 'fs/promises';
+import { createReadStream } from 'fs';
+import type { Readable } from 'stream';
 
 export class ReadBinaryFiles implements INodeType {
 	description: INodeTypeDescription = {
@@ -47,9 +47,9 @@ export class ReadBinaryFiles implements INodeType {
 
 		const items: INodeExecutionData[] = [];
 		let item: INodeExecutionData;
-		let data: Buffer;
+		let data: Readable;
 		for (const filePath of files) {
-			data = await fsReadFile(filePath);
+			data = createReadStream(filePath);
 
 			item = {
 				binary: {

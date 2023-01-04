@@ -1,16 +1,20 @@
+import { META_KEY } from '../constants';
 import { BasePage } from './base';
 
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
 		workflowNameInputContainer: () => cy.getByTestId('workflow-name-input', { timeout: 5000 }),
-		workflowNameInput: () => this.getters.workflowNameInputContainer().then(($el) => cy.wrap($el.find('input'))),
+		workflowNameInput: () =>
+			this.getters.workflowNameInputContainer().then(($el) => cy.wrap($el.find('input'))),
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
-		workflowTagsInput: () => this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
+		workflowTagsInput: () =>
+			this.getters.workflowTagsContainer().then(($el) => cy.wrap($el.find('input').first())),
 		workflowTagElements: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span'),
-		firstWorkflowTagElement: () => cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
+		firstWorkflowTagElement: () =>
+			cy.get('[data-test-id="workflow-tags-container"] span.tags > span:nth-child(1)'),
 		workflowTagsDropdown: () => cy.getByTestId('workflow-tags-dropdown'),
 		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
@@ -18,12 +22,14 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
 		canvasNodes: () => cy.getByTestId('canvas-node'),
-		canvasNodeByName: (nodeName: string) => this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
+		canvasNodeByName: (nodeName: string) =>
+			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
 		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
-		successToast: () => cy.get('.el-notification__title'),
+		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
+		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
@@ -38,6 +44,7 @@ export class WorkflowPage extends BasePage {
 		zoomToFitButton: () => cy.getByTestId('zoom-to-fit'),
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
+		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
 		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		// Workflow menu items
@@ -51,16 +58,29 @@ export class WorkflowPage extends BasePage {
 		workflowSettingsModal: () => cy.getByTestId('workflow-settings-dialog'),
 		workflowSettingsErrorWorkflowSelect: () => cy.getByTestId('workflow-settings-error-workflow'),
 		workflowSettingsTimezoneSelect: () => cy.getByTestId('workflow-settings-timezone'),
-		workflowSettingsSaveFiledExecutionsSelect: () => cy.getByTestId('workflow-settings-save-failed-executions'),
-		workflowSettingsSaveSuccessExecutionsSelect: () => cy.getByTestId('workflow-settings-save-success-executions'),
-		workflowSettingsSaveManualExecutionsSelect: () => cy.getByTestId('workflow-settings-save-manual-executions'),
-		workflowSettingsSaveExecutionProgressSelect: () => cy.getByTestId('workflow-settings-save-execution-progress'),
-		workflowSettingsTimeoutWorkflowSwitch: () => cy.getByTestId('workflow-settings-timeout-workflow'),
+		workflowSettingsSaveFiledExecutionsSelect: () =>
+			cy.getByTestId('workflow-settings-save-failed-executions'),
+		workflowSettingsSaveSuccessExecutionsSelect: () =>
+			cy.getByTestId('workflow-settings-save-success-executions'),
+		workflowSettingsSaveManualExecutionsSelect: () =>
+			cy.getByTestId('workflow-settings-save-manual-executions'),
+		workflowSettingsSaveExecutionProgressSelect: () =>
+			cy.getByTestId('workflow-settings-save-execution-progress'),
+		workflowSettingsTimeoutWorkflowSwitch: () =>
+			cy.getByTestId('workflow-settings-timeout-workflow'),
 		workflowSettingsTimeoutForm: () => cy.getByTestId('workflow-settings-timeout-form'),
-		workflowSettingsSaveButton: () => cy.getByTestId('workflow-settings-save-button').find('button'),
+		workflowSettingsSaveButton: () =>
+			cy.getByTestId('workflow-settings-save-button').find('button'),
 
+		duplicateWorkflowModal: () => cy.getByTestId('duplicate-modal'),
+		nodeViewBackground: () => cy.getByTestId('node-view-background'),
+		nodeView: () => cy.getByTestId('node-view'),
 		inlineExpressionEditorInput: () => cy.getByTestId('inline-expression-editor-input'),
 		inlineExpressionEditorOutput: () => cy.getByTestId('inline-expression-editor-output'),
+		zoomInButton: () => cy.getByTestId('zoom-in-button'),
+		zoomOutButton: () => cy.getByTestId('zoom-out-button'),
+		resetZoomButton: () => cy.getByTestId('reset-zoom-button'),
+		executeWorkflowButton: () => cy.getByTestId('execute-workflow-button'),
 	};
 	actions = {
 		visit: () => {
@@ -124,7 +144,7 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{enter}');
 		},
 		addTags: (tags: string[]) => {
-			tags.forEach(tag => {
+			tags.forEach((tag) => {
 				this.getters.workflowTagsInput().type(tag);
 				this.getters.workflowTagsInput().type('{enter}');
 			});
@@ -137,23 +157,25 @@ export class WorkflowPage extends BasePage {
 			cy.getByTestId('zoom-to-fit').click();
 		},
 		hitUndo: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('z');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('z');
 		},
 		hitRedo: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').
-			type(metaKey, { delay: 500, release: false }).
-			type('{shift}', { release: false }).
-			type('z');
+			cy.get('body')
+				.type(META_KEY, { delay: 500, release: false })
+				.type('{shift}', { release: false })
+				.type('z');
 		},
 		selectAll: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('a');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('a');
 		},
 		hitDisableNodeShortcut: () => {
-			const metaKey = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
-			cy.get('body').type(metaKey, { delay: 500, release: false }).type('d');
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('d');
+		},
+		hitCopy: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('c');
+		},
+		hitPaste: () => {
+			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
 		},
 	};
 }

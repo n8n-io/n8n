@@ -47,6 +47,7 @@
 								:value="value"
 								:isReadOnly="isReadOnly"
 								@change="valueChanged"
+								@close="closeDialog"
 								ref="inputFieldExpression"
 								data-test-id="expression-modal-input"
 							/>

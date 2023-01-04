@@ -1,5 +1,5 @@
 <template>
-	<div ref="root" class="ph-no-capture"></div>
+	<div ref="root" class="ph-no-capture" @keydown.stop @keydown.esc="onClose"></div>
 </template>
 
 <script lang="ts">
@@ -16,6 +16,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 
 import type { IVariableItemSelected } from '@/Interface';
+import { forceParse } from '@/utils/forceParse';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
@@ -40,6 +41,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			doubleBraceHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
@@ -82,6 +84,9 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		this.editor?.destroy();
 	},
 	methods: {
+		onClose() {
+			this.$emit('close');
+		},
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor || this.isReadOnly) return;
 

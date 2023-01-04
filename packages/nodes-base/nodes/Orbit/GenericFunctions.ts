@@ -36,7 +36,7 @@ export async function orbitApiRequest(
 
 		options = Object.assign({}, options, option);
 
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
