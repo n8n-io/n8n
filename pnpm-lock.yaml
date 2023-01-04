@@ -103,6 +103,7 @@ importers:
       '@sentry/node': ^7.28.1
       '@types/basic-auth': ^1.1.2
       '@types/bcryptjs': ^2.4.2
+      '@types/body-parser-xml': ^2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': ^1.3.1
       '@types/convict': ^4.2.1
@@ -312,6 +313,7 @@ importers:
       '@oclif/dev-cli': 1.26.10
       '@types/basic-auth': 1.1.3
       '@types/bcryptjs': 2.4.2
+      '@types/body-parser-xml': 2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': 1.3.5
       '@types/convict': 4.2.1
@@ -5548,6 +5550,16 @@ packages:
 
   /@types/bluebird/3.5.37:
     resolution: {integrity: sha512-g2qEd+zkfkTEudA2SrMAeAvY7CrFqtbsLILm2dT2VIeKTqMqVzcdfURlvu6FU3srRgbmXN1Srm94pg34EIehww==}
+    dev: true
+
+  /@types/body-parser-xml/2.0.2:
+    resolution: {integrity: sha512-LlmFkP3BTfacofFevInpM8iZ6+hALZ9URUt5JpSw76irhHCdbqbcBtbxbu2MO8HUGoIROQ5wuB55rLS99xNgCg==}
+    dependencies:
+      '@types/body-parser': 1.19.2
+      '@types/connect': 3.4.35
+      '@types/express-serve-static-core': 4.17.31
+      '@types/node': 16.11.65
+      '@types/xml2js': 0.4.11
     dev: true
 
   /@types/body-parser/1.19.2:

@@ -27,9 +27,7 @@ import PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
-import { Url } from 'url';
 
-import type { Request } from 'express';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
@@ -55,10 +53,6 @@ export interface IQueuedWorkflowActivations {
 	lastTimeout: number;
 	timeout: NodeJS.Timeout;
 	workflowData: IWorkflowDb;
-}
-
-export interface ICustomRequest extends Request {
-	parsedUrl: Url | undefined;
 }
 
 export interface ICredentialsTypeData {
@@ -498,8 +492,8 @@ export interface IVersionNotificationSettings {
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
+	saveDataErrorExecution: 'all' | 'none';
+	saveDataSuccessExecution: 'all' | 'none';
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
