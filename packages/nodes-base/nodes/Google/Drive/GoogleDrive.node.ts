@@ -9,7 +9,6 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import prettyBytes from 'pretty-bytes';
 
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
@@ -2608,11 +2607,6 @@ export class GoogleDrive implements INodeType {
 								} catch (error) {
 									if (error.response?.status !== 308) throw error;
 								}
-								console.log(
-									'Uploaded %s of %s',
-									prettyBytes(nextOffset),
-									prettyBytes(contentLength),
-								);
 								offset = nextOffset;
 							}
 						}
