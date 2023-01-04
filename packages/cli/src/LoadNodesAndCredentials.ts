@@ -82,7 +82,6 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				});
 
 			if (credential.name in credentialsOverwrites) {
-				credential.__overwrittenProperties = credential.__overwrittenProperties ?? [];
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
 
