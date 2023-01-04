@@ -23,6 +23,7 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	inviteAcceptUrl?: string;
 }
 
 export interface N8nApp {

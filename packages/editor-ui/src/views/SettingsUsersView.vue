@@ -66,7 +66,7 @@ export default mixins(showMessage, copyPaste).extend({
 				{
 					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
 					value: 'copyInviteLink',
-					guard: (user) => !user.firstName,
+					guard: (user) => !user.firstName && !!user.inviteAcceptUrl,
 				},
 				{
 					label: this.$locale.baseText('settings.users.actions.reinvite'),
@@ -113,22 +113,14 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		async onCopyInviteLink(userId: string) {
 			const user = this.usersStore.getUserById(userId) as IUser | null;
-			if (user) {
-				try {
-					const data = await this.usersStore.getUserInviteLink({ id: user.id });
+			if (user?.inviteAcceptUrl) {
+				this.copyToClipboard(user.inviteAcceptUrl);
 
-					this.copyToClipboard(data.link);
-
-					this.$showToast({
-						type: 'success',
-						title: this.$locale.baseText('settings.users.inviteLink.copiedToClipboardToast.title'),
-						message: this.$locale.baseText(
-							'settings.users.inviteLink.copiedToClipboardToast.description',
-						),
-					});
-				} catch (e) {
-					this.$showError(e, this.$locale.baseText('settings.users.inviteLink.error'));
-				}
+				this.$showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
+					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
+				});
 			}
 		},
 	},
