@@ -29,6 +29,5 @@ export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 	externalHooks: IExternalHooksClass;
-	defaultCredentialsName: string;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }
