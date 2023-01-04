@@ -93,6 +93,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
 
+	isLogStreamingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}
