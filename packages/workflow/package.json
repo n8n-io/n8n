@@ -49,7 +49,7 @@
     "@types/xml2js": "^0.4.3"
   },
   "dependencies": {
-    "@n8n_io/riot-tmpl": "^1.0.1",
+    "@n8n_io/riot-tmpl": "^2.0.0",
     "jmespath": "^0.16.0",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
