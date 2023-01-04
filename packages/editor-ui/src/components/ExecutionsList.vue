@@ -8,47 +8,37 @@
 			}}
 		</n8n-heading>
 		<div :class="$style.filters">
-			<el-row>
-				<el-col :span="2" class="filter-headline">
-					{{ $locale.baseText('executionsList.filters') }}:
-				</el-col>
-				<el-col :span="7">
-					<n8n-select
-						v-model="filter.workflowId"
-						:placeholder="$locale.baseText('executionsList.selectWorkflow')"
-						size="medium"
-						filterable
-						@change="handleFilterChanged"
-					>
-						<div class="ph-no-capture">
-							<n8n-option
-								v-for="item in workflows"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id"
-							>
-							</n8n-option>
-						</div>
-					</n8n-select>
-				</el-col>
-				<el-col :span="5" :offset="1">
-					<n8n-select
-						v-model="filter.status"
-						:placeholder="$locale.baseText('executionsList.selectStatus')"
-						size="medium"
-						filterable
-						@change="handleFilterChanged"
-					>
-						<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id">
-						</n8n-option>
-					</n8n-select>
-				</el-col>
-				<el-col :span="4" :offset="5" :class="$style.autoRefresh">
-					<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
-						{{ $locale.baseText('executionsList.autoRefresh') }}
-					</el-checkbox>
-				</el-col>
-			</el-row>
+			<span :class="$style.filterItem">{{ $locale.baseText('executionsList.filters') }}:</span>
+			<n8n-select
+				:class="$style.filterItem"
+				v-model="filter.workflowId"
+				:placeholder="$locale.baseText('executionsList.selectWorkflow')"
+				size="medium"
+				filterable
+				@change="handleFilterChanged"
+			>
+				<div class="ph-no-capture">
+					<n8n-option
+						v-for="item in workflows"
+						:key="item.id"
+						:label="item.name"
+						:value="item.id"
+					/>
+				</div>
+			</n8n-select>
+			<n8n-select
+				:class="$style.filterItem"
+				v-model="filter.status"
+				:placeholder="$locale.baseText('executionsList.selectStatus')"
+				size="medium"
+				filterable
+				@change="handleFilterChanged"
+			>
+				<n8n-option v-for="item in statuses" :key="item.id" :label="item.name" :value="item.id" />
+			</n8n-select>
+			<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">
+				{{ $locale.baseText('executionsList.autoRefresh') }}
+			</el-checkbox>
 		</div>
 
 		<div :class="$style.selectionOptions">
@@ -64,164 +54,151 @@
 			</span>
 		</div>
 
-		<el-table
-			:class="$style.execTable"
-			:data="combinedExecutions"
-			stripe
-			v-loading="isDataLoading"
-			:row-class-name="getRowClass"
-		>
-			<el-table-column align="right" width="40">
-				<!-- eslint-disable-next-line vue/no-unused-vars -->
-				<template #header="scope">
-					<el-checkbox
-						:indeterminate="isIndeterminate"
-						v-model="checkAll"
-						@change="handleCheckAllChange"
-						label=""
-					></el-checkbox>
-				</template>
-				<template #default="scope">
-					<el-checkbox
-						v-if="scope.row.stoppedAt !== undefined && scope.row.id"
-						:value="selectedItems[scope.row.id.toString()] || checkAll"
-						@change="handleCheckboxChanged(scope.row.id)"
-						label=""
-					></el-checkbox>
-				</template>
-			</el-table-column>
-			<el-table-column
-				width="auto"
-				property="workflowName"
-				:label="$locale.baseText('executionsList.name')"
-			>
-				<template #default="scope">
-					<div class="ph-no-capture">
+		<table :class="$style.execTable">
+			<thead>
+				<tr>
+					<th>
+						<el-checkbox
+							:indeterminate="isIndeterminate"
+							v-model="checkAll"
+							@change="handleCheckAllChange"
+							label=""
+						/>
+					</th>
+					<th>{{ $locale.baseText('executionsList.name') }}</th>
+					<th>{{ $locale.baseText('executionsList.startedAt') }}</th>
+					<th>{{ $locale.baseText('executionsList.status') }}</th>
+					<th>{{ $locale.baseText('executionsList.id') }}</th>
+					<th></th>
+					<th></th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr
+					v-for="execution in combinedExecutions"
+					:key="execution.id"
+					:class="getRowClass(execution)"
+				>
+					<td>
+						<el-checkbox
+							v-if="execution.stoppedAt !== undefined && execution.id"
+							:value="selectedItems[execution.id.toString()] || checkAll"
+							@change="handleCheckboxChanged(execution.id)"
+							label=""
+						/>
+					</td>
+					<td>
 						<span>{{
-							scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
+							execution.workflowName || $locale.baseText('executionsList.unsavedWorkflow')
 						}}</span>
-					</div>
-				</template>
-			</el-table-column>
-			<el-table-column property="startedAt" :label="$locale.baseText('executionsList.startedAt')">
-				<template #default="scope">
-					{{ convertToDisplayDate(scope.row.startedAt) }}
-				</template>
-			</el-table-column>
-			<el-table-column :label="$locale.baseText('executionsList.status')">
-				<template #default="scope">
-					<div :class="$style.statusColumn">
-						<span v-if="scope.row.stoppedAt === undefined">
-							<font-awesome-icon icon="spinner" spin />
-							<execution-time :start-time="scope.row.startedAt" />
+					</td>
+					<td>
+						<span>{{ convertToDisplayDate(execution.startedAt) }}</span>
+					</td>
+					<td>
+						<div :class="$style.statusColumn">
+							<span v-if="execution.stoppedAt === undefined">
+								<font-awesome-icon icon="spinner" spin />
+								<execution-time :start-time="execution.startedAt" />
+							</span>
+							&nbsp;
+							<i18n :path="getStatusTextTranslationPath(execution)">
+								<template #status>
+									<span :class="$style.status">{{ getStatusText(execution) }}</span>
+								</template>
+								<template v-if="execution.stoppedAt !== null" #time>
+									<span>
+										{{
+											displayTimer(
+												new Date(execution.stoppedAt).getTime() -
+													new Date(execution.startedAt).getTime(),
+												true,
+											)
+										}}
+									</span>
+								</template>
+							</i18n>
+						</div>
+					</td>
+					<td>
+						<span v-if="execution.id">#{{ execution.id }}</span>
+						<span v-if="execution.retryOf !== undefined">
+							<br />
+							<small>
+								({{ $locale.baseText('executionsList.retryOf') }} #{{ execution.retryOf }})
+							</small>
 						</span>
-						&nbsp;
-						<i18n :path="getStatusTextTranslationPath(scope.row)">
-							<template #status>
-								<span :class="$style.status">{{ getStatusText(scope.row) }}</span>
+						<span v-else-if="execution.retrySuccessId !== undefined">
+							<br />
+							<small>
+								({{ $locale.baseText('executionsList.successRetry') }} #{{
+									execution.retrySuccessId
+								}})
+							</small>
+						</span>
+					</td>
+					<td>
+						<font-awesome-icon v-if="execution.mode === 'manual'" icon="flask" />
+					</td>
+					<td>
+						<div :class="$style.actionsContainer">
+							<span v-if="execution.stoppedAt === undefined || execution.waitTill">
+								<n8n-button
+									size="small"
+									outline
+									:label="$locale.baseText('executionsList.stop')"
+									@click.stop="stopExecution(execution.id)"
+									:loading="stoppingExecutions.includes(execution.id)"
+								/>
+							</span>
+							<span v-if="execution.stoppedAt !== undefined && execution.id">
+								<n8n-button
+									size="small"
+									outline
+									:label="$locale.baseText('executionsList.view')"
+									@click.stop="(e) => displayExecution(execution, e)"
+								/>
+							</span>
+						</div>
+					</td>
+					<td>
+						<el-dropdown trigger="click" @command="handleRetryClick">
+							<span class="retry-button">
+								<n8n-icon-button
+									v-if="
+										execution.stoppedAt !== undefined &&
+										!execution.finished &&
+										execution.retryOf === undefined &&
+										execution.retrySuccessId === undefined &&
+										!execution.waitTill
+									"
+									text
+									type="tertiary"
+									size="mini"
+									:title="$locale.baseText('executionsList.retryExecution')"
+									icon="ellipsis-v"
+								/>
+							</span>
+							<template #dropdown>
+								<el-dropdown-menu>
+									<el-dropdown-item :command="{ command: 'currentlySaved', row: execution }">
+										{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+									</el-dropdown-item>
+									<el-dropdown-item :command="{ command: 'original', row: execution }">
+										{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+									</el-dropdown-item>
+								</el-dropdown-menu>
 							</template>
-							<template v-if="scope.row.stoppedAt !== null" #time>
-								<span>
-									{{
-										displayTimer(
-											new Date(scope.row.stoppedAt).getTime() -
-												new Date(scope.row.startedAt).getTime(),
-											true,
-										)
-									}}
-								</span>
-							</template>
-						</i18n>
-					</div>
-				</template>
-			</el-table-column>
-			<el-table-column :label="$locale.baseText('executionsList.id')">
-				<template #default="scope">
-					<span v-if="scope.row.id">#{{ scope.row.id }}</span>
-					<span v-if="scope.row.retryOf !== undefined">
-						<br />
-						<small>
-							({{ $locale.baseText('executionsList.retryOf') }} #{{ scope.row.retryOf }})
-						</small>
-					</span>
-					<span v-else-if="scope.row.retrySuccessId !== undefined">
-						<br />
-						<small>
-							({{ $locale.baseText('executionsList.successRetry') }} #{{
-								scope.row.retrySuccessId
-							}})
-						</small>
-					</span>
-				</template>
-			</el-table-column>
-			<el-table-column property="mode" align="right" width="36">
-				<template #default="scope">
-					<font-awesome-icon v-if="scope.row.mode === 'manual'" icon="flask" />
-				</template>
-			</el-table-column>
-			<el-table-column align="right">
-				<template #default="scope">
-					<div :class="$style.actionsContainer">
-						<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
-							<n8n-button
-								size="small"
-								outline
-								:label="$locale.baseText('executionsList.stop')"
-								@click.stop="stopExecution(scope.row.id)"
-								:loading="stoppingExecutions.includes(scope.row.id)"
-							/>
-						</span>
-						<span v-if="scope.row.stoppedAt !== undefined && scope.row.id">
-							<n8n-button
-								size="small"
-								outline
-								:label="$locale.baseText('executionsList.view')"
-								@click.stop="(e) => displayExecution(scope.row, e)"
-							/>
-						</span>
-					</div>
-				</template>
-			</el-table-column>
-			<el-table-column align="right" width="42">
-				<template #default="scope">
-					<el-dropdown trigger="click" @command="handleRetryClick">
-						<span class="retry-button">
-							<n8n-icon-button
-								v-if="
-									scope.row.stoppedAt !== undefined &&
-									!scope.row.finished &&
-									scope.row.retryOf === undefined &&
-									scope.row.retrySuccessId === undefined &&
-									!scope.row.waitTill
-								"
-								text
-								type="tertiary"
-								size="mini"
-								:title="$locale.baseText('executionsList.retryExecution')"
-								icon="ellipsis-v"
-							/>
-						</span>
-						<template #dropdown>
-							<el-dropdown-menu>
-								<el-dropdown-item :command="{ command: 'currentlySaved', row: scope.row }">
-									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-								</el-dropdown-item>
-								<el-dropdown-item :command="{ command: 'original', row: scope.row }">
-									{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-								</el-dropdown-item>
-							</el-dropdown-menu>
-						</template>
-					</el-dropdown>
-				</template>
-			</el-table-column>
-		</el-table>
+						</el-dropdown>
+					</td>
+				</tr>
+			</tbody>
+		</table>
 
 		<div
 			:class="$style.loadMore"
-			v-if="
-				finishedExecutionsCount > finishedExecutions.length ||
-				finishedExecutionsCountEstimated === true
-			"
+			v-if="finishedExecutionsCount > finishedExecutions.length || finishedExecutionsCountEstimated"
 		>
 			<n8n-button
 				icon="sync"
@@ -231,6 +208,7 @@
 				:loading="isDataLoading"
 			/>
 		</div>
+		<div v-else :class="$style.loadedAll">{{ $locale.baseText('executionsList.loadedAll') }}</div>
 	</div>
 </template>
 
@@ -552,9 +530,8 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
 		},
-		getRowClass(data: IDataObject): string {
+		getRowClass(execution: IExecutionsSummary): string {
 			const classes: string[] = [this.$style.execRow];
-			const execution = data.row as IExecutionsSummary;
 			if (execution.waitTill) {
 				classes.push(this.$style.waiting);
 			} else if (execution.stoppedAt === undefined) {
@@ -869,17 +846,14 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 </script>
 
 <style module lang="scss">
-.autoRefresh {
-	padding-right: 0.5em;
-	text-align: right;
+.filters {
+	display: flex;
+	line-height: 2em;
+	margin: var(--spacing-l) 0;
 }
 
-.filters {
-	line-height: 2em;
-	.refresh-button {
-		position: absolute;
-		right: 0;
-	}
+.filterItem {
+	margin: 0 var(--spacing-3xl) 0 0;
 }
 
 .loadMore {
@@ -894,7 +868,6 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 .statusColumn {
 	display: flex;
-	white-space: nowrap;
 }
 
 .status {
@@ -925,10 +898,30 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 }
 
 .execTable {
-	table {
-		th,
-		td {
-			&:not(:first-child) {
+	width: 100%;
+	text-align: left;
+	font-size: var(--font-size-s);
+
+	th,
+	td {
+		padding: var(--spacing-s);
+		background: var(--color-background-xlight);
+
+		&:first-child {
+			padding-right: 0;
+			border-left: var(--spacing-4xs) solid var(--color-background-base);
+		}
+
+		&:not(:first-child, :nth-last-child(-n + 3)) {
+			width: 100%;
+		}
+
+		&:nth-last-child(-n + 2) {
+			padding-left: 0;
+		}
+
+		@media (min-width: $breakpoint-sm) {
+			&:not(:nth-child(2)) {
 				&,
 				div,
 				span {
@@ -938,13 +931,19 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 	}
 
+	th {
+		background: var(--color-background-base);
+	}
+
 	.execRow {
 		color: var(--color-text-base);
 
-		td {
-			&:first-child {
-				border-left: var(--spacing-4xs) solid var(--color-background-dark);
-			}
+		&:nth-child(even) td {
+			background: var(--color-background-light);
+		}
+
+		&:hover td {
+			background: var(--color-primary-tint-3);
 		}
 
 		&.failed td:first-child {
@@ -967,5 +966,11 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			border-left-color: var(--color-background-dark);
 		}
 	}
+}
+
+.loadedAll {
+	text-align: center;
+	font-size: var(--font-size-s);
+	padding: var(--spacing-l) 0;
 }
 </style>
