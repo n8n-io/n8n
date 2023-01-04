@@ -11,6 +11,7 @@ import {
 } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
+import config from '@/config';
 
 let testDbName = '';
 
@@ -225,6 +226,8 @@ test('should not report outdated instance when up to date', async () => {
 });
 
 test('should report security settings', async () => {
+	config.set('diagnostics.enabled', true);
+
 	const testAudit = await audit(['instance']);
 
 	const section = getRiskSection(
@@ -247,6 +250,6 @@ test('should report security settings', async () => {
 			jwtAuthActive: false,
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
-		telemetry: { diagnosticsEnabled: false },
+		telemetry: { diagnosticsEnabled: true },
 	});
 });
