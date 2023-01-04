@@ -1,13 +1,9 @@
 import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
-export const toFlaggedNode = ({
-	node,
-	workflow,
-}: {
-	node: Workflow['nodes'][number];
-	workflow: Workflow;
-}) => ({
+type Node = Workflow['nodes'][number];
+
+export const toFlaggedNode = ({ node, workflow }: { node: Node; workflow: Workflow }) => ({
 	kind: 'node' as const,
 	workflowId: workflow.id,
 	workflowName: workflow.name,
@@ -18,3 +14,13 @@ export const toFlaggedNode = ({
 
 export const toReportTitle = (riskCategory: Risk.Category) =>
 	riskCategory.charAt(0).toUpperCase() + riskCategory.slice(1) + ' Risk Report';
+
+export function getNodeTypes(workflows: Workflow[], test: (element: Node) => boolean) {
+	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
+		workflow.nodes.forEach((node) => {
+			if (test(node)) acc.push(toFlaggedNode({ node, workflow }));
+		});
+
+		return acc;
+	}, []);
+}

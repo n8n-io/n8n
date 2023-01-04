@@ -1,7 +1,7 @@
 import * as path from 'path';
 import glob from 'fast-glob';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
-import { toFlaggedNode } from '@/audit/utils';
+import { getNodeTypes } from '@/audit/utils';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
@@ -12,18 +12,6 @@ import {
 } from '@/audit/constants';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
-
-function getOfficialRiskyNodeTypes(workflows: WorkflowEntity[]) {
-	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
-		workflow.nodes.forEach((node) => {
-			if (OFFICIAL_RISKY_NODE_TYPES.has(node.type)) {
-				acc.push(toFlaggedNode({ node, workflow }));
-			}
-		});
-
-		return acc;
-	}, []);
-}
 
 async function getCommunityNodeDetails() {
 	const installedPackages = await getAllInstalledPackages();
@@ -61,7 +49,9 @@ async function getCustomNodeDetails() {
 }
 
 export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
-	const officialRiskyNodes = getOfficialRiskyNodeTypes(workflows);
+	const officialRiskyNodes = getNodeTypes(workflows, (node) =>
+		OFFICIAL_RISKY_NODE_TYPES.has(node.type),
+	);
 
 	const [communityNodes, customNodes] = await Promise.all([
 		getCommunityNodeDetails(),

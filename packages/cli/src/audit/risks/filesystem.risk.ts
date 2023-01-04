@@ -1,22 +1,12 @@
-import { toFlaggedNode } from '@/audit/utils';
+import { getNodeTypes } from '@/audit/utils';
 import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/constants';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
-function getFilesystemInteractionNodeTypes(workflows: WorkflowEntity[]) {
-	return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
-		workflow.nodes.forEach((node) => {
-			if (FILESYSTEM_INTERACTION_NODE_TYPES.has(node.type)) {
-				acc.push(toFlaggedNode({ node, workflow }));
-			}
-		});
-
-		return acc;
-	}, []);
-}
-
 export function reportFilesystemRisk(workflows: WorkflowEntity[]) {
-	const fsInteractionNodeTypes = getFilesystemInteractionNodeTypes(workflows);
+	const fsInteractionNodeTypes = getNodeTypes(workflows, (node) =>
+		FILESYSTEM_INTERACTION_NODE_TYPES.has(node.type),
+	);
 
 	if (fsInteractionNodeTypes.length === 0) return null;
 
