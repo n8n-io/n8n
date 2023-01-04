@@ -3,11 +3,12 @@ import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 // import { parser as jsParser } from '@lezer/javascript';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { completeFromList, ifIn, snippetCompletion } from '@codemirror/autocomplete';
+import { ifIn } from '@codemirror/autocomplete';
 
 import { proxyCompletions } from './completions/proxy.completions';
 import { rootCompletions } from './completions/root.completions';
 import { luxonCompletions } from './completions/luxon.completions';
+import { alphaCompletions } from './completions/alpha.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -33,11 +34,6 @@ export function n8nLang() {
 		n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], rootCompletions) }),
 		n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], proxyCompletions) }),
 		n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], luxonCompletions) }),
-		n8nLanguage.data.of({
-			autocomplete: ifIn(
-				['Resolvable'],
-				completeFromList([snippetCompletion('DateTime', { label: 'DateTime' })]),
-			),
-		}),
+		n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], alphaCompletions) }),
 	]);
 }
