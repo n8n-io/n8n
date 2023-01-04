@@ -419,6 +419,7 @@ const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
 };
 
 function isFalsy<T>(value: T) {
+	if (value === undefined) return true;
 	if (isNull(value)) return true;
 	if (typeof value === 'string' && value === '') return true;
 	if (Array.isArray(value) && value.length === 0) return true;

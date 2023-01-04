@@ -20,7 +20,7 @@ export class CompareDatasets implements INodeType {
 		properties: [
 			{
 				displayName:
-					'Items from different branches are paired together when the fields below match. Once paired, the rest of the fields are compared to determine whether the items are the same or different',
+					'Items from different branches are paired together when the fields below match. If paired, the rest of the fields are compared to determine whether the items are the same or different',
 				name: 'infoBox',
 				type: 'notice',
 				default: '',
