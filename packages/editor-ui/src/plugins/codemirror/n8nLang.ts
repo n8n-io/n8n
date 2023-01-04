@@ -22,9 +22,8 @@ const n8nParserWithNestedJsParser = n8nParser.configure({
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
 export function n8nLang() {
-	const completionGroups = [alphaCompletions, rootCompletions, proxyCompletions, luxonCompletions];
-	const options = completionGroups.map((group) =>
-		n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }),
+	const options = [alphaCompletions, rootCompletions, proxyCompletions, luxonCompletions].map(
+		(group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }),
 	);
 
 	return new LanguageSupport(n8nLanguage, [
