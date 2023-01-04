@@ -55,6 +55,7 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
+	LOG_STREAMING = 'feat:logStreaming',
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

@@ -13,8 +13,6 @@ import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 import type { IUser } from 'n8n-workflow';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;

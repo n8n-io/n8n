@@ -222,6 +222,9 @@ class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
+
+			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 			let result: IRun;
 			try {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
