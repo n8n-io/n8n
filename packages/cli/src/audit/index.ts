@@ -4,7 +4,7 @@ import { RISK_CATEGORIES } from '@/audit/constants';
 import { toReportTitle } from '@/audit/utils';
 import { reportCredentialsRisk } from '@/audit/risks/credentials.risk';
 import { reportDatabaseRisk } from '@/audit/risks/database.risk';
-import { reportExecutionRisk } from '@/audit/risks/execution.risk';
+import { reportNodesRisk } from '@/audit/risks/nodes.risk';
 import { reportFilesystemRisk } from '@/audit/risks/filesystem.risk';
 import { reportInstanceRisk } from '@/audit/risks/instance.risk';
 import type { Risk } from '@/audit/types';
@@ -16,7 +16,7 @@ export const SYNC_MAP: Record<string, Risk.SyncReportFn> = {
 
 export const ASYNC_MAP: Record<string, Risk.AsyncReportFn> = {
 	credentials: reportCredentialsRisk,
-	execution: reportExecutionRisk,
+	nodes: reportNodesRisk,
 	instance: reportInstanceRisk,
 };
 

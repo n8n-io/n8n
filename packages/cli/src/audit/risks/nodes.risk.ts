@@ -6,7 +6,7 @@ import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import {
 	OFFICIAL_RISKY_NODE_TYPES,
 	ENV_VARS_DOCS_URL,
-	EXECUTION_REPORT,
+	NODES_REPORT,
 	COMMUNITY_NODES_RISKS_URL,
 	NPM_PACKAGE_URL,
 } from '@/audit/constants';
@@ -48,7 +48,7 @@ async function getCustomNodeDetails() {
 	return customNodeTypes;
 }
 
-export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
+export async function reportNodesRisk(workflows: WorkflowEntity[]) {
 	const officialRiskyNodes = getNodeTypes(workflows, (node) =>
 		OFFICIAL_RISKY_NODE_TYPES.has(node.type),
 	);
@@ -63,7 +63,7 @@ export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
 	if (issues.every((i) => i.length === 0)) return null;
 
 	const report: Risk.StandardReport = {
-		risk: EXECUTION_REPORT.RISK,
+		risk: NODES_REPORT.RISK,
 		sections: [],
 	};
 
@@ -71,7 +71,7 @@ export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
 
 	if (officialRiskyNodes.length > 0) {
 		report.sections.push({
-			title: EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
+			title: NODES_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
 			description: [
 				sentenceStart(officialRiskyNodes.length),
 				"part of n8n's official nodes and may be used to fetch and run any arbitrary code in the host system. This may lead to exploits such as remote code execution.",
@@ -83,7 +83,7 @@ export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
 
 	if (communityNodes.length > 0) {
 		report.sections.push({
-			title: EXECUTION_REPORT.SECTIONS.COMMUNITY_NODES,
+			title: NODES_REPORT.SECTIONS.COMMUNITY_NODES,
 			description: [
 				sentenceStart(communityNodes.length),
 				`sourced from the n8n community. Community nodes are not vetted by the n8n team and have full access to the host system. See: ${COMMUNITY_NODES_RISKS_URL}`,
@@ -96,7 +96,7 @@ export async function reportExecutionRisk(workflows: WorkflowEntity[]) {
 
 	if (customNodes.length > 0) {
 		report.sections.push({
-			title: EXECUTION_REPORT.SECTIONS.CUSTOM_NODES,
+			title: NODES_REPORT.SECTIONS.CUSTOM_NODES,
 			description: [
 				sentenceStart(communityNodes.length),
 				'unpublished and located in the host system. Custom nodes are not vetted by the n8n team and have full access to the host system.',

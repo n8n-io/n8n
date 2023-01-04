@@ -20,7 +20,7 @@ post:
                   type: array
                   items:
                     type: string
-                    enum: ['credentials', 'database', 'execution', 'filesystem', 'instance']
+                    enum: ['credentials', 'database', 'nodes', 'filesystem', 'instance']
   responses:
     '200':
       description: Operation successful.

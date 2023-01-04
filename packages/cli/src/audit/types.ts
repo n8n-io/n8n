@@ -1,7 +1,7 @@
 import type { WorkflowEntity as Workflow } from '@/databases/entities/WorkflowEntity';
 
 export namespace Risk {
-	export type Category = 'database' | 'credentials' | 'execution' | 'instance' | 'filesystem';
+	export type Category = 'database' | 'credentials' | 'nodes' | 'instance' | 'filesystem';
 
 	type CredLocation = {
 		kind: 'credential';

@@ -2,7 +2,7 @@ import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
 import { audit } from '@/audit';
 import * as packageModel from '@/CommunityNodes/packageModel';
-import { OFFICIAL_RISKY_NODE_TYPES, EXECUTION_REPORT } from '@/audit/constants';
+import { OFFICIAL_RISKY_NODE_TYPES, NODES_REPORT } from '@/audit/constants';
 import { getRiskSection, MOCK_PACKAGE, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
@@ -49,12 +49,12 @@ test('should report risky official nodes', async () => {
 
 	await Promise.all(promises);
 
-	const testAudit = await audit(['execution']);
+	const testAudit = await audit(['nodes']);
 
 	const section = getRiskSection(
 		testAudit,
-		EXECUTION_REPORT.RISK,
-		EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
+		NODES_REPORT.RISK,
+		NODES_REPORT.SECTIONS.OFFICIAL_RISKY_NODES,
 	);
 
 	expect(section.location).toHaveLength(OFFICIAL_RISKY_NODE_TYPES.size);
@@ -69,26 +69,26 @@ test('should report risky official nodes', async () => {
 test('should not report non-risky official nodes', async () => {
 	await saveManualTriggerWorkflow();
 
-	const testAudit = await audit(['execution']);
+	const testAudit = await audit(['nodes']);
 
-	const report = testAudit?.[toReportTitle('execution')];
+	const report = testAudit?.[toReportTitle('nodes')];
 
 	if (!report) return;
 
 	for (const section of report.sections) {
-		expect(section.title).not.toBe(EXECUTION_REPORT.SECTIONS.OFFICIAL_RISKY_NODES);
+		expect(section.title).not.toBe(NODES_REPORT.SECTIONS.OFFICIAL_RISKY_NODES);
 	}
 });
 
 test('should report community nodes', async () => {
 	jest.spyOn(packageModel, 'getAllInstalledPackages').mockResolvedValueOnce(MOCK_PACKAGE);
 
-	const testAudit = await audit(['execution']);
+	const testAudit = await audit(['nodes']);
 
 	const section = getRiskSection(
 		testAudit,
-		EXECUTION_REPORT.RISK,
-		EXECUTION_REPORT.SECTIONS.COMMUNITY_NODES,
+		NODES_REPORT.RISK,
+		NODES_REPORT.SECTIONS.COMMUNITY_NODES,
 	);
 
 	expect(section.location).toHaveLength(1);

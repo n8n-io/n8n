@@ -7,7 +7,7 @@ import type { Risk } from '@/audit/types';
 export const RISK_CATEGORIES: Risk.Category[] = [
 	'credentials',
 	'database',
-	'execution',
+	'nodes',
 	'instance',
 	'filesystem',
 ];
@@ -87,8 +87,8 @@ export const FILESYSTEM_REPORT = {
 	},
 } as const;
 
-export const EXECUTION_REPORT = {
-	RISK: 'execution',
+export const NODES_REPORT = {
+	RISK: 'nodes',
 	SECTIONS: {
 		OFFICIAL_RISKY_NODES: 'Official risky nodes',
 		COMMUNITY_NODES: 'Community nodes',
