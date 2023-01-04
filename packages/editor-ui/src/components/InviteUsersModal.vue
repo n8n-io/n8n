@@ -40,6 +40,7 @@ import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -109,18 +110,23 @@ export default mixins(showMessage, copyPaste).extend({
 		];
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useSettingsStore),
 		emailsCount(): number {
 			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return this.$locale.baseText('settings.users.inviteXUser', {
-					interpolate: { count: this.emailsCount.toString() },
-				});
+				return this.$locale.baseText(
+					`settings.users.inviteXUser${this.settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`,
+					{
+						interpolate: { count: this.emailsCount.toString() },
+					},
+				);
 			}
 
-			return this.$locale.baseText('settings.users.inviteUser');
+			return this.$locale.baseText(
+				`settings.users.inviteUser${this.settingsStore.isSmtpSetup ? '' : '.inviteUrl'}`,
+			);
 		},
 		enabledButton(): boolean {
 			return this.emailsCount >= 1;
