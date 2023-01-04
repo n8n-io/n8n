@@ -14,3 +14,9 @@ export interface IUserListAction {
 	value: string;
 	guard?: (user: IUser) => boolean;
 }
+
+export interface IUserListAction {
+	label: string;
+	value: string;
+	guard?: (user: IUser) => boolean;
+}

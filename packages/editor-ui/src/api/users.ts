@@ -120,6 +120,13 @@ export async function reinvite(context: IRestApiContext, { id }: { id: string })
 	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
 }
 
+export async function getInviteLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
+}
+
 export async function submitPersonalizationSurvey(
 	context: IRestApiContext,
 	params: IPersonalizationLatestVersion,
