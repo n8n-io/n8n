@@ -223,7 +223,7 @@ export const starFields: INodeProperties[] = [
 				displayName: 'Message Timestamp',
 				name: 'timestamp',
 				type: 'number',
-				default: undefined,
+				default: 0,
 				description: 'Timestamp of the message to delete',
 				placeholder: '1663233118.856619',
 			},

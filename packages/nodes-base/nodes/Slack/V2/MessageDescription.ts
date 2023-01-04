@@ -475,7 +475,7 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Message Timestamp',
 				name: 'ts',
 				type: 'number',
-				default: undefined,
+				default: 0,
 				description: 'Timestamp of the message to post',
 				placeholder: '1663233118.856619',
 			},
