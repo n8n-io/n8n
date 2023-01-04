@@ -471,7 +471,7 @@ export const schema = {
 	security: {
 		audit: {
 			daysAbandonedWorkflow: {
-				doc: 'Number of days that must elapse for a workflow to be considered abandoned',
+				doc: 'Days for a workflow to be considered abandoned if not executed',
 				format: Number,
 				default: 90,
 				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',

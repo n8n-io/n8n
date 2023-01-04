@@ -170,5 +170,9 @@ export interface IJsonSchema {
 // ----------------------------------
 
 export declare namespace AuditRequest {
-	type Generate = AuthenticatedRequest<{}, {}, { filters?: { categories?: Risk.Category[] } }>;
+	type Generate = AuthenticatedRequest<
+		{},
+		{},
+		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
+	>;
 }

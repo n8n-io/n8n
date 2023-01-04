@@ -12,10 +12,12 @@ post:
         schema:
           type: object
           properties:
-            filters:
+            additionalOptions:
               type: object
-              description: Filters for specific risk categories.
               properties:
+                daysAbandonedWorkflow:
+                  type: integer
+                  description: Days for a workflow to be considered abandoned if not executed
                 categories:
                   type: array
                   items:

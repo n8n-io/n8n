@@ -26,12 +26,12 @@ export class SecurityAudit extends Command {
 		help: flags.help({ char: 'h' }),
 		categories: flags.string({
 			default: RISK_CATEGORIES.join(','),
-			description: 'Comma-separated list of categories to include in the report.',
+			description: 'Comma-separated list of categories to include in the report',
 		}),
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'days-abandoned-workflow': flags.integer({
 			default: config.getEnv('security.audit.daysAbandonedWorkflow'),
-			description: 'Number of days that must elapse for a workflow to be considered abandoned.',
+			description: 'Days for a workflow to be considered abandoned if not executed',
 		}),
 	};
 
@@ -46,11 +46,7 @@ export class SecurityAudit extends Command {
 			auditFlags.categories?.split(',').filter((i): i is Risk.Category => i !== '') ??
 			RISK_CATEGORIES;
 
-		if (auditFlags['days-abandoned-workflow']) {
-			config.set('security.audit.daysAbandonedWorkflow', auditFlags['days-abandoned-workflow']);
-		}
-
-		const result = await audit(categories);
+		const result = await audit(categories, auditFlags['days-abandoned-workflow']);
 
 		process.stdout.write(JSON.stringify(result, null, 2));
 

@@ -31,8 +31,8 @@ export const auditOperations: INodeProperties[] = [
 
 export const auditFields: INodeProperties[] = [
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Additional Options',
+		name: 'additionalOptions',
 		type: 'collection',
 		placeholder: 'Add Filter',
 		displayOptions: {
@@ -43,7 +43,7 @@ export const auditFields: INodeProperties[] = [
 		routing: {
 			request: {
 				body: {
-					filters: '={{ $value }}',
+					additionalOptions: '={{ $value }}',
 				},
 			},
 		},
@@ -65,10 +65,6 @@ export const auditFields: INodeProperties[] = [
 						value: 'database',
 					},
 					{
-						name: 'Execution',
-						value: 'execution',
-					},
-					{
 						name: 'Filesystem',
 						value: 'filesystem',
 					},
@@ -76,7 +72,18 @@ export const auditFields: INodeProperties[] = [
 						name: 'Instance',
 						value: 'instance',
 					},
+					{
+						name: 'Nodes',
+						value: 'nodes',
+					},
 				],
+			},
+			{
+				displayName: 'Days Abandoned Workflow',
+				name: 'daysAbandonedWorkflow',
+				description: 'Days for a workflow to be considered abandoned if not executed',
+				type: 'number',
+				default: 90,
 			},
 		],
 	},
