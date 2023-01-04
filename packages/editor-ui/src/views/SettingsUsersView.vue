@@ -3,27 +3,11 @@
 		<div>
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 			<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
-				<n8n-tooltip :disabled="settingsStore.isSmtpSetup" placement="bottom">
-					<template #content>
-						<i18n path="settings.users.setupSMTPToInviteUsers" tag="span">
-							<template #action>
-								<a
-									href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-									target="_blank"
-									v-text="$locale.baseText('settings.users.setupSMTPToInviteUsers.instructions')"
-								/>
-							</template>
-						</i18n>
-					</template>
-					<div>
-						<n8n-button
-							:label="$locale.baseText('settings.users.invite')"
-							@click="onInvite"
-							size="large"
-							:disabled="!settingsStore.isSmtpSetup"
-						/>
-					</div>
-				</n8n-tooltip>
+				<n8n-button
+					:label="$locale.baseText('settings.users.invite')"
+					@click="onInvite"
+					size="large"
+				/>
 			</div>
 		</div>
 		<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
@@ -37,16 +21,13 @@
 			/>
 		</div>
 		<div :class="$style.usersContainer" v-else>
-			<PageAlert
-				v-if="!settingsStore.isSmtpSetup"
-				:message="$locale.baseText('settings.users.smtpToAddUsersWarning')"
-				:popupClass="$style.alert"
-			/>
 			<n8n-users-list
+				:actions="usersListActions"
 				:users="usersStore.allUsers"
 				:currentUserId="usersStore.currentUserId"
 				@delete="onDelete"
 				@reinvite="onReinvite"
+				@copyInviteLink="onCopyInviteLink"
 			/>
 		</div>
 	</div>
@@ -56,15 +37,16 @@
 import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 
 import PageAlert from '../components/PageAlert.vue';
-import { IUser } from '@/Interface';
+import { IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, copyPaste).extend({
 	name: 'SettingsUsersView',
 	components: {
 		PageAlert,
@@ -78,6 +60,24 @@ export default mixins(showMessage).extend({
 		...mapStores(useSettingsStore, useUIStore, useUsersStore),
 		isSharingEnabled() {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		usersListActions(): IUserListAction[] {
+			return [
+				{
+					label: this.$locale.baseText('settings.users.actions.copyInviteLink'),
+					value: 'copyInviteLink',
+					guard: (user) => !user.firstName && !!user.inviteAcceptUrl,
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.reinvite'),
+					value: 'reinvite',
+					guard: (user) => !user.firstName && this.settingsStore.isSmtpSetup,
+				},
+				{
+					label: this.$locale.baseText('settings.users.actions.delete'),
+					value: 'delete',
+				},
+			];
 		},
 	},
 	methods: {
@@ -109,6 +109,18 @@ export default mixins(showMessage).extend({
 				} catch (e) {
 					this.$showError(e, this.$locale.baseText('settings.users.userReinviteError'));
 				}
+			}
+		},
+		async onCopyInviteLink(userId: string) {
+			const user = this.usersStore.getUserById(userId) as IUser | null;
+			if (user?.inviteAcceptUrl) {
+				this.copyToClipboard(user.inviteAcceptUrl);
+
+				this.$showToast({
+					type: 'success',
+					title: this.$locale.baseText('settings.users.inviteUrlCreated'),
+					message: this.$locale.baseText('settings.users.inviteUrlCreated.message'),
+				});
 			}
 		},
 	},

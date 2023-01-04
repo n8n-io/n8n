@@ -12,7 +12,7 @@
 				<n8n-text>
 					{{
 						$locale.baseText(
-							contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.modal,
 						)
 					}}
 				</n8n-text>
@@ -50,7 +50,6 @@
 						:currentUserId="currentUser.id"
 						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
 						:readonly="!workflowPermissions.updateSharing"
-						@delete="onRemoveSharee"
 					>
 						<template #actions="{ user }">
 							<n8n-select
@@ -71,7 +70,9 @@
 					<template #fallback>
 						<n8n-text>
 							<i18n
-								:path="contextBasedTranslationKeys.workflows.sharing.unavailable.description"
+								:path="
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+								"
 								tag="span"
 							>
 								<template #action />
@@ -85,7 +86,11 @@
 		<template #footer>
 			<div v-if="!isSharingEnabled" :class="$style.actionButtons">
 				<n8n-button @click="goToUpgrade">
-					{{ $locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button) }}
+					{{
+						$locale.baseText(
+							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+						)
+					}}
 				</n8n-button>
 			</div>
 			<div v-else-if="isDefaultUser" :class="$style.actionButtons">
@@ -112,10 +117,12 @@
 				</n8n-button>
 
 				<template #fallback>
-					<n8n-link :to="contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl">
+					<n8n-link :to="uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.linkUrl">
 						<n8n-button :loading="loading" size="medium">
 							{{
-								$locale.baseText(contextBasedTranslationKeys.workflows.sharing.unavailable.button)
+								$locale.baseText(
+									uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+								)
 							}}
 						</n8n-button>
 					</n8n-link>
@@ -192,8 +199,8 @@ export default mixins(showMessage).extend({
 		modalTitle(): string {
 			return this.$locale.baseText(
 				this.isSharingEnabled
-					? this.contextBasedTranslationKeys.workflows.sharing.title
-					: this.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
+					? this.uiStore.contextBasedTranslationKeys.workflows.sharing.title
+					: this.uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title,
 				{
 					interpolate: { name: this.workflow.name },
 				},
@@ -234,9 +241,6 @@ export default mixins(showMessage).extend({
 		},
 		workflowOwnerName(): string {
 			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflow.id}`);
-		},
-		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
-			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
@@ -433,7 +437,7 @@ export default mixins(showMessage).extend({
 			});
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
+			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
 				linkUrl = this.usageStore.viewPlansUrl;
 			}

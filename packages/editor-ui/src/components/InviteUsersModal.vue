@@ -32,6 +32,7 @@
 import mixins from 'vue-typed-mixins';
 
 import { showMessage } from '@/mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import Vue from 'vue';
 import { IFormInputs, IInviteResponse } from '@/Interface';
@@ -53,7 +54,7 @@ function getEmail(email: string): string {
 	return parsed;
 }
 
-export default mixins(showMessage).extend({
+export default mixins(showMessage, copyPaste).extend({
 	components: { Modal },
 	name: 'InviteUsersModal',
 	props: {
@@ -165,42 +166,62 @@ export default mixins(showMessage).extend({
 				}
 
 				const invited: IInviteResponse[] = await this.usersStore.inviteUsers(emails);
-				const invitedEmails = invited.reduce(
-					(accu, { user, error }) => {
-						if (error) {
-							accu.error.push(user.email);
-						} else {
-							accu.success.push(user.email);
-						}
-						return accu;
-					},
-					{
-						success: [] as string[],
-						error: [] as string[],
-					},
+				const erroredInvites = invited.filter((invite) => invite.error);
+				const successfulEmailInvites = invited.filter(
+					(invite) => !invite.error && invite.user.emailSent,
+				);
+				const successfulUrlInvites = invited.filter(
+					(invite) => !invite.error && !invite.user.emailSent,
 				);
 
-				if (invitedEmails.success.length) {
+				if (successfulEmailInvites.length) {
 					this.$showMessage({
 						type: 'success',
 						title: this.$locale.baseText(
-							invitedEmails.success.length > 1
+							successfulEmailInvites.length > 1
 								? 'settings.users.usersInvited'
 								: 'settings.users.userInvited',
 						),
 						message: this.$locale.baseText('settings.users.emailInvitesSent', {
-							interpolate: { emails: invitedEmails.success.join(', ') },
+							interpolate: {
+								emails: successfulEmailInvites.map(({ user }) => user.email).join(', '),
+							},
 						}),
 					});
 				}
 
-				if (invitedEmails.error.length) {
+				if (successfulUrlInvites.length) {
+					if (successfulUrlInvites.length === 1) {
+						this.copyToClipboard(successfulUrlInvites[0].user.inviteAcceptUrl);
+					}
+
+					this.$showMessage({
+						type: 'success',
+						title: this.$locale.baseText(
+							successfulUrlInvites.length > 1
+								? 'settings.users.multipleInviteUrlsCreated'
+								: 'settings.users.inviteUrlCreated',
+						),
+						message: this.$locale.baseText(
+							successfulUrlInvites.length > 1
+								? 'settings.users.multipleInviteUrlsCreated.message'
+								: 'settings.users.inviteUrlCreated.message',
+							{
+								interpolate: {
+									emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
+								},
+							},
+						),
+					});
+				}
+
+				if (erroredInvites.length) {
 					setTimeout(() => {
 						this.$showMessage({
 							type: 'error',
 							title: this.$locale.baseText('settings.users.usersEmailedError'),
 							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
-								interpolate: { emails: invitedEmails.error.join(', ') },
+								interpolate: { emails: erroredInvites.map(({ error }) => error).join(', ') },
 							}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
