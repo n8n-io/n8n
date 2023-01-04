@@ -4,6 +4,11 @@ import { getLogger, Logger } from '@/Logger';
 import { User } from '@db/entities/User';
 import * as Db from '@/Db';
 import { inTest } from '@/constants';
+import { UserSettings } from 'n8n-core';
+import { CredentialTypes } from '@/CredentialTypes';
+import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export abstract class BaseCommand extends Command {
 	logger: Logger;
@@ -13,10 +18,25 @@ export abstract class BaseCommand extends Command {
 	 */
 
 	async init(): Promise<void> {
-		this.logger = getLogger();
-		LoggerProxy.init(this.logger);
+		this.initLogger();
 
 		await Db.init();
+	}
+
+	initLogger() {
+		this.logger = getLogger();
+		LoggerProxy.init(this.logger);
+	}
+
+	async initInternalHooksManager(): Promise<void> {
+		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		await loadNodesAndCredentials.init();
+
+		const nodeTypes = NodeTypes(loadNodesAndCredentials);
+		CredentialTypes(loadNodesAndCredentials);
+
+		const instanceId = await UserSettings.getInstanceId();
+		await InternalHooksManager.init(instanceId, nodeTypes);
 	}
 
 	async finally(): Promise<void> {

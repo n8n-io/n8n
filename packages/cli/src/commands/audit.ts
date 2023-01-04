@@ -1,5 +1,3 @@
-import { LoggerProxy } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
 import { BaseCommand } from './BaseCommand';
 import { audit } from '@/audit';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -10,8 +8,9 @@ export class SecurityAuditCommand extends BaseCommand {
 	static examples = ['$ n8n audit'];
 
 	async run() {
-		const logger = getLogger();
-		LoggerProxy.init(logger);
+		this.initLogger();
+
+		await this.initInternalHooksManager();
 
 		const result = await audit();
 
