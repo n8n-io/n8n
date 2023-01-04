@@ -180,7 +180,7 @@ export function usersNamespace(this: N8nApp): void {
 							resp.user.emailSent = true;
 							void InternalHooksManager.getInstance().onUserTransactionalEmail({
 								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-								user_id: id!,
+								user_id: id,
 								message_type: 'New user invite',
 								public_api: false,
 							});
