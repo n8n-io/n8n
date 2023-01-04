@@ -86,8 +86,13 @@ class CredentialsOverwritesClass {
 		return overwrites;
 	}
 
-	private get(type: string): ICredentialDataDecryptedObject | undefined {
-		return this.overwriteData[type];
+	private get(name: string): ICredentialDataDecryptedObject | undefined {
+		const parentTypes = this.credentialTypes.getParentTypes(name);
+		return [name, ...parentTypes]
+			.reverse()
+			.map((type) => this.overwriteData[type])
+			.filter((type) => !!type)
+			.reduce((acc, current) => Object.assign(acc, current), {});
 	}
 
 	getAll(): ICredentialsOverwrite {
