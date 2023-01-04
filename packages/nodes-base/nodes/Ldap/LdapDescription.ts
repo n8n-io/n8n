@@ -240,7 +240,7 @@ export const ldapFields: INodeProperties[] = [
 				searchFor: ['custom'],
 			},
 		},
-		description: `Custom LDAP filter. Escape these chars * ( ) \\ with a backslash '\\'.`,
+		description: 'Custom LDAP filter. Escape these chars * ( ) \\ with a backslash "\\".',
 	},
 	{
 		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options

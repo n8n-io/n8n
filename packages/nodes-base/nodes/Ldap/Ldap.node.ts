@@ -21,7 +21,7 @@ import { BINARY_AD_ATTRIBUTES, resolveBinaryAttributes } from './Helpers';
 export class Ldap implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ldap',
-		name: 'LDAP',
+		name: 'ldap',
 		icon: 'file:ldap.svg',
 		group: ['transform'],
 		version: 1,

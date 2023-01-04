@@ -3,7 +3,9 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Ldap implements ICredentialType {
 	name = 'ldap';
+
 	displayName = 'LDAP';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'LDAP Server Address',
