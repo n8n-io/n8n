@@ -1,14 +1,10 @@
 import { alphaCompletions } from '../alpha.completions';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
-import { setActivePinia } from 'pinia';
-import { createTestingPinia } from '@pinia/testing';
 
 const EXPLICIT = false;
 
 test('should return alphabetic char completion options: D', () => {
-	setActivePinia(createTestingPinia());
-
 	const doc = '{{ D }}';
 	const position = doc.indexOf('D') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
@@ -24,8 +20,6 @@ test('should return alphabetic char completion options: D', () => {
 });
 
 test('should not return alphabetic char completion options: $input.D', () => {
-	setActivePinia(createTestingPinia());
-
 	const doc = '{{ $input.D }}';
 	const position = doc.indexOf('D') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
