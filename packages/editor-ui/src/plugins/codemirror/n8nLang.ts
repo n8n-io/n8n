@@ -13,7 +13,6 @@ const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
 		if (node.type.isTop) return null;
 
-		// @TODO: overlay still needed?
 		return node.name === 'Resolvable'
 			? { parser: javascriptLanguage.parser, overlay: (node) => node.type.name === 'Resolvable' }
 			: null;
