@@ -10,7 +10,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WEBHOOK_VALIDATOR_NODE_TYPES,
 } from '@/audit/constants';
-import { inDevelopment, N8N_VERSION } from '@/constants';
+import { getN8nPackageJson, inDevelopment } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { Risk, n8n } from '@/audit/types';
 
@@ -124,8 +124,10 @@ function classify(versions: n8n.Version[], currentVersionName: string) {
 export async function getOutdatedState() {
 	let versions = [];
 
+	const localVersion = getN8nPackageJson().version;
+
 	try {
-		versions = await getNextVersions(N8N_VERSION).then(removeIconData);
+		versions = await getNextVersions(localVersion).then(removeIconData);
 	} catch (error) {
 		if (inDevelopment) {
 			console.error('Failed to fetch n8n versions. Skipping outdated instance report...');
@@ -133,8 +135,7 @@ export async function getOutdatedState() {
 		return null;
 	}
 
-	// API returns current version and any next versions
-	const { currentVersion, nextVersions } = classify(versions, N8N_VERSION);
+	const { currentVersion, nextVersions } = classify(versions, localVersion);
 
 	const nextVersionsNumber = nextVersions.length;
 
