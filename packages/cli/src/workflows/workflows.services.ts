@@ -314,7 +314,7 @@ export class WorkflowsService {
 		}
 
 		await ExternalHooks().run('workflow.afterUpdate', [updatedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowSaved(user.id, updatedWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowSaved(user, updatedWorkflow, false);
 
 		if (updatedWorkflow.active) {
 			// When the workflow is supposed to be active add it again

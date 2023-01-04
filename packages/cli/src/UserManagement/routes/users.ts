@@ -145,7 +145,7 @@ export function usersNamespace(this: N8nApp): void {
 				});
 
 				void InternalHooksManager.getInstance().onUserInvite({
-					user_id: req.user.id,
+					user: req.user,
 					target_user_id: Object.values(createUsers) as string[],
 					public_api: false,
 				});
@@ -190,7 +190,7 @@ export function usersNamespace(this: N8nApp): void {
 						});
 					} else {
 						void InternalHooksManager.getInstance().onEmailFailed({
-							user_id: req.user.id,
+							user: req.user,
 							message_type: 'New user invite',
 							public_api: false,
 						});
@@ -282,7 +282,8 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserInviteEmailClick({
-				user_id: inviteeId,
+				inviter,
+				invitee,
 			});
 
 			const { firstName, lastName } = inviter;
@@ -348,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 			await issueCookie(res, updatedUser);
 
 			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: invitee.id,
+				user: updatedUser,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -479,7 +480,11 @@ export function usersNamespace(this: N8nApp): void {
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
 
-				void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+				void InternalHooksManager.getInstance().onUserDeletion({
+					user: req.user,
+					telemetryData,
+					publicApi: false,
+				});
 				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 				return { success: true };
 			}
@@ -512,7 +517,12 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+			void InternalHooksManager.getInstance().onUserDeletion({
+				user: req.user,
+				telemetryData,
+				publicApi: false,
+			});
+
 			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 			return { success: true };
 		}),
@@ -570,7 +580,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!result?.success) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: req.user.id,
+					user: reinvitee,
 					message_type: 'Resend invite',
 					public_api: false,
 				});
@@ -583,7 +593,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserReinvite({
-				user_id: req.user.id,
+				user: reinvitee,
 				target_user_id: reinvitee.id,
 				public_api: false,
 			});

@@ -20,10 +20,7 @@ import {
 	INodeType,
 	INodeTypes,
 	INodeTypeData,
-	INodeTypeDescription,
-	IVersionedNodeType,
 	IPinData,
-	IRunData,
 	IRunExecutionData,
 	IWorkflowIssues,
 	IWorkflowDataProxyAdditionalKeys,
@@ -36,7 +33,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	IExecutionResponse,
 	INodeTypesMaxCount,
 	INodeUi,
 	IWorkflowData,
@@ -44,7 +40,6 @@ import {
 	IWorkflowDataUpdate,
 	XYPosition,
 	ITag,
-	IUpdateInformation,
 	TargetItem,
 } from '../Interface';
 
