@@ -437,12 +437,6 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		},
 	},
 	methods: {
-		// executeData
-
-		// connectionInputData
-
-		// getNodes
-
 		resolveParameter,
 		getCurrentWorkflow,
 		getNodes,
@@ -1092,11 +1086,3 @@ export const workflowHelpers = mixins(externalHooks, nodeHelpers, restApi, showM
 		},
 	},
 });
-
-export const myMixin = {
-	methods: {
-		foo() {
-			console.log('hi');
-		},
-	},
-};
