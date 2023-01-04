@@ -250,6 +250,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		InstalledPackages: 'installed_packages',
 		InstalledNodes: 'installed_nodes',
 		WorkflowStatistics: 'workflow_statistics',
+		EventDestinations: 'event_destinations',
 	}[sourceName];
 }
 
