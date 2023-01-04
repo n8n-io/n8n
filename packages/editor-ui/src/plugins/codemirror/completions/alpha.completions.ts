@@ -6,7 +6,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
  * Completions from alphabetic char, e.g. `D` -> `DateTime`.
  */
 export function alphaCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/D[ateTim]*/);
+	const word = context.matchBefore(/(\s+)D[ateTim]*/);
 
 	if (!word) return null;
 
@@ -14,7 +14,7 @@ export function alphaCompletions(context: CompletionContext): CompletionResult |
 
 	let options = generateOptions();
 
-	const { text: userInput } = word;
+	const userInput = word.text.trim();
 
 	if (userInput !== '' && userInput !== '$') {
 		options = options.filter((o) => o.label.startsWith(userInput) && userInput !== o.label);
