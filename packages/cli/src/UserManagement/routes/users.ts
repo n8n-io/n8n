@@ -170,27 +170,9 @@ export function usersNamespace(this: N8nApp): void {
 							emailSent: false,
 						},
 					};
-<<<<<<< HEAD
 					try {
 						const result = await mailer.invite({
 							email,
-=======
-					if (result?.success) {
-						void InternalHooksManager.getInstance().onUserTransactionalEmail({
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							user_id: id!,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-					} else {
-						void InternalHooksManager.getInstance().onEmailFailed({
-							user: req.user,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-						Logger.error('Failed to send email', {
-							userId: req.user.id,
->>>>>>> master
 							inviteAcceptUrl,
 							domain: baseUrl,
 						});
@@ -206,7 +188,7 @@ export function usersNamespace(this: N8nApp): void {
 					} catch (error) {
 						if (error instanceof Error) {
 							void InternalHooksManager.getInstance().onEmailFailed({
-								user_id: req.user.id,
+								user: req.user,
 								message_type: 'New user invite',
 								public_api: false,
 							});
@@ -592,7 +574,7 @@ export function usersNamespace(this: N8nApp): void {
 				});
 				if (result.emailSent) {
 					void InternalHooksManager.getInstance().onUserReinvite({
-						user_id: req.user.id,
+						user: req.user,
 						target_user_id: reinvitee.id,
 						public_api: false,
 					});
@@ -616,22 +598,6 @@ export function usersNamespace(this: N8nApp): void {
 				});
 				throw new ResponseHelper.InternalServerError(`Failed to send email to ${reinvitee.email}`);
 			}
-
-<<<<<<< HEAD
-=======
-			void InternalHooksManager.getInstance().onUserReinvite({
-				user: reinvitee,
-				target_user_id: reinvitee.id,
-				public_api: false,
-			});
-
-			void InternalHooksManager.getInstance().onUserTransactionalEmail({
-				user_id: reinvitee.id,
-				message_type: 'Resend invite',
-				public_api: false,
-			});
-
->>>>>>> master
 			return { success: true };
 		}),
 	);
