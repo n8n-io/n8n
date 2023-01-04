@@ -2,6 +2,7 @@ import {
 	changePassword,
 	deleteUser,
 	getCurrentUser,
+	getInviteLink,
 	getUsers,
 	inviteUsers,
 	login,
