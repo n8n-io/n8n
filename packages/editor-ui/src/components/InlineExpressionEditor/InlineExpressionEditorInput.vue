@@ -17,7 +17,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
 import { autocompletion, ifIn } from '@codemirror/autocomplete';
-import { n8nLang } from '@/plugins/codemirror/n8nLanguageSupport';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
@@ -80,11 +80,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			autocompletion(),
 			n8nLang(),
-			// n8nLanguageSupport(),
-			// javascript(),
-			// javascriptLanguage.data.of({
-			// 	autocomplete: myCompletions,
-			// }),
 			history(),
 			expressionInputHandler(),
 			EditorView.lineWrapping,

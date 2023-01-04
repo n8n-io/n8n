@@ -11,7 +11,7 @@ import { history } from '@codemirror/commands';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
-import { n8nLang, n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 
@@ -37,7 +37,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme(),
-			// n8nLanguageSupport(),
 			autocompletion(),
 			n8nLang(),
 			history(),
