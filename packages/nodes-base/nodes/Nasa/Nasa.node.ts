@@ -922,7 +922,7 @@ export class Nasa implements INodeType {
 
 						propertyName = 'near_earth_objects';
 
-						endpoint = `/neo/rest/v1/neo/browse`;
+						endpoint = '/neo/rest/v1/neo/browse';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

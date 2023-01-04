@@ -91,7 +91,7 @@ export class MicrosoftExcel implements INodeType {
 					this,
 					'value',
 					'GET',
-					`/drive/root/search(q='.xlsx')`,
+					"/drive/root/search(q='.xlsx')",
 					{},
 					qs,
 				);
@@ -529,7 +529,7 @@ export class MicrosoftExcel implements INodeType {
 								this,
 								'value',
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);
@@ -538,7 +538,7 @@ export class MicrosoftExcel implements INodeType {
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
-								`/drive/root/search(q='.xlsx')`,
+								"/drive/root/search(q='.xlsx')",
 								{},
 								qs,
 							);

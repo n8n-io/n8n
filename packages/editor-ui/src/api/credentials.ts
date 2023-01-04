@@ -29,7 +29,7 @@ export async function createNewCredential(
 	context: IRestApiContext,
 	data: ICredentialsDecrypted,
 ): Promise<ICredentialsResponse> {
-	return makeRestApiRequest(context, 'POST', `/credentials`, data as unknown as IDataObject);
+	return makeRestApiRequest(context, 'POST', '/credentials', data as unknown as IDataObject);
 }
 
 export async function deleteCredential(context: IRestApiContext, id: string): Promise<boolean> {
@@ -61,7 +61,7 @@ export async function oAuth1CredentialAuthorize(
 	return makeRestApiRequest(
 		context,
 		'GET',
-		`/oauth1-credential/auth`,
+		'/oauth1-credential/auth',
 		data as unknown as IDataObject,
 	);
 }
@@ -74,7 +74,7 @@ export async function oAuth2CredentialAuthorize(
 	return makeRestApiRequest(
 		context,
 		'GET',
-		`/oauth2-credential/auth`,
+		'/oauth2-credential/auth',
 		data as unknown as IDataObject,
 	);
 }

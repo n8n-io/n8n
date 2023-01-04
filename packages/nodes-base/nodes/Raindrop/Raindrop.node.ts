@@ -138,7 +138,7 @@ export class Raindrop implements INodeType {
 							body.tags = (additionalFields.tags as string).split(',').map((tag) => tag.trim());
 						}
 
-						const endpoint = `/raindrop`;
+						const endpoint = '/raindrop';
 						responseData = await raindropApiRequest.call(this, 'POST', endpoint, {}, body);
 						responseData = responseData.item;
 					} else if (operation === 'delete') {
@@ -243,7 +243,7 @@ export class Raindrop implements INodeType {
 							delete additionalFields.parentId;
 						}
 
-						responseData = await raindropApiRequest.call(this, 'POST', `/collection`, {}, body);
+						responseData = await raindropApiRequest.call(this, 'POST', '/collection', {}, body);
 						responseData = responseData.item;
 					} else if (operation === 'delete') {
 						// ----------------------------------
@@ -390,7 +390,7 @@ export class Raindrop implements INodeType {
 						//           tag: delete
 						// ----------------------------------
 
-						let endpoint = `/tags`;
+						let endpoint = '/tags';
 
 						const body: IDataObject = {
 							tags: (this.getNodeParameter('tags', i) as string).split(','),
@@ -408,7 +408,7 @@ export class Raindrop implements INodeType {
 						//           tag: getAll
 						// ----------------------------------
 
-						let endpoint = `/tags`;
+						let endpoint = '/tags';
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 

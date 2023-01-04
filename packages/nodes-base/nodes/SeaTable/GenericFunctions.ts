@@ -112,7 +112,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {
@@ -131,7 +131,7 @@ export async function getTableViews(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
 		{},
 		{ table_name: tableName },
 	);
