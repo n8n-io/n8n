@@ -23,6 +23,7 @@ import { CreateCredentialUsageTable1665484192211 } from './1665484192211-CreateC
 import { RemoveCredentialUsageTable1665754637024 } from './1665754637024-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707124 } from './1669739707124-AddWorkflowVersionIdColumn';
 import { AddTriggerCountColumn1669823906993 } from './1669823906993-AddTriggerCountColumn';
+import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -50,6 +51,7 @@ const sqliteMigrations = [
 	AddWorkflowVersionIdColumn1669739707124,
 	AddTriggerCountColumn1669823906993,
 	WorkflowStatistics1664196174000,
+	MessageEventBusDestinations1671535397530,
 ];
 
 export { sqliteMigrations };

@@ -66,6 +66,9 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	INodeTypes,
 	ICredentialTypes,
+	INode,
+	IWorkflowBase,
+	IRun,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -157,9 +160,12 @@ import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { eventBus } from '@/eventbus';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
-import { licenseController } from './license/license.controller';
-import { corsMiddleware } from './middlewares/cors';
+import { licenseController } from '@/license/license.controller';
+import { corsMiddleware } from '@/middlewares/cors';
 
 require('body-parser-xml')(bodyParser);
 
@@ -359,6 +365,7 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
+				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
@@ -391,6 +398,7 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
+			logStreaming: isLogStreamingEnabled(),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -1541,6 +1549,16 @@ class App {
 				},
 			),
 		);
+
+		// ----------------------------------------
+		// EventBus Setup
+		// ----------------------------------------
+
+		if (!eventBus.isInitialized) {
+			await eventBus.initialize();
+		}
+		// add Event Bus REST endpoints
+		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
 		// Webhooks
