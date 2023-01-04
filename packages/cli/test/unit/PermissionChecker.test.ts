@@ -1,5 +1,11 @@
 import { v4 as uuid } from 'uuid';
-import { INodeTypeData, INodeTypes, SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import {
+	ICredentialTypes,
+	INodeTypeData,
+	INodeTypes,
+	SubworkflowOperationError,
+	Workflow,
+} from 'n8n-workflow';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -35,6 +41,7 @@ beforeAll(async () => {
 			credentials: {},
 		},
 		known: { nodes: {}, credentials: {} },
+		credentialTypes: {} as ICredentialTypes,
 	});
 
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();

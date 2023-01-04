@@ -247,18 +247,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Returns all parent types of the given credential type
 	 */
 	getParentTypes(typeName: string): string[] {
-		const credentialType = this.credentialTypes.getByName(typeName);
-
-		if (credentialType === undefined || credentialType.extends === undefined) {
-			return [];
-		}
-
-		let types: string[] = [];
-		credentialType.extends.forEach((type: string) => {
-			types = [...types, type, ...this.getParentTypes(type)];
-		});
-
-		return types;
+		return this.credentialTypes.getParentTypes(typeName);
 	}
 
 	/**
