@@ -46,6 +46,7 @@ import { useRootStore } from './n8nRootStore';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
+	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
 	getWorkflows,
@@ -941,12 +942,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				throw error;
 			}
 		},
+		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
+			const rootStore = useRootStore();
+			return await getExecutionData(rootStore.getRestApiContext, executionId);
+		},
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
 		},
 		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
-			executions.forEach(execution => {
-				const exists = this.currentWorkflowExecutions.find(ex => ex.id === execution.id);
+			executions.forEach((execution) => {
+				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
 				if (!exists && execution.workflowId === this.workflowId) {
 					this.currentWorkflowExecutions.push(execution);
 				}

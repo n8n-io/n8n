@@ -7,6 +7,7 @@ import { brandfetchApiRequest } from './GenericFunctions';
 export class Brandfetch implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Brandfetch',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'Brandfetch',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:brandfetch.png',
@@ -157,7 +158,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/logo`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/logo', body);
 
 					if (download) {
 						const imageTypes = this.getNodeParameter('imageTypes', i) as string[];
@@ -219,7 +220,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/color`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/color', body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response),
 						{ itemData: { item: i } },
@@ -233,7 +234,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/font`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/font', body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response),
 						{ itemData: { item: i } },
@@ -247,7 +248,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/company`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/company', body);
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response),
 						{ itemData: { item: i } },
@@ -261,7 +262,7 @@ export class Brandfetch implements INodeType {
 						domain,
 					};
 
-					const response = await brandfetchApiRequest.call(this, 'POST', `/industry`, body);
+					const response = await brandfetchApiRequest.call(this, 'POST', '/industry', body);
 
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response),

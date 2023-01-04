@@ -88,7 +88,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search?range=all`,
+					'/analyzer/_search?range=all',
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -106,7 +106,7 @@ export class Cortex implements INodeType {
 
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the enabled responders from instance
-				const requestResult = await cortexApiRequest.call(this, 'GET', `/responder`);
+				const requestResult = await cortexApiRequest.call(this, 'GET', '/responder');
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {

@@ -7,6 +7,7 @@ const pdf = require('pdf-parse');
 export class ReadPDF implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read PDF',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'readPDF',
 		icon: 'fa:file-pdf',
 		group: ['input'],

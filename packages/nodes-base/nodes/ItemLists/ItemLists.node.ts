@@ -767,7 +767,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else {
@@ -901,7 +902,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldToAggregate}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (!found && !keepMissing) {
@@ -931,7 +933,7 @@ return 0;`,
 							throw new NodeOperationError(
 								this.getNode(),
 								`The '${field}' output field is used more than once`,
-								{ description: `Please make sure each output field name is unique` },
+								{ description: 'Please make sure each output field name is unique' },
 							);
 						} else {
 							outputFields.push(field);
@@ -1132,7 +1134,7 @@ return 0;`,
 					let type: any = undefined;
 					for (const item of newItems) {
 						if (key === '') {
-							throw new NodeOperationError(this.getNode(), `Name of field to compare is blank`);
+							throw new NodeOperationError(this.getNode(), 'Name of field to compare is blank');
 						}
 						const value = !disableDotNotation ? get(item.json, key) : item.json[key];
 						if (value === undefined && disableDotNotation && key.includes('.')) {
@@ -1140,7 +1142,8 @@ return 0;`,
 								this.getNode(),
 								`'${key}' field is missing from some input items`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (value === undefined) {
@@ -1225,7 +1228,8 @@ return 0;`,
 								this.getNode(),
 								`Couldn't find the field '${fieldName}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (!found) {
@@ -1328,7 +1332,7 @@ return 0;`,
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Sort code doesn't return. Please add a 'return' statement to your code`,
+							"Sort code doesn't return. Please add a 'return' statement to your code",
 						);
 					}
 				}

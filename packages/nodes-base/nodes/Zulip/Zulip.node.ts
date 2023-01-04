@@ -253,7 +253,7 @@ export class Zulip implements INodeType {
 							body.include_owner_subscribed = additionalFields.includeOwnersubscribed as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/streams`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/streams', body);
 						responseData = responseData.streams;
 					}
 
@@ -264,7 +264,7 @@ export class Zulip implements INodeType {
 							body.include_subscribers = additionalFields.includeSubscribers as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/users/me/subscriptions`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/users/me/subscriptions', body);
 						responseData = responseData.subscriptions;
 					}
 
@@ -326,7 +326,7 @@ export class Zulip implements INodeType {
 						responseData = await zulipApiRequest.call(
 							this,
 							'POST',
-							`/users/me/subscriptions`,
+							'/users/me/subscriptions',
 							body,
 						);
 					}
@@ -421,7 +421,7 @@ export class Zulip implements INodeType {
 								additionalFields.includeCustomProfileFields as boolean;
 						}
 
-						responseData = await zulipApiRequest.call(this, 'GET', `/users`, body);
+						responseData = await zulipApiRequest.call(this, 'GET', '/users', body);
 						responseData = responseData.members;
 					}
 
@@ -431,7 +431,7 @@ export class Zulip implements INodeType {
 						body.full_name = this.getNodeParameter('fullName', i) as string;
 						body.short_name = this.getNodeParameter('shortName', i) as string;
 
-						responseData = await zulipApiRequest.call(this, 'POST', `/users`, body);
+						responseData = await zulipApiRequest.call(this, 'POST', '/users', body);
 					}
 
 					if (operation === 'update') {

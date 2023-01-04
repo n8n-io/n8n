@@ -34,7 +34,7 @@ export async function linkedInApiRequest(
 	}
 
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {
+		return await this.helpers.requestOAuth2.call(this, 'linkedInOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
 	} catch (error) {

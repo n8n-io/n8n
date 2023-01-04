@@ -28,7 +28,7 @@ export async function postmarkApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

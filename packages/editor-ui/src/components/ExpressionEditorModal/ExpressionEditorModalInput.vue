@@ -16,6 +16,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 
 import type { IVariableItemSelected } from '@/Interface';
+import { forceParse } from '@/utils/forceParse';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
@@ -40,6 +41,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			doubleBraceHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
+			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
