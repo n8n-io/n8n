@@ -13,17 +13,19 @@ describe('RunDataJson.vue', () => {
 			props: {
 				mappingEnabled: true,
 				editMode: { enabled: false },
-				inputData: [{
-					json: {
-						list: [1,2,3],
-						record: { name: 'Joe' },
-						myNumber: 123,
-						myStringNumber: '456',
-						myStringText: 'abc',
-						nil: null,
-						d: undefined,
+				inputData: [
+					{
+						json: {
+							list: [1, 2, 3],
+							record: { name: 'Joe' },
+							myNumber: 123,
+							myStringNumber: '456',
+							myStringText: 'abc',
+							nil: null,
+							d: undefined,
+						},
 					},
-				}],
+				],
 				node: {
 					parameters: {
 						keepOnlySet: false,
@@ -34,10 +36,7 @@ describe('RunDataJson.vue', () => {
 					name: 'Set',
 					type: 'n8n-nodes-base.set',
 					typeVersion: 1,
-					position: [
-						380,
-						1060,
-					],
+					position: [380, 1060],
 					disabled: false,
 				},
 			},

@@ -73,10 +73,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 	},
 	methods: {
 		closeDialog() {

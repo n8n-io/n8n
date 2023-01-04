@@ -5,14 +5,9 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useVersionsStore } from '@/stores/versions';
 
-export const newVersions = mixins(
-	showMessage,
-).extend({
+export const newVersions = mixins(showMessage).extend({
 	computed: {
-		...mapStores(
-			useUIStore,
-			useVersionsStore,
-		),
+		...mapStores(useUIStore, useVersionsStore),
 	},
 	methods: {
 		async checkForNewVersions() {
@@ -27,7 +22,7 @@ export const newVersions = mixins(
 			const nextVersions = this.versionsStore.nextVersions;
 			if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
 				const fixVersion = currentVersion.securityIssueFixVersion;
-				let message = `Please update to latest version.`;
+				let message = 'Please update to latest version.';
 				if (fixVersion) {
 					message = `Please update to version ${fixVersion} or higher.`;
 				}

@@ -9,6 +9,7 @@ export class ManualTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow on clicking a button in n8n',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
 			name: 'When clicking "Execute Workflow"',

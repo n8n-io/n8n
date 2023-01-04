@@ -141,14 +141,14 @@ export class Strava implements INodeType {
 							responseData = await stravaApiRequestAllItems.call(
 								this,
 								'GET',
-								`/activities`,
+								'/activities',
 								{},
 								qs,
 							);
 						} else {
 							qs.per_page = this.getNodeParameter('limit', i);
 
-							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
+							responseData = await stravaApiRequest.call(this, 'GET', '/activities', {}, qs);
 						}
 					}
 					//https://developers.strava.com/docs/reference/#api-Activities-updateActivityById

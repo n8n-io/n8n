@@ -236,7 +236,7 @@ export class HtmlExtract implements INodeType {
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, {
+						throw new NodeOperationError(this.getNode(), 'No item does not contain binary data!', {
 							itemIndex,
 						});
 					}

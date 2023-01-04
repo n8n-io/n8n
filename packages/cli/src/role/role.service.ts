@@ -10,4 +10,12 @@ export class RoleService {
 	static async trxGet(transaction: EntityManager, role: Partial<Role>) {
 		return transaction.findOne(Role, role);
 	}
+
+	static async getUserRoleForWorkflow(userId: string, workflowId: string) {
+		const shared = await Db.collections.SharedWorkflow.findOne({
+			where: { workflowId, userId },
+			relations: ['role'],
+		});
+		return shared?.role;
+	}
 }

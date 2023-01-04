@@ -404,7 +404,7 @@ export function getContext(
 		key = 'flow';
 	} else if (type === 'node') {
 		if (node === undefined) {
-			throw new Error(`The request data of context type "node" the node parameter has to be set!`);
+			throw new Error('The request data of context type "node" the node parameter has to be set!');
 		}
 		key = `node:${node.name}`;
 	} else {
@@ -1071,7 +1071,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	const nodeIssues = [];
 
 	if (issues.execution !== undefined) {
-		nodeIssues.push(`Execution Error.`);
+		nodeIssues.push('Execution Error.');
 	}
 
 	const objectProperties = ['parameters', 'credentials'];
@@ -1092,7 +1092,7 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 		if (node !== undefined) {
 			nodeIssues.push(`Node Type "${node.type}" is not known.`);
 		} else {
-			nodeIssues.push(`Node Type is not known.`);
+			nodeIssues.push('Node Type is not known.');
 		}
 	}
 

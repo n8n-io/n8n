@@ -161,13 +161,13 @@ export class Tapfiliate implements INodeType {
 							responseData = await tapfiliateApiRequestAllItems.call(
 								this,
 								'GET',
-								`/affiliates/`,
+								'/affiliates/',
 								{},
 								qs,
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
-							responseData = await tapfiliateApiRequest.call(this, 'GET', `/affiliates/`, {}, qs);
+							responseData = await tapfiliateApiRequest.call(this, 'GET', '/affiliates/', {}, qs);
 							responseData = responseData.splice(0, limit);
 						}
 					}

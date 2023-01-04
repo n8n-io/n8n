@@ -2,13 +2,13 @@ import { User } from '@/databases/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import {
-	Db,
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import type {
 	IWorkflowStatisticsCounts,
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
-	ResponseHelper,
-} from '..';
+} from '@/Interfaces';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import { ExecutionRequest } from '../requests';
@@ -28,7 +28,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<boolean>
 	});
 
 	if (!shared) {
-		LoggerProxy.info('User attempted to read a workflow without permissions', {
+		LoggerProxy.verbose('User attempted to read a workflow without permissions', {
 			workflowId,
 			userId: user.id,
 		});
