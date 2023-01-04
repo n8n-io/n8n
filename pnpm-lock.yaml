@@ -103,6 +103,7 @@ importers:
       '@sentry/node': ^7.28.1
       '@types/basic-auth': ^1.1.2
       '@types/bcryptjs': ^2.4.2
+      '@types/body-parser-xml': ^2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': ^1.3.1
       '@types/convict': ^4.2.1
@@ -113,11 +114,15 @@ importers:
       '@types/localtunnel': ^1.9.0
       '@types/lodash.get': ^4.4.6
       '@types/lodash.intersection': ^4.4.7
+      '@types/lodash.iteratee': ^4.7.7
       '@types/lodash.merge': ^4.6.6
       '@types/lodash.omit': ^4.5.7
       '@types/lodash.pick': ^4.4.7
+      '@types/lodash.remove': ^4.7.7
       '@types/lodash.set': ^4.3.6
       '@types/lodash.split': ^4.4.7
+      '@types/lodash.unionby': ^4.8.7
+      '@types/lodash.uniqby': ^4.7.7
       '@types/lodash.unset': ^4.5.7
       '@types/parseurl': ^1.3.1
       '@types/passport-jwt': ^3.0.6
@@ -128,6 +133,7 @@ importers:
       '@types/superagent': 4.1.13
       '@types/supertest': ^2.0.11
       '@types/swagger-ui-express': ^4.1.3
+      '@types/syslog-client': ^1.1.2
       '@types/uuid': ^8.3.2
       '@types/validator': ^13.7.0
       '@types/yamljs': ^0.2.31
@@ -165,12 +171,17 @@ importers:
       localtunnel: ^2.0.0
       lodash.get: ^4.4.2
       lodash.intersection: ^4.4.0
+      lodash.iteratee: ^4.7.0
       lodash.merge: ^4.6.2
       lodash.omit: ^4.5.0
       lodash.pick: ^4.4.0
+      lodash.remove: ^4.7.0
       lodash.set: ^4.3.2
       lodash.split: ^4.4.2
+      lodash.unionby: ^4.8.0
+      lodash.uniqby: ^4.7.0
       lodash.unset: ^4.5.2
+      luxon: ^3.1.0
       mysql2: ~2.3.0
       n8n-core: ~0.149.2
       n8n-editor-ui: ~0.175.4
@@ -200,6 +211,8 @@ importers:
       sse-channel: ^4.0.0
       supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
+      syslog-client: ^1.1.1
+      threads: ^1.7.0
       ts-node: ^9.1.1
       tsc-alias: ^1.7.0
       tsconfig-paths: ^3.14.1
@@ -250,12 +263,17 @@ importers:
       localtunnel: 2.0.2
       lodash.get: 4.4.2
       lodash.intersection: 4.4.0
+      lodash.iteratee: 4.7.0
       lodash.merge: 4.6.2
       lodash.omit: 4.5.0
       lodash.pick: 4.4.0
+      lodash.remove: 4.7.0
       lodash.set: 4.3.2
       lodash.split: 4.4.2
+      lodash.unionby: 4.8.0
+      lodash.uniqby: 4.7.0
       lodash.unset: 4.5.2
+      luxon: 3.1.1
       mysql2: 2.3.3
       n8n-core: link:../core
       n8n-editor-ui: link:../editor-ui
@@ -282,6 +300,8 @@ importers:
       sqlite3: 5.1.2
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
+      syslog-client: 1.1.1
+      threads: 1.7.0
       tslib: 1.14.1
       typeorm: 0.2.45_b2izk5tn6tm5xb65gvog337urq
       uuid: 8.3.2
@@ -293,6 +313,7 @@ importers:
       '@oclif/dev-cli': 1.26.10
       '@types/basic-auth': 1.1.3
       '@types/bcryptjs': 2.4.2
+      '@types/body-parser-xml': 2.0.2
       '@types/compression': 1.0.1
       '@types/connect-history-api-fallback': 1.3.5
       '@types/convict': 4.2.1
@@ -303,11 +324,15 @@ importers:
       '@types/localtunnel': 1.9.0
       '@types/lodash.get': 4.4.7
       '@types/lodash.intersection': 4.4.7
+      '@types/lodash.iteratee': 4.7.7
       '@types/lodash.merge': 4.6.7
       '@types/lodash.omit': 4.5.7
       '@types/lodash.pick': 4.4.7
+      '@types/lodash.remove': 4.7.7
       '@types/lodash.set': 4.3.7
       '@types/lodash.split': 4.4.7
+      '@types/lodash.unionby': 4.8.7
+      '@types/lodash.uniqby': 4.7.7
       '@types/lodash.unset': 4.5.7
       '@types/parseurl': 1.3.1
       '@types/passport-jwt': 3.0.7
@@ -318,6 +343,7 @@ importers:
       '@types/superagent': 4.1.13
       '@types/supertest': 2.0.12
       '@types/swagger-ui-express': 4.1.3
+      '@types/syslog-client': 1.1.2
       '@types/uuid': 8.3.4
       '@types/validator': 13.7.7
       '@types/yamljs': 0.2.31
@@ -852,7 +878,7 @@ importers:
 
   packages/workflow:
     specifiers:
-      '@n8n_io/riot-tmpl': ^1.0.1
+      '@n8n_io/riot-tmpl': ^2.0.0
       '@types/express': ^4.17.6
       '@types/jmespath': ^0.15.0
       '@types/lodash.get': ^4.4.6
@@ -869,7 +895,7 @@ importers:
       luxon: ~2.3.0
       xml2js: ^0.4.23
     dependencies:
-      '@n8n_io/riot-tmpl': 1.0.1
+      '@n8n_io/riot-tmpl': 2.0.0
       jmespath: 0.16.0
       lodash.get: 4.4.2
       lodash.isequal: 4.5.0
@@ -3397,8 +3423,8 @@ packages:
       - debug
     dev: false
 
-  /@n8n_io/riot-tmpl/1.0.1:
-    resolution: {integrity: sha512-+ig7/rafN3LGthGEi8fs1N5XxPndmRq5YAX92DWOar9mrMDrYyIjK5XAQaTnTMDQgmKKllrAl+bVRmQXKcLFuw==}
+  /@n8n_io/riot-tmpl/2.0.0:
+    resolution: {integrity: sha512-gQNJYlek30YIWLru2CdyFgU/0uvPAbbQwt2G5EN0PDxXD1rGAYWZsd2c94bW3YlvXT6V2GEd7Bt/gT6QUwhzfQ==}
     dependencies:
       eslint-config-riot: 1.0.0
     dev: false
@@ -5526,6 +5552,16 @@ packages:
     resolution: {integrity: sha512-g2qEd+zkfkTEudA2SrMAeAvY7CrFqtbsLILm2dT2VIeKTqMqVzcdfURlvu6FU3srRgbmXN1Srm94pg34EIehww==}
     dev: true
 
+  /@types/body-parser-xml/2.0.2:
+    resolution: {integrity: sha512-LlmFkP3BTfacofFevInpM8iZ6+hALZ9URUt5JpSw76irhHCdbqbcBtbxbu2MO8HUGoIROQ5wuB55rLS99xNgCg==}
+    dependencies:
+      '@types/body-parser': 1.19.2
+      '@types/connect': 3.4.35
+      '@types/express-serve-static-core': 4.17.31
+      '@types/node': 16.11.65
+      '@types/xml2js': 0.4.11
+    dev: true
+
   /@types/body-parser/1.19.2:
     resolution: {integrity: sha512-ALYone6pm6QmwZoAgeyNksccT9Q4AWZQ6PvfwR37GT6r6FWUPguq6sUmNGSMV2Wr761oQoBxwGGa6DR5o1DC9g==}
     dependencies:
@@ -5845,6 +5881,12 @@ packages:
       '@types/lodash': 4.14.186
     dev: true
 
+  /@types/lodash.iteratee/4.7.7:
+    resolution: {integrity: sha512-1zCzLzchulYwbosCY6yD0cOBuHNJlmFkWwIMz8Z8a0rtfYr3JBlaT0wZ534ZLjyjxCMx1kZEHCpyMt9lQ2ptmA==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
   /@types/lodash.merge/4.6.7:
     resolution: {integrity: sha512-OwxUJ9E50gw3LnAefSHJPHaBLGEKmQBQ7CZe/xflHkyy/wH2zVyEIAKReHvVrrn7zKdF58p16We9kMfh7v0RRQ==}
     dependencies:
@@ -5863,6 +5905,12 @@ packages:
       '@types/lodash': 4.14.186
     dev: true
 
+  /@types/lodash.remove/4.7.7:
+    resolution: {integrity: sha512-jZrQtY6zdukkFFinY+yxikzU3hCS6SEXsTy103Ao+2YsZq2H+D/NpXuAoZpcpn7BTMBUsgr2NO7l4UYHxKXXjw==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
   /@types/lodash.set/4.3.7:
     resolution: {integrity: sha512-bS5Wkg/nrT82YUfkNYPSccFrNZRL+irl7Yt4iM6OTSQ0VZJED2oUIVm15NkNtUAQ8SRhCe+axqERUV6MJgkeEg==}
     dependencies:
@@ -5871,6 +5919,18 @@ packages:
 
   /@types/lodash.split/4.4.7:
     resolution: {integrity: sha512-4L/89eW9ZFOkJscM/u0nRwWaN5jHK/esQ71FHuVgePAtBD9YRdYS4cM1HRyIxN3xAoRRrw1Ohf2HQjSk0zwuqA==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
+  /@types/lodash.unionby/4.8.7:
+    resolution: {integrity: sha512-Hf8IGRLQlcsxo1JpFWSoefjedUVM1Kp6W7RAk2WKitYj4dt/oHfOXi9wkLPAlIzjvTH3oPJizcey2SLSBW4TwQ==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
+  /@types/lodash.uniqby/4.7.7:
+    resolution: {integrity: sha512-sv2g6vkCIvEUsK5/Vq17haoZaisfj2EWW8mP7QWlnKi6dByoNmeuHDDXHR7sabuDqwO4gvU7ModIL22MmnOocg==}
     dependencies:
       '@types/lodash': 4.14.186
     dev: true
@@ -6160,6 +6220,12 @@ packages:
     dependencies:
       '@types/express': 4.17.14
       '@types/serve-static': 1.15.0
+    dev: true
+
+  /@types/syslog-client/1.1.2:
+    resolution: {integrity: sha512-X8MwGedXYNmYltPDaZQCM9X6cSdfFbJZWhrU81gWKsg+Q6mSgRWs/12Mq9nHaUV4wqMYDNrnytbwbMUiVnWegw==}
+    dependencies:
+      '@types/node': 16.11.65
     dev: true
 
   /@types/tapable/1.0.8:
@@ -11212,6 +11278,12 @@ packages:
       - supports-color
     dev: true
 
+  /esm/3.2.25:
+    resolution: {integrity: sha512-U1suiZ2oDVWv4zPO56S0NcR5QriEahGtdN2OR6FiOG4WJvcjBVFB0qI4+eKoWFH483PKGuLuu6V8Z4T5g63UVA==}
+    engines: {node: '>=6'}
+    dev: false
+    optional: true
+
   /espree/6.2.1:
     resolution: {integrity: sha512-ysCxRQY3WaXJz9tdbWOwuWr5Y/XrPTGX9Kiz3yoUXwW0VZ4w30HTkQLaGx/+ttFjF8i+ACbArnB4ce68a9m5hw==}
     engines: {node: '>=6.0.0'}
@@ -13537,6 +13609,11 @@ packages:
     resolution: {integrity: sha512-2rRIahhZr2UWb45fIOuvZGpFtz0TyOZLf32KxBbSoUCeZR495zCKlWUKKUByk3geS2eAs7ZAABt0Y/Rx0GiQGA==}
     dev: true
 
+  /is-observable/2.1.0:
+    resolution: {integrity: sha512-DailKdLb0WU+xX8K5w7VsJhapwHLZ9jjmazqCJq4X12CTgqq73TKnbRcnSLuXYPOoLQgV5IrD7ePiX/h1vnkBw==}
+    engines: {node: '>=8'}
+    dev: false
+
   /is-path-inside/3.0.3:
     resolution: {integrity: sha512-Fd4gABb+ycGAmKou8eMftCupSir5lRxqf4aD/vd0cD2qc4HL07OjCeuHMr8Ro4CoMaeCKDB0/ECBOVWjTwUvPQ==}
     engines: {node: '>=8'}
@@ -15138,6 +15215,10 @@ packages:
     resolution: {integrity: sha512-0wJxfxH1wgO3GrbuP+dTTk7op+6L41QCXbGINEmD+ny/G/eCqGzxyCsh7159S+mgDDcoarnBw6PC1PS5+wUGgw==}
     dev: false
 
+  /lodash.iteratee/4.7.0:
+    resolution: {integrity: sha512-yv3cSQZmfpbIKo4Yo45B1taEvxjNvcpF1CEOc0Y6dEyvhPIfEJE3twDwPgWTPQubcSgXyBwBKG6wpQvWMDOf6Q==}
+    dev: false
+
   /lodash.memoize/4.1.2:
     resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
     dev: true
@@ -15160,6 +15241,10 @@ packages:
     resolution: {integrity: sha512-hXt6Ul/5yWjfklSGvLQl8vM//l3FtyHZeuelpzK6mm99pNvN9yTDruNZPEJZD1oWrqo+izBmB7oUfWgcCX7s4Q==}
     dev: false
 
+  /lodash.remove/4.7.0:
+    resolution: {integrity: sha512-GnwkSsEXGXirSxh3YI+jc/qvptE2DV8ZjA4liK0NT1MJ3mNDMFhX3bY+4Wr8onlNItYuPp7/4u19Fi55mvzkTw==}
+    dev: false
+
   /lodash.set/4.3.2:
     resolution: {integrity: sha512-4hNPN5jlm/N/HLMCO43v8BXKq9Z7QdAGc/VGrRD61w8gN9g/6jF9A4L1pbUgBLCffi0w9VsXfTOij5x8iTyFvg==}
     dev: false
@@ -15170,6 +15255,10 @@ packages:
 
   /lodash.throttle/4.1.1:
     resolution: {integrity: sha512-wIkUCfVKpVsWo3JSZlc+8MB5it+2AN5W8J7YVMST30UrvcQNZ1Okbj+rbVniijTWE6FGYy4XJq/rHkas8qJMLQ==}
+    dev: false
+
+  /lodash.unionby/4.8.0:
+    resolution: {integrity: sha512-e60kn4GJIunNkw6v9MxRnUuLYI/Tyuanch7ozoCtk/1irJTYBj+qNTxr5B3qVflmJhwStJBv387Cb+9VOfABMg==}
     dev: false
 
   /lodash.uniq/4.5.0:
@@ -16512,6 +16601,10 @@ packages:
       define-properties: 1.1.4
       es-abstract: 1.20.4
     dev: true
+
+  /observable-fns/0.6.1:
+    resolution: {integrity: sha512-9gRK4+sRWzeN6AOewNBTLXir7Zl/i3GB6Yl26gK4flxz8BXVpD3kt8amREmWNb0mxYOGDotvE5a4N+PtGGKdkg==}
+    dev: false
 
   /on-finished/2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -20039,6 +20132,10 @@ packages:
       tslib: 2.4.0
     dev: true
 
+  /syslog-client/1.1.1:
+    resolution: {integrity: sha512-c3qKw8JzCuHt0mwrzKQr8eqOc3RB28HgOpFuwGMO3GLscVpfR+0ECevWLZq/yIJTbx3WTb3QXBFVpTFtKAPDrw==}
+    dev: false
+
   /systemjs/6.13.0:
     resolution: {integrity: sha512-P3cgh2bpaPvAO2NE3uRp/n6hmk4xPX4DQf+UzTlCAycssKdqhp6hjw+ENWe+aUS7TogKRFtptMosTSFeC6R55g==}
     dev: true
@@ -20254,6 +20351,19 @@ packages:
       any-promise: 1.3.0
     dev: false
 
+  /threads/1.7.0:
+    resolution: {integrity: sha512-Mx5NBSHX3sQYR6iI9VYbgHKBLisyB+xROCBGjjWm1O9wb9vfLxdaGtmT/KCjUqMsSNW6nERzCW3T6H43LqjDZQ==}
+    dependencies:
+      callsites: 3.1.0
+      debug: 4.3.4
+      is-observable: 2.1.0
+      observable-fns: 0.6.1
+    optionalDependencies:
+      tiny-worker: 2.3.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /throttle-debounce/1.1.0:
     resolution: {integrity: sha512-XH8UiPCQcWNuk2LYePibW/4qL97+ZQ1AN3FNXwZRBNPPowo/NRU5fAlDCSNBJIYCKbioZfuYtMhG4quqoJhVzg==}
     engines: {node: '>=4'}
@@ -20304,6 +20414,13 @@ packages:
       globalyzer: 0.1.0
       globrex: 0.1.2
     dev: true
+
+  /tiny-worker/2.3.0:
+    resolution: {integrity: sha512-pJ70wq5EAqTAEl9IkGzA+fN0836rycEuz2Cn6yeZ6FRzlVS5IDOkFHpIoEsksPRQV34GDqXm65+OlnZqUSyK2g==}
+    dependencies:
+      esm: 3.2.25
+    dev: false
+    optional: true
 
   /tinycolor2/1.4.2:
     resolution: {integrity: sha512-vJhccZPs965sV/L2sU4oRQVAos0pQXwsvTLkWYdqJ+a8Q5kPFzJTuOFwy7UniPli44NKQGAglksjvOcpo95aZA==}

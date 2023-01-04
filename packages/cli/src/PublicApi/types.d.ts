@@ -37,7 +37,7 @@ export type PaginatatedRequest = AuthenticatedRequest<
 		limit?: number;
 		cursor?: string;
 		offset?: number;
-		lastId?: number;
+		lastId?: string;
 	}
 >;
 export declare namespace ExecutionRequest {
@@ -51,12 +51,12 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
-			workflowId?: number;
-			lastId?: number;
+			workflowId?: string;
+			lastId?: string;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, { includeData?: boolean }>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
 	type Delete = Get;
 }
 
@@ -81,9 +81,9 @@ export declare namespace WorkflowRequest {
 	>;
 
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
-	type Get = AuthenticatedRequest<{ id: number }, {}, {}, {}>;
+	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Delete = Get;
-	type Update = AuthenticatedRequest<{ id: number }, {}, WorkflowEntity, {}>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
 	type Activate = Get;
 }
 
@@ -140,11 +140,11 @@ type PaginationBase = { limit: number };
 
 type PaginationOffsetDecoded = PaginationBase & { offset: number };
 
-type PaginationCursorDecoded = PaginationBase & { lastId: number };
+type PaginationCursorDecoded = PaginationBase & { lastId: string };
 
 type OffsetPagination = PaginationBase & { offset: number; numberOfTotalRecords: number };
 
-type CursorPagination = PaginationBase & { lastId: number; numberOfNextRecords: number };
+type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
 	not?: { required?: string[] };

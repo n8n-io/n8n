@@ -1,8 +1,8 @@
 type: object
 properties:
   id:
-    type: number
-    example: 1000
+    type: string
+    example: '1000'
   data:
     type: object
   finished:
@@ -17,7 +17,7 @@ properties:
   retrySuccessId:
     type: string
     nullable: true
-    example: 2
+    example: '2'
   startedAt:
     type: string
     format: date-time
@@ -26,7 +26,7 @@ properties:
     format: date-time
   workflowId:
     type: string
-    example: 1000
+    example: '1000'
   waitTill:
     type: string
     nullable: true

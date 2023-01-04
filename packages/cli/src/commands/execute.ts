@@ -4,20 +4,19 @@
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, IWorkflowBase } from 'n8n-workflow';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { IWorkflowBase, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
@@ -96,8 +95,7 @@ export class Execute extends Command {
 				return;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			workflowId = workflowData.id ?? PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -138,8 +136,7 @@ export class Execute extends Command {
 		CredentialTypes(loadNodesAndCredentials);
 
 		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		await InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;
