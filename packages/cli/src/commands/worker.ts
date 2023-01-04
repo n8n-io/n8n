@@ -43,6 +43,7 @@ import config from '@/config';
 import * as Queue from '@/Queue';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { N8N_VERSION } from '@/constants';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -304,16 +305,15 @@ export class Worker extends Command {
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises
 				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
 
-				const versions = await GenericHelpers.getVersions();
 				const instanceId = await UserSettings.getInstanceId();
 
-				await InternalHooksManager.init(instanceId, versions.cli, nodeTypes);
+				await InternalHooksManager.init(instanceId, nodeTypes);
 
 				const binaryDataConfig = config.getEnv('binaryDataManager');
 				await BinaryDataManager.init(binaryDataConfig);
 
 				console.info('\nn8n worker is now ready');
-				console.info(` * Version: ${versions.cli}`);
+				console.info(` * Version: ${N8N_VERSION}`);
 				console.info(` * Concurrency: ${flags.concurrency}`);
 				console.info('');
 

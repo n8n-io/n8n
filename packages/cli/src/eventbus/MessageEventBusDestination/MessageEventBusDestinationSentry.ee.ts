@@ -5,15 +5,14 @@ import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import {
-	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import { GenericHelpers } from '../..';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
+import { N8N_VERSION } from '@/constants';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -45,22 +44,15 @@ export class MessageEventBusDestinationSentry
 		if (options.tracesSampleRate) this.tracesSampleRate = options.tracesSampleRate;
 		const { ENVIRONMENT: environment } = process.env;
 
-		GenericHelpers.getVersions()
-			.then((versions) => {
-				this.sentryClient = new Sentry.NodeClient({
-					dsn: this.dsn,
-					tracesSampleRate: this.tracesSampleRate,
-					environment,
-					release: versions.cli,
-					transport: Sentry.makeNodeTransport,
-					integrations: Sentry.defaultIntegrations,
-					stackParser: Sentry.defaultStackParser,
-				});
-				LoggerProxy.debug(`MessageEventBusDestinationSentry with id ${this.getId()} initialized`);
-			})
-			.catch((error) => {
-				console.error(error);
-			});
+		this.sentryClient = new Sentry.NodeClient({
+			dsn: this.dsn,
+			tracesSampleRate: this.tracesSampleRate,
+			environment,
+			release: N8N_VERSION,
+			transport: Sentry.makeNodeTransport,
+			integrations: Sentry.defaultIntegrations,
+			stackParser: Sentry.defaultStackParser,
+		});
 	}
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
