@@ -42,6 +42,7 @@ import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
+import { eventBus } from '../eventbus';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -154,6 +155,9 @@ export class Start extends Command {
 				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
+
+			//finally shut down Event Bus
+			await eventBus.close();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}

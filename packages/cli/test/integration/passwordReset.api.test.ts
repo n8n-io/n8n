@@ -14,7 +14,6 @@ import {
 import * as testDb from './shared/testDb';
 import type { Role } from '@db/entities/Role';
 
-jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;

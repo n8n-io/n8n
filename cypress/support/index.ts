@@ -27,6 +27,7 @@ declare global {
 			setupOwner(payload: SetupPayload): void;
 			skipSetup(): void;
 			resetAll(): void;
+			enableFeature(feature: string): void;
 			waitForLoad(): void;
 			grantBrowserPermissions(...permissions: string[]): void;
 			readClipboard(): Chainable<string>;
