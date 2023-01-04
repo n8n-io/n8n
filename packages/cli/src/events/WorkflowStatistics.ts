@@ -3,6 +3,7 @@ import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { QueryFailedError } from 'typeorm';
 
 export async function workflowExecutionCompleted(
 	workflowData: IWorkflowBase,
@@ -47,7 +48,10 @@ export async function workflowExecutionCompleted(
 		// Send the metrics
 		await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
 	} catch (error) {
-		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
+		if (!(error instanceof QueryFailedError)) {
+			throw error;
+		}
+
 		await Db.collections.WorkflowStatistics.update(
 			{ workflowId, name },
 			{ count: () => 'count + 1', latestEvent: new Date() },
@@ -65,8 +69,10 @@ export async function nodeFetchedData(workflowId: string, node: INode): Promise<
 			latestEvent: new Date(),
 		});
 	} catch (error) {
-		// If this fails, it'll be a duplicate key failure. It is safe to return from here
-		return;
+		// if it's a duplicate key error then that's fine, otherwise throw the error
+		if (!(error instanceof QueryFailedError)) {
+			throw error;
+		}
 	}
 
 	// Compile the metrics since this was a new data loaded event
