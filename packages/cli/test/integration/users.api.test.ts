@@ -441,6 +441,7 @@ test('POST /users should succeed if emailing is not set up', async () => {
 		.send([{ email: randomEmail() }]);
 
 	expect(response.statusCode).toBe(200);
+	expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
 });
 
 test('POST /users should fail if user management is disabled', async () => {
