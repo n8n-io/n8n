@@ -13,6 +13,7 @@ import {
 	NodeOperationError,
 	Workflow,
 	WorkflowExecuteMode,
+	IExecuteResponsePromiseData,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
@@ -588,3 +589,33 @@ export function validateWorkflowCredentialUsage(
 
 	return newWorkflowVersion;
 }
+
+export const isIRun = (candidate: unknown): candidate is IRun => {
+	const o = candidate as IRun;
+	if (!o) return false;
+	return o.data !== undefined && o.mode !== undefined && o.startedAt !== undefined;
+};
+
+export const isIExecuteResponsePromiseData = (
+	candidate: unknown,
+): candidate is IExecuteResponsePromiseData => {
+	const o = candidate as IExecuteResponsePromiseData;
+	if (!o) return false;
+	return o.body !== undefined;
+};
+
+export const isIWorkflowExecutionDataProcess = (
+	candidate: unknown,
+): candidate is IWorkflowExecutionDataProcess => {
+	const o = candidate as IWorkflowExecutionDataProcess;
+	if (!o) return false;
+	return o.executionMode !== undefined && o.workflowData !== undefined;
+};
+
+export const isIWorkflowExecutionFinishedResult = (
+	candidate: unknown,
+): candidate is { executionId: string; result: IRun } => {
+	const o = candidate as { executionId: string; result: IRun };
+	if (!o) return false;
+	return o.executionId !== undefined && o.result !== undefined && isIRun(o.result);
+};

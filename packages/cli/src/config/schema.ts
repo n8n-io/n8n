@@ -229,7 +229,7 @@ export const schema = {
 		// main-process instead.
 		process: {
 			doc: 'In what process workflows should be executed',
-			format: ['main', 'own'] as const,
+			format: ['main', 'own', 'thread'] as const,
 			default: 'own',
 			env: 'EXECUTIONS_PROCESS',
 		},

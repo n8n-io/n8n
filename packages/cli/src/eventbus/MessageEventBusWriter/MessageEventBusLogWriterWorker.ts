@@ -139,7 +139,6 @@ const messageEventBusLogWriterWorker = {
 	},
 };
 if (isWorkerRuntime()) {
-	// Register the serializer on the worker thread
 	expose(messageEventBusLogWriterWorker);
 }
 export type MessageEventBusLogWriterWorker = typeof messageEventBusLogWriterWorker;

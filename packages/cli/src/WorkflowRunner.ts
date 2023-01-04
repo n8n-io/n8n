@@ -51,6 +51,8 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { spawn, Thread, Worker } from 'threads';
+import { WorkflowRunnerWorker } from './WorkflowRunnerWorker';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -145,6 +147,8 @@ export class WorkflowRunner {
 			);
 		} else if (executionsProcess === 'main') {
 			executionId = await this.runMainProcess(data, loadStaticData, executionId, responsePromise);
+		} else if (executionsProcess === 'thread') {
+			executionId = await this.runThreaded(data, loadStaticData, executionId, responsePromise);
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
@@ -752,6 +756,145 @@ export class WorkflowRunner {
 			}
 
 			clearTimeout(executionTimeout);
+		});
+
+		return executionId;
+	}
+
+	async runThreaded(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		restartExecutionId?: string,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const workflowId = data.workflowData.id;
+		let startedAt = new Date();
+
+		const worker = await spawn<WorkflowRunnerWorker>(new Worker('WorkflowRunnerWorker'));
+
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
+		}
+
+		// Register the active execution
+		const executionId = await this.activeExecutions.add(data, worker, restartExecutionId);
+
+		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
+
+		const dataWithExecution = data as IWorkflowExecutionDataProcessWithExecution;
+		dataWithExecution.executionId = executionId;
+
+		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
+
+		// Create a list of child spawned executions
+		// If after the child process exits we have
+		// outstanding executions, we remove them
+		const childExecutionIds: string[] = [];
+
+		try {
+			await worker.startWorkflow(dataWithExecution);
+		} catch (error) {
+			await this.processError(error, new Date(), data.executionMode, executionId, workflowHooks);
+			return executionId;
+		}
+
+		// Start timeout for the execution
+		let executionTimeout: NodeJS.Timeout;
+		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
+		if (data.workflowData.settings && data.workflowData.settings.executionTimeout) {
+			workflowTimeout = data.workflowData.settings.executionTimeout as number; // preference on workflow setting
+		}
+
+		const processTimeoutFunction = (timeout: number) => {
+			this.activeExecutions.stopExecution(executionId, 'timeout');
+			executionTimeout = setTimeout(
+				async () => Thread.terminate(worker),
+				Math.max(timeout * 0.2, 5000),
+			); // minimum 5 seconds
+		};
+
+		if (workflowTimeout > 0) {
+			workflowTimeout = Math.min(workflowTimeout, config.getEnv('executions.maxTimeout')) * 1000; // as seconds
+			// Start timeout already now but give process at least 5 seconds to start.
+			// Without it could would it be possible that the workflow executions times out before it even got started if
+			// the timeout time is very short as the process start time can be quite long.
+			executionTimeout = setTimeout(
+				processTimeoutFunction,
+				Math.max(5000, workflowTimeout),
+				workflowTimeout,
+			);
+		}
+
+		worker.getMessageUiObservable().subscribe((message) => {
+			Logger.debug(`Received child process message of type ui for execution ID ${executionId}.`, {
+				message,
+			});
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			WorkflowExecuteAdditionalData.sendMessageToUI.bind({ sessionId: data.sessionId })(
+				message.source,
+				message.message,
+			);
+		});
+
+		worker.getProcessErrorObservable().subscribe(async (executionError) => {
+			clearTimeout(executionTimeout);
+			await this.processError(
+				executionError,
+				startedAt,
+				data.executionMode,
+				executionId,
+				workflowHooks,
+			);
+		});
+
+		worker.getHookObservable().subscribe((processMessageDataHook) => {
+			this.processHookMessage(workflowHooks, processMessageDataHook);
+		});
+
+		worker.getMessageObservable().subscribe(async (message) => {
+			Logger.debug(
+				`Received child process message of type ${message.type} for execution ID ${executionId}.`,
+				{ executionId },
+			);
+			if (message.type === 'start') {
+				// Now that the execution actually started set the timeout again so that does not time out to early.
+				startedAt = new Date();
+				if (workflowTimeout > 0) {
+					clearTimeout(executionTimeout);
+					executionTimeout = setTimeout(processTimeoutFunction, workflowTimeout, workflowTimeout);
+				}
+			} else if (message.type === 'end') {
+				if (WorkflowHelpers.isIRun(message.data)) {
+					clearTimeout(executionTimeout);
+					this.activeExecutions.remove(executionId, message.data);
+				}
+			} else if (message.type === 'sendResponse') {
+				if (WorkflowHelpers.isIExecuteResponsePromiseData(message.data)) {
+					if (responsePromise) {
+						responsePromise.resolve(WebhookHelpers.decodeWebhookResponse(message.data));
+					}
+				}
+			} else if (message.type === 'timeout') {
+				// Execution timed out and its process has been terminated
+				const timeoutError = new WorkflowOperationError('Workflow execution timed out!');
+
+				// No need to add hook here as the subprocess takes care of calling the hooks
+				this.processError(timeoutError, startedAt, data.executionMode, executionId);
+			} else if (message.type === 'startExecution') {
+				if (WorkflowHelpers.isIWorkflowExecutionDataProcess(message.data)) {
+					const executionId = await this.activeExecutions.add(message.data);
+					childExecutionIds.push(executionId);
+					worker.executionId(executionId);
+				}
+			} else if (message.type === 'finishExecution') {
+				if (WorkflowHelpers.isIWorkflowExecutionFinishedResult(message.data)) {
+					const executionIdIndex = childExecutionIds.indexOf(message.data.executionId);
+					if (executionIdIndex !== -1) {
+						childExecutionIds.splice(executionIdIndex, 1);
+					}
+					this.activeExecutions.remove(message.data.executionId, message.data.result);
+				}
+			}
 		});
 
 		return executionId;

@@ -25,6 +25,7 @@ import {
 } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { ModuleThread } from 'threads';
 
 export class ActiveExecutions {
 	private activeExecutions: {
@@ -37,7 +38,7 @@ export class ActiveExecutions {
 	 */
 	async add(
 		executionData: IWorkflowExecutionDataProcess,
-		process?: ChildProcess,
+		process?: ChildProcess | ModuleThread,
 		executionId?: string,
 	): Promise<string> {
 		if (executionId === undefined) {
