@@ -10,9 +10,8 @@ import type { Word } from '@/types/completions';
  */
 export function proxyCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(
-		//                                                         @TODO: Remove redundancy with \W
-		/\$(input|\(.+\)|prevNode|parameter|json|execution|workflow)*(\.|\[)(\w|\.|\(|\)|\[\d\]|\[|\]|\W)*/,
-	); //         ^ node selector                                                                    ^ special char
+		/\$(input|\(.+\)|prevNode|parameter|json|execution|workflow)*(\.|\[)(\w|\W)*/,
+	);
 
 	if (!word) return null;
 
@@ -22,13 +21,13 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 		? word.text.slice(0, -1)
 		: word.text.split('.').slice(0, -1).join('.');
 
-	const proxy = resolveParameter(`={{ ${toResolve} }}`);
-
-	if (!proxy || typeof proxy !== 'object' || Array.isArray(proxy)) return null;
-
 	let options: Completion[] = [];
 
 	try {
+		const proxy = resolveParameter(`={{ ${toResolve} }}`);
+
+		if (!proxy || typeof proxy !== 'object' || Array.isArray(proxy)) return null;
+
 		options = generateOptions(toResolve, proxy, word);
 	} catch (_) {
 		return null;
@@ -57,11 +56,11 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
-	const proxyKeysToSkip = new Set(['__ob__']);
+	const SKIP_SET = new Set(['__ob__']);
 
 	if (word.text.includes('json[')) {
 		return Object.keys(proxy.json as object)
-			.filter((key) => !proxyKeysToSkip.has(key))
+			.filter((key) => !SKIP_SET.has(key))
 			.map((key) => {
 				return {
 					label: `'${key}']`,
@@ -74,11 +73,9 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 
 	return (Reflect.ownKeys(proxy) as string[])
 		.filter((key) => {
-			if (word.text.endsWith('json.')) {
-				return !proxyKeysToSkip.has(key) && isAllowedInDotNotation(key);
-			}
+			if (word.text.endsWith('json.')) return !SKIP_SET.has(key) && isAllowedInDotNotation(key);
 
-			return !proxyKeysToSkip.has(key);
+			return !SKIP_SET.has(key);
 		})
 		.map((key) => {
 			ensureKeyCanBeResolved(proxy, key);

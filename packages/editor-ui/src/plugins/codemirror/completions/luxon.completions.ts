@@ -37,51 +37,48 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions(toResolve: string): Completion[] {
-	if (toResolve === '$now' || toResolve === '$today') {
-		const propertyNamesToSkip = new Set(['constructor', 'get']);
-
-		const entries = Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
-			.filter(([propertyName]) => !propertyNamesToSkip.has(propertyName))
-			.sort(([first], [second]) => first.localeCompare(second));
-
-		return entries.map(([propertyName, descriptor]) => {
-			const isFunction = typeof descriptor.value === 'function';
-
-			const option: Completion = {
-				label: isFunction ? `${propertyName}()` : propertyName,
-				type: isFunction ? 'function' : 'keyword',
-			};
-
-			const info = i18n.luxonInstance[propertyName];
-
-			if (info) option.info = info;
-
-			return option;
-		});
-	}
-
-	if (toResolve === 'DateTime') {
-		const propertyNamesToSkip = new Set(['prototype', 'name', 'length']);
-
-		return Object.entries(Object.getOwnPropertyDescriptors(DateTime))
-			.filter(
-				([propertyName]) => !propertyNamesToSkip.has(propertyName) && !propertyName.includes('_'),
-			)
-			.map(([propertyName, descriptor]) => {
-				const isFunction = typeof descriptor.value === 'function';
-
-				const option: Completion = {
-					label: isFunction ? `${propertyName}()` : propertyName,
-					type: isFunction ? 'function' : 'keyword',
-				};
-
-				const info = i18n.luxonStatic[propertyName];
-
-				if (info) option.info = info;
-
-				return option;
-			});
-	}
+	if (toResolve === '$now' || toResolve === '$today') return nowTodayOptions();
+	if (toResolve === 'DateTime') return dateTimeOptions();
 
 	return [];
 }
+
+export const nowTodayOptions = () => {
+	const SKIP_SET = new Set(['constructor', 'get']);
+
+	const entries = Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
+		.filter(([key]) => !SKIP_SET.has(key))
+		.sort(([a], [b]) => a.localeCompare(b));
+
+	return entries.map(([key, descriptor]) => {
+		const isFunction = typeof descriptor.value === 'function';
+
+		const option: Completion = {
+			label: isFunction ? `${key}()` : key,
+			type: isFunction ? 'function' : 'keyword',
+		};
+
+		const info = i18n.luxonInstance[key];
+
+		if (info) option.info = info;
+
+		return option;
+	});
+};
+
+export const dateTimeOptions = () => {
+	const SKIP_SET = new Set(['prototype', 'name', 'length']);
+
+	const keys = Object.keys(Object.getOwnPropertyDescriptors(DateTime))
+		.filter((key) => !SKIP_SET.has(key) && !key.includes('_'))
+		.sort((a, b) => a.localeCompare(b));
+
+	return keys.map((key) => {
+		const option: Completion = { label: `${key}()`, type: 'function' };
+		const info = i18n.luxonStatic[key];
+
+		if (info) option.info = info;
+
+		return option;
+	});
+};
