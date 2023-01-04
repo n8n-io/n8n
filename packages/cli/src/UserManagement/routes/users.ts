@@ -14,6 +14,8 @@ import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
+	addInviteLinktoUser,
+	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
@@ -150,8 +152,13 @@ export function usersNamespace(this: N8nApp): void {
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
+					if (!id) {
+						// This should never happen since those are removed from the list before reaching this point
+						throw new ResponseHelper.InternalServerError(
+							'User ID is missing for user with email address',
+						);
+					}
+					const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
 					const resp: {
 						user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
 						error?: string;
@@ -352,10 +359,13 @@ export function usersNamespace(this: N8nApp): void {
 
 	this.app.get(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async () => {
+		ResponseHelper.send(async (req: UserRequest.List) => {
 			const users = await Db.collections.User.find({ relations: ['globalRole'] });
 
-			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
+			return users.map(
+				(user): PublicUser =>
+					addInviteLinktoUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+			);
 		}),
 	);
 
