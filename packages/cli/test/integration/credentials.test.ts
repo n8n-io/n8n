@@ -14,8 +14,6 @@ import config from '@/config';
 import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { AuthAgent } from './shared/types';
 
-jest.mock('@/telemetry');
-
 // mock that credentialsSharing is not enabled
 const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
 mockIsCredentialsSharingEnabled.mockReturnValue(false);

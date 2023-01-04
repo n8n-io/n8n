@@ -76,6 +76,10 @@ export class ActiveWorkflowRunner {
 		[key: string]: IQueuedWorkflowActivations;
 	} = {};
 
+	constructor() {
+		this.activeWorkflows = new ActiveWorkflows();
+	}
+
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async init() {
 		// Get the active workflows from database
@@ -99,8 +103,6 @@ export class ActiveWorkflowRunner {
 			// Clear up active workflow table
 			await Db.collections.Webhook.clear();
 		}
-
-		this.activeWorkflows = new ActiveWorkflows();
 
 		if (workflowsData.length !== 0) {
 			console.info(' ================================');
@@ -145,11 +147,6 @@ export class ActiveWorkflowRunner {
 		}
 		const externalHooks = ExternalHooks();
 		await externalHooks.run('activeWorkflows.initialized', []);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-	async initWebhooks() {
-		this.activeWorkflows = new ActiveWorkflows();
 	}
 
 	/**

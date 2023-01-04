@@ -86,7 +86,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: user.id,
+					user,
 					message_type: 'Reset password',
 					public_api: false,
 				});
@@ -105,7 +105,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -152,7 +152,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			Logger.info('Reset-password token resolved successfully', { userId: id });
 			void InternalHooksManager.getInstance().onUserPasswordResetEmailClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -212,7 +212,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: userId,
+				user,
 				fields_changed: ['password'],
 			});
 

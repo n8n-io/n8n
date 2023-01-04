@@ -1188,7 +1188,11 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[];
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
+export type IFakeDoorLocation =
+	| 'settings'
+	| 'settings/users'
+	| 'credentialsModal'
+	| 'workflowShareModal';
 
 export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
 

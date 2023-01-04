@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
+import { readFileSync } from 'fs';
 import { resolve, join, dirname } from 'path';
-import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
+import {
+	n8n,
+	RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES,
+	UserSettings,
+} from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
 
 const { NODE_ENV, E2E_TESTS } = process.env;
 export const inProduction = NODE_ENV === 'production';
@@ -15,6 +21,10 @@ export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
+
+export const N8N_VERSION = jsonParse<n8n.PackageJson>(
+	readFileSync(join(CLI_DIR, 'package.json'), 'utf8'),
+).version;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -55,6 +65,7 @@ export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export enum LICENSE_FEATURES {
 	SHARING = 'feat:sharing',
+	LOG_STREAMING = 'feat:logStreaming',
 }
 
 export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';

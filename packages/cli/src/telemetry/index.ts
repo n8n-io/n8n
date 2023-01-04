@@ -8,6 +8,7 @@ import { IExecutionTrackProperties } from '@/Interfaces';
 import { getLogger } from '@/Logger';
 import { getLicense } from '@/License';
 import { LicenseService } from '@/license/License.service';
+import { N8N_VERSION } from '@/constants';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 
@@ -35,7 +36,7 @@ export class Telemetry {
 
 	private executionCountsBuffer: IExecutionsBuffer = {};
 
-	constructor(private instanceId: string, private versionCli: string) {}
+	constructor(private instanceId: string) {}
 
 	async init() {
 		const enabled = config.getEnv('diagnostics.enabled');
@@ -179,7 +180,7 @@ export class Telemetry {
 				const updatedProperties: ITelemetryTrackProperties = {
 					...properties,
 					instance_id: this.instanceId,
-					version_cli: this.versionCli,
+					version_cli: N8N_VERSION,
 				};
 
 				const payload = {

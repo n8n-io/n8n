@@ -104,7 +104,7 @@ workflowsController.post(
 		}
 
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
 		return savedWorkflow;
 	}),
@@ -285,7 +285,7 @@ workflowsController.delete(
 
 		await Db.collections.Workflow.delete(workflowId);
 
-		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
+		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user, workflowId, false);
 		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
