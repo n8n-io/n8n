@@ -631,7 +631,7 @@ export const messageFields: INodeProperties[] = [
 								type: 'boolean',
 								default: false,
 								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
+									'Whether the reply should be made visible to everyone in the channel or conversation',
 							},
 						],
 					},
@@ -1070,18 +1070,18 @@ export const messageFields: INodeProperties[] = [
 		options: [
 			{
 				name: 'Newest',
-				value: 'newest',
+				value: 'desc',
 			},
 			{
 				name: 'Oldest',
-				value: 'oldest',
+				value: 'asc',
 			},
 			{
 				name: 'Relevance Score',
 				value: 'relevance',
 			},
 		],
-		default: 'newest',
+		default: 'desc',
 	},
 	{
 		displayName: 'Return All',

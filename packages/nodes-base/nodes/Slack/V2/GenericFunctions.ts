@@ -58,7 +58,8 @@ export async function slackApiRequest(
 					this.getNodeParameter('resource', 0) as string
 				}'`,
 				{
-					description: `Hint: Upgrate to the Slack plan that includes the funcionality you want to use.`,
+					description:
+						'Hint: Upgrate to the Slack plan that includes the funcionality you want to use.',
 				},
 			);
 		} else if (response.error === 'missing_scope') {

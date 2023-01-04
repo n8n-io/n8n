@@ -27,111 +27,7 @@ import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './Generi
 import moment from 'moment';
 
 export class SlackV2 implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Slack',
-		name: 'slack',
-		icon: 'file:slack.svg',
-		group: ['output'],
-		version: 1,
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Slack API',
-		defaults: {
-			name: 'Slack',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		credentials: [
-			{
-				name: 'slackApi',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['accessToken'],
-					},
-				},
-			},
-			{
-				name: 'slackOAuth2Api',
-				required: true,
-				displayOptions: {
-					show: {
-						authentication: ['oAuth2'],
-					},
-				},
-			},
-		],
-		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'Access Token',
-						value: 'accessToken',
-					},
-					{
-						name: 'OAuth2',
-						value: 'oAuth2',
-					},
-				],
-				default: 'accessToken',
-			},
-
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Channel',
-						value: 'channel',
-					},
-					{
-						name: 'File',
-						value: 'file',
-					},
-					{
-						name: 'Message',
-						value: 'message',
-					},
-					{
-						name: 'Reaction',
-						value: 'reaction',
-					},
-					{
-						name: 'Star',
-						value: 'star',
-					},
-					{
-						name: 'User',
-						value: 'user',
-					},
-					{
-						name: 'User Group',
-						value: 'userGroup',
-					},
-				],
-				default: 'message',
-			},
-
-			...channelOperations,
-			...channelFields,
-			...messageOperations,
-			...messageFields,
-			...starOperations,
-			...starFields,
-			...fileOperations,
-			...fileFields,
-			...reactionOperations,
-			...reactionFields,
-			...userOperations,
-			...userFields,
-			...userGroupOperations,
-			...userGroupFields,
-		],
-	};
+	description: INodeTypeDescription;
 
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
@@ -989,27 +885,19 @@ export class SlackV2 implements INodeType {
 						let query = this.getNodeParameter('query', i) as string;
 						const sort = this.getNodeParameter('sort', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter(
-							'options',
-							i,
-							{},
-							{
-								extractValue: true,
-							},
-						);
+						const options = this.getNodeParameter('options', i);
 						if (options.searchChannel) {
 							const channel = options.searchChannel as IDataObject[];
-							console.log(channel);
 							for (const channelItem of channel) {
 								query += ` in:${channelItem}`;
 							}
-							console.log(query);
 						}
 						qs = {
 							query,
 							sort: sort !== 'relevance' ? 'timestamp' : undefined,
 							sort_dir: sort === 'asc' ? 'asc' : 'desc',
 						};
+						console.log(qs);
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
@@ -1288,9 +1176,9 @@ export class SlackV2 implements INodeType {
 									.tz(status.status_expiration as string, timezone)
 									.unix();
 							}
+							Object.assign(body, status);
+							delete options.status;
 						}
-						Object.assign(body, status);
-						delete options.status;
 
 						if (options.customFieldUi) {
 							const customFields = (options.customFieldUi as IDataObject)
@@ -1408,68 +1296,6 @@ export class SlackV2 implements INodeType {
 						responseData = await slackApiRequest.call(this, 'POST', '/usergroups.update', body, qs);
 
 						responseData = responseData.usergroup;
-					}
-				}
-				if (resource === 'userProfile') {
-					//https://api.slack.com/methods/users.profile.set
-					if (operation === 'update') {
-						const options = this.getNodeParameter('options', i);
-						const timezone = this.getTimezone();
-
-						const body: IDataObject = {};
-						// @ts-ignore
-						const status = options.status?.set_status[0] as IDataObject;
-
-						if (status.status_expiration === undefined) {
-							status.status_expiration = 0;
-						} else {
-							status.status_expiration = moment
-								.tz(status.status_expiration as string, timezone)
-								.unix();
-						}
-						Object.assign(body, status);
-						delete options.status;
-
-						if (options.customFieldUi) {
-							const customFields = (options.customFieldUi as IDataObject)
-								.customFieldValues as IDataObject[];
-
-							options.fields = {};
-
-							for (const customField of customFields) {
-								//@ts-ignore
-								options.fields[customField.id] = {
-									value: customField.value,
-									alt: customField.alt,
-								};
-							}
-						}
-						Object.assign(body, options);
-						responseData = await slackApiRequest.call(
-							this,
-							'POST',
-							'/users.profile.set',
-							{ profile: body },
-							qs,
-						);
-
-						responseData = responseData.profile;
-					}
-					//https://api.slack.com/methods/users.profile.get
-					if (operation === 'get') {
-						const options = this.getNodeParameter('options', i);
-
-						Object.assign(qs, options);
-
-						responseData = await slackApiRequest.call(
-							this,
-							'POST',
-							'/users.profile.get',
-							undefined,
-							qs,
-						);
-
-						responseData = responseData.profile;
 					}
 				}
 				const executionData = this.helpers.constructExecutionMetaData(
