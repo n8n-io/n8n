@@ -17,9 +17,9 @@ async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 			Object.values(node.credentials).forEach((cred) => {
 				if (!cred?.id) return;
 
-				credsInAnyUse.add(cred.id.toString());
+				credsInAnyUse.add(cred.id);
 
-				if (workflow.active) credsInActiveUse.add(cred.id.toString());
+				if (workflow.active) credsInActiveUse.add(cred.id);
 			});
 		});
 	});
@@ -32,7 +32,7 @@ async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 
 async function getAllExistingCreds() {
 	return Db.collections.Credentials.find().then((c) =>
-		c.map((i) => ({ kind: 'credential' as const, id: i.id.toString(), name: i.name })),
+		c.map((i) => ({ kind: 'credential' as const, id: i.id, name: i.name })),
 	);
 }
 
@@ -61,7 +61,7 @@ async function getCredsInRecentlyExecutedWorkflows(days: number) {
 		execution.workflowData?.nodes.forEach((node) => {
 			if (node.credentials) {
 				Object.values(node.credentials).forEach((c) => {
-					if (c.id) acc.add(c.id.toString());
+					if (c.id) acc.add(c.id);
 				});
 			}
 		});

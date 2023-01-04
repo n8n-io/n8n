@@ -238,7 +238,7 @@ test('should report security settings', async () => {
 			communityPackagesEnabled: true,
 			versionNotificationsEnabled: true,
 			templatesEnabled: true,
-			publicApiEnabled: true,
+			publicApiEnabled: false,
 			userManagementEnabled: true,
 		},
 		auth: {
@@ -247,6 +247,6 @@ test('should report security settings', async () => {
 			jwtAuthActive: false,
 		},
 		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
-		telemetry: { diagnosticsEnabled: true },
+		telemetry: { diagnosticsEnabled: false },
 	});
 });

@@ -9,7 +9,7 @@ export const toFlaggedNode = ({
 	workflow: Workflow;
 }) => ({
 	kind: 'node' as const,
-	workflowId: workflow.id.toString(),
+	workflowId: workflow.id,
 	workflowName: workflow.name,
 	nodeId: node.id,
 	nodeName: node.name,

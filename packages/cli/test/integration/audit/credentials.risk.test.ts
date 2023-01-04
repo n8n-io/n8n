@@ -103,7 +103,7 @@ test('should report credentials not in active use', async () => {
 
 	expect(section.location).toHaveLength(1);
 	expect(section.location[0]).toMatchObject({
-		id: credential.id.toString(),
+		id: credential.id,
 		name: 'My Slack Credential',
 	});
 });
@@ -132,7 +132,7 @@ test('should report credential in not recently executed workflow', async () => {
 				position: [0, 0] as [number, number],
 				credentials: {
 					slackApi: {
-						id: credential.id.toString(),
+						id: credential.id,
 						name: credential.name,
 					},
 				},
@@ -152,7 +152,7 @@ test('should report credential in not recently executed workflow', async () => {
 		startedAt: date,
 		stoppedAt: date,
 		workflowData: workflow,
-		workflowId: workflow.id.toString(),
+		workflowId: workflow.id,
 		waitTill: null,
 	});
 
@@ -166,7 +166,7 @@ test('should report credential in not recently executed workflow', async () => {
 
 	expect(section.location).toHaveLength(1);
 	expect(section.location[0]).toMatchObject({
-		id: credential.id.toString(),
+		id: credential.id,
 		name: credential.name,
 	});
 });
@@ -195,7 +195,7 @@ test('should not report credentials in recently executed workflow', async () => 
 				position: [0, 0] as [number, number],
 				credentials: {
 					slackApi: {
-						id: credential.id.toString(),
+						id: credential.id,
 						name: credential.name,
 					},
 				},
@@ -215,7 +215,7 @@ test('should not report credentials in recently executed workflow', async () => 
 		startedAt: date,
 		stoppedAt: date,
 		workflowData: workflow,
-		workflowId: workflow.id.toString(),
+		workflowId: workflow.id,
 		waitTill: null,
 	});
 

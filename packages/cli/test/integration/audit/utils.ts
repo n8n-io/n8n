@@ -2,8 +2,8 @@ import nock from 'nock';
 import config from '@/config';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import * as GenericHelpers from '@/GenericHelpers';
 import { toReportTitle } from '@/audit/utils';
+import * as constants from '@/constants';
 import type { Risk } from '@/audit/types';
 import type { InstalledNodes } from '@/databases/entities/InstalledNodes';
 import type { InstalledPackages } from '@/databases/entities/InstalledPackages';
@@ -34,7 +34,7 @@ export function getRiskSection<C extends Risk.Category>(
 
 export async function saveManualTriggerWorkflow() {
 	const details = {
-		id: 1,
+		id: '1',
 		name: 'My Test Workflow',
 		active: false,
 		connections: {},
@@ -110,7 +110,9 @@ export const MOCK_PACKAGE: InstalledPackages[] = [
 export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSION.name) {
 	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
-	jest.spyOn(GenericHelpers, 'getVersions').mockResolvedValueOnce({ cli: versionName });
+	jest
+		.spyOn(constants, 'getN8nPackageJsonVersion')
+		.mockReturnValueOnce({ name: 'n8n', version: versionName });
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
 }
@@ -118,7 +120,9 @@ export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSIO
 export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.name) {
 	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
-	jest.spyOn(GenericHelpers, 'getVersions').mockResolvedValue({ cli: versionName });
+	jest
+		.spyOn(constants, 'getN8nPackageJsonVersion')
+		.mockReturnValueOnce({ name: 'n8n', version: versionName });
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
 }

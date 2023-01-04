@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { UserSettings } from 'n8n-core';
-import * as GenericHelpers from '@/GenericHelpers';
 import config from '@/config';
 import { toFlaggedNode } from '@/audit/utils';
 import { separate } from '@/utils';
@@ -11,7 +10,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WEBHOOK_VALIDATOR_NODE_TYPES,
 } from '@/audit/constants';
-import { inDevelopment } from '@/constants';
+import { inDevelopment, N8N_VERSION } from '@/constants';
 import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
 import type { Risk, n8n } from '@/audit/types';
 
@@ -123,13 +122,10 @@ function classify(versions: n8n.Version[], currentVersionName: string) {
 }
 
 export async function getOutdatedState() {
-	const allPackagesVersions = await GenericHelpers.getVersions();
-	const currentVersionName = allPackagesVersions.cli;
-
 	let versions = [];
 
 	try {
-		versions = await getNextVersions(currentVersionName).then(removeIconData);
+		versions = await getNextVersions(N8N_VERSION).then(removeIconData);
 	} catch (error) {
 		if (inDevelopment) {
 			console.error('Failed to fetch n8n versions. Skipping outdated instance report...');
@@ -138,7 +134,7 @@ export async function getOutdatedState() {
 	}
 
 	// API returns current version and any next versions
-	const { currentVersion, nextVersions } = classify(versions, currentVersionName);
+	const { currentVersion, nextVersions } = classify(versions, N8N_VERSION);
 
 	const nextVersionsNumber = nextVersions.length;
 
