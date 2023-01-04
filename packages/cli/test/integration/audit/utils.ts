@@ -111,7 +111,7 @@ export function simulateOutdatedInstanceOnce(versionName = MOCK_01110_N8N_VERSIO
 	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
 	jest
-		.spyOn(constants, 'getN8nPackageJsonVersion')
+		.spyOn(constants, 'getN8nPackageJson')
 		.mockReturnValueOnce({ name: 'n8n', version: versionName });
 
 	nock(baseUrl).get(versionName).reply(200, [MOCK_01110_N8N_VERSION, MOCK_09990_N8N_VERSION]);
@@ -121,7 +121,7 @@ export function simulateUpToDateInstance(versionName = MOCK_09990_N8N_VERSION.na
 	const baseUrl = config.getEnv('versionNotifications.endpoint') + '/';
 
 	jest
-		.spyOn(constants, 'getN8nPackageJsonVersion')
+		.spyOn(constants, 'getN8nPackageJson')
 		.mockReturnValueOnce({ name: 'n8n', version: versionName });
 
 	nock(baseUrl).persist().get(versionName).reply(200, [MOCK_09990_N8N_VERSION]);
