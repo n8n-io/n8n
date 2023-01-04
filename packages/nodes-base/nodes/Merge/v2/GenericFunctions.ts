@@ -389,6 +389,10 @@ const fuzzyCompare =
 		//Null, empty strings, empty arrays all treated as the same
 		if (isFalsy(item1) && isFalsy(item2)) return true;
 
+		//When a field is missing in one branch and isFalsy() in another, treat them as matching
+		if (isFalsy(item1) && item2 === undefined) return true;
+		if (item1 === undefined && isFalsy(item2)) return true;
+
 		//Compare numbers and strings representing that number
 		if (typeof item1 === 'number' && typeof item2 === 'string') {
 			return item1.toString() === item2;
@@ -452,7 +456,6 @@ const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
 };
 
 function isFalsy<T>(value: T) {
-	if (value === undefined) return true;
 	if (isNull(value)) return true;
 	if (typeof value === 'string' && value === '') return true;
 	if (Array.isArray(value) && value.length === 0) return true;
