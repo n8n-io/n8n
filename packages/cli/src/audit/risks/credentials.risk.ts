@@ -31,9 +31,9 @@ async function getAllCredsInUse(workflows: WorkflowEntity[]) {
 }
 
 async function getAllExistingCreds() {
-	return Db.collections.Credentials.find().then((c) =>
-		c.map((i) => ({ kind: 'credential' as const, id: i.id, name: i.name })),
-	);
+	const credentials = await Db.collections.Credentials.find({ select: ['id', 'name'] });
+
+	return credentials.map(({ id, name }) => ({ kind: 'credential' as const, id, name }));
 }
 
 async function getExecutionsInPastDays(days: number) {
