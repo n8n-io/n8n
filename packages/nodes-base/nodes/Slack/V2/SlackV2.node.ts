@@ -734,7 +734,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const ts = this.getNodeParameter('ts', i) as string;
+						const ts = this.getNodeParameter('ts', i)?.toString() as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i);
 						qs.channel = channel;
@@ -921,7 +921,7 @@ export class SlackV2 implements INodeType {
 							{ extractValue: true },
 						) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const ts = this.getNodeParameter('ts', i) as string;
+						const ts = this.getNodeParameter('ts', i)?.toString() as string;
 						const body: IDataObject = {
 							channel,
 							text,
@@ -961,7 +961,7 @@ export class SlackV2 implements INodeType {
 						if (select === 'user' && this.getNodeParameter('user', i).mode === 'username') {
 							target = target.slice(0, 1) === '@' ? target : `@${target}`;
 						}
-						const timestamp = this.getNodeParameter('timestamp', i) as string;
+						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
 						const body: IDataObject = {
 							channel: target,
 							ts: timestamp,
@@ -977,7 +977,7 @@ export class SlackV2 implements INodeType {
 							{},
 							{ extractValue: true },
 						) as string;
-						const timestamp = this.getNodeParameter('timestamp', i) as string;
+						const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
 						qs = {
 							channel,
 							message_ts: timestamp,
@@ -1032,7 +1032,7 @@ export class SlackV2 implements INodeType {
 						{},
 						{ extractValue: true },
 					) as string;
-					const timestamp = this.getNodeParameter('timestamp', i) as string;
+					const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
 					//https://api.slack.com/methods/reactions.add
 					if (operation === 'add') {
 						const name = this.getNodeParameter('name', i) as string;
@@ -1075,7 +1075,7 @@ export class SlackV2 implements INodeType {
 						body.channel = channel;
 
 						if (target === 'message') {
-							const timestamp = this.getNodeParameter('timestamp', i) as string;
+							const timestamp = this.getNodeParameter('timestamp', i)?.toString() as string;
 							body.timestamp = timestamp;
 						}
 						if (target === 'file') {
