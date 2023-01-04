@@ -37,7 +37,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 
 	const delimiter = word.text.includes('json[') ? 'json[' : '.';
 
-	userInputTail = word.text.split(delimiter).pop()!; // @TODO: Remove assertion
+	userInputTail = word.text.split(delimiter).pop() as string;
 
 	if (userInputTail !== '') {
 		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
