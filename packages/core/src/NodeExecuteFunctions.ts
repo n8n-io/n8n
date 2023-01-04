@@ -66,6 +66,7 @@ import {
 	IPollFunctions,
 	ITriggerFunctions,
 	IWebhookFunctions,
+	BinaryMetadata,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -463,7 +464,9 @@ async function parseRequestObject(requestObject: IDataObject) {
 		}
 	}
 
-	if (requestObject.encoding === null) {
+	if (requestObject.useStream) {
+		axiosConfig.responseType = 'stream';
+	} else if (requestObject.encoding === null) {
 		// When downloading files, return an arrayBuffer.
 		axiosConfig.responseType = 'arraybuffer';
 	}
@@ -519,7 +522,7 @@ function digestAuthAxiosConfig(
 		const realm: string = authDetails
 			.find((el: any) => el[0].toLowerCase().indexOf('realm') > -1)[1]
 			.replace(/"/g, '');
-		// If authDeatials does not have opaque, we should not add it to authorization.
+		// If authDetails does not have opaque, we should not add it to authorization.
 		const opaqueKV = authDetails.find((el: any) => el[0].toLowerCase().indexOf('opaque') > -1);
 		const opaque: string = opaqueKV ? opaqueKV[1].replace(/"/g, '') : undefined;
 		const nonce: string = authDetails
@@ -576,7 +579,7 @@ async function proxyRequestToAxios(
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 	};
-	let axiosPromise: AxiosPromise;
+
 	type ConfigObject = {
 		auth?: { sendImmediately: boolean };
 		resolveWithFullResponse?: boolean;
@@ -602,107 +605,102 @@ async function proxyRequestToAxios(
 		// }
 	);
 
+	let requestFn: () => AxiosPromise;
 	if (configObject.auth?.sendImmediately === false) {
 		// for digest-auth
-		const { auth } = axiosConfig;
-		delete axiosConfig.auth;
-		// eslint-disable-next-line no-async-promise-executor
-		axiosPromise = new Promise(async (resolve, reject) => {
+		requestFn = async () => {
 			try {
-				const result = await axios(axiosConfig);
-				resolve(result);
-			} catch (resp: any) {
-				if (
-					resp.response === undefined ||
-					resp.response.status !== 401 ||
-					!resp.response.headers['www-authenticate']?.includes('nonce')
-				) {
-					reject(resp);
+				return await axios(axiosConfig);
+			} catch (error) {
+				const { response } = error;
+				if (response?.status !== 401 || !response.headers['www-authenticate']?.includes('nonce')) {
+					throw error;
 				}
-				axiosConfig = digestAuthAxiosConfig(axiosConfig, resp.response, auth);
-				resolve(axios(axiosConfig));
+				const { auth } = axiosConfig;
+				delete axiosConfig.auth;
+				axiosConfig = digestAuthAxiosConfig(axiosConfig, response, auth);
+				return await axios(axiosConfig);
 			}
-		});
+		};
 	} else {
-		axiosPromise = axios(axiosConfig);
+		requestFn = async () => axios(axiosConfig);
 	}
 
-	return new Promise((resolve, reject) => {
-		axiosPromise
-			.then(async (response) => {
-				if (configObject.resolveWithFullResponse === true) {
-					let body = response.data;
-					if (response.data === '') {
-						if (axiosConfig.responseType === 'arraybuffer') {
-							body = Buffer.alloc(0);
-						} else {
-							body = undefined;
-						}
-					}
-					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
-					resolve({
-						body,
-						headers: response.headers,
-						statusCode: response.status,
-						statusMessage: response.statusText,
-						request: response.request,
-					});
+	try {
+		const response = await requestFn();
+		if (configObject.resolveWithFullResponse === true) {
+			let body = response.data;
+			if (response.data === '') {
+				if (axiosConfig.responseType === 'arraybuffer') {
+					body = Buffer.alloc(0);
 				} else {
-					let body = response.data;
-					if (response.data === '') {
-						if (axiosConfig.responseType === 'arraybuffer') {
-							body = Buffer.alloc(0);
-						} else {
-							body = undefined;
-						}
-					}
-					await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
-					resolve(body);
+					body = undefined;
 				}
-			})
-			.catch((error) => {
-				if (configObject.simple === false && error.response) {
-					if (configObject.resolveWithFullResponse) {
-						resolve({
-							body: error.response.data,
-							headers: error.response.headers,
-							statusCode: error.response.status,
-							statusMessage: error.response.statusText,
-						});
-					} else {
-						resolve(error.response.data);
-					}
-					return;
+			}
+			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			return {
+				body,
+				headers: response.headers,
+				statusCode: response.status,
+				statusMessage: response.statusText,
+				request: response.request,
+			};
+		} else {
+			let body = response.data;
+			if (response.data === '') {
+				if (axiosConfig.responseType === 'arraybuffer') {
+					body = Buffer.alloc(0);
+				} else {
+					body = undefined;
 				}
+			}
+			await additionalData.hooks?.executeHookFunctions('nodeFetchedData', [workflow.id, node]);
+			return body;
+		}
+	} catch (error) {
+		const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
+		if (configObject.simple === false && response) {
+			if (configObject.resolveWithFullResponse) {
+				return {
+					body: response.data,
+					headers: response.headers,
+					statusCode: response.status,
+					statusMessage: response.statusText,
+				};
+			} else {
+				return response.data;
+			}
+		}
 
-				Logger.debug('Request proxied to Axios failed', { error });
+		// Axios hydrates the original error with more data. We extract them.
+		// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
+		// Note: `code` is ignored as it's an expected part of the errorData.
+		if (response) {
+			Logger.debug('Request proxied to Axios failed', { status: response.status });
+			let responseData = response.data;
+			if (Buffer.isBuffer(responseData)) {
+				responseData = responseData.toString('utf-8');
+			}
+			error.message = `${response.status as number} - ${JSON.stringify(responseData)}`;
+		}
 
-				// Axios hydrates the original error with more data. We extract them.
-				// https://github.com/axios/axios/blob/master/lib/core/enhanceError.js
-				// Note: `code` is ignored as it's an expected part of the errorData.
-				const { request, response, isAxiosError, toJSON, config, ...errorData } = error;
-				if (response) {
-					error.message = `${response.status as number} - ${JSON.stringify(response.data)}`;
-				}
+		error.cause = errorData;
+		error.error = error.response?.data || errorData;
+		error.statusCode = error.response?.status;
+		error.options = config || {};
 
-				error.cause = errorData;
-				error.error = error.response?.data || errorData;
-				error.statusCode = error.response?.status;
-				error.options = config || {};
+		// Remove not needed data and so also remove circular references
+		error.request = undefined;
+		error.config = undefined;
+		error.options.adapter = undefined;
+		error.options.httpsAgent = undefined;
+		error.options.paramsSerializer = undefined;
+		error.options.transformRequest = undefined;
+		error.options.transformResponse = undefined;
+		error.options.validateStatus = undefined;
 
-				// Remove not needed data and so also remove circular references
-				error.request = undefined;
-				error.config = undefined;
-				error.options.adapter = undefined;
-				error.options.httpsAgent = undefined;
-				error.options.paramsSerializer = undefined;
-				error.options.transformRequest = undefined;
-				error.options.transformResponse = undefined;
-				error.options.validateStatus = undefined;
-
-				reject(error);
-			});
-	});
+		throw error;
+	}
 }
 
 function isIterator(obj: unknown): boolean {
@@ -824,8 +822,21 @@ async function httpRequest(
 }
 
 /**
+ * Returns binary file metadata
+ */
+export async function getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata> {
+	return BinaryDataManager.getInstance().getBinaryMetadata(binaryDataId);
+}
+
+/**
+ * Returns binary file stream for piping
+ */
+export function getBinaryStream(binaryDataId: string, chunkSize?: number): Readable {
+	return BinaryDataManager.getInstance().getBinaryStream(binaryDataId, chunkSize);
+}
+
+/**
  * Returns binary data buffer for given item index and property name.
- *
  */
 export async function getBinaryDataBuffer(
 	inputData: ITaskDataConnections,
@@ -1989,6 +2000,8 @@ const getRequestHelperFunctions = (
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
+	getBinaryStream,
+	getBinaryMetadata,
 	prepareBinaryData: async (binaryData, filePath, mimeType) =>
 		prepareBinaryData(binaryData, executionId!, filePath, mimeType),
 	setBinaryDataBuffer: async (data, binaryData) =>
