@@ -333,7 +333,7 @@ export class ShopifyTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const { webhooks } = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
@@ -348,7 +348,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks.json`;
+				const endpoint = '/webhooks.json';
 				const body = {
 					webhook: {
 						topic,

@@ -217,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -379,6 +379,12 @@ export const schema = {
 					format: Number,
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
+				},
+				username: {
+					doc: 'Redis Username (needs Redis >= 6)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_USERNAME',
 				},
 			},
 			queueRecoveryInterval: {
@@ -637,6 +643,14 @@ export const schema = {
 			env: 'N8N_PUBLIC_API_ENDPOINT',
 			doc: 'Path for the public api endpoints',
 		},
+		swaggerUi: {
+			disabled: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				doc: 'Whether to disable the Swagger UI for the Public API',
+			},
+		},
 	},
 
 	workflowTagsDisabled: {
@@ -658,6 +672,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
 		},
 		emails: {
 			mode: {
@@ -764,6 +790,12 @@ export const schema = {
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
 		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
+		},
 	},
 
 	logs: {
@@ -815,7 +847,7 @@ export const schema = {
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
-			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			doc: "Url in New Versions Panel with more information on updating one's instance.",
 			format: String,
 			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
@@ -884,12 +916,6 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
-		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
 		},
 	},
 

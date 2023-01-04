@@ -114,7 +114,7 @@ export class GoogleChat implements INodeType {
 			// select them easily
 			async getSpaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const spaces = await googleApiRequestAllItems.call(this, 'spaces', 'GET', `/v1/spaces`);
+				const spaces = await googleApiRequestAllItems.call(this, 'spaces', 'GET', '/v1/spaces');
 				for (const space of spaces) {
 					returnData.push({
 						name: space.displayName,
@@ -142,7 +142,7 @@ export class GoogleChat implements INodeType {
 							iss: email,
 							sub: credential.data!.delegatedEmail || email,
 							scope: scopes.join(' '),
-							aud: `https://oauth2.googleapis.com/token`,
+							aud: 'https://oauth2.googleapis.com/token',
 							iat: now,
 							exp: now,
 						},
@@ -274,13 +274,13 @@ export class GoogleChat implements INodeType {
 								this,
 								'spaces',
 								'GET',
-								`/v1/spaces`,
+								'/v1/spaces',
 							);
 						} else {
 							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
-							responseData = await googleApiRequest.call(this, 'GET', `/v1/spaces`, undefined, qs);
+							responseData = await googleApiRequest.call(this, 'GET', '/v1/spaces', undefined, qs);
 							responseData = responseData.spaces;
 						}
 					}

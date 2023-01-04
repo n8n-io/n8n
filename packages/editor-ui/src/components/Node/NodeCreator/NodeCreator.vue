@@ -1,30 +1,26 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, active: nodeCreatorStore.showScrim}" />
+		<aside :class="{ 'node-creator-scrim': true, active: nodeCreatorStore.showScrim }" />
 
 		<slide-transition>
 			<div
 				v-if="active"
 				class="node-creator"
 				ref="nodeCreator"
-			 	v-click-outside="onClickOutside"
-			 	@dragover="onDragOver"
-			 	@drop="onDrop"
+				v-click-outside="onClickOutside"
+				@dragover="onDragOver"
+				@drop="onDrop"
 				@mousedown="onMouseDown"
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel
-					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:searchItems="searchItems"
-				/>
+				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" :searchItems="searchItems" />
 			</div>
 		</slide-transition>
 	</div>
 </template>
 
 <script setup lang="ts">
-
 import { computed, watch, reactive, toRefs } from 'vue';
 
 import { INodeCreateElement } from '@/Interface';
@@ -41,7 +37,7 @@ export interface Props {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	(event: 'closeNodeCreator'): void,
+	(event: 'closeNodeCreator'): void;
 }>();
 
 const nodeCreatorStore = useNodeCreatorStore();
@@ -72,13 +68,13 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 	}));
 });
 
-function onClickOutside (event: Event) {
+function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator
 	// and try to drag undraggable element. In that case the click event would
 	// be fired and the node creator would be closed. So we stop that if we detect
 	// that the click event originated from inside the node creator. And fire click even on the
 	// original target.
-	if(state.mousedownInsideEvent) {
+	if (state.mousedownInsideEvent) {
 		const clickEvent = new MouseEvent('click', {
 			bubbles: true,
 			cancelable: true,
@@ -86,7 +82,7 @@ function onClickOutside (event: Event) {
 		state.mousedownInsideEvent.target?.dispatchEvent(clickEvent);
 		state.mousedownInsideEvent = null;
 		return;
-	};
+	}
 
 	if (event.type === 'click') {
 		emit('closeNodeCreator');
@@ -110,20 +106,29 @@ function onDrop(event: DragEvent) {
 	const nodeCreatorBoundingRect = (state.nodeCreator as Element).getBoundingClientRect();
 
 	// Abort drag end event propagation if dropped inside nodes panel
-	if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
+	if (
+		nodeTypeName &&
+		event.pageX >= nodeCreatorBoundingRect.x &&
+		event.pageY >= nodeCreatorBoundingRect.y
+	) {
 		event.stopPropagation();
 	}
 }
 
-watch(() => props.active, (isActive) => {
-	if(isActive === false) nodeCreatorStore.setShowScrim(false);
-});
+watch(
+	() => props.active,
+	(isActive) => {
+		if (isActive === false) nodeCreatorStore.setShowScrim(false);
+	},
+);
 
 const { nodeCreator } = toRefs(state);
 </script>
 
 <style scoped lang="scss">
-::v-deep *, *:before, *:after {
+::v-deep *,
+*:before,
+*:after {
 	box-sizing: border-box;
 }
 

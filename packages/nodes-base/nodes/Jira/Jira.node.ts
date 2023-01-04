@@ -753,7 +753,7 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -762,7 +762,7 @@ export class Jira implements INodeType {
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);

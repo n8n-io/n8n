@@ -10,12 +10,8 @@
 		:isTrigger="isTriggerAction(action)"
 	>
 		<template #dragContent>
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
-			<div
-				:class="$style.draggable"
-				:style="draggableStyle"
-				v-show="dragging"
-			>
+			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
+			<div :class="$style.draggable" :style="draggableStyle" v-show="dragging">
 				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
 			</div>
 		</template>
@@ -34,14 +30,15 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
-	nodeType: INodeTypeDescription,
-	action: INodeActionTypeDescription,
+	nodeType: INodeTypeDescription;
+	action: INodeActionTypeDescription;
 }
 
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
 const telemetry = instance?.proxy.$telemetry;
-const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } = useNodeCreatorStore();
+const { getActionData, getNodeTypesWithManualTrigger, setAddedNodeActionParameters } =
+	useNodeCreatorStore();
 
 const state = reactive({
 	dragging: false,
@@ -53,19 +50,20 @@ const state = reactive({
 	draggableDataTransfer: null as Element | null,
 });
 const emit = defineEmits<{
-	(event: 'actionSelected', action: IUpdateInformation): void,
-	(event: 'dragstart', $e: DragEvent): void,
-	(event: 'dragend', $e: DragEvent): void,
+	(event: 'actionSelected', action: IUpdateInformation): void;
+	(event: 'dragstart', $e: DragEvent): void;
+	(event: 'dragend', $e: DragEvent): void;
 }>();
 
-const draggableStyle = computed<{ top: string; left: string; }>(() => ({
+const draggableStyle = computed<{ top: string; left: string }>(() => ({
 	top: `${state.draggablePosition.y}px`,
 	left: `${state.draggablePosition.x}px`,
 }));
 
 const actionData = computed(() => getActionData(props.action));
 
-const isTriggerAction = (action: INodeActionTypeDescription) => action.name?.toLowerCase().includes('trigger');
+const isTriggerAction = (action: INodeActionTypeDescription) =>
+	action.name?.toLowerCase().includes('trigger');
 function onActionClick(actionItem: INodeActionTypeDescription) {
 	emit('actionSelected', getActionData(actionItem));
 }
@@ -76,16 +74,19 @@ function onDragStart(event: DragEvent): void {
 	 * All browsers attach the correct page coordinates to the "dragover" event.
 	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
 	 */
-	document.body.addEventListener("dragover", onDragOver);
+	document.body.addEventListener('dragover', onDragOver);
 	const { pageX: x, pageY: y } = event;
 	if (event.dataTransfer) {
-		event.dataTransfer.effectAllowed = "copy";
-		event.dataTransfer.dropEffect = "copy";
+		event.dataTransfer.effectAllowed = 'copy';
+		event.dataTransfer.dropEffect = 'copy';
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
-		event.dataTransfer.setData('nodeTypeName', getNodeTypesWithManualTrigger(actionData.value?.key).join(','));
+		event.dataTransfer.setData(
+			'nodeTypeName',
+			getNodeTypesWithManualTrigger(actionData.value?.key).join(','),
+		);
 
 		state.storeWatcher = setAddedNodeActionParameters(actionData.value, telemetry);
-		document.body.addEventListener("dragend", onDragEnd);
+		document.body.addEventListener('dragend', onDragEnd);
 	}
 
 	state.dragging = true;
@@ -94,19 +95,19 @@ function onDragStart(event: DragEvent): void {
 }
 
 function onDragOver(event: DragEvent): void {
-	if (!state.dragging || event.pageX === 0 && event.pageY === 0) {
+	if (!state.dragging || (event.pageX === 0 && event.pageY === 0)) {
 		return;
 	}
 
-	const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
+	const [x, y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
 
 	state.draggablePosition = { x, y };
 }
 
 function onDragEnd(event: DragEvent): void {
-	if(state.storeWatcher) state.storeWatcher();
-	document.body.removeEventListener("dragend", onDragEnd);
-	document.body.removeEventListener("dragover", onDragOver);
+	if (state.storeWatcher) state.storeWatcher();
+	document.body.removeEventListener('dragend', onDragEnd);
+	document.body.removeEventListener('dragover', onDragOver);
 
 	emit('dragend', event);
 
@@ -135,7 +136,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 	color: var(--color-text-base);
 	padding-top: var(--spacing-s);
 	line-height: var(--font-line-height-regular);
-	border-top: 1px solid #DBDFE7;
+	border-top: 1px solid #dbdfe7;
 	z-index: 1;
 	// Prevent double borders when the last category is collapsed
 	margin-top: -1px;

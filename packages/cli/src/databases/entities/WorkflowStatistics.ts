@@ -1,6 +1,7 @@
 import { Column, Entity, RelationId, ManyToOne, PrimaryColumn } from 'typeorm';
+import { idStringifier } from '../utils/transformers';
 import { datetimeColumnType } from './AbstractEntity';
-import { WorkflowEntity } from './WorkflowEntity';
+import type { WorkflowEntity } from './WorkflowEntity';
 
 export enum StatisticsNames {
 	productionSuccess = 'production_success',
@@ -20,13 +21,13 @@ export class WorkflowStatistics {
 	@PrimaryColumn({ length: 128 })
 	name: StatisticsNames;
 
-	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
+	@ManyToOne('WorkflowEntity', 'shared', {
 		primary: true,
 		onDelete: 'CASCADE',
 	})
 	workflow: WorkflowEntity;
 
+	@PrimaryColumn({ transformer: idStringifier })
 	@RelationId((workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow)
-	@PrimaryColumn()
-	workflowId: number;
+	workflowId: string;
 }
