@@ -13,7 +13,6 @@ import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-// import { javascript, javascriptLanguage } from '@codemirror/lang-javascript';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
 import { autocompletion, ifIn } from '@codemirror/autocomplete';
