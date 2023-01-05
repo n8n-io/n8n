@@ -13,7 +13,7 @@ type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	: Risk.StandardSection;
 
 export function getRiskSection<C extends Risk.Category>(
-	testAudit: Risk.Audit | unknown[],
+	testAudit: Risk.Audit | never[],
 	riskCategory: C,
 	sectionTitle: string,
 ): GetSectionKind<C> {
