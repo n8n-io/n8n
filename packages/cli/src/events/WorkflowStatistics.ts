@@ -73,6 +73,8 @@ export async function nodeFetchedData(workflowId: string, node: INode): Promise<
 		if (!(error instanceof QueryFailedError)) {
 			throw error;
 		}
+		// If it is a query failed error, we return
+		return;
 	}
 
 	// Compile the metrics since this was a new data loaded event
