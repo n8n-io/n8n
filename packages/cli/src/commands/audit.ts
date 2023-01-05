@@ -1,16 +1,15 @@
+import Command, { flags } from '@oclif/command';
 import { LoggerProxy } from 'n8n-workflow';
+import { UserSettings } from 'n8n-core';
 import { getLogger, Logger } from '@/Logger';
 import { audit } from '@/audit';
-import Command, { flags } from '@oclif/command';
 import { RISK_CATEGORIES } from '@/audit/constants';
-import { UserSettings } from 'n8n-core';
 import { CredentialTypes } from '@/CredentialTypes';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import config from '@/config';
 import * as Db from '@/Db';
-import { inTest } from '@/constants';
 import type { Risk } from '@/audit/types';
 
 export class SecurityAudit extends Command {
@@ -45,6 +44,19 @@ export class SecurityAudit extends Command {
 		const categories =
 			auditFlags.categories?.split(',').filter((i): i is Risk.Category => i !== '') ??
 			RISK_CATEGORIES;
+
+		const invalidCategories = categories.filter((c) => !RISK_CATEGORIES.includes(c));
+
+		if (invalidCategories.length > 0) {
+			const message =
+				invalidCategories.length > 1
+					? `Invalid categories received: ${invalidCategories.join(', ')}`
+					: `Invalid category received: ${invalidCategories[0]}`;
+
+			const hint = `Valid categories are: ${RISK_CATEGORIES.join(', ')}`;
+
+			throw new Error([message, hint].join('. '));
+		}
 
 		const result = await audit(categories, auditFlags['days-abandoned-workflow']);
 
@@ -86,11 +98,5 @@ export class SecurityAudit extends Command {
 		this.logger.error(error.message);
 
 		this.exit(1);
-	}
-
-	async finally(): Promise<void> {
-		if (inTest) return;
-
-		this.exit();
 	}
 }
