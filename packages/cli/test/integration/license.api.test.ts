@@ -6,16 +6,11 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
-import { LicenseManager } from '@n8n_io/license-sdk';
 import { License } from '@/License';
-
-jest.mock('@/telemetry');
-jest.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
-const MOCK_N8N_VERSION = '0.27.0';
 
 let app: express.Application;
 let testDbName = '';
@@ -44,7 +39,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	license = new License();
-	await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+	await license.init(MOCK_INSTANCE_ID);
 });
 
 afterEach(async () => {

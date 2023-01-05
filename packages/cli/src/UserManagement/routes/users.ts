@@ -128,7 +128,7 @@ export function usersNamespace(this: N8nApp): void {
 			const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
 			const total = usersToSetUp.length;
 
-			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
+			Logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 			try {
 				await Db.transaction(async (transactionManager) => {
@@ -146,7 +146,7 @@ export function usersNamespace(this: N8nApp): void {
 				});
 
 				void InternalHooksManager.getInstance().onUserInvite({
-					user_id: req.user.id,
+					user: req.user,
 					target_user_id: Object.values(createUsers) as string[],
 					public_api: false,
 				});
@@ -157,7 +157,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
-			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
+			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
 
@@ -191,7 +191,7 @@ export function usersNamespace(this: N8nApp): void {
 						});
 					} else {
 						void InternalHooksManager.getInstance().onEmailFailed({
-							user_id: req.user.id,
+							user: req.user,
 							message_type: 'New user invite',
 							public_api: false,
 						});
@@ -201,7 +201,7 @@ export function usersNamespace(this: N8nApp): void {
 							domain: baseUrl,
 							email,
 						});
-						resp.error = `Email could not be sent`;
+						resp.error = 'Email could not be sent';
 					}
 					return resp;
 				}),
@@ -212,7 +212,7 @@ export function usersNamespace(this: N8nApp): void {
 			Logger.debug(
 				usersPendingSetup.length > 1
 					? `Sent ${usersPendingSetup.length} invite emails successfully`
-					: `Sent 1 invite email successfully`,
+					: 'Sent 1 invite email successfully',
 				{ userShells: createUsers },
 			);
 
@@ -283,7 +283,8 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserInviteEmailClick({
-				user_id: inviteeId,
+				inviter,
+				invitee,
 			});
 
 			const { firstName, lastName } = inviter;
@@ -348,8 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			await issueCookie(res, updatedUser);
 
-			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: invitee.id,
+			void InternalHooksManager.getInstance().onUserSignup(updatedUser, {
 				user_type: 'email',
 				was_disabled_ldap_user: false,
 			});
@@ -429,13 +429,13 @@ export function usersNamespace(this: N8nApp): void {
 
 				await Db.transaction(async (transactionManager) => {
 					// Get all workflow ids belonging to user to delete
-					const sharedWorkflows = await transactionManager.getRepository(SharedWorkflow).find({
-						where: { user: userToDelete, role: workflowOwnerRole },
-					});
-
-					const sharedWorkflowIds = sharedWorkflows.map((sharedWorkflow) =>
-						sharedWorkflow.workflowId.toString(),
-					);
+					const sharedWorkflowIds = await transactionManager
+						.getRepository(SharedWorkflow)
+						.find({
+							select: ['workflowId'],
+							where: { userId: userToDelete.id, role: workflowOwnerRole },
+						})
+						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
 					// Prevents issues with unique key constraints since user being assigned
 					// workflows and credentials might be a sharee
@@ -454,21 +454,21 @@ export function usersNamespace(this: N8nApp): void {
 					// Now do the same for creds
 
 					// Get all workflow ids belonging to user to delete
-					const sharedCredentials = await transactionManager.getRepository(SharedCredentials).find({
-						where: { user: userToDelete, role: credentialOwnerRole },
-					});
-
-					const sharedCredentialIds = sharedCredentials.map((sharedCredential) =>
-						sharedCredential.credentialsId.toString(),
-					);
+					const sharedCredentialIds = await transactionManager
+						.getRepository(SharedCredentials)
+						.find({
+							select: ['credentialsId'],
+							where: { user: userToDelete, role: credentialOwnerRole },
+						})
+						.then((sharedCredentials) =>
+							sharedCredentials.map(({ credentialsId }) => credentialsId),
+						);
 
 					// Prevents issues with unique key constraints since user being assigned
 					// workflows and credentials might be a sharee
 					await transactionManager.delete(SharedCredentials, {
 						user: transferee,
-						credentials: In(
-							sharedCredentialIds.map((sharedCredentialId) => ({ id: sharedCredentialId })),
-						),
+						credentialsId: In(sharedCredentialIds),
 					});
 
 					// Transfer ownership of owned credentials
@@ -484,7 +484,11 @@ export function usersNamespace(this: N8nApp): void {
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
 
-				void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+				void InternalHooksManager.getInstance().onUserDeletion({
+					user: req.user,
+					telemetryData,
+					publicApi: false,
+				});
 				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 				return { success: true };
 			}
@@ -505,7 +509,7 @@ export function usersNamespace(this: N8nApp): void {
 					ownedSharedWorkflows.map(async ({ workflow }) => {
 						if (workflow.active) {
 							// deactivate before deleting
-							await this.activeWorkflowRunner.remove(workflow.id.toString());
+							await this.activeWorkflowRunner.remove(workflow.id);
 						}
 						return workflow;
 					}),
@@ -518,7 +522,12 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+			void InternalHooksManager.getInstance().onUserDeletion({
+				user: req.user,
+				telemetryData,
+				publicApi: false,
+			});
+
 			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
 			return { success: true };
 		}),
@@ -576,7 +585,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!result?.success) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: req.user.id,
+					user: reinvitee,
 					message_type: 'Resend invite',
 					public_api: false,
 				});
@@ -589,7 +598,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			void InternalHooksManager.getInstance().onUserReinvite({
-				user_id: req.user.id,
+				user: reinvitee,
 				target_user_id: reinvitee.id,
 				public_api: false,
 			});

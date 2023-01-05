@@ -87,7 +87,7 @@ export class LdapSync {
 				createFilter(`(${this._config.loginIdAttribute}=*)`, this._config.userFilter),
 			);
 
-			Logger.debug(`LDAP - Users return by the query`, {
+			Logger.debug('LDAP - Users return by the query', {
 				users: adUsers,
 			});
 
@@ -119,7 +119,7 @@ export class LdapSync {
 			});
 		}
 
-		Logger.debug(`LDAP - Users processed`, {
+		Logger.debug('LDAP - Users processed', {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
 			disabled: usersToDisable.length,
@@ -159,7 +159,7 @@ export class LdapSync {
 			error: errorMessage,
 		});
 
-		Logger.debug(`LDAP - Synchronization finished successfully`);
+		Logger.debug('LDAP - Synchronization finished successfully');
 	}
 
 	/**

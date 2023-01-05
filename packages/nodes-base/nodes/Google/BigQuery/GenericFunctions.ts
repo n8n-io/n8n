@@ -106,7 +106,7 @@ async function getAccessToken(
 			iss: credentials.email as string,
 			sub: credentials.delegatedEmail || (credentials.email as string),
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},

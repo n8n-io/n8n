@@ -3,6 +3,7 @@
 import type * as express from 'express';
 import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
+import type { Readable } from 'stream';
 import type { URLSearchParams } from 'url';
 import type { OptionsWithUri, OptionsWithUrl } from 'request';
 import type { RequestPromiseOptions, RequestPromiseAPI } from 'request-promise-native';
@@ -39,8 +40,14 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	fileSize?: string;
+	fileSize?: string; // TODO: change this to number and store the actual value
 	id?: string;
+}
+
+export interface BinaryMetadata {
+	fileName?: string;
+	mimeType?: string;
+	fileSize: number;
 }
 
 // All properties in this interface except for
@@ -132,7 +139,7 @@ export interface ICredentialNodeAccess {
 }
 
 export interface ICredentialsDecrypted {
-	id: string | number;
+	id: string;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -142,7 +149,7 @@ export interface ICredentialsDecrypted {
 }
 
 export interface ICredentialsEncrypted {
-	id?: string | number;
+	id?: string;
 	name: string;
 	type: string;
 	nodesAccess: ICredentialNodeAccess[];
@@ -329,6 +336,7 @@ export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
 	getNodeTypesToTestWith(type: string): string[];
+	getParentTypes(typeName: string): string[];
 }
 
 // The way the credentials get saved in the database (data encrypted)
@@ -633,9 +641,16 @@ export interface JsonHelperFunctions {
 }
 
 export interface BinaryHelperFunctions {
-	prepareBinaryData(binaryData: Buffer, filePath?: string, mimeType?: string): Promise<IBinaryData>;
+	prepareBinaryData(
+		binaryData: Buffer | Readable,
+		filePath?: string,
+		mimeType?: string,
+	): Promise<IBinaryData>;
 	setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData>;
 	copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
+
+	getBinaryStream(binaryDataId: string, chunkSize?: number): Readable;
+	getBinaryMetadata(binaryDataId: string): Promise<BinaryMetadata>;
 }
 
 export interface RequestHelperFunctions {
@@ -716,7 +731,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 					inputData: INodeExecutionData[],
 					options: { itemData: IPairedItemData | IPairedItemData[] },
 				): NodeExecutionWithMetadata[];
-
 				getBinaryDataBuffer(itemIndex: number, propertyName: string): Promise<Buffer>;
 			};
 	};
@@ -1425,7 +1439,7 @@ export interface IWorkflowDataProxyData {
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
 
 export interface IWorkflowMetadata {
-	id?: number | string;
+	id?: string;
 	name?: string;
 	active: boolean;
 }
@@ -1479,6 +1493,7 @@ export type LoadedNodesAndCredentials = {
 export interface INodesAndCredentials {
 	known: KnownNodesAndCredentials;
 	loaded: LoadedNodesAndCredentials;
+	credentialTypes: ICredentialTypes;
 }
 
 export interface IRun {
@@ -1566,7 +1581,7 @@ export interface IWaitingForExecutionSource {
 }
 
 export interface IWorkflowBase {
-	id?: number | string | any;
+	id?: string;
 	name: string;
 	active: boolean;
 	createdAt: Date;

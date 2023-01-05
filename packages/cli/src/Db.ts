@@ -183,6 +183,8 @@ export async function init(
 	collections.FeatureConfig = linkRepository(entities.FeatureConfig);
 	collections.LdapSyncHistory = linkRepository(entities.LdapSyncHistory);
 
+	collections.EventDestinations = linkRepository(entities.EventDestinations);
+
 	isInitialized = true;
 
 	return collections;

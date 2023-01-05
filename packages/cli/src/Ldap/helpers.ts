@@ -278,7 +278,7 @@ export const findAndAuthenticateLdapUser = async (
 			void InternalHooksManager.getInstance().onLdapLoginSyncFailed({
 				error: e.message,
 			});
-			Logger.error(`LDAP - Error during search`, { message: e.message });
+			Logger.error('LDAP - Error during search', { message: e.message });
 		}
 		return undefined;
 	}
@@ -304,7 +304,7 @@ export const findAndAuthenticateLdapUser = async (
 		await ldapService.validUser(user.dn, password);
 	} catch (e) {
 		if (e instanceof Error) {
-			Logger.error(`LDAP - Error validating user against LDAP server`, { message: e.message });
+			Logger.error('LDAP - Error validating user against LDAP server', { message: e.message });
 		}
 		return undefined;
 	}

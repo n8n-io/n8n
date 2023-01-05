@@ -25,6 +25,7 @@ type EndpointGroup =
 	| 'publicApi'
 	| 'nodes'
 	| 'ldap'
+	| 'eventBus'
 	| 'license';
 
 export type CredentialPayload = {

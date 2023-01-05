@@ -26,6 +26,8 @@ import { CreateCredentialUsageTable1665484192213 } from './1665484192213-CreateC
 import { RemoveCredentialUsageTable1665754637026 } from './1665754637026-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707125 } from './1669739707125-AddWorkflowVersionIdColumn';
 import { AddTriggerCountColumn1669823906994 } from './1669823906994-AddTriggerCountColumn';
+import { RemoveWorkflowDataLoadedFlag1671726148420 } from './1671726148420-RemoveWorkflowDataLoadedFlag';
+import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities';
 
 export const mysqlMigrations = [
@@ -57,5 +59,7 @@ export const mysqlMigrations = [
 	AddWorkflowVersionIdColumn1669739707125,
 	WorkflowStatistics1664196174002,
 	AddTriggerCountColumn1669823906994,
+	RemoveWorkflowDataLoadedFlag1671726148420,
+	MessageEventBusDestinations1671535397530,
 	CreateLdapEntities1670333612644,
 ];

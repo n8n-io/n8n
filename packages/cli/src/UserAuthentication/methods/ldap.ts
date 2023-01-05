@@ -51,8 +51,7 @@ export const handleLdapLogin = async (
 		} else {
 			const role = await getLdapUserRole();
 			const user = await createLdapUserOnLocalDb(role, ldapAttributesValues, ldapId);
-			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: user.id,
+			void InternalHooksManager.getInstance().onUserSignup(user, {
 				user_type: 'ldap',
 				was_disabled_ldap_user: false,
 			});

@@ -3,6 +3,7 @@ import type { CredentialsEntity } from './CredentialsEntity';
 import type { User } from './User';
 import type { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class SharedCredentials extends AbstractEntity {
@@ -22,7 +23,7 @@ export class SharedCredentials extends AbstractEntity {
 	})
 	credentials: CredentialsEntity;
 
-	@PrimaryColumn()
+	@PrimaryColumn({ transformer: idStringifier })
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
-	credentialsId: number;
+	credentialsId: string;
 }

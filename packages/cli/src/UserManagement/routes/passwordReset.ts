@@ -95,7 +95,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: user.id,
+					user,
 					message_type: 'Reset password',
 					public_api: false,
 				});
@@ -114,7 +114,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -161,7 +161,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			Logger.info('Reset-password token resolved successfully', { userId: id });
 			void InternalHooksManager.getInstance().onUserPasswordResetEmailClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -224,15 +224,14 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: userId,
+				user,
 				fields_changed: ['password'],
 			});
 
 			// if this user used to be an LDAP users
 			const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 			if (ldapIdentity) {
-				void InternalHooksManager.getInstance().onUserSignup({
-					user_id: userId,
+				void InternalHooksManager.getInstance().onUserSignup(user, {
 					user_type: 'email',
 					was_disabled_ldap_user: true,
 				});
