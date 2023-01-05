@@ -607,7 +607,7 @@ export class GoogleSheet {
 
 		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
 		return this.convertSheetDataArrayToObjectArray(
-			removeEmptyColumns(returnData),
+			dataWithoutEmptyColumns,
 			1,
 			dataWithoutEmptyColumns[0] as string[],
 			true,
