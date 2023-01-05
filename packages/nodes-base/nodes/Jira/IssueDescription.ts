@@ -71,22 +71,48 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project',
 		name: 'project',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Project',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Project...',
+				typeOptions: {
+					searchListMethod: 'getProjects',
+					// missing searchListDependsOn: ['jiraVersion'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{2,})[ \t]*',
+							errorMessage: 'Not a valid Jira Project ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{2,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['issue'],
 				operation: ['create'],
 			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-			loadOptionsDependsOn: ['jiraVersion'],
 		},
 	},
 	{

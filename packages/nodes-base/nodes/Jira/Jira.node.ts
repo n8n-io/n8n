@@ -7,6 +7,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -14,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	filterSortSearchListItems,
 	jiraSoftwareCloudApiRequest,
 	jiraSoftwareCloudApiRequestAllItems,
 	simplifyIssueOutput,
@@ -129,6 +132,46 @@ export class Jira implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			// Get all the projects to display them to user so that he can
+			// select them easily
+			async getProjects(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				let endpoint = '';
+				let projects;
+
+				if (jiraVersion === 'server') {
+					endpoint = '/api/2/project';
+					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
+				} else {
+					endpoint = '/api/2/project/search';
+					projects = await jiraSoftwareCloudApiRequestAllItems.call(
+						this,
+						'values',
+						endpoint,
+						'GET',
+					);
+				}
+
+				if (projects.values && Array.isArray(projects.values)) {
+					projects = projects.values;
+				}
+				for (const project of projects) {
+					const projectName = project.name;
+					const projectId = project.id;
+					returnData.push({
+						name: projectName,
+						value: projectId,
+					});
+				}
+
+				return { results: filterSortSearchListItems(returnData, filter) };
+			},
+		},
 		loadOptions: {
 			// Get all the projects to display them to user so that he can
 			// select them easily
@@ -179,7 +222,7 @@ export class Jira implements INodeType {
 			// Get all the issue types to display them to user so that he can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projectId = this.getCurrentNodeParameter('project');
+				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
 				const returnData: INodePropertyOptions[] = [];
 				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(
 					this,
@@ -366,7 +409,7 @@ export class Jira implements INodeType {
 				let projectId: string;
 				let issueTypeId: string;
 				if (operation === 'create') {
-					projectId = this.getCurrentNodeParameter('project') as string;
+					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
 					issueTypeId = this.getCurrentNodeParameter('issueType') as string;
 				} else {
 					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
@@ -409,7 +452,7 @@ export class Jira implements INodeType {
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const project = this.getCurrentNodeParameter('project');
+				const project = this.getCurrentNodeParameter('project', { extractValue: true });
 				const { values: components } = await jiraSoftwareCloudApiRequest.call(
 					this,
 					`/api/2/project/${project}/component`,
@@ -454,7 +497,9 @@ export class Jira implements INodeType {
 			if (operation === 'create') {
 				for (let i = 0; i < length; i++) {
 					const summary = this.getNodeParameter('summary', i) as string;
-					const projectId = this.getNodeParameter('project', i) as string;
+					const projectId = this.getNodeParameter('project', i, '', {
+						extractValue: true,
+					}) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IIssue = {};

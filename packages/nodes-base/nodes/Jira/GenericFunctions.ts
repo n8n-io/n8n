@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, INodeListSearchItems } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -195,3 +195,22 @@ export const allEvents = [
 	'worklog_updated',
 	'worklog_deleted',
 ];
+
+export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
+	return items
+		.filter(
+			(item) =>
+				!filter ||
+				item.name.toLowerCase().includes(filter.toLowerCase()) ||
+				item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+				return -1;
+			}
+			if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+				return 1;
+			}
+			return 0;
+		});
+}
