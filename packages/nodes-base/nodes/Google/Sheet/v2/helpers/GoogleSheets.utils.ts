@@ -134,6 +134,10 @@ export function removeEmptyColumns(data: SheetRangeData) {
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
 		const column = data.map((row) => row[col]);
+		if (column[0] !== '') {
+			returnData.push(column);
+			continue;
+		}
 		const hasData = column.slice(1).some((cell) => cell || typeof cell === 'number');
 		if (hasData) {
 			returnData.push(column);
