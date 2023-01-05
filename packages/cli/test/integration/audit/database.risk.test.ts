@@ -183,5 +183,5 @@ test('should not report non-database node', async () => {
 
 	const testAudit = await audit(['database']);
 
-	expect(testAudit).toBeNull();
+	expect(testAudit).toBeEmptyArray();
 });

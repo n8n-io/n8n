@@ -72,5 +72,5 @@ test('should not report non-filesystem-interaction node', async () => {
 
 	const testAudit = await audit(['filesystem']);
 
-	expect(testAudit).toBeNull();
+	expect(testAudit).toBeEmptyArray();
 });

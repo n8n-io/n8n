@@ -221,5 +221,5 @@ test('should not report credentials in recently executed workflow', async () => 
 
 	const testAudit = await audit(['credentials']);
 
-	expect(testAudit).toBeNull();
+	expect(testAudit).toBeEmptyArray();
 });
