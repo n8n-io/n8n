@@ -142,21 +142,19 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 	}
 
-	async loadNodesFromCustomDirectories(): Promise<void> {
-		// Read nodes and credentials from custom directories
-		const customDirectories = [];
+	getCustomDirectories(): string[] {
+		const customDirectories = [UserSettings.getUserN8nFolderCustomExtensionPath()];
 
-		// Add "custom" folder in user-n8n folder
-		customDirectories.push(UserSettings.getUserN8nFolderCustomExtensionPath());
-
-		// Add folders from special environment variable
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
 			customDirectories.push(...customExtensionFolders);
 		}
 
-		for (const directory of customDirectories) {
+		return customDirectories;
+	}
+
+	async loadNodesFromCustomDirectories(): Promise<void> {
+		for (const directory of this.getCustomDirectories()) {
 			await this.runDirectoryLoader(CustomDirectoryLoader, directory);
 		}
 	}
