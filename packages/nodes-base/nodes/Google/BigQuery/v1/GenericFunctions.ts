@@ -54,7 +54,6 @@ export async function googleApiRequest(
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			return await this.helpers.request(options);
 		} else {
-			//@ts-expect-error because of request
 			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
 		}
 	} catch (error) {
