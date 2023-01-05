@@ -171,6 +171,7 @@ export class Jira implements INodeType {
 
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
+
 			// Get all the issue types to display them to user so that he can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -203,37 +204,6 @@ export class Jira implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the issue types to display them to user so that he can
-			// select them easily
-			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
-				const returnData: INodePropertyOptions[] = [];
-				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(
-					this,
-					`/api/2/project/${projectId}`,
-					'GET',
-				);
-				for (const issueType of issueTypes) {
-					const issueTypeName = issueType.name;
-					const issueTypeId = issueType.id;
-					returnData.push({
-						name: issueTypeName,
-						value: issueTypeId,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-				return returnData;
-			},
-
 			// Get all the labels to display them to user so that he can
 			// select them easily
 			async getLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
