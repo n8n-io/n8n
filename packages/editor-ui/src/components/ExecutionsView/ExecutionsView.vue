@@ -19,11 +19,6 @@
 				@stopExecution="onStopExecution"
 			/>
 		</div>
-		<div v-if="executions.length === 0 && filterApplied" :class="$style.noResultsContainer">
-			<n8n-text color="text-base" size="medium" align="center">
-				{{ $locale.baseText('executionsLandingPage.noResults') }}
-			</n8n-text>
-		</div>
 	</div>
 </template>
 
@@ -666,11 +661,5 @@ export default mixins(
 
 .content {
 	flex: 1;
-}
-
-.noResultsContainer {
-	width: 100%;
-	margin-top: var(--spacing-2xl);
-	text-align: center;
 }
 </style>
