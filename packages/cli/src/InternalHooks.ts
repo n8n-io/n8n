@@ -869,4 +869,11 @@ export class InternalHooksClass implements IInternalHooksClass {
 	async onLicenseRenewAttempt(data: { success: boolean }): Promise<void> {
 		await this.telemetry.track('Instance attempted to refresh license', data);
 	}
+
+	/**
+	 * Audit
+	 */
+	async onAuditGeneratedViaCli() {
+		return this.telemetry.track('Instance generated security audit via CLI command');
+	}
 }
