@@ -26,7 +26,7 @@ export class SecurityAudit extends Command {
 		help: flags.help({ char: 'h' }),
 		categories: flags.string({
 			default: RISK_CATEGORIES.join(','),
-			description: 'Comma-separated list of categories to include in the report',
+			description: 'Comma-separated list of categories to include in the audit',
 		}),
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		'days-abandoned-workflow': flags.integer({
@@ -48,7 +48,11 @@ export class SecurityAudit extends Command {
 
 		const result = await audit(categories, auditFlags['days-abandoned-workflow']);
 
-		process.stdout.write(JSON.stringify(result, null, 2));
+		if (Array.isArray(result) && result.length === 0) {
+			this.logger.info('No security issues found');
+		} else {
+			process.stdout.write(JSON.stringify(result, null, 2));
+		}
 
 		void InternalHooksManager.getInstance().onAuditGeneratedViaCli();
 	}
