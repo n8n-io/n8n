@@ -404,6 +404,15 @@ const config = (module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
+
+	overrides: [
+		{
+			files: ['**/*.d.ts'],
+			rules: {
+				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+	],
 });
 
 if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
