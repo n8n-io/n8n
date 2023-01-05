@@ -162,6 +162,10 @@ export async function reportInstanceRisk(workflows: WorkflowEntity[]) {
 	const outdatedState = await getOutdatedState();
 	const securitySettings = getSecuritySettings();
 
+	const issues = [unprotectedWebhooks, outdatedState, securitySettings];
+
+	if (issues.every((i) => i === null || i.length === 0)) return null;
+
 	const report: Risk.InstanceReport = {
 		risk: INSTANCE_REPORT.RISK,
 		sections: [],
