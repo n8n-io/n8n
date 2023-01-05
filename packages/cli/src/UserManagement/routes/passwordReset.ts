@@ -76,7 +76,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('token', resetPasswordToken);
 
 			try {
-				const mailer = await UserManagementMailer.getInstance();
+				const mailer = UserManagementMailer.getInstance();
 				await mailer.passwordReset({
 					email,
 					firstName,
