@@ -58,7 +58,7 @@ export async function audit(
 		config.set('security.audit.daysAbandonedWorkflow', daysFromEnv); // restore env
 	}
 
-	if (reports.length === 0) return null;
+	if (reports.length === 0) return [];
 
 	return reports.reduce<Risk.Audit>((acc, cur) => {
 		acc[toReportTitle(cur.risk)] = cur;
