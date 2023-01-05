@@ -605,12 +605,9 @@ export class GoogleSheet {
 			}
 		}
 
-		const dataWithoutEmptyColumns = removeEmptyColumns(
-			returnData,
-			lookupValues.map((lookupValue) => lookupValue.lookupColumn),
-		);
+		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
 		return this.convertSheetDataArrayToObjectArray(
-			dataWithoutEmptyColumns,
+			removeEmptyColumns(returnData),
 			1,
 			dataWithoutEmptyColumns[0] as string[],
 			true,
