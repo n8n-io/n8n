@@ -442,7 +442,7 @@ export abstract class AbstractServer {
 			console.log(`Locale: ${defaultLocale}`);
 		}
 
-		await externalHooks.run('n8n.ready', [server, config]);
+		await externalHooks.run('n8n.ready', [this, config]);
 	}
 }
 
