@@ -99,4 +99,8 @@ export class SecurityAudit extends Command {
 
 		this.exit(1);
 	}
+
+	async finally() {
+		this.exit();
+	}
 }
