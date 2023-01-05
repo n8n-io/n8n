@@ -173,52 +173,6 @@ export class Jira implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the projects to display them to user so that he can
-			// select them easily
-			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
-				let endpoint = '';
-				let projects;
-
-				if (jiraVersion === 'server') {
-					endpoint = '/api/2/project';
-					projects = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET');
-				} else {
-					endpoint = '/api/2/project/search';
-					projects = await jiraSoftwareCloudApiRequestAllItems.call(
-						this,
-						'values',
-						endpoint,
-						'GET',
-					);
-				}
-
-				if (projects.values && Array.isArray(projects.values)) {
-					projects = projects.values;
-				}
-				for (const project of projects) {
-					const projectName = project.name;
-					const projectId = project.id;
-					returnData.push({
-						name: projectName,
-						value: projectId,
-					});
-				}
-
-				returnData.sort((a, b) => {
-					if (a.name < b.name) {
-						return -1;
-					}
-					if (a.name > b.name) {
-						return 1;
-					}
-					return 0;
-				});
-
-				return returnData;
-			},
-
 			// Get all the issue types to display them to user so that he can
 			// select them easily
 			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
