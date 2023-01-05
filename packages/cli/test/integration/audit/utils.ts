@@ -13,11 +13,13 @@ type GetSectionKind<C extends Risk.Category> = C extends 'instance'
 	: Risk.StandardSection;
 
 export function getRiskSection<C extends Risk.Category>(
-	testAudit: Risk.Audit | null,
+	testAudit: Risk.Audit | unknown[],
 	riskCategory: C,
 	sectionTitle: string,
 ): GetSectionKind<C> {
-	if (!testAudit) throw new Error('Expected test audit');
+	if (Array.isArray(testAudit)) {
+		throw new Error('Expected test audit not to be an array');
+	}
 
 	const report = testAudit[toReportTitle(riskCategory)];
 
