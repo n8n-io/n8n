@@ -94,7 +94,7 @@ export class SecurityAudit extends Command {
 	}
 
 	async catch(error: Error) {
-		this.logger.error('Failed to generate security audit report');
+		this.logger.error('Failed to generate security audit');
 		this.logger.error(error.message);
 
 		this.exit(1);
