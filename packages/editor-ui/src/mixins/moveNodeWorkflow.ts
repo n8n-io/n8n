@@ -4,10 +4,8 @@ import { getMousePosition } from '@/utils/nodeViewUtils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
-export const moveNodeWorkflow = mixins(
-	deviceSupportHelpers,
-).extend({
-	data () {
+export const moveNodeWorkflow = mixins(deviceSupportHelpers).extend({
+	data() {
 		return {
 			moveLastPosition: [0, 0],
 		};
@@ -16,7 +14,7 @@ export const moveNodeWorkflow = mixins(
 		...mapStores(useUIStore),
 	},
 	methods: {
-		moveWorkflow (e: MouseEvent) {
+		moveWorkflow(e: MouseEvent) {
 			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
 
 			const [x, y] = getMousePosition(e);
@@ -29,7 +27,7 @@ export const moveNodeWorkflow = mixins(
 			this.moveLastPosition[0] = x;
 			this.moveLastPosition[1] = y;
 		},
-		mouseDownMoveWorkflow (e: MouseEvent) {
+		mouseDownMoveWorkflow(e: MouseEvent) {
 			if (this.isCtrlKeyPressed(e) === false) {
 				// We only care about it when the ctrl key is pressed at the same time.
 				// So we exit when it is not pressed.
@@ -51,7 +49,7 @@ export const moveNodeWorkflow = mixins(
 			// @ts-ignore
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
-		mouseUpMoveWorkflow (e: MouseEvent) {
+		mouseUpMoveWorkflow(e: MouseEvent) {
 			if (this.uiStore.nodeViewMoveInProgress === false) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
@@ -65,7 +63,7 @@ export const moveNodeWorkflow = mixins(
 
 			// Nothing else to do. Simply leave the node view at the current offset
 		},
-		mouseMoveNodeWorkflow (e: MouseEvent) {
+		mouseMoveNodeWorkflow(e: MouseEvent) {
 			// @ts-ignore
 			if (e.target && !e.target.id.includes('node-view')) {
 				return;

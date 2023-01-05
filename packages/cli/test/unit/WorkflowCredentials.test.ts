@@ -8,7 +8,7 @@ async function mockFind({
 	id,
 	type,
 }: {
-	id: string | number;
+	id: string;
 	type: string;
 }): Promise<IWorkflowCredentials | null> {
 	// Simple statement that maps a return value based on the `id` parameter

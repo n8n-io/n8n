@@ -33,7 +33,10 @@ export default Vue.extend({
 			return [
 				[this.$locale.baseText('timeAgo.justNow'), this.$locale.baseText('timeAgo.rightNow')],
 				[this.$locale.baseText('timeAgo.justNow'), this.$locale.baseText('timeAgo.rightNow')], // ['%s seconds ago', 'in %s seconds'],
-				[this.$locale.baseText('timeAgo.oneMinuteAgo'), this.$locale.baseText('timeAgo.inOneMinute')],
+				[
+					this.$locale.baseText('timeAgo.oneMinuteAgo'),
+					this.$locale.baseText('timeAgo.inOneMinute'),
+				],
 				[this.$locale.baseText('timeAgo.minutesAgo'), this.$locale.baseText('timeAgo.inMinutes')],
 				[this.$locale.baseText('timeAgo.oneHourAgo'), this.$locale.baseText('timeAgo.inOneHour')],
 				[this.$locale.baseText('timeAgo.hoursAgo'), this.$locale.baseText('timeAgo.inHours')],
@@ -49,9 +52,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		defaultLocale(): string {
 			return this.rootStore.defaultLocale;
 		},

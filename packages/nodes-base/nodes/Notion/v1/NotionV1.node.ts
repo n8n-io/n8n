@@ -323,12 +323,12 @@ export class NotionV1 implements INodeType {
 							this,
 							'results',
 							'POST',
-							`/search`,
+							'/search',
 							body,
 						);
 					} else {
 						body.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', `/search`, body);
+						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
 						responseData = responseData.results;
 					}
 

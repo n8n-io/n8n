@@ -1,8 +1,8 @@
 import { AddConnectionCommand, COMMANDS, RemoveConnectionCommand } from './../models/history';
-import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/models/history";
-import { STORES } from "@/constants";
-import { HistoryState } from "@/Interface";
-import { defineStore } from "pinia";
+import { BulkCommand, Command, Undoable, MoveNodeCommand } from '@/models/history';
+import { STORES } from '@/constants';
+import { HistoryState } from '@/Interface';
+import { defineStore } from 'pinia';
 
 const STACK_LIMIT = 100;
 
@@ -24,7 +24,8 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		pushCommandToUndo(undoable: Command, clearRedo = true): void {
 			if (!this.bulkInProgress) {
 				if (this.currentBulkAction) {
-					const alreadyIn = this.currentBulkAction.commands.find(c => c.isEqualTo(undoable)) !== undefined;
+					const alreadyIn =
+						this.currentBulkAction.commands.find((c) => c.isEqualTo(undoable)) !== undefined;
 					if (!alreadyIn) {
 						this.currentBulkAction.commands.push(undoable);
 					}

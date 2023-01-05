@@ -249,6 +249,8 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		Settings: 'settings',
 		InstalledPackages: 'installed_packages',
 		InstalledNodes: 'installed_nodes',
+		WorkflowStatistics: 'workflow_statistics',
+		EventDestinations: 'event_destinations',
 	}[sourceName];
 }
 
@@ -473,7 +475,7 @@ export async function createExecution(
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 	});

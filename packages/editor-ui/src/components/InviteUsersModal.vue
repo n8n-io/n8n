@@ -17,23 +17,28 @@
 			/>
 		</template>
 		<template #footer>
-			<n8n-button :loading="loading" :disabled="!enabledButton" :label="buttonLabel" @click="onSubmitClick" float="right" />
+			<n8n-button
+				:loading="loading"
+				:disabled="!enabledButton"
+				:label="buttonLabel"
+				@click="onSubmitClick"
+				float="right"
+			/>
 		</template>
 	</Modal>
 </template>
 
-
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import mixins from 'vue-typed-mixins';
 
-import { showMessage } from "@/mixins/showMessage";
-import Modal from "./Modal.vue";
-import Vue from "vue";
-import { IFormInputs, IInviteResponse } from "@/Interface";
-import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
+import { showMessage } from '@/mixins/showMessage';
+import Modal from './Modal.vue';
+import Vue from 'vue';
+import { IFormInputs, IInviteResponse } from '@/Interface';
+import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
-import { mapStores } from "pinia";
-import { useUsersStore } from "@/stores/users";
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -50,7 +55,7 @@ function getEmail(email: string): string {
 
 export default mixins(showMessage).extend({
 	components: { Modal },
-	name: "InviteUsersModal",
+	name: 'InviteUsersModal',
 	props: {
 		modalName: {
 			type: String,
@@ -73,7 +78,7 @@ export default mixins(showMessage).extend({
 				properties: {
 					label: this.$locale.baseText('settings.users.newEmailsToInvite'),
 					required: true,
-					validationRules: [{name: 'VALID_EMAILS'}],
+					validationRules: [{ name: 'VALID_EMAILS' }],
 					validators: {
 						VALID_EMAILS: {
 							validate: this.validateEmails,
@@ -109,10 +114,9 @@ export default mixins(showMessage).extend({
 		},
 		buttonLabel(): string {
 			if (this.emailsCount > 1) {
-				return this.$locale.baseText(
-					'settings.users.inviteXUser',
-					{ interpolate: { count: this.emailsCount.toString() }},
-				);
+				return this.$locale.baseText('settings.users.inviteXUser', {
+					interpolate: { count: this.emailsCount.toString() },
+				});
 			}
 
 			return this.$locale.baseText('settings.users.inviteUser');
@@ -135,14 +139,14 @@ export default mixins(showMessage).extend({
 				if (!!parsed.trim() && !VALID_EMAIL_REGEX.test(String(parsed).trim().toLowerCase())) {
 					return {
 						messageKey: 'settings.users.invalidEmailError',
-						options: { interpolate: { email: parsed }},
+						options: { interpolate: { email: parsed } },
 					};
 				}
 			}
 
 			return false;
 		},
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			if (e.name === 'emails') {
 				this.emails = e.value;
 			}
@@ -151,8 +155,9 @@ export default mixins(showMessage).extend({
 			try {
 				this.loading = true;
 
-				const emails = this.emails.split(',')
-					.map((email) => ({email: getEmail(email)}))
+				const emails = this.emails
+					.split(',')
+					.map((email) => ({ email: getEmail(email) }))
 					.filter((invite) => !!invite.email);
 
 				if (emails.length === 0) {
@@ -160,24 +165,32 @@ export default mixins(showMessage).extend({
 				}
 
 				const invited: IInviteResponse[] = await this.usersStore.inviteUsers(emails);
-				const invitedEmails = invited.reduce((accu, {user, error}) => {
-					if (error) {
-						accu.error.push(user.email);
-					}
-					else {
-						accu.success.push(user.email);
-					}
-					return accu;
-				}, {
-					success: [] as string[],
-					error: [] as string[],
-				});
+				const invitedEmails = invited.reduce(
+					(accu, { user, error }) => {
+						if (error) {
+							accu.error.push(user.email);
+						} else {
+							accu.success.push(user.email);
+						}
+						return accu;
+					},
+					{
+						success: [] as string[],
+						error: [] as string[],
+					},
+				);
 
 				if (invitedEmails.success.length) {
 					this.$showMessage({
 						type: 'success',
-						title: this.$locale.baseText(invitedEmails.success.length > 1 ? 'settings.users.usersInvited' : 'settings.users.userInvited'),
-						message: this.$locale.baseText('settings.users.emailInvitesSent', { interpolate: { emails: invitedEmails.success.join(', ') }}),
+						title: this.$locale.baseText(
+							invitedEmails.success.length > 1
+								? 'settings.users.usersInvited'
+								: 'settings.users.userInvited',
+						),
+						message: this.$locale.baseText('settings.users.emailInvitesSent', {
+							interpolate: { emails: invitedEmails.success.join(', ') },
+						}),
 					});
 				}
 
@@ -186,13 +199,14 @@ export default mixins(showMessage).extend({
 						this.$showMessage({
 							type: 'error',
 							title: this.$locale.baseText('settings.users.usersEmailedError'),
-							message: this.$locale.baseText('settings.users.emailInvitesSentError', { interpolate: { emails: invitedEmails.error.join(', ') }}),
+							message: this.$locale.baseText('settings.users.emailInvitesSentError', {
+								interpolate: { emails: invitedEmails.error.join(', ') },
+							}),
 						});
 					}, 0); // notifications stack on top of each other otherwise
 				}
 
 				this.modalBus.$emit('close');
-
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
@@ -203,5 +217,4 @@ export default mixins(showMessage).extend({
 		},
 	},
 });
-
 </script>
