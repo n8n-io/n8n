@@ -135,19 +135,14 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 <style module lang="scss">
 .executionCard {
 	display: flex;
-	padding-right: var(--spacing-2xs);
+	padding-right: var(--spacing-m);
 
 	&.active {
-		padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 
 		.executionStatus {
 			color: var(--color-text-dark) !important;
 		}
-	}
-
-	& + &.active {
-		padding-top: var(--spacing-2xs);
 	}
 
 	&:hover,
