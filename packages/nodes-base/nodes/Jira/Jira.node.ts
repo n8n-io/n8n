@@ -202,6 +202,35 @@ export class Jira implements INodeType {
 				});
 				return { results: returnData };
 			},
+
+			// Get all the users to display them to user so that he can
+			// select them easily
+			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				const jiraVersion = this.getCurrentNodeParameter('jiraVersion') as string;
+				const query: IDataObject = {};
+				let endpoint = '/api/2/users/search';
+
+				if (jiraVersion === 'server') {
+					endpoint = '/api/2/user/search';
+					query.username = "'";
+				}
+
+				const users = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {}, query);
+				const returnData: INodeListSearchItems[] = users.reduce(
+					(activeUsers: INodeListSearchItems[], user: IDataObject) => {
+						if (user.active) {
+							activeUsers.push({
+								name: user.displayName as string,
+								value: (user.accountId || user.name) as string,
+							});
+						}
+						return activeUsers;
+					},
+					[],
+				);
+
+				return { results: filterSortSearchListItems(returnData, filter) };
+			},
 		},
 		loadOptions: {
 			// Get all the labels to display them to user so that he can
@@ -458,6 +487,14 @@ export class Jira implements INodeType {
 						extractValue: true,
 					}) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
+
+					const assignee = this.getNodeParameter('additionalFields.assignee', i, '', {
+						extractValue: true,
+					});
+					if (assignee) additionalFields.assignee = assignee;
+
+					// console.log({ assignee, additionalFields });
+
 					const body: IIssue = {};
 					const fields: IFields = {
 						summary,
@@ -561,6 +598,14 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i);
+
+					const assignee = this.getNodeParameter('updateFields.assignee', i, '', {
+						extractValue: true,
+					});
+					if (assignee) updateFields.assignee = assignee;
+
+					// console.log({ assignee, updateFields });
+
 					const body: IIssue = {};
 					const fields: IFields = {};
 					if (updateFields.summary) {

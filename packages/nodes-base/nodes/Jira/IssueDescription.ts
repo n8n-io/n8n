@@ -186,15 +186,41 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Issue Type ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -350,15 +376,41 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Issue Type ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
