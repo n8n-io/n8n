@@ -46,6 +46,7 @@
 			v-for="fakeDoorFeature in fakeDoorFeatures"
 			:key="fakeDoorFeature.id"
 			:featureId="fakeDoorFeature.id"
+			class="pb-3xl"
 			showTitle
 		/>
 	</div>
