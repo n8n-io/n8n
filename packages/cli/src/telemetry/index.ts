@@ -155,7 +155,6 @@ export class Telemetry {
 				this.rudderStack.identify(
 					{
 						userId: this.instanceId,
-						anonymousId: '000000000000',
 						traits: {
 							...traits,
 							instanceId: this.instanceId,

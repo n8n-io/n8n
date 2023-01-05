@@ -299,6 +299,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (credentialTypeData.extends === undefined) {
+			// Manually add the special OAuth parameter which stores
+			// data like access- and refresh-token
+			if (['oAuth1Api', 'oAuth2Api'].includes(type)) {
+				return [
+					...credentialTypeData.properties,
+					{
+						displayName: 'oauthTokenData',
+						name: 'oauthTokenData',
+						type: 'json',
+						required: false,
+						default: {},
+					},
+				];
+			}
+
 			return credentialTypeData.properties;
 		}
 
