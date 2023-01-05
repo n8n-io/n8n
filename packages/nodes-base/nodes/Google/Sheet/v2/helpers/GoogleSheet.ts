@@ -473,12 +473,11 @@ export class GoogleSheet {
 		const appendData: IDataObject[] = [];
 
 		const getKeyIndex = (key: string | number, data: Array<string | number>) => {
-			let index = data.indexOf(key);
-			if (index === -1) {
-				const keyAsNumber = Number(key);
-				if (!isNaN(keyAsNumber)) {
-					index = data.indexOf(keyAsNumber);
-					return index;
+			let index = -1;
+			for (let i = 0; i < data.length; i++) {
+				if (data[i].toString() === key.toString()) {
+					index = i;
+					break;
 				}
 			}
 			return index;
