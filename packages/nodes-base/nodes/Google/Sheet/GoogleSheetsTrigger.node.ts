@@ -161,7 +161,7 @@ export class GoogleSheetsTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '[0-9]{1,}',
+									regex: '((gid=)?[0-9]{1,})',
 									errorMessage: 'Not a valid Sheet ID',
 								},
 							},
@@ -177,15 +177,15 @@ export class GoogleSheetsTrigger implements INodeType {
 					"It will be triggered also by newly created columns (if the 'Columns to Watch' option is not set)",
 				options: [
 					{
-						name: 'Rows Added',
+						name: 'Row Added',
 						value: 'rowAdded',
 					},
 					{
-						name: 'Rows Updated',
+						name: 'Row Updated',
 						value: 'rowUpdate',
 					},
 					{
-						name: 'Rows Added or Updated',
+						name: 'Row Added or Updated',
 						value: 'anyUpdate',
 					},
 				],

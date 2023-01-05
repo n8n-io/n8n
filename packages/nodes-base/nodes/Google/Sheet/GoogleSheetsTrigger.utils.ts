@@ -7,6 +7,13 @@ import { isEqual, zip } from 'lodash';
 
 const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
+type DiffData = Array<{
+	rowIndex: number;
+	previous: SheetDataRow;
+	current: SheetDataRow;
+	changeType: string;
+}>;
+
 export async function getRevisionFile(this: IPollFunctions, exportLink: string) {
 	const mimeType = BINARY_MIME_TYPE;
 
@@ -83,7 +90,8 @@ export function compareRevisions(
 	const columnsInCurrent = current[columnsRowIndex];
 	const columnsInPrevious = previous[columnsRowIndex];
 
-	let columns: SheetDataRow = ['row_number'];
+	let columns: SheetDataRow =
+		event === 'anyUpdate' ? ['row_number', 'change_type'] : ['row_number'];
 	if (columnsInCurrent !== undefined && columnsInPrevious !== undefined) {
 		columns =
 			columnsInCurrent.length > columnsInPrevious.length
@@ -95,11 +103,7 @@ export function compareRevisions(
 		columns = columns.concat(columnsInPrevious);
 	}
 
-	const diffData: Array<{
-		rowIndex: number;
-		previous: SheetDataRow;
-		current: SheetDataRow;
-	}> = [];
+	const diffData: DiffData = [];
 
 	for (let i = 0; i < dataLength; i++) {
 		if (i === columnsRowIndex) {
@@ -134,36 +138,25 @@ export function compareRevisions(
 
 		if (current[i] === undefined) continue;
 
-		if (event === 'anyUpdate') {
-			current[i].push(changeType);
-			previous[i].push(changeType);
-		}
-
 		diffData.push({
 			rowIndex: i + startRowIndex,
 			previous: previous[i],
 			current: current[i],
+			changeType,
 		});
 	}
 
-	if (event === 'anyUpdate') {
-		columns.push('change_type');
-	}
-
 	if (includeInOutput === 'old') {
-		return arrayOfArraysToJson(
-			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-			columns,
-		);
+		return arrayOfArraysToJson(extractVersionData(diffData, 'previous', event), columns);
 	}
 	if (includeInOutput === 'both') {
 		const previousData = arrayOfArraysToJson(
-			diffData.map(({ previous: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+			extractVersionData(diffData, 'previous', event),
 			columns,
 		).map((row) => ({ previous: row }));
 
 		const currentData = arrayOfArraysToJson(
-			diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
+			extractVersionData(diffData, 'current', event),
 			columns,
 		).map((row) => ({ current: row }));
 
@@ -189,10 +182,7 @@ export function compareRevisions(
 		return zip(previousData, currentData, differences).map((row) => Object.assign({}, ...row));
 	}
 
-	return arrayOfArraysToJson(
-		diffData.map(({ current: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex])),
-		columns,
-	);
+	return arrayOfArraysToJson(extractVersionData(diffData, 'current', event), columns);
 }
 
 export function columnNumberToLetter(colNumber: number) {
@@ -214,4 +204,17 @@ const getSpecificColumns = (
 	columns: SheetDataRow,
 ) => {
 	return row ? selectedColumns.map((column) => row[columns.indexOf(column) - 1]) : [];
+};
+
+const extractVersionData = (
+	data: DiffData,
+	version: 'previous' | 'current',
+	triggerEvent: string,
+) => {
+	if (triggerEvent === 'anyUpdate') {
+		return data.map(({ [version]: entry, rowIndex, changeType }) =>
+			entry ? [rowIndex, changeType, ...entry] : [rowIndex, changeType],
+		);
+	}
+	return data.map(({ [version]: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex]));
 };
