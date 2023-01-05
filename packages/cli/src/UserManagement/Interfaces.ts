@@ -28,6 +28,7 @@ export interface PublicUser {
 	globalRole?: Role;
 	signInType: AuthProviderType;
 	disabled: boolean;
+	inviteAcceptUrl?: string;
 }
 
 export interface N8nApp {

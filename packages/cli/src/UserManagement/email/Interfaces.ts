@@ -1,4 +1,5 @@
 export interface UserManagementMailerImplementation {
+	init: () => Promise<void>;
 	sendMail: (mailData: MailData) => Promise<SendEmailResult>;
 	verifyConnection: () => Promise<void>;
 }
@@ -21,8 +22,7 @@ export type PasswordResetData = {
 };
 
 export type SendEmailResult = {
-	success: boolean;
-	error?: Error;
+	emailSent: boolean;
 };
 
 export type MailData = {
