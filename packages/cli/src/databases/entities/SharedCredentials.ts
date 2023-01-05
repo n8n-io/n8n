@@ -1,8 +1,9 @@
-import { Entity, ManyToOne, RelationId } from 'typeorm';
+import { Entity, ManyToOne, PrimaryColumn, RelationId } from 'typeorm';
 import type { CredentialsEntity } from './CredentialsEntity';
 import type { User } from './User';
 import type { Role } from './Role';
 import { AbstractEntity } from './AbstractEntity';
+import { idStringifier } from '../utils/transformers';
 
 @Entity()
 export class SharedCredentials extends AbstractEntity {
@@ -12,6 +13,7 @@ export class SharedCredentials extends AbstractEntity {
 	@ManyToOne('User', 'sharedCredentials', { primary: true })
 	user: User;
 
+	@PrimaryColumn()
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.user)
 	userId: string;
 
@@ -21,6 +23,7 @@ export class SharedCredentials extends AbstractEntity {
 	})
 	credentials: CredentialsEntity;
 
+	@PrimaryColumn({ transformer: idStringifier })
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
-	credentialId: number;
+	credentialsId: string;
 }

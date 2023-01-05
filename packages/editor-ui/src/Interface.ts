@@ -41,7 +41,7 @@ import {
 import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
-export * from 'n8n-design-system/src/types';
+export * from 'n8n-design-system/types';
 
 declare module 'jsplumb' {
 	interface PaintStyle {
@@ -217,8 +217,8 @@ export interface IRestApi {
 	getPastExecutions(
 		filter: object,
 		limit: number,
-		lastId?: string | number,
-		firstId?: string | number,
+		lastId?: string,
+		firstId?: string,
 	): Promise<IExecutionsListResponse>;
 	stopCurrentExecution(executionId: string): Promise<IExecutionsStopData>;
 	makeRestApiRequest(method: string, endpoint: string, data?: any): Promise<any>;
@@ -276,7 +276,7 @@ export interface IVariableSelectorOption {
 
 // Simple version of n8n-workflow.Workflow
 export interface IWorkflowData {
-	id?: string | number;
+	id?: string;
 	name?: string;
 	active?: boolean;
 	nodes: INode[];
@@ -288,7 +288,7 @@ export interface IWorkflowData {
 }
 
 export interface IWorkflowDataUpdate {
-	id?: string | number;
+	id?: string;
 	name?: string;
 	nodes?: INode[];
 	connections?: IConnections;
@@ -391,7 +391,7 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 }
 
 export interface IExecutionBase {
-	id?: number | string;
+	id?: string;
 	finished: boolean;
 	mode: WorkflowExecuteMode;
 	retryOf?: string;
@@ -641,6 +641,7 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	isOwner: boolean;
+	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: Date;
 }
@@ -796,6 +797,9 @@ export interface IN8nUISettings {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+		swaggerUi: {
+			enabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
@@ -1184,7 +1188,11 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[];
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
+export type IFakeDoorLocation =
+	| 'settings'
+	| 'settings/users'
+	| 'credentialsModal'
+	| 'workflowShareModal';
 
 export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
 
@@ -1204,6 +1212,9 @@ export interface ISettingsState {
 		enabled: boolean;
 		latestVersion: number;
 		path: string;
+		swaggerUi: {
+			enabled: boolean;
+		};
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1287,6 +1298,8 @@ export interface IInviteResponse {
 	user: {
 		id: string;
 		email: string;
+		emailSent: boolean;
+		inviteAcceptUrl: string;
 	};
 	error?: string;
 }

@@ -2,6 +2,7 @@ import {
 	changePassword,
 	deleteUser,
 	getCurrentUser,
+	getInviteLink,
 	getUsers,
 	inviteUsers,
 	login,
@@ -18,14 +19,16 @@ import {
 	validatePasswordToken,
 	validateSignupToken,
 } from '@/api/users';
-import { PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
 import {
+	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IUser,
 	IUserResponse,
 	IUsersState,
 } from '@/Interface';
+import { getCredentialPermissions } from '@/permissions';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
@@ -89,6 +92,13 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return [];
 			}
 			return getPersonalizedNodeTypes(answers);
+		},
+		isResourceAccessible() {
+			return (resource: ICredentialsResponse): boolean => {
+				const permissions = getCredentialPermissions(this.currentUser, resource);
+
+				return permissions.use;
+			};
 		},
 	},
 	actions: {
@@ -245,6 +255,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async reinviteUser(params: { id: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await reinvite(rootStore.getRestApiContext, params);
+		},
+		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
+			const rootStore = useRootStore();
+			return await getInviteLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();

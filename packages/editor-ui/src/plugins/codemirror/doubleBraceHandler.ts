@@ -23,19 +23,18 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 	view.dispatch(transaction);
 
 	/**
-	 * Customizations to inject whitespace and braces
-	 * for resolvable setup and completion
+	 * Customizations to inject whitespace and braces for setup and completion
 	 */
 
 	const cursor = view.state.selection.main.head;
 
-	// inject whitespace and second brace on completion: {| } -> {{ | }}
+	// inject whitespace and second brace for brace completion: {| } -> {{ | }}
 
-	const isSecondBraceForNewExpression =
+	const isBraceCompletion =
 		view.state.sliceDoc(cursor - 2, cursor) === '{{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isSecondBraceForNewExpression) {
+	if (isBraceCompletion) {
 		view.dispatch({
 			changes: { from: cursor, to: cursor + 2, insert: '  }' },
 			selection: { anchor: cursor + 1 },
@@ -44,28 +43,30 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 		return true;
 	}
 
-	// inject whitespace on setup: empty -> {| }
+	// inject whitespace for brace setup: empty -> {| }
 
-	const isFirstBraceForNewExpression =
+	const isBraceSetup =
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isFirstBraceForNewExpression) {
+	if (isBraceSetup) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
 
 		return true;
 	}
 
-	// when selected, surround with whitespaces on completion: {{abc}} -> {{ abc }}
+	// inject whitespace for brace completion from selection: {{abc|}} -> {{ abc| }}
 
-	const doc = view.state.doc.toString();
-	const openMarkerIndex = doc.lastIndexOf('{', cursor);
-	const closeMarkerIndex = doc.indexOf('}}', cursor);
+	const [range] = view.state.selection.ranges;
 
-	if (openMarkerIndex !== -1 && closeMarkerIndex !== -1) {
+	const isBraceCompletionFromSelection =
+		view.state.sliceDoc(range.from - 2, range.from) === '{{' &&
+		view.state.sliceDoc(range.to, range.to + 2) === '}}';
+
+	if (isBraceCompletionFromSelection) {
 		view.dispatch(
-			{ changes: { from: openMarkerIndex + 1, insert: ' ' } },
-			{ changes: { from: closeMarkerIndex, insert: ' ' } },
+			{ changes: { from: range.from, insert: ' ' } },
+			{ changes: { from: range.to, insert: ' ' }, selection: { anchor: range.to, head: range.to } },
 		);
 
 		return true;

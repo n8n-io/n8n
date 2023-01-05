@@ -4,29 +4,29 @@
 import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, IWorkflowBase } from 'n8n-workflow';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { IWorkflowBase, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { getLogger } from '@/Logger';
 import config from '@/config';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
+import { initEvents } from '@/events';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
 
-	static examples = [`$ n8n execute --id=5`, `$ n8n execute --file=workflow.json`];
+	static examples = ['$ n8n execute --id=5', '$ n8n execute --file=workflow.json'];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
@@ -48,6 +48,9 @@ export class Execute extends Command {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 
+		// Add event handlers
+		initEvents();
+
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
 
@@ -59,12 +62,12 @@ export class Execute extends Command {
 		const loadNodesAndCredentialsPromise = loadNodesAndCredentials.init();
 
 		if (!flags.id && !flags.file) {
-			console.info(`Either option "--id" or "--file" have to be set!`);
+			console.info('Either option "--id" or "--file" have to be set!');
 			return;
 		}
 
 		if (flags.id && flags.file) {
-			console.info(`Either "id" or "file" can be set never both!`);
+			console.info('Either "id" or "file" can be set never both!');
 			return;
 		}
 
@@ -96,8 +99,7 @@ export class Execute extends Command {
 				return;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			workflowId = workflowData.id ? workflowData.id.toString() : PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			workflowId = workflowData.id ?? PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		}
 
 		// Wait till the database is ready
@@ -138,8 +140,7 @@ export class Execute extends Command {
 		CredentialTypes(loadNodesAndCredentials);
 
 		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		if (!WorkflowHelpers.isWorkflowIdValid(workflowId)) {
 			workflowId = undefined;

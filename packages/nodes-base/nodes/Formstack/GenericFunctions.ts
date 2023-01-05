@@ -74,9 +74,9 @@ export async function apiRequest(
 			const credentials = (await this.getCredentials('formstackApi')) as IDataObject;
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'formstackOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'formstackOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

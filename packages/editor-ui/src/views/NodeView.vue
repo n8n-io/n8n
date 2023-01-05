@@ -18,8 +18,19 @@
 				@mouseup="mouseUp"
 				@wheel="canvasStore.wheelScroll"
 			>
-				<div id="node-view-background" class="node-view-background" :style="backgroundStyle" data-test-id="node-view-background" />
-				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView" data-test-id="node-view">
+				<div
+					id="node-view-background"
+					class="node-view-background"
+					:style="backgroundStyle"
+					data-test-id="node-view-background"
+				/>
+				<div
+					id="node-view"
+					class="node-view"
+					:style="workflowStyle"
+					ref="nodeView"
+					data-test-id="node-view"
+				>
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
 						@click="showTriggerCreator('trigger_placeholder_button')"
@@ -884,6 +895,9 @@ export default mixins(
 		},
 		async openWorkflow(workflowId: string) {
 			this.startLoading();
+
+			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+
 			this.resetWorkspace();
 			let data: IWorkflowDb | undefined;
 			try {
@@ -939,7 +953,12 @@ export default mixins(
 			}
 			this.canvasStore.zoomToFit();
 			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-			this.workflowsStore.activeWorkflowExecution = null;
+			if (selectedExecution?.workflowId !== workflowId) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				this.workflowsStore.currentWorkflowExecutions = [];
+			} else {
+				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+			}
 			this.stopLoading();
 			return data;
 		},
@@ -1695,7 +1714,7 @@ export default mixins(
 			const credentialPerType =
 				nodeTypeData.credentials &&
 				nodeTypeData.credentials
-					.map((type) => this.credentialsStore.getCredentialsByType(type.name))
+					.map((type) => this.credentialsStore.getUsableCredentialByType(type.name))
 					.flat();
 
 			if (credentialPerType && credentialPerType.length === 1) {
@@ -3483,6 +3502,9 @@ export default mixins(
 		},
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
+
+			this.onToggleNodeCreator({ createNodeActive: false });
+			this.nodeCreatorStore.setShowScrim(false);
 
 			// Reset nodes
 			this.deleteEveryEndpoint();

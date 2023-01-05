@@ -162,7 +162,7 @@ export class StravaTrigger implements INodeType {
 								const webhooks = await stravaApiRequest.call(
 									this,
 									'GET',
-									`/push_subscriptions`,
+									'/push_subscriptions',
 									{},
 								);
 
@@ -182,7 +182,7 @@ export class StravaTrigger implements INodeType {
 									responseData = await stravaApiRequest.call(
 										this,
 										'POST',
-										`/push_subscriptions`,
+										'/push_subscriptions',
 										requestBody,
 									);
 								} else {

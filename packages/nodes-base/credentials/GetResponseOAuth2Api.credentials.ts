@@ -7,6 +7,8 @@ export class GetResponseOAuth2Api implements ICredentialType {
 
 	displayName = 'GetResponse OAuth2 API';
 
+	documentationUrl = 'getresponse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',
