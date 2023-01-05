@@ -448,7 +448,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			let keyRow = 1;
 			let startIndex = 2;
 
-			let isRangeDefinedInOptions = false;
+			let rangeDefinition = '';
 
 			const [from, to] = range.split(':');
 			let keyRange = `${from}${keyRow}:${to}${keyRow}`;
@@ -456,7 +456,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 			if (options.dataLocationOnSheet) {
 				const locationDefine = (options.dataLocationOnSheet as IDataObject).values as IDataObject;
-				const rangeDefinition = locationDefine.rangeDefinition as string;
+				rangeDefinition = locationDefine.rangeDefinition as string;
 
 				if (rangeDefinition === 'specifyRangeA1') {
 					if (locationDefine.range === '') {
@@ -466,7 +466,6 @@ export class GoogleSheetsTrigger implements INodeType {
 						);
 					}
 					range = locationDefine.range as string;
-					isRangeDefinedInOptions = true;
 				}
 
 				if (rangeDefinition === 'specifyRange') {
@@ -479,13 +478,13 @@ export class GoogleSheetsTrigger implements INodeType {
 				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
 
 				if (rangeDefinition === 'specifyRangeA1' && cellDataFrom[2] !== undefined) {
-					keyRow = +cellDataFrom[2];
-					startIndex = +cellDataFrom[2] + 1;
+					keyRange = `${cellDataFrom[1]}${+cellDataFrom[2]}:${cellDataTo[1]}${+cellDataFrom[2]}`;
+					rangeToCheck = `${cellDataFrom[1]}${+cellDataFrom[2] + 1}:${rangeTo}`;
 				} else {
-					range = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
+					// range = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
+					keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
+					rangeToCheck = `${cellDataFrom[1]}${startIndex}:${rangeTo}`;
 				}
-				keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
-				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
 			}
 
 			const qs: IDataObject = {};
@@ -534,6 +533,11 @@ export class GoogleSheetsTrigger implements INodeType {
 			if (event === 'anyUpdate' || event === 'rowUpdate') {
 				const sheetRange = `${sheetName}!${range}`;
 
+				let dataStartIndex = startIndex - 1;
+				if (rangeDefinition !== 'specifyRangeA1') {
+					dataStartIndex = keyRow < startIndex ? startIndex - 2 : startIndex - 1;
+				}
+
 				const currentData =
 					((await googleSheet.getData(
 						sheetRange,
@@ -548,7 +552,13 @@ export class GoogleSheetsTrigger implements INodeType {
 					const zeroBasedKeyRow = keyRow - 1;
 					const columns = currentData[zeroBasedKeyRow];
 					currentData.splice(zeroBasedKeyRow, 1); // Remove key row
-					const returnData = arrayOfArraysToJson(currentData, columns);
+
+					let returnData;
+					if (rangeDefinition !== 'specifyRangeA1') {
+						returnData = arrayOfArraysToJson(currentData.slice(dataStartIndex), columns);
+					} else {
+						returnData = arrayOfArraysToJson(currentData, columns);
+					}
 
 					if (Array.isArray(returnData) && returnData.length !== 0 && this.getMode() === 'manual') {
 						return [this.helpers.returnJsonArray(returnData)];
@@ -563,7 +573,7 @@ export class GoogleSheetsTrigger implements INodeType {
 					sheetBinaryToArrayOfArrays(
 						previousRevisionBinaryData,
 						sheetName,
-						isRangeDefinedInOptions ? range : undefined,
+						rangeDefinition === 'specifyRangeA1' ? range : undefined,
 					) || [];
 
 				const includeInOutput = this.getNodeParameter('includeInOutput', 'new') as string;
@@ -576,7 +586,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						keyRow,
 						includeInOutput,
 						options.columnsToWatch as string[],
-						startIndex - 1,
+						dataStartIndex,
 						event,
 					);
 				} else {
@@ -586,7 +596,7 @@ export class GoogleSheetsTrigger implements INodeType {
 						keyRow,
 						includeInOutput,
 						[],
-						startIndex - 1,
+						dataStartIndex,
 						event,
 					);
 				}

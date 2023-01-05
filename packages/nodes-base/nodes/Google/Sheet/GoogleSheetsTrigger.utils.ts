@@ -81,7 +81,7 @@ export function compareRevisions(
 	keyRow: number,
 	includeInOutput: string,
 	columnsToWatch: string[],
-	startRowIndex: number,
+	dataStartIndex: number,
 	event: string,
 ) {
 	const dataLength = current.length > previous.length ? current.length : previous.length;
@@ -105,7 +105,7 @@ export function compareRevisions(
 
 	const diffData: DiffData = [];
 
-	for (let i = 0; i < dataLength; i++) {
+	for (let i = dataStartIndex; i < dataLength; i++) {
 		if (i === columnsRowIndex) {
 			continue;
 		}
@@ -139,7 +139,7 @@ export function compareRevisions(
 		if (current[i] === undefined) continue;
 
 		diffData.push({
-			rowIndex: i + startRowIndex,
+			rowIndex: i + 1,
 			previous: previous[i],
 			current: current[i],
 			changeType,
