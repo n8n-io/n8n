@@ -52,7 +52,7 @@ async function getExecutionsInPastDays(days: number) {
 }
 
 /**
- * Return IDs of credentials in worfklows executed in the past n days.
+ * Return IDs of credentials in workflows executed in the past n days.
  */
 async function getCredsInRecentlyExecutedWorkflows(days: number) {
 	const recentExecutions = await getExecutionsInPastDays(days);
