@@ -1,5 +1,5 @@
 namespace jest {
-	interface Matchers<R, T = {}> {
+	interface Matchers<R, T> {
 		toBeEmptyArray(): T;
 	}
 }

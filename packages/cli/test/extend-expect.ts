@@ -1,5 +1,5 @@
 expect.extend({
-	toBeEmptyArray(this: jest.MatcherContext, actual: object) {
+	toBeEmptyArray(this: jest.MatcherContext, actual: unknown) {
 		const pass = Array.isArray(actual) && actual.length === 0;
 
 		return {
