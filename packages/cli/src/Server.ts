@@ -152,6 +152,7 @@ import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBu
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
+import { initEvents } from './events';
 import { AbstractServer } from './AbstractServer';
 
 const exec = promisify(callbackExec);
@@ -1447,6 +1448,9 @@ export async function start(): Promise<void> {
 		n8n_multi_user_allowed: isUserManagementEnabled(),
 		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 	};
+
+	// Set up event handling
+	initEvents();
 
 	const workflow = await Db.collections.Workflow!.findOne({
 		select: ['createdAt'],
