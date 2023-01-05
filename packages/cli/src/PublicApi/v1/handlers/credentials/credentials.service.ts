@@ -158,7 +158,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	// to later validate that only this properties are set in
 	// the credentials sent in the API call.
 	properties.forEach((property) => {
-		requiredFields.push(property.name);
+		if (property.required) {
+			requiredFields.push(property.name);
+		}
 		if (property.type === 'options') {
 			// if the property is type options,
 			// include all possible values in the enum property.
