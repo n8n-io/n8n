@@ -206,7 +206,10 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 
 		try {
 			const executions = await Db.collections.Execution.find({
-				stoppedAt: LessThanOrEqual(utcDate),
+				select: ['id'],
+				where: {
+					stoppedAt: LessThanOrEqual(utcDate),
+				},
 			});
 			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
 			setTimeout(() => {
