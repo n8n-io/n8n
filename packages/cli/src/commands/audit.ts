@@ -42,7 +42,7 @@ export class SecurityAudit extends Command {
 		const { flags: auditFlags } = this.parse(SecurityAudit);
 
 		const categories =
-			auditFlags.categories?.split(',').filter((i): i is Risk.Category => i !== '') ??
+			auditFlags.categories?.split(',').filter((c): c is Risk.Category => c !== '') ??
 			RISK_CATEGORIES;
 
 		const invalidCategories = categories.filter((c) => !RISK_CATEGORIES.includes(c));
