@@ -65,7 +65,8 @@ beforeEach(async () => {
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
-	config.set('userManagement.emails.mode', '');
+	config.set('userManagement.emails.mode', 'smtp');
+	config.set('userManagement.emails.smtp.host', '');
 });
 
 afterAll(async () => {
@@ -432,26 +433,28 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 	expect(storedMember.password).not.toBe(newMemberData.password);
 });
 
-test('POST /users should fail if emailing is not set up', async () => {
+test('POST /users should succeed if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	const response = await authAgent(owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
-	expect(response.statusCode).toBe(500);
+	expect(response.statusCode).toBe(200);
+	expect(response.body.data[0].user.inviteAcceptUrl).toBeDefined();
 });
 
 test('POST /users should fail if user management is disabled', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 	config.set('userManagement.disabled', true);
+	config.set('userManagement.isInstanceOwnerSetUp', false);
 
 	const response = await authAgent(owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
-	expect(response.statusCode).toBe(500);
+	expect(response.statusCode).toBe(400);
 });
 
 test('POST /users should email invites and create user shells but ignore existing', async () => {
@@ -567,16 +570,34 @@ test('POST /users/:id/reinvite should send reinvite, but fail if user already ac
 	expect(reinviteMemberResponse.statusCode).toBe(400);
 });
 
-test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
-	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
+test('UserManagementMailer expect NodeMailer.verifyConnection not be called when SMTP not set up', async () => {
+	const mockVerifyConnection = jest.spyOn(NodeMailer.prototype, 'verifyConnection');
+	mockVerifyConnection.mockImplementation(async () => {});
 
-	// NodeMailer.verifyConnection called 1 time
 	const userManagementMailer = UserManagementMailer.getInstance();
-	// NodeMailer.verifyConnection called 2 time
-	(await userManagementMailer).verifyConnection();
+	// NodeMailer.verifyConnection gets called only explicitly
+	expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
 
-	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 
-	// @ts-ignore
-	NodeMailer.prototype.verifyConnection.mockRestore();
+	mockVerifyConnection.mockRestore();
+});
+
+test('UserManagementMailer expect NodeMailer.verifyConnection to be called when SMTP set up', async () => {
+	const mockVerifyConnection = jest.spyOn(NodeMailer.prototype, 'verifyConnection');
+	mockVerifyConnection.mockImplementation(async () => {});
+	const mockInit = jest.spyOn(NodeMailer.prototype, 'init');
+	mockInit.mockImplementation(async () => {});
+
+	// host needs to be set, otherwise smtp is skipped
+	config.set('userManagement.emails.smtp.host', 'host');
+	config.set('userManagement.emails.mode', 'smtp');
+
+	const userManagementMailer = new UserManagementMailer.UserManagementMailer();
+	// NodeMailer.verifyConnection gets called only explicitly
+	expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
+
+	// expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(1);
+	mockVerifyConnection.mockRestore();
+	mockInit.mockRestore();
 });
