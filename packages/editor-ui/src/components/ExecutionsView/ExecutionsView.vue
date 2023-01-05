@@ -426,9 +426,9 @@ export default mixins(
 					.catch(() => {});
 			}
 		},
-		async tryToFindExecution(executionId: string, skipCheck = false): Promise<void> {
+		async tryToFindExecution(executionId: string, attemptCount = 0): Promise<void> {
 			// First check if executions exists in the DB at all
-			if (!skipCheck) {
+			if (attemptCount === 0) {
 				const executionExists = await this.workflowsStore.fetchExecutionDataById(executionId);
 				if (!executionExists) {
 					this.workflowsStore.activeWorkflowExecution = null;
@@ -443,6 +443,10 @@ export default mixins(
 					return;
 				}
 			}
+
+			// stop if the execution wasn't found in the first 1000 lookups
+			if (attemptCount >= 10) return;
+
 			// Fetch next batch of executions
 			await this.loadMore(100);
 			const execution = this.workflowsStore.getExecutionDataById(executionId);
@@ -450,7 +454,7 @@ export default mixins(
 				// If it's not there load next until found
 				await this.$nextTick();
 				// But skip fetching execution data since we at this point know it exists
-				await this.tryToFindExecution(executionId, true);
+				await this.tryToFindExecution(executionId, attemptCount + 1);
 			} else {
 				// When found set execution as active
 				this.workflowsStore.activeWorkflowExecution = execution;

@@ -9,13 +9,15 @@ info:
   license:
     name: Sustainable Use License
     url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
-  version: 1.0.0
+  version: 1.1.0
 externalDocs:
   description: n8n API documentation
   url: https://docs.n8n.io/api/
 servers:
   - url: /api/v1
 tags:
+  - name: Audit
+    description: Operations about security audit
   - name: Execution
     description: Operations about executions
   - name: Workflow
@@ -24,6 +26,8 @@ tags:
     description: Operations about credentials
 
 paths:
+  /audit:
+    $ref: './handlers/audit/spec/paths/audit.yml'
   /credentials:
     $ref: './handlers/credentials/spec/paths/credentials.yml'
   /credentials/{id}:

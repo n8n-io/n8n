@@ -19,6 +19,13 @@ export class CompareDatasets implements INodeType {
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [
 			{
+				displayName:
+					'Items from different branches are paired together when the fields below match. If paired, the rest of the fields are compared to determine whether the items are the same or different',
+				name: 'infoBox',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Fields to Match',
 				name: 'mergeByFields',
 				type: 'fixedCollection',
@@ -131,6 +138,14 @@ export class CompareDatasets implements INodeType {
 						hint: 'Enter the field names as text, separated by commas',
 						description:
 							"Fields that shouldn't be included when checking whether two items are the same",
+					},
+					{
+						displayName: 'Fuzzy Compare',
+						name: 'fuzzyCompare',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
 					},
 					{
 						displayName: 'Disable Dot Notation',

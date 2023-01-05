@@ -22,7 +22,6 @@ import * as utils from './shared/utils';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import { NodeMailer } from '@/UserManagement/email/NodeMailer';
 
-jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;

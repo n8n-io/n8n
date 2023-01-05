@@ -140,6 +140,10 @@ Cypress.Commands.add('setupOwner', (payload) => {
 	cy.task('setup-owner', payload);
 });
 
+Cypress.Commands.add('enableFeature', (feature) => {
+	cy.task('enable-feature', feature);
+});
+
 Cypress.Commands.add('grantBrowserPermissions', (...permissions: string[]) => {
 	if (Cypress.isBrowser('chrome')) {
 		cy.wrap(
