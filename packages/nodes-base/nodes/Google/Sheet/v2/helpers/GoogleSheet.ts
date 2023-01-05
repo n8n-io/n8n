@@ -475,7 +475,7 @@ export class GoogleSheet {
 		const getKeyIndex = (key: string | number, data: Array<string | number>) => {
 			let index = -1;
 			for (let i = 0; i < data.length; i++) {
-				if (data[i].toString() === key.toString()) {
+				if (data[i]?.toString() === key.toString()) {
 					index = i;
 					break;
 				}
