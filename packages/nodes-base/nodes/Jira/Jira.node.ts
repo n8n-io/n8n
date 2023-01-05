@@ -171,6 +171,36 @@ export class Jira implements INodeType {
 
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
+			// Get all the issue types to display them to user so that he can
+			// select them easily
+			async getIssueTypes(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const projectId = this.getCurrentNodeParameter('project', { extractValue: true });
+				const returnData: INodeListSearchItems[] = [];
+				const { issueTypes } = await jiraSoftwareCloudApiRequest.call(
+					this,
+					`/api/2/project/${projectId}`,
+					'GET',
+				);
+				for (const issueType of issueTypes) {
+					const issueTypeName = issueType.name;
+					const issueTypeId = issueType.id;
+					returnData.push({
+						name: issueTypeName,
+						value: issueTypeId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+				return { results: returnData };
+			},
 		},
 		loadOptions: {
 			// Get all the issue types to display them to user so that he can
@@ -364,7 +394,7 @@ export class Jira implements INodeType {
 				let issueTypeId: string;
 				if (operation === 'create') {
 					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
-					issueTypeId = this.getCurrentNodeParameter('issueType') as string;
+					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
 				} else {
 					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
 					const res = await jiraSoftwareCloudApiRequest.call(
@@ -454,7 +484,9 @@ export class Jira implements INodeType {
 					const projectId = this.getNodeParameter('project', i, '', {
 						extractValue: true,
 					}) as string;
-					const issueTypeId = this.getNodeParameter('issueType', i) as string;
+					const issueTypeId = this.getNodeParameter('issueType', i, '', {
+						extractValue: true,
+					}) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IIssue = {};
 					const fields: IFields = {

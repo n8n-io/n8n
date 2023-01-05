@@ -116,23 +116,48 @@ export const issueFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Issue Type Name or ID',
+		displayName: 'Issue Type',
 		name: 'issueType',
-		type: 'options',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Issue Type',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select an Issue Type...',
+				typeOptions: {
+					searchListMethod: 'getIssueTypes',
+					// missing searchListDependsOn: ['project'],
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{2,})[ \t]*',
+							errorMessage: 'Not a valid Jira Issue Type ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{2,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['issue'],
 				operation: ['create'],
 			},
 		},
-		typeOptions: {
-			loadOptionsMethod: 'getIssueTypes',
-			loadOptionsDependsOn: ['project'],
-		},
-		description:
-			'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
