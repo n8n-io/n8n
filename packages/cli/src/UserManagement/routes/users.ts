@@ -127,19 +127,13 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
-
-				void InternalHooksManager.getInstance().onUserInvite({
-					user: req.user,
-					target_user_id: Object.values(createUsers) as string[],
-					public_api: false,
-				});
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.InternalServerError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
+			Logger.debug('Created user shell(s) successfully', { userId: req.user.id });
 			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
@@ -185,6 +179,13 @@ export function usersNamespace(this: N8nApp): void {
 								public_api: false,
 							});
 						}
+
+						void InternalHooksManager.getInstance().onUserInvite({
+							user: req.user,
+							target_user_id: Object.values(createUsers) as string[],
+							public_api: false,
+							email_sent: result.emailSent,
+						});
 					} catch (error) {
 						if (error instanceof Error) {
 							void InternalHooksManager.getInstance().onEmailFailed({
