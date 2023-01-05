@@ -582,6 +582,7 @@ export class GoogleSheet {
 				}
 			}
 		}
+
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
@@ -617,7 +618,13 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.convertSheetDataArrayToObjectArray(removeEmptyColumns(returnData), 1, keys, true);
+		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
+		return this.convertSheetDataArrayToObjectArray(
+			dataWithoutEmptyColumns,
+			1,
+			dataWithoutEmptyColumns[0] as string[],
+			true,
+		);
 	}
 
 	private async convertObjectArrayToSheetDataArray(
