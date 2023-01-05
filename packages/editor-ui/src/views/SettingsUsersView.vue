@@ -30,18 +30,6 @@
 				@copyInviteLink="onCopyInviteLink"
 			/>
 		</div>
-		<n8n-info-tip v-if="!settingsStore.isSmtpSetup">
-			<i18n path="settings.users.setupSMTPInfo">
-				<template #link>
-					<a
-						href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
-						target="_blank"
-					>
-						{{ $locale.baseText('settings.users.setupSMTPInfo.link') }}
-					</a>
-				</template>
-			</i18n>
-		</n8n-info-tip>
 		<feature-coming-soon
 			v-for="fakeDoorFeature in fakeDoorFeatures"
 			:key="fakeDoorFeature.id"
