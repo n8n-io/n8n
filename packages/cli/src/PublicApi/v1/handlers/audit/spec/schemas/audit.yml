@@ -61,10 +61,10 @@ properties:
               ],
           },
         ]
-  Execution Risk Report:
+  Nodes Risk Report:
     type: object
     example:
-      risk: execution
+      risk: nodes
       sections:
         [
           {
