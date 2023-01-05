@@ -86,9 +86,6 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
 
-	@Column({ default: false })
-	dataLoaded: boolean;
-
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
 		nullable: true,
