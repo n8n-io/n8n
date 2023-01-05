@@ -99,6 +99,10 @@ export function getInstanceBaseUrl(): string {
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }
 
+export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
+	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
+}
+
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {
@@ -154,6 +158,13 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		});
 	}
 	return sanitizedUser;
+}
+
+export function addInviteLinktoUser(user: PublicUser, inviterId: string): PublicUser {
+	if (user.isPending) {
+		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
+	}
+	return user;
 }
 
 export async function getUserById(userId: string): Promise<User> {
