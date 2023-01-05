@@ -153,7 +153,7 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 	&:hover,
 	&.active {
 		.executionLink {
-			background-color: var(--color-foreground-base);
+			background-color: var(--color-foreground-light);
 		}
 	}
 
@@ -217,7 +217,6 @@ export default mixins(executionHelpers, showMessage, restApi).extend({
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
 	padding-right: var(--spacing-s);
-	border-radius: var(--border-radius-base);
 	position: relative;
 	left: calc(
 		-1 * var(--spacing-4xs)
