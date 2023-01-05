@@ -8,6 +8,7 @@ export enum StatisticsNames {
 	productionError = 'production_error',
 	manualSuccess = 'manual_success',
 	manualError = 'manual_error',
+	dataLoaded = 'data_loaded',
 }
 
 @Entity()

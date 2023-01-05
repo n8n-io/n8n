@@ -24,6 +24,7 @@ import { CreateCredentialUsageTable1665484192212 } from './1665484192212-CreateC
 import { RemoveCredentialUsageTable1665754637025 } from './1665754637025-RemoveCredentialUsageTable';
 import { AddWorkflowVersionIdColumn1669739707126 } from './1669739707126-AddWorkflowVersionIdColumn';
 import { AddTriggerCountColumn1669823906995 } from './1669823906995-AddTriggerCountColumn';
+import { RemoveWorkflowDataLoadedFlag1671726148421 } from './1671726148421-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 
 export const postgresMigrations = [
@@ -53,5 +54,6 @@ export const postgresMigrations = [
 	AddWorkflowVersionIdColumn1669739707126,
 	WorkflowStatistics1664196174001,
 	AddTriggerCountColumn1669823906995,
+	RemoveWorkflowDataLoadedFlag1671726148421,
 	MessageEventBusDestinations1671535397530,
 ];
