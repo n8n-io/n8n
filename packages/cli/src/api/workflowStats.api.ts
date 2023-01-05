@@ -169,15 +169,17 @@ workflowStatsController.get(
 		// Get flag
 		const workflowId = req.params.id;
 
-		// Get the corresponding workflow
-		const workflow = await Db.collections.Workflow.findOne(workflowId);
-		// It will be valid if we reach this point, this is just for TS
-		if (!workflow) {
-			return { dataLoaded: false };
-		}
+		// Get the flag
+		const stats = await Db.collections.WorkflowStatistics.findOne({
+			select: ['latestEvent'],
+			where: {
+				workflowId,
+				name: StatisticsNames.dataLoaded,
+			},
+		});
 
 		const data: IWorkflowStatisticsDataLoaded = {
-			dataLoaded: workflow.dataLoaded,
+			dataLoaded: stats ? true : false,
 		};
 
 		return data;
