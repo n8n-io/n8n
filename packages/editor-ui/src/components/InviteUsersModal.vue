@@ -2,13 +2,34 @@
 	<Modal
 		:name="INVITE_USER_MODAL_KEY"
 		@enter="onSubmit"
-		:title="$locale.baseText('settings.users.inviteNewUsers')"
+		:title="
+			$locale.baseText(
+				showInviteUrls ? 'settings.users.copyInviteUrls' : 'settings.users.inviteNewUsers',
+			)
+		"
 		:center="true"
 		width="460px"
 		:eventBus="modalBus"
 	>
 		<template #content>
+			<div v-if="showInviteUrls">
+				<n8n-users-list :users="invitedUsers">
+					<template #actions="{ user }">
+						<n8n-tooltip>
+							<template #content>
+								{{ $locale.baseText('settings.users.inviteLink.copy') }}
+							</template>
+							<n8n-icon-button
+								icon="link"
+								type="tertiary"
+								@click="onCopyInviteLink(user)"
+							></n8n-icon-button>
+						</n8n-tooltip>
+					</template>
+				</n8n-users-list>
+			</div>
 			<n8n-form-inputs
+				v-else
 				:inputs="config"
 				:eventBus="formBus"
 				:columnView="true"
@@ -16,7 +37,7 @@
 				@submit="onSubmit"
 			/>
 		</template>
-		<template #footer>
+		<template v-if="!showInviteUrls" #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="!enabledButton"
@@ -35,7 +56,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import Vue from 'vue';
-import { IFormInputs, IInviteResponse } from '@/Interface';
+import { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { mapStores } from 'pinia';
@@ -69,6 +90,7 @@ export default mixins(showMessage, copyPaste).extend({
 			formBus: new Vue(),
 			modalBus: new Vue(),
 			emails: '',
+			showInviteUrls: null as IInviteResponse[] | null,
 			loading: false,
 			INVITE_USER_MODAL_KEY,
 		};
@@ -130,6 +152,14 @@ export default mixins(showMessage, copyPaste).extend({
 		},
 		enabledButton(): boolean {
 			return this.emailsCount >= 1;
+		},
+		invitedUsers(): IUser[] {
+			console.log(this.usersStore.allUsers, this.showInviteUrls);
+			return this.showInviteUrls
+				? this.usersStore.allUsers.filter((user) =>
+						this.showInviteUrls!.find((invite) => invite.user.id === user.id),
+				  )
+				: [];
 		},
 	},
 	methods: {
@@ -233,14 +263,44 @@ export default mixins(showMessage, copyPaste).extend({
 					}, 0); // notifications stack on top of each other otherwise
 				}
 
-				this.modalBus.$emit('close');
+				if (successfulUrlInvites.length > 1) {
+					this.showInviteUrls = successfulUrlInvites;
+				} else {
+					this.modalBus.$emit('close');
+				}
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.users.usersInvitedError'));
 			}
 			this.loading = false;
 		},
+		showCopyInviteLinkToast(successfulUrlInvites: IInviteResponse[]) {
+			this.$showMessage({
+				type: 'success',
+				title: this.$locale.baseText(
+					successfulUrlInvites.length > 1
+						? 'settings.users.multipleInviteUrlsCreated'
+						: 'settings.users.inviteUrlCreated',
+				),
+				message: this.$locale.baseText(
+					successfulUrlInvites.length > 1
+						? 'settings.users.multipleInviteUrlsCreated.message'
+						: 'settings.users.inviteUrlCreated.message',
+					{
+						interpolate: {
+							emails: successfulUrlInvites.map(({ user }) => user.email).join(', '),
+						},
+					},
+				),
+			});
+		},
 		onSubmitClick() {
 			this.formBus.$emit('submit');
+		},
+		onCopyInviteLink(user: IUser) {
+			if (user.inviteAcceptUrl && this.showInviteUrls) {
+				this.copyToClipboard(user.inviteAcceptUrl);
+				this.showCopyInviteLinkToast([]);
+			}
 		},
 	},
 });
