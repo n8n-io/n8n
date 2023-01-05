@@ -450,6 +450,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userInviteData.user.id,
 				target_user_id: userInviteData.target_user_id,
 				public_api: userInviteData.public_api,
+				email_sent: userInviteData.email_sent,
 			}),
 		]);
 	}
