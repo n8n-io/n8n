@@ -5,6 +5,41 @@ import { googleApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		options: [
+			{
+				name: 'Auto-Map Input Data',
+				value: 'autoMap',
+				description: 'Use when node input properties match destination field names',
+			},
+			{
+				name: 'Map Each Field Below',
+				value: 'define',
+				description: 'Set the value for each destination field',
+			},
+			{
+				name: 'Specify as List',
+				value: 'list',
+				description: 'Set list of the item properties to use as fields',
+			},
+			// {
+			// 	name: 'Nothing',
+			// 	value: 'nothing',
+			// 	description: 'Do not send anything',
+			// },
+		],
+		displayOptions: {
+			show: {
+				resource: ['record'],
+				operation: ['create'],
+			},
+		},
+		default: 'autoMap',
+		description: 'Whether to insert the input data this node receives in the new row',
+	},
+	{
 		displayName: 'Columns',
 		name: 'columns',
 		type: 'string',
@@ -12,12 +47,57 @@ export const description: INodeProperties[] = [
 			show: {
 				resource: ['record'],
 				operation: ['create'],
+				dataMode: ['list'],
 			},
 		},
 		default: '',
 		required: true,
 		placeholder: 'id,name,description',
 		description: 'Comma-separated list of the item properties to use as columns',
+	},
+	{
+		displayName: 'Fields to Send',
+		name: 'fieldsUi',
+		placeholder: 'Add Field',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValueButtonText: 'Add Field',
+			multipleValues: true,
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Field',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Field Name or ID',
+						name: 'fieldId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsDependsOn: ['projectId', 'datasetId', 'tableId'],
+							loadOptionsMethod: 'getSchema',
+						},
+						default: '',
+					},
+					{
+						displayName: 'Field Value',
+						name: 'fieldValue',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+		],
+		displayOptions: {
+			show: {
+				resource: ['record'],
+				operation: ['create'],
+				dataMode: ['define'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -81,6 +161,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const datasetId = this.getNodeParameter('datasetId', 0) as string;
 	const tableId = this.getNodeParameter('tableId', 0) as string;
 	const options = this.getNodeParameter('options', 0);
+	const dataMode = this.getNodeParameter('dataMode', 0) as string;
 
 	let batchSize = 100;
 	if (options.batchSize) {
@@ -95,19 +176,65 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const rows: IDataObject[] = [];
 	const body: IDataObject = {};
 
+	Object.assign(body, options);
+	if (body.traceId === undefined) {
+		body.traceId = uuid();
+	}
+
+	const { schema } = await googleApiRequest.call(
+		this,
+		'GET',
+		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+		{},
+	);
+
+	if (schema === undefined) {
+		throw new NodeOperationError(this.getNode(), 'The destination table has no defined schema');
+	}
+
 	for (let i = 0; i < length; i++) {
 		try {
-			Object.assign(body, options);
-			if (body.traceId === undefined) {
-				body.traceId = uuid();
-			}
-			const columns = this.getNodeParameter('columns', i) as string;
-			const columnList = columns.split(',').map((column) => column.trim());
 			const record: IDataObject = {};
 
-			for (const key of Object.keys(items[i].json)) {
-				if (columnList.includes(key)) {
-					record[`${key}`] = items[i].json[key];
+			if (dataMode === 'autoMap') {
+				(schema.fields as IDataObject[]).forEach(({ name, mode }) => {
+					if (mode === 'REQUIRED' && items[i].json[name as string] === undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The property '${name}' is required but not exist in the input data`,
+							{ itemIndex: i },
+						);
+					}
+					record[`${name}`] = items[i].json[name as string];
+				});
+			}
+
+			if (dataMode === 'define') {
+				const fields = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+
+				fields.forEach(({ fieldId, fieldValue }) => {
+					record[`${fieldId}`] = fieldValue;
+				});
+
+				(schema.fields as IDataObject[]).forEach(({ name, mode }) => {
+					if (mode === 'REQUIRED' && record[name as string] === undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The property '${name}' is required, please define it in the 'Fields to Send'`,
+							{ itemIndex: i },
+						);
+					}
+				});
+			}
+
+			if (dataMode === 'list') {
+				const columns = this.getNodeParameter('columns', i) as string;
+				const columnList = columns.split(',').map((column) => column.trim());
+
+				for (const key of Object.keys(items[i].json)) {
+					if (columnList.includes(key)) {
+						record[`${key}`] = items[i].json[key];
+					}
 				}
 			}
 
