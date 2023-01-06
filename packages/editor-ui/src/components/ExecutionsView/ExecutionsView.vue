@@ -71,7 +71,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-page',
+	name: 'executions-view',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -251,22 +251,32 @@ export default mixins(
 		async onDeleteCurrentExecution(): Promise<void> {
 			this.loading = true;
 			try {
+				const executionIndex = this.executions.findIndex(
+					(execution: IExecutionsSummary) => execution.id === this.$route.params.executionId,
+				);
+				const nextExecution =
+					this.executions[executionIndex + 1] ||
+					this.executions[executionIndex - 1] ||
+					this.executions[0];
+
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
-				await this.setExecutions();
-				// Select first execution in the list after deleting the current one
 				if (this.executions.length > 0) {
-					this.workflowsStore.activeWorkflowExecution = this.executions[0];
-					this.$router
+					await this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
 						.catch(() => {});
+					this.workflowsStore.activeWorkflowExecution = nextExecution;
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+					await this.$router.push({
+						name: VIEWS.EXECUTION_HOME,
+						params: { name: this.currentWorkflow },
+					});
 				}
+				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
 				this.$showError(
@@ -309,8 +319,7 @@ export default mixins(
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
-			const workflowExecutions = await this.loadExecutions();
-			this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
+			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
 			await this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
