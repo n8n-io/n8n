@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { googleApiRequest } from '../../transport';
 
@@ -66,36 +66,52 @@ export const description: INodeProperties[] = [
 	},
 ];
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/tabledata/insertAll
+	const projectId = this.getNodeParameter('projectId', 0) as string;
+	const datasetId = this.getNodeParameter('datasetId', 0) as string;
+	const tableId = this.getNodeParameter('tableId', 0) as string;
 
-	const projectId = this.getNodeParameter('projectId', index) as string;
-	const datasetId = this.getNodeParameter('datasetId', index) as string;
-	const tableId = this.getNodeParameter('tableId', index) as string;
+	const options = this.getNodeParameter('options', 0);
+	const items = this.getInputData();
+	const length = items.length;
+
+	const returnData: INodeExecutionData[] = [];
 	const rows: IDataObject[] = [];
 	const body: IDataObject = {};
 
-	const options = this.getNodeParameter('options', index);
+	for (let i = 0; i < length; i++) {
+		try {
+			Object.assign(body, options);
+			if (body.traceId === undefined) {
+				body.traceId = uuid();
+			}
+			const columns = this.getNodeParameter('columns', i) as string;
+			const columnList = columns.split(',').map((column) => column.trim());
+			const record: IDataObject = {};
 
-	Object.assign(body, options);
-	if (body.traceId === undefined) {
-		body.traceId = uuid();
-	}
-	const columns = this.getNodeParameter('columns', index) as string;
-	const columnList = columns.split(',').map((column) => column.trim());
-	const record: IDataObject = {};
+			for (const key of Object.keys(items[i].json)) {
+				if (columnList.includes(key)) {
+					record[`${key}`] = items[i].json[key];
+				}
+			}
 
-	for (const key of Object.keys(items[index].json)) {
-		if (columnList.includes(key)) {
-			record[`${key}`] = items[index].json[key];
+			rows.push({ json: record });
+		} catch (error) {
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionErrorData);
+				continue;
+			}
+			throw new NodeOperationError(this.getNode(), error.message, {
+				itemIndex: i,
+				description: error?.description,
+			});
 		}
 	}
-	rows.push({ json: record });
-
 	body.rows = rows;
 
 	const responseData = await googleApiRequest.call(
@@ -105,10 +121,39 @@ export async function execute(
 		body,
 	);
 
+	if (responseData?.insertErrors && !options.skipInvalidRows) {
+		const errors: string[] = [];
+		const failedRows: number[] = [];
+
+		(responseData.insertErrors as IDataObject[]).forEach((entry) => {
+			const invalidRows = (entry.errors as IDataObject[]).filter(
+				(error) => error.reason !== 'stopped',
+			);
+			if (invalidRows.length) {
+				errors.push(
+					`Row ${entry.index} failed with error: ${invalidRows
+						.map((error) => error.message)
+						.join(', ')}`,
+				);
+				failedRows.push(entry.index as number);
+			}
+		});
+
+		throw new NodeOperationError(
+			this.getNode(),
+			`Error occured when inserting items [${failedRows.join(', ')}]`,
+			{
+				description: errors.join('\n, '),
+			},
+		);
+	}
+
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),
-		{ itemData: { item: index } },
+		{ itemData: { item: 0 } },
 	);
 
-	return executionData;
+	returnData.push(...executionData);
+
+	return returnData;
 }

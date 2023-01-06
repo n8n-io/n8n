@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 import { extractSchemaFields, parseField, simplify } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
@@ -99,54 +99,75 @@ export const description: INodeProperties[] = [
 	},
 ];
 
-export async function execute(
-	this: IExecuteFunctions,
-	index: number,
-): Promise<INodeExecutionData[]> {
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	// https://cloud.google.com/bigquery/docs/reference/rest/v2/jobs/query
-	let responseData;
 
-	const projectId = this.getNodeParameter('projectId', index) as string;
-	const sqlQuery = this.getNodeParameter('sqlQuery', index) as string;
-	const simple = this.getNodeParameter('simple', index) as boolean;
-	const options = this.getNodeParameter('options', index);
+	const items = this.getInputData();
+	const length = items.length;
 
-	const qs: IDataObject = options;
-	qs.query = sqlQuery;
+	const returnData: INodeExecutionData[] = [];
 
-	if (qs.defaultDataset) {
-		qs.defaultDataset = {
-			datasetId: options.defaultDataset,
-			projectId,
-		};
-	}
+	for (let i = 0; i < length; i++) {
+		try {
+			let responseData;
 
-	const response = await googleApiRequest.call(
-		this,
-		'POST',
-		`/v2/projects/${projectId}/queries`,
-		qs,
-	);
+			const projectId = this.getNodeParameter('projectId', i) as string;
+			const sqlQuery = this.getNodeParameter('sqlQuery', i) as string;
+			const simple = this.getNodeParameter('simple', i) as boolean;
+			const options = this.getNodeParameter('options', i);
 
-	if (!qs.dryRun) {
-		const { rows, schema } = response;
+			const qs: IDataObject = options;
+			qs.query = sqlQuery;
 
-		let fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
-		responseData = rows;
+			if (qs.defaultDataset) {
+				qs.defaultDataset = {
+					datasetId: options.defaultDataset,
+					projectId,
+				};
+			}
 
-		if (qs.selectedFields) {
-			fields = (fields as string[]).map((field: string) => parseField(field));
+			const response = await googleApiRequest.call(
+				this,
+				'POST',
+				`/v2/projects/${projectId}/queries`,
+				qs,
+			);
+
+			if (!qs.dryRun) {
+				const { rows, schema } = response;
+
+				let fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
+				responseData = rows;
+
+				if (qs.selectedFields) {
+					fields = (fields as string[]).map((field: string) => parseField(field));
+				}
+
+				responseData = simple ? simplify(responseData, fields) : responseData;
+			} else {
+				responseData = response;
+			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.message }),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionErrorData);
+				continue;
+			}
+			throw new NodeOperationError(this.getNode(), error.message, {
+				itemIndex: i,
+				description: error?.description,
+			});
 		}
-
-		responseData = simple ? simplify(responseData, fields) : responseData;
-	} else {
-		responseData = response;
 	}
-
-	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
-		{ itemData: { item: index } },
-	);
-
-	return executionData;
+	return returnData;
 }
