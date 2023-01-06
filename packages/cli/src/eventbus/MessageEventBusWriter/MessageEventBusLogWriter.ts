@@ -151,11 +151,11 @@ export class MessageEventBusLogWriter {
 			loggedMessages: [],
 			sentMessages: [],
 		};
-		if (logFileName0) {
-			await this.readLoggedMessagesFromFile(results, mode, logFileName0);
-		}
 		if (logFileName1) {
 			await this.readLoggedMessagesFromFile(results, mode, logFileName1);
+		}
+		if (logFileName0) {
+			await this.readLoggedMessagesFromFile(results, mode, logFileName0);
 		}
 		switch (mode) {
 			case 'all':
@@ -209,6 +209,60 @@ export class MessageEventBusLogWriter {
 			}
 		}
 		return results;
+	}
+
+	async getMessagesByExecutionId(
+		executionId: string,
+		logHistory?: number,
+	): Promise<EventMessageTypes[]> {
+		const result: EventMessageTypes[] = [];
+		const logCount = logHistory
+			? Math.min(config.get('eventBus.logWriter.keepLogCount') as number, logHistory)
+			: (config.get('eventBus.logWriter.keepLogCount') as number);
+		for (let i = 0; i < logCount; i++) {
+			const logFileName = await MessageEventBusLogWriter.instance.getThread()?.getLogFileName(i);
+			if (logFileName) {
+				result.push(...(await this.readFromFileByExecutionId(executionId, logFileName)));
+			}
+		}
+		return result.sort((a, b) => a.ts.diff(b.ts).toMillis());
+	}
+
+	async readFromFileByExecutionId(
+		executionId: string,
+		logFileName: string,
+	): Promise<EventMessageTypes[]> {
+		const messages: EventMessageTypes[] = [];
+		if (logFileName && existsSync(logFileName)) {
+			try {
+				const rl = readline.createInterface({
+					input: createReadStream(logFileName),
+					crlfDelay: Infinity,
+				});
+				rl.on('line', (line) => {
+					try {
+						const json = jsonParse(line);
+						if (
+							isEventMessageOptions(json) &&
+							json.__type !== undefined &&
+							json.payload?.executionId === executionId
+						) {
+							const msg = getEventMessageObjectByType(json);
+							if (msg !== null) messages.push(msg);
+						}
+					} catch {
+						LoggerProxy.error(
+							`Error reading line messages from file: ${logFileName}, line: ${line}`,
+						);
+					}
+				});
+				// wait for stream to finish before continue
+				await eventOnce(rl, 'close');
+			} catch {
+				LoggerProxy.error(`Error reading logged messages from file: ${logFileName}`);
+			}
+		}
+		return messages;
 	}
 
 	async getMessagesSent(): Promise<EventMessageTypes[]> {

@@ -234,6 +234,19 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	/**
+	 * This will pull all events for a given execution id from the event log files. Note that this can be a very expensive operation, depending on the number of events and the size of the log files.
+	 * @param executionId id to look for
+	 * @param logHistory defaults to 1, which means it will look at the current log file AND the previous one.
+	 * @returns Array of EventMessageTypes
+	 */
+	async getEventsByExecutionId(
+		executionId: string,
+		logHistory?: number,
+	): Promise<EventMessageTypes[]> {
+		const result = await this.logWriter?.getMessagesByExecutionId(executionId, logHistory);
+		return result;
+	}
+	/**
 	 * Convenience Methods
 	 */
 

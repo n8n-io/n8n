@@ -91,6 +91,19 @@ eventBusRouter.get(
 	}),
 );
 
+eventBusRouter.get(
+	'/execution/:id',
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (req.params?.id) {
+			let logHistory;
+			if (req.query?.logHistory) {
+				logHistory = parseInt(req.query.logHistory as string, 10);
+			}
+			return eventBus.getEventsByExecutionId(req.params.id, logHistory);
+		}
+	}),
+);
+
 eventBusRouter.post(
 	'/event',
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {

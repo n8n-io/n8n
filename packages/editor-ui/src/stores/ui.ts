@@ -29,6 +29,7 @@ import {
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
+	EXECUTION_EVENTS_MODAL_KEY,
 } from '@/constants';
 import {
 	CurlToJSONResponse,
@@ -120,6 +121,10 @@ export const useUIStore = defineStore(STORES.UI, {
 				httpNodeParameters: '',
 			},
 			[LOG_STREAM_MODAL_KEY]: {
+				open: false,
+				data: undefined,
+			},
+			[EXECUTION_EVENTS_MODAL_KEY]: {
 				open: false,
 				data: undefined,
 			},

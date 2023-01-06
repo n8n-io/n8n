@@ -157,7 +157,6 @@
 								{{ $locale.baseText('executionsList.unknown') }}
 							</span>
 						</n8n-tooltip>
-
 						<el-dropdown trigger="click" @command="handleRetryClick">
 							<span class="retry-button">
 								<n8n-icon-button
@@ -240,6 +239,14 @@
 									@click.stop="(e) => displayExecution(scope.row, e)"
 								/>
 							</span>
+							<span v-if="scope.row.id">
+								<n8n-icon-button
+									icon="list"
+									size="small"
+									:title="$locale.baseText('executionEvents.buttonLabel')"
+									@click.stop="() => getExecutionEvents(scope.row)"
+								/>
+							</span>
 						</div>
 					</template>
 				</el-table-column>
@@ -278,6 +285,7 @@ import {
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	EXECUTION_EVENTS_MODAL_KEY,
 } from '@/constants';
 
 import { restApi } from '@/mixins/restApi';
@@ -335,6 +343,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			workflows: [] as IWorkflowShortResponse[],
 			modalBus: new Vue(),
 			EXECUTIONS_MODAL_KEY,
+			EXECUTION_EVENTS_MODAL_KEY,
 		};
 	},
 	async created() {
@@ -912,6 +921,17 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
 				);
 			}
+		},
+		async getExecutionEvents(row: any) {
+			console.log(row, EXECUTION_EVENTS_MODAL_KEY);
+			this.uiStore.openModalWithData({
+				name: EXECUTION_EVENTS_MODAL_KEY,
+				data: {
+					executionId: row.id,
+					workflowName: row.workflowName,
+					workflowId: row.workflowId,
+				},
+			});
 		},
 	},
 });

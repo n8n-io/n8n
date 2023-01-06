@@ -107,6 +107,17 @@
 				/>
 			</template>
 		</ModalRoot>
+
+		<ModalRoot :name="EXECUTION_EVENTS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<ExecutionEvents
+					:modalName="modalName"
+					:executionId="data.executionId"
+					:workflowId="data.workflowId"
+					:workflowName="data.workflowName"
+				/>
+			</template>
+		</ModalRoot>
 	</div>
 </template>
 
@@ -134,6 +145,7 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
+	EXECUTION_EVENTS_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -158,6 +170,7 @@ import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsModal from '@/components/SettingsLogStreaming/EventDestinationSettingsModal.ee.vue';
+import ExecutionEvents from './ExecutionEvents.vue';
 
 export default Vue.extend({
 	name: 'Modals',
@@ -184,6 +197,7 @@ export default Vue.extend({
 		WorkflowShareModal,
 		ImportCurlModal,
 		EventDestinationSettingsModal,
+		ExecutionEvents,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -207,6 +221,7 @@ export default Vue.extend({
 		WORKFLOW_ACTIVE_MODAL_KEY,
 		IMPORT_CURL_MODAL_KEY,
 		LOG_STREAM_MODAL_KEY,
+		EXECUTION_EVENTS_MODAL_KEY,
 	}),
 });
 </script>
