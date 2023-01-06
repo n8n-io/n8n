@@ -95,7 +95,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 					},
 					{
 						name: 'Client Deleted',
-						value: 'update_client',
+						value: 'delete_client',
 					},
 					{
 						name: 'Vendor Created',
