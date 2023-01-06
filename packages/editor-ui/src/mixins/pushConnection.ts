@@ -325,7 +325,7 @@ export const pushConnection = mixins(
 							type: 'error',
 							duration: 0,
 						});
-					} else {
+					} else if (!runDataExecuted.manuallyStopped) {
 						let title: string;
 						if (runDataExecuted.data.resultData.lastNodeExecuted) {
 							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;

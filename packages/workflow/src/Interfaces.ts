@@ -1503,6 +1503,7 @@ export interface IRun {
 	waitTill?: Date;
 	startedAt: Date;
 	stoppedAt?: Date;
+	manuallyStopped?: boolean;
 }
 
 // Contains all the data which is needed to execute a workflow and so also to

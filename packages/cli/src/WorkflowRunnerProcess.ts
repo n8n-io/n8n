@@ -482,6 +482,7 @@ process.on('message', async (message: IProcessMessage) => {
 						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
+					manuallyStopped: message.type === 'stopExecution',
 				};
 
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises

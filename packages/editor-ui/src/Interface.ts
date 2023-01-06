@@ -542,6 +542,7 @@ export interface IPushDataExecutionFinished {
 	data: IRun;
 	executionId: string;
 	retryOf?: string;
+	manuallyStopped: boolean;
 }
 
 export interface IPushDataExecutionStarted {
