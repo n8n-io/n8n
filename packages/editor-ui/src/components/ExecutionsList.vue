@@ -155,21 +155,14 @@
 								size="small"
 								outline
 								:label="$locale.baseText('executionsList.view')"
-								@click.stop="(e) => displayExecution(execution, e)"
+								@click.stop="displayExecution(execution)"
 							/>
 						</div>
 					</td>
 					<td>
-						<el-dropdown trigger="click" @command="handleRetryClick">
+						<el-dropdown trigger="click" @command="handleActionItemClick">
 							<span class="retry-button">
 								<n8n-icon-button
-									v-if="
-										execution.stoppedAt !== undefined &&
-										!execution.finished &&
-										execution.retryOf === undefined &&
-										execution.retrySuccessId === undefined &&
-										!execution.waitTill
-									"
 									text
 									type="tertiary"
 									size="mini"
@@ -178,12 +171,26 @@
 								/>
 							</span>
 							<template #dropdown>
-								<el-dropdown-menu>
-									<el-dropdown-item :command="{ command: 'currentlySaved', row: execution }">
+								<el-dropdown-menu :class="$style.actions">
+									<el-dropdown-item
+										v-if="isExecutionRetriable(execution)"
+										:class="$style.retryAction"
+										:command="{ command: 'currentlySaved', execution }"
+									>
 										{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 									</el-dropdown-item>
-									<el-dropdown-item :command="{ command: 'original', row: execution }">
+									<el-dropdown-item
+										v-if="isExecutionRetriable(execution)"
+										:class="$style.retryAction"
+										:command="{ command: 'original', execution }"
+									>
 										{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+									</el-dropdown-item>
+									<el-dropdown-item
+										:class="$style.deleteAction"
+										:command="{ command: 'delete', execution }"
+									>
+										{{ $locale.baseText('generic.delete') }}
 									</el-dropdown-item>
 								</el-dropdown-menu>
 							</template>
@@ -214,7 +221,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { VIEWS } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -222,7 +229,6 @@ import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
-	IExecutionShortResponse,
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
@@ -368,36 +374,12 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			const date = dateformat(epochTime, 'd mmm, yyyy');
 			return this.$locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
-		displayExecution(execution: IExecutionsSummary, e: PointerEvent) {
-			if (
-				!this.workflowsStore.workflowId ||
-				this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-				execution.workflowId !== this.workflowsStore.workflowId
-			) {
-				const workflowExecutions: IExecutionsSummary[] = this.combinedExecutions.filter(
-					(ex) => ex.workflowId === execution.workflowId,
-				);
-				this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
-				this.workflowsStore.activeWorkflowExecution = execution;
-			}
-
-			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: execution.workflowId, executionId: execution.id },
-				});
-				window.open(route.href, '_blank');
-
-				return;
-			}
-
-			this.$router
-				.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: execution.workflowId, executionId: execution.id },
-				})
-				.catch(() => {});
-			this.$emit('closeModal');
+		displayExecution(execution: IExecutionsSummary) {
+			const route = this.$router.resolve({
+				name: VIEWS.EXECUTION_PREVIEW,
+				params: { name: execution.workflowId, executionId: execution.id },
+			});
+			window.open(route.href, '_blank');
 		},
 		handleAutoRefreshToggle() {
 			if (this.autoRefreshInterval) {
@@ -433,14 +415,14 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				this.$locale.baseText('executionsList.confirmMessage.cancelButtonText'),
 			);
 
-			if (deleteExecutions === false) {
+			if (!deleteExecutions) {
 				return;
 			}
 
 			this.isDataLoading = true;
 
 			const sendData: IExecutionDeleteFilter = {};
-			if (this.checkAll === true) {
+			if (this.checkAll) {
 				sendData.deleteBefore = this.finishedExecutions[0].startedAt as Date;
 			} else {
 				sendData.ids = Object.keys(this.selectedItems);
@@ -513,19 +495,24 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		handleFilterChanged() {
 			this.refreshData();
 		},
-		handleRetryClick(commandData: { command: string; row: IExecutionShortResponse }) {
-			let loadWorkflow = false;
-			if (commandData.command === 'currentlySaved') {
-				loadWorkflow = true;
+		handleActionItemClick(commandData: { command: string; execution: IExecutionsSummary }) {
+			if (['currentlySaved', 'original'].includes(commandData.command)) {
+				let loadWorkflow = false;
+				if (commandData.command === 'currentlySaved') {
+					loadWorkflow = true;
+				}
+
+				this.retryExecution(commandData.execution, loadWorkflow);
+
+				this.$telemetry.track('User clicked retry execution button', {
+					workflow_id: this.workflowsStore.workflowId,
+					execution_id: commandData.execution.id,
+					retry_type: loadWorkflow ? 'current' : 'original',
+				});
 			}
-
-			this.retryExecution(commandData.row, loadWorkflow);
-
-			this.$telemetry.track('User clicked retry execution button', {
-				workflow_id: this.workflowsStore.workflowId,
-				execution_id: commandData.row.id,
-				retry_type: loadWorkflow ? 'current' : 'original',
-			});
+			if (commandData.command === 'delete') {
+				this.deleteExecution(commandData.execution);
+			}
 		},
 		getRowClass(execution: IExecutionsSummary): string {
 			const classes: string[] = [this.$style.execRow];
@@ -735,13 +722,13 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				);
 			}
 		},
-		async retryExecution(execution: IExecutionShortResponse, loadWorkflow?: boolean) {
+		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
 			this.isDataLoading = true;
 
 			try {
 				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
 
-				if (retrySuccessful === true) {
+				if (retrySuccessful) {
 					this.$showMessage({
 						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
 						type: 'success',
@@ -837,6 +824,28 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 					this.$locale.baseText('executionsList.showError.stopExecution.title'),
 				);
 			}
+		},
+		isExecutionRetriable(execution: IExecutionsSummary): boolean {
+			return (
+				execution.stoppedAt !== undefined &&
+				!execution.finished &&
+				execution.retryOf === undefined &&
+				execution.retrySuccessId === undefined &&
+				!execution.waitTill
+			);
+		},
+		async deleteExecution(execution: IExecutionsSummary) {
+			this.isDataLoading = true;
+			try {
+				await this.restApi().deleteExecutions({ ids: [execution.id] });
+				await this.refreshData();
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+				);
+			}
+			this.isDataLoading = true;
 		},
 	},
 });
@@ -1007,5 +1016,13 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	text-align: center;
 	font-size: var(--font-size-s);
 	padding: var(--spacing-l) 0;
+}
+
+.actions:not(:has(li + li)) {
+	padding: 0;
+}
+
+.retryAction + .deleteAction {
+	border-top: 1px solid var(--color-foreground-light);
 }
 </style>
