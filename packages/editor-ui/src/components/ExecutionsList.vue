@@ -102,7 +102,6 @@
 								<font-awesome-icon icon="spinner" spin />
 								<execution-time :start-time="execution.startedAt" />
 							</span>
-							&nbsp;
 							<i18n :path="getStatusTextTranslationPath(execution)">
 								<template #status>
 									<span :class="$style.status">{{ getStatusText(execution) }}</span>
@@ -143,23 +142,21 @@
 					</td>
 					<td>
 						<div :class="$style.actionsContainer">
-							<span v-if="execution.stoppedAt === undefined || execution.waitTill">
-								<n8n-button
-									size="small"
-									outline
-									:label="$locale.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
-									:loading="stoppingExecutions.includes(execution.id)"
-								/>
-							</span>
-							<span v-if="execution.stoppedAt !== undefined && execution.id">
-								<n8n-button
-									size="small"
-									outline
-									:label="$locale.baseText('executionsList.view')"
-									@click.stop="(e) => displayExecution(execution, e)"
-								/>
-							</span>
+							<n8n-button
+								v-if="execution.stoppedAt === undefined || execution.waitTill"
+								size="small"
+								outline
+								:label="$locale.baseText('executionsList.stop')"
+								@click.stop="stopExecution(execution.id)"
+								:loading="stoppingExecutions.includes(execution.id)"
+							/>
+							<n8n-button
+								v-if="execution.stoppedAt !== undefined && execution.id"
+								size="small"
+								outline
+								:label="$locale.baseText('executionsList.view')"
+								@click.stop="(e) => displayExecution(execution, e)"
+							/>
 						</div>
 					</td>
 					<td>
@@ -893,24 +890,49 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	}
 }
 
-.actionsContainer > * {
-	margin-left: 5px;
+.actionsContainer {
+	overflow: hidden;
+
+	button {
+		transform: translateX(1000%);
+		transition: transform 0s;
+
+		.execRow:hover & {
+			transform: translateX(0);
+		}
+
+		&:not(:first-child) {
+			margin-left: 5px;
+		}
+	}
 }
 
 .execTable {
+	/*
+	  Table height needs to be set to 0 in order to use height 100% for elements in table cells
+	*/
+	height: 0;
 	width: 100%;
 	text-align: left;
 	font-size: var(--font-size-s);
 
-	th,
-	td {
-		padding: var(--spacing-s);
-		background: var(--color-background-xlight);
+	thead th {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
+		background: var(--color-background-base);
 
 		&:first-child {
-			padding-right: 0;
-			border-left: var(--spacing-4xs) solid var(--color-background-base);
+			padding-left: var(--spacing-s);
 		}
+	}
+
+	th,
+	td {
+		height: 100%;
+		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
+		background: var(--color-background-xlight);
 
 		&:not(:first-child, :nth-last-child(-n + 3)) {
 			width: 100%;
@@ -931,12 +953,25 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		}
 	}
 
-	th {
-		background: var(--color-background-base);
-	}
-
 	.execRow {
 		color: var(--color-text-base);
+
+		td:first-child {
+			width: 30px;
+			padding: 0 var(--spacing-s) 0 0;
+
+			/*
+			  This is needed instead of table cell border because they are overlapping the sticky header
+			*/
+			&::before {
+				content: '';
+				display: inline-block;
+				width: var(--spacing-4xs);
+				height: 100%;
+				vertical-align: middle;
+				margin-right: var(--spacing-xs);
+			}
+		}
 
 		&:nth-child(even) td {
 			background: var(--color-background-light);
@@ -946,24 +981,24 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			background: var(--color-primary-tint-3);
 		}
 
-		&.failed td:first-child {
-			border-left-color: var(--color-danger);
+		&.failed td:first-child::before {
+			background: var(--color-danger);
 		}
 
-		&.success td:first-child {
-			border-left-color: var(--color-success);
+		&.success td:first-child::before {
+			background: var(--color-success);
 		}
 
-		&.running td:first-child {
-			border-left-color: var(--color-warning);
+		&.running td:first-child::before {
+			background: var(--color-warning);
 		}
 
-		&.waiting td:first-child {
-			border-left-color: var(--color-secondary);
+		&.waiting td:first-child::before {
+			background: var(--color-secondary);
 		}
 
-		&.unknown td:first-child {
-			border-left-color: var(--color-background-dark);
+		&.unknown td:first-child::before {
+			background: var(--color-background-dark);
 		}
 	}
 }
