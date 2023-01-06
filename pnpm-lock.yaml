@@ -509,9 +509,9 @@ importers:
 
   packages/editor-ui:
     specifiers:
-      '@codemirror/autocomplete': ^6.1.0
+      '@codemirror/autocomplete': ^6.4.0
       '@codemirror/commands': ^6.1.0
-      '@codemirror/lang-javascript': ^6.0.2
+      '@codemirror/lang-javascript': ^6.1.2
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
       '@codemirror/state': ^6.1.4
@@ -586,9 +586,9 @@ importers:
       vue2-touch-events: ^3.2.1
       xss: ^1.0.10
     dependencies:
-      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/commands': 6.1.2
-      '@codemirror/lang-javascript': 6.1.0
+      '@codemirror/lang-javascript': 6.1.2
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
       '@codemirror/state': 6.1.4
@@ -2665,8 +2665,8 @@ packages:
       minimist: 1.2.7
     dev: true
 
-  /@codemirror/autocomplete/6.3.0_wo7q3lvweq5evsu423o7qzum5i:
-    resolution: {integrity: sha512-4jEvh3AjJZTDKazd10J6ZsCIqaYxDMCeua5ouQxY8hlFIml+nr7le0SgBhT3SIytFBmdzPK3AUhXGuW3T79nVg==}
+  /@codemirror/autocomplete/6.4.0_wo7q3lvweq5evsu423o7qzum5i:
+    resolution: {integrity: sha512-HLF2PnZAm1s4kGs30EiqKMgD7XsYaQ0XJnMR0rofEWQ5t5D60SfqpDIkIh1ze5tiEbyUWm8+VJ6W1/erVvBMIA==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
       '@codemirror/state': ^6.0.0
@@ -2688,10 +2688,10 @@ packages:
       '@lezer/common': 1.0.1
     dev: false
 
-  /@codemirror/lang-javascript/6.1.0:
-    resolution: {integrity: sha512-wAWEY1Wdis2cKDy9A5q/rUmzLHFbZgoupJBcGaeMMsDPi68Rm90NsmzAEODE5kW8mYdRKFhQ157WJghOZ3yYdg==}
+  /@codemirror/lang-javascript/6.1.2:
+    resolution: {integrity: sha512-OcwLfZXdQ1OHrLiIcKCn7MqZ7nx205CMKlhe+vL88pe2ymhT9+2P+QhwkYGxMICj8TDHyp8HFKVwpiisUT7iEQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
       '@codemirror/state': 6.1.4
@@ -9031,7 +9031,7 @@ packages:
   /codemirror-lang-n8n-expression/0.1.0_zyklskjzaprvz25ee7sq7godcq:
     resolution: {integrity: sha512-20ss5p0koTu5bfivr1sBHYs7cpjWT2JhVB5gn7TX9WWPt+v/9p9tEcYSOyL/sm+OFuWh698Cgnmrba4efQnMCQ==}
     dependencies:
-      '@codemirror/autocomplete': 6.3.0_wo7q3lvweq5evsu423o7qzum5i
+      '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/language': 6.2.1
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3

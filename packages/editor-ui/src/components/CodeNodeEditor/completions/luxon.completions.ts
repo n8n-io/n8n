@@ -76,7 +76,7 @@ export const luxonCompletions = (Vue as CodeNodeEditorMixin).extend({
 		/**
 		 * Complete `DateTime` with luxon `DateTime` static methods.
 		 */
-		dateTimeCompltions(context: CompletionContext, matcher = 'DateTime'): CompletionResult | null {
+		dateTimeCompletions(context: CompletionContext, matcher = 'DateTime'): CompletionResult | null {
 			const pattern = new RegExp(`${escape(matcher)}\..*`);
 
 			const preCursor = context.matchBefore(pattern);
