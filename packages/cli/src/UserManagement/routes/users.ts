@@ -14,6 +14,8 @@ import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
+	addInviteLinktoUser,
+	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
@@ -34,25 +36,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
-			if (config.getEnv('userManagement.emails.mode') === '') {
-				Logger.debug(
-					'Request to send email invite(s) to user(s) failed because emailing was not set up',
-				);
-				throw new ResponseHelper.InternalServerError(
-					'Email sending must be set up in order to request a password reset email',
-				);
-			}
-
-			let mailer: UserManagementMailer.UserManagementMailer | undefined;
-			try {
-				mailer = await UserManagementMailer.getInstance();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.InternalServerError(
-						`There is a problem with your SMTP setup! ${error.message}`,
-					);
-				}
-			}
+			const mailer = UserManagementMailer.getInstance();
 
 			// TODO: this should be checked in the middleware rather than here
 			if (isUserManagementDisabled()) {
@@ -143,19 +127,13 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
-
-				void InternalHooksManager.getInstance().onUserInvite({
-					user: req.user,
-					target_user_id: Object.values(createUsers) as string[],
-					public_api: false,
-				});
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.InternalServerError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
+			Logger.debug('Created user shell(s) successfully', { userId: req.user.id });
 			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
@@ -168,39 +146,61 @@ export function usersNamespace(this: N8nApp): void {
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer?.invite({
-						email,
-						inviteAcceptUrl,
-						domain: baseUrl,
-					});
-					const resp: { user: { id: string | null; email: string }; error?: string } = {
+					if (!id) {
+						// This should never happen since those are removed from the list before reaching this point
+						throw new ResponseHelper.InternalServerError(
+							'User ID is missing for user with email address',
+						);
+					}
+					const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
+					const resp: {
+						user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
+						error?: string;
+					} = {
 						user: {
 							id,
 							email,
+							inviteAcceptUrl,
+							emailSent: false,
 						},
 					};
-					if (result?.success) {
-						void InternalHooksManager.getInstance().onUserTransactionalEmail({
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							user_id: id!,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-					} else {
-						void InternalHooksManager.getInstance().onEmailFailed({
-							user: req.user,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-						Logger.error('Failed to send email', {
-							userId: req.user.id,
+					try {
+						const result = await mailer.invite({
+							email,
 							inviteAcceptUrl,
 							domain: baseUrl,
-							email,
 						});
-						resp.error = 'Email could not be sent';
+						if (result.emailSent) {
+							resp.user.emailSent = true;
+							void InternalHooksManager.getInstance().onUserTransactionalEmail({
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								user_id: id,
+								message_type: 'New user invite',
+								public_api: false,
+							});
+						}
+
+						void InternalHooksManager.getInstance().onUserInvite({
+							user: req.user,
+							target_user_id: Object.values(createUsers) as string[],
+							public_api: false,
+							email_sent: result.emailSent,
+						});
+					} catch (error) {
+						if (error instanceof Error) {
+							void InternalHooksManager.getInstance().onEmailFailed({
+								user: req.user,
+								message_type: 'New user invite',
+								public_api: false,
+							});
+							Logger.error('Failed to send email', {
+								userId: req.user.id,
+								inviteAcceptUrl,
+								domain: baseUrl,
+								email,
+							});
+							resp.error = error.message;
+						}
 					}
 					return resp;
 				}),
@@ -361,10 +361,13 @@ export function usersNamespace(this: N8nApp): void {
 
 	this.app.get(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async () => {
+		ResponseHelper.send(async (req: UserRequest.List) => {
 			const users = await Db.collections.User.find({ relations: ['globalRole'] });
 
-			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
+			return users.map(
+				(user): PublicUser =>
+					addInviteLinktoUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+			);
 		}),
 	);
 
@@ -563,22 +566,27 @@ export function usersNamespace(this: N8nApp): void {
 			const baseUrl = getInstanceBaseUrl();
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
-			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			const mailer = UserManagementMailer.getInstance();
 			try {
-				mailer = await UserManagementMailer.getInstance();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.InternalServerError(error.message);
+				const result = await mailer.invite({
+					email: reinvitee.email,
+					inviteAcceptUrl,
+					domain: baseUrl,
+				});
+				if (result.emailSent) {
+					void InternalHooksManager.getInstance().onUserReinvite({
+						user: req.user,
+						target_user_id: reinvitee.id,
+						public_api: false,
+					});
+
+					void InternalHooksManager.getInstance().onUserTransactionalEmail({
+						user_id: reinvitee.id,
+						message_type: 'Resend invite',
+						public_api: false,
+					});
 				}
-			}
-
-			const result = await mailer?.invite({
-				email: reinvitee.email,
-				inviteAcceptUrl,
-				domain: baseUrl,
-			});
-
-			if (!result?.success) {
+			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
 					user: reinvitee,
 					message_type: 'Resend invite',
@@ -591,19 +599,6 @@ export function usersNamespace(this: N8nApp): void {
 				});
 				throw new ResponseHelper.InternalServerError(`Failed to send email to ${reinvitee.email}`);
 			}
-
-			void InternalHooksManager.getInstance().onUserReinvite({
-				user: reinvitee,
-				target_user_id: reinvitee.id,
-				public_api: false,
-			});
-
-			void InternalHooksManager.getInstance().onUserTransactionalEmail({
-				user_id: reinvitee.id,
-				message_type: 'Resend invite',
-				public_api: false,
-			});
-
 			return { success: true };
 		}),
 	);

@@ -255,7 +255,7 @@ export class Expression {
 		const returnValue = this.renderExpression(parameterValue, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
-			throw new Error(`${returnValue.name} is a function. Please add ()`);
+			throw new Error('This is a function. Please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
