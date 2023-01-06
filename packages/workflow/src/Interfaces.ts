@@ -563,6 +563,7 @@ namespace ExecuteFunctions {
 		export type NodeParameter =
 			| 'binaryProperty'
 			| 'binaryPropertyName'
+			| 'binaryPropertyOutput'
 			| 'dataPropertyName'
 			| 'dataBinaryProperty'
 			| 'resource'

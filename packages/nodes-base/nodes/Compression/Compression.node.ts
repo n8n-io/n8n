@@ -308,7 +308,7 @@ export class Compression implements INodeType {
 					if (outputFormat === 'zip') {
 						const fileName = this.getNodeParameter('fileName', 0) as string;
 
-						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0) as string;
+						const binaryPropertyOutput = this.getNodeParameter('binaryPropertyOutput', 0);
 
 						const buffer = await zip(zipData);
 
