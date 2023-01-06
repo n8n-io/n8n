@@ -13,6 +13,18 @@ export const quoteOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a quote',
+				action: 'Get a quote',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many quotes',
+				action: 'Get many quotes',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new quote',
@@ -36,24 +48,122 @@ export const quoteOperations: INodeProperties[] = [
 				description: 'Email an quote',
 				action: 'Email a quote',
 			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of a quote',
-				action: 'Get a quote',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get data of many quotes',
-				action: 'Get many quotes',
-			},
 		],
 		default: 'create',
 	},
 ];
 
 export const quoteFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  quote:get                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Quote ID',
+		name: 'quoteId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['quote'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['quote'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  quote:getAll                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['quote'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['quote'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['quote'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Quote Number',
+				name: 'quoteNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 quote:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -86,24 +196,6 @@ export const quoteFields: INodeProperties[] = [
 				name: 'autoBill',
 				type: 'boolean',
 				default: false,
-			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
 			},
 			{
 				displayName: 'Discount',
@@ -207,28 +299,28 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 1',
-				name: 'taxName1',
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 2',
-				name: 'taxName2',
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Rate 1',
-				name: 'taxRate1',
-				type: 'number',
-				default: 0,
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
 			},
 			{
-				displayName: 'Tax Rate 2',
-				name: 'taxRate2',
-				type: 'number',
-				default: 0,
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
@@ -360,24 +452,6 @@ export const quoteFields: INodeProperties[] = [
 				default: false,
 			},
 			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'number',
-				typeOptions: {
-					minValue: 0,
-				},
-				default: 0,
-			},
-			{
 				displayName: 'Discount',
 				name: 'discount',
 				type: 'string',
@@ -479,28 +553,28 @@ export const quoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 1',
-				name: 'taxName1',
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Name 2',
-				name: 'taxName2',
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
 				type: 'string',
 				default: '',
 			},
 			{
-				displayName: 'Tax Rate 1',
-				name: 'taxRate1',
-				type: 'number',
-				default: 0,
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
 			},
 			{
-				displayName: 'Tax Rate 2',
-				name: 'taxRate2',
-				type: 'number',
-				default: 0,
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
 			},
 		],
 	},
@@ -558,28 +632,28 @@ export const quoteFields: INodeProperties[] = [
 						default: 0,
 					},
 					{
-						displayName: 'Tax Name 1',
-						name: 'taxName1',
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Tax Name 2',
-						name: 'taxName2',
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
 						type: 'string',
 						default: '',
 					},
 					{
-						displayName: 'Tax Rate 1',
-						name: 'taxRate1',
-						type: 'number',
-						default: 0,
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						default: '',
 					},
 					{
-						displayName: 'Tax Rate 2',
-						name: 'taxRate2',
-						type: 'number',
-						default: 0,
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						default: '',
 					},
 				],
 			},
@@ -616,115 +690,5 @@ export const quoteFields: INodeProperties[] = [
 				operation: ['email'],
 			},
 		},
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  quote:get                                 */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Quote ID',
-		name: 'quoteId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['quote'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['quote'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  quote:getAll                              */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['quote'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['quote'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 60,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['quote'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Quote Number',
-				name: 'quoteNumber',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
-			},
-		],
 	},
 ];

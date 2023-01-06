@@ -6,7 +6,7 @@ export interface IContact {
 }
 
 export interface IClient {
-	contacts?: IContact[];
+	id_number?: string;
 	name?: string;
 	address1?: string;
 	address2?: string;
@@ -21,8 +21,13 @@ export interface IClient {
 	shipping_postal_code?: string;
 	shipping_country_id?: number;
 	work_phone?: string;
-	private_notes?: string;
 	website?: string;
 	vat_number?: string;
-	id_number?: string;
+	contacts?: IContact[];
+	private_notes?: string;
+	public_notes?: string;
+	custom_value1?: string;
+	custom_value2?: string;
+	custom_value3?: string;
+	custom_value4?: string;
 }

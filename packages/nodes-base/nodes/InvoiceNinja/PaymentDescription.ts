@@ -13,6 +13,18 @@ export const paymentOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a payment',
+				action: 'Get a payment',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many payments',
+				action: 'Get many payments',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new payment',
@@ -30,24 +42,116 @@ export const paymentOperations: INodeProperties[] = [
 				description: 'Delete a payment',
 				action: 'Delete a payment',
 			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of a payment',
-				action: 'Get a payment',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get data of many payments',
-				action: 'Get many payments',
-			},
 		],
 		default: 'create',
 	},
 ];
 
 export const paymentFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  payment:get                                  */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Payment ID',
+		name: 'paymentId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['payment'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['payment'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  payment:getAll                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['payment'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['payment'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['payment'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+				],
+				default: 'client',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 payment:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -241,9 +345,42 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
+				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
 				type: 'string',
 				default: '',
 			},
@@ -455,9 +592,42 @@ export const paymentFields: INodeProperties[] = [
 			{
 				displayName: 'Private Notes',
 				name: 'privateNotes',
+				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
 				type: 'string',
 				default: '',
 			},
@@ -478,109 +648,5 @@ export const paymentFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  payment:get                                  */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Payment ID',
-		name: 'paymentId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['payment'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['payment'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  payment:getAll                              */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['payment'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['payment'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 60,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['payment'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-				],
-				default: 'client',
-			},
-		],
 	},
 ];

@@ -13,6 +13,18 @@ export const expenseOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of an expense',
+				action: 'Get an expense',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many expenses',
+				action: 'Get many expenses',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new expense',
@@ -30,24 +42,62 @@ export const expenseOperations: INodeProperties[] = [
 				description: 'Delete an expense',
 				action: 'Delete an expense',
 			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of an expense',
-				action: 'Get an expense',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get data of many expenses',
-				action: 'Get many expenses',
-			},
 		],
 		default: 'create',
 	},
 ];
 
 export const expenseFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:get                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Expense ID',
+		name: 'expenseId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['expense'],
+				operation: ['get'],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  expense:getAll                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['expense'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['expense'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 expense:create                             */
 	/* -------------------------------------------------------------------------- */
@@ -289,6 +339,12 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Tax Name 3',
+				name: 'taxName3',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Tax Rate 1',
 				name: 'taxRate1',
 				type: 'number',
@@ -297,6 +353,12 @@ export const expenseFields: INodeProperties[] = [
 			{
 				displayName: 'Tax Rate 2',
 				name: 'taxRate2',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Rate 3',
+				name: 'taxRate3',
 				type: 'number',
 				default: 0,
 			},
@@ -573,6 +635,12 @@ export const expenseFields: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Tax Name 3',
+				name: 'taxName3',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Tax Rate 1',
 				name: 'taxRate1',
 				type: 'number',
@@ -581,6 +649,12 @@ export const expenseFields: INodeProperties[] = [
 			{
 				displayName: 'Tax Rate 2',
 				name: 'taxRate2',
+				type: 'number',
+				default: 0,
+			},
+			{
+				displayName: 'Tax Rate 3',
+				name: 'taxRate3',
 				type: 'number',
 				default: 0,
 			},
@@ -618,55 +692,5 @@ export const expenseFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  expense:get                               */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Expense ID',
-		name: 'expenseId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['expense'],
-				operation: ['get'],
-			},
-		},
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  expense:getAll                             */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['expense'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['expense'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 60,
-		},
-		default: 50,
-		description: 'Max number of results to return',
 	},
 ];

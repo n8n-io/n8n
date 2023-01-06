@@ -13,6 +13,18 @@ export const clientOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a client',
+				action: 'Get a client',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many clients',
+				action: 'Get many clients',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new client',
@@ -30,24 +42,116 @@ export const clientOperations: INodeProperties[] = [
 				description: 'Delete a client',
 				action: 'Delete a client',
 			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of a client',
-				action: 'Get a client',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get data of many clients',
-				action: 'Get many clients',
-			},
 		],
 		default: 'create',
 	},
 ];
 
 export const clientFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:get                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Invoices',
+						value: 'invoices',
+					},
+				],
+				default: 'invoices',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:getAll                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['getAll'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['client'],
+				operation: ['getAll'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 60,
+		},
+		default: 50,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'options',
+				options: [
+					{
+						name: 'Invoices',
+						value: 'invoices',
+					},
+				],
+				default: 'invoices',
+			},
+		],
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 client:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -77,15 +181,6 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
-				name: 'privateNotes',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
 				displayName: 'VAT Number',
 				name: 'vatNumber',
 				type: 'string',
@@ -101,6 +196,52 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 		],
@@ -326,15 +467,6 @@ export const clientFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Private Notes',
-				name: 'privateNotes',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
 				displayName: 'VAT Number',
 				name: 'vatNumber',
 				type: 'string',
@@ -350,6 +482,52 @@ export const clientFields: INodeProperties[] = [
 				displayName: 'Website',
 				name: 'website',
 				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				typeOptions: {},
 				default: '',
 			},
 		],
@@ -548,109 +726,5 @@ export const clientFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  client:get                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Client ID',
-		name: 'clientId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['client'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['get'],
-				resource: ['client'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Invoices',
-						value: 'invoices',
-					},
-				],
-				default: 'invoices',
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                  client:getAll                             */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['client'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		displayOptions: {
-			show: {
-				resource: ['client'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-		typeOptions: {
-			minValue: 1,
-			maxValue: 60,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-	},
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['client'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Include',
-				name: 'include',
-				type: 'options',
-				options: [
-					{
-						name: 'Invoices',
-						value: 'invoices',
-					},
-				],
-				default: 'invoices',
-			},
-		],
 	},
 ];

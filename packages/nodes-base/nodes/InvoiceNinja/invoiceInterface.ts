@@ -12,8 +12,6 @@ export interface IItem {
 export interface IInvoice {
 	auto_bill?: boolean;
 	client_id?: number;
-	custom_value1?: number;
-	custom_value2?: number;
 	email_invoice?: boolean;
 	email?: string;
 	discount?: number;
@@ -27,10 +25,16 @@ export interface IInvoice {
 	partial?: number;
 	partial_due_date?: string;
 	po_number?: string;
-	private_notes?: string;
-	public_notes?: string;
 	tax_name1?: string;
 	tax_name2?: string;
+	tax_name3?: string;
 	tax_rate1?: number;
 	tax_rate2?: number;
+	tax_rate3?: number;
+	private_notes?: string;
+	public_notes?: string;
+	custom_value1?: string;
+	custom_value2?: string;
+	custom_value3?: string;
+	custom_value4?: string;
 }

@@ -13,6 +13,18 @@ export const taskOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a task',
+				action: 'Get a task',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many tasks',
+				action: 'Get many tasks',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new task',
@@ -30,265 +42,12 @@ export const taskOperations: INodeProperties[] = [
 				description: 'Delete a task',
 				action: 'Delete a task',
 			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of a task',
-				action: 'Get a task',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get data of many tasks',
-				action: 'Get many tasks',
-			},
 		],
 		default: 'create',
 	},
 ];
 
 export const taskFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 task:create                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['create'],
-				resource: ['task'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Client Name or ID',
-				name: 'client',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClients',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project Name or ID',
-				name: 'project',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Time Logs',
-		name: 'timeLogsUi',
-		placeholder: 'Add Time Log',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['create'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'timeLogsValues',
-				displayName: 'Time Log',
-				values: [
-					{
-						displayName: 'Start Date',
-						name: 'startDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Date',
-						name: 'endDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'Duration (Hours)',
-						name: 'duration',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 0,
-					},
-				],
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 task:update                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Task ID',
-		name: 'taskId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['update'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['task'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Client Name or ID',
-				name: 'client',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getClients',
-				},
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 1',
-				name: 'customValue1',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Custom Value 2',
-				name: 'customValue2',
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Description',
-				name: 'description',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Project Name or ID',
-				name: 'project',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getProjects',
-				},
-				default: '',
-			},
-		],
-	},
-	{
-		displayName: 'Time Logs',
-		name: 'timeLogsUi',
-		placeholder: 'Add Time Log',
-		type: 'fixedCollection',
-		typeOptions: {
-			multipleValues: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['update'],
-			},
-		},
-		default: {},
-		options: [
-			{
-				name: 'timeLogsValues',
-				displayName: 'Time Log',
-				values: [
-					{
-						displayName: 'Start Date',
-						name: 'startDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'End Date',
-						name: 'endDate',
-						type: 'dateTime',
-						default: '',
-					},
-					{
-						displayName: 'Duration (Hours)',
-						name: 'duration',
-						type: 'number',
-						typeOptions: {
-							minValue: 0,
-						},
-						default: 0,
-					},
-				],
-			},
-		],
-	},
-	/* -------------------------------------------------------------------------- */
-	/*                                 task:delete                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Task ID',
-		name: 'taskId',
-		type: 'string',
-		default: '',
-		required: true,
-		displayOptions: {
-			show: {
-				resource: ['task'],
-				operation: ['delete'],
-			},
-		},
-	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  task:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -392,5 +151,270 @@ export const taskFields: INodeProperties[] = [
 				default: 'client',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:create                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['create'],
+				resource: ['task'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Client Name or ID',
+				name: 'client',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClients',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project Name or ID',
+				name: 'project',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Time Logs',
+		name: 'timeLogsUi',
+		placeholder: 'Add Time Log',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'timeLogsValues',
+				displayName: 'Time Log',
+				values: [
+					{
+						displayName: 'Start Date',
+						name: 'startDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Date',
+						name: 'endDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'Duration (Hours)',
+						name: 'duration',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:update                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['update'],
+				resource: ['task'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Client Name or ID',
+				name: 'client',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getClients',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Project Name or ID',
+				name: 'project',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Time Logs',
+		name: 'timeLogsUi',
+		placeholder: 'Add Time Log',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'timeLogsValues',
+				displayName: 'Time Log',
+				values: [
+					{
+						displayName: 'Start Date',
+						name: 'startDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'End Date',
+						name: 'endDate',
+						type: 'dateTime',
+						default: '',
+					},
+					{
+						displayName: 'Duration (Hours)',
+						name: 'duration',
+						type: 'number',
+						typeOptions: {
+							minValue: 0,
+						},
+						default: 0,
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 task:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Task ID',
+		name: 'taskId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['task'],
+				operation: ['delete'],
+			},
+		},
 	},
 ];

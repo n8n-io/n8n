@@ -281,17 +281,26 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.clientName) {
 							body.name = additionalFields.clientName as string;
 						}
-						if (additionalFields.clientName) {
-							body.name = additionalFields.clientName as string;
-						}
-						if (additionalFields.idNumber) {
-							body.id_number = additionalFields.idNumber as string;
-						}
 						if (additionalFields.idNumber) {
 							body.id_number = additionalFields.idNumber as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						if (additionalFields.vatNumber) {
 							body.vat_number = additionalFields.vatNumber as string;
@@ -354,17 +363,26 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.clientName) {
 							body.name = additionalFields.clientName as string;
 						}
-						if (additionalFields.clientName) {
-							body.name = additionalFields.clientName as string;
-						}
-						if (additionalFields.idNumber) {
-							body.id_number = additionalFields.idNumber as string;
-						}
 						if (additionalFields.idNumber) {
 							body.id_number = additionalFields.idNumber as string;
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						if (additionalFields.vatNumber) {
 							body.vat_number = additionalFields.vatNumber as string;
@@ -480,10 +498,16 @@ export class InvoiceNinja implements INodeType {
 							body.auto_bill = additionalFields.autoBill as boolean;
 						}
 						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as number;
+							body.custom_value1 = additionalFields.customValue1 as string;
 						}
 						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as number;
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						if (additionalFields.dueDate) {
 							body.due_date = additionalFields.dueDate as string;
@@ -521,11 +545,17 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
 						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
+						}
 						if (additionalFields.taxtRate1) {
 							body.tax_rate1 = additionalFields.taxtRate1 as number;
 						}
 						if (additionalFields.taxtRate2) {
 							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						}
+						if (additionalFields.taxtRate3) {
+							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
@@ -577,10 +607,16 @@ export class InvoiceNinja implements INodeType {
 							body.auto_bill = additionalFields.autoBill as boolean;
 						}
 						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as number;
+							body.custom_value1 = additionalFields.customValue1 as string;
 						}
 						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as number;
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						if (additionalFields.dueDate) {
 							body.due_date = additionalFields.dueDate as string;
@@ -618,11 +654,17 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
 						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
+						}
 						if (additionalFields.taxtRate1) {
 							body.tax_rate1 = additionalFields.taxtRate1 as number;
 						}
 						if (additionalFields.taxtRate2) {
 							body.tax_rate2 = additionalFields.taxtRate2 as number;
+						}
+						if (additionalFields.taxtRate3) {
+							body.tax_rate3 = additionalFields.taxtRate3 as number;
 						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
@@ -723,6 +765,15 @@ export class InvoiceNinja implements INodeType {
 						);
 						responseData = responseData.data;
 					}
+					if (operation === 'download') {
+						const invitationKey = this.getNodeParameter('invitationKey', i) as string;
+						responseData = await invoiceNinjaApiRequest.call(
+							this,
+							'GET',
+							`/invoices/${invitationKey}/download`,
+						);
+						responseData = responseData.data;
+					}
 				}
 				if (resource === 'task') {
 					if (operation === 'create') {
@@ -734,14 +785,20 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.project) {
 							body.project_id = additionalFields.project as number;
 						}
+						if (additionalFields.description) {
+							body.description = additionalFields.description as string;
+						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
 						}
 						if (additionalFields.customValue2) {
 							body.custom_value2 = additionalFields.customValue2 as string;
 						}
-						if (additionalFields.description) {
-							body.description = additionalFields.description as string;
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						const timeLogsValues = (this.getNodeParameter('timeLogsUi', i) as IDataObject)
 							.timeLogsValues as IDataObject[];
@@ -781,14 +838,20 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.project) {
 							body.project_id = additionalFields.project as number;
 						}
+						if (additionalFields.description) {
+							body.description = additionalFields.description as string;
+						}
 						if (additionalFields.customValue1) {
 							body.custom_value1 = additionalFields.customValue1 as string;
 						}
 						if (additionalFields.customValue2) {
 							body.custom_value2 = additionalFields.customValue2 as string;
 						}
-						if (additionalFields.description) {
-							body.description = additionalFields.description as string;
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						const timeLogsValues = (this.getNodeParameter('timeLogsUi', i) as IDataObject)
 							.timeLogsValues as IDataObject[];
@@ -882,6 +945,18 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
 						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
+						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
 							'POST',
@@ -911,6 +986,18 @@ export class InvoiceNinja implements INodeType {
 						}
 						if (additionalFields.privateNotes) {
 							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -979,12 +1066,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.client) {
 							body.client_id = additionalFields.client as number;
 						}
-						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as string;
-						}
-						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as string;
-						}
 						if (additionalFields.category) {
 							body.expense_category_id = additionalFields.category as number;
 						}
@@ -997,17 +1078,14 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.paymentType) {
 							body.payment_type_id = additionalFields.paymentType as number;
 						}
-						if (additionalFields.publicNotes) {
-							body.public_notes = additionalFields.publicNotes as string;
-						}
-						if (additionalFields.privateNotes) {
-							body.private_notes = additionalFields.privateNotes as string;
-						}
 						if (additionalFields.taxName1) {
 							body.tax_name1 = additionalFields.taxName1 as string;
 						}
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
+						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
 						}
 						if (additionalFields.taxRate1) {
 							body.tax_rate1 = additionalFields.taxRate1 as number;
@@ -1015,11 +1093,32 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxRate2) {
 							body.tax_rate2 = additionalFields.taxRate2 as number;
 						}
+						if (additionalFields.taxRate3) {
+							body.tax_rate3 = additionalFields.taxRate3 as number;
+						}
 						if (additionalFields.transactionReference) {
 							body.transaction_reference = additionalFields.transactionReference as string;
 						}
 						if (additionalFields.vendor) {
 							body.vendor_id = additionalFields.vendor as number;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -1042,12 +1141,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.client) {
 							body.client_id = additionalFields.client as number;
 						}
-						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as string;
-						}
-						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as string;
-						}
 						if (additionalFields.category) {
 							body.expense_category_id = additionalFields.category as number;
 						}
@@ -1060,17 +1153,14 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.paymentType) {
 							body.payment_type_id = additionalFields.paymentType as number;
 						}
-						if (additionalFields.publicNotes) {
-							body.public_notes = additionalFields.publicNotes as string;
-						}
-						if (additionalFields.privateNotes) {
-							body.private_notes = additionalFields.privateNotes as string;
-						}
 						if (additionalFields.taxName1) {
 							body.tax_name1 = additionalFields.taxName1 as string;
 						}
 						if (additionalFields.taxName2) {
 							body.tax_name2 = additionalFields.taxName2 as string;
+						}
+						if (additionalFields.taxName3) {
+							body.tax_name3 = additionalFields.taxName3 as string;
 						}
 						if (additionalFields.taxRate1) {
 							body.tax_rate1 = additionalFields.taxRate1 as number;
@@ -1078,11 +1168,32 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.taxRate2) {
 							body.tax_rate2 = additionalFields.taxRate2 as number;
 						}
+						if (additionalFields.taxRate3) {
+							body.tax_rate3 = additionalFields.taxRate3 as number;
+						}
 						if (additionalFields.transactionReference) {
 							body.transaction_reference = additionalFields.transactionReference as string;
 						}
 						if (additionalFields.vendor) {
 							body.vendor_id = additionalFields.vendor as number;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						responseData = await invoiceNinjaApiRequest.call(
 							this,
@@ -1146,12 +1257,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.autoBill) {
 							body.auto_bill = additionalFields.autoBill as boolean;
 						}
-						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as number;
-						}
-						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as number;
-						}
 						if (additionalFields.dueDate) {
 							body.due_date = additionalFields.dueDate as string;
 						}
@@ -1176,24 +1281,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.poNumber) {
 							body.po_number = additionalFields.poNumber as string;
 						}
-						if (additionalFields.privateNotes) {
-							body.private_notes = additionalFields.privateNotes as string;
-						}
-						if (additionalFields.publicNotes) {
-							body.public_notes = additionalFields.publicNotes as string;
-						}
-						if (additionalFields.taxName1) {
-							body.tax_name1 = additionalFields.taxName1 as string;
-						}
-						if (additionalFields.taxName2) {
-							body.tax_name2 = additionalFields.taxName2 as string;
-						}
-						if (additionalFields.taxtRate1) {
-							body.tax_rate1 = additionalFields.taxtRate1 as number;
-						}
-						if (additionalFields.taxtRate2) {
-							body.tax_rate2 = additionalFields.taxtRate2 as number;
-						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
 						}
@@ -1202,6 +1289,24 @@ export class InvoiceNinja implements INodeType {
 						}
 						if (additionalFields.emailQuote) {
 							body.email_invoice = additionalFields.emailQuote as boolean;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
@@ -1245,12 +1350,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.autoBill) {
 							body.auto_bill = additionalFields.autoBill as boolean;
 						}
-						if (additionalFields.customValue1) {
-							body.custom_value1 = additionalFields.customValue1 as number;
-						}
-						if (additionalFields.customValue2) {
-							body.custom_value2 = additionalFields.customValue2 as number;
-						}
 						if (additionalFields.dueDate) {
 							body.due_date = additionalFields.dueDate as string;
 						}
@@ -1275,24 +1374,6 @@ export class InvoiceNinja implements INodeType {
 						if (additionalFields.poNumber) {
 							body.po_number = additionalFields.poNumber as string;
 						}
-						if (additionalFields.privateNotes) {
-							body.private_notes = additionalFields.privateNotes as string;
-						}
-						if (additionalFields.publicNotes) {
-							body.public_notes = additionalFields.publicNotes as string;
-						}
-						if (additionalFields.taxName1) {
-							body.tax_name1 = additionalFields.taxName1 as string;
-						}
-						if (additionalFields.taxName2) {
-							body.tax_name2 = additionalFields.taxName2 as string;
-						}
-						if (additionalFields.taxtRate1) {
-							body.tax_rate1 = additionalFields.taxtRate1 as number;
-						}
-						if (additionalFields.taxtRate2) {
-							body.tax_rate2 = additionalFields.taxtRate2 as number;
-						}
 						if (additionalFields.discount) {
 							body.discount = additionalFields.discount as number;
 						}
@@ -1301,6 +1382,24 @@ export class InvoiceNinja implements INodeType {
 						}
 						if (additionalFields.emailQuote) {
 							body.email_invoice = additionalFields.emailQuote as boolean;
+						}
+						if (additionalFields.privateNotes) {
+							body.private_notes = additionalFields.privateNotes as string;
+						}
+						if (additionalFields.publicNotes) {
+							body.public_notes = additionalFields.publicNotes as string;
+						}
+						if (additionalFields.customValue1) {
+							body.custom_value1 = additionalFields.customValue1 as string;
+						}
+						if (additionalFields.customValue2) {
+							body.custom_value2 = additionalFields.customValue2 as string;
+						}
+						if (additionalFields.customValue3) {
+							body.custom_value3 = additionalFields.customValue3 as string;
+						}
+						if (additionalFields.customValue4) {
+							body.custom_value4 = additionalFields.customValue4 as string;
 						}
 						const invoceItemsValues = (this.getNodeParameter('invoiceItemsUi', i) as IDataObject)
 							.invoiceItemsValues as IDataObject[];
