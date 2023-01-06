@@ -1,4 +1,5 @@
 <template>
+	<!-- <div ref="target" @dragenter.prevent="onDragEnter" @dragend="onDragEnd"> -->
 	<div ref="target">
 		<slot :droppable="droppable" :activeDrop="activeDrop"></slot>
 	</div>
@@ -56,6 +57,33 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		// onDragEnter(e: DragEvent) {
+		// 	// console.log('drag enter', e);
+
+		// 	const target = e.target as HTMLElement;
+
+		// 	// if (target && this.isDragging) {
+		// 	if (target) {
+		// 		const dim = target.getBoundingClientRect();
+
+		// 		this.hovering =
+		// 			e.clientX >= dim.left &&
+		// 			e.clientX <= dim.right &&
+		// 			e.clientY >= dim.top &&
+		// 			e.clientY <= dim.bottom;
+
+		// 		if (!this.disabled && this.sticky && this.hovering) {
+		// 			document.body.style.cursor = 'copy';
+		// 			// 	const [xOffset, yOffset] = this.stickyOffset;
+		// 			// 	this.ndvStore.setDraggableStickyPos([dim.left + xOffset, dim.top + yOffset]);
+		// 		}
+		// 	}
+		// },
+		// onDragEnd(e) {
+		// 	console.log('drag end', e);
+		// 	// const data = this.ndvStore.draggableData;
+		// 	this.$emit('drop', 'hello');
+		// },
 		onMouseMove(e: MouseEvent) {
 			const target = this.$refs.target as HTMLElement;
 
@@ -69,9 +97,9 @@ export default Vue.extend({
 					e.clientY <= dim.bottom;
 
 				if (!this.disabled && this.sticky && this.hovering) {
-					const [xOffset, yOffset] = this.stickyOffset;
-
-					this.ndvStore.setDraggableStickyPos([dim.left + xOffset, dim.top + yOffset]);
+					// document.body.style.cursor = 'copy';
+					// 	const [xOffset, yOffset] = this.stickyOffset;
+					// 	this.ndvStore.setDraggableStickyPos([dim.left + xOffset, dim.top + yOffset]);
 				}
 			}
 		},

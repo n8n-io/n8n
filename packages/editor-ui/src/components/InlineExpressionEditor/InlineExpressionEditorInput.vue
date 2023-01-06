@@ -5,7 +5,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { EditorView } from '@codemirror/view';
+import { dropCursor, EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
@@ -93,6 +93,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			n8nLanguageSupport(),
+			dropCursor(),
 			history(),
 			doubleBraceHandler(),
 			EditorView.lineWrapping,

@@ -221,6 +221,12 @@ export default Vue.extend({
 	border-bottom-left-radius: 0;
 }
 
+:global(.cm-dropCursor) {
+	width: 10px;
+	background-color: black;
+	z-index: 999999999999;
+}
+
 .focused :global(.cm-editor) {
 	border-color: var(--color-secondary);
 }
