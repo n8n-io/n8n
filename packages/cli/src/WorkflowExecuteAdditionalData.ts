@@ -64,7 +64,6 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { eventBus } from './eventbus';
 import { WorkflowsService } from './workflows/workflows.services';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -204,18 +203,24 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
+		const toPrune = { stoppedAt: LessThanOrEqual(utcDate) };
+		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = await Db.collections.Execution.find({
-				stoppedAt: LessThanOrEqual(utcDate),
-			});
-			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			const executions = isBinaryModeDefaultMode
+				? []
+				: await Db.collections.Execution.find({
+						select: ['id'],
+						where: toPrune,
+				  });
+			await Db.collections.Execution.delete(toPrune);
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
 			// Mark binary data for deletion for all executions
-			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-				executions.map(({ id }) => id),
-			);
+			if (!isBinaryModeDefaultMode)
+				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+					executions.map(({ id }) => id),
+				);
 		} catch (error) {
 			ErrorReporter.error(error);
 			throttling = false;
