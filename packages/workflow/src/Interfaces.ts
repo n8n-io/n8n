@@ -15,6 +15,7 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
+import { PathLike } from 'fs';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -640,6 +641,10 @@ export interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
+export interface FileSystemHelperFunctions {
+	createReadStream(path: PathLike): Promise<Readable>;
+}
+
 export interface BinaryHelperFunctions {
 	prepareBinaryData(
 		binaryData: Buffer | Readable,
@@ -725,6 +730,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		helpers: RequestHelperFunctions &
 			BinaryHelperFunctions &
+			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
