@@ -1,11 +1,12 @@
 import Vue from 'vue';
-import { isAllowedInDotNotation, escape, toVariableOption } from '../utils';
+import { escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { isAllowedInDotNotation } from '@/plugins/codemirror/completions/utils';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
