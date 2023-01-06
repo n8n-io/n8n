@@ -1,3 +1,4 @@
+import uniq from 'lodash.uniq';
 import {
 	CUSTOM_EXTENSION_ENV,
 	UserSettings,
@@ -8,6 +9,7 @@ import {
 	Types,
 } from 'n8n-core';
 import type {
+	ICredentialTypes,
 	ILogger,
 	INodesAndCredentials,
 	KnownNodesAndCredentials,
@@ -46,6 +48,8 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 	includeNodes = config.getEnv('nodes.include');
 
+	credentialTypes: ICredentialTypes;
+
 	logger: ILogger;
 
 	async init() {
@@ -68,8 +72,21 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	async generateTypesForFrontend() {
 		const credentialsOverwrites = CredentialsOverwrites().getAll();
 		for (const credential of this.types.credentials) {
+			const overwrittenProperties = [];
+			this.credentialTypes
+				.getParentTypes(credential.name)
+				.reverse()
+				.map((name) => credentialsOverwrites[name])
+				.forEach((overwrite) => {
+					if (overwrite) overwrittenProperties.push(...Object.keys(overwrite));
+				});
+
 			if (credential.name in credentialsOverwrites) {
-				credential.__overwrittenProperties = Object.keys(credentialsOverwrites[credential.name]);
+				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
+			}
+
+			if (overwrittenProperties.length) {
+				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
 		}
 
@@ -125,21 +142,19 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 	}
 
-	async loadNodesFromCustomDirectories(): Promise<void> {
-		// Read nodes and credentials from custom directories
-		const customDirectories = [];
+	getCustomDirectories(): string[] {
+		const customDirectories = [UserSettings.getUserN8nFolderCustomExtensionPath()];
 
-		// Add "custom" folder in user-n8n folder
-		customDirectories.push(UserSettings.getUserN8nFolderCustomExtensionPath());
-
-		// Add folders from special environment variable
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV]!.split(';');
+			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
 			customDirectories.push(...customExtensionFolders);
 		}
 
-		for (const directory of customDirectories) {
+		return customDirectories;
+	}
+
+	async loadNodesFromCustomDirectories(): Promise<void> {
+		for (const directory of this.getCustomDirectories()) {
 			await this.runDirectoryLoader(CustomDirectoryLoader, directory);
 		}
 	}
@@ -323,25 +338,21 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		this.types.credentials = this.types.credentials.concat(types.credentials);
 
 		// Copy over all icons and set `iconUrl` for the frontend
-		const iconPromises: Array<Promise<void>> = [];
-		for (const node of types.nodes) {
-			if (node.icon?.startsWith('file:')) {
-				const icon = node.icon.substring(5);
-				const iconUrl = `icons/nodes/${node.name}${path.extname(icon)}`;
-				delete node.icon;
-				node.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
-		for (const credential of types.credentials) {
-			if (credential.icon?.startsWith('file:')) {
-				const icon = credential.icon.substring(5);
-				const iconUrl = `icons/credentials/${credential.name}${path.extname(icon)}`;
-				delete credential.icon;
-				credential.iconUrl = iconUrl;
-				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
-			}
-		}
+		const iconPromises = Object.entries(types).flatMap(([typeName, typesArr]) =>
+			typesArr.map((type) => {
+				if (!type.icon?.startsWith('file:')) return;
+				const icon = type.icon.substring(5);
+				const iconUrl = `icons/${typeName}/${type.name}${path.extname(icon)}`;
+				delete type.icon;
+				type.iconUrl = iconUrl;
+				const source = path.join(dir, icon);
+				const destination = path.join(GENERATED_STATIC_DIR, iconUrl);
+				return mkdir(path.dirname(destination), { recursive: true }).then(async () =>
+					copyFile(source, destination),
+				);
+			}),
+		);
+
 		await Promise.all(iconPromises);
 
 		// Nodes and credentials that have been loaded immediately

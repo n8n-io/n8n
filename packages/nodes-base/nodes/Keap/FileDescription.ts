@@ -127,9 +127,6 @@ export const fileFields: INodeProperties[] = [
 		displayName: 'File Data',
 		name: 'fileData',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

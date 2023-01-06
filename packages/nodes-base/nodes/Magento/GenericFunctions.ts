@@ -302,9 +302,6 @@ export function getSearchFilters(
 			displayName: 'Filters (JSON)',
 			name: 'filterJson',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: [resource],
@@ -993,7 +990,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		`/rest/default/V1/products/attributes`,
+		'/rest/default/V1/products/attributes',
 		{},
 		{
 			search_criteria: 0,

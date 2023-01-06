@@ -39,7 +39,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -82,7 +82,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -126,7 +126,7 @@ export class UpdateWorkflowCredentials1630330987096 implements MigrationInterfac
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
 							);
-							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							node.credentials[type] = { id: matchingCredentials?.id || null, name };
 							credentialsUpdated = true;
 						}
 					}

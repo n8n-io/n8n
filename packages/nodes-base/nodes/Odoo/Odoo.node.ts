@@ -269,11 +269,11 @@ export class Odoo implements INodeType {
 						uri: `${(credentials?.url as string).replace(/\/$/, '')}/jsonrpc`,
 						json: true,
 					};
-					const result = await this.helpers.request!(options);
+					const result = await this.helpers.request(options);
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
-							message: `Credentials are not valid`,
+							message: 'Credentials are not valid',
 						};
 					} else if (result.error) {
 						return {

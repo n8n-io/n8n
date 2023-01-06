@@ -12,7 +12,7 @@ import {
 	IRun,
 } from 'n8n-workflow';
 
-import { ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
 import PCancelable from 'p-cancelable';
 import * as Db from '@/Db';
@@ -55,11 +55,9 @@ export class ActiveExecutions {
 				fullExecutionData.retryOf = executionData.retryOf.toString();
 			}
 
-			if (
-				executionData.workflowData.id !== undefined &&
-				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
-			) {
-				fullExecutionData.workflowId = executionData.workflowData.id.toString();
+			const workflowId = executionData.workflowData.id;
+			if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+				fullExecutionData.workflowId = workflowId;
 			}
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);

@@ -75,9 +75,7 @@ export default mixins(workflowHelpers).extend({
 		WorkflowPreview,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.templatesStore.getTemplateById(this.templateId);
 		},
@@ -128,9 +126,8 @@ export default mixins(workflowHelpers).extend({
 		template(template: ITemplatesWorkflowFull) {
 			if (template) {
 				setPageTitle(`n8n - Template template: ${template.name}`);
-			}
-			else {
-				setPageTitle(`n8n - Templates`);
+			} else {
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},

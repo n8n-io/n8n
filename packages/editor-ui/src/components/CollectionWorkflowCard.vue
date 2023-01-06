@@ -1,13 +1,7 @@
 <template>
-	<n8n-card
-		:class="$style.card"
-		v-on="$listeners"
-	>
+	<n8n-card :class="$style.card" v-on="$listeners">
 		<template #header v-if="!loading">
-			<span
-				v-text="title"
-				:class="$style.title"
-			/>
+			<span v-text="title" :class="$style.title" />
 		</template>
 		<n8n-loading :loading="loading" :rows="3" variant="p" />
 		<template #footer v-if="!loading">
@@ -45,7 +39,7 @@ export default mixins(genericHelpers).extend({
 	}
 
 	&:hover {
-		box-shadow: 0 2px 4px rgba(68,28,23,0.07);
+		box-shadow: 0 2px 4px rgba(68, 28, 23, 0.07);
 	}
 
 	> div {

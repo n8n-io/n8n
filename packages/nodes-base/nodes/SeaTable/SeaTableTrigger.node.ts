@@ -87,7 +87,7 @@ export class SeaTableTrigger implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -118,7 +118,7 @@ export class SeaTableTrigger implements INodeType {
 
 		const filterField = event === 'rowCreated' ? '_ctime' : '_mtime';
 
-		const endpoint = `/dtable-db/api/v1/query/{{dtable_uuid}}/`;
+		const endpoint = '/dtable-db/api/v1/query/{{dtable_uuid}}/';
 
 		if (this.getMode() === 'manual') {
 			rows = (await seaTableApiRequest.call(this, ctx, 'POST', endpoint, {

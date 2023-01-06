@@ -267,9 +267,6 @@ export function getFilters(
 			displayName: 'Filters (String)',
 			name: 'filterString',
 			type: 'string',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 			displayOptions: {
 				show: {
 					resource: resources,
@@ -323,5 +320,5 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

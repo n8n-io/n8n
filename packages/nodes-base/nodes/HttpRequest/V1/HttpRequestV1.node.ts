@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-import { replaceNullValues } from '../GenericFunctions';
+import { IAuthDataSanitizeKeys, replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -746,10 +746,7 @@ export class HttpRequestV1 implements INodeType {
 							}
 
 							if (options.bodyContentType === 'raw') {
-								const binaryPropertyName = this.getNodeParameter(
-									'binaryPropertyName',
-									itemIndex,
-								) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
@@ -768,7 +765,7 @@ export class HttpRequestV1 implements INodeType {
 								const binaryPropertyNameFull = this.getNodeParameter(
 									'binaryPropertyName',
 									itemIndex,
-								) as string;
+								);
 								const binaryPropertyNames = binaryPropertyNameFull
 									.split(',')
 									.map((key) => key.trim());
@@ -914,21 +911,26 @@ export class HttpRequestV1 implements INodeType {
 				requestOptions.headers['Content-Type'] = options.bodyContentCustomMimeType;
 			}
 
+			const authDataKeys: IAuthDataSanitizeKeys = {};
+
 			// Add credentials if any are set
 			if (httpBasicAuth !== undefined) {
 				requestOptions.auth = {
 					user: httpBasicAuth.user as string,
 					pass: httpBasicAuth.password as string,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 			if (httpHeaderAuth !== undefined) {
 				requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+				authDataKeys.headers = [httpHeaderAuth.name as string];
 			}
 			if (httpQueryAuth !== undefined) {
 				if (!requestOptions.qs) {
 					requestOptions.qs = {};
 				}
 				requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
+				authDataKeys.qs = [httpQueryAuth.name as string];
 			}
 			if (httpDigestAuth !== undefined) {
 				requestOptions.auth = {
@@ -936,6 +938,7 @@ export class HttpRequestV1 implements INodeType {
 					pass: httpDigestAuth.password as string,
 					sendImmediately: false,
 				};
+				authDataKeys.auth = ['pass'];
 			}
 
 			if (requestOptions.headers!.accept === undefined) {
@@ -951,15 +954,7 @@ export class HttpRequestV1 implements INodeType {
 			}
 
 			try {
-				let sendRequest: any = requestOptions;
-				// Protect browser from sending large binary data
-				if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-					sendRequest = {
-						...requestOptions,
-						body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
-					};
-				}
-				this.sendMessageToUI(sendRequest);
+				this.sendMessageToUI(sanitizeUiMessage(requestOptions, authDataKeys));
 			} catch (e) {}
 
 			if (oAuth1Api) {
@@ -1014,7 +1009,7 @@ export class HttpRequestV1 implements INodeType {
 			const fullResponse = !!options.fullResponse;
 
 			if (responseFormat === 'file') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -1060,7 +1055,7 @@ export class HttpRequestV1 implements INodeType {
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};

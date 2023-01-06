@@ -99,7 +99,6 @@ export class ExecuteWorkflow implements INodeType {
 				name: 'workflowJson',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					editor: 'json',
 					rows: 10,
 				},
@@ -132,7 +131,7 @@ export class ExecuteWorkflow implements INodeType {
 			},
 			{
 				displayName:
-					'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+					'Any data you pass into this node will be output by the Execute Workflow Trigger. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
 				name: 'executeWorkflowNotice',
 				type: 'notice',
 				default: '',

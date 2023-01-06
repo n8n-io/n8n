@@ -6,6 +6,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
+import 'source-map-support/register';
 import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
@@ -15,6 +16,7 @@ import {
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
+	INode,
 	INodeExecutionData,
 	IRun,
 	ITaskData,
@@ -32,7 +34,6 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -46,6 +47,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { getLicense } from './License';
 
 class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -73,13 +75,11 @@ class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
-	constructor() {
-		initErrorHandling();
-	}
-
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
 		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
 		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
+
+		await initErrorHandling();
 
 		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
@@ -110,54 +110,16 @@ class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		const { cli } = await GenericHelpers.getVersions();
-		InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
 
-		// Credentials should now be loaded from database.
-		// We check if any node uses credentials. If it does, then
-		// init database.
-		let shouldInitializeDb = false;
-		// eslint-disable-next-line array-callback-return
-		inputData.workflowData.nodes.map((node) => {
-			if (Object.keys(node.credentials === undefined ? {} : node.credentials).length > 0) {
-				shouldInitializeDb = true;
-			}
-			if (node.type === 'n8n-nodes-base.executeWorkflow') {
-				// With UM, child workflows from arbitrary JSON
-				// Should be persisted by the child process,
-				// so DB needs to be initialized
-				shouldInitializeDb = true;
-			}
-		});
+		// Init db since we need to read the license.
+		await Db.init();
 
-		// This code has been split into 4 ifs just to make it easier to understand
-		// Can be made smaller but in the end it will make it impossible to read.
-		if (shouldInitializeDb) {
-			// initialize db as we need to load credentials
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress === true
-		) {
-			// Workflow settings specifying it should save
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings !== undefined &&
-			inputData.workflowData.settings.saveExecutionProgress !== false &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		} else if (
-			inputData.workflowData.settings === undefined &&
-			config.getEnv('executions.saveExecutionProgress')
-		) {
-			// Workflow settings not saying anything about saving but default settings says so
-			await Db.init();
-		}
+		const license = getLicense();
+		await license.init(instanceId);
 
 		// Start timeout for the execution
 		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
@@ -171,7 +133,7 @@ class WorkflowRunnerProcess {
 		}
 
 		this.workflow = new Workflow({
-			id: this.data.workflowData.id as string | undefined,
+			id: this.data.workflowData.id,
 			name: this.data.workflowData.name,
 			nodes: this.data.workflowData.nodes,
 			connections: this.data.workflowData.connections,
@@ -243,7 +205,6 @@ class WorkflowRunnerProcess {
 		): Promise<Array<INodeExecutionData[] | null> | IRun> => {
 			const workflowData = await WorkflowExecuteAdditionalData.getWorkflowData(
 				workflowInfo,
-				userId,
 				options?.parentWorkflowId,
 				options?.parentWorkflowSettings,
 			);
@@ -259,6 +220,9 @@ class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
+
+			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 			let result: IRun;
 			try {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(
@@ -393,6 +357,11 @@ class WorkflowRunnerProcess {
 			workflowExecuteAfter: [
 				async (fullRunData: IRun, newStaticData?: IDataObject): Promise<void> => {
 					await this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
+				},
+			],
+			nodeFetchedData: [
+				async (workflowId: string, node: INode) => {
+					await this.sendHookToParentProcess('nodeFetchedData', [workflowId, node]);
 				},
 			],
 		};

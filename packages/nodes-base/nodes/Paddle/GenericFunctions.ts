@@ -43,7 +43,7 @@ export async function paddleApiRequest(
 	body.vendor_id = credentials.vendorId;
 	body.vendor_auth_code = credentials.vendorAuthCode;
 	try {
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (!response.success) {
 			throw new NodeApiError(this.getNode(), response);

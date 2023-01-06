@@ -144,7 +144,7 @@ export default Vue.extend({
 					// Return nothing, means keep the default handling measure
 				},
 				onTag(tag, code) {
-					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
+					if (tag === 'img' && code.includes('alt="workflow-screenshot"')) {
 						return '';
 					}
 					// return nothing, keep tag
