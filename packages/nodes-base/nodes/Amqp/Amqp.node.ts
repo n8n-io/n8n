@@ -1,4 +1,4 @@
-import { ContainerOptions, create_container, Dictionary, EventContext } from 'rhea';
+import { ContainerOptions, create_container, Dictionary, EventContext, MessageProperties } from 'rhea';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -48,6 +48,29 @@ export class Amqp implements INodeType {
 					'Header parameters as JSON (flat object). Sent as application_properties in amqp-message meta info.',
 			},
 			{
+				displayName: 'Subject',
+				name: 'subject',
+				type: 'string',
+				default: '',
+				description: 'The Subject/Label of the messages',
+			},
+			{
+				displayName: 'ReplyTo',
+				name: 'reply-to',
+				type: 'string',
+				default: '',
+				description: 'The response topic',
+			},
+			{
+				displayName: 'ContentType',
+				name: 'content-type',
+				type: 'string',
+				default: 'application/json',
+				description: 'The contenttype of the messages',
+			},
+
+
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -94,10 +117,10 @@ export class Amqp implements INodeType {
 		],
 	};
 
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const credentials = await this.getCredentials('amqp');
-
 			const sink = this.getNodeParameter('sink', 0, '') as string;
 			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
 				| string
@@ -135,6 +158,13 @@ export class Amqp implements INodeType {
 				container_id: containerId ? containerId : undefined,
 				id: containerId ? containerId : undefined,
 			};
+
+			const messageHeaders: MessageProperties = {
+				content_type: this.getNodeParameter('content-type', 0) as string,
+				reply_to: this.getNodeParameter('reply-to', 0) as string,
+				subject: this.getNodeParameter('subject', 0) as string,
+			}
+
 			const conn = container.connect(connectOptions);
 
 			const sender = conn.open_sender(sink);
@@ -157,15 +187,14 @@ export class Amqp implements INodeType {
 						if (options.dataAsObject !== true) {
 							body = JSON.stringify(body);
 						}
-
-						const result = context.sender?.send({
+						let message = {
 							application_properties: headerProperties,
-							body,
-						});
-
+							body
+						}
+						Object.assign(message, messageHeaders);
+						const result = context.sender?.send(message);
 						returnData.push({ id: result?.id });
 					}
-
 					resolve(returnData);
 				});
 			});
