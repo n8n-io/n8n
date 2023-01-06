@@ -33,6 +33,15 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Batch Size',
+				name: 'batchSize',
+				type: 'number',
+				default: 100,
+				typeOptions: {
+					minValue: 1,
+				},
+			},
+			{
 				displayName: 'Ignore Unknown Values',
 				name: 'ignoreUnknownValues',
 				type: 'boolean',
@@ -71,8 +80,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const projectId = this.getNodeParameter('projectId', 0) as string;
 	const datasetId = this.getNodeParameter('datasetId', 0) as string;
 	const tableId = this.getNodeParameter('tableId', 0) as string;
-
 	const options = this.getNodeParameter('options', 0);
+
+	let batchSize = 100;
+	if (options.batchSize) {
+		batchSize = options.batchSize as number;
+		delete options.batchSize;
+	}
+
 	const items = this.getInputData();
 	const length = items.length;
 
@@ -112,48 +127,68 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			});
 		}
 	}
-	body.rows = rows;
 
-	const responseData = await googleApiRequest.call(
-		this,
-		'POST',
-		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
-		body,
-	);
+	for (let i = 0; i < rows.length; i += batchSize) {
+		const batch = rows.slice(i, i + batchSize);
+		body.rows = batch;
 
-	if (responseData?.insertErrors && !options.skipInvalidRows) {
-		const errors: string[] = [];
-		const failedRows: number[] = [];
-
-		(responseData.insertErrors as IDataObject[]).forEach((entry) => {
-			const invalidRows = (entry.errors as IDataObject[]).filter(
-				(error) => error.reason !== 'stopped',
-			);
-			if (invalidRows.length) {
-				errors.push(
-					`Row ${entry.index} failed with error: ${invalidRows
-						.map((error) => error.message)
-						.join(', ')}`,
-				);
-				failedRows.push(entry.index as number);
-			}
-		});
-
-		throw new NodeOperationError(
-			this.getNode(),
-			`Error occured when inserting items [${failedRows.join(', ')}]`,
-			{
-				description: errors.join('\n, '),
-			},
+		const responseData = await googleApiRequest.call(
+			this,
+			'POST',
+			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}/insertAll`,
+			body,
 		);
+
+		if (responseData?.insertErrors && !options.skipInvalidRows) {
+			const errors: string[] = [];
+			const failedRows: number[] = [];
+			const stopedRows: number[] = [];
+
+			(responseData.insertErrors as IDataObject[]).forEach((entry) => {
+				const invalidRows = (entry.errors as IDataObject[]).filter(
+					(error) => error.reason !== 'stopped',
+				);
+				if (invalidRows.length) {
+					const entryIndex = (entry.index as number) + i;
+					errors.push(
+						`Row ${entryIndex} failed with error: ${invalidRows
+							.map((error) => error.message)
+							.join(', ')}`,
+					);
+					failedRows.push(entryIndex);
+				} else {
+					const entryIndex = (entry.index as number) + i;
+					stopedRows.push(entryIndex);
+				}
+			});
+
+			if (this.continueOnFail()) {
+				const executionErrorData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: errors.join('\n, ') }),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionErrorData);
+				continue;
+			}
+
+			throw new NodeOperationError(
+				this.getNode(),
+				`Error occured when inserting items [${failedRows.join(
+					', ',
+				)}], stopped items [${stopedRows.join(', ')}]`,
+				{
+					description: errors.join('\n, '),
+				},
+			);
+		}
+
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: 0 } },
+		);
+
+		returnData.push(...executionData);
 	}
-
-	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
-		{ itemData: { item: 0 } },
-	);
-
-	returnData.push(...executionData);
 
 	return returnData;
 }
