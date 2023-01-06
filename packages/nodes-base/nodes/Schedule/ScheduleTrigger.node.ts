@@ -421,7 +421,11 @@ export class ScheduleTrigger implements INodeType {
 		if (!staticData.recurrencyRules) {
 			staticData.recurrencyRules = [];
 		}
-		const executeTrigger = (recurrencyRuleIndex?: number, weeksInterval?: number) => {
+		const executeTrigger = (
+			recurrencyRuleIndex?: number,
+			intervalSize?: number,
+			typeInterval?: string,
+		) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
 				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
@@ -435,22 +439,44 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			const lastExecutionWeekNumber =
+			const lastExecution =
 				recurrencyRuleIndex !== undefined
 					? staticData.recurrencyRules[recurrencyRuleIndex]
 					: undefined;
 
 			// Checks if have the right week interval, handles new years as well
-			if (weeksInterval && recurrencyRuleIndex !== undefined) {
+			if (
+				intervalSize &&
+				recurrencyRuleIndex !== undefined &&
+				(typeInterval === 'weeks' || typeInterval === 'undefined')
+			) {
 				if (
-					lastExecutionWeekNumber === undefined || // First time executing this rule
-					moment.tz(timezone).week() >= weeksInterval + lastExecutionWeekNumber || // not first time, but minimum interval has passed
-					moment.tz(timezone).week() + 52 >= weeksInterval + lastExecutionWeekNumber // not first time, correct interval but year has passed
+					lastExecution === undefined || // First time executing this rule
+					moment.tz(timezone).week() >= intervalSize + lastExecution || // not first time, but minimum interval has passed
+					moment.tz(timezone).week() + 52 >= intervalSize + lastExecution // not first time, correct interval but year has passed
 				) {
 					staticData.recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
 					this.emit([this.helpers.returnJsonArray([resultData])]);
 				}
 				// There is no else block here since we don't want to emit anything now
+			} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
+				if (
+					lastExecution === undefined ||
+					moment.tz(timezone).day() >= intervalSize + lastExecution ||
+					moment.tz(timezone).day() + 365 >= intervalSize + lastExecution
+				) {
+					staticData.recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).day();
+					this.emit([this.helpers.returnJsonArray([resultData])]);
+				}
+			} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
+				if (
+					lastExecution === undefined ||
+					moment.tz(timezone).hour() >= intervalSize + lastExecution ||
+					moment.tz(timezone).hour() + 24 >= intervalSize + lastExecution
+				) {
+					staticData.recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
+					this.emit([this.helpers.returnJsonArray([resultData])]);
+				}
 			} else {
 				this.emit([this.helpers.returnJsonArray([resultData])]);
 			}
@@ -485,10 +511,23 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			if (interval[i].field === 'hours') {
-				const hour = interval[i].hoursInterval?.toString() as string;
+				const hour = interval[i].hoursInterval as number;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
 				const cronTimes: string[] = [minute, `*/${hour}`, '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
+				if (hour === 1) {
+					const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+					cronJobs.push(cronJob);
+				} else {
+					const cronJob = new CronJob(
+						cronExpression,
+						() => executeTrigger(i, hour, 'hours'),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				}
 				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
 				cronJobs.push(cronJob);
 			}
