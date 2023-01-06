@@ -560,7 +560,16 @@ export interface IGetNodeParameterOptions {
 
 namespace ExecuteFunctions {
 	namespace StringReturning {
-		export type NodeParameter = 'binaryProperty' | 'resource' | 'operation';
+		export type NodeParameter =
+			| 'binaryProperty'
+			| 'binaryPropertyName'
+			| 'binaryPropertyOutput'
+			| 'dataPropertyName'
+			| 'dataBinaryProperty'
+			| 'resource'
+			| 'operation'
+			| 'filePath'
+			| 'encodingType';
 	}
 
 	namespace NumberReturning {

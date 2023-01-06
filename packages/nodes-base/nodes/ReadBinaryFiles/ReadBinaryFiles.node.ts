@@ -39,7 +39,7 @@ export class ReadBinaryFiles implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const fileSelector = this.getNodeParameter('fileSelector', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 		const files = await glob(fileSelector);
 
