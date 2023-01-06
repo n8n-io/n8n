@@ -415,7 +415,7 @@ export class AwsRekognition implements INodeType {
 							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 								if (items[i].binary === undefined) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {

@@ -41,7 +41,7 @@ export class ReadPDF implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				if (item.binary === undefined) {
 					item.binary = {};

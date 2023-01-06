@@ -785,10 +785,7 @@ export class HttpRequestV2 implements INodeType {
 							}
 
 							if (options.bodyContentType === 'raw') {
-								const binaryPropertyName = this.getNodeParameter(
-									'binaryPropertyName',
-									itemIndex,
-								) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 								if (item.binary[binaryPropertyName] === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
@@ -807,7 +804,7 @@ export class HttpRequestV2 implements INodeType {
 								const binaryPropertyNameFull = this.getNodeParameter(
 									'binaryPropertyName',
 									itemIndex,
-								) as string;
+								);
 								const binaryPropertyNames = binaryPropertyNameFull
 									.split(',')
 									.map((key) => key.trim());
@@ -1065,7 +1062,7 @@ export class HttpRequestV2 implements INodeType {
 			const fullResponse = !!options.fullResponse;
 
 			if (responseFormat === 'file') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				const newItem: INodeExecutionData = {
 					json: {},
@@ -1111,7 +1108,7 @@ export class HttpRequestV2 implements INodeType {
 
 				returnItems.push(newItem);
 			} else if (responseFormat === 'string') {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 
 				if (fullResponse) {
 					const returnItem: IDataObject = {};
