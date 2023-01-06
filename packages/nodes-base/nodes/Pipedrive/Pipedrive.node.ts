@@ -4345,7 +4345,7 @@ export class Pipedrive implements INodeType {
 							});
 						}
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
@@ -4847,7 +4847,7 @@ export class Pipedrive implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData.data,
