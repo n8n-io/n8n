@@ -61,9 +61,9 @@ export class ReadBinaryFile implements INodeType {
 					Object.assign(newItem.binary, item.binary);
 				}
 
-				const filePath = this.getNodeParameter('filePath', itemIndex) as string;
+				const filePath = this.getNodeParameter('filePath', itemIndex);
 				const stream = await this.helpers.createReadStream(filePath);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
