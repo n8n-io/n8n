@@ -33,6 +33,7 @@ export const eventID: { [key: string]: string } = {
 	delete_quote: '7',
 
 	create_payment: '4',
+	update_payment: '31',
 	delete_payment: '12',
 
 	create_expense: '15',

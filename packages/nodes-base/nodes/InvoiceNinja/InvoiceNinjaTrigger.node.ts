@@ -154,6 +154,10 @@ export class InvoiceNinjaTrigger implements INodeType {
 						value: 'create_payment',
 					},
 					{
+						name: 'Payment Updated',
+						value: 'update_payment',
+					},
+					{
 						name: 'Payment Deleted',
 						value: 'delete_payment',
 					},
