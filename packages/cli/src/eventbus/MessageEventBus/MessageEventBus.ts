@@ -99,11 +99,19 @@ class MessageEventBus extends EventEmitter {
 		await this.send(unsentAndUnfinished.unsentMessages);
 
 		if (unsentAndUnfinished.unfinishedExecutions.size > 0) {
-			for (const excecutionId of unsentAndUnfinished.unfinishedExecutions) {
-				await Db.collections.Execution.update(excecutionId, {
-					finished: false,
-					stoppedAt: new Date(),
-				});
+			for (const executionId of unsentAndUnfinished.unfinishedExecutions) {
+				const executionEntry = await Db.collections.Execution.findOne(executionId);
+				if (!executionEntry?.stoppedAt) {
+					LoggerProxy.debug(`Found unfinished execution ${executionId}, marking them as failed`);
+					await Db.collections.Execution.update(executionId, {
+						finished: false,
+						stoppedAt: new Date(),
+					});
+				} else {
+					LoggerProxy.debug(
+						`Found unfinished execution ${executionId}, but it was already marked as failed`,
+					);
+				}
 			}
 		}
 
