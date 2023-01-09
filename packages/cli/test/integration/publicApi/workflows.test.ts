@@ -17,8 +17,6 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
-jest.mock('@/telemetry');
-
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();

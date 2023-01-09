@@ -13,9 +13,10 @@ import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
-import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
-import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
+import { autocompletion, ifIn } from '@codemirror/autocomplete';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
@@ -39,35 +40,19 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	},
 	watch: {
 		value(newValue) {
-			const payload: Record<string, unknown> = {
+			const isInternalChange = newValue === this.editor?.state.doc.toString();
+
+			if (isInternalChange) return;
+
+			// manual update on external change, e.g. from expression modal or mapping drop
+
+			this.editor?.dispatch({
 				changes: {
 					from: 0,
 					to: this.editor?.state.doc.length,
 					insert: newValue,
 				},
-				selection: { anchor: this.cursorPosition, head: this.cursorPosition },
-			};
-
-			/**
-			 * If completion from selection, preserve selection.
-			 */
-			if (this.editor) {
-				const [range] = this.editor.state.selection.ranges;
-
-				const isBraceAutoinsertion =
-					this.editor.state.sliceDoc(range.from - 1, range.from) === '{' &&
-					this.editor.state.sliceDoc(range.to, range.to + 1) === '}';
-
-				if (isBraceAutoinsertion) {
-					payload.selection = { anchor: range.from, head: range.to };
-				}
-			}
-
-			try {
-				this.editor?.dispatch(payload);
-			} catch (_) {
-				// ignore out-of-range selection error on drop
-			}
+			});
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
@@ -92,9 +77,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
-			n8nLanguageSupport(),
+			autocompletion(),
+			n8nLang(),
 			history(),
-			doubleBraceHandler(),
+			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorView.editable.of(!this.isReadOnly),
 			EditorView.domEventHandlers({

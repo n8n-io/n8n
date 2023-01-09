@@ -114,10 +114,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 						const fileName = responseData.name;
@@ -280,7 +277,7 @@ export class Box implements INodeType {
 						}
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {

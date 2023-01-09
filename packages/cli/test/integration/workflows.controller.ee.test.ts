@@ -13,8 +13,6 @@ import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;

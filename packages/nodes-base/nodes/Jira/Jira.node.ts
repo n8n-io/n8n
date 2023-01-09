@@ -975,7 +975,7 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
 					if (items[i].binary === undefined) {
