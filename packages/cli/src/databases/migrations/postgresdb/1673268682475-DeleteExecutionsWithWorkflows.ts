@@ -13,12 +13,18 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 			 ALTER COLUMN "workflowId" TYPE INTEGER USING "workflowId"::integer`,
 		);
 
+		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
+			SELECT id FROM ${tablePrefix}workflow_entity
+		`);
+
 		await queryRunner.query(
 			`DELETE FROM ${tablePrefix}execution_entity
-			 WHERE "workflowId" IS NOT NULL AND
-			 "workflowId" NOT IN (
-				SELECT id FROM ${tablePrefix}workflow_entity
-			)`,
+			 WHERE "workflowId" IS NOT NULL
+			 ${
+					workflowIds.length
+						? `AND "workflowId" NOT IN (${workflowIds.map(({ id }) => id).join()})`
+						: ''
+				}`,
 		);
 
 		await queryRunner.query(
