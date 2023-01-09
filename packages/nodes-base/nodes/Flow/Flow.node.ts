@@ -7,7 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 import { flowApiRequest, FlowApiRequestAllItems } from './GenericFunctions';
-import { taskFields, taskOpeations } from './TaskDescription';
+import { taskFields, taskOperations } from './TaskDescription';
 import { ITask, TaskInfo } from './TaskInterface';
 
 export class Flow implements INodeType {
@@ -47,7 +47,7 @@ export class Flow implements INodeType {
 				],
 				default: 'task',
 			},
-			...taskOpeations,
+			...taskOperations,
 			...taskFields,
 		],
 	};
@@ -60,8 +60,8 @@ export class Flow implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			if (resource === 'task') {
@@ -242,7 +242,7 @@ export class Flow implements INodeType {
 						qs.cleared = filters.cleared as boolean;
 					}
 					try {
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await FlowApiRequestAllItems.call(
 								this,
 								'tasks',

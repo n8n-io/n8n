@@ -84,8 +84,8 @@ export class S3 implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				const headers: IDataObject = {};
@@ -124,7 +124,7 @@ export class S3 implements INodeType {
 						if (additionalFields.grantWriteAcp) {
 							headers['x-amz-grant-write-acp'] = '';
 						}
-						let region = credentials!.region as string;
+						let region = credentials.region as string;
 
 						if (additionalFields.region) {
 							region = additionalFields.region as string;
@@ -196,7 +196,7 @@ export class S3 implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 						if (additionalFields.prefix) {
-							qs['prefix'] = additionalFields.prefix as string;
+							qs.prefix = additionalFields.prefix as string;
 						}
 
 						if (additionalFields.encodingType) {
@@ -204,7 +204,7 @@ export class S3 implements INodeType {
 						}
 
 						if (additionalFields.delmiter) {
-							qs['delimiter'] = additionalFields.delmiter as string;
+							qs.delimiter = additionalFields.delmiter as string;
 						}
 
 						if (additionalFields.fetchOwner) {
@@ -400,10 +400,10 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
@@ -626,10 +626,7 @@ export class S3 implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const data = Buffer.from(response.body as string, 'utf8');
 
@@ -680,17 +677,17 @@ export class S3 implements INodeType {
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', 0) as IDataObject;
+						const options = this.getNodeParameter('options', 0);
 
 						if (options.folderKey) {
-							qs['prefix'] = options.folderKey as string;
+							qs.prefix = options.folderKey as string;
 						}
 
 						if (options.fetchOwner) {
 							qs['fetch-owner'] = options.fetchOwner as string;
 						}
 
-						qs['delimiter'] = '/';
+						qs.delimiter = '/';
 
 						qs['list-type'] = 2;
 
@@ -748,7 +745,7 @@ export class S3 implements INodeType {
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];
@@ -835,7 +832,7 @@ export class S3 implements INodeType {
 						const region = responseData.LocationConstraint._;
 
 						if (isBinaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {

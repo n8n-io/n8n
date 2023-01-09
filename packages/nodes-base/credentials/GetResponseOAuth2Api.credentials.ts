@@ -2,8 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GetResponseOAuth2Api implements ICredentialType {
 	name = 'getResponseOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'GetResponse OAuth2 API';
+
+	documentationUrl = 'getresponse';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

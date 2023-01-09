@@ -103,8 +103,8 @@ export class Lemlist implements INodeType {
 	async execute(this: IExecuteFunctions) {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -134,7 +134,7 @@ export class Lemlist implements INodeType {
 
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}

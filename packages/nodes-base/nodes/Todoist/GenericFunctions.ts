@@ -16,10 +16,9 @@ export async function todoistApiRequest(
 	this: Context,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {}, // tslint:disable-line:no-any
+
+	body: any = {},
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
@@ -46,9 +45,8 @@ export async function todoistApiRequest(
 
 export async function todoistSyncRequest(
 	this: Context,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
 
@@ -56,7 +54,7 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v9/sync`,
+		uri: 'https://api.todoist.com/sync/v9/sync',
 		json: true,
 	};
 

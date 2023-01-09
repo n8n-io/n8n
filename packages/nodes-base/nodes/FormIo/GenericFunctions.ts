@@ -34,11 +34,11 @@ async function getToken(
 	};
 
 	try {
-		const responseObject = await this.helpers.request!(options);
+		const responseObject = await this.helpers.request(options);
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
 		throw new Error(
-			`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`,
+			'Authentication Failed for Form.io. Please provide valid credentails/ endpoint details',
 		);
 	}
 }
@@ -52,7 +52,6 @@ export async function formIoApiRequest(
 	endpoint: string,
 	body = {},
 	qs = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('formIoApi')) as unknown as IFormIoCredentials;
 
@@ -73,7 +72,7 @@ export async function formIoApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

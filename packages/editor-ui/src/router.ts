@@ -14,6 +14,7 @@ import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -33,6 +34,7 @@ import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
+import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 import { useUsersStore } from './stores/users';
 
 Vue.use(Router);
@@ -41,7 +43,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 	meta: {
 		nodeView?: boolean;
 		templatesEnabled?: boolean;
-		getRedirect?: () => {name: string} | false;
+		getRedirect?: () => { name: string } | false;
 		permissions: IPermissions;
 		telemetry?: {
 			disabled?: true;
@@ -55,7 +57,7 @@ function getTemplatesRedirect() {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return {name: VIEWS.NOT_FOUND};
+		return { name: VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -77,8 +79,7 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect() {
-					const startOnNewWorkflowRouteFlag = window.posthog?.getFeatureFlag?.('start-at-wf-empty-state') === 'test';
-					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
+					return { name: VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -353,6 +354,20 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/mfa',
+			name: VIEWS.MFA,
+			components: {
+				default: Mfa,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
+			},
+		},
+		{
 			path: '/signup',
 			name: VIEWS.SIGNUP,
 			components: {
@@ -432,6 +447,37 @@ const router = new Router({
 			props: true,
 			children: [
 				{
+					path: 'usage',
+					name: VIEWS.USAGE,
+					components: {
+						settingsView: SettingsUsageAndPlanVue,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'usage',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return (
+										settingsStore.settings.hideUsagePage === true ||
+										settingsStore.settings.deployment?.type === 'cloud'
+									);
+								},
+							},
+						},
+					},
+				},
+				{
 					path: 'personal',
 					name: VIEWS.PERSONAL_SETTINGS,
 					components: {
@@ -505,9 +551,47 @@ const router = new Router({
 							},
 							deny: {
 								shouldDeny: () => {
-									const settingsStore =  useSettingsStore();
+									const settingsStore = useSettingsStore();
 									return settingsStore.isPublicApiEnabled === false;
 								},
+							},
+						},
+					},
+				},
+				{
+					path: '/mfa-setup',
+					name: VIEWS.MFA_SETUP,
+					components: {
+						settingsView: MfaSetupView,
+					},
+					meta: {
+						permissions: {
+							allow: {
+								shouldAllow: () => {
+									const usersStore = useUsersStore();
+									return usersStore.mfaEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'log-streaming',
+					name: VIEWS.LOG_STREAMING_SETTINGS,
+					components: {
+						settingsView: SettingsLogStreamingView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+								role: [ROLE.Owner],
+							},
+							deny: {
+								role: [ROLE.Default],
 							},
 						},
 					},

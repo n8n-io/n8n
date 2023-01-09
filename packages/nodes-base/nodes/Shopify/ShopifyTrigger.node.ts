@@ -325,6 +325,7 @@ export class ShopifyTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
@@ -332,7 +333,7 @@ export class ShopifyTrigger implements INodeType {
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const { webhooks } = await shopifyApiRequest.call(this, 'GET', endpoint, {}, { topic });
 				for (const webhook of webhooks) {
@@ -347,7 +348,7 @@ export class ShopifyTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const topic = this.getNodeParameter('topic') as string;
 				const webhookData = this.getWorkflowStaticData('node');
-				const endpoint = `/webhooks.json`;
+				const endpoint = '/webhooks.json';
 				const body = {
 					webhook: {
 						topic,
@@ -356,9 +357,7 @@ export class ShopifyTrigger implements INodeType {
 					},
 				};
 
-				let responseData;
-
-				responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
+				const responseData = await shopifyApiRequest.call(this, 'POST', endpoint, body);
 
 				if (responseData.webhook === undefined || responseData.webhook.id === undefined) {
 					// Required data is missing so was not successful

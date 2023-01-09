@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SalesforceOAuth2Api implements ICredentialType {
 	name = 'salesforceOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Salesforce OAuth2 API';
+
 	documentationUrl = 'salesforce';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Environment Type',

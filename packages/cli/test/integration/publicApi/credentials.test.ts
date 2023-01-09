@@ -18,8 +18,6 @@ let credentialOwnerRole: Role;
 
 let saveCredential: SaveCredentialFunction;
 
-jest.mock('@/telemetry');
-
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();

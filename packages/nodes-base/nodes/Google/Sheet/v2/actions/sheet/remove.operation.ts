@@ -20,9 +20,7 @@ export async function execute(
 			},
 		];
 
-		let responseData;
-
-		responseData = await apiRequest.call(
+		const responseData = await apiRequest.call(
 			this,
 			'POST',
 			`/v4/spreadsheets/${spreadsheetId}:batchUpdate`,

@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class WebflowOAuth2Api implements ICredentialType {
 	name = 'webflowOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Webflow OAuth2 API';
+
 	documentationUrl = 'webflow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

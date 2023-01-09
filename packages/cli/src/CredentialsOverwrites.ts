@@ -51,7 +51,6 @@ class CredentialsOverwritesClass {
 			}
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return returnData;
 	}
 
@@ -74,7 +73,6 @@ class CredentialsOverwritesClass {
 		}
 
 		const overwrites: ICredentialDataDecryptedObject = {};
-		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialsTypeName of credentialTypeData.extends) {
 			Object.assign(overwrites, this.getOverwrites(credentialsTypeName));
 		}
@@ -88,8 +86,13 @@ class CredentialsOverwritesClass {
 		return overwrites;
 	}
 
-	private get(type: string): ICredentialDataDecryptedObject | undefined {
-		return this.overwriteData[type];
+	private get(name: string): ICredentialDataDecryptedObject | undefined {
+		const parentTypes = this.credentialTypes.getParentTypes(name);
+		return [name, ...parentTypes]
+			.reverse()
+			.map((type) => this.overwriteData[type])
+			.filter((type) => !!type)
+			.reduce((acc, current) => Object.assign(acc, current), {});
 	}
 
 	getAll(): ICredentialsOverwrite {

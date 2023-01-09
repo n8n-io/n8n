@@ -72,7 +72,7 @@ export default mixins(Locale).extend({
 		},
 		size: {
 			type: String,
-			validator: (value: string): boolean => ['mini', 'small', 'large'].includes(value),
+			validator: (value: string): boolean => ['mini', 'small', 'medium', 'large'].includes(value),
 		},
 	},
 	data() {

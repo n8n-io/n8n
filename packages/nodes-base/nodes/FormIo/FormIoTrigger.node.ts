@@ -139,7 +139,6 @@ export class FormIoTrigger implements INodeType {
 						if (
 							action.settings.url === webhookUrl &&
 							action.method.length === method.length &&
-							// tslint:disable-next-line:no-any
 							action.method.every((value: any) => method.includes(value))
 						) {
 							webhookData.webhookId = action._id;
@@ -158,7 +157,7 @@ export class FormIoTrigger implements INodeType {
 				const method = this.getNodeParameter('events') as string[];
 				const payload = {
 					data: {
-						name: `webhook`,
+						name: 'webhook',
 						title: `webhook-n8n:${webhookUrl}`,
 						method,
 						handler: ['after'],
@@ -202,7 +201,7 @@ export class FormIoTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const simple = this.getNodeParameter('simple') as boolean;
 		let response = req.body.request;
-		if (simple === true) {
+		if (simple) {
 			response = response.data;
 		}
 		return {

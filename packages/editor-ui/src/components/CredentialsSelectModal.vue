@@ -9,11 +9,15 @@
 		minHeight="250px"
 	>
 		<template #header>
-			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
+			<h2 :class="$style.title">
+				{{ $locale.baseText('credentialSelectModal.addNewCredential') }}
+			</h2>
 		</template>
 		<template #content>
 			<div>
-				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
+				<div :class="$style.subtitle">
+					{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}
+				</div>
 				<n8n-select
 					filterable
 					defaultFirstOption
@@ -56,7 +60,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -73,8 +76,7 @@ export default mixins(externalHooks).extend({
 	async mounted() {
 		try {
 			await this.credentialsStore.fetchCredentialTypes(false);
-		} catch (e) {
-		}
+		} catch (e) {}
 		this.loading = false;
 
 		setTimeout(() => {
@@ -93,17 +95,13 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useCredentialsStore, useUIStore, useWorkflowsStore),
 	},
 	methods: {
 		onSelect(type: string) {
 			this.selected = type;
 		},
-		openCredentialType () {
+		openCredentialType() {
 			this.modalBus.$emit('close');
 			this.uiStore.openNewCredential(this.selected);
 

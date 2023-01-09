@@ -76,9 +76,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useUsersStore,
-		),
+		...mapStores(useUsersStore),
 	},
 	methods: {
 		onInput() {

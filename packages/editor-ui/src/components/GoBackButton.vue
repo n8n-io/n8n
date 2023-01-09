@@ -23,7 +23,7 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		window.history.state ? this.routeHasHistory = true : this.routeHasHistory = false;
+		window.history.state ? (this.routeHasHistory = true) : (this.routeHasHistory = false);
 	},
 });
 </script>

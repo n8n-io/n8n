@@ -13,9 +13,7 @@ export async function msGraphSecurityApiRequest(
 	headers: IDataObject = {},
 ) {
 	const {
-		oauthTokenData: {
-			access_token, // tslint:disable-line variable-name
-		},
+		oauthTokenData: { access_token },
 	} = (await this.getCredentials('microsoftGraphSecurityOAuth2Api')) as {
 		oauthTokenData: {
 			access_token: string;
@@ -73,7 +71,7 @@ export async function msGraphSecurityApiRequest(
 }
 
 export function tolerateDoubleQuotes(filterQueryParameter: string) {
-	return filterQueryParameter.replace(/"/g, `'`);
+	return filterQueryParameter.replace(/"/g, "'");
 }
 
 export function throwOnEmptyUpdate(this: IExecuteFunctions) {

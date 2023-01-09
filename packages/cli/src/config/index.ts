@@ -7,8 +7,7 @@ import { tmpdir } from 'os';
 import { mkdtempSync } from 'fs';
 import { join } from 'path';
 import { schema } from './schema';
-
-const inE2ETests = process.env.E2E_TESTS === 'true';
+import { inTest, inE2ETests } from '@/constants';
 
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
@@ -20,6 +19,9 @@ if (inE2ETests) {
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
 	};
+}
+if (inTest) {
+	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 } else {
 	dotenv.config();
 }
@@ -28,7 +30,6 @@ const config = convict(schema);
 
 if (inE2ETests) {
 	config.set('enterprise.features.sharing', true);
-	config.set('enterprise.workflowSharingEnabled', true);
 }
 
 config.getEnv = config.get;
@@ -36,10 +37,10 @@ config.getEnv = config.get;
 if (!inE2ETests) {
 	// Overwrite default configuration with settings which got defined in
 	// optional configuration files
-	const { N8N_CONFIG_FILES, NODE_ENV } = process.env;
+	const { N8N_CONFIG_FILES } = process.env;
 	if (N8N_CONFIG_FILES !== undefined) {
 		const configFiles = N8N_CONFIG_FILES.split(',');
-		if (NODE_ENV !== 'test') {
+		if (!inTest) {
 			console.log(`\nLoading configuration overwrites from:\n - ${configFiles.join('\n - ')}\n`);
 		}
 

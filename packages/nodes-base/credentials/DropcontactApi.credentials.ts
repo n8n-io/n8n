@@ -7,8 +7,11 @@ import {
 
 export class DropcontactApi implements ICredentialType {
 	name = 'dropcontactApi';
+
 	displayName = 'Dropcontact API';
+
 	documentationUrl = 'dropcontact';
+
 	properties = [
 		{
 			displayName: 'API Key',
@@ -17,6 +20,7 @@ export class DropcontactApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class DropcontactApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.dropcontact.io',
