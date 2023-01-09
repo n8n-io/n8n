@@ -641,6 +641,7 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	isOwner: boolean;
+	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: Date;
 }
@@ -1187,7 +1188,11 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[];
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
+export type IFakeDoorLocation =
+	| 'settings'
+	| 'settings/users'
+	| 'credentialsModal'
+	| 'workflowShareModal';
 
 export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
 
@@ -1293,6 +1298,8 @@ export interface IInviteResponse {
 	user: {
 		id: string;
 		email: string;
+		emailSent: boolean;
+		inviteAcceptUrl: string;
 	};
 	error?: string;
 }

@@ -434,12 +434,12 @@ export class Crypto implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				item = items[i];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 
 				if (action === 'generate') {
-					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					const encodingType = this.getNodeParameter('encodingType', i);
 					if (encodingType === 'uuid') {
 						newValue = uuid();
 					} else {

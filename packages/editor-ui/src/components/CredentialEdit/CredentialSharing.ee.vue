@@ -3,13 +3,19 @@
 		<div v-if="!isSharingEnabled">
 			<n8n-action-box
 				:heading="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.title)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.title,
+					)
 				"
 				:description="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.description)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.description,
+					)
 				"
 				:buttonText="
-					$locale.baseText(contextBasedTranslationKeys.credentials.sharing.unavailable.button)
+					$locale.baseText(
+						uiStore.contextBasedTranslationKeys.credentials.sharing.unavailable.button,
+					)
 				"
 				@click="goToUpgrade"
 			/>
@@ -62,9 +68,9 @@
 				</template>
 			</n8n-user-select>
 			<n8n-users-list
+				:actions="usersListActions"
 				:users="sharedWithList"
 				:currentUserId="usersStore.currentUser.id"
-				:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
 				:readonly="!credentialPermissions.updateSharing"
 				@delete="onRemoveSharee"
 			/>
@@ -73,7 +79,7 @@
 </template>
 
 <script lang="ts">
-import { IUser, UIState } from '@/Interface';
+import { IUser, IUserListAction, UIState } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
@@ -96,11 +102,16 @@ export default mixins(showMessage).extend({
 	],
 	computed: {
 		...mapStores(useCredentialsStore, useUsersStore, useUsageStore, useUIStore, useSettingsStore),
+		usersListActions(): IUserListAction[] {
+			return [
+				{
+					label: this.$locale.baseText('credentialEdit.credentialSharing.list.delete'),
+					value: 'delete',
+				},
+			];
+		},
 		isDefaultUser(): boolean {
 			return this.usersStore.isDefaultUser;
-		},
-		contextBasedTranslationKeys(): UIState['contextBasedTranslationKeys'] {
-			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isSharingEnabled(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -168,7 +179,7 @@ export default mixins(showMessage).extend({
 			this.modalBus.$emit('close');
 		},
 		goToUpgrade() {
-			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
+			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
 				linkUrl = this.usageStore.viewPlansUrl;
 			}

@@ -43,6 +43,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -125,6 +126,14 @@ export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger'
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+
+export const EXECUTABLE_TRIGGER_NODE_TYPES = [
+	START_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+];
 
 export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
@@ -316,11 +325,13 @@ export enum VIEWS {
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
 	USAGE = 'Usage',
+	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
 
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
+	SSO = 'sso',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -375,6 +386,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

@@ -3,8 +3,6 @@ export default {
 	'nds.userInfo.you': '(you)',
 	'nds.userSelect.selectUser': 'Select User',
 	'nds.userSelect.noMatchingUsers': 'No matching users',
-	'nds.usersList.deleteUser': 'Delete User',
-	'nds.usersList.reinviteUser': 'Resend invite',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
 	'formInput.validator.fieldRequired': 'This field is required',
