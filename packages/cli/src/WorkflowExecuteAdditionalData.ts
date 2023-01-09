@@ -203,18 +203,24 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
+		const toPrune = { stoppedAt: LessThanOrEqual(utcDate) };
+		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = await Db.collections.Execution.find({
-				stoppedAt: LessThanOrEqual(utcDate),
-			});
-			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			const executions = isBinaryModeDefaultMode
+				? []
+				: await Db.collections.Execution.find({
+						select: ['id'],
+						where: toPrune,
+				  });
+			await Db.collections.Execution.delete(toPrune);
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
 			// Mark binary data for deletion for all executions
-			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-				executions.map(({ id }) => id),
-			);
+			if (!isBinaryModeDefaultMode)
+				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+					executions.map(({ id }) => id),
+				);
 		} catch (error) {
 			ErrorReporter.error(error);
 			throttling = false;
@@ -632,7 +638,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						workflowId: this.workflowData.id,
 						error,
 					});
-
 					if (!isManualMode) {
 						executeErrorWorkflow(
 							this.workflowData,
@@ -905,6 +910,8 @@ async function executeWorkflow(
 				: await ActiveExecutions.getInstance().add(runData);
 	}
 
+	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 	let data;
 	try {
 		await PermissionChecker.check(workflow, additionalData.userId);
@@ -1003,12 +1010,8 @@ async function executeWorkflow(
 	}
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
-	void InternalHooksManager.getInstance().onWorkflowPostExecute(
-		executionId,
-		workflowData,
-		data,
-		additionalData.userId,
-	);
+
+	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully
@@ -1150,6 +1153,27 @@ export function getWorkflowHooksWorkerMain(
 	// So to avoid confusion, we are removing other hooks.
 	hookFunctions.nodeExecuteBefore = [];
 	hookFunctions.nodeExecuteAfter = [];
+
+	hookFunctions.nodeExecuteBefore.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
+	hookFunctions.nodeExecuteAfter.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodePostExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
 	return new WorkflowHooks(hookFunctions, mode, executionId, workflowData, optionalParameters);
 }
 
@@ -1180,6 +1204,29 @@ export function getWorkflowHooksMain(
 			hookFunctions[key]!.push.apply(hookFunctions[key], preExecuteFunctions[key]);
 		}
 	}
+
+	if (!hookFunctions.nodeExecuteBefore) hookFunctions.nodeExecuteBefore = [];
+	hookFunctions.nodeExecuteBefore?.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodeBeforeExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
+	if (!hookFunctions.nodeExecuteAfter) hookFunctions.nodeExecuteAfter = [];
+	hookFunctions.nodeExecuteAfter.push(async function (
+		this: WorkflowHooks,
+		nodeName: string,
+	): Promise<void> {
+		void InternalHooksManager.getInstance().onNodePostExecute(
+			this.executionId,
+			this.workflowData,
+			nodeName,
+		);
+	});
 
 	return new WorkflowHooks(hookFunctions, data.executionMode, executionId, data.workflowData, {
 		sessionId: data.sessionId,

@@ -249,7 +249,7 @@ export class RespondToWebhook implements INodeType {
 				);
 			}
 
-			if (headers['content-type']) {
+			if (!headers['content-type']) {
 				headers['content-type'] = binaryData.mimeType;
 			}
 			responseBody = binaryDataBuffer;

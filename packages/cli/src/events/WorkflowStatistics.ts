@@ -1,8 +1,9 @@
-import type { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { QueryFailedError } from 'typeorm';
 
 export async function workflowExecutionCompleted(
 	workflowData: IWorkflowBase,
@@ -23,7 +24,7 @@ export async function workflowExecutionCompleted(
 
 	// Get the workflow id
 	const workflowId = workflowData.id;
-	if (workflowId === undefined) return;
+	if (!workflowId) return;
 
 	// Try insertion and if it fails due to key conflicts then update the existing entry instead
 	try {
@@ -47,7 +48,10 @@ export async function workflowExecutionCompleted(
 		// Send the metrics
 		await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
 	} catch (error) {
-		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
+		if (!(error instanceof QueryFailedError)) {
+			throw error;
+		}
+
 		await Db.collections.WorkflowStatistics.update(
 			{ workflowId, name },
 			{ count: () => 'count + 1', latestEvent: new Date() },
@@ -55,17 +59,29 @@ export async function workflowExecutionCompleted(
 	}
 }
 
-export async function nodeFetchedData(workflowId: string, node: INode): Promise<void> {
-	// Update only if necessary
-	const response = await Db.collections.Workflow.update(
-		{ id: workflowId, dataLoaded: false },
-		{ dataLoaded: true },
-	);
+export async function nodeFetchedData(
+	workflowId: string | undefined | null,
+	node: INode,
+): Promise<void> {
+	if (!workflowId) return;
+	// Try to insert the data loaded statistic
+	try {
+		await Db.collections.WorkflowStatistics.insert({
+			workflowId,
+			name: StatisticsNames.dataLoaded,
+			count: 1,
+			latestEvent: new Date(),
+		});
+	} catch (error) {
+		// if it's a duplicate key error then that's fine, otherwise throw the error
+		if (!(error instanceof QueryFailedError)) {
+			throw error;
+		}
+		// If it is a query failed error, we return
+		return;
+	}
 
-	// If response.affected is 1 then we know this was the first time data was loaded into the workflow; do posthog event here
-	if (!response.affected) return;
-
-	// Compile the metrics
+	// Compile the metrics since this was a new data loaded event
 	const owner = await getWorkflowOwner(workflowId);
 	let metrics = {
 		user_id: owner.id,
