@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
-import { ResponseHelper } from '..';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
@@ -32,6 +31,7 @@ import {
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { User } from '../databases/entities/User';
+import * as ResponseHelper from '@/ResponseHelper';
 
 export const eventBusRouter = express.Router();
 

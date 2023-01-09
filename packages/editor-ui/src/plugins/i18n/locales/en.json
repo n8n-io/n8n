@@ -489,7 +489,7 @@
 	"executionEvents.table.message": "Message",
 	"executionEvents.table.ts": "Time",
 	"executionEvents.table.workflowName": "Workflow",
-	"executionEvents.table.nodeName": "Node",
+	"executionEvents.table.nodeName": "Node / Workflow",
 	"executionEvents.noData": "No events found. This either means the execution never ran, or that it ran too long ago for the event logs to still keep a record.",
 	"executionEvents.buttonLabel": "View execution event log",
 	"executionSidebar.executionName": "Execution {id}",

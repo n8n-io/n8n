@@ -22,7 +22,7 @@
 							width="280"
 						>
 							<template #default="scope">
-								{{ convertToDisplayDate(scope.row.ts) }}<br />
+								{{ dateformat(scope.row.ts, 'yyyy-mm-dd HH:MM:ss.l') }}<br />
 								<small v-if="scope.row.id">ID: {{ scope.row.id }}</small>
 							</template>
 						</el-table-column>
@@ -45,16 +45,7 @@
 							<template #default="scope">
 								<span v-if="scope.row.payload?.nodeName">
 									<div>{{ scope.row.payload?.nodeName }}</div>
-								</span>
-							</template>
-						</el-table-column>
-						<el-table-column
-							property="payload"
-							:label="$locale.baseText('executionEvents.table.workflowName')"
-						>
-							<template #default="scope">
-								<span v-if="scope.row.payload?.workflowName">
-									<div>{{ scope.row.payload?.workflowName }}</div>
+									<small>{{ scope.row.payload?.workflowName }}</small>
 								</span>
 							</template>
 						</el-table-column>
@@ -70,6 +61,7 @@
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from '@/components/Modal.vue';
+import dateformat from 'dateformat';
 import { showMessage } from '@/mixins/showMessage';
 import { convertToDisplayDate } from '@/utils';
 import { EXECUTION_EVENTS_MODAL_KEY } from '@/constants';
@@ -117,6 +109,7 @@ export default mixins(restApi, showMessage).extend({
 	},
 	methods: {
 		convertToDisplayDate,
+		dateformat,
 	},
 });
 </script>
