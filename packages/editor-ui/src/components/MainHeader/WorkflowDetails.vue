@@ -524,7 +524,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		goToUpgrade() {
 			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
-				linkUrl = this.usageStore.viewPlansUrl;
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
 			}
 
 			window.open(linkUrl, '_blank');
