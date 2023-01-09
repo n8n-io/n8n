@@ -83,11 +83,14 @@ eventBusRouter.get(
 					return eventBus.getEventsSent();
 				case 'unsent':
 					return eventBus.getEventsUnsent();
+				case 'unfinished':
+					return eventBus.getUnfinishedExecutions();
 				case 'all':
 				default:
+					return eventBus.getEventsAll();
 			}
 		}
-		return eventBus.getEvents();
+		return eventBus.getEventsAll();
 	}),
 );
 

@@ -28,6 +28,12 @@ interface MessageEventBusLogWriterOptions {
 	maxFileSizeInKB?: number;
 }
 
+interface ReadMessagesFromLogFileResult {
+	loggedMessages: EventMessageTypes[];
+	sentMessages: EventMessageTypes[];
+	unfinishedExecutions: Set<string>;
+}
+
 /**
  * MessageEventBusWriter for Files
  */
@@ -138,45 +144,31 @@ export class MessageEventBusLogWriter {
 
 	async getMessages(
 		mode: EventMessageReturnMode = 'all',
-		includePreviousLog = true,
-	): Promise<EventMessageTypes[]> {
-		const logFileName0 = await MessageEventBusLogWriter.instance.getThread()?.getLogFileName();
-		const logFileName1 = includePreviousLog
-			? await MessageEventBusLogWriter.instance.getThread()?.getLogFileName(1)
-			: undefined;
-		const results: {
-			loggedMessages: EventMessageTypes[];
-			sentMessages: EventMessageTypes[];
-		} = {
+		logHistory = 1,
+	): Promise<ReadMessagesFromLogFileResult> {
+		const results: ReadMessagesFromLogFileResult = {
 			loggedMessages: [],
 			sentMessages: [],
+			unfinishedExecutions: new Set<string>(),
 		};
-		if (logFileName1) {
-			await this.readLoggedMessagesFromFile(results, mode, logFileName1);
+		const logCount = logHistory
+			? Math.min(config.get('eventBus.logWriter.keepLogCount') as number, logHistory)
+			: (config.get('eventBus.logWriter.keepLogCount') as number);
+		for (let i = logCount; i >= 0; i--) {
+			const logFileName = await MessageEventBusLogWriter.instance.getThread()?.getLogFileName(i);
+			if (logFileName) {
+				await this.readLoggedMessagesFromFile(results, mode, logFileName);
+			}
 		}
-		if (logFileName0) {
-			await this.readLoggedMessagesFromFile(results, mode, logFileName0);
-		}
-		switch (mode) {
-			case 'all':
-			case 'unsent':
-				return results.loggedMessages;
-			case 'sent':
-				return results.sentMessages;
-		}
+
+		return results;
 	}
 
 	async readLoggedMessagesFromFile(
-		results: {
-			loggedMessages: EventMessageTypes[];
-			sentMessages: EventMessageTypes[];
-		},
+		results: ReadMessagesFromLogFileResult,
 		mode: EventMessageReturnMode,
 		logFileName: string,
-	): Promise<{
-		loggedMessages: EventMessageTypes[];
-		sentMessages: EventMessageTypes[];
-	}> {
+	): Promise<ReadMessagesFromLogFileResult> {
 		if (logFileName && existsSync(logFileName)) {
 			try {
 				const rl = readline.createInterface({
@@ -189,6 +181,15 @@ export class MessageEventBusLogWriter {
 						if (isEventMessageOptions(json) && json.__type !== undefined) {
 							const msg = getEventMessageObjectByType(json);
 							if (msg !== null) results.loggedMessages.push(msg);
+							if (msg?.eventName === 'n8n.workflow.started' && msg?.payload?.executionId) {
+								results.unfinishedExecutions.add(msg?.payload?.executionId as string);
+							} else if (
+								(msg?.eventName === 'n8n.workflow.success' ||
+									msg?.eventName === 'n8n.workflow.failed') &&
+								msg?.payload?.executionId
+							) {
+								results.unfinishedExecutions.delete(msg?.payload?.executionId as string);
+							}
 						}
 						if (isEventMessageConfirm(json) && mode !== 'all') {
 							const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
@@ -265,11 +266,30 @@ export class MessageEventBusLogWriter {
 		return messages;
 	}
 
+	async getMessagesAll(): Promise<EventMessageTypes[]> {
+		return (await this.getMessages('all')).loggedMessages;
+	}
+
 	async getMessagesSent(): Promise<EventMessageTypes[]> {
-		return this.getMessages('sent');
+		return (await this.getMessages('sent')).sentMessages;
 	}
 
 	async getMessagesUnsent(): Promise<EventMessageTypes[]> {
-		return this.getMessages('unsent');
+		return (await this.getMessages('unsent')).loggedMessages;
+	}
+
+	async getUnfinishedExecutions(): Promise<Set<string>> {
+		return (await this.getMessages('unfinished')).unfinishedExecutions;
+	}
+
+	async getUnsentAndUnfinishedExecutions(): Promise<{
+		unsentMessages: EventMessageTypes[];
+		unfinishedExecutions: Set<string>;
+	}> {
+		const result = await this.getMessages('unsent');
+		return {
+			unsentMessages: result.loggedMessages,
+			unfinishedExecutions: result.unfinishedExecutions,
+		};
 	}
 }
