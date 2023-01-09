@@ -236,7 +236,7 @@ export default mixins(
 				{
 					id: 'executions',
 					icon: 'tasks',
-					label: this.$locale.baseText('generic.executions'),
+					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'top',
 					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},

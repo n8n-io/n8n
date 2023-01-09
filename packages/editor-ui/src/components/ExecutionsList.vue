@@ -171,7 +171,12 @@
 								/>
 							</span>
 							<template #dropdown>
-								<el-dropdown-menu :class="$style.actions">
+								<el-dropdown-menu
+									:class="{
+										[$style.actions]: true,
+										[$style.deleteOnly]: !isExecutionRetriable(execution),
+									}"
+								>
 									<el-dropdown-item
 										v-if="isExecutionRetriable(execution)"
 										:class="$style.retryAction"
@@ -906,6 +911,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		transform: translateX(1000%);
 		transition: transform 0s;
 
+		&:focus-visible,
 		.execRow:hover & {
 			transform: translateX(0);
 		}
@@ -1018,7 +1024,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	padding: var(--spacing-l) 0;
 }
 
-.actions:not(:has(li + li)) {
+.actions.deleteOnly {
 	padding: 0;
 }
 
