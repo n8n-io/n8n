@@ -321,7 +321,6 @@ export class ShopifyTrigger implements INodeType {
 						value: 'themes/update',
 					},
 				],
-				description: 'Event that triggers the webhook',
 			},
 		],
 	};
