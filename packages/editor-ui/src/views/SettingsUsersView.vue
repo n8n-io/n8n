@@ -8,7 +8,7 @@
 						<i18n path="settings.users.setupSMTPToInviteUsers" tag="span">
 							<template #action>
 								<a
-									href="https://docs.n8n.io/reference/user-management.html#step-one-smtp"
+									href="https://docs.n8n.io/hosting/authentication/user-management-self-hosted/"
 									target="_blank"
 									v-text="$locale.baseText('settings.users.setupSMTPToInviteUsers.instructions')"
 								/>
