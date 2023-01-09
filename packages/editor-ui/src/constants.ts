@@ -82,6 +82,7 @@ export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
 export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
+export const COMPARE_DATASETS_NODE_TYPE = 'n8n-nodes-base.compareDatasets';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';
 export const GITHUB_TRIGGER_NODE_TYPE = 'n8n-nodes-base.githubTrigger';
@@ -141,7 +142,11 @@ export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 ];
 
-export const MULTIPLE_OUTPUT_NODE_TYPES = [IF_NODE_TYPE, SWITCH_NODE_TYPE];
+export const MULTIPLE_OUTPUT_NODE_TYPES = [
+	IF_NODE_TYPE,
+	SWITCH_NODE_TYPE,
+	COMPARE_DATASETS_NODE_TYPE,
+];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [
 	...MULTIPLE_OUTPUT_NODE_TYPES,
