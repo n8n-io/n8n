@@ -59,7 +59,10 @@ export async function workflowExecutionCompleted(
 	}
 }
 
-export async function nodeFetchedData(workflowId: string | undefined, node: INode): Promise<void> {
+export async function nodeFetchedData(
+	workflowId: string | undefined | null,
+	node: INode,
+): Promise<void> {
 	if (!workflowId) return;
 	// Try to insert the data loaded statistic
 	try {
