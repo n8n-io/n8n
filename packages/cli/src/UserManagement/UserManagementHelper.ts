@@ -160,7 +160,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
-export function addInviteLinktoUser(user: PublicUser, inviterId: string): PublicUser {
+export function addInviteLinkToUser(user: PublicUser, inviterId: string): PublicUser {
 	if (user.isPending) {
 		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
 	}
@@ -177,7 +177,7 @@ export async function getUserById(userId: string): Promise<User> {
 /**
  * Check if a URL contains an auth-excluded endpoint.
  */
-export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
+export function isAuthExcluded(url: string, ignoredEndpoints: Readonly<string[]>): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
 		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));

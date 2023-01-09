@@ -346,7 +346,7 @@ class Server extends AbstractServer {
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
-		const ignoredEndpoints = [
+		const ignoredEndpoints: Readonly<string[]> = [
 			'assets',
 			'healthz',
 			'metrics',

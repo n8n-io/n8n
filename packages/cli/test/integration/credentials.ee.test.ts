@@ -23,12 +23,12 @@ let authAgent: AuthAgent;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
 	app = await utils.initTestServer({
 		endpointGroups: ['credentials'],
 		applyAuth: true,
 	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
 
 	utils.initConfigFile();
 
@@ -38,9 +38,6 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });

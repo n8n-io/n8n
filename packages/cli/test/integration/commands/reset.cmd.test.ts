@@ -1,17 +1,12 @@
-import express from 'express';
-
 import * as Db from '@/Db';
 import { Reset } from '@/commands/user-management/reset';
 import type { Role } from '@db/entities/Role';
-import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
-let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 

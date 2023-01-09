@@ -14,14 +14,11 @@ let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();

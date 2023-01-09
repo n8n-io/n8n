@@ -17,19 +17,16 @@ let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
 	app = await utils.initTestServer({
 		applyAuth: true,
 		endpointGroups: ['me', 'auth', 'owner', 'users'],
 	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
 
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 afterAll(async () => {

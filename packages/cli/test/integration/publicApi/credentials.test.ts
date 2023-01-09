@@ -19,9 +19,9 @@ let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
+	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 
 	utils.initConfigFile();
 
@@ -34,8 +34,6 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 	utils.initCredentialsTypes();
 });
 

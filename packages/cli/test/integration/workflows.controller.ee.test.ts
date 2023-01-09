@@ -25,12 +25,12 @@ let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
+	const initResult = await testDb.init();
+	testDbName = initResult.testDbName;
 	app = await utils.initTestServer({
 		endpointGroups: ['workflows'],
 		applyAuth: true,
 	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -39,9 +39,6 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 

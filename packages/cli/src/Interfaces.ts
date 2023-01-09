@@ -360,6 +360,7 @@ export interface IInternalHooksClass {
 		user: User;
 		target_user_id: string[];
 		public_api: boolean;
+		email_sent: boolean;
 	}): Promise<void>;
 	onUserReinvite(userReinviteData: {
 		user: User;
@@ -373,6 +374,7 @@ export interface IInternalHooksClass {
 		userTransactionalEmailData: {
 			user_id: string;
 			message_type: 'Reset password' | 'New user invite' | 'Resend invite';
+			public_api: boolean;
 		},
 		user?: User,
 	): Promise<void>;
