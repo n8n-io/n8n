@@ -242,7 +242,7 @@ export class SecurityScorecard implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const fileName = reportUrl.split('/').pop();
 

@@ -434,10 +434,6 @@ export default mixins(workflowHelpers, titleChange).extend({
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
 					const workflowData = await this.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
-					if (data.id && typeof data.id === 'string') {
-						data.id = parseInt(data.id, 10);
-					}
-
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {

@@ -104,9 +104,9 @@ workflowsController.post(
 		}
 
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
-		return WorkflowsService.entityToResponse(savedWorkflow);
+		return savedWorkflow;
 	}),
 );
 
@@ -116,8 +116,7 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = await WorkflowsService.getMany(req.user, req.query.filter);
-		return workflows.map((workflow) => WorkflowsService.entityToResponse(workflow));
+		return WorkflowsService.getMany(req.user, req.query.filter);
 	}),
 );
 
@@ -218,7 +217,7 @@ workflowsController.get(
 			);
 		}
 
-		return WorkflowsService.entityToResponse(shared.workflow);
+		return shared.workflow;
 	}),
 );
 
@@ -244,7 +243,7 @@ workflowsController.patch(
 			['owner'],
 		);
 
-		return WorkflowsService.entityToResponse(updatedWorkflow);
+		return updatedWorkflow;
 	}),
 );
 
@@ -286,7 +285,7 @@ workflowsController.delete(
 
 		await Db.collections.Workflow.delete(workflowId);
 
-		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
+		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user, workflowId, false);
 		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;

@@ -36,7 +36,7 @@ EEExecutionsController.get(
  * GET /executions/:id
  */
 EEExecutionsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(
 		async (
 			req: ExecutionRequest.Get,

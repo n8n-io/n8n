@@ -179,7 +179,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		activeId: {
 			type: [String, Number],
-			required: false,
+			required: true,
 		},
 		mode: {
 			type: String,

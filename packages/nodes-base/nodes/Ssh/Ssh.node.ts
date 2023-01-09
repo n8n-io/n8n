@@ -302,10 +302,7 @@ export class Ssh implements INodeType {
 
 					if (resource === 'file') {
 						if (operation === 'download') {
-							const dataPropertyNameDownload = this.getNodeParameter(
-								'binaryPropertyName',
-								i,
-							) as string;
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const parameterPath = this.getNodeParameter('path', i) as string;
 
 							const { path } = await file({ prefix: 'n8n-ssh-' });
@@ -350,7 +347,7 @@ export class Ssh implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							const binaryData = item.binary[propertyNameUpload];
 

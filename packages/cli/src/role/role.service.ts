@@ -13,10 +13,7 @@ export class RoleService {
 
 	static async getUserRoleForWorkflow(userId: string, workflowId: string) {
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			where: {
-				workflow: { id: workflowId },
-				user: { id: userId },
-			},
+			where: { workflowId, userId },
 			relations: ['role'],
 		});
 		return shared?.role;
