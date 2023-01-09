@@ -56,6 +56,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
 		},
 
+		nonResolvableSegments(): Plaintext[] {
+			return this.segments.filter((s): s is Plaintext => s.kind !== 'resolvable');
+		},
+
 		segments(): Segment[] {
 			if (!this.editor) return [];
 

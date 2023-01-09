@@ -1083,7 +1083,7 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {

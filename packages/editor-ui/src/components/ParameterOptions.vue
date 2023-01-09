@@ -28,6 +28,8 @@
 import { NodeParameterValueType } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
+import { useNDVStore } from '@/stores/ndv';
+import { mapStores } from 'pinia';
 
 export default Vue.extend({
 	name: 'parameter-options',
@@ -51,6 +53,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(useNDVStore),
 		isDefault(): boolean {
 			return this.parameter.default === this.value;
 		},
@@ -91,6 +94,15 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
+			if (this.ndvStore.activeNode?.type === 'n8n-nodes-base.htmlTemplate') {
+				return [
+					{
+						label: 'Format HTML',
+						value: 'formatHtml',
+					},
+				];
+			}
+
 			const actions = [
 				{
 					label: this.$locale.baseText('parameterInput.resetValue'),

@@ -314,6 +314,11 @@
 				:totalRuns="maxRunIndex"
 			/>
 
+			<run-data-html
+				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
+				:inputData="inputData"
+			/>
+
 			<run-data-schema
 				v-else-if="hasNodeRun && displayMode === 'schema'"
 				:data="jsonData"
@@ -473,6 +478,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
+	HTML_TEMPLATE_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -495,6 +501,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
 const RunDataSchema = () => import('@/components/RunDataSchema.vue');
+const RunDataHtml = () => import('@/components/RunDataHtml.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -510,6 +517,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
+		RunDataHtml,
 	},
 	props: {
 		nodeUi: {
@@ -599,6 +607,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			pane: this.paneType as 'input' | 'output',
 			branchIndex: this.currentOutputIndex,
 		});
+
+		if (this.paneType === 'output') {
+			this.ndvStore.setPanelDisplayMode({
+				pane: 'output',
+				mode: this.activeNode?.type === HTML_TEMPLATE_NODE_TYPE ? 'html' : 'table',
+			});
+		}
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
@@ -650,6 +665,10 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 			if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
 				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
+			}
+
+			if (this.isPaneTypeOutput && this.activeNode?.type === HTML_TEMPLATE_NODE_TYPE) {
+				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
 			return defaults;
@@ -833,6 +852,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		},
 		isPaneTypeInput(): boolean {
 			return this.paneType === 'input';
+		},
+		isPaneTypeOutput(): boolean {
+			return this.paneType === 'output';
 		},
 	},
 	methods: {
