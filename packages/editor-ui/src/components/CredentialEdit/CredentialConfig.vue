@@ -72,7 +72,7 @@
 						@valueChanged="valueChanged"
 					/>
 				</div>
-				<div class="mb-2xs">
+				<div>
 					<n8n-input-label
 						:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
 						:tooltipText="

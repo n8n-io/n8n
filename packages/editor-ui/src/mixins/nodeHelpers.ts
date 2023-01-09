@@ -309,7 +309,7 @@ export const nodeHelpers = mixins(restApi).extend({
 					if (credentialTypeDescription.required) {
 						foundIssues[credentialTypeDescription.name] = [
 							this.$locale.baseText('nodeIssues.credentials.notSet', {
-								interpolate: { type: credentialDisplayName },
+								interpolate: { type: nodeType.displayName },
 							}),
 						];
 					}
