@@ -67,6 +67,7 @@
       "browserslist": "^4.21.4",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
+      "jsonwebtoken": "9.0.0",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     }
