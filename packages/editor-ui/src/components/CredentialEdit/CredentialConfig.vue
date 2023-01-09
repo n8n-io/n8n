@@ -138,7 +138,7 @@
 			@click="$emit('oauth')"
 		/>
 
-		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+		<n8n-text v-if="isMissingCredentials" color="text-base" size="medium">
 			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
 		</n8n-text>
 	</div>
@@ -260,7 +260,7 @@ export default mixins(restApi).extend({
 	},
 	mounted() {
 		// Select auth type radio button based on the selected credential type and it's display options
-		if (this.activeNodeType?.credentials) {
+		if (this.selectedCredentialType && this.activeNodeType?.credentials) {
 			const credentialsForType =
 				this.activeNodeType.credentials.find((cred) => cred.name === this.credentialType.name) ||
 				null;
@@ -376,6 +376,9 @@ export default mixins(restApi).extend({
 					isAuthRelatedParameter(nodeAuthFields, prop),
 				) || []
 			);
+		},
+		isMissingCredentials(): boolean {
+			return this.selectedCredentialType !== '' && this.credentialType === null;
 		},
 	},
 	methods: {
