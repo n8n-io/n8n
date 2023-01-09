@@ -79,7 +79,7 @@ export class ShopifyTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'Topic',
+				displayName: 'Trigger On',
 				name: 'topic',
 				type: 'options',
 				default: '',

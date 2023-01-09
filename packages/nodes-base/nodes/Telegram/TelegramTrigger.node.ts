@@ -36,7 +36,7 @@ export class TelegramTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Updates',
+				displayName: 'Trigger On',
 				name: 'updates',
 				type: 'multiOptions',
 				options: [
