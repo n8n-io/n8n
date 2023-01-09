@@ -181,7 +181,7 @@ export default mixins(showMessage).extend({
 		goToUpgrade() {
 			let linkUrl = this.$locale.baseText(this.uiStore.contextBasedTranslationKeys.upgradeLinkUrl);
 			if (linkUrl.includes('subscription')) {
-				linkUrl = this.usageStore.viewPlansUrl;
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=credential_sharing`;
 			}
 
 			window.open(linkUrl, '_blank');
