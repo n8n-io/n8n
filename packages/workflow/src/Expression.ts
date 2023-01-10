@@ -14,9 +14,20 @@ import {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError } from './ExpressionError';
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
+
+// eslint-disable-next-line import/no-cycle
+import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
+import {
+	ExpressionChunk,
+	ExpressionCode,
+	joinExpression,
+	splitExpression,
+} from './Extensions/ExpressionParser';
+import { extendTransform } from './Extensions/ExpressionExtension';
+import { extendedFunctions } from './Extensions/ExtendedFunctions';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -242,6 +253,11 @@ export class Expression {
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
 
+		// expression extensions
+		data.extend = extend;
+
+		Object.assign(data, extendedFunctions);
+
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
 		if (parameterValue.match(constructorValidation)) {
 			throw new ExpressionError('Expression contains invalid constructor function call', {
@@ -252,7 +268,8 @@ export class Expression {
 		}
 
 		// Execute the expression
-		const returnValue = this.renderExpression(parameterValue, data);
+		const extendedExpression = this.extendSyntax(parameterValue);
+		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
 			throw new Error('This is a function. Please add ()');
@@ -267,7 +284,10 @@ export class Expression {
 		return returnValue;
 	}
 
-	private renderExpression(expression: string, data: IWorkflowDataProxyData): tmpl.ReturnValue {
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	): tmpl.ReturnValue | undefined {
 		try {
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
@@ -279,8 +299,41 @@ export class Expression {
 				}
 			}
 		}
-
 		return null;
+	}
+
+	extendSyntax(bracketedExpression: string): string {
+		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
+
+		const chunks = splitExpression(bracketedExpression);
+
+		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
+			if (chunk.type === 'code') {
+				const output = extendTransform(chunk.text);
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				if (!output?.code) {
+					throw new ExpressionExtensionError('Failed to extend syntax');
+				}
+
+				let text = output.code;
+				// We need to cut off any trailing semicolons. These cause issues
+				// with certain types of expression and cause the whole expression
+				// to fail.
+				if (text.trim().endsWith(';')) {
+					text = text.trim().slice(0, -1);
+				}
+
+				return {
+					...chunk,
+					text,
+				} as ExpressionCode;
+			}
+			return chunk;
+		});
+
+		return joinExpression(extendedChunks);
 	}
 
 	/**
@@ -439,6 +492,7 @@ export class Expression {
 					selfData,
 				);
 			}
+
 			return this.resolveSimpleParameterValue(
 				value as NodeParameterValue,
 				siblingParameters,
