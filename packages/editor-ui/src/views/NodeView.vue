@@ -1396,8 +1396,10 @@ export default mixins(
 
 					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
 					this.$showMessage({
-						title: 'Execution canceled',
-						message: 'This execution was canceled',
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
 						type: 'success',
 					});
 				} else if (execution?.finished) {
