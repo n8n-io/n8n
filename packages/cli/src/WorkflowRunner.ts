@@ -411,9 +411,9 @@ export class WorkflowRunner {
 		let job: Queue.Job;
 		let hooks: WorkflowHooks;
 		try {
-			job = await this.jobQueue.add(jobData, jobOptions);
+			job = await this.jobQueue.add(executionId, jobData, jobOptions);
 
-			console.log(`Started with job ID: ${job.id.toString()} (Execution ID: ${executionId})`);
+			console.log(`Started with job ID: ${job.id?.toString()} (Execution ID: ${executionId})`);
 
 			hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerMain(
 				data.executionMode,
@@ -460,7 +460,8 @@ export class WorkflowRunner {
 					reject(error);
 				});
 
-				const jobData: Promise<Queue.JobResponse> = job.finished();
+				// Now returns the return value of the job if it is finished
+				const jobData = job.waitUntilFinished();
 
 				const queueRecoveryInterval = config.getEnv('queue.bull.queueRecoveryInterval');
 

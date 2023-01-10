@@ -143,7 +143,7 @@ importers:
       bcryptjs: ^2.4.3
       body-parser: ^1.18.3
       body-parser-xml: ^2.0.3
-      bull: ^4.10.2
+      bullmq: ^3.5.2
       callsites: ^3.1.0
       change-case: ^4.1.1
       class-validator: ^0.13.1
@@ -237,7 +237,7 @@ importers:
       bcryptjs: 2.4.3
       body-parser: 1.20.1
       body-parser-xml: 2.0.3
-      bull: 4.10.2
+      bullmq: 3.5.2
       callsites: 3.1.0
       change-case: 4.1.2
       class-validator: 0.13.2
@@ -8343,19 +8343,17 @@ packages:
       - supports-color
     dev: false
 
-  /bull/4.10.2:
-    resolution: {integrity: sha512-xa65xtWjQsLqYU/eNaXxq9VRG8xd6qNsQEjR7yjYuae05xKrzbVMVj2QgrYsTMmSs/vsqJjHqHSRRiW1+IkGXQ==}
-    engines: {node: '>=12'}
+  /bullmq/3.5.2:
+    resolution: {integrity: sha512-QUnbYydQPAZmyFEso+Vi1MfjKM4/xY8/sCJROZBI2QXc15jMEkhckEhKVsoYtTmdZdD6q/RMRPsf9eHgJrM9yA==}
     dependencies:
       cron-parser: 4.7.0
-      debuglog: 1.0.1
-      get-port: 5.1.1
+      glob: 8.0.3
       ioredis: 5.2.4
       lodash: 4.17.21
       msgpackr: 1.8.1
-      p-timeout: 3.2.0
       semver: 7.3.8
-      uuid: 8.3.2
+      tslib: 2.4.0
+      uuid: 9.0.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -12475,7 +12473,6 @@ packages:
       inherits: 2.0.4
       minimatch: 5.1.0
       once: 1.4.0
-    dev: true
 
   /global-dirs/3.0.0:
     resolution: {integrity: sha512-v8ho2DS5RiCjftj1nD9NmnfaOzTdud7RRnVd9kFNOjqZbISlx5DQ+OrTkywgd0dIt7oFCvKetZSHoHcP3sDdiA==}
@@ -21418,6 +21415,11 @@ packages:
   /uuid/8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
+
+  /uuid/9.0.0:
+    resolution: {integrity: sha512-MXcSTerfPa4uqyzStbRoTgt5XIe3x5+42+q1sDuy3R5MDk66URdLMOZe5aPX/SQd+kuYAh0FdP/pO28IkQyTeg==}
+    hasBin: true
+    dev: false
 
   /v-click-outside/3.2.0:
     resolution: {integrity: sha512-QD0bDy38SHJXQBjgnllmkI/rbdiwmq9RC+/+pvrFjYJKTn8dtp7Penf9q1lLBta280fYG2q53mgLhQ+3l3z74w==}

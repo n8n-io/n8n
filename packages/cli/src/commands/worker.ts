@@ -317,7 +317,7 @@ export class Worker extends Command {
 				console.info(` * Concurrency: ${flags.concurrency}`);
 				console.info('');
 
-				Worker.jobQueue.on('global:progress', (jobId, progress) => {
+				Worker.jobQueue.on('progress', (jobId, progress) => {
 					// Progress of a job got updated which does get used
 					// to communicate that a job got canceled.
 
@@ -396,7 +396,8 @@ export class Worker extends Command {
 							// if it loses the connection to redis
 							try {
 								// Redis ping
-								await Worker.jobQueue.client.ping();
+								const client = await Worker.jobQueue.client;
+								await client.ping();
 							} catch (e) {
 								LoggerProxy.error('No Redis connection!', e);
 								const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');

@@ -1,4 +1,4 @@
-import type Bull from 'bull';
+import type Bull from 'bullmq';
 import type { RedisOptions } from 'ioredis';
 import { IExecuteResponsePromiseData } from 'n8n-workflow';
 import config from '@/config';
@@ -32,7 +32,7 @@ export class Queue {
 		const redisOptions: RedisOptions = config.getEnv('queue.bull.redis');
 
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { default: Bull } = await import('bull');
+		const { default: Bull } = await import('bullmq');
 
 		// Disabling ready check is necessary as it allows worker to
 		// quickly reconnect to Redis if Redis crashes or is unreachable
@@ -42,7 +42,7 @@ export class Queue {
 		// @ts-ignore
 		this.jobQueue = new Bull('jobs', { prefix, redis: redisOptions, enableReadyCheck: false });
 
-		this.jobQueue.on('global:progress', (jobId, progress: WebhookResponse) => {
+		this.jobQueue.on('progress', (jobId, progress: WebhookResponse) => {
 			this.activeExecutions.resolveResponsePromise(
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				progress.executionId,
@@ -52,14 +52,14 @@ export class Queue {
 	}
 
 	async add(jobData: JobData, jobOptions: object): Promise<Job> {
-		return this.jobQueue.add(jobData, jobOptions);
+		return this.jobQueue.add(jobData.executionId, jobData, jobOptions);
 	}
 
-	async getJob(jobId: Bull.JobId): Promise<Job | null> {
+	async getJob(jobId: string): Promise<Job | undefined> {
 		return this.jobQueue.getJob(jobId);
 	}
 
-	async getJobs(jobTypes: Bull.JobStatus[]): Promise<Job[]> {
+	async getJobs(jobTypes: Bull.JobState[]): Promise<Job[]> {
 		return this.jobQueue.getJobs(jobTypes);
 	}
 
@@ -75,7 +75,7 @@ export class Queue {
 	async stopJob(job: Job): Promise<boolean> {
 		if (await job.isActive()) {
 			// Job is already running so tell it to stop
-			await job.progress(-1);
+			await job.updateProgress(-1);
 			return true;
 		}
 		// Job did not get started yet so remove from queue
@@ -83,7 +83,7 @@ export class Queue {
 			await job.remove();
 			return true;
 		} catch (e) {
-			await job.progress(-1);
+			await job.updateProgress(-1);
 		}
 
 		return false;
