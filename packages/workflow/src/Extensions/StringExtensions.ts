@@ -61,7 +61,7 @@ function getOnlyFirstCharacters(value: string, extraArgs: number[]): string {
 
 	if (typeof end !== 'number') {
 		throw new ExpressionError.ExpressionExtensionError(
-			`getOnlyFirstCharacters() requires a argument`,
+			'getOnlyFirstCharacters() requires a argument',
 		);
 	}
 

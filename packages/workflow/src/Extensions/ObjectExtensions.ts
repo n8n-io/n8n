@@ -1,4 +1,4 @@
-import { ExpressionExtensionError } from '..';
+import { ExpressionExtensionError } from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 
 export function merge(value: object, extraArgs: unknown[]): unknown {
