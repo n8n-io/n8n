@@ -1,3 +1,4 @@
+import { useNDVStore } from '@/stores/ndv';
 import {
 	applyForOnboardingCall,
 	fetchNextOnboardingPrompt,
@@ -18,6 +19,7 @@ import {
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
+	KEEP_AUTH_IN_NDV_FOR_NODES,
 	LOG_STREAM_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -349,7 +351,11 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
 		openNewCredential(type: string): void {
-			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
+			const ndvStore = useNDVStore();
+			const activeId = KEEP_AUTH_IN_NDV_FOR_NODES.includes(ndvStore.activeNode?.type || '')
+				? type
+				: null;
+			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, activeId);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
