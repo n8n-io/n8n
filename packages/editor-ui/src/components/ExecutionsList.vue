@@ -878,6 +878,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	position: relative;
 	height: 100%;
 	overflow: auto;
+	padding: var(--spacing-3xl) var(--spacing-xl) var(--spacing-3xl) var(--spacing-xl);
 }
 
 .selectionOptions {
@@ -965,7 +966,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 	thead th {
 		position: sticky;
-		top: 0;
+		top: calc(var(--spacing-3xl) * -1);
 		z-index: 2;
 		padding: var(--spacing-s) var(--spacing-s) var(--spacing-s) 0;
 		background: var(--color-background-base);
