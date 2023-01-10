@@ -1921,10 +1921,7 @@ export default mixins(
 			// current node. But only if it's added manually by the user (not by undo/redo mechanism)
 			if (trackHistory) {
 				this.deselectAllNodes();
-				const preventDetailOpen =
-					window.posthog?.getFeatureFlag &&
-					window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
-				if (showDetail && !preventDetailOpen) {
+				if (showDetail) {
 					setTimeout(() => {
 						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 					});
