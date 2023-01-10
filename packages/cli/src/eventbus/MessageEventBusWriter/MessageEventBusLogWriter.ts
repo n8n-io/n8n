@@ -31,7 +31,8 @@ interface MessageEventBusLogWriterOptions {
 interface ReadMessagesFromLogFileResult {
 	loggedMessages: EventMessageTypes[];
 	sentMessages: EventMessageTypes[];
-	unfinishedExecutions: Set<string>;
+	// unfinishedExecutions: Set<string>;
+	unfinishedExecutions: Record<string, EventMessageTypes[]>;
 }
 
 /**
@@ -149,7 +150,7 @@ export class MessageEventBusLogWriter {
 		const results: ReadMessagesFromLogFileResult = {
 			loggedMessages: [],
 			sentMessages: [],
-			unfinishedExecutions: new Set<string>(),
+			unfinishedExecutions: {},
 		};
 		const logCount = logHistory
 			? Math.min(config.get('eventBus.logWriter.keepLogCount') as number, logHistory)
@@ -181,14 +182,21 @@ export class MessageEventBusLogWriter {
 						if (isEventMessageOptions(json) && json.__type !== undefined) {
 							const msg = getEventMessageObjectByType(json);
 							if (msg !== null) results.loggedMessages.push(msg);
-							if (msg?.eventName === 'n8n.workflow.started' && msg?.payload?.executionId) {
-								results.unfinishedExecutions.add(msg?.payload?.executionId as string);
-							} else if (
-								(msg?.eventName === 'n8n.workflow.success' ||
-									msg?.eventName === 'n8n.workflow.failed') &&
-								msg?.payload?.executionId
-							) {
-								results.unfinishedExecutions.delete(msg?.payload?.executionId as string);
+							if (msg?.eventName && msg.payload?.executionId) {
+								const executionId = msg.payload.executionId as string;
+								switch (msg.eventName) {
+									case 'n8n.workflow.started':
+										results.unfinishedExecutions[executionId] = [msg];
+										break;
+									case 'n8n.workflow.success':
+									case 'n8n.workflow.failed':
+										delete results.unfinishedExecutions[executionId];
+										break;
+									case 'n8n.node.started':
+									case 'n8n.node.finished':
+										results.unfinishedExecutions[executionId].push(msg);
+										break;
+								}
 							}
 						}
 						if (isEventMessageConfirm(json) && mode !== 'all') {
@@ -278,13 +286,13 @@ export class MessageEventBusLogWriter {
 		return (await this.getMessages('unsent')).loggedMessages;
 	}
 
-	async getUnfinishedExecutions(): Promise<Set<string>> {
+	async getUnfinishedExecutions(): Promise<Record<string, EventMessageTypes[]>> {
 		return (await this.getMessages('unfinished')).unfinishedExecutions;
 	}
 
 	async getUnsentAndUnfinishedExecutions(): Promise<{
 		unsentMessages: EventMessageTypes[];
-		unfinishedExecutions: Set<string>;
+		unfinishedExecutions: Record<string, EventMessageTypes[]>;
 	}> {
 		const result = await this.getMessages('unsent');
 		return {

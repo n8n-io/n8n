@@ -1,4 +1,11 @@
-import { LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
+import {
+	IRunExecutionData,
+	ITaskData,
+	LoggerProxy,
+	MessageEventBusDestinationOptions,
+	NodeOperationError,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
 import type { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination.ee';
@@ -23,6 +30,7 @@ import {
 	EventMessageGeneric,
 	eventMessageGenericDestinationTestEvent,
 } from '../EventMessageClasses/EventMessageGeneric';
+import { parse, stringify } from 'flatted';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
@@ -98,20 +106,90 @@ class MessageEventBus extends EventEmitter {
 		await this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
-		if (unsentAndUnfinished.unfinishedExecutions.size > 0) {
-			for (const executionId of unsentAndUnfinished.unfinishedExecutions) {
+		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
+			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
 				const executionEntry = await Db.collections.Execution.findOne(executionId);
-				if (!executionEntry?.stoppedAt) {
-					LoggerProxy.debug(`Found unfinished execution ${executionId}, marking them as failed`);
-					await Db.collections.Execution.update(executionId, {
-						finished: false,
-						stoppedAt: new Date(),
-					});
-				} else {
-					LoggerProxy.debug(
-						`Found unfinished execution ${executionId}, but it was already marked as failed`,
-					);
+				const messages = unsentAndUnfinished.unfinishedExecutions[executionId];
+				console.log(
+					executionId,
+					unsentAndUnfinished.unfinishedExecutions[executionId],
+					executionEntry,
+				);
+
+				if (executionEntry && messages) {
+					const execData: IRunExecutionData | undefined = executionEntry?.data
+						? (parse(executionEntry.data) as IRunExecutionData)
+						: undefined;
+					if (execData) {
+						let nodeNames: string[] = [];
+						if (
+							execData.resultData?.runData &&
+							Object.keys(execData.resultData.runData).length > 0
+						) {
+							nodeNames = Object.keys(execData.resultData.runData);
+						} else {
+							if (!execData.resultData) {
+								execData.resultData = {
+									runData: {},
+								};
+							} else {
+								execData.resultData.runData = {};
+							}
+							nodeNames = executionEntry.workflowData.nodes.map((n) => n.name);
+						}
+
+						for (const nodeName of nodeNames) {
+							const nodeByName = executionEntry?.workflowData.nodes.find(
+								(n) => n.name === nodeName,
+							);
+							if (!nodeByName) continue;
+							if (
+								['n8n-nodes-base.start', 'n8n-nodes-base.manualTrigger'].includes(nodeByName.type)
+							)
+								continue;
+							const nodeStartedMessage = messages.find(
+								(message) =>
+									message.eventName === 'n8n.node.started' && message.payload.nodeName === nodeName,
+							);
+							const nodeFinishedMessage = messages.find(
+								(message) =>
+									message.eventName === 'n8n.node.finished' &&
+									message.payload.nodeName === nodeName,
+							);
+							const executionTime =
+								nodeStartedMessage && nodeFinishedMessage
+									? nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis()
+									: 0;
+							const error = nodeByName
+								? new NodeOperationError(
+										nodeByName,
+										'Node did not finish, possible Out Of Memory issue?',
+								  )
+								: new WorkflowOperationError('Node did not finish, possible Out Of Memory issue?');
+							const iRunData: ITaskData = {
+								startTime: nodeStartedMessage ? nodeStartedMessage.ts.toUnixInteger() : 0,
+								executionTime,
+								source: [null],
+							};
+							if (!nodeFinishedMessage) {
+								iRunData.error = error;
+							}
+							execData.resultData.runData[nodeName] = [iRunData];
+						}
+						await Db.collections.Execution.update(executionId, { data: stringify(execData) });
+					}
 				}
+				// if (!executionEntry?.stoppedAt) {
+				// 	LoggerProxy.debug(`Found unfinished execution ${executionId}, marking them as failed`);
+				// 	await Db.collections.Execution.update(executionId, {
+				// 		finished: false,
+				// 		stoppedAt: new Date(),
+				// 	});
+				// } else {
+				// 	LoggerProxy.debug(
+				// 		`Found unfinished execution ${executionId}, but it was already marked as failed`,
+				// 	);
+				// }
 			}
 		}
 
@@ -255,14 +333,14 @@ class MessageEventBus extends EventEmitter {
 		return filtered;
 	}
 
-	async getUnfinishedExecutions(): Promise<Set<string>> {
+	async getUnfinishedExecutions(): Promise<Record<string, EventMessageTypes[]>> {
 		const queryResult = await this.logWriter?.getUnfinishedExecutions();
 		return queryResult;
 	}
 
 	async getUnsentAndUnfinishedExecutions(): Promise<{
 		unsentMessages: EventMessageTypes[];
-		unfinishedExecutions: Set<string>;
+		unfinishedExecutions: Record<string, EventMessageTypes[]>;
 	}> {
 		const queryResult = await this.logWriter?.getUnsentAndUnfinishedExecutions();
 		return queryResult;

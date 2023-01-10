@@ -2,9 +2,7 @@ import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractE
 import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import type { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import type { AbstractEventPayload } from './AbstractEventPayload';
-
-export const eventNamesNode = ['n8n.node.started', 'n8n.node.finished'] as const;
-export type EventNamesNodeType = typeof eventNamesNode[number];
+import { EventNamesNodeType } from '.';
 
 // --------------------------------------
 // EventMessage class for Node events
