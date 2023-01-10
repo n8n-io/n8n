@@ -1,7 +1,8 @@
-import { showMessage } from '@/mixins/showMessage';
-import { VIEWS } from '@/constants';
-
 import mixins from 'vue-typed-mixins';
+import dateformat from 'dateformat';
+
+import { VIEWS } from '@/constants';
+import { showMessage } from '@/mixins/showMessage';
 
 export const genericHelpers = mixins(showMessage).extend({
 	data() {
@@ -21,17 +22,24 @@ export const genericHelpers = mixins(showMessage).extend({
 		displayTimer(msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
 				if (!showMs) {
-					return `${Math.floor(msPassed / 1000)} ${this.$locale.baseText('genericHelpers.sec')}`;
+					return `${Math.floor(msPassed / 1000)}${this.$locale.baseText(
+						'genericHelpers.secShort',
+					)}`;
 				}
 
-				return `${msPassed / 1000} ${this.$locale.baseText('genericHelpers.sec')}`;
+				return `${msPassed / 1000}${this.$locale.baseText('genericHelpers.secShort')}`;
 			}
 
 			const secondsPassed = Math.floor(msPassed / 1000);
 			const minutesPassed = Math.floor(secondsPassed / 60);
 			const secondsLeft = (secondsPassed - minutesPassed * 60).toString().padStart(2, '0');
 
-			return `${minutesPassed}:${secondsLeft} ${this.$locale.baseText('genericHelpers.min')}`;
+			return `${minutesPassed}:${secondsLeft}${this.$locale.baseText('genericHelpers.minShort')}`;
+		},
+		convertToDisplayDate(epochTime: number): { date: string; time: string } {
+			const formattedDate = dateformat(epochTime, 'd mmm, yyyy#HH:MM:ss');
+			const [date, time] = formattedDate.split('#');
+			return { date, time };
 		},
 		editAllowedCheck(): boolean {
 			if (this.isReadOnly) {
