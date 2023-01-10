@@ -94,7 +94,10 @@
 										<span :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
 									<template #time>
-										<span v-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined">
+										<span v-if="execution.waitTill">{{ formatDate(execution.waitTill) }}</span>
+										<span
+											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
+										>
 											{{
 												displayTimer(
 													new Date(execution.stoppedAt).getTime() -
@@ -249,7 +252,6 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-import dateformat from 'dateformat';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'ExecutionsList',
