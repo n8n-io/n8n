@@ -47,7 +47,7 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDate() should work on a string', () => {
-			expect(evaluate('={{ "2022-01-03".toDate() }}')).toEqual(new Date(2022, 0, 3));
+			expect(evaluate('={{ "2022-01-03T00:00:00.000+00:00".toDate() }}')).toEqual(new Date(2022, 0, 3));
 		});
 	});
 });
