@@ -62,19 +62,10 @@ export class WorkflowRunner {
 	constructor() {
 		this.push = Push.getInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
-
-		const executionsMode = config.getEnv('executions.mode');
-
-		if (executionsMode === 'queue') {
-			this.jobQueue = Queue.getInstance().getBullObjectInstance();
-		}
-
-		initErrorHandling();
 	}
 
 	/**
 	 * The process did send a hook message so execute the appropriate hook
-	 *
 	 */
 	processHookMessage(workflowHooks: WorkflowHooks, hookData: IProcessMessageDataHook) {
 		// eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -83,7 +74,6 @@ export class WorkflowRunner {
 
 	/**
 	 * The process did error
-	 *
 	 */
 	async processError(
 		error: ExecutionError,
@@ -133,13 +123,20 @@ export class WorkflowRunner {
 		executionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		const executionsProcess = config.getEnv('executions.process');
 		const executionsMode = config.getEnv('executions.mode');
+		const executionsProcess = config.getEnv('executions.process');
+
+		await initErrorHandling();
+
+		if (executionsMode === 'queue') {
+			const queue = await Queue.getInstance();
+			this.jobQueue = queue.getBullObjectInstance();
+		}
 
 		if (executionsMode === 'queue' && data.executionMode !== 'manual') {
 			// Do not run "manual" executions in bull because sending events to the
 			// frontend would not be possible
-			executionId = await this.runBull(
+			executionId = await this.enqueueExecution(
 				data,
 				loadStaticData,
 				realtime,
@@ -151,6 +148,8 @@ export class WorkflowRunner {
 		} else {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
+
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
 
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
@@ -199,10 +198,9 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		const workflowId = data.workflowData.id;
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		const nodeTypes = NodeTypes();
@@ -221,7 +219,7 @@ export class WorkflowRunner {
 		}
 
 		const workflow = new Workflow({
-			id: data.workflowData.id as string | undefined,
+			id: workflowId,
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
@@ -378,7 +376,7 @@ export class WorkflowRunner {
 		return executionId;
 	}
 
-	async runBull(
+	async enqueueExecution(
 		data: IWorkflowExecutionDataProcess,
 		loadStaticData?: boolean,
 		realtime?: boolean,
@@ -444,7 +442,8 @@ export class WorkflowRunner {
 			async (resolve, reject, onCancel) => {
 				onCancel.shouldReject = false;
 				onCancel(async () => {
-					await Queue.getInstance().stopJob(job);
+					const queue = await Queue.getInstance();
+					await queue.stopJob(job);
 
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
@@ -598,13 +597,12 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const workflowId = data.workflowData.id;
 		let startedAt = new Date();
 		const subprocess = fork(pathJoin(__dirname, 'WorkflowRunnerProcess.js'));
 
-		if (loadStaticData === true && data.workflowData.id) {
-			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(
-				data.workflowData.id as string,
-			);
+		if (loadStaticData === true && workflowId) {
+			data.workflowData.staticData = await WorkflowHelpers.getStaticDataById(workflowId);
 		}
 
 		// Register the active execution
