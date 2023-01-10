@@ -21,7 +21,7 @@ export const nodeSelectorProxy = new Proxy(
 	{},
 	{
 		ownKeys() {
-			return ['all', 'context', 'first', 'item', 'last', 'params', 'pairedItem', 'itemMatching'];
+			return ['all', 'context', 'first', 'item', 'last', 'params', 'itemMatching'];
 		},
 		get(_, property) {
 			if (property === 'all') return [];
@@ -30,7 +30,6 @@ export const nodeSelectorProxy = new Proxy(
 			if (property === 'item') return {};
 			if (property === 'last') return {};
 			if (property === 'params') return {};
-			if (property === 'pairedItem') return {};
 			if (property === 'itemMatching') return {};
 
 			return undefined;
@@ -39,7 +38,7 @@ export const nodeSelectorProxy = new Proxy(
 );
 
 export const itemProxy = new Proxy(
-	{ json: {}, pairedItem: {} },
+	{ json: {} },
 	{
 		get(_, property) {
 			if (property === 'json') return {};
