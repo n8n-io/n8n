@@ -81,6 +81,7 @@ export class TelegramTrigger implements INodeType {
 					{
 						name: 'Poll',
 						value: 'poll',
+						action: 'On Poll Change',
 						description:
 							'Trigger on new poll state. Bots receive only updates about stopped polls and polls, which are sent by the bot.',
 					},
