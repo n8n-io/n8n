@@ -271,7 +271,8 @@ export class Expression {
 		const extendedExpression = this.extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			throw new Error('Expression resolved to a function. Please add "()"');
+			if (returnValue.name === '$') throw new Error('invalid syntax');
+			throw new Error('This is a function. Please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -296,14 +297,6 @@ export class Expression {
 				if (error.context.failExecution) {
 					throw error;
 				}
-			}
-
-			if (
-				error instanceof Error &&
-				typeof error.message === 'string' &&
-				error.name === 'SyntaxError'
-			) {
-				throw new Error(error.message);
 			}
 		}
 		return null;

@@ -83,9 +83,6 @@ export const callFields: INodeProperties[] = [
 		displayName: 'Description',
 		name: 'content',
 		description: 'Description of the call - max 100,000 characters',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		type: 'string',
 		required: true,
 		default: '',

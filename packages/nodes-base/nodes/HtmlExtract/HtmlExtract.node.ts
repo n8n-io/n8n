@@ -214,7 +214,7 @@ export class HtmlExtract implements INodeType {
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				const extractionValues = this.getNodeParameter(
 					'extractionValues',
 					itemIndex,
@@ -236,7 +236,7 @@ export class HtmlExtract implements INodeType {
 					htmlArray = item.json[dataPropertyName] as string;
 				} else {
 					if (item.binary === undefined) {
-						throw new NodeOperationError(this.getNode(), `No item does not contain binary data!`, {
+						throw new NodeOperationError(this.getNode(), 'No item does not contain binary data!', {
 							itemIndex,
 						});
 					}

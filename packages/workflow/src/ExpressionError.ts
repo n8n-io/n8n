@@ -1,4 +1,4 @@
-import { IDataObject } from './Interfaces';
+import type { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 
 /**

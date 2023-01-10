@@ -22,7 +22,7 @@ export class CustomerIo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Customer.io API',
 		defaults: {
-			name: 'CustomerIo',
+			name: 'Customer.io',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -93,7 +93,7 @@ export class CustomerIo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const endpoint = `/campaigns`;
+						const endpoint = '/campaigns';
 
 						responseData = await customerIoApiRequest.call(this, 'GET', endpoint, body, 'beta');
 						responseData = responseData.campaigns;
@@ -298,7 +298,7 @@ export class CustomerIo implements INodeType {
 							body.data = data;
 						}
 
-						const endpoint = `/events`;
+						const endpoint = '/events';
 						await customerIoApiRequest.call(this, 'POST', endpoint, body, 'tracking');
 
 						responseData = {

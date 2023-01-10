@@ -126,7 +126,7 @@ export async function googleApiRequest(
 			const resource = this.getNodeParameter('resource', 0) as string;
 			if (resource === 'label') {
 				const errorOptions = {
-					message: `Label name exists already`,
+					message: 'Label name exists already',
 					description: '',
 				};
 				throw new NodeApiError(this.getNode(), error, errorOptions);
@@ -147,7 +147,7 @@ export async function googleApiRequest(
 		) {
 			const errorOptions = {
 				message: error.description,
-				description: ``,
+				description: '',
 			};
 			throw new NodeApiError(this.getNode(), error, errorOptions);
 		}
@@ -166,18 +166,12 @@ export async function parseRawEmail(
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
 	const messageEncoded = Buffer.from(messageData.raw, 'base64').toString('utf8');
-	let responseData = await simpleParser(messageEncoded);
+	const responseData = await simpleParser(messageEncoded);
 
 	const headers: IDataObject = {};
-	// @ts-ignore
 	for (const header of responseData.headerLines) {
 		headers[header.key] = header.line;
 	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
 
 	const binaryData: IBinaryKeyData = {};
 	if (responseData.attachments) {
@@ -196,8 +190,6 @@ export async function parseRawEmail(
 				);
 			}
 		}
-		// @ts-ignore
-		responseData.attachments = undefined;
 	}
 
 	const mailBaseData: IDataObject = {};
@@ -205,14 +197,17 @@ export async function parseRawEmail(
 	const resolvedModeAddProperties = ['id', 'threadId', 'labelIds', 'sizeEstimate'];
 
 	for (const key of resolvedModeAddProperties) {
-		// @ts-ignore
 		mailBaseData[key] = messageData[key];
 	}
 
-	responseData = Object.assign(mailBaseData, responseData);
+	const json = Object.assign({}, mailBaseData, responseData, {
+		headers,
+		headerLines: undefined,
+		attachments: undefined,
+	}) as IDataObject;
 
 	return {
-		json: responseData as unknown as IDataObject,
+		json,
 		binary: Object.keys(binaryData).length ? binaryData : undefined,
 	} as INodeExecutionData;
 }
@@ -324,7 +319,7 @@ async function getAccessToken(
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -352,7 +347,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export function prepareQuery(
@@ -390,6 +385,14 @@ export function prepareQuery(
 		let timestamp = DateTime.fromISO(qs.receivedAfter as string).toSeconds();
 		const timestampLengthInMilliseconds1990 = 12;
 
+		if (
+			!timestamp &&
+			typeof qs.receivedAfter === 'number' &&
+			qs.receivedAfter.toString().length < timestampLengthInMilliseconds1990
+		) {
+			timestamp = qs.receivedAfter;
+		}
+
 		if (!timestamp && (qs.receivedAfter as string).length < timestampLengthInMilliseconds1990) {
 			timestamp = parseInt(qs.receivedAfter as string, 10);
 		}
@@ -402,7 +405,7 @@ export function prepareQuery(
 
 		if (!timestamp) {
 			const description = `'${qs.receivedAfter}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received After' field`, {
+			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received After' field", {
 				description,
 			});
 		}
@@ -431,7 +434,7 @@ export function prepareQuery(
 
 		if (!timestamp) {
 			const description = `'${qs.receivedBefore}' isn't a valid date and time. If you're using an expression, be sure to set an ISO date string or a timestamp.`;
-			throw new NodeOperationError(this.getNode(), `Invalid date/time in 'Received Before' field`, {
+			throw new NodeOperationError(this.getNode(), "Invalid date/time in 'Received Before' field", {
 				description,
 			});
 		}
@@ -460,7 +463,7 @@ export function prepareEmailsInput(
 
 		if (email.indexOf('@') === -1) {
 			const description = `The email address '${email}' in the '${fieldName}' field isn't valid`;
-			throw new NodeOperationError(this.getNode(), `Invalid email address`, {
+			throw new NodeOperationError(this.getNode(), 'Invalid email address', {
 				description,
 				itemIndex,
 			});
@@ -507,7 +510,7 @@ export async function prepareEmailAttachments(
 			for (const name of (property as string).split(',')) {
 				if (!items[itemIndex].binary || items[itemIndex].binary![name] === undefined) {
 					const description = `This node has no input field called '${name}' `;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
 						itemIndex,
 					});
@@ -518,7 +521,7 @@ export async function prepareEmailAttachments(
 
 				if (!items[itemIndex].binary![name] || !Buffer.isBuffer(binaryDataBuffer)) {
 					const description = `The input field '${name}' doesn't contain an attachment. Please make sure you specify a field containing binary data`;
-					throw new NodeOperationError(this.getNode(), `Attachment not found`, {
+					throw new NodeOperationError(this.getNode(), 'Attachment not found', {
 						description,
 						itemIndex,
 					});
@@ -672,7 +675,7 @@ export async function simplifyOutput(
 	this: IExecuteFunctions | IPollFunctions,
 	data: IDataObject[],
 ) {
-	const labelsData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+	const labelsData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 	const labels = ((labelsData.labels as IDataObject[]) || []).map(({ id, name }) => ({
 		id,
 		name,

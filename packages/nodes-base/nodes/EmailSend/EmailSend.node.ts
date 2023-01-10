@@ -73,7 +73,6 @@ export class EmailSend implements INodeType {
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',
@@ -110,6 +109,14 @@ export class EmailSend implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to connect even if SSL certificate validation is not possible',
+					},
+					{
+						displayName: 'Reply To',
+						name: 'replyTo',
+						type: 'string',
+						default: '',
+						placeholder: 'info@example.com',
+						description: 'The email address to send the reply to',
 					},
 				],
 			},
@@ -170,6 +177,7 @@ export class EmailSend implements INodeType {
 					subject,
 					text,
 					html,
+					replyTo: options.replyTo as string | undefined,
 				};
 
 				if (attachmentPropertyString && item.binary) {

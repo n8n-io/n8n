@@ -78,9 +78,9 @@ export namespace SendInBlueNode {
 						);
 					}
 
-					const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
+					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(
 						binaryPropertyAttachmentName,
-					)) as Buffer;
+					);
 
 					const {
 						data: content,
@@ -93,8 +93,8 @@ export namespace SendInBlueNode {
 					const name = getFileName(
 						itemIndex,
 						mimeType,
-						fileExtension,
-						fileName || item.binary!.data.fileName,
+						fileExtension!,
+						fileName || item.binary!.data.fileName!,
 					);
 
 					attachment.push({ content, name });
@@ -104,7 +104,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `${err}`);
+				throw new NodeOperationError(this.getNode(), err);
 			}
 		}
 

@@ -68,9 +68,11 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
-const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
-const DEFAULT_FEEDBACK_TITLE = `Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?`;
+const DEFAULT_TITLE = 'How likely are you to recommend n8n to a friend or colleague?';
+const GREAT_FEEDBACK_TITLE =
+	'Great to hear! Can we reach out to see how we can make n8n even better for you?';
+const DEFAULT_FEEDBACK_TITLE =
+	"Thanks for your feedback! We'd love to understand how we can improve. Can we reach out?";
 
 export default mixins(workflowHelpers).extend({
 	name: 'ValueSurvey',
@@ -88,10 +90,7 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 		getTitle(): string {
 			if (this.form.value !== '') {
 				if (Number(this.form.value) > 7) {
@@ -140,7 +139,9 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 
-			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({ value: this.form.value });
+			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
+				value: this.form.value,
+			});
 
 			if (response && response.updated) {
 				this.$telemetry.track('User responded value survey score', {
@@ -151,10 +152,12 @@ export default mixins(workflowHelpers).extend({
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
-					email: this.form.email,
-					value: this.form.value,
-				});
+				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey(
+					{
+						email: this.form.email,
+						value: this.form.value,
+					},
+				);
 
 				if (response && response.updated) {
 					this.$telemetry.track('User responded value survey email', {
@@ -163,7 +166,8 @@ export default mixins(workflowHelpers).extend({
 					});
 					this.$showMessage({
 						title: 'Thanks for your feedback',
-						message: `If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.`,
+						message:
+							'If you’d like to help even more, leave us a <a target="_blank" href="https://www.g2.com/products/n8n/reviews/start">review on G2</a>.',
 						type: 'success',
 						duration: 15000,
 					});

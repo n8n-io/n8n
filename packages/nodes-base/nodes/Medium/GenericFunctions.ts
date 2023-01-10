@@ -39,9 +39,9 @@ export async function mediumApiRequest(
 
 			options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'mediumOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'mediumOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

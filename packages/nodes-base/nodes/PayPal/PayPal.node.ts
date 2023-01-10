@@ -88,7 +88,7 @@ export class PayPal implements INodeType {
 				if (!clientId || !clientSecret || !environment) {
 					return {
 						status: 'Error',
-						message: `Connection details not valid: missing credentials`,
+						message: 'Connection details not valid: missing credentials',
 					};
 				}
 
@@ -113,7 +113,7 @@ export class PayPal implements INodeType {
 				};
 
 				try {
-					await this.helpers.request!(options);
+					await this.helpers.request(options);
 					return {
 						status: 'OK',
 						message: 'Authentication successful!',

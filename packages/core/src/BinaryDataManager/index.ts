@@ -1,9 +1,11 @@
-import prettyBytes from 'pretty-bytes';
-import type { IBinaryData, INodeExecutionData } from 'n8n-workflow';
-import { BINARY_ENCODING } from '../Constants';
-import type { BinaryMetadata, IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
-import { BinaryDataFileSystem } from './FileSystem';
+import concatStream from 'concat-stream';
 import { readFile, stat } from 'fs/promises';
+import type { BinaryMetadata, IBinaryData, INodeExecutionData } from 'n8n-workflow';
+import prettyBytes from 'pretty-bytes';
+import type { Readable } from 'stream';
+import { BINARY_ENCODING } from '../Constants';
+import type { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { BinaryDataFileSystem } from './FileSystem';
 
 export class BinaryDataManager {
 	static instance: BinaryDataManager | undefined;
@@ -79,26 +81,48 @@ export class BinaryDataManager {
 
 	async storeBinaryData(
 		binaryData: IBinaryData,
-		binaryBuffer: Buffer,
+		input: Buffer | Readable,
 		executionId: string,
 	): Promise<IBinaryData> {
-		binaryData.fileSize = prettyBytes(binaryBuffer.length);
-
 		// If a manager handles this binary, return the binary data with its reference id.
 		const manager = this.managers[this.binaryDataMode];
 		if (manager) {
-			const identifier = await manager.storeBinaryData(binaryBuffer, executionId);
+			const identifier = await manager.storeBinaryData(input, executionId);
+
 			// Add data manager reference id.
 			binaryData.id = this.generateBinaryId(identifier);
 
 			// Prevent preserving data in memory if handled by a data manager.
 			binaryData.data = this.binaryDataMode;
+
+			const fileSize = await manager.getFileSize(identifier);
+			binaryData.fileSize = prettyBytes(fileSize);
+
+			await manager.storeBinaryMetadata(identifier, {
+				fileName: binaryData.fileName,
+				mimeType: binaryData.mimeType,
+				fileSize,
+			});
 		} else {
 			// Else fallback to storing this data in memory.
-			binaryData.data = binaryBuffer.toString(BINARY_ENCODING);
+			const buffer = await new Promise<Buffer>((resolve) => {
+				if (Buffer.isBuffer(input)) resolve(input);
+				else input.pipe(concatStream(resolve));
+			});
+			binaryData.data = buffer.toString(BINARY_ENCODING);
+			binaryData.fileSize = prettyBytes(buffer.length);
 		}
 
 		return binaryData;
+	}
+
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		const { mode, id } = this.splitBinaryModeFileId(identifier);
+		if (this.managers[mode]) {
+			return this.managers[mode].getBinaryStream(id, chunkSize);
+		}
+
+		throw new Error('Storage mode used to store binary data not available');
 	}
 
 	async retrieveBinaryData(binaryData: IBinaryData): Promise<Buffer> {
