@@ -25,6 +25,7 @@ import { AddWorkflowVersionIdColumn1669739707124 } from './1669739707124-AddWork
 import { AddTriggerCountColumn1669823906993 } from './1669823906993-AddTriggerCountColumn';
 import { RemoveWorkflowDataLoadedFlag1671726148419 } from './1671726148419-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -54,6 +55,7 @@ const sqliteMigrations = [
 	WorkflowStatistics1664196174000,
 	RemoveWorkflowDataLoadedFlag1671726148419,
 	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
 ];
 
 export { sqliteMigrations };

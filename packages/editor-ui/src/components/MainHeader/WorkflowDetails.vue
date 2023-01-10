@@ -240,7 +240,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		onExecutionsTab(): boolean {
 			return [
 				VIEWS.EXECUTION_HOME.toString(),
-				VIEWS.EXECUTIONS.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 				VIEWS.EXECUTION_PREVIEW,
 			].includes(this.$route.name || '');
 		},
