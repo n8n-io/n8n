@@ -52,7 +52,7 @@ export async function googleApiRequest(
 			const { access_token } = await getAccessToken.call(this, credentials as IDataObject);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'googleBigQueryOAuth2Api', options);
@@ -106,7 +106,7 @@ async function getAccessToken(
 			iss: credentials.email as string,
 			sub: credentials.delegatedEmail || (credentials.email as string),
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -134,7 +134,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export function simplify(rows: IDataObject[], fields: string[]) {

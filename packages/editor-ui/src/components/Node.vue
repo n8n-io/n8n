@@ -337,7 +337,7 @@ export default mixins(
 		nodeTitle(): string {
 			if (this.data.name === 'Start') {
 				return this.$locale.headerText({
-					key: `headers.start.displayName`,
+					key: 'headers.start.displayName',
 					fallback: 'Start',
 				});
 			}
@@ -407,6 +407,7 @@ export default mixins(
 				!!this.node &&
 				this.isTriggerNode &&
 				!this.isPollingTypeNode &&
+				!this.hasPinData &&
 				!this.isNodeDisabled &&
 				this.workflowRunning &&
 				this.workflowDataItems === 0 &&

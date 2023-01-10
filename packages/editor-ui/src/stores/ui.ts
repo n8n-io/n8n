@@ -18,6 +18,7 @@ import {
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -44,6 +45,7 @@ import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
 import { getCurlToJson } from '@/api/curlHelper';
 import { useWorkflowsStore } from './workflows';
+import { useSettingsStore } from './settings';
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): UIState => ({
@@ -117,6 +119,10 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: '',
 				httpNodeParameters: '',
 			},
+			[LOG_STREAM_MODAL_KEY]: {
+				open: false,
+				data: undefined,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -135,48 +141,15 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['settings'],
 			},
 			{
-				id: FAKE_DOOR_FEATURES.LOGGING,
-				featureName: 'fakeDoor.settings.logging.name',
-				icon: 'sign-in-alt',
-				infoText: 'fakeDoor.settings.logging.infoText',
-				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
-				uiLocations: ['settings'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
-				featureName: 'fakeDoor.credentialEdit.sharing.name',
-				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
-				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
-				uiLocations: ['credentialsModal'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.WORKFLOWS_SHARING,
-				featureName: 'fakeDoor.workflowsSharing.name',
-				actionBoxTitle: 'workflows.shareModal.title', // Use this translation in modal title when removing fakeDoor
-				actionBoxDescription: 'fakeDoor.workflowsSharing.description',
-				actionBoxButtonLabel: 'fakeDoor.workflowsSharing.button',
-				linkURL: 'https://n8n.cloud',
-				uiLocations: ['workflowShareModal'],
+				id: FAKE_DOOR_FEATURES.SSO,
+				featureName: 'fakeDoor.settings.sso.name',
+				icon: 'key',
+				actionBoxTitle: 'fakeDoor.settings.sso.actionBox.title',
+				actionBoxDescription: 'fakeDoor.settings.sso.actionBox.description',
+				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sso',
+				uiLocations: ['settings/users'],
 			},
 		],
-		dynamicTranslations: {
-			workflows: {
-				shareModal: {
-					title: 'dynamic.workflows.shareModal.title',
-				},
-				sharing: {
-					unavailable: {
-						description: 'dynamic.workflows.sharing.unavailable.description',
-						action: 'dynamic.workflows.sharing.unavailable.action',
-						button: 'dynamic.workflows.sharing.unavailable.button',
-						linkURL: 'https://n8n.cloud',
-					},
-				},
-			},
-		},
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -196,6 +169,45 @@ export const useUIStore = defineStore(STORES.UI, {
 		executionSidebarAutoRefresh: true,
 	}),
 	getters: {
+		contextBasedTranslationKeys() {
+			const settingsStore = useSettingsStore();
+			const deploymentType = settingsStore.deploymentType;
+
+			let contextKey = '';
+			if (deploymentType === 'cloud') {
+				contextKey = '.cloud';
+			} else if (deploymentType === 'desktop_mac' || deploymentType === 'desktop_win') {
+				contextKey = '.desktop';
+			}
+
+			return {
+				upgradeLinkUrl: `contextual.upgradeLinkUrl${contextKey}`,
+				credentials: {
+					sharing: {
+						unavailable: {
+							title: `contextual.credentials.sharing.unavailable.title${contextKey}`,
+							description: `contextual.credentials.sharing.unavailable.description${contextKey}`,
+							action: `contextual.credentials.sharing.unavailable.action${contextKey}`,
+							button: `contextual.credentials.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+				workflows: {
+					sharing: {
+						title: 'contextual.workflows.sharing.title',
+						unavailable: {
+							title: `contextual.workflows.sharing.unavailable.title${contextKey}`,
+							description: {
+								modal: `contextual.workflows.sharing.unavailable.description.modal${contextKey}`,
+								tooltip: `contextual.workflows.sharing.unavailable.description.tooltip${contextKey}`,
+							},
+							action: `contextual.workflows.sharing.unavailable.action${contextKey}`,
+							button: `contextual.workflows.sharing.unavailable.button${contextKey}`,
+						},
+					},
+				},
+			};
+		},
 		getLastSelectedNode(): INodeUi | null {
 			const workflowsStore = useWorkflowsStore();
 			if (this.lastSelectedNode) {

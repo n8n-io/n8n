@@ -20,7 +20,7 @@ export async function kitemakerRequest(
 		json: true,
 	};
 
-	const responseData = await this.helpers.request!.call(this, options);
+	const responseData = await this.helpers.request.call(this, options);
 
 	if (responseData.errors) {
 		throw new NodeApiError(this.getNode(), responseData);

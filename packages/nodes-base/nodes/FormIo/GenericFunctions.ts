@@ -34,11 +34,11 @@ async function getToken(
 	};
 
 	try {
-		const responseObject = await this.helpers.request!(options);
+		const responseObject = await this.helpers.request(options);
 		return responseObject.headers['x-jwt-token'];
 	} catch (error) {
 		throw new Error(
-			`Authentication Failed for Form.io. Please provide valid credentails/ endpoint details`,
+			'Authentication Failed for Form.io. Please provide valid credentails/ endpoint details',
 		);
 	}
 }
@@ -72,7 +72,7 @@ export async function formIoApiRequest(
 	};
 
 	try {
-		return this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

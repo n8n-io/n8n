@@ -77,11 +77,7 @@
 						@scrollToTop="scrollToTop"
 					/>
 				</div>
-				<enterprise-edition
-					v-else-if="activeTab === 'sharing' && credentialType"
-					:class="$style.mainContent"
-					:features="[EnterpriseEditionFeature.Sharing]"
-				>
+				<div v-else-if="activeTab === 'sharing' && credentialType" :class="$style.mainContent">
 					<CredentialSharing
 						:credential="currentCredential"
 						:credentialData="credentialData"
@@ -90,7 +86,7 @@
 						:modalBus="modalBus"
 						@change="onChangeSharedWith"
 					/>
-				</enterprise-edition>
+				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
 					<CredentialInfo
 						:nodeAccess="nodeAccess"
@@ -111,7 +107,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import { ICredentialsResponse, IFakeDoor, IUser } from '@/Interface';
+import type { ICredentialsResponse, IUser } from '@/Interface';
 
 import {
 	CredentialInformation,
@@ -175,7 +171,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			required: true,
 		},
 		activeId: {
-			type: [String, Number],
+			type: [String],
 			required: true,
 		},
 		mode: {
@@ -391,9 +387,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 			return true;
 		},
-		credentialsFakeDoorFeatures(): IFakeDoor[] {
-			return this.uiStore.getFakeDoorByLocation('credentialsModal');
-		},
 		credentialPermissions(): IPermissions {
 			if (this.loading) {
 				return {};
@@ -405,7 +398,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 		},
 		sidebarItems(): IMenuItem[] {
-			const items: IMenuItem[] = [
+			return [
 				{
 					id: 'connection',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
@@ -415,26 +408,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 					id: 'sharing',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
 					position: 'top',
-					available: this.credentialType !== null && this.isSharingAvailable,
+				},
+				{
+					id: 'details',
+					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+					position: 'top',
 				},
 			];
-
-			if (this.credentialType !== null && !this.isSharingAvailable) {
-				for (const item of this.credentialsFakeDoorFeatures) {
-					items.push({
-						id: `coming-soon/${item.id}`,
-						label: this.$locale.baseText(item.featureName as BaseTextKey),
-						position: 'top',
-					});
-				}
-			}
-
-			items.push({
-				id: 'details',
-				label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
-				position: 'top',
-			});
-			return items;
 		},
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
@@ -939,7 +919,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return;
 			}
 
-			const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
+			const params =
+				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
 			Vue.set(this.credentialData, 'oauthTokenData', null);
 
