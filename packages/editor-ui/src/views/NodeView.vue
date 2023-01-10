@@ -1426,7 +1426,6 @@ export default mixins(
 						type: 'success',
 					});
 				} else {
-					console.log('error', error);
 					this.$showError(error, this.$locale.baseText('nodeView.showError.stopExecution.title'));
 				}
 			}
