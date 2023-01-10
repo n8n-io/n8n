@@ -86,7 +86,7 @@ describe('Log Streaming Settings', () => {
 		cy.wait(100);
 		settingsLogStreamingPage.getters.getDestinationModal().should('be.visible');
 		settingsLogStreamingPage.getters.getSelectDestinationType().click();
-		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(1).click();
+		settingsLogStreamingPage.getters.getSelectDestinationTypeItems().eq(0).click();
 		settingsLogStreamingPage.getters.getSelectDestinationButton().click();
 		settingsLogStreamingPage.getters
 			.getDestinationNameInput()
@@ -104,6 +104,7 @@ describe('Log Streaming Settings', () => {
 			.eq(0)
 			.find('.el-dropdown-selfdefine')
 			.click();
+		cy.wait(100);
 		cy.get('.el-dropdown-menu').find('.el-dropdown-menu__item').eq(0).click();
 		settingsLogStreamingPage.getters.getDestinationSaveButton().should('not.exist');
 		settingsLogStreamingPage.getters.getDestinationModal().click(1, 1);
