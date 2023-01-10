@@ -5,12 +5,11 @@ import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
+import type { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -256,19 +255,8 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		await ExternalHooks().run('workflow.delete', [workflowId]);
-
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
-
-		if (!shared) {
+		const workflow = await WorkflowsService.delete(req.user, workflowId);
+		if (!workflow) {
 			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
@@ -277,16 +265,6 @@ workflowsController.delete(
 				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
-
-		if (shared.workflow.active) {
-			// deactivate before deleting
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
-		}
-
-		await Db.collections.Workflow.delete(workflowId);
-
-		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user, workflowId, false);
-		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
 	}),
