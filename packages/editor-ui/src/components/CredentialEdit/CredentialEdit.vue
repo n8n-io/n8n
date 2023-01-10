@@ -12,7 +12,7 @@
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<CredentialIcon :credentialTypeName="credentialTypeName" />
+						<CredentialIcon :credentialTypeName="getDefaultCredentialTypeName()" />
 					</div>
 					<InlineNameEdit
 						:name="credentialName"
@@ -219,7 +219,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
-				credentialTypeName: this.credentialTypeName,
+				credentialTypeName: this.getDefaultCredentialTypeName(),
 			});
 
 			if (this.currentUser) {
@@ -991,6 +991,15 @@ export default mixins(showMessage, nodeHelpers).extend({
 				const credentialsForType = getNodeCredentialForAuthType(this.activeNodeType, type);
 				this.selectedCredential = credentialsForType?.name || '';
 			}
+		},
+		getDefaultCredentialTypeName(): string {
+			let credentialTypeName = this.credentialTypeName;
+			if (!credentialTypeName || credentialTypeName === 'null') {
+				if (this.activeNodeType && this.activeNodeType.credentials) {
+					credentialTypeName = this.activeNodeType.credentials[0].name;
+				}
+			}
+			return credentialTypeName || '';
 		},
 	},
 });
