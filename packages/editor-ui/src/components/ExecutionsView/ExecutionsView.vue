@@ -1,7 +1,6 @@
 <template>
 	<div :class="$style.container" v-if="!loading">
 		<executions-sidebar
-			v-if="showSidebar"
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
@@ -92,12 +91,6 @@ export default mixins(
 					(ex) => ex.id === this.activeExecution.id,
 				) === undefined;
 			return this.loading || nothingToShow || activeNotPresent;
-		},
-		showSidebar(): boolean {
-			if (this.executions.length === 0) {
-				return this.filterApplied;
-			}
-			return true;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
