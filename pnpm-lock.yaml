@@ -185,10 +185,10 @@ importers:
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
       mysql2: ~2.3.0
-      n8n-core: ~0.150.0
-      n8n-editor-ui: ~0.176.1
-      n8n-nodes-base: ~0.208.1
-      n8n-workflow: ~0.132.0
+      n8n-core: ~0.150.1
+      n8n-editor-ui: ~0.176.2
+      n8n-nodes-base: ~0.208.2
+      n8n-workflow: ~0.132.1
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -380,7 +380,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.132.0
+      n8n-workflow: ~0.132.1
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -557,7 +557,7 @@ importers:
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
       n8n-design-system: ~0.50.1
-      n8n-workflow: ~0.132.0
+      n8n-workflow: ~0.132.1
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -676,8 +676,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.150.0
-      n8n-workflow: ~0.132.0
+      n8n-core: ~0.150.1
+      n8n-workflow: ~0.132.1
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -767,8 +767,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.150.0
-      n8n-workflow: ~0.132.0
+      n8n-core: ~0.150.1
+      n8n-workflow: ~0.132.1
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -882,7 +882,9 @@ importers:
 
   packages/workflow:
     specifiers:
+      '@n8n_io/eslint-config': ''
       '@n8n_io/riot-tmpl': ^2.0.0
+      '@types/crypto-js': ^4.1.1
       '@types/express': ^4.17.6
       '@types/jmespath': ^0.15.0
       '@types/lodash.get': ^4.4.6
@@ -891,23 +893,33 @@ importers:
       '@types/lodash.set': ^4.3.6
       '@types/luxon': ^2.0.9
       '@types/xml2js': ^0.4.3
+      crypto-js: ^4.1.1
       jmespath: ^0.16.0
+      js-base64: ^3.7.2
       lodash.get: ^4.4.2
       lodash.isequal: ^4.5.0
       lodash.merge: ^4.6.2
       lodash.set: ^4.3.2
       luxon: ~2.3.0
+      recast: ^0.21.5
+      transliteration: ^2.3.5
       xml2js: ^0.4.23
     dependencies:
       '@n8n_io/riot-tmpl': 2.0.0
+      crypto-js: 4.1.1
       jmespath: 0.16.0
+      js-base64: 3.7.2
       lodash.get: 4.4.2
       lodash.isequal: 4.5.0
       lodash.merge: 4.6.2
       lodash.set: 4.3.2
       luxon: 2.3.2
+      recast: 0.21.5
+      transliteration: 2.3.5
       xml2js: 0.4.23
     devDependencies:
+      '@n8n_io/eslint-config': link:../@n8n_io/eslint-config
+      '@types/crypto-js': 4.1.1
       '@types/express': 4.17.14
       '@types/jmespath': 0.15.0
       '@types/lodash.get': 4.4.7
@@ -7590,7 +7602,6 @@ packages:
     engines: {node: '>=4'}
     dependencies:
       tslib: 2.4.0
-    dev: true
 
   /astral-regex/2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
@@ -14477,6 +14488,10 @@ packages:
     resolution: {integrity: sha512-opJeO4nCucVnsjiXOE+/PcCgYw9Gwpvs/a6B1LL/lQhwWwpbVEVYDZ1FokFr8PRc7ghYlrFPuyHuiiDNTQxmcw==}
     dev: false
 
+  /js-base64/3.7.2:
+    resolution: {integrity: sha512-NnRs6dsyqUXejqk/yv2aiXlAvOs56sLkX6nUdeaNezI5LFFLlsZjOThmwnrcwh5ZZRwZlCMnVAY3CvhIhoVEKQ==}
+    dev: false
+
   /js-beautify/1.14.6:
     resolution: {integrity: sha512-GfofQY5zDp+cuHc+gsEXKPpNw2KbPddreEo35O6jT6i0RVK6LhsoYBhq5TvK4/n74wnA0QbK8gGd+jUZwTMKJw==}
     engines: {node: '>=10'}
@@ -18298,6 +18313,16 @@ packages:
       tslib: 2.4.0
     dev: true
 
+  /recast/0.21.5:
+    resolution: {integrity: sha512-hjMmLaUXAm1hIuTqOdeYObMslq/q+Xff6QE3Y2P+uoHAg2nmVlLBps2hzh1UJDdMtDTMXOFewK6ky51JQIeECg==}
+    engines: {node: '>= 4'}
+    dependencies:
+      ast-types: 0.15.2
+      esprima: 4.0.1
+      source-map: 0.6.1
+      tslib: 2.4.0
+    dev: false
+
   /rechoir/0.6.2:
     resolution: {integrity: sha512-HFM8rkZ+i3zrV+4LQjwQ0W+ez98pApMGM3HUrN04j3CqzPOzl9nmP15Y8YXNm8QHGv/eacOVEjqhmWpkRV0NAw==}
     engines: {node: '>= 0.10'}
@@ -20600,6 +20625,14 @@ packages:
     engines: {node: '>=12'}
     dependencies:
       punycode: 2.1.1
+
+  /transliteration/2.3.5:
+    resolution: {integrity: sha512-HAGI4Lq4Q9dZ3Utu2phaWgtm3vB6PkLUFqWAScg/UW+1eZ/Tg6Exo4oC0/3VUol/w4BlefLhUUSVBr/9/ZGQOw==}
+    engines: {node: '>=6.0.0'}
+    hasBin: true
+    dependencies:
+      yargs: 17.6.0
+    dev: false
 
   /tree-kill/1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}

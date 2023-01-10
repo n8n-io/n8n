@@ -43,6 +43,10 @@ const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual', 'startCas
 
 export default mergeConfig(
 	defineConfig({
+		define: {
+			// This causes test to fail but is required for actually running it
+			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
+		},
 		plugins: [
 			legacy({
 				targets: ['defaults', 'not IE 11'],
