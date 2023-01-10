@@ -989,7 +989,23 @@ export default mixins(showMessage, nodeHelpers).extend({
 		onAuthTypeChanged(type: string): void {
 			if (this.activeNodeType?.credentials) {
 				const credentialsForType = getNodeCredentialForAuthType(this.activeNodeType, type);
-				this.selectedCredential = credentialsForType?.name || '';
+				if (credentialsForType) {
+					this.selectedCredential = credentialsForType.name;
+					if (this.credentialType) {
+						for (const property of this.credentialType.properties) {
+							if (
+								!this.credentialData.hasOwnProperty(property.name) &&
+								!this.credentialType.__overwrittenProperties?.includes(property.name)
+							) {
+								Vue.set(
+									this.credentialData,
+									property.name,
+									property.default as CredentialInformation,
+								);
+							}
+						}
+					}
+				}
 			}
 		},
 		getDefaultCredentialTypeName(): string {
