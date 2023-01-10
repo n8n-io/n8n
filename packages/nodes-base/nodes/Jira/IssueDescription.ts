@@ -211,7 +211,7 @@ export const issueFields: INodeProperties[] = [
 								type: 'regex',
 								properties: {
 									regex: '([-:a-z0-9]{2,})[ \t]*',
-									errorMessage: 'Not a valid Jira Issue Type ID',
+									errorMessage: 'Not a valid Jira Assignee ID',
 								},
 							},
 						],
@@ -323,7 +323,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Priority',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Priority...',
+						placeholder: 'Select a Priority...',
 						typeOptions: {
 							searchListMethod: 'getPriorities',
 						},
@@ -359,7 +359,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Reporter...',
+						placeholder: 'Select a Reporter...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
@@ -452,7 +452,7 @@ export const issueFields: INodeProperties[] = [
 								type: 'regex',
 								properties: {
 									regex: '([-:a-z0-9]{2,})[ \t]*',
-									errorMessage: 'Not a valid Jira Issue Type ID',
+									errorMessage: 'Not a valid Jira Assignee ID',
 								},
 							},
 						],
@@ -559,7 +559,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Priority',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Priority...',
+						placeholder: 'Select a Priority...',
 						typeOptions: {
 							searchListMethod: 'getPriorities',
 						},
@@ -595,7 +595,7 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Reporter',
 						name: 'list',
 						type: 'list',
-						placeholder: 'Select an Reporter...',
+						placeholder: 'Select a Reporter...',
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
