@@ -812,7 +812,6 @@ export default mixins(
 }
 
 .jtk-floating-endpoint {
-	// display: none;
 	opacity: 0;
 }
 
@@ -836,14 +835,10 @@ export default mixins(
 }
 
 .jtk-overlay {
-	z-index: 7;
+	z-index: 9;
 }
 
 .disabled-linethrough {
-	z-index: 8;
-}
-
-.jtk-connector.jtk-dragging {
 	z-index: 8;
 }
 
@@ -869,9 +864,14 @@ export default mixins(
 </style>
 
 <style lang="scss">
-$--stalklength: 40px;
-$--box-size-medium: 24px;
-$--box-size-small: 18px;
+:root {
+	--endpoint-size-small: 14px;
+	--endpoint-size-medium: 18px;
+	--stalk-size: 40px;
+	--stalk-success-size: 70px;
+	--plus-endpoint-box-size: 22px;
+	--plus-endpoint-box-size-small: 17px;
+}
 
 .plus-svg-circle {
 	z-index: 111;
@@ -889,15 +889,22 @@ $--box-size-small: 18px;
 	}
 }
 .plus-stalk {
-	width: 37px;
+	width: var(--stalk-size);
 	border: 1px solid var(--color-foreground-dark);
-	margin-left: 28px;
-	z-index: -1;
+	margin-left: calc((var(--endpoint-size-medium) / 2) + (var(--stalk-size) / 2) + 0.5px);
+
+	&.small {
+		margin-left: calc((var(--endpoint-size-small) / 2) + (var(--stalk-size) / 2) + 0.5px);
+	}
+	&.success {
+		border-color: var(--color-success-light);
+		--stalk-size: var(--stalk-success-size);
+	}
 }
 .plus-endpoint {
 	cursor: pointer;
 	z-index: 100;
-	margin-left: 57px;
+	margin-left: calc((var(--endpoint-size-medium)) + var(--stalk-size) + 3px);
 
 	g {
 		pointer-events: none;
@@ -919,6 +926,7 @@ $--box-size-small: 18px;
 	}
 
 	&.small {
+		margin-left: calc((var(--endpoint-size-small)) + var(--stalk-size) + 2px);
 		g {
 			transform: scale(0.75);
 			transform-origin: center;
@@ -934,66 +942,40 @@ $--box-size-small: 18px;
 	&:hover .drop-hover-message {
 		display: block;
 	}
-	.plus-stalk {
-		border-top: 2px solid var(--color-foreground-dark);
-		position: absolute;
-		width: $--stalklength;
-		height: 0;
-		right: 100%;
-		top: calc(50% - 1px);
-		pointer-events: none;
-
-		.connection-run-items-label {
-			position: relative;
-			width: 100%;
-
-			span {
-				display: none;
-				left: calc(50% + 4px);
-			}
-		}
-	}
-
-	.plus-container {
-		color: var(--color-foreground-xdark);
-		border: 2px solid var(--color-foreground-xdark);
-		background-color: var(--color-background-xlight);
-		border-radius: var(--border-radius-base);
-		height: $--box-size-medium;
-		width: $--box-size-medium;
-
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		font-size: var(--font-size-2xs);
-		// position: absolute;
-
-		top: 0;
-		right: 0;
-		pointer-events: none;
-
-		&.small {
-			height: $--box-size-small;
-			width: $--box-size-small;
-			font-size: 8px;
-		}
-
-		.fa-plus {
-			width: 1em;
-		}
-	}
 
 
-	&.hidden > * {
+	&.hidden {
 		display: none;
 	}
 
-	&.success .plus-stalk {
-		border-color: var(--color-success-light);
+	&.success {
+		--stalk-size: var(--stalk-success-size);
+	}
+}
 
-		span {
-			display: inline;
-		}
+.node-input-endpoint-label,
+.node-output-endpoint-label {
+	background-color: hsla(
+		var(--color-canvas-background-h),
+		var(--color-canvas-background-s),
+		var(--color-canvas-background-l),
+		0.85
+	);
+	border-radius: 7px;
+	font-size: 0.7em;
+	padding: 2px;
+	white-space: nowrap;
+}
+
+.node-output-endpoint-label {
+	margin-left: calc((var(--endpoint-size-small) / 2) + (var(--stalk-size) / 2));
+}
+.node-input-endpoint-label {
+	text-align: right;
+	margin-left: -25px;
+
+	&--moved {
+		margin-left: -40px;
 	}
 }
 .hover-message.jtk-overlay {
@@ -1003,9 +985,27 @@ $--box-size-small: 18px;
 	line-height: var(--font-line-height-regular);
 	color: var(--color-text-light);
 	width: var(--hover-message-width);
-	margin-left: calc(var(--hover-message-width) + var(--spacing-l));
+	margin-left: calc(
+		(var(--endpoint-size-medium) / 2) +
+		(var(--hover-message-width) / 2) +
+		var(--stalk-size) +
+		var(--plus-endpoint-box-size) +
+		var(--spacing-3xs)
+	);
 	opacity: 0;
 
+	&.small {
+		margin-left: calc(
+			(var(--endpoint-size-small) / 2) +
+			(var(--hover-message-width) / 2) +
+			var(--stalk-size) +
+			var(--plus-endpoint-box-size-small) +
+			var(--spacing-3xs)
+		);
+	}
+	&.success {
+		--stalk-size: var(--stalk-success-size);
+	}
 	&.visible {
 		opacity: 1;
 	}

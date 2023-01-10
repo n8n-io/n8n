@@ -10,13 +10,10 @@ import {
 	StraightSegment,
 	Orientation,
 } from '@jsplumb/core';
-import { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis, Segment } from '@jsplumb/common';
+import { AnchorPlacement, ConnectorOptions, Geometry, PaintAxis } from '@jsplumb/common';
 import { BezierSegment } from '@jsplumb/connector-bezier';
 import { isArray } from 'lodash';
 import { deepCopy } from 'n8n-workflow';
-
-const STRAIGHT = 'Straight';
-const ARC = 'Arc';
 
 export interface N8nConnectorOptions extends ConnectorOptions {}
 interface N8nConnectorPaintGeometry extends PaintGeometry {
@@ -25,9 +22,9 @@ interface N8nConnectorPaintGeometry extends PaintGeometry {
 	sourcePos: AnchorPlacement;
 	targetPos: AnchorPlacement;
 	targetGap: number;
+	lw: number;
 }
 
-type SegmentDirection = -1 | 0 | 1;
 type FlowchartSegment = [number, number, number, number, string];
 type StubPositions = [number, number, number, number];
 
@@ -155,7 +152,7 @@ export class N8nConnector extends AbstractConnector {
 	lasty: number | null;
 	cornerRadius: number;
 	loopbackMinimum: number;
-	curvinessCoeffient: number;
+	curvinessCoefficient: number;
 	zBezierOffset: number;
 	targetGap: number;
 	overrideTargetEndpoint: Endpoint | null;
@@ -175,7 +172,7 @@ export class N8nConnector extends AbstractConnector {
 		this.lasty = null;
 		this.cornerRadius = params.cornerRadius !== null ? params.cornerRadius : 0;
 		this.loopbackMinimum = params.loopbackMinimum || 100;
-		this.curvinessCoeffient = 0.4;
+		this.curvinessCoefficient = 0.4;
 		this.zBezierOffset = 40;
 		this.targetGap = params.targetGap || 0;
 		this.stub = params.stub || 0;
@@ -311,14 +308,14 @@ export class N8nConnector extends AbstractConnector {
 						current[2] === current[0]
 							? 0
 							: current[2] > current[0]
-							? paintInfo.w / 2
-							: -(paintInfo.w / 2),
+							? paintInfo.lw / 2
+							: -(paintInfo.lw / 2),
 					dy =
 						current[3] === current[1]
 							? 0
 							: current[3] > current[1]
-							? paintInfo.w / 2
-							: -(paintInfo.w / 2);
+							? paintInfo.lw / 2
+							: -(paintInfo.lw / 2);
 
 				this._addSegment(StraightSegment, {
 					x1: current[0] - dx,
@@ -340,7 +337,7 @@ export class N8nConnector extends AbstractConnector {
 		}
 	}
 
-	calcualteStubSegment(paintInfo: PaintGeometry): StubPositions {
+	calculateStubSegment(paintInfo: PaintGeometry): StubPositions {
 		return stubCalculators['opposite'](paintInfo, {
 			axis: paintInfo.sourceAxis,
 			alwaysRespectStubs: this.alwaysRespectStubs,
@@ -350,11 +347,8 @@ export class N8nConnector extends AbstractConnector {
 	calculateLineSegment(paintInfo: PaintGeometry, stubs: StubPositions) {
 		const axis = paintInfo.sourceAxis;
 		const idx = paintInfo.sourceAxis === 'x' ? 0 : 1;
-		// oidx = paintInfo.sourceAxis === "x" ? 1 : 0,
 		const startStub = stubs[idx];
-		// otherStartStub: number = stubs[oidx],
 		const endStub = stubs[idx + 2];
-		// otherEndStub = stubs[oidx + 2];
 
 		const diffX = paintInfo.endStubX - paintInfo.startStubX;
 		const diffY = paintInfo.endStubY - paintInfo.startStubY;
@@ -370,8 +364,6 @@ export class N8nConnector extends AbstractConnector {
 			// original flowchart behavior
 			midy = paintInfo.startStubY + (paintInfo.endStubY - paintInfo.startStubY) * this.midpoint;
 		}
-		// axis, startStub, endStub, idx, midx, midy
-		const result = lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 		return lineCalculators['opposite'](paintInfo, { axis, startStub, endStub, idx, midx, midy });
 	}
 
@@ -468,7 +460,7 @@ export class N8nConnector extends AbstractConnector {
 				number,
 			],
 			stubs: [sourceStubWithOffset, targetStubWithOffset] as [number, number],
-			anchorOrientation: 'opposite', // always opposite since our endpoints are always opposite (source orientation is left (1) and target orientaiton is right (-1))
+			anchorOrientation: 'opposite', // always opposite since our endpoints are always opposite (source orientation is left (1) and target orientation is right (-1))
 
 			/** custom keys added */
 			sourceEndpoint: params.sourceEndpoint,
@@ -528,7 +520,7 @@ export class N8nConnector extends AbstractConnector {
 		if (paintInfo.ySpan <= 20 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
 			this.majorAnchor = 0.1;
 		} else {
-			this.majorAnchor = paintInfo.xSpan * this.curvinessCoeffient + this.zBezierOffset;
+			this.majorAnchor = paintInfo.xSpan * this.curvinessCoefficient + this.zBezierOffset;
 		}
 
 		const _CP = this._findControlPoint({ x: _sx, y: _sy }, sp, tp, paintInfo.so, paintInfo.to);
@@ -566,10 +558,9 @@ export class N8nConnector extends AbstractConnector {
 		this.lasty = null;
 
 		this.internalSegments = [];
-		// this.internalSegments.length = 0;
 
 		// calculate Stubs.
-		const stubs = this.calcualteStubSegment(paintInfo);
+		const stubs = this.calculateStubSegment(paintInfo);
 
 		// add the start stub segment. use stubs for loopback as it will look better, with the loop spaced
 		// away from the element.

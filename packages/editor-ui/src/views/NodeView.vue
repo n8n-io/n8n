@@ -150,7 +150,7 @@
 <script lang="ts">
 import Vue, { ComponentInstance } from 'vue';
 import { mapStores } from 'pinia';
-import { ArrayAnchorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+
 import {
 	Endpoint,
 	Overlay,
@@ -160,7 +160,6 @@ import {
 EVENT_CONNECTION_DETACHED,
 EVENT_CONNECTION_MOVED,
 INTERCEPT_BEFORE_DROP,
-BeforeDropInterceptor,
 BeforeDropParams,
 ConnectionDetachedParams,
 ConnectionMovedParams,
@@ -283,10 +282,10 @@ import {
 	EVENT_CONNECTION_ABORT,
 	EVENT_CONNECTION_MOUSEOUT,
 	EVENT_CONNECTION_MOUSEOVER,
-	DragStopPayload,
 	BrowserJsPlumbInstance,
 	ready,
 } from '@jsplumb/browser-ui';
+import { N8nPlusEndpoint } from '@/plugins/endpoints/N8nPlusEndpointType';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -582,9 +581,6 @@ export default mixins(
 		nodeViewScale(): number {
 			return this.canvasStore.nodeViewScale;
 		},
-		// instance(): jsPlumbInstance {
-		// 	return this.canvasStore.jsPlumbInstance;
-		// },
 		instance(): BrowserJsPlumbInstance {
 			return this.canvasStore.instance;
 		},
@@ -787,6 +783,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
+			// await new Promise((resolve) => setTimeout(resolve, 5000));
 			await this.addNodes(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
@@ -2187,14 +2184,17 @@ export default mixins(
 			});
 			let exitTimer: NodeJS.Timeout | undefined;
 			let enterTimer: NodeJS.Timeout | undefined;
-			this.instance.bind(EVENT_DRAG_MOVE, (payload: DragStopPayload) => {
-				this.instance?.connections
-					.flatMap((connection) => Object.values(connection.overlays))
-					.forEach((overlay) => {
-						if(!overlay.canvas) return;
-						this.instance?.repaint(overlay.canvas);
-					});
+			this.instance.bind(EVENT_DRAG_MOVE, () => {
+				this.instance?.connections.forEach((connection) => {
+					NodeViewUtils.showOrHideMidpointArrow(connection);
 
+					Object.values(connection.overlays).forEach((overlay) => {
+						if (overlay.type === 'Arrow') {
+							if(!overlay.canvas) return;
+							this.instance?.repaint(overlay.canvas);
+						}
+					});
+				});
 			});
 			this.instance.bind(EVENT_CONNECTION_MOUSEOVER, (connection: Connection) => {
 				try {
@@ -2218,7 +2218,6 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-
 			this.instance.bind(EVENT_CONNECTION_MOUSEOUT, (connection: Connection) => {
 				try {
 					if (exitTimer) return;
@@ -2385,7 +2384,6 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-
 			this.instance?.bind([EVENT_CONNECTION_DRAG, EVENT_CONNECTION_ABORT, EVENT_CONNECTION_DETACHED], (connection: Connection) => {
 				Object.values(this.instance?.endpointsByElement)
 					.flatMap((endpoints) => Object.values(endpoints))
@@ -2559,10 +2557,14 @@ export default mixins(
 
 				const uuid: [string, string] = [outputUuid, inputUuid];
 				// Create connections in DOM
-				this.instance?.connect({
+				const newConnection = this.instance?.connect({
 					uuids: uuid,
 					detachable: !this.isReadOnly,
+					reattach: true,
 				});
+				// setTimeout(() => {
+				// 	this.instance.revalidate(newConnection.connector.canvas);
+				// }, 3000);
 			} else {
 				const connectionProperties = { connection, setStateDirty: false };
 				// When nodes get connected it gets saved automatically to the storage
@@ -2760,16 +2762,16 @@ export default mixins(
 			const nodeEls: Element = (this.$refs[`node-${node?.id}`] as ComponentInstance[])[0]
 				.$el as Element;
 
-			const endpoints = this.instance?.getEndpoints();
+			const endpoints = this.instance?.getEndpoints(nodeEls);
 
 			return endpoints as Endpoint[];
 		},
 		getPlusEndpoint(nodeName: string, outputIndex: number): Endpoint | undefined {
 			const endpoints = this.getJSPlumbEndpoints(nodeName);
-			// @ts-ignore
 			return endpoints.find(
 				(endpoint: Endpoint) =>
-					endpoint.type === 'N8nPlus' && endpoint.__meta && endpoint.__meta.index === outputIndex,
+					// @ts-ignore
+					endpoint.endpoint.type === 'N8nPlus' && endpoint?.__meta?.index === outputIndex,
 			);
 		},
 		getIncomingOutgoingConnections(nodeName: string): {
@@ -2822,7 +2824,6 @@ export default mixins(
 			const sourceId = sourceNode !== null ? sourceNode.id : '';
 
 			if (data === null || data.length === 0 || waiting) {
-				// @ts-ignore
 				const outgoing = this.instance?.getConnections({
 					source: sourceId,
 				}) as Connection[];
@@ -2832,8 +2833,7 @@ export default mixins(
 				});
 				const endpoints = this.getJSPlumbEndpoints(sourceNodeName);
 				endpoints.forEach((endpoint: Endpoint) => {
-					// @ts-ignore
-					if (endpoint.type === 'N8nPlus') {
+					if (endpoint.endpoint.type === 'N8nPlus') {
 						(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 					}
 				});
@@ -2874,8 +2874,9 @@ export default mixins(
 							);
 							if (endpoint && endpoint.endpoint) {
 								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
+
 								if (output && output.total > 0) {
-									endpoint.endpoint.setSuccessOutput(NodeViewUtils.getRunItemsLabel(output));
+									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(NodeViewUtils.getRunItemsLabel(output));
 								} else {
 									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 								}
@@ -3159,6 +3160,7 @@ export default mixins(
 			);
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections, trackHistory = false) {
+
 			if (!nodes || !nodes.length) {
 				return;
 			}
@@ -3267,6 +3269,8 @@ export default mixins(
 							});
 						}
 					}
+
+					const plumbNode = this.instance?.getEndpoint;
 				}
 			}
 
@@ -3396,6 +3400,8 @@ export default mixins(
 				tempWorkflow.connectionsBySourceNode,
 				true,
 			);
+
+
 			this.historyStore.stopRecordingUndo();
 
 			this.uiStore.stateIsDirty = true;
@@ -3442,7 +3448,6 @@ export default mixins(
 				}
 
 				// Keep only the connection to node which get also exported
-				// @ts-ignore
 				typeConnections = {};
 				for (type of Object.keys(connections)) {
 					for (sourceIndex = 0; sourceIndex < connections[type].length; sourceIndex++) {
@@ -3477,7 +3482,7 @@ export default mixins(
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
 
-			// Reset nodes
+			this.instance?.reset();
 			this.deleteEveryEndpoint();
 
 			if (this.executionWaitingForWebhook) {
@@ -3496,7 +3501,6 @@ export default mixins(
 			// Reset workflow execution data
 			this.workflowsStore.setWorkflowExecutionData(null);
 			this.workflowsStore.resetAllNodesIssues();
-			// vm.$forceUpdate();
 
 			this.workflowsStore.setActive(false);
 			this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
@@ -3767,7 +3771,6 @@ export default mixins(
 		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
-
 		const loadPromises = [
 			this.loadActiveWorkflows(),
 			this.loadCredentials(),
@@ -4011,7 +4014,11 @@ export default mixins(
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-regular);
 	color: var(--color-success);
+	margin-top: -15px;
 
+	&--stalk {
+		margin-left: 40px;
+	}
 	.floating {
 		position: absolute;
 		top: -22px;
@@ -4035,28 +4042,6 @@ export default mixins(
 	font-size: 0.8em;
 	text-align: center;
 	background-color: #ffffff55;
-}
-
-.node-input-endpoint-label,
-.node-output-endpoint-label {
-	background-color: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
-		0.85
-	);
-	border-radius: 7px;
-	font-size: 0.7em;
-	padding: 2px;
-	white-space: nowrap;
-}
-
-.node-output-endpoint-label {
-	margin-left: 24px;
-}
-.node-input-endpoint-label {
-	text-align: right;
-	margin-left: -28px;
 }
 
 .connection-actions {

@@ -7,8 +7,8 @@ interface N8nPlusEndpointParams extends EndpointRepresentationParams {
 	dimensions: number;
 	connectedEndpoint: Endpoint;
 	hoverMessage: string;
-	showOutputLabel: boolean;
 	size: 'small' | 'medium';
+	showOutputLabel: boolean;
 }
 export const PlusStalkOverlay = 'plus-stalk';
 export const HoverMessageOverlay = 'hover-message';
@@ -16,7 +16,6 @@ export const HoverMessageOverlay = 'hover-message';
 export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpoint> {
 	params: N8nPlusEndpointParams;
 	label: string;
-	labelOffset: number;
 	stalkOverlay: Overlay | null;
 	messageOverlay: Overlay | null;
 
@@ -26,7 +25,6 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.params = params;
 
 		this.label = '';
-		this.labelOffset = 0;
 		this.stalkOverlay = null;
 		this.messageOverlay = null;
 
@@ -45,7 +43,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			options: {
 				id: PlusStalkOverlay,
 				create: () => {
-					const stalk = createElement('i', {}, PlusStalkOverlay);
+					const stalk = createElement('i', {}, `${PlusStalkOverlay} ${this.params.size}`);
 					return stalk;
 				},
 			},
@@ -54,8 +52,9 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			type: 'Custom',
 			options: {
 				id: HoverMessageOverlay,
+				location: 0.5,
 				create: () => {
-					const hoverMessage = createElement('p', {}, HoverMessageOverlay);
+					const hoverMessage = createElement('p', {}, `${HoverMessageOverlay} ${this.params.size}`);
 					hoverMessage.innerHTML = this.params.hoverMessage;
 					return hoverMessage;
 				},
@@ -107,37 +106,40 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		});
 
 		this.setVisible(visible);
+
+		// Re-render success output overlay if label is set and it doesn't exist
+		const successOutputOverlay = this.endpoint.getOverlay('successOutputOverlay');
+		if(visible && this.label && !successOutputOverlay) {
+			this.setSuccessOutput(this.label);
+		}
 	};
 
 	setSuccessOutput(label: string) {
-
 		this.endpoint.addClass('success');
-		// if (this.params.showOutputLabel) {
-			// const plusStalk = this.plusElement.querySelector('.plus-stalk') as HTMLElement;
-			// const successOutput = this.plusElement.querySelector('.plus-stalk span') as HTMLElement;
-
-			// successOutput.textContent = label;
-			// this.label = label;
-			// this.labelOffset = successOutput.offsetWidth;
-
-			// plusStalk.style.width = `${stalkLength + this.labelOffset}px`;
-			// if (this._jsPlumb && this._jsPlumb.instance && !this._jsPlumb.instance.isSuspendDrawing()) {
-			// 	params.endpoint.repaint(); // force rerender to move plus hoverable/draggable space
-			// }
-		// }
+		if (this.params.showOutputLabel) {
+			this.endpoint.removeOverlay('successOutputOverlay');
+			this.endpoint.addOverlay({
+				type: 'Custom',
+				options: {
+					id: 'successOutputOverlay',
+					create: () => {
+						const successOutputLabel = createElement('span', {}, 'connection-run-items-label connection-run-items-label--stalk');
+						successOutputLabel.innerHTML = label;
+						return successOutputLabel;
+					},
+				},
+			});
+			this.label = label;
+			this.instance.repaint(this.endpoint.element);
+		}
 	};
 
 	clearSuccessOutput() {
+		this.endpoint.removeOverlay('successOutputOverlay');
 		this.endpoint.removeClass('success');
-		// successOutput.textContent = '';
-		// this.label = '';
-		// this.labelOffset = 0;
-		// plusStalk.style.width = `${stalkLength}px`;
-		// endpoint.instance.repaint(endpoint);
+		this.label = '';
+		this.instance.repaint(this.endpoint.element);
 	}
-
-	// ep.clearOverlays();
-	// ep.setStalkOverlay();
 }
 
 export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8nPlusEndpoint> = {
