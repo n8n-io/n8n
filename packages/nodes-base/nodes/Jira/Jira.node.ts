@@ -493,7 +493,12 @@ export class Jira implements INodeType {
 					});
 					if (assignee) additionalFields.assignee = assignee;
 
-					// console.log({ assignee, additionalFields });
+					const reporter = this.getNodeParameter('additionalFields.reporter', i, '', {
+						extractValue: true,
+					});
+					if (reporter) additionalFields.reporter = reporter;
+
+					// console.log({ reporter, additionalFields });
 
 					const body: IIssue = {};
 					const fields: IFields = {
@@ -604,7 +609,12 @@ export class Jira implements INodeType {
 					});
 					if (assignee) updateFields.assignee = assignee;
 
-					// console.log({ assignee, updateFields });
+					const reporter = this.getNodeParameter('updateFields.reporter', i, '', {
+						extractValue: true,
+					});
+					if (reporter) updateFields.reporter = reporter;
+
+					// console.log({ reporter, updateFields });
 
 					const body: IIssue = {};
 					const fields: IFields = {};
