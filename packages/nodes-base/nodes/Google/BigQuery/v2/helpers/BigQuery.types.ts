@@ -1,10 +1,18 @@
-type TableSchemaField = {
+import { IDataObject } from 'n8n-workflow';
+
+export type SchemaField = {
 	name: string;
 	type: string;
 	mode: string;
-	fields?: TableSchemaField[];
+	fields?: SchemaField[];
 };
 
 export type TableSchema = {
-	fields: TableSchemaField[];
+	fields: SchemaField[];
+};
+
+//=============================
+
+export type TableRawData = {
+	f: Array<{ v: IDataObject | TableRawData }>;
 };

@@ -1,59 +1,37 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, jsonParse, NodeOperationError } from 'n8n-workflow';
-import { TableSchema } from './BigQuery.types';
+import { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
 
-export function simplify(rows: IDataObject[], fields: Array<string | IDataObject>) {
-	if (!Array.isArray(rows)) {
-		return (fields as IDataObject[]).reduce((acc, field, index) => {
-			if (typeof field === 'string') {
-				const rowData = ((rows as IDataObject).f as IDataObject[])[index].v;
-				acc[field] = Array.isArray(rowData) ? rowData.map((entry) => entry.v) : rowData;
-			} else {
-				const name = Object.keys(field)[0];
-				const rowData = ((rows as IDataObject).f as IDataObject[])[index].v as IDataObject[];
+export function simplify(data: TableRawData[], schema: SchemaField[]) {
+	const returnData: IDataObject[] = [];
 
-				acc[name] = simplify(rowData, field[name] as Array<string | IDataObject>);
-				// acc[name] = rowData;
-			}
-			return acc;
-		}, {} as IDataObject);
-	}
-	const results = [];
-
-	for (const row of rows) {
+	for (const entry of data) {
 		const record: IDataObject = {};
-		for (const [index, field] of fields.entries()) {
-			if (typeof field === 'string') {
-				if (row.f) {
-					record[field] = (row.f as IDataObject[])[index].v;
-				} else {
-					if (row.v) {
-						record[field] = (((row.v as IDataObject).f as IDataObject[]) || []).map(
-							(entry) => entry.v,
-						);
-					}
-				}
-			} else {
-				const name = Object.keys(field)[0];
-				const rowData = (row.f as IDataObject[])[index].v as IDataObject[];
 
-				record[name] = rowData.map((entry) =>
-					simplify(entry.v as IDataObject[], field[name] as Array<string | IDataObject>),
+		for (const [index, field] of entry.f.entries()) {
+			if (schema[index].mode !== 'REPEATED') {
+				record[schema[index].name] = getFieldValue(schema[index], field);
+			} else {
+				record[schema[index].name] = (field.v as unknown as IDataObject[]).flatMap(
+					(repeatedField) => {
+						return getFieldValue(schema[index], repeatedField as unknown as IDataObject);
+					},
 				);
 			}
 		}
-		results.push(record);
+
+		returnData.push(record);
 	}
-	return results;
+
+	return returnData;
 }
 
-export function extractSchemaFields(entry: IDataObject): string | IDataObject {
-	const name = entry.name as string;
-	const entryFields = entry.fields as IDataObject[];
-	if (!entryFields) {
-		return name;
+function getFieldValue(schemaField: SchemaField, field: IDataObject) {
+	if (schemaField.type === 'RECORD') {
+		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
+	} else {
+		return field.v;
 	}
-	return { [name]: entryFields.map(extractSchemaFields) };
 }
 
 export function parseField(field: string): string | IDataObject {
@@ -62,6 +40,38 @@ export function parseField(field: string): string | IDataObject {
 	}
 	const [rootField, ...rest] = field.split('.');
 	return { [rootField]: [parseField(rest.join('.'))] };
+}
+
+export function getSchemaForSelectedFields(schemaFields: SchemaField[], selectedFields: string[]) {
+	const returnData: SchemaField[] = [];
+
+	for (const field of schemaFields) {
+		if (selectedFields.includes(field.name)) {
+			// if (field.name.includes('.') && field.type === 'RECORD') {
+			// 	const [rootField, ...rest] = field.name.split('.');
+			// 	const rootFieldIndex = returnData.findIndex(({ name }) => name === rootField);
+			// 	if (rootFieldIndex === -1) {
+			// 		returnData.push({
+			// 			...field,
+			// 			fields: getSchemaForSelectedFields(field.fields as unknown as SchemaField[], [
+			// 				rest.join('.'),
+			// 			]),
+			// 		});
+			// 	} else {
+			// 		const subField = getSchemaForSelectedFields(field.fields as unknown as SchemaField[], [
+			// 			rest.join('.'),
+			// 		]);
+			// 		returnData[rootFieldIndex].fields = [
+			// 			...(returnData[rootFieldIndex].fields as unknown as SchemaField[]),
+			// 			...subField,
+			// 		];
+			// 	}
+			// } else {
+			returnData.push(field);
+		}
+	}
+
+	return returnData;
 }
 
 export function checkSchema(

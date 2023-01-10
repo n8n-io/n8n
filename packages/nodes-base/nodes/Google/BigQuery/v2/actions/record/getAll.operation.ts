@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
-import { extractSchemaFields, parseField, simplify } from '../../helpers/utils';
+import { SchemaField, TableSchema } from '../../helpers/BigQuery.types';
+import { getSchemaForSelectedFields, simplify } from '../../helpers/utils';
 import { googleApiRequest, googleApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -89,58 +90,27 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const tableId = this.getNodeParameter('tableId', i) as string;
 			const simple = this.getNodeParameter('simple', i) as boolean;
 
-			// console.log(
-			// 	await googleApiRequest.call(
-			// 		this,
-			// 		'PATCH',
-			// 		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
-			// 		{
-			// 			tableReference: {
-			// 				projectId,
-			// 				datasetId,
-			// 				tableId,
-			// 			},
-			// 			schema: {
-			// 				fields: [
-			// 					{ name: 'numericID', type: 'INTEGER', mode: 'REQUIRED' },
-			// 					{
-			// 						name: 'data',
-			// 						type: 'RECORD',
-			// 						mode: 'REQUIRED',
-			// 						fields: [
-			// 							{ name: 'text', type: 'STRING', mode: 'REQUIRED' },
-			// 							{ name: 'published', type: 'BOOLEAN', mode: 'REQUIRED' },
-			// 						],
-			// 					},
-			// 				],
-			// 			},
-			// 		},
-			// 	),
-			// );
-
-			let fields;
+			let fields: SchemaField[] = [];
 			const qs: IDataObject = {};
 
 			try {
 				if (simple) {
-					const { schema } = await googleApiRequest.call(
-						this,
-						'GET',
-						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
-						{},
-					);
+					const tableSchema = (
+						await googleApiRequest.call(
+							this,
+							'GET',
+							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+							{},
+						)
+					).schema as TableSchema;
 
-					// console.log(JSON.stringify(schema, null, 2));
+					// console.log(JSON.stringify(tableSchema, null, 2));
 
-					fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
+					fields = tableSchema.fields;
 				}
 
 				const options = this.getNodeParameter('options', i);
 				Object.assign(qs, options);
-
-				if (qs.selectedFields) {
-					fields = (qs.selectedFields as string).split(',').map((field: string) => field.trim());
-				}
 
 				if (returnAll) {
 					responseData = await googleApiRequestAllItems.call(
@@ -176,13 +146,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 						limit ? ' LIMIT ' + limit : ''
 					};`;
 
-					const { rows, schema } = await googleApiRequest.call(
+					const { schema, rows } = await googleApiRequest.call(
 						this,
 						'POST',
 						`/v2/projects/${projectId}/queries`,
 						{ query },
 					);
-					fields = (schema.fields || []).map((field: IDataObject) => extractSchemaFields(field));
+
+					fields = (schema as TableSchema).fields;
 					responseData = rows;
 				} else {
 					throw error;
@@ -190,7 +161,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			if (qs.selectedFields) {
-				fields = (fields as string[]).map((field: string) => parseField(field));
+				const selected = (qs.selectedFields as string).split(',').map((field) => field.trim());
+				fields = getSchemaForSelectedFields(fields, selected);
 			}
 
 			responseData = simple ? simplify(responseData, fields) : responseData;
