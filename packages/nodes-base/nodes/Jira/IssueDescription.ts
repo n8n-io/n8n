@@ -314,15 +314,40 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Reporter',
@@ -525,15 +550,40 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Reporter',

@@ -231,6 +231,36 @@ export class Jira implements INodeType {
 
 				return { results: filterSortSearchListItems(returnData, filter) };
 			},
+
+			// Get all the priorities to display them to user so that he can
+			// select them easily
+			async getPriorities(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+
+				const priorities = await jiraSoftwareCloudApiRequest.call(this, '/api/2/priority', 'GET');
+
+				for (const priority of priorities) {
+					const priorityName = priority.name;
+					const priorityId = priority.id;
+
+					returnData.push({
+						name: priorityName,
+						value: priorityId,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+
+				return { results: returnData };
+			},
 		},
 		loadOptions: {
 			// Get all the labels to display them to user so that he can
@@ -498,7 +528,10 @@ export class Jira implements INodeType {
 					});
 					if (reporter) additionalFields.reporter = reporter;
 
-					// console.log({ reporter, additionalFields });
+					const priority = this.getNodeParameter('additionalFields.priority', i, '', {
+						extractValue: true,
+					});
+					if (priority) additionalFields.priority = priority;
 
 					const body: IIssue = {};
 					const fields: IFields = {
@@ -614,7 +647,10 @@ export class Jira implements INodeType {
 					});
 					if (reporter) updateFields.reporter = reporter;
 
-					// console.log({ reporter, updateFields });
+					const priority = this.getNodeParameter('updateFields.priority', i, '', {
+						extractValue: true,
+					});
+					if (priority) updateFields.priority = priority;
 
 					const body: IIssue = {};
 					const fields: IFields = {};
