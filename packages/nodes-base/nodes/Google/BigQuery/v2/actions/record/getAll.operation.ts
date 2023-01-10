@@ -89,6 +89,35 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const tableId = this.getNodeParameter('tableId', i) as string;
 			const simple = this.getNodeParameter('simple', i) as boolean;
 
+			// console.log(
+			// 	await googleApiRequest.call(
+			// 		this,
+			// 		'PATCH',
+			// 		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+			// 		{
+			// 			tableReference: {
+			// 				projectId,
+			// 				datasetId,
+			// 				tableId,
+			// 			},
+			// 			schema: {
+			// 				fields: [
+			// 					{ name: 'numericID', type: 'INTEGER', mode: 'REQUIRED' },
+			// 					{
+			// 						name: 'data',
+			// 						type: 'RECORD',
+			// 						mode: 'REQUIRED',
+			// 						fields: [
+			// 							{ name: 'text', type: 'STRING', mode: 'REQUIRED' },
+			// 							{ name: 'published', type: 'BOOLEAN', mode: 'REQUIRED' },
+			// 						],
+			// 					},
+			// 				],
+			// 			},
+			// 		},
+			// 	),
+			// );
+
 			let fields;
 			const qs: IDataObject = {};
 

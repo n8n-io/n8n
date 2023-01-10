@@ -1,4 +1,6 @@
-import { IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { TableSchema } from './BigQuery.types';
 
 export function simplify(rows: IDataObject[], fields: Array<string | IDataObject>) {
 	if (!Array.isArray(rows)) {
@@ -60,4 +62,39 @@ export function parseField(field: string): string | IDataObject {
 	}
 	const [rootField, ...rest] = field.split('.');
 	return { [rootField]: [parseField(rest.join('.'))] };
+}
+
+export function checkSchema(
+	this: IExecuteFunctions,
+	schema: TableSchema,
+	record: IDataObject,
+	i: number,
+) {
+	const returnData = { ...record };
+
+	schema.fields.forEach(({ name, mode, type, fields }) => {
+		if (mode === 'REQUIRED' && returnData[name] === undefined) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The property '${name}' is required, please define it in the 'Fields to Send'`,
+				{ itemIndex: i },
+			);
+		}
+		if (type === 'RECORD' && typeof returnData[name] !== 'object') {
+			let parsedField;
+			try {
+				parsedField = jsonParse(returnData[name] as string);
+			} catch (error) {
+				const recordField = fields ? `Field Schema:\n ${JSON.stringify(fields)}` : '';
+				throw new NodeOperationError(
+					this.getNode(),
+					`The property '${name}' is a RECORD type, but the value is nor an object nor a valid JSON string`,
+					{ itemIndex: i, description: recordField },
+				);
+			}
+			returnData[name] = parsedField as IDataObject;
+		}
+	});
+
+	return returnData;
 }

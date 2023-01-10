@@ -1,6 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { TableSchema } from '../../helpers/BigQuery.types';
+import { checkSchema } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -24,11 +26,6 @@ export const description: INodeProperties[] = [
 				value: 'list',
 				description: 'Set list of the item properties to use as fields',
 			},
-			// {
-			// 	name: 'Nothing',
-			// 	value: 'nothing',
-			// 	description: 'Do not send anything',
-			// },
 		],
 		displayOptions: {
 			show: {
@@ -181,12 +178,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		body.traceId = uuid();
 	}
 
-	const { schema } = await googleApiRequest.call(
-		this,
-		'GET',
-		`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
-		{},
-	);
+	const schema = (
+		await googleApiRequest.call(
+			this,
+			'GET',
+			`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+			{},
+		)
+	).schema as TableSchema;
 
 	if (schema === undefined) {
 		throw new NodeOperationError(this.getNode(), 'The destination table has no defined schema');
@@ -197,15 +196,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const record: IDataObject = {};
 
 			if (dataMode === 'autoMap') {
-				(schema.fields as IDataObject[]).forEach(({ name, mode }) => {
-					if (mode === 'REQUIRED' && items[i].json[name as string] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The property '${name}' is required but not exist in the input data`,
-							{ itemIndex: i },
-						);
-					}
-					record[`${name}`] = items[i].json[name as string];
+				schema.fields.forEach(({ name }) => {
+					record[name] = items[i].json[name];
 				});
 			}
 
@@ -214,16 +206,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 				fields.forEach(({ fieldId, fieldValue }) => {
 					record[`${fieldId}`] = fieldValue;
-				});
-
-				(schema.fields as IDataObject[]).forEach(({ name, mode }) => {
-					if (mode === 'REQUIRED' && record[name as string] === undefined) {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The property '${name}' is required, please define it in the 'Fields to Send'`,
-							{ itemIndex: i },
-						);
-					}
 				});
 			}
 
@@ -238,7 +220,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			}
 
-			rows.push({ json: record });
+			rows.push({ json: checkSchema.call(this, schema, record, i) });
 		} catch (error) {
 			if (this.continueOnFail()) {
 				const executionErrorData = this.helpers.constructExecutionMetaData(
