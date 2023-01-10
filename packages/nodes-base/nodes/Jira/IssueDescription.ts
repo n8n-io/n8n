@@ -629,15 +629,40 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status',
 				name: 'statusId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTransitions',
-				},
-				default: '',
-				description:
-					'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Status',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Status...',
+						typeOptions: {
+							searchListMethod: 'getTransitions',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '11',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Status ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 		],
 	},

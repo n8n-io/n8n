@@ -261,6 +261,38 @@ export class Jira implements INodeType {
 
 				return { results: returnData };
 			},
+
+			// Get all the transitions (status) to display them to user so that he can
+			// select them easily
+			async getTransitions(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+
+				const issueKey = this.getCurrentNodeParameter('issueKey');
+				const transitions = await jiraSoftwareCloudApiRequest.call(
+					this,
+					`/api/2/issue/${issueKey}/transitions`,
+					'GET',
+				);
+
+				for (const transition of transitions.transitions) {
+					returnData.push({
+						name: transition.name,
+						value: transition.id,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+
+				return { results: returnData };
+			},
 		},
 		loadOptions: {
 			// Get all the labels to display them to user so that he can
@@ -621,6 +653,11 @@ export class Jira implements INodeType {
 						extractValue: true,
 					});
 					if (priority) updateFields.priority = priority;
+
+					const statusId = this.getNodeParameter('updateFields.statusId', i, '', {
+						extractValue: true,
+					});
+					if (statusId) updateFields.statusId = statusId;
 
 					const body: IIssue = {};
 					const fields: IFields = {};
