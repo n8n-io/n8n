@@ -82,20 +82,19 @@
 							}}</span>
 						</td>
 						<td>
-							<span>{{ convertToDisplayDate(execution.startedAt) }}</span>
+							<span>{{ formatDate(execution.startedAt) }}</span>
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
-								<span v-if="execution.stoppedAt === undefined">
+								<span v-if="execution.stoppedAt === undefined" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
-									<execution-time :start-time="execution.startedAt" />
 								</span>
 								<i18n :path="getStatusTextTranslationPath(execution)">
 									<template #status>
 										<span :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
-									<template v-if="execution.stoppedAt !== null" #time>
-										<span>
+									<template #time>
+										<span v-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined">
 											{{
 												displayTimer(
 													new Date(execution.stoppedAt).getTime() -
@@ -104,6 +103,7 @@
 												)
 											}}
 										</span>
+										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n>
 							</div>
@@ -380,9 +380,8 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		closeDialog() {
 			this.$emit('closeModal');
 		},
-		convertToDisplayDate(epochTime: number) {
-			const time = dateformat(epochTime, 'HH:MM:ss');
-			const date = dateformat(epochTime, 'd mmm, yyyy');
+		formatDate(epochTime: number) {
+			const { date, time } = this.convertToDisplayDate(epochTime);
 			return this.$locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 		displayExecution(execution: IExecutionsSummary) {
@@ -912,6 +911,11 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 .statusColumn {
 	display: flex;
+	align-items: center;
+}
+
+.spinner {
+	margin-right: var(--spacing-2xs);
 }
 
 .status {
