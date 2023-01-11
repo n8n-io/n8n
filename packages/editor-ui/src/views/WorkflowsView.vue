@@ -208,7 +208,9 @@ export default mixins(showMessage, debounceHelper).extend({
 		goToTemplates() {
 			if (this.isDemoTest) {
 				this.$router.push('/collections/7');
-				this.$telemetry.track('User clicked on inspect demo workflow', { location: this.allWorkflows.length ? 'workflows': 'start_page' });
+				this.$telemetry.track('User clicked on inspect demo workflow', {
+					location: this.allWorkflows.length ? 'workflows' : 'start_page',
+				});
 			} else {
 				this.$router.push({ name: VIEWS.TEMPLATES });
 			}
