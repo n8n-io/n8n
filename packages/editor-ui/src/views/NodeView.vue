@@ -1383,7 +1383,28 @@ export default mixins(
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.restApi().getExecution(executionId);
-				if (execution?.finished) {
+
+				if (execution === undefined) {
+					// execution finished but was not saved (e.g. due to low connectivity)
+
+					this.workflowsStore.finishActiveExecution({
+						executionId,
+						data: { finished: true, stoppedAt: new Date() },
+					});
+					this.workflowsStore.executingNode = null;
+					this.uiStore.removeActiveAction('workflowRunning');
+
+					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.$showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
+						type: 'success',
+					});
+				} else if (execution?.finished) {
+					// execution finished before it could be stopped
+
 					const executedData = {
 						data: execution.data,
 						finished: execution.finished,
