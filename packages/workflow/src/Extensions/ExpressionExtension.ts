@@ -19,7 +19,7 @@ function isPresent(value: unknown) {
 	return !isBlank(value);
 }
 
-const EXTENSION_OBJECTS = [
+export const EXTENSION_OBJECTS = [
 	arrayExtensions,
 	dateExtensions,
 	numberExtensions,
