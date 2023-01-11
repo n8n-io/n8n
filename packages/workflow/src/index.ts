@@ -28,3 +28,5 @@ export {
 	isINodePropertyCollectionList,
 	isINodePropertyOptionsList,
 } from './type-guards';
+
+export { ExpressionExtensions } from './Extensions';
