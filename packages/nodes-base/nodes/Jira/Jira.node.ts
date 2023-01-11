@@ -429,52 +429,6 @@ export class Jira implements INodeType {
 				return returnData;
 			},
 
-			// Get all the custom fields to display them to user so that he can
-			// select them easily
-			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const operation = this.getCurrentNodeParameter('operation') as string;
-				let projectId: string;
-				let issueTypeId: string;
-				if (operation === 'create') {
-					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
-					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
-				} else {
-					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
-					const res = await jiraSoftwareCloudApiRequest.call(
-						this,
-						`/api/2/issue/${issueKey}`,
-						'GET',
-						{},
-						{},
-					);
-					projectId = res.fields.project.id;
-					issueTypeId = res.fields.issuetype.id;
-				}
-
-				const res = await jiraSoftwareCloudApiRequest.call(
-					this,
-					`/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`,
-					'GET',
-				);
-
-				const fields = res.projects
-
-					.find((o: any) => o.id === projectId)
-
-					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
-				for (const key of Object.keys(fields)) {
-					const field = fields[key];
-					if (field.schema && Object.keys(field.schema).includes('customId')) {
-						returnData.push({
-							name: field.name,
-							value: field.key || field.fieldId,
-						});
-					}
-				}
-				return returnData;
-			},
-
 			// Get all the components to display them to user so that he can
 			// select them easily
 			async getProjectComponents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
