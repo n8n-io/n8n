@@ -1005,7 +1005,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 							}
 						}
 					}
-					this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: { name: string }) => {
+					this.nodeAccess = this.nodesWithAccess.reduce(
+						(accu: NodeAccessMap, node: { name: string }) => {
 							if (this.mode === 'new') {
 								accu[node.name] = { nodeType: node.name }; // enable all nodes by default
 							} else {
