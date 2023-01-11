@@ -8,6 +8,7 @@ import { proxyCompletions } from './completions/proxy.completions';
 import { rootCompletions } from './completions/root.completions';
 import { luxonCompletions } from './completions/luxon.completions';
 import { alphaCompletions } from './completions/alpha.completions';
+import { datatypeCompletions } from './completions/datatype.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -22,9 +23,13 @@ const n8nParserWithNestedJsParser = n8nParser.configure({
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
 export function n8nLang() {
-	const options = [alphaCompletions, rootCompletions, proxyCompletions, luxonCompletions].map(
-		(group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }),
-	);
+	const options = [
+		alphaCompletions,
+		datatypeCompletions,
+		rootCompletions,
+		proxyCompletions,
+		luxonCompletions,
+	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 
 	return new LanguageSupport(n8nLanguage, [
 		n8nLanguage.data.of({ closeBrackets: { brackets: ['{'] } }),
