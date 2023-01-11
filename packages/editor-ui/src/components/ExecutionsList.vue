@@ -89,7 +89,10 @@
 								<span v-if="execution.stoppedAt === undefined" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
-								<i18n :path="getStatusTextTranslationPath(execution)">
+								<i18n
+									v-if="!isWaitTillIndefinite(execution)"
+									:path="getStatusTextTranslationPath(execution)"
+								>
 									<template #status>
 										<n8n-tooltip v-if="isWaitTillIndefinite(execution)" placement="top">
 											<template #content>
@@ -104,9 +107,7 @@
 										<span v-else :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
 									<template #time>
-										<span v-if="!isWaitTillIndefinite(execution)">{{
-											formatDate(execution.waitTill)
-										}}</span>
+										<span v-if="execution.waitTill">{{ formatDate(execution.waitTill) }}</span>
 										<span
 											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
 										>
@@ -121,6 +122,7 @@
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n>
+								<span v-else>{{ $locale.baseText('executionsList.statusWaiting') }}</span>
 							</div>
 						</td>
 						<td>
