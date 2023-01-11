@@ -60,6 +60,7 @@
 						<th></th>
 						<th></th>
 						<th></th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -86,7 +87,7 @@
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
-								<span v-if="getStatus(execution) === 'running'" :class="$style.spinner">
+								<span v-if="isRunning(execution)" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
 								<i18n
@@ -146,15 +147,7 @@
 							</n8n-tooltip>
 						</td>
 						<td>
-							<div :class="$style.actionsContainer">
-								<n8n-button
-									v-if="execution.stoppedAt === undefined || execution.waitTill"
-									size="small"
-									outline
-									:label="$locale.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
-									:loading="stoppingExecutions.includes(execution.id)"
-								/>
+							<div :class="$style.buttonCell">
 								<n8n-button
 									v-if="execution.stoppedAt !== undefined && execution.id"
 									size="small"
@@ -165,7 +158,23 @@
 							</div>
 						</td>
 						<td>
-							<el-dropdown trigger="click" @command="handleActionItemClick">
+							<div :class="$style.buttonCell">
+								<n8n-button
+									v-if="execution.stoppedAt === undefined || execution.waitTill"
+									size="small"
+									outline
+									:label="$locale.baseText('executionsList.stop')"
+									@click.stop="stopExecution(execution.id)"
+									:loading="stoppingExecutions.includes(execution.id)"
+								/>
+							</div>
+						</td>
+						<td>
+							<el-dropdown
+								v-if="!isRunning(execution)"
+								trigger="click"
+								@command="handleActionItemClick"
+							>
 								<span class="retry-button">
 									<n8n-icon-button
 										text
@@ -906,6 +915,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 				return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
 			},
+			isRunning(execution: IExecutionsSummary): boolean {
+				return this.getStatus(execution) === 'running';
+			},
 		},
 	},
 );
@@ -991,7 +1003,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	}
 }
 
-.actionsContainer {
+.buttonCell {
 	overflow: hidden;
 
 	button {
@@ -1001,10 +1013,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		&:focus-visible,
 		.execRow:hover & {
 			transform: translateX(0);
-		}
-
-		&:not(:first-child) {
-			margin-left: 5px;
 		}
 	}
 }
