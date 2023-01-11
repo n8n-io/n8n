@@ -161,7 +161,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 						const oldAuth = oldValue[authField.name];
 						const newAuth = newValue[authField.name];
 
-						if (newAuth && oldAuth !== newAuth) {
+						if (newAuth) {
 							const credentialType = getNodeCredentialForAuthType(nodeType, newAuth.toString());
 							if (credentialType) {
 								this.subscribedToCredentialType = credentialType.name;
