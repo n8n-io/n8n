@@ -57,7 +57,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');
 
@@ -100,8 +99,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
-
 		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 }
