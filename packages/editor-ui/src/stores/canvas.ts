@@ -45,8 +45,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const getPlaceholderTriggerNodeUI = (): INodeUi => {
-		setRecenteredCanvasAddButtonPosition();
-
 		return {
 			id: uuid(),
 			...DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
@@ -95,6 +93,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		}
 		const { zoomLevel, offset } = getZoomToFit(nodes, !isDemo.value);
 		setZoomLevel(zoomLevel, offset);
+		setRecenteredCanvasAddButtonPosition();
 	};
 
 	const wheelMoveWorkflow = (e: WheelEvent) => {
