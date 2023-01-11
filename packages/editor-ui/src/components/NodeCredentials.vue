@@ -87,7 +87,12 @@ import {
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
-import { ICredentialType, INodeCredentialDescription, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
+import {
+	ICredentialType,
+	INodeCredentialDescription,
+	INodeCredentialsDetails,
+	INodeParameters,
+} from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
