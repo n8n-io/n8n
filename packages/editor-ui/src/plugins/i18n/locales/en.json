@@ -820,6 +820,8 @@
 	"nodeView.showMessage.keyDown.title": "Workflow created",
 	"nodeView.showMessage.showMaxNodeTypeError.message": "Only one '{nodeTypeDataDisplayName}' node is allowed in a workflow | Only {count} '{nodeTypeDataDisplayName}' nodes are allowed in a workflow",
 	"nodeView.showMessage.showMaxNodeTypeError.title": "Could not insert node",
+	"nodeView.showMessage.stopExecutionCatch.unsaved.message": "This execution was canceled",
+	"nodeView.showMessage.stopExecutionCatch.unsaved.title": "Execution canceled",
 	"nodeView.showMessage.stopExecutionCatch.message": "It completed before it could be stopped",
 	"nodeView.showMessage.stopExecutionCatch.title": "Workflow finished executing",
 	"nodeView.showMessage.stopExecutionTry.title": "Execution stopped",
