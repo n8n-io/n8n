@@ -49,6 +49,8 @@ function ceil(value: number) {
 	return Math.ceil(value);
 }
 
+ceil.description = 'This is a description'; // @TODO: Add docs
+
 function round(value: number, extraArgs: number[]) {
 	const [decimalPlaces = 0] = extraArgs;
 	return +value.toFixed(decimalPlaces);
