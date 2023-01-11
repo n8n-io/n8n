@@ -423,3 +423,22 @@ export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeP
 	}
 	return authFields;
 };
+
+export const getCredentialsRelatedFields = (
+	nodeType: INodeTypeDescription | null,
+	credentialType: INodeCredentialDescription | null,
+): INodeProperties[] => {
+	let fields: INodeProperties[] = [];
+	if (
+		nodeType &&
+		credentialType &&
+		credentialType.displayOptions &&
+		credentialType.displayOptions.show
+	) {
+		Object.keys(credentialType.displayOptions.show).forEach((option) => {
+			console.log(option);
+			fields = fields.concat(nodeType.properties.filter((prop) => prop.name === option));
+		});
+	}
+	return fields;
+};

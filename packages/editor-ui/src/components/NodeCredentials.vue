@@ -8,7 +8,7 @@
 			:key="credentialTypeDescription.name"
 		>
 			<n8n-input-label
-				:label="getCredentialsFieldLabel(credentialTypeNames[credentialTypeDescription.name])"
+				:label="getCredentialsFieldLabel(credentialTypeDescription)"
 				:bold="false"
 				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"
@@ -109,7 +109,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
+import { getAuthTypeForNodeCredential, getCredentialsRelatedFields, getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -495,11 +495,19 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			});
 			this.subscribedToCredentialType = credentialType;
 		},
-		getCredentialsFieldLabel(credentialType: string): string {
-			if (KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '')) {
+		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+			const mainAuthField = nodeType ? getMainAuthField(nodeType) : null;
+			const mainAuthFieldName = mainAuthField ? mainAuthField.name : '';
+
+			if (
+				KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') ||
+				!(mainAuthFieldName in (credentialType.displayOptions?.show || {}))
+			) {
 				return this.$locale.baseText('nodeCredentials.credentialFor', {
 					interpolate: {
-						credentialType,
+						credentialType: credentialTypeName,
 					},
 				});
 			}
