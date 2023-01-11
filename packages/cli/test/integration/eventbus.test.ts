@@ -23,6 +23,7 @@ import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEven
 import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
+jest.unmock('@/eventbus');
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
@@ -63,7 +64,7 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 };
 
 async function cleanLogs() {
-	await eventBus.logWriter.getThread()?.cleanLogs();
+	eventBus.logWriter.cleanAllLogs();
 	const allMessages = await eventBus.getEventsAll();
 	expect(allMessages.length).toBe(0);
 }
@@ -119,8 +120,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// await testDb.truncate(['EventDestinations'], testDbName);
-
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('enterprise.features.logStreaming', false);
@@ -131,19 +130,18 @@ afterAll(async () => {
 	await eventBus.close();
 });
 
-test('should have a running logwriter process', async () => {
-	const thread = eventBus.logWriter.getThread();
+test('should have a running logwriter process', () => {
+	const thread = eventBus.logWriter.getWorker();
 	expect(thread).toBeDefined();
 });
 
 test('should have a clean log', async () => {
-	await eventBus.logWriter.getThread()?.cleanLogs();
-	const allMessages = await eventBus.getEventsAll();
-	expect(allMessages.length).toBe(0);
+	await cleanLogs();
 });
 
 test('should have logwriter log messages', async () => {
 	await eventBus.send(testMessage);
+	await new Promise((resolve) => setTimeout(resolve, 200));
 	const sent = await eventBus.getEventsSent();
 	const unsent = await eventBus.getEventsUnsent();
 	expect(sent.length).toBeGreaterThan(0);
@@ -228,19 +226,14 @@ test('should confirm send message if there are no subscribers', async () => {
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
 	mockedSyslogClientLog.mockImplementation((_m, _options, _cb) => {
-		eventBus.confirmSent(testMessage, {
-			id: syslogDestination.id,
-			name: syslogDestination.label,
-		});
 		return syslogDestination.client;
 	});
 
 	await eventBus.send(testMessageUnsubscribed);
 
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 200));
 	expect(mockedSyslogClientLog).toHaveBeenCalled();
 	await confirmIdsSentUnsent(testMessageUnsubscribed.id);
-
 	syslogDestination.disable();
 });
 

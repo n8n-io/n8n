@@ -65,9 +65,8 @@ export class MessageEventBusDestinationSentry
 		try {
 			const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 			const scope: Sentry.Scope = new Sentry.Scope();
-			const level = (
-				msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log'
-			) as Sentry.SeverityLevel;
+			const level = // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+				(msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log') as Sentry.SeverityLevel;
 			scope.setLevel(level);
 			scope.setTags({
 				event: msg.getEventName(),
@@ -85,13 +84,13 @@ export class MessageEventBusDestinationSentry
 			);
 
 			if (sentryResult) {
-				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+				eventBus.confirmSent(msg, { id: this.id, name: this.label });
 				sendResult = true;
 			}
 		} catch (error) {
 			console.log(error);
 		}
-		return sendResult;
+		return new Promise(() => sendResult);
 	}
 
 	serialize(): MessageEventBusDestinationSentryOptions {

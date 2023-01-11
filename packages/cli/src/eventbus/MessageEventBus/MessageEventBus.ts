@@ -91,11 +91,9 @@ class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug('Checking for unsent event messages');
 		const unsentAndUnfinished = await this.getUnsentAndUnfinishedExecutions();
 		LoggerProxy.debug(
-			`Start logging into ${
-				(await this.logWriter?.getThread()?.getLogFileName()) ?? 'unknown filename'
-			} `,
+			`Start logging into ${this.logWriter?.getLogFileName() ?? 'unknown filename'} `,
 		);
-		await this.logWriter?.startLogging();
+		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
 		if (unsentAndUnfinished.unfinishedExecutions.size > 0) {
@@ -175,7 +173,15 @@ class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
-			await this.logWriter?.putMessage(msg);
+			this.logWriter?.putMessage(msg);
+			// if there are no set up destinations, immediately mark the event as sent
+			if (
+				!isLogStreamingEnabled() ||
+				Object.keys(this.destinations).length === 0 ||
+				!this.hasAnyDestinationSubscribedToEvent(msg)
+			) {
+				this.confirmSent(msg, { id: '0', name: 'eventBus' });
+			}
 			await this.emitMessage(msg);
 		}
 	}
@@ -192,8 +198,8 @@ class MessageEventBus extends EventEmitter {
 		return false;
 	}
 
-	async confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
-		await this.logWriter?.confirmMessageSent(msg.id, source);
+	confirmSent(msg: EventMessageTypes, source?: EventMessageConfirmSource) {
+		this.logWriter?.confirmMessageSent(msg.id, source);
 	}
 
 	private hasAnyDestinationSubscribedToEvent(msg: EventMessageTypes): boolean {
@@ -210,16 +216,13 @@ class MessageEventBus extends EventEmitter {
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emit('message', msg);
 
-		LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
+		// LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
-		// if there are no set up destinations, immediately mark the event as sent
 		if (
-			!isLogStreamingEnabled() ||
-			Object.keys(this.destinations).length === 0 ||
-			!this.hasAnyDestinationSubscribedToEvent(msg)
+			isLogStreamingEnabled() &&
+			Object.keys(this.destinations).length > 0 &&
+			this.hasAnyDestinationSubscribedToEvent(msg)
 		) {
-			await this.confirmSent(msg, { id: '0', name: 'eventBus' });
-		} else {
 			for (const destinationName of Object.keys(this.destinations)) {
 				this.emit(this.destinations[destinationName].getId(), msg);
 			}

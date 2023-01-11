@@ -71,6 +71,7 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	hasSubscribedToEvent(msg: AbstractEventMessage) {
 		if (!this.enabled) return false;
 		for (const eventName of this.subscribedEvents) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 			if (eventName === '*' || msg.eventName.startsWith(eventName)) {
 				return true;
 			}
