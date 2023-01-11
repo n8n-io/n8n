@@ -109,7 +109,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { getAuthTypeForNodeCredential, getCredentialsRelatedFields, getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
+import { getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
