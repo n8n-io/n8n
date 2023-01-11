@@ -87,7 +87,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
-import { ICredentialType, INodeCredentialDescription, INodeCredentialsDetails } from 'n8n-workflow';
+import { ICredentialType, INodeCredentialDescription, INodeCredentialsDetails, INodeParameters } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -104,6 +104,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
+import { getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -133,10 +134,38 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
 			subscribedToCredentialType: '',
+			listeningForAuthChange: false,
 		};
 	},
 	mounted() {
 		this.listenForCredentialUpdates();
+	},
+	watch: {
+		'ndvStore.activeNode.parameters': {
+			immediate: true,
+			deep: true,
+			handler(newValue: INodeParameters, oldValue: INodeParameters) {
+				// When active node parameters change, check if authentication type has been changed
+				// and set `subscribedToCredentialType` to corresponding credential type
+				const isActive = this.node.name === this.ndvStore.activeNode?.name;
+				const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+				// Only do this for active node and if it's listening for auth change
+				if (isActive && nodeType && this.listeningForAuthChange) {
+					const authField = getMainAuthField(nodeType);
+					if (authField && oldValue && newValue) {
+						const oldAuth = oldValue[authField.name];
+						const newAuth = newValue[authField.name];
+
+						if (newAuth && oldAuth !== newAuth) {
+							const credentialType = getNodeCredentialForAuthType(nodeType, newAuth.toString());
+							if (credentialType) {
+								this.subscribedToCredentialType = credentialType.name;
+							}
+						}
+					}
+				}
+			},
+		},
 	},
 	computed: {
 		...mapStores(
@@ -267,6 +296,8 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 			let previousCredentialCounts = getCounts();
 			const onCredentialMutation = () => {
+				// Once credentials are updated, stop listening for auth change
+				this.listeningForAuthChange = false;
 				// This data pro stores credential type that the component is currently interested in
 				const credentialType = this.subscribedToCredentialType;
 				if (!credentialType) {
@@ -339,7 +370,9 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 		onCredentialSelected(credentialType: string, credentialId: string | null | undefined) {
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.subscribedToCredentialType = credentialType;
+				// If new credential dialog is open, start listening for auth type change which should happen in the modal
+				// this will be handled in this component's watcher which will set subscribed credential accordingly
+				this.listeningForAuthChange = true;
 			}
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.uiStore.openNewCredential(credentialType);
