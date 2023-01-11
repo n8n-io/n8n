@@ -143,8 +143,8 @@ export class CoinGecko implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'coin') {
@@ -197,7 +197,7 @@ export class CoinGecko implements INodeType {
 
 						responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/list', {}, qs);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
@@ -222,7 +222,7 @@ export class CoinGecko implements INodeType {
 								this,
 								'',
 								'GET',
-								`/coins/markets`,
+								'/coins/markets',
 								{},
 								qs,
 							);
@@ -231,7 +231,7 @@ export class CoinGecko implements INodeType {
 
 							qs.per_page = limit;
 
-							responseData = await coinGeckoApiRequest.call(this, 'GET', `/coins/markets`, {}, qs);
+							responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/markets', {}, qs);
 						}
 					}
 

@@ -137,8 +137,8 @@ export class MicrosoftOutlook implements INodeType {
 		const qs: IDataObject = {};
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		if (['draft', 'message'].includes(resource)) {
 			if (operation === 'delete') {
@@ -165,11 +165,11 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
 						responseData = await microsoftApiRequest.call(
@@ -252,10 +252,10 @@ export class MicrosoftOutlook implements INodeType {
 								.attachments as IDataObject[];
 
 							// Handle attachments
-							body['attachments'] = await binaryToAttachments.call(this, attachments, items, i);
+							body.attachments = await binaryToAttachments.call(this, attachments, items, i);
 						}
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
+						responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});
 
 						returnData.push(responseData);
 					} catch (error) {
@@ -272,16 +272,12 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i);
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
-						if (additionalFields && additionalFields.recipients) {
-							const recipients = (
-								(additionalFields.recipients as string).split(',') as string[]
-							).filter((email) => !!email);
+						if (additionalFields?.recipients) {
+							const recipients = (additionalFields.recipients as string)
+								.split(',')
+								.filter((email) => !!email);
 							if (recipients.length !== 0) {
 								await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, {
 									toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),
@@ -315,11 +311,7 @@ export class MicrosoftOutlook implements INodeType {
 						const replyType = this.getNodeParameter('replyType', i) as string;
 						const comment = this.getNodeParameter('comment', i) as string;
 						const send = this.getNodeParameter('send', i, false) as boolean;
-						const additionalFields = this.getNodeParameter(
-							'additionalFields',
-							i,
-							{},
-						) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 						const body: IDataObject = {};
 
@@ -359,7 +351,7 @@ export class MicrosoftOutlook implements INodeType {
 							}
 						}
 
-						if (send === true) {
+						if (send) {
 							await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
 						}
 
@@ -378,10 +370,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const response = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -437,16 +426,16 @@ export class MicrosoftOutlook implements INodeType {
 						additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
 						const endpoint = '/messages';
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -456,7 +445,7 @@ export class MicrosoftOutlook implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
@@ -539,7 +528,7 @@ export class MicrosoftOutlook implements INodeType {
 								.attachments as IDataObject[];
 
 							// Handle attachments
-							message['attachments'] = await binaryToAttachments.call(this, attachments, items, i);
+							message.attachments = await binaryToAttachments.call(this, attachments, items, i);
 						}
 
 						const body: IDataObject = {
@@ -547,7 +536,7 @@ export class MicrosoftOutlook implements INodeType {
 							saveToSentItems,
 						};
 
-						responseData = await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
+						responseData = await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
 						returnData.push({ success: true });
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -565,7 +554,7 @@ export class MicrosoftOutlook implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (items[i].binary === undefined) {
@@ -675,10 +664,7 @@ export class MicrosoftOutlook implements INodeType {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						// Get attachment details first
 						const attachmentDetails = await microsoftApiRequest.call(
@@ -743,9 +729,9 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						// Have sane defaults so we don't fetch attachment data in this operation
-						qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
+						qs.$select = 'id,lastModifiedDateTime,name,contentType,size,isInline';
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						responseData = await microsoftApiRequest.call(
@@ -774,17 +760,17 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						// Have sane defaults so we don't fetch attachment data in this operation
-						qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
+						qs.$select = 'id,lastModifiedDateTime,name,contentType,size,isInline';
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
 						const endpoint = `/messages/${messageId}/attachments`;
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -794,7 +780,7 @@ export class MicrosoftOutlook implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
@@ -874,11 +860,11 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -905,14 +891,14 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -922,7 +908,7 @@ export class MicrosoftOutlook implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
 							responseData = responseData.value;
 						}
@@ -945,11 +931,11 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
 						if (returnAll) {
@@ -961,7 +947,7 @@ export class MicrosoftOutlook implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -1019,11 +1005,11 @@ export class MicrosoftOutlook implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fields) {
-							qs['$select'] = additionalFields.fields;
+							qs.$select = additionalFields.fields;
 						}
 
 						if (additionalFields.filter) {
-							qs['$filter'] = additionalFields.filter;
+							qs.$filter = additionalFields.filter;
 						}
 
 						const endpoint = `/mailFolders/${folderId}/messages`;
@@ -1036,7 +1022,7 @@ export class MicrosoftOutlook implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i);
+							qs.$top = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}

@@ -13,7 +13,7 @@ export async function getAll(
 	const endpoint = 'employees/directory';
 
 	//limit parameters
-	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0, false);
 	const limit = this.getNodeParameter('limit', 0, 0);
 
 	//response

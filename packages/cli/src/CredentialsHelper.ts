@@ -247,18 +247,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	 * Returns all parent types of the given credential type
 	 */
 	getParentTypes(typeName: string): string[] {
-		const credentialType = this.credentialTypes.getByName(typeName);
-
-		if (credentialType === undefined || credentialType.extends === undefined) {
-			return [];
-		}
-
-		let types: string[] = [];
-		credentialType.extends.forEach((type: string) => {
-			types = [...types, type, ...this.getParentTypes(type)];
-		});
-
-		return types;
+		return this.credentialTypes.getParentTypes(typeName);
 	}
 
 	/**
@@ -279,7 +268,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credential = userId
 			? await Db.collections.SharedCredentials.findOneOrFail({
 					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					where: { credentials: { id: nodeCredential.id, type }, userId },
 			  }).then((shared) => shared.credentials)
 			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
 
@@ -290,7 +279,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		return new Credentials(
-			{ id: credential.id.toString(), name: credential.name },
+			{ id: credential.id, name: credential.name },
 			credential.type,
 			credential.nodesAccess,
 			credential.data,
@@ -310,6 +299,21 @@ export class CredentialsHelper extends ICredentialsHelper {
 		}
 
 		if (credentialTypeData.extends === undefined) {
+			// Manually add the special OAuth parameter which stores
+			// data like access- and refresh-token
+			if (['oAuth1Api', 'oAuth2Api'].includes(type)) {
+				return [
+					...credentialTypeData.properties,
+					{
+						displayName: 'oauthTokenData',
+						name: 'oauthTokenData',
+						type: 'json',
+						required: false,
+						default: {},
+					},
+				];
+			}
+
 			return credentialTypeData.properties;
 		}
 
@@ -358,9 +362,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 	/**
 	 * Applies credential default data and overwrites
-	 *
-	 * @param {ICredentialDataDecryptedObject} decryptedDataOriginal The credential data to overwrite data on
-	 * @param {string} type  Type of the credentials to overwrite data of
 	 */
 	applyDefaultsAndOverwrites(
 		decryptedDataOriginal: ICredentialDataDecryptedObject,
@@ -371,10 +372,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): ICredentialDataDecryptedObject {
 		const credentialsProperties = this.getCredentialsProperties(type);
 
+		// Load and apply the credentials overwrites if any exist
+		const dataWithOverwrites = CredentialsOverwrites().applyOverwrite(type, decryptedDataOriginal);
+
 		// Add the default credential values
 		let decryptedData = NodeHelpers.getNodeParameters(
 			credentialsProperties,
-			decryptedDataOriginal as INodeParameters,
+			dataWithOverwrites as INodeParameters,
 			true,
 			false,
 			null,
@@ -431,10 +435,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			) as ICredentialDataDecryptedObject;
 		}
 
-		// Load and apply the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return credentialsOverwrites.applyOverwrite(type, decryptedData);
+		return decryptedData;
 	}
 
 	/**
@@ -584,7 +585,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			position: [0, 0],
 			credentials: {
 				[credentialType]: {
-					id: credentialsDecrypted.id.toString(),
+					id: credentialsDecrypted.id,
 					name: credentialsDecrypted.name,
 				},
 			},
@@ -698,7 +699,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 							`Received HTTP status code: ${errorResponseData.statusCode}`,
 					};
 				}
-			} else if (error.cause.code) {
+			} else if (error.cause?.code) {
 				return {
 					status: 'Error',
 					message: error.cause.code,
@@ -765,8 +766,7 @@ export async function getCredentialForUser(
 export async function getCredentialWithoutUser(
 	credentialId: string,
 ): Promise<ICredentialsDb | undefined> {
-	const credential = await Db.collections.Credentials.findOne(credentialId);
-	return credential;
+	return Db.collections.Credentials.findOne(credentialId);
 }
 
 export function createCredentialsFromCredentialsEntity(
@@ -777,5 +777,5 @@ export function createCredentialsFromCredentialsEntity(
 	if (encrypt) {
 		return new Credentials({ id: null, name }, type, nodesAccess);
 	}
-	return new Credentials({ id: id.toString(), name }, type, nodesAccess, data);
+	return new Credentials({ id, name }, type, nodesAccess, data);
 }

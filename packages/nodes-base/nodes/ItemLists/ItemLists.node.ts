@@ -745,8 +745,8 @@ return 0;`,
 		const items = this.getInputData();
 		const length = items.length;
 		const returnData: INodeExecutionData[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		if (resource === 'itemList') {
 			if (operation === 'splitOutItems') {
 				for (let i = 0; i < length; i++) {
@@ -764,19 +764,20 @@ return 0;`,
 					const include = this.getNodeParameter('include', i) as string;
 
 					let arrayToSplit;
-					if (disableDotNotation === false) {
+					if (!disableDotNotation) {
 						arrayToSplit = get(items[i].json, fieldToSplitOut);
 					} else {
-						arrayToSplit = items[i].json[fieldToSplitOut as string];
+						arrayToSplit = items[i].json[fieldToSplitOut];
 					}
 
 					if (arrayToSplit === undefined) {
-						if (fieldToSplitOut.includes('.') && disableDotNotation === true) {
+						if (fieldToSplitOut.includes('.') && disableDotNotation) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Couldn't find the field '${fieldToSplitOut}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else {
@@ -815,12 +816,12 @@ return 0;`,
 											return prev;
 										}
 										let value;
-										if (disableDotNotation === false) {
+										if (!disableDotNotation) {
 											value = get(items[i].json, field);
 										} else {
-											value = items[i].json[field as string];
+											value = items[i].json[field];
 										}
-										prev = { ...prev, [field as string]: value };
+										prev = { ...prev, [field]: value };
 										return prev;
 									}, {}),
 								};
@@ -830,12 +831,12 @@ return 0;`,
 								newItem = {
 									...keys.reduce((prev, field) => {
 										let value;
-										if (disableDotNotation === false) {
+										if (!disableDotNotation) {
 											value = get(items[i].json, field);
 										} else {
-											value = items[i].json[field as string];
+											value = items[i].json[field];
 										}
-										prev = { ...prev, [field as string]: value };
+										prev = { ...prev, [field]: value };
 										return prev;
 									}, {}),
 								};
@@ -852,7 +853,7 @@ return 0;`,
 							} else {
 								newItem = {
 									...newItem,
-									[(destinationFieldName as string) || (fieldToSplitOut as string)]: element,
+									[destinationFieldName || fieldToSplitOut]: element,
 								};
 							}
 
@@ -897,7 +898,7 @@ return 0;`,
 									description: 'Please add a field to aggregate',
 								});
 							}
-							if (disableDotNotation === false) {
+							if (!disableDotNotation) {
 								if (get(item.json, fieldToAggregate) !== undefined) {
 									found = true;
 								}
@@ -905,15 +906,16 @@ return 0;`,
 								found = true;
 							}
 						}
-						if (found === false && disableDotNotation && fieldToAggregate.includes('.')) {
+						if (!found && disableDotNotation && fieldToAggregate.includes('.')) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Couldn't find the field '${fieldToAggregate}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
-						} else if (found === false && keepMissing === false) {
+						} else if (!found && !keepMissing) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Couldn't find the field '${fieldToAggregate}' in the input data`,
@@ -921,8 +923,7 @@ return 0;`,
 						}
 					}
 
-					let newItem: INodeExecutionData;
-					newItem = {
+					const newItem: INodeExecutionData = {
 						json: {},
 						pairedItem: Array.from({ length }, (_, i) => i).map((index) => {
 							return {
@@ -931,7 +932,6 @@ return 0;`,
 						}),
 					};
 
-					// tslint:disable-next-line: no-any
 					const values: { [key: string]: any } = {};
 					const outputFields: string[] = [];
 
@@ -942,14 +942,14 @@ return 0;`,
 							throw new NodeOperationError(
 								this.getNode(),
 								`The '${field}' output field is used more than once`,
-								{ description: `Please make sure each output field name is unique` },
+								{ description: 'Please make sure each output field name is unique' },
 							);
 						} else {
 							outputFields.push(field);
 						}
 
 						const getFieldToAggregate = () =>
-							disableDotNotation === false && fieldToAggregate.includes('.')
+							!disableDotNotation && fieldToAggregate.includes('.')
 								? fieldToAggregate.split('.').pop()
 								: fieldToAggregate;
 
@@ -960,12 +960,12 @@ return 0;`,
 						if (fieldToAggregate !== '') {
 							values[_outputFieldName] = [];
 							for (let i = 0; i < length; i++) {
-								if (disableDotNotation === false) {
+								if (!disableDotNotation) {
 									let value = get(items[i].json, fieldToAggregate);
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter((value) => value !== null);
+											value = value.filter((entry) => entry !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}
@@ -981,7 +981,7 @@ return 0;`,
 
 									if (!keepMissing) {
 										if (Array.isArray(value)) {
-											value = value.filter((value) => value !== null);
+											value = value.filter((entry) => entry !== null);
 										} else if (value === null || value === undefined) {
 											continue;
 										}
@@ -998,7 +998,7 @@ return 0;`,
 					}
 
 					for (const key of Object.keys(values)) {
-						if (disableDotNotation === false) {
+						if (!disableDotNotation) {
 							set(newItem.json, key, values[key]);
 						} else {
 							newItem.json[key] = values[key];
@@ -1084,7 +1084,7 @@ return 0;`,
 							'No fields specified. Please add a field to exclude from comparison',
 						);
 					}
-					if (disableDotNotation === false) {
+					if (!disableDotNotation) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
 					keys = keys.filter((key) => !fieldsToExclude.includes(key));
@@ -1099,7 +1099,7 @@ return 0;`,
 							'No fields specified. Please add a field to compare on',
 						);
 					}
-					if (disableDotNotation === false) {
+					if (!disableDotNotation) {
 						keys = Object.keys(flattenKeys(items[0].json));
 					}
 					keys = fieldsToCompare.map((key) => key.trim());
@@ -1110,7 +1110,7 @@ return 0;`,
 				const newItems = items.map(
 					(item, index) =>
 						({
-							json: { ...item['json'], __INDEX: index },
+							json: { ...item.json, __INDEX: index },
 							pairedItem: { item: index },
 						} as INodeExecutionData),
 				);
@@ -1120,14 +1120,14 @@ return 0;`,
 
 					for (const key of keys) {
 						let equal;
-						if (disableDotNotation === false) {
+						if (!disableDotNotation) {
 							equal = isEqual(get(a.json, key), get(b.json, key));
 						} else {
 							equal = isEqual(a.json[key], b.json[key]);
 						}
 						if (!equal) {
 							let lessThan;
-							if (disableDotNotation === false) {
+							if (!disableDotNotation) {
 								lessThan = lt(get(a.json, key), get(b.json, key));
 							} else {
 								lessThan = lt(a.json[key], b.json[key]);
@@ -1140,11 +1140,10 @@ return 0;`,
 				});
 
 				for (const key of keys) {
-					// tslint:disable-next-line: no-any
 					let type: any = undefined;
 					for (const item of newItems) {
 						if (key === '') {
-							throw new NodeOperationError(this.getNode(), `Name of field to compare is blank`);
+							throw new NodeOperationError(this.getNode(), 'Name of field to compare is blank');
 						}
 						const value = !disableDotNotation ? get(item.json, key) : item.json[key];
 						if (value === undefined && disableDotNotation && key.includes('.')) {
@@ -1152,7 +1151,8 @@ return 0;`,
 								this.getNode(),
 								`'${key}' field is missing from some input items`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
 						} else if (value === undefined) {
@@ -1214,7 +1214,7 @@ return 0;`,
 						order: 'ascending' | 'descending';
 					}>;
 
-					if (!sortFields || !sortFields.length) {
+					if (!sortFields?.length) {
 						throw new NodeOperationError(
 							this.getNode(),
 							'No sorting specified. Please add a field to sort by',
@@ -1224,7 +1224,7 @@ return 0;`,
 					for (const { fieldName } of sortFields) {
 						let found = false;
 						for (const item of items) {
-							if (disableDotNotation === false) {
+							if (!disableDotNotation) {
 								if (get(item.json, fieldName) !== undefined) {
 									found = true;
 								}
@@ -1232,15 +1232,16 @@ return 0;`,
 								found = true;
 							}
 						}
-						if (found === false && disableDotNotation && fieldName.includes('.')) {
+						if (!found && disableDotNotation && fieldName.includes('.')) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Couldn't find the field '${fieldName}' in the input data`,
 								{
-									description: `If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options`,
+									description:
+										"If you're trying to use a nested field, make sure you turn off 'disable dot notation' in the node options",
 								},
 							);
-						} else if (found === false) {
+						} else if (!found) {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Couldn't find the field '${fieldName}' in the input data`,
@@ -1257,7 +1258,7 @@ return 0;`,
 						let result = 0;
 						for (const field of sortFieldsWithDirection) {
 							let equal;
-							if (disableDotNotation === false) {
+							if (!disableDotNotation) {
 								const _a =
 									typeof get(a.json, field.name) === 'string'
 										? (get(a.json, field.name) as string).toLowerCase()
@@ -1269,19 +1270,19 @@ return 0;`,
 								equal = isEqual(_a, _b);
 							} else {
 								const _a =
-									typeof a.json[field.name as string] === 'string'
-										? (a.json[field.name as string] as string).toLowerCase()
-										: a.json[field.name as string];
+									typeof a.json[field.name] === 'string'
+										? (a.json[field.name] as string).toLowerCase()
+										: a.json[field.name];
 								const _b =
-									typeof b.json[field.name as string] === 'string'
-										? (b.json[field.name as string] as string).toLowerCase()
-										: b.json[field.name as string];
+									typeof b.json[field.name] === 'string'
+										? (b.json[field.name] as string).toLowerCase()
+										: b.json[field.name];
 								equal = isEqual(_a, _b);
 							}
 
 							if (!equal) {
 								let lessThan;
-								if (disableDotNotation === false) {
+								if (!disableDotNotation) {
 									const _a =
 										typeof get(a.json, field.name) === 'string'
 											? (get(a.json, field.name) as string).toLowerCase()
@@ -1293,13 +1294,13 @@ return 0;`,
 									lessThan = lt(_a, _b);
 								} else {
 									const _a =
-										typeof a.json[field.name as string] === 'string'
-											? (a.json[field.name as string] as string).toLowerCase()
-											: a.json[field.name as string];
+										typeof a.json[field.name] === 'string'
+											? (a.json[field.name] as string).toLowerCase()
+											: a.json[field.name];
 									const _b =
-										typeof b.json[field.name as string] === 'string'
-											? (b.json[field.name as string] as string).toLowerCase()
-											: b.json[field.name as string];
+										typeof b.json[field.name] === 'string'
+											? (b.json[field.name] as string).toLowerCase()
+											: b.json[field.name];
 									lessThan = lt(_a, _b);
 								}
 								if (lessThan) {
@@ -1316,7 +1317,7 @@ return 0;`,
 					const code = this.getNodeParameter('code', 0) as string;
 					const regexCheck = /\breturn\b/g.exec(code);
 
-					if (regexCheck && regexCheck.length) {
+					if (regexCheck?.length) {
 						const sandbox = {
 							newItems,
 						};
@@ -1340,7 +1341,7 @@ return 0;`,
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Sort code doesn't return. Please add a 'return' statement to your code`,
+							"Sort code doesn't return. Please add a 'return' statement to your code",
 						);
 					}
 				}
@@ -1380,13 +1381,13 @@ const compareItems = (
 ) => {
 	let result = true;
 	for (const key of keys) {
-		if (disableDotNotation === false) {
+		if (!disableDotNotation) {
 			if (!isEqual(get(obj.json, key), get(obj2.json, key))) {
 				result = false;
 				break;
 			}
 		} else {
-			if (!isEqual(obj.json[key as string], obj2.json[key as string])) {
+			if (!isEqual(obj.json[key], obj2.json[key])) {
 				result = false;
 				break;
 			}
@@ -1395,13 +1396,12 @@ const compareItems = (
 	return result;
 };
 
-const flattenKeys = (obj: {}, path: string[] = []): {} => {
+const flattenKeys = (obj: IDataObject, path: string[] = []): IDataObject => {
 	return !isObject(obj)
 		? { [path.join('.')]: obj }
-		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next, [...path, key])), {});
+		: reduce(obj, (cum, next, key) => merge(cum, flattenKeys(next as IDataObject, [...path, key])), {}); //prettier-ignore
 };
 
-// tslint:disable-next-line: no-any
 const shuffleArray = (array: any[]) => {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));

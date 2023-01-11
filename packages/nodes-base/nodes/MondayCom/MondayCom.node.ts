@@ -230,8 +230,8 @@ export class MondayCom implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'board') {
@@ -323,7 +323,7 @@ export class MondayCom implements INodeType {
 							},
 						};
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 						} else {
 							body.variables.limit = this.getNodeParameter('limit', i);
@@ -589,9 +589,9 @@ export class MondayCom implements INodeType {
 						responseData = responseData.data.delete_item;
 					}
 					if (operation === 'get') {
-						const itemIds = (
-							(this.getNodeParameter('itemId', i) as string).split(',') as string[]
-						).map((n) => parseInt(n, 10));
+						const itemIds = (this.getNodeParameter('itemId', i) as string)
+							.split(',')
+							.map((n) => parseInt(n, 10));
 
 						const body: IGraphqlBody = {
 							query: `query ($itemId: [Int!]){

@@ -166,7 +166,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		//https://firebase.google.com/docs/reference/rest/database
 
 		if (
@@ -219,7 +219,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				if (responseData === null) {
 					if (operation === 'get') {
 						throw new NodeApiError(this.getNode(), responseData, {
-							message: `Requested entity was not found.`,
+							message: 'Requested entity was not found.',
 						});
 					} else if (method === 'DELETE') {
 						responseData = { success: true };

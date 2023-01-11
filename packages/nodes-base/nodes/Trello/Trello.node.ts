@@ -194,8 +194,8 @@ export class Trello implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const operation = this.getNodeParameter('operation', 0) as string;
-		const resource = this.getNodeParameter('resource', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
+		const resource = this.getNodeParameter('resource', 0);
 
 		// For Post
 		let body: IDataObject;
@@ -283,7 +283,7 @@ export class Trello implements INodeType {
 
 						const id = this.getNodeParameter('id', i) as string;
 						returnAll = this.getNodeParameter('returnAll', i);
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -499,7 +499,7 @@ export class Trello implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -518,7 +518,7 @@ export class Trello implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', i);
 
-						if (returnAll === false) {
+						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i);
 						}
 
@@ -890,11 +890,11 @@ export class Trello implements INodeType {
 				// paginate them 'manually'
 				const skipPagination = ['list:getAll'];
 
-				if (returnAll === true && !skipPagination.includes(`${resource}:${operation}`)) {
+				if (returnAll && !skipPagination.includes(`${resource}:${operation}`)) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-					if (returnAll === false && qs.limit) {
+					if (!returnAll && qs.limit) {
 						responseData = responseData.splice(0, qs.limit);
 					}
 				}

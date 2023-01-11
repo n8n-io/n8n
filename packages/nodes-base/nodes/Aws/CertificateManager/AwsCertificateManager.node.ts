@@ -51,8 +51,8 @@ export class AwsCertificateManager implements INodeType {
 		const returnData: IDataObject[] = [];
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'certificate') {
@@ -66,7 +66,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -90,7 +90,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -119,15 +119,15 @@ export class AwsCertificateManager implements INodeType {
 						}
 
 						if (options.certificateStatuses) {
-							body.Includes['extendedKeyUsage'] = options.extendedKeyUsage as string[];
+							body.Includes.extendedKeyUsage = options.extendedKeyUsage as string[];
 						}
 
 						if (options.keyTypes) {
-							body.Includes['keyTypes'] = options.keyTypes as string[];
+							body.Includes.keyTypes = options.keyTypes as string[];
 						}
 
 						if (options.keyUsage) {
-							body.Includes['keyUsage'] = options.keyUsage as string[];
+							body.Includes.keyUsage = options.keyUsage as string[];
 						}
 
 						if (returnAll) {
@@ -148,7 +148,7 @@ export class AwsCertificateManager implements INodeType {
 							body.MaxItems = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestREST.call(
 								this,
-								`acm`,
+								'acm',
 								'POST',
 								'',
 								JSON.stringify(body),
@@ -172,7 +172,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -196,7 +196,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
