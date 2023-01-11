@@ -15,6 +15,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
+	IPushDataUnsavedExecutionFinished,
 	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
@@ -886,7 +887,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			this.activeExecutions.unshift(newActiveExecution);
 		},
-		finishActiveExecution(finishedActiveExecution: IPushDataExecutionFinished): void {
+		finishActiveExecution(
+			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
+		): void {
 			// Find the execution to set to finished
 			const activeExecution = this.activeExecutions.find((execution) => {
 				return execution.id === finishedActiveExecution.executionId;
