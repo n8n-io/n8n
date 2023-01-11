@@ -1,13 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 
-import { LoggerProxy, sleep } from 'n8n-workflow';
+import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import config from '@/config';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -22,7 +17,19 @@ import { getLogger } from '@/Logger';
 import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
 
-let processExitCode = 0;
+const exitWithCrash = async (message: string, error: unknown) => {
+	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+	await sleep(2000);
+	process.exit(1);
+};
+
+const exitSuccessFully = async () => {
+	try {
+		await CrashJournal.cleanup();
+	} finally {
+		process.exit();
+	}
+};
 
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -42,20 +49,14 @@ export class Webhook extends Command {
 	static async stopProcess() {
 		LoggerProxy.info('\nStopping n8n...');
 
-		const exit = () => {
-			CrashJournal.cleanup().finally(() => {
-				process.exit(processExitCode);
-			});
-		};
-
 		try {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			setTimeout(() => {
+			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				exit();
+				await exitSuccessFully();
 			}, 30000);
 
 			// Wait for active workflow executions to finish
@@ -74,10 +75,10 @@ export class Webhook extends Command {
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
-			LoggerProxy.error('There was an error shutting down n8n.', error);
+			await exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		exit();
+		await exitSuccessFully();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -110,13 +111,9 @@ export class Webhook extends Command {
 
 		try {
 			// Start directly with the init of the database to improve startup time
-			const startDbInitPromise = Db.init().catch((error) => {
-				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-				logger.error(`There was an error initializing DB: "${error.message}"`);
-
-				processExitCode = 1;
-				process.emit('exit', processExitCode);
-			});
+			const startDbInitPromise = Db.init().catch(async (error: Error) =>
+				exitWithCrash('There was an error initializing DB', error),
+			);
 
 			// Make sure the settings exist
 			// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -151,9 +148,7 @@ export class Webhook extends Command {
 
 			console.info('Webhook listener waiting for requests.');
 		} catch (error) {
-			console.error('Exiting due to error.', error);
-			processExitCode = 1;
-			process.emit('exit', processExitCode);
+			await exitWithCrash('Exiting due to error.', error);
 		}
 	}
 }
