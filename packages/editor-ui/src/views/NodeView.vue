@@ -2469,6 +2469,8 @@ export default mixins(
 						this.$telemetry.track('welcome note inserted');
 					}, 0);
 				}
+			} else {
+				this.canvasStore.zoomToFit();
 			}
 		},
 		async initView(): Promise<void> {

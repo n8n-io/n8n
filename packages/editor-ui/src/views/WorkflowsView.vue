@@ -30,7 +30,7 @@
 					{{ $locale.baseText('workflows.empty.description') }}
 				</n8n-text>
 			</div>
-			<div class="text-center mt-2xl">
+			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
 					:class="[$style.emptyStateCard, 'mr-s']"
 					hoverable
@@ -48,9 +48,16 @@
 					@click="goToTemplates"
 					data-test-id="new-workflow-template-card"
 				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
+					<n8n-icon
+						:class="$style.emptyStateCardIcon"
+						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
+					/>
 					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.browseTemplates') }}
+						{{
+							isDemoTest
+								? $locale.baseText('workflows.empty.viewDemo')
+								: $locale.baseText('workflows.empty.browseTemplates')
+						}}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -155,6 +162,9 @@ export default mixins(showMessage, debounceHelper).extend({
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
+		isDemoTest(): boolean {
+			return window.posthog?.getFeatureFlag?.('adore-assumption-tests') === 'assumption-demo';
+		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
 				{
@@ -182,7 +192,11 @@ export default mixins(showMessage, debounceHelper).extend({
 			});
 		},
 		goToTemplates() {
-			this.$router.push({ name: VIEWS.TEMPLATES });
+			if (this.isDemoTest) {
+				this.$router.push('/collections/7');
+			} else {
+				this.$router.push({ name: VIEWS.TEMPLATES });
+			}
 		},
 		async initialize() {
 			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
@@ -236,6 +250,11 @@ export default mixins(showMessage, debounceHelper).extend({
 </script>
 
 <style lang="scss" module>
+.actionsContainer {
+	display: flex;
+	justify-content: center;
+}
+
 .emptyStateCard {
 	width: 192px;
 	text-align: center;
