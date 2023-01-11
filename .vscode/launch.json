@@ -36,6 +36,23 @@
 			"killBehavior": "polite"
 		},
 		{
+			"name": "Launch n8n CLI dev with debug",
+			"runtimeExecutable": "pnpm",
+			"cwd": "${workspaceFolder}/packages/cli",
+			"runtimeArgs": ["run", "dev", "--", "--inspect-brk"],
+			"console": "integratedTerminal",
+			"restart": true,
+			"autoAttachChildProcesses": true,
+			"request": "launch",
+			"skipFiles": ["<node_internals>/**"],
+			"type": "node",
+			"env": {
+				// "N8N_PORT": "5679",
+			},
+			"outputCapture": "std",
+			"killBehavior": "polite"
+		},
+		{
 			"name": "Debug CLI tests",
 			"cwd": "${workspaceFolder}/packages/cli",
 			"runtimeExecutable": "npm",
