@@ -118,6 +118,7 @@
 				</div>
 
 				<div class="mt-xs mb-l">
+					<slot name="callout"></slot>
 					<ul
 						:class="[$style.list, 'list-style-none']"
 						v-if="filteredAndSortedSubviewResources.length > 0"
@@ -233,6 +234,15 @@ export default mixins(showMessage, debounceHelper).extend({
 		shareable: {
 			type: Boolean,
 			default: true,
+		},
+		callout: {
+			type: String,
+		},
+		calloutIcon: {
+			type: String,
+		},
+		calloutAction: {
+			type: String,
 		},
 	},
 	data() {

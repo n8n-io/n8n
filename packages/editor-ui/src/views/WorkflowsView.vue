@@ -11,6 +11,17 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #callout v-if="!hasActiveWorkflows">
+			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-2xs">
+				{{ $locale.baseText('workflows.viewDemoNotice') }}
+
+				<template #trailingContent>
+					<n8n-link to="/collections/7" size="small" theme="secondary" bold underline>
+						{{ $locale.baseText('workflows.viewDemo') }}
+					</n8n-link>
+				</template>
+			</n8n-callout>
+		</template>
 		<template #default="{ data }">
 			<workflow-card :data="data" @click:tag="onClickTag" />
 		</template>
@@ -161,6 +172,9 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		hasActiveWorkflows(): boolean {
+			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
 			return window.posthog?.getFeatureFlag?.('adore-assumption-tests') === 'assumption-demo';
