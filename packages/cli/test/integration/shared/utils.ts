@@ -63,13 +63,15 @@ import type {
 } from './types';
 import { licenseController } from '@/license/license.controller';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
-import { OwnerController } from '@/controllers/OwnerController';
-import { registerController } from '@/decorators/registerController';
-import { AuthController } from '@/controllers/AuthController';
-import { MeController } from '@/controllers/MeController';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
 import { setupAuthMiddlewares } from '@/UserManagement/middlewares';
-import { PasswordResetController } from '@/controllers/PasswordResetController';
-import { UsersController } from '@/controllers/UsersController';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },

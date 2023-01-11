@@ -2,12 +2,14 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import config from '@/config';
 import * as Db from '@/Db';
-import { registerController } from '@/decorators/registerController';
-import { OwnerController } from '@/controllers/OwnerController';
-import { AuthController } from '@/controllers/AuthController';
-import { MeController } from '@/controllers/MeController';
-import { PasswordResetController } from '@/controllers/PasswordResetController';
-import { UsersController } from '@/controllers/UsersController';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
 import { setupAuthMiddlewares } from '@/UserManagement/middlewares';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import type { N8nApp } from '@/UserManagement/Interfaces';
