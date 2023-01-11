@@ -458,9 +458,9 @@ export default mixins(showMessage).extend({
 				) {
 					await this.workflowsStore.fetchWorkflow(this.workflow.id);
 				}
-
-				this.loading = false;
 			}
+
+			this.loading = false;
 		},
 	},
 	mounted() {
