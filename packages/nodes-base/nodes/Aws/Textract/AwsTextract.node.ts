@@ -120,7 +120,7 @@ export class AwsTextract implements INodeType {
 			try {
 				//https://docs.aws.amazon.com/textract/latest/dg/API_AnalyzeExpense.html
 				if (operation === 'analyzeExpense') {
-					const binaryProperty = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryProperty = this.getNodeParameter('binaryPropertyName', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 
 					if (items[i].binary === undefined) {

@@ -184,7 +184,6 @@ export class Telemetry {
 
 				const payload = {
 					userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
-					anonymousId: '000000000000',
 					event: eventName,
 					properties: updatedProperties,
 				};

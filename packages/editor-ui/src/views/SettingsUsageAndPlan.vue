@@ -14,7 +14,9 @@ const router = useRouter();
 const queryParamCallback = ref<string>(
 	`callback=${encodeURIComponent(`${window.location.origin}${window.location.pathname}`)}`,
 );
-const viewPlansUrl = computed(() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}`);
+const viewPlansUrl = computed(
+	() => `${usageStore.viewPlansUrl}&${queryParamCallback.value}&source=usage_page`,
+);
 const managePlanUrl = computed(() => `${usageStore.managePlanUrl}&${queryParamCallback.value}`);
 const activationKeyModal = ref(false);
 const activationKey = ref('');
