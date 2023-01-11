@@ -93,7 +93,6 @@
 <script lang="ts">
 import { IExecutionResponse, IMenuItem, IVersion } from '../Interface';
 
-import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
@@ -111,7 +110,6 @@ import {
 	MODAL_CONFIRMED,
 	ABOUT_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
-	EXECUTIONS_MODAL_KEY,
 	VIEWS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
@@ -138,7 +136,6 @@ export default mixins(
 ).extend({
 	name: 'MainSidebar',
 	components: {
-		ExecutionsList,
 		GiftNotificationIcon,
 		WorkflowSettings,
 	},
@@ -239,8 +236,9 @@ export default mixins(
 				{
 					id: 'executions',
 					icon: 'tasks',
-					label: this.$locale.baseText('generic.executions'),
+					label: this.$locale.baseText('mainSidebar.executions'),
 					position: 'top',
+					activateOnRouteNames: [VIEWS.EXECUTIONS],
 				},
 				{
 					id: 'settings',
@@ -390,7 +388,9 @@ export default mixins(
 					break;
 				}
 				case 'executions': {
-					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
+					if (this.$router.currentRoute.name !== VIEWS.EXECUTIONS) {
+						this.$router.push({ name: VIEWS.EXECUTIONS });
+					}
 					break;
 				}
 				case 'settings': {
