@@ -35,8 +35,6 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
-
 		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" RENAME TO "temporary_user"`);
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}user" ("id" varchar PRIMARY KEY NOT NULL, "email" varchar(255), "firstName" varchar(32), "lastName" varchar(32), "password" varchar, "resetPasswordToken" varchar, "resetPasswordTokenExpiration" integer DEFAULT NULL, "personalizationAnswers" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "globalRoleId" integer NOT NULL, "settings" text, CONSTRAINT "FK_${tablePrefix}f0609be844f9200ff4365b1bb3d" FOREIGN KEY ("globalRoleId") REFERENCES "${tablePrefix}role" ("id") ON DELETE NO ACTION ON UPDATE NO ACTION)`,
@@ -48,7 +46,5 @@ export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 		await queryRunner.query(
 			`CREATE UNIQUE INDEX "UQ_${tablePrefix}e12875dfb3b1d92d7d7c5377e2" ON "${tablePrefix}user" ("email")`,
 		);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 }

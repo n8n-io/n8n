@@ -65,7 +65,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
 
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
@@ -99,6 +98,5 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 }
