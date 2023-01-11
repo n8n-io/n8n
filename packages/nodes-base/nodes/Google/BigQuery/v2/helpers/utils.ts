@@ -2,6 +2,8 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, jsonParse, NodeOperationError } from 'n8n-workflow';
 import { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
 
+import { isEmpty, set } from 'lodash';
+
 export function simplify(data: TableRawData[], schema: SchemaField[]) {
 	const returnData: IDataObject[] = [];
 
@@ -34,40 +36,34 @@ function getFieldValue(schemaField: SchemaField, field: IDataObject) {
 	}
 }
 
-export function parseField(field: string): string | IDataObject {
-	if (!field.includes('.')) {
-		return field;
-	}
-	const [rootField, ...rest] = field.split('.');
-	return { [rootField]: [parseField(rest.join('.'))] };
+export function selectedFieldsToObject(selected: string) {
+	const returnData: IDataObject = {};
+	const fields = selected.split(',').map((entry) => entry.trim());
+	fields.forEach((entry) => set(returnData, entry, {}));
+	return returnData;
 }
 
-export function getSchemaForSelectedFields(schemaFields: SchemaField[], selectedFields: string[]) {
+export function getSchemaForSelectedFields(
+	schemaFields: SchemaField[],
+	selectedFields: IDataObject,
+) {
 	const returnData: SchemaField[] = [];
 
 	for (const field of schemaFields) {
-		if (selectedFields.includes(field.name)) {
-			// if (field.name.includes('.') && field.type === 'RECORD') {
-			// 	const [rootField, ...rest] = field.name.split('.');
-			// 	const rootFieldIndex = returnData.findIndex(({ name }) => name === rootField);
-			// 	if (rootFieldIndex === -1) {
-			// 		returnData.push({
-			// 			...field,
-			// 			fields: getSchemaForSelectedFields(field.fields as unknown as SchemaField[], [
-			// 				rest.join('.'),
-			// 			]),
-			// 		});
-			// 	} else {
-			// 		const subField = getSchemaForSelectedFields(field.fields as unknown as SchemaField[], [
-			// 			rest.join('.'),
-			// 		]);
-			// 		returnData[rootFieldIndex].fields = [
-			// 			...(returnData[rootFieldIndex].fields as unknown as SchemaField[]),
-			// 			...subField,
-			// 		];
-			// 	}
-			// } else {
-			returnData.push(field);
+		if (selectedFields[field.name] !== undefined) {
+			if (isEmpty(selectedFields[field.name])) {
+				returnData.push(field);
+			}
+			if (field.type === 'RECORD' && field.fields !== undefined) {
+				const fields = getSchemaForSelectedFields(
+					field.fields,
+					selectedFields[field.name] as IDataObject,
+				);
+				returnData.push({
+					...field,
+					fields,
+				});
+			}
 		}
 	}
 

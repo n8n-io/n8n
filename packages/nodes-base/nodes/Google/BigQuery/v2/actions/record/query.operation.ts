@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 import { TableSchema } from '../../helpers/BigQuery.types';
-import { getSchemaForSelectedFields, simplify } from '../../helpers/utils';
+import { getSchemaForSelectedFields, selectedFieldsToObject, simplify } from '../../helpers/utils';
 import { googleApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
@@ -141,7 +141,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				responseData = rows;
 
 				if (qs.selectedFields) {
-					const selected = (qs.selectedFields as string).split(',').map((field) => field.trim());
+					const selected = selectedFieldsToObject(qs.selectedFields as string);
 					fields = getSchemaForSelectedFields(fields, selected);
 				}
 
