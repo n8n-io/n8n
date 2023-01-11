@@ -2,21 +2,16 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db, IUser } from '../../src';
-import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
-import type { Role } from '../../src/databases/entities/Role';
+import * as Db from '@/Db';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { CredentialWithSharings } from '@/credentials/credentials.types';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
-
-jest.mock('../../src/telemetry');
-
-// mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
-mockIsCredentialsSharingEnabled.mockReturnValue(true);
+import type { IUser } from 'n8n-workflow';
 
 let app: express.Application;
 let testDbName = '';
@@ -25,6 +20,7 @@ let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 let authAgent: AuthAgent;
+let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -45,6 +41,8 @@ beforeAll(async () => {
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
+
+	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
 
 beforeEach(async () => {
@@ -65,7 +63,7 @@ test('router should switch based on flag', async () => {
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	// free router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(false);
+	sharingSpy.mockReturnValueOnce(false);
 
 	const freeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
@@ -82,7 +80,6 @@ test('router should switch based on flag', async () => {
 	expect(freeGetStatus).toBe(200);
 
 	// EE router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(true);
 
 	const eeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
@@ -352,7 +349,7 @@ test('GET /credentials/:id should return 404 if cred not found', async () => {
 	expect(response.statusCode).toBe(404);
 
 	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
-	expect(responseAbc.statusCode).toBe(400);
+	expect(responseAbc.statusCode).toBe(404);
 
 	// because EE router has precedence, check if forwards this route
 	const responseNew = await authAgent(ownerShell).get('/credentials/new');

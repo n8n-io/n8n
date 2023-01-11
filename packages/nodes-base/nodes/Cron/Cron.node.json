@@ -7,7 +7,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.cron/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
 			}
 		],
 		"generic": [
@@ -128,7 +128,7 @@
 			}
 		]
 	},
-	"alias": ["Time", "Scheduler", "Polling"],
+	"alias": ["Time", "Scheduler", "Polling", "Cron", "Interval"],
 	"subcategories": {
 		"Core Nodes": ["Flow"]
 	}

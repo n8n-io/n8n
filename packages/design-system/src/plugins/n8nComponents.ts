@@ -2,8 +2,10 @@ import Vue from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';
+import N8nAlert from '../components/N8nAlert';
 import N8nAvatar from '../components/N8nAvatar';
-import N8nBadge from "../components/N8nBadge";
+import N8nBadge from '../components/N8nBadge';
+import N8nBlockUi from '../components/N8nBlockUi';
 import N8nButton from '../components/N8nButton';
 import { N8nElButton } from '../components/N8nButton/overrides';
 import N8nCallout from '../components/N8nCallout';
@@ -23,6 +25,7 @@ import N8nLoading from '../components/N8nLoading';
 import N8nMarkdown from '../components/N8nMarkdown';
 import N8nMenu from '../components/N8nMenu';
 import N8nMenuItem from '../components/N8nMenuItem';
+import N8nNodeCreatorNode from '../components/N8nNodeCreatorNode';
 import N8nNodeIcon from '../components/N8nNodeIcon';
 import N8nNotice from '../components/N8nNotice';
 import N8nOption from '../components/N8nOption';
@@ -44,13 +47,15 @@ import N8nUsersList from '../components/N8nUsersList';
 import N8nResizeWrapper from '../components/N8nResizeWrapper';
 
 export default {
-	install: (app: typeof Vue, options?: {}) => {
+	install: (app: typeof Vue) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-dropdown', N8nActionDropdown);
 		app.component('n8n-action-toggle', N8nActionToggle);
+		app.component('n8n-alert', N8nAlert);
 		app.component('n8n-avatar', N8nAvatar);
 		app.component('n8n-badge', N8nBadge);
+		app.component('n8n-block-ui', N8nBlockUi);
 		app.component('n8n-button', N8nButton);
 		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
@@ -69,6 +74,7 @@ export default {
 		app.component('n8n-markdown', N8nMarkdown);
 		app.component('n8n-menu', N8nMenu);
 		app.component('n8n-menu-item', N8nMenuItem);
+		app.component('n8n-node-creator-node', N8nNodeCreatorNode);
 		app.component('n8n-node-icon', N8nNodeIcon);
 		app.component('n8n-notice', N8nNotice);
 		app.component('n8n-option', N8nOption);

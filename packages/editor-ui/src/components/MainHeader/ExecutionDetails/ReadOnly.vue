@@ -1,8 +1,10 @@
 <template>
-	<n8n-tooltip class="primary-color" placement="bottom-end" >
-		<div slot="content">
-			<span v-html="$locale.baseText('executionDetails.readOnly.youreViewingTheLogOf')"></span>
-		</div>
+	<n8n-tooltip class="primary-color" placement="bottom-end">
+		<template #content>
+			<div>
+				<span v-html="$locale.baseText('executionDetails.readOnly.youreViewingTheLogOf')"></span>
+			</div>
+		</template>
 		<div>
 			<font-awesome-icon icon="exclamation-triangle" />
 			<span v-text="$locale.baseText('executionDetails.readOnly.readOnly')"></span>
@@ -14,7 +16,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "ReadOnly",
+	name: 'ReadOnly',
 });
 </script>
 

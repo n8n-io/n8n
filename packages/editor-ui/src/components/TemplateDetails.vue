@@ -20,7 +20,7 @@
 		</template-details-block>
 
 		<template-details-block
-			v-if="!loading && template.categories.length > 0"
+			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click="redirectToCategory" />
@@ -50,8 +50,10 @@
 import Vue, { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
+import { abbreviateNumber, filterTemplateNodes } from '@/utils';
 import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useTemplatesStore } from '@/stores/templates';
 export default Vue.extend({
 	name: 'TemplateDetails',
 	props: {
@@ -69,15 +71,18 @@ export default Vue.extend({
 		NodeIcon,
 		TemplateDetailsBlock,
 	},
+	computed: {
+		...mapStores(useTemplatesStore),
+	},
 	methods: {
 		abbreviateNumber,
 		filterTemplateNodes,
 		redirectToCategory(id: string) {
-			this.$store.commit('templates/resetSessionId');
+			this.templatesStore.resetSessionId();
 			this.$router.push(`/templates?categories=${id}`);
 		},
 		redirectToSearchPage(node: ITemplatesNode) {
-			this.$store.commit('templates/resetSessionId');
+			this.templatesStore.resetSessionId();
 			this.$router.push(`/templates?search=${node.displayName}`);
 		},
 	},

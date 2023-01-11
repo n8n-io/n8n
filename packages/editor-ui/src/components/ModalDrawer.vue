@@ -1,28 +1,30 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="visible"
+		:visible="uiStore.isModalOpen(this.$props.name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
 		:wrapperClosable="wrapperClosable"
-		>
-		<template v-slot:title>
+	>
+		<template #title>
 			<slot name="header" />
 		</template>
 		<template>
 			<span @keydown.stop>
-				<slot name="content"/>
+				<slot name="content" />
 			</span>
 		</template>
 	</el-drawer>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
+import Vue from 'vue';
 
 export default Vue.extend({
-	name: "ModalDrawer",
+	name: 'ModalDrawer',
 	props: {
 		name: {
 			type: String,
@@ -65,9 +67,12 @@ export default Vue.extend({
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.isActive) {
+			if (!this.uiStore.isModalActive(this.$props.name)) {
 				return;
 			}
 
@@ -76,27 +81,19 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.isActive) {
+			if (this.uiStore.isModalActive(this.$props.name)) {
 				this.$emit('enter');
 			}
 		},
 		async close() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
 					return;
 				}
 			}
-
-			this.$store.commit('ui/closeModal', this.$props.name);
-		},
-	},
-	computed: {
-		isActive(): boolean {
-			return this.$store.getters['ui/isModalActive'](this.$props.name);
-		},
-		visible(): boolean {
-			return this.$store.getters['ui/isModalOpen'](this.$props.name);
+			this.uiStore.closeModal(this.$props.name);
 		},
 	},
 });

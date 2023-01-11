@@ -6,14 +6,14 @@
 		:name="ABOUT_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<el-row>
 					<el-col :span="8" class="info-name">
 						<n8n-text>{{ $locale.baseText('about.n8nVersion') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ versionCli }}</n8n-text>
+						<n8n-text>{{ rootStore.versionCli }}</n8n-text>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -39,13 +39,13 @@
 						<n8n-text>{{ $locale.baseText('about.instanceID') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ instanceId }}</n8n-text>
+						<n8n-text>{{ rootStore.instanceId }}</n8n-text>
 					</el-col>
 				</el-row>
 			</div>
 		</template>
 
-		<template slot="footer">
+		<template #footer>
 			<div class="action-buttons">
 				<n8n-button @click="closeDialog" float="right" :label="$locale.baseText('about.close')" />
 			</div>
@@ -55,9 +55,11 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default Vue.extend({
 	name: 'About',
@@ -71,8 +73,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['versionCli']),
-		...mapGetters(['instanceId']),
+		...mapStores(useRootStore, useSettingsStore),
 	},
 	methods: {
 		closeDialog() {

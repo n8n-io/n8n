@@ -128,9 +128,6 @@ export const mailFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description: 'Message body of the email to send',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['mail'],

@@ -65,7 +65,7 @@ export async function copperApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -156,18 +156,24 @@ export async function handleListing(
 	body: IDataObject = {},
 	uri = '',
 ) {
-	let responseData;
-
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	const option = { resolveWithFullResponse: true };
 
 	if (returnAll) {
-		return await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
+		return copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
 	}
 
-	const limit = this.getNodeParameter('limit', 0) as number;
-	responseData = await copperApiRequestAllItems.call(this, method, endpoint, body, qs, uri, option);
+	const limit = this.getNodeParameter('limit', 0);
+	const responseData = await copperApiRequestAllItems.call(
+		this,
+		method,
+		endpoint,
+		body,
+		qs,
+		uri,
+		option,
+	);
 	return responseData.slice(0, limit);
 }
 

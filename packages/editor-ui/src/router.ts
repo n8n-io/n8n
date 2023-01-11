@@ -6,10 +6,15 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.vue';
+import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
+import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
+import SettingsView from './views/SettingsView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -20,13 +25,15 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
-import { Store } from 'vuex';
-import { IPermissions, IRootState, IWorkflowsState } from './Interface';
-import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
+import ExecutionsView from '@/views/ExecutionsView.vue';
+import WorkflowsView from '@/views/WorkflowsView.vue';
+import { IPermissions } from './Interface';
+import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
-import { store } from './store';
-import e from 'express';
+import { useSettingsStore } from './stores/settings';
+import { useTemplatesStore } from './stores/templates';
+import SettingsUsageAndPlanVue from './views/SettingsUsageAndPlan.vue';
 
 Vue.use(Router);
 
@@ -34,20 +41,21 @@ interface IRouteConfig extends RouteConfigSingleView {
 	meta: {
 		nodeView?: boolean;
 		templatesEnabled?: boolean;
-		getRedirect?: (store: Store<IRootState>) => {name: string} | false;
+		getRedirect?: () => { name: string } | false;
 		permissions: IPermissions;
 		telemetry?: {
 			disabled?: true;
-			getProperties: (route: Route, store: Store<IRootState>) => object;
+			getProperties: (route: Route) => object;
 		};
 		scrollOffset?: number;
 	};
 }
 
-function getTemplatesRedirect(store: Store<IRootState>) {
-	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+function getTemplatesRedirect() {
+	const settingsStore = useSettingsStore();
+	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
-		return {name: VIEWS.NOT_FOUND};
+		return { name: VIEWS.NOT_FOUND };
 	}
 
 	return false;
@@ -68,8 +76,8 @@ const router = new Router({
 			path: '/',
 			name: VIEWS.HOMEPAGE,
 			meta: {
-				getRedirect(store: Store<IRootState>) {
-					return { name: VIEWS.NEW_WORKFLOW };
+				getRedirect() {
+					return { name: VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -88,10 +96,11 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
 							collection_id: route.params.id,
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
@@ -131,10 +140,11 @@ const router = new Router({
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
 							template_id: route.params.id,
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
@@ -158,9 +168,10 @@ const router = new Router({
 				// Templates view remembers it's scroll position on back
 				scrollOffset: 0,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
@@ -190,7 +201,41 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/workflow',
+			redirect: '/workflow/new',
+		},
+		{
+			path: '/workflows',
+			name: VIEWS.WORKFLOWS,
+			components: {
+				default: WorkflowsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/workflow/new',
 			name: VIEWS.NEW_WORKFLOW,
 			components: {
 				default: NodeView,
@@ -222,6 +267,55 @@ const router = new Router({
 					},
 				},
 			},
+		},
+		{
+			path: '/workflow/:name/executions',
+			name: VIEWS.WORKFLOW_EXECUTIONS,
+			components: {
+				default: WorkflowExecutionsList,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				keepWorkflowAlive: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+			children: [
+				{
+					path: '',
+					name: VIEWS.EXECUTION_HOME,
+					components: {
+						executionPreview: ExecutionsLandingPage,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: ':executionId',
+					name: VIEWS.EXECUTION_PREVIEW,
+					components: {
+						executionPreview: ExecutionPreview,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '/workflows/demo',
@@ -305,7 +399,8 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isUserManagementEnabled'] === false;
+							const settingsStore = useSettingsStore();
+							return settingsStore.isUserManagementEnabled === false;
 						},
 					},
 				},
@@ -347,129 +442,188 @@ const router = new Router({
 		},
 		{
 			path: '/settings',
-			redirect: '/settings/personal',
-		},
-		{
-			path: '/settings/users',
-			name: VIEWS.USERS_SETTINGS,
-			components: {
-				default: SettingsUsersView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
-						return {
-							feature: 'users',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						role: [ROLE.Default, ROLE.Owner],
-					},
-					deny: {
-						shouldDeny: () => {
-							return store.getters['settings/isUserManagementEnabled'] === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/personal',
-			name: VIEWS.PERSONAL_SETTINGS,
-			components: {
-				default: SettingsPersonalView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
-						return {
-							feature: 'personal',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						role: [ROLE.Default],
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/api',
-			name: VIEWS.API_SETTINGS,
-			components: {
-				default: SettingsApiView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
-						return {
-							feature: 'api',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						shouldDeny: () => {
-							return store.getters['settings/isPublicApiEnabled'] === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/community-nodes',
-			name: VIEWS.COMMUNITY_NODES,
-			components: {
-				default: SettingsCommunityNodesView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-				},
-				permissions: {
-					allow: {
-						role: [ROLE.Default, ROLE.Owner],
-					},
-					deny: {
-						shouldDeny: () => {
-							return store.getters['settings/isCommunityNodesFeatureEnabled'] === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/coming-soon/:featureId',
-			name: VIEWS.FAKE_DOOR,
-			component: SettingsFakeDoorView,
+			component: SettingsView,
 			props: true,
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
-						return {
-							feature: route.params['featureId'],
-						};
+			children: [
+				{
+					path: 'usage',
+					name: VIEWS.USAGE,
+					components: {
+						settingsView: SettingsUsageAndPlanVue,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'usage',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return (
+										settingsStore.settings.hideUsagePage === true ||
+										settingsStore.settings.deployment?.type === 'cloud'
+									);
+								},
+							},
+						},
 					},
 				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
+				{
+					path: 'personal',
+					name: VIEWS.PERSONAL_SETTINGS,
+					components: {
+						settingsView: SettingsPersonalView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'personal',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								role: [ROLE.Default],
+							},
+						},
 					},
 				},
-			},
+				{
+					path: 'users',
+					name: VIEWS.USERS_SETTINGS,
+					components: {
+						settingsView: SettingsUsersView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'users',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Default, ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isUserManagementEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'api',
+					name: VIEWS.API_SETTINGS,
+					components: {
+						settingsView: SettingsApiView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'api',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isPublicApiEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'log-streaming',
+					name: VIEWS.LOG_STREAMING_SETTINGS,
+					components: {
+						settingsView: SettingsLogStreamingView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+								role: [ROLE.Owner],
+							},
+							deny: {
+								role: [ROLE.Default],
+							},
+						},
+					},
+				},
+				{
+					path: 'community-nodes',
+					name: VIEWS.COMMUNITY_NODES,
+					components: {
+						settingsView: SettingsCommunityNodesView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Default, ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isCommunityNodesFeatureEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'coming-soon/:featureId',
+					name: VIEWS.FAKE_DOOR,
+					components: {
+						settingsView: SettingsFakeDoorView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: route.params['featureId'],
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '*',

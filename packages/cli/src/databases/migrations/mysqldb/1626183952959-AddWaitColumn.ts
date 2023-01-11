@@ -1,5 +1,5 @@
-import {MigrationInterface, QueryRunner} from "typeorm";
-import * as config from '../../../../config';
+import { MigrationInterface, QueryRunner } from 'typeorm';
+import config from '@/config';
 
 export class AddWaitColumnId1626183952959 implements MigrationInterface {
 	name = 'AddWaitColumnId1626183952959';
@@ -7,16 +7,30 @@ export class AddWaitColumnId1626183952959 implements MigrationInterface {
 	async up(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'execution_entity` ADD `waitTill` DATETIME NULL');
-		await queryRunner.query('CREATE INDEX `IDX_' + tablePrefix + 'ca4a71b47f28ac6ea88293a8e2` ON `' + tablePrefix + 'execution_entity` (`waitTill`)');
+		await queryRunner.query(
+			'ALTER TABLE `' + tablePrefix + 'execution_entity` ADD `waitTill` DATETIME NULL',
+		);
+		await queryRunner.query(
+			'CREATE INDEX `IDX_' +
+				tablePrefix +
+				'ca4a71b47f28ac6ea88293a8e2` ON `' +
+				tablePrefix +
+				'execution_entity` (`waitTill`)',
+		);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
 		await queryRunner.query(
-			'DROP INDEX `IDX_' + tablePrefix + 'ca4a71b47f28ac6ea88293a8e2` ON `' + tablePrefix + 'execution_entity`'
+			'DROP INDEX `IDX_' +
+				tablePrefix +
+				'ca4a71b47f28ac6ea88293a8e2` ON `' +
+				tablePrefix +
+				'execution_entity`',
 		);
-		await queryRunner.query('ALTER TABLE `' + tablePrefix + 'execution_entity` DROP COLUMN `waitTill`');
+		await queryRunner.query(
+			'ALTER TABLE `' + tablePrefix + 'execution_entity` DROP COLUMN `waitTill`',
+		);
 	}
 }

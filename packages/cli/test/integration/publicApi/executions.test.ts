@@ -1,19 +1,17 @@
 import express from 'express';
 
-import { ActiveWorkflowRunner } from '../../../src';
-import config from '../../../config';
-import { Role } from '../../../src/databases/entities/Role';
-import { randomApiKey } from '../shared/random';
+import config from '@/config';
+import { Role } from '@db/entities/Role';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
+import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-
-jest.mock('../../../src/telemetry');
 
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
-let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
@@ -463,7 +461,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
 	const response = await authOwnerAgent.get(`/executions`).query({
-		workflowId: workflow.id.toString(),
+		workflowId: workflow.id,
 	});
 
 	expect(response.statusCode).toBe(200);
@@ -490,7 +488,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 		expect(retryOf).toBeNull();
 		expect(startedAt).not.toBeNull();
 		expect(stoppedAt).not.toBeNull();
-		expect(workflowId).toBe(workflow.id.toString());
+		expect(workflowId).toBe(workflow.id);
 		expect(waitTill).toBeNull();
 	}
 });

@@ -25,12 +25,13 @@
 				/>
 			</span>
 			{{ $locale.baseText('executionDetails.of') }}
-			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
+			<span
+				class="primary-color clickable"
+				:title="$locale.baseText('executionDetails.openWorkflow')"
+			>
 				<ShortenName :name="workflowName">
-					<template v-slot="{ shortenedName }">
-						<span @click="openWorkflow(workflowExecution.workflowId)">
-							"{{ shortenedName }}"
-						</span>
+					<template #default="{ shortenedName }">
+						<span @click="openWorkflow(workflowExecution.workflowId)"> "{{ shortenedName }}" </span>
 					</template>
 				</ShortenName>
 			</span>
@@ -41,48 +42,51 @@
 </template>
 
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import mixins from 'vue-typed-mixins';
 
-import { IExecutionResponse } from "../../../Interface";
+import { IExecutionResponse, IExecutionsSummary } from '../../../Interface';
 
-import { titleChange } from "@/components/mixins/titleChange";
+import { titleChange } from '@/mixins/titleChange';
 
-import ShortenName from "@/components/ShortenName.vue";
-import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
+import ShortenName from '@/components/ShortenName.vue';
+import ReadOnly from '@/components/MainHeader/ExecutionDetails/ReadOnly.vue';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(titleChange).extend({
-	name: "ExecutionDetails",
+	name: 'ExecutionDetails',
 	components: {
 		ShortenName,
 		ReadOnly,
 	},
 	computed: {
+		...mapStores(useWorkflowsStore),
 		executionId(): string | undefined {
 			return this.$route.params.id;
 		},
 		executionFinished(): boolean {
-			const fullExecution = this.$store.getters.getWorkflowExecution;
+			const fullExecution = this.workflowsStore.getWorkflowExecution;
 
 			return !!fullExecution && fullExecution.finished;
 		},
 		executionWaiting(): boolean {
-			const fullExecution = this.$store.getters.getWorkflowExecution;
+			const fullExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
 			return !!fullExecution && !!fullExecution.waitTill;
 		},
 		workflowExecution(): IExecutionResponse | null {
-			return this.$store.getters.getWorkflowExecution;
+			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowName(): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowName;
 		},
 	},
 	methods: {
 		async openWorkflow(workflowId: string) {
-			this.$titleSet(this.workflowName, "IDLE");
+			this.$titleSet(this.workflowName, 'IDLE');
 			// Change to other workflow
 			this.$router.push({
-				name: "NodeViewExisting",
+				name: 'NodeViewExisting',
 				params: { name: workflowId },
 			});
 		},
@@ -96,12 +100,12 @@ export default mixins(titleChange).extend({
 }
 
 .execution-icon {
- &.success {
-	color: var(--color-success);
- }
- &.warning {
-	 color: var(--color-warning);
- }
+	&.success {
+		color: var(--color-success);
+	}
+	&.warning {
+		color: var(--color-warning);
+	}
 }
 
 .container {

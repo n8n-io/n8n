@@ -7,8 +7,11 @@ import {
 
 export class StripeApi implements ICredentialType {
 	name = 'stripeApi';
+
 	displayName = 'Stripe API';
+
 	documentationUrl = 'stripe';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Secret Key',
@@ -17,6 +20,7 @@ export class StripeApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +29,7 @@ export class StripeApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.stripe.com/v1',

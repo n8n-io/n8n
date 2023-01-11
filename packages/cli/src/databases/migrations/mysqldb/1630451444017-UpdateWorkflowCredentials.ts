@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
-import { runInBatches } from '../../utils/migrationHelpers';
+import config from '@/config';
+import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
@@ -36,7 +36,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -79,7 +79,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 									// @ts-ignore
 									(credentials) => credentials.name === name && credentials.type === type,
 								);
-								node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+								node.credentials[type] = { id: matchingCredentials?.id || null, name };
 								credentialsUpdated = true;
 							}
 						}
@@ -123,7 +123,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 								// @ts-ignore
 								(credentials) => credentials.name === name && credentials.type === type,
 							);
-							node.credentials[type] = { id: matchingCredentials?.id.toString() || null, name };
+							node.credentials[type] = { id: matchingCredentials?.id || null, name };
 							credentialsUpdated = true;
 						}
 					}

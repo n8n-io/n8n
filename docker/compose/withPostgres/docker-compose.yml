@@ -18,7 +18,7 @@ services:
       - db_storage:/var/lib/postgresql/data
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -41,7 +41,7 @@ services:
     links:
       - postgres
     volumes:
-      - n8n_storage:/home/node/
+      - n8n_storage:/home/node/.n8n
     command: /bin/sh -c "n8n start --tunnel"
     depends_on:
       postgres:

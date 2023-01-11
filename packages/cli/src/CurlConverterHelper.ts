@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import curlconverter from 'curlconverter';
 import get from 'lodash.get';
+import { jsonParse } from 'n8n-workflow';
 
 interface CurlJson {
 	url: string;
@@ -109,8 +110,7 @@ const DOWNLOAD_FILE_FLAGS = ['-O', '-o'];
 const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
 
 const curlToJson = (curlCommand: string): CurlJson => {
-	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-	return JSON.parse(curlconverter.toJsonString(curlCommand)) as CurlJson;
+	return jsonParse(curlconverter.toJsonString(curlCommand));
 };
 
 const isContentType = (headers: CurlJson['headers'], contentType: ContentTypes): boolean => {
@@ -196,8 +196,7 @@ const extractQueries = (queries: CurlJson['queries'] = {}): HttpNodeQueries => {
 
 const extractJson = (body: CurlJson['data']) =>
 	//@ts-ignore
-	// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
-	JSON.parse(Object.keys(body)[0]) as { [key: string]: string };
+	jsonParse<{ [key: string]: string }>(Object.keys(body)[0]);
 
 const jsonBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] | [] => {
 	const data = extractJson(body);

@@ -15,7 +15,6 @@ export class PostBin implements INodeType {
 		description: 'Consume PostBin API',
 		defaults: {
 			name: 'PostBin',
-			color: '#4dc0b5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

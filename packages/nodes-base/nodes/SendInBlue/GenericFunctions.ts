@@ -4,6 +4,7 @@ import {
 	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
@@ -34,19 +35,19 @@ export namespace SendInBlueNode {
 		[
 			OVERRIDE_MAP_TYPE.CATEGORY,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.CATEGORY;
+				body.type = OVERRIDE_MAP_VALUES.CATEGORY;
 			},
 		],
 		[
 			OVERRIDE_MAP_TYPE.NORMAL,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.NORMAL;
+				body.type = OVERRIDE_MAP_VALUES.NORMAL;
 			},
 		],
 		[
 			OVERRIDE_MAP_TYPE.TRANSACTIONAL,
 			(body: JsonObject) => {
-				body!.type = OVERRIDE_MAP_VALUES.TRANSACTIONAL;
+				body.type = OVERRIDE_MAP_VALUES.TRANSACTIONAL;
 			},
 		],
 	]);
@@ -66,20 +67,20 @@ export namespace SendInBlueNode {
 				const { binaryPropertyName } = dataPropertyList;
 				const dataMappingList = (binaryPropertyName as string).split(',');
 				for (const attachmentDataName of dataMappingList) {
-					const binaryPropertyName = attachmentDataName;
+					const binaryPropertyAttachmentName = attachmentDataName;
 
 					const item = this.getInputData();
 
-					if (item.binary![binaryPropertyName as string] === undefined) {
+					if (item.binary![binaryPropertyAttachmentName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property “${binaryPropertyName}” exists on item!`,
+							`No binary data property “${binaryPropertyAttachmentName}” exists on item!`,
 						);
 					}
 
-					const bufferFromIncomingData = (await this.helpers.getBinaryDataBuffer(
-						binaryPropertyName,
-					)) as Buffer;
+					const bufferFromIncomingData = await this.helpers.getBinaryDataBuffer(
+						binaryPropertyAttachmentName,
+					);
 
 					const {
 						data: content,
@@ -92,8 +93,8 @@ export namespace SendInBlueNode {
 					const name = getFileName(
 						itemIndex,
 						mimeType,
-						fileExtension,
-						fileName || item.binary!.data.fileName,
+						fileExtension!,
+						fileName || item.binary!.data.fileName!,
 					);
 
 					attachment.push({ content, name });
@@ -103,7 +104,7 @@ export namespace SendInBlueNode {
 
 				return requestOptions;
 			} catch (err) {
-				throw new NodeOperationError(this.getNode(), `${err}`);
+				throw new NodeOperationError(this.getNode(), err);
 			}
 		}
 
@@ -114,9 +115,9 @@ export namespace SendInBlueNode {
 			const { tag } = this.getNodeParameter('additionalFields.emailTags.tags') as JsonObject;
 			const tags = (tag as string)
 				.split(',')
-				.map((tag) => tag.trim())
-				.filter((tag) => {
-					return tag !== '';
+				.map((entry) => entry.trim())
+				.filter((entry) => {
+					return entry !== '';
 				});
 			const { body } = requestOptions;
 			Object.assign(body!, { tags });
@@ -308,7 +309,7 @@ export namespace SendInBlueWebhookApi {
 		webhooks: WebhookDetails[];
 	}
 
-	const credentialsName = 'sendinblueApi';
+	const credentialsName = 'sendInBlueApi';
 	const baseURL = 'https://api.sendinblue.com/v3';
 	export const supportedAuthMap = new Map<string, (ref: IWebhookFunctions) => Promise<string>>([
 		[
@@ -337,7 +338,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		)) as string;
 
-		return JSON.parse(webhooks) as Webhooks;
+		return jsonParse(webhooks);
 	};
 
 	export const createWebHook = async (
@@ -367,7 +368,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return JSON.parse(webhookId) as WebhookId;
+		return jsonParse(webhookId);
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {
@@ -383,6 +384,6 @@ export namespace SendInBlueWebhookApi {
 			body,
 		};
 
-		return await ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
+		return ref.helpers.requestWithAuthentication.call(ref, credentialsName, options);
 	};
 }

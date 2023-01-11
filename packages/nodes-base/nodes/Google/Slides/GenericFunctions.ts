@@ -2,12 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -60,9 +55,9 @@ export async function googleApiRequest(
 				credentials as unknown as IGoogleAuthCredentials,
 			);
 			options.headers.Authorization = `Bearer ${access_token}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'googleSlidesOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleSlidesOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -73,7 +68,7 @@ export async function googleApiRequest(
 	}
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	credentials: IGoogleAuthCredentials,
 ) {
@@ -87,7 +82,7 @@ function getAccessToken(
 	const now = moment().unix();
 
 	credentials.email = credentials.email.trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+	const privateKey = credentials.privateKey.replace(/\\n/g, '\n').trim();
 
 	const signature = jwt.sign(
 		{
@@ -122,5 +117,5 @@ function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

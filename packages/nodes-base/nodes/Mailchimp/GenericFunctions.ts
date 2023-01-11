@@ -13,11 +13,10 @@ export async function mailchimpApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	headers?: object,
-	// tslint:disable-next-line:no-any
+	_headers?: object,
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 
@@ -30,7 +29,7 @@ export async function mailchimpApiRequest(
 		method,
 		qs,
 		body,
-		url: ``,
+		url: '',
 		json: true,
 	};
 
@@ -57,7 +56,7 @@ export async function mailchimpApiRequest(
 
 			options.url = `${api_endpoint}/3.0${endpoint}`;
 			//@ts-ignore
-			return await this.helpers.requestOAuth2!.call(this, 'mailchimpOAuth2Api', options, {
+			return await this.helpers.requestOAuth2.call(this, 'mailchimpOAuth2Api', options, {
 				tokenType: 'Bearer',
 			});
 		}
@@ -71,10 +70,9 @@ export async function mailchimpApiRequestAllItems(
 	endpoint: string,
 	method: string,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -92,7 +90,6 @@ export async function mailchimpApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -117,7 +114,7 @@ async function getMetadata(
 		url: credentials.metadataUrl as string,
 		json: true,
 	};
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export const campaignFieldsMetadata = [

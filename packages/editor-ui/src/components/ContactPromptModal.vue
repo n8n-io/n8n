@@ -8,10 +8,10 @@
 		customClass="contact-prompt-modal"
 		width="460px"
 	>
-		<template slot="header">
+		<template #header>
 			<n8n-heading tag="h2" size="xlarge" color="text-dark">{{ title }}</n8n-heading>
 		</template>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.description">
 				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
 			</div>
@@ -24,7 +24,7 @@
 				>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 			</div>
@@ -35,12 +35,14 @@
 <script lang="ts">
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 
 import { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
@@ -53,19 +55,17 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapGetters({
-			promptsData: 'settings/getPromptsData',
-		}),
+		...mapStores(useRootStore, useSettingsStore),
 		title(): string {
-			if (this.promptsData && this.promptsData.title) {
-				return this.promptsData.title;
+			if (this.settingsStore.promptsData && this.settingsStore.promptsData.title) {
+				return this.settingsStore.promptsData.title;
 			}
 
 			return 'You’re a power user 💪';
 		},
 		description(): string {
-			if (this.promptsData && this.promptsData.message) {
-				return this.promptsData.message;
+			if (this.settingsStore.promptsData && this.settingsStore.promptsData.message) {
+				return this.settingsStore.promptsData.message;
 			}
 
 			return 'Your experience with n8n can help us improve — for you and our entire community.';
@@ -78,21 +78,20 @@ export default mixins(workflowHelpers).extend({
 		closeDialog(): void {
 			if (!this.isEmailValid) {
 				this.$telemetry.track('User closed email modal', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					email: null,
 				});
 			}
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response: IN8nPromptResponse = await this.$store.dispatch(
-					'settings/submitContactInfo',
+				const response = (await this.settingsStore.submitContactInfo(
 					this.email,
-				);
+				)) as IN8nPromptResponse;
 
 				if (response.updated) {
 					this.$telemetry.track('User closed email modal', {
-						instance_id: this.$store.getters.instanceId,
+						instance_id: this.rootStore.instanceId,
 						email: this.email,
 					});
 					this.$showMessage({

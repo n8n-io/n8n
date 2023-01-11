@@ -1,20 +1,18 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 
-import { Db } from '../../src';
-import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
-import type { Role } from '../../src/databases/entities/Role';
+import * as Db from '@/Db';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
-import config from '../../config';
-import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import config from '@/config';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { AuthAgent } from './shared/types';
-
-jest.mock('../../src/telemetry');
 
 // mock that credentialsSharing is not enabled
 const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
@@ -81,7 +79,7 @@ test('GET /credentials should return all creds for owner', async () => {
 	response.body.data.forEach((credential: CredentialsEntity) => {
 		validateMainCredentialData(credential);
 		expect(credential.data).toBeUndefined();
-		expect(savedCredentialsIds.includes(Number(credential.id))).toBe(true);
+		expect(savedCredentialsIds).toContain(credential.id);
 	});
 });
 
@@ -104,7 +102,7 @@ test('GET /credentials should return only own creds for member', async () => {
 
 	validateMainCredentialData(member1Credential);
 	expect(member1Credential.data).toBeUndefined();
-	expect(member1Credential.id).toBe(savedCredential1.id.toString());
+	expect(member1Credential.id).toBe(savedCredential1.id);
 });
 
 test('POST /credentials should create cred', async () => {
@@ -573,16 +571,11 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 
 test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-
 	const response = await authAgent(ownerShell).get('/credentials/789');
 	expect(response.statusCode).toBe(404);
-});
-
-test('GET /credentials/:id should return 400 if id is not a number', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
 	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
-	expect(responseAbc.statusCode).toBe(400);
+	expect(responseAbc.statusCode).toBe(404);
 });
 
 function validateMainCredentialData(credential: CredentialsEntity) {

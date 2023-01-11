@@ -1,12 +1,14 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/frontend'],
 
-	parserOptions: {
-		project: ['./tsconfig.json'],
-	},
+	...sharedOptions(__dirname, 'frontend'),
+
+	ignorePatterns: ['*.d.cts'],
 
 	rules: {
 		// TODO: Remove these
@@ -15,8 +17,8 @@ module.exports = {
 		'import/no-default-export': 'off',
 		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'indent': 'off',
-		'prettier/prettier': 'off',
+		'import/no-cycle': 'warn',
+		indent: 'off',
 		'@typescript-eslint/ban-types': 'off',
 		'@typescript-eslint/dot-notation': 'off',
 		'@typescript-eslint/lines-between-class-members': 'off',
@@ -24,7 +26,6 @@ module.exports = {
 		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
-		'@typescript-eslint/no-explicit-any': 'off',
 		'@typescript-eslint/no-floating-promises': 'off',
 		'@typescript-eslint/no-for-in-array': 'off',
 		'@typescript-eslint/no-loop-func': 'off',
@@ -49,5 +50,6 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 };

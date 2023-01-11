@@ -1,12 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import { flowApiRequest } from './GenericFunctions';
 
@@ -91,6 +85,7 @@ export class FlowTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -107,7 +102,7 @@ export class FlowTrigger implements INodeType {
 					return false;
 				}
 				qs.organization_id = credentials.organizationId as number;
-				const endpoint = `/integration_webhooks`;
+				const endpoint = '/integration_webhooks';
 				try {
 					webhooks = await flowApiRequest.call(this, 'GET', endpoint, {}, qs);
 					webhooks = webhooks.integration_webhooks;
@@ -131,7 +126,7 @@ export class FlowTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const webhookData = this.getWorkflowStaticData('node');
 				const resource = this.getNodeParameter('resource') as string;
-				const endpoint = `/integration_webhooks`;
+				const endpoint = '/integration_webhooks';
 				if (resource === 'list') {
 					resourceIds = (this.getNodeParameter('listIds') as string).split(',');
 				}

@@ -3,20 +3,17 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
-			class='ph-no-capture'
+			class="ph-no-capture"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge
-					v-if="user.isOwner"
-					theme="tertiary"
-					bold
-				>
+				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
+				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
 				<n8n-action-toggle
-					v-if="!user.isOwner && !readonly && getActions(user).length > 0"
+					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -28,18 +25,13 @@
 </template>
 
 <script lang="ts">
-import { IUser } from '../../types';
+import { IUser, IUserListAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
-import { t } from '../../locale';
-
-export interface IUserListAction {
-	label: string;
-	value: string;
-}
+import { PropType } from 'vue';
 
 export default mixins(Locale).extend({
 	name: 'n8n-users-list',
@@ -63,13 +55,9 @@ export default mixins(Locale).extend({
 		currentUserId: {
 			type: String,
 		},
-		deleteLabel: {
-			type: String,
-			default: () => t('nds.usersList.deleteUser'),
-		},
-		reinviteLabel: {
-			type: String,
-			default: () => t('nds.usersList.reinviteUser'),
+		actions: {
+			type: Array as PropType<IUserListAction[]>,
+			default: () => [],
 		},
 	},
 	computed: {
@@ -103,7 +91,7 @@ export default mixins(Locale).extend({
 						return a.lastName > b.lastName ? 1 : -1;
 					}
 					if (a.firstName !== b.firstName) {
-						return a.firstName > b.firstName? 1 : -1;
+						return a.firstName > b.firstName ? 1 : -1;
 					}
 				}
 
@@ -113,40 +101,20 @@ export default mixins(Locale).extend({
 	},
 	methods: {
 		getActions(user: IUser): IUserListAction[] {
-			const DELETE: IUserListAction = {
-				label: this.deleteLabel as string,
-				value: 'delete',
-			};
-
-			const REINVITE: IUserListAction = {
-				label: this.reinviteLabel as string,
-				value: 'reinvite',
-			};
-
-			if (user.isOwner)	{
+			if (user.isOwner) {
 				return [];
 			}
 
-			if (user.firstName) {
-				return [
-					DELETE,
-				];
-			} else {
-				return [
-					REINVITE,
-					DELETE,
-				];
-			}
+			const defaultGuard = () => true;
+
+			return this.actions.filter((action) => (action.guard || defaultGuard)(user));
 		},
 		onUserAction(user: IUser, action: string): void {
-			if (action === 'delete' || action === 'reinvite') {
-				this.$emit(action, user.id);
-			}
+			this.$emit(action, user.id);
 		},
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .itemContainer {

@@ -1,4 +1,4 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeExecutionData, assert } from 'n8n-workflow';
 
 import {
 	AdjustedPutItem,
@@ -70,7 +70,7 @@ export function simplify(item: IAttributeValue): IDataObject {
 	return output;
 }
 
-function decodeAttribute(type: AttributeValueType, attribute: string) {
+function decodeAttribute(type: AttributeValueType, attribute: string | IAttributeValue) {
 	switch (type) {
 		case 'BOOL':
 			return Boolean(attribute);
@@ -81,12 +81,17 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		case 'SS':
 		case 'NS':
 			return attribute;
+		case 'M':
+			assert(
+				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
+				'Attribute must be an object',
+			);
+			return simplify(attribute);
 		default:
 			return null;
 	}
 }
 
-// tslint:disable-next-line: no-any
 export function validateJSON(input: any): object {
 	try {
 		return JSON.parse(input);
@@ -97,13 +102,12 @@ export function validateJSON(input: any): object {
 
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	newItem = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
 		} else {
-			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+			newItem[property] = deepCopy(item.json[property]);
 		}
 	}
 	return newItem;

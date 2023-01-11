@@ -1,9 +1,10 @@
 import { parse } from 'flatted';
 import { In, Not, Raw, LessThan, IsNull, FindOperator } from 'typeorm';
 
-import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '../../../..';
-import { ExecutionEntity } from '../../../../databases/entities/ExecutionEntity';
-import { ExecutionStatus } from '../../../types';
+import * as Db from '@/Db';
+import type { IExecutionFlattedDb, IExecutionResponseApi } from '@/Interfaces';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { ExecutionStatus } from '@/PublicApi/types';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,
@@ -59,14 +60,14 @@ function getExecutionSelectableProperties(includeData?: boolean): Array<keyof IE
 export async function getExecutions(params: {
 	limit: number;
 	includeData?: boolean;
-	lastId?: number;
-	workflowIds?: number[];
+	lastId?: string;
+	workflowIds?: string[];
 	status?: ExecutionStatus;
-	excludedExecutionsIds?: number[];
+	excludedExecutionsIds?: string[];
 }): Promise<IExecutionResponseApi[]> {
 	type WhereClause = Record<
 		string,
-		string | boolean | FindOperator<number | Partial<ExecutionEntity>>
+		string | boolean | FindOperator<string | Partial<ExecutionEntity>>
 	>;
 
 	let where: WhereClause = {};
@@ -102,10 +103,10 @@ export async function getExecutions(params: {
 
 export async function getExecutionsCount(data: {
 	limit: number;
-	lastId?: number;
-	workflowIds?: number[];
+	lastId?: string;
+	workflowIds?: string[];
 	status?: ExecutionStatus;
-	excludedWorkflowIds?: number[];
+	excludedWorkflowIds?: string[];
 }): Promise<number> {
 	const executions = await Db.collections.Execution.count({
 		where: {
@@ -121,15 +122,15 @@ export async function getExecutionsCount(data: {
 }
 
 export async function getExecutionInWorkflows(
-	id: number,
-	workflows: number[],
+	id: string,
+	workflowIds: string[],
 	includeData?: boolean,
 ): Promise<IExecutionResponseApi | undefined> {
 	const execution = await Db.collections.Execution.findOne({
 		select: getExecutionSelectableProperties(includeData),
 		where: {
 			id,
-			workflowId: In(workflows),
+			workflowId: In(workflowIds),
 		},
 	});
 

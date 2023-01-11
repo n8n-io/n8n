@@ -1,6 +1,9 @@
-import { promises as fs } from 'fs';
+import { createReadStream } from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
+import type { Readable } from 'stream';
+import { BinaryMetadata, jsonParse } from 'n8n-workflow';
 
 import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
@@ -43,15 +46,49 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 			.then(() => {});
 	}
 
-	async storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string> {
+	async getFileSize(identifier: string): Promise<number> {
+		const stats = await fs.stat(this.getBinaryPath(identifier));
+		return stats.size;
+	}
+
+	async copyBinaryFile(filePath: string, executionId: string): Promise<string> {
 		const binaryDataId = this.generateFileName(executionId);
-		return this.addBinaryIdToPersistMeta(executionId, binaryDataId).then(async () =>
-			this.saveToLocalStorage(binaryBuffer, binaryDataId).then(() => binaryDataId),
-		);
+		await this.addBinaryIdToPersistMeta(executionId, binaryDataId);
+		await this.copyFileToLocalStorage(filePath, binaryDataId);
+		return binaryDataId;
+	}
+
+	async storeBinaryMetadata(identifier: string, metadata: BinaryMetadata) {
+		await fs.writeFile(this.getMetadataPath(identifier), JSON.stringify(metadata), {
+			encoding: 'utf-8',
+		});
+	}
+
+	async getBinaryMetadata(identifier: string): Promise<BinaryMetadata> {
+		return jsonParse(await fs.readFile(this.getMetadataPath(identifier), { encoding: 'utf-8' }));
+	}
+
+	async storeBinaryData(binaryData: Buffer | Readable, executionId: string): Promise<string> {
+		const binaryDataId = this.generateFileName(executionId);
+		await this.addBinaryIdToPersistMeta(executionId, binaryDataId);
+		await this.saveToLocalStorage(binaryData, binaryDataId);
+		return binaryDataId;
+	}
+
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		return createReadStream(this.getBinaryPath(identifier), { highWaterMark: chunkSize });
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {
 		return this.retrieveFromLocalStorage(identifier);
+	}
+
+	getBinaryPath(identifier: string): string {
+		return path.join(this.storagePath, identifier);
+	}
+
+	getMetadataPath(identifier: string): string {
+		return path.join(this.storagePath, `${identifier}.metadata`);
 	}
 
 	async markDataForDeletionByExecutionId(executionId: string): Promise<void> {
@@ -180,7 +217,7 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	}
 
 	private generateFileName(prefix: string): string {
-		return `${prefix}_${uuid()}`;
+		return [prefix, uuid()].join('');
 	}
 
 	private getBinaryDataMetaPath() {
@@ -196,15 +233,19 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 	}
 
 	private async deleteFromLocalStorage(identifier: string) {
-		return fs.rm(path.join(this.storagePath, identifier));
+		return fs.rm(this.getBinaryPath(identifier));
 	}
 
-	private async saveToLocalStorage(data: Buffer, identifier: string) {
-		await fs.writeFile(path.join(this.storagePath, identifier), data);
+	private async copyFileToLocalStorage(source: string, identifier: string): Promise<void> {
+		await fs.cp(source, this.getBinaryPath(identifier));
+	}
+
+	private async saveToLocalStorage(binaryData: Buffer | Readable, identifier: string) {
+		await fs.writeFile(this.getBinaryPath(identifier), binaryData);
 	}
 
 	private async retrieveFromLocalStorage(identifier: string): Promise<Buffer> {
-		const filePath = path.join(this.storagePath, identifier);
+		const filePath = this.getBinaryPath(identifier);
 		try {
 			return await fs.readFile(filePath);
 		} catch (e) {

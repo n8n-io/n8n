@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container">
+	<span :class="$style.container" data-test-id="save-button">
 		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
 		<n8n-button
 			v-else
@@ -7,6 +7,7 @@
 			:loading="isSaving"
 			:disabled="disabled"
 			:class="$style.button"
+			:type="type"
 			@click="$emit('click')"
 		/>
 	</span>
@@ -16,7 +17,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "SaveButton",
+	name: 'SaveButton',
 	props: {
 		saved: {
 			type: Boolean,
@@ -35,6 +36,10 @@ export default Vue.extend({
 		},
 		savedLabel: {
 			type: String,
+		},
+		type: {
+			type: String,
+			default: 'primary',
 		},
 	},
 	computed: {
@@ -65,6 +70,7 @@ export default Vue.extend({
 	font-weight: 600;
 	line-height: 12px;
 	text-align: center;
-	padding: var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing-2xs) var(--spacing-2xs);
+	min-width: 53px;
 }
 </style>

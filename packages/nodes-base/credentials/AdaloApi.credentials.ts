@@ -2,13 +2,17 @@ import { IAuthenticateGeneric, ICredentialType, INodeProperties } from 'n8n-work
 
 export class AdaloApi implements ICredentialType {
 	name = 'adaloApi';
+
 	displayName = 'Adalo API';
+
 	documentationUrl = 'adalo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description:
 				'The Adalo API is available on paid Adalo plans, find more information <a href="https://help.adalo.com/integrations/the-adalo-api" target="_blank">here</a>',

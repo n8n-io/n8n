@@ -5,7 +5,6 @@ import { cortexApiRequest, getEntityLabel, prepareParameters, splitTags } from '
 import { analyzerFields, analyzersOperations } from './AnalyzerDescriptions';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -89,7 +88,7 @@ export class Cortex implements INodeType {
 				const requestResult = await cortexApiRequest.call(
 					this,
 					'POST',
-					`/analyzer/_search?range=all`,
+					'/analyzer/_search?range=all',
 				);
 
 				const returnData: INodePropertyOptions[] = [];
@@ -107,7 +106,7 @@ export class Cortex implements INodeType {
 
 			async loadActiveResponders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				// request the enabled responders from instance
-				const requestResult = await cortexApiRequest.call(this, 'GET', `/responder`);
+				const requestResult = await cortexApiRequest.call(this, 'GET', '/responder');
 
 				const returnData: INodePropertyOptions[] = [];
 				for (const responder of requestResult) {
@@ -165,10 +164,9 @@ export class Cortex implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -181,7 +179,7 @@ export class Cortex implements INodeType {
 
 						const observableType = this.getNodeParameter('observableType', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const tlp = this.getNodeParameter('tlp', i) as string;
 
@@ -203,7 +201,7 @@ export class Cortex implements INodeType {
 								});
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
@@ -322,7 +320,7 @@ export class Cortex implements INodeType {
 								const artifacts = (body.data as IDataObject).artifacts as IDataObject;
 
 								if (artifacts) {
-									const artifactValues = (artifacts as IDataObject).artifactValues as IDataObject[];
+									const artifactValues = artifacts.artifactValues as IDataObject[];
 
 									if (artifactValues) {
 										const artifactData = [];
@@ -332,7 +330,7 @@ export class Cortex implements INodeType {
 
 											element.message = artifactvalue.message as string;
 
-											element.tags = splitTags(artifactvalue.tags as string) as string[];
+											element.tags = splitTags(artifactvalue.tags as string);
 
 											element.dataType = artifactvalue.dataType as string;
 
@@ -359,7 +357,7 @@ export class Cortex implements INodeType {
 													);
 												}
 
-												const binaryData = item.binary[binaryPropertyName] as IBinaryData;
+												const binaryData = item.binary[binaryPropertyName];
 
 												element.data = `${binaryData.fileName};${binaryData.mimeType};${binaryData.data}`;
 											}

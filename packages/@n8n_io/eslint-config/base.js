@@ -2,17 +2,13 @@
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 const config = (module.exports = {
-	parser: '@typescript-eslint/parser',
-	parserOptions: {
-		sourceType: 'module',
-		project: ['./tsconfig.json'],
-	},
-
 	ignorePatterns: [
-		'.eslintrc.js', // TODO: remove this
 		'node_modules/**',
 		'dist/**',
-		'test/**', // TODO: remove this
+		// TODO: remove these
+		'test/**',
+		'.eslintrc.js',
+		'jest.config.js',
 	],
 
 	plugins: [
@@ -122,7 +118,22 @@ const config = (module.exports = {
 			'undefined',
 		],
 
+		/**
+		 * https://eslint.org/docs/latest/rules/no-void
+		 */
 		'no-void': ['error', { allowAsStatement: true }],
+
+		/**
+		 * https://eslint.org/docs/latest/rules/indent
+		 *
+		 * Delegated to Prettier.
+		 */
+		indent: 'off',
+
+		/**
+		 * https://eslint.org/docs/latest/rules/sort-imports
+		 */
+		'sort-imports': 'off', // @TECH_DEBT: Enable, prefs to be decided - N8N-5821
 
 		// ----------------------------------
 		//        @typescript-eslint
@@ -136,7 +147,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
-		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-types.md
@@ -184,11 +195,6 @@ const config = (module.exports = {
 		'@typescript-eslint/consistent-type-assertions': 'error',
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/explicit-member-accessibility.md
-		 */
-		'@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public' }],
-
-		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 		 */
 		'@typescript-eslint/member-delimiter-style': [
@@ -222,7 +228,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'property',
-				format: ['camelCase', 'snake_case'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},
@@ -283,11 +289,6 @@ const config = (module.exports = {
 		'@typescript-eslint/no-unused-expressions': 'error',
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
-		'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '_' }],
-
-		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
 		 */
 		'@typescript-eslint/prefer-nullish-coalescing': 'error',
@@ -302,14 +303,29 @@ const config = (module.exports = {
 		 */
 		'@typescript-eslint/promise-function-async': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/triple-slash-reference.md
+		 */
+		'@typescript-eslint/triple-slash-reference': 'off', // @TECH_DEBT: Enable, disallowing in all cases - N8N-5820
+
 		// ----------------------------------
 		//       eslint-plugin-import
 		// ----------------------------------
 
 		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-cycle.md
+		 */
+		'import/no-cycle': 'error',
+
+		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/no-default-export.md
 		 */
 		'import/no-default-export': 'error',
+
+		/**
+		 * https://github.com/import-js/eslint-plugin-import/blob/main/docs/rules/no-unresolved.md
+		 */
+		'import/no-unresolved': 'error',
 
 		/**
 		 * https://github.com/import-js/eslint-plugin-import/blob/master/docs/rules/order.md
@@ -319,9 +335,13 @@ const config = (module.exports = {
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
-		// TODO: set to `error` and fix offenses
-		'n8n-local-rules/no-uncaught-json-parse': 'warn',
+		'n8n-local-rules/no-json-parse-json-stringify': 'error',
+
+		'n8n-local-rules/no-unneeded-backticks': 'error',
+
+		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
@@ -363,10 +383,17 @@ const config = (module.exports = {
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 *
-		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
-		'@typescript-eslint/no-unused-vars': 'warn',
+		'no-unused-vars': 'off',
+		'@typescript-eslint/no-unused-vars': [
+			process.env.CI_LINT_MASTER ? 'warn' : 'error',
+			{
+				argsIgnorePattern: '^_',
+				destructuredArrayIgnorePattern: '^_',
+				varsIgnorePattern: '^_',
+				ignoreRestSiblings: true,
+			},
+		],
 
 		// ----------------------------------
 		//              import
@@ -377,6 +404,15 @@ const config = (module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
+
+	overrides: [
+		{
+			files: ['**/*.d.ts'],
+			rules: {
+				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+	],
 });
 
 if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {

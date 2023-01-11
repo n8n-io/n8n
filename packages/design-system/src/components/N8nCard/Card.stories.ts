@@ -1,26 +1,42 @@
-/* tslint:disable:variable-name */
-
 import N8nCard from './Card.vue';
-import {StoryFn} from "@storybook/vue";
-import N8nButton from "../N8nButton/Button.vue";
-import N8nIcon from "../N8nIcon/Icon.vue";
-import N8nText from "../N8nText/Text.vue";
+import type { StoryFn } from '@storybook/vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nText from '../N8nText/Text.vue';
 
 export default {
 	title: 'Atoms/Card',
 	component: N8nCard,
 };
 
-export const Default: StoryFn = (args, {argTypes}) => ({
+export const Default: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
 	},
-	template: `<n8n-card v-bind="$props">This is a card.</n8n-card>`,
+	template: '<n8n-card v-bind="$props">This is a card.</n8n-card>',
 });
 
+export const Hoverable: StoryFn = (args, { argTypes }) => ({
+	props: Object.keys(argTypes),
+	components: {
+		N8nCard,
+		N8nIcon,
+		N8nText,
+	},
+	template: `<div style="width: 140px; text-align: center;">
+		<n8n-card v-bind="$props">
+			<n8n-icon icon="plus" size="xlarge" />
+			<n8n-text size="large" class="mt-2xs">Add</n8n-text>
+		</n8n-card>
+	</div>`,
+});
 
-export const WithSlots: StoryFn = (args, {argTypes}) => ({
+Hoverable.args = {
+	hoverable: true,
+};
+
+export const WithSlots: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,

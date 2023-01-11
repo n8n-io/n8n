@@ -1,9 +1,11 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
-import { InternalHooksManager, LoadNodesAndCredentials, Push, ResponseHelper } from '..';
-import config from '../../config';
+import config from '@/config';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
 
 import {
 	checkNpmPackageStatus,
@@ -16,22 +18,22 @@ import {
 	parseNpmPackageName,
 	removePackageFromMissingList,
 	sanitizeNpmPackageName,
-} from '../CommunityNodes/helpers';
+} from '@/CommunityNodes/helpers';
 import {
 	findInstalledPackage,
 	getAllInstalledPackages,
 	isPackageInstalled,
-} from '../CommunityNodes/packageModel';
+} from '@/CommunityNodes/packageModel';
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
-} from '../constants';
-import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
+} from '@/constants';
+import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 
-import { InstalledPackages } from '../databases/entities/InstalledPackages';
-import type { CommunityPackages } from '../Interfaces';
-import type { NodeRequest } from '../requests';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { CommunityPackages } from '@/Interfaces';
+import type { NodeRequest } from '@/requests';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 
@@ -69,7 +71,7 @@ nodesController.post(
 		const { name } = req.body;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		let parsed: CommunityPackages.ParsedPackageName;
@@ -77,21 +79,17 @@ nodesController.post(
 		try {
 			parsed = parseNpmPackageName(name);
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				error instanceof Error ? error.message : 'Failed to parse package name',
-				undefined,
-				400,
 			);
 		}
 
 		if (parsed.packageName === STARTER_TEMPLATE_NAME) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				[
 					`Package "${parsed.packageName}" is only a template`,
 					'Please enter an actual package to install',
 				].join('.'),
-				undefined,
-				400,
 			);
 		}
 
@@ -99,23 +97,19 @@ nodesController.post(
 		const hasLoaded = hasPackageLoaded(name);
 
 		if (isInstalled && hasLoaded) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				[
 					`Package "${parsed.packageName}" is already installed`,
 					'To update it, click the corresponding button in the UI',
 				].join('.'),
-				undefined,
-				400,
 			);
 		}
 
 		const packageStatus = await checkNpmPackageStatus(name);
 
 		if (packageStatus.status !== 'OK') {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`Package "${name}" is banned so it cannot be installed`,
-				undefined,
-				400,
 			);
 		}
 
@@ -130,7 +124,7 @@ nodesController.post(
 			const errorMessage = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
 			void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-				user_id: req.user.id,
+				user: req.user,
 				input_string: name,
 				package_name: parsed.packageName,
 				success: false,
@@ -142,7 +136,7 @@ nodesController.post(
 
 			const clientError = error instanceof Error ? isClientError(error) : false;
 
-			throw new ResponseHelper.ResponseError(message, undefined, clientError ? 400 : 500);
+			throw new ResponseHelper[clientError ? 'BadRequestError' : 'InternalServerError'](message);
 		}
 
 		if (!hasLoaded) removePackageFromMissingList(name);
@@ -158,7 +152,7 @@ nodesController.post(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageInstallFinished({
-			user_id: req.user.id,
+			user: req.user,
 			input_string: name,
 			package_name: parsed.packageName,
 			success: true,
@@ -226,7 +220,7 @@ nodesController.delete(
 		const { name } = req.query;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		try {
@@ -234,13 +228,13 @@ nodesController.delete(
 		} catch (error) {
 			const message = error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON;
 
-			throw new ResponseHelper.ResponseError(message, undefined, 400);
+			throw new ResponseHelper.BadRequestError(message);
 		}
 
 		const installedPackage = await findInstalledPackage(name);
 
 		if (!installedPackage) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NOT_INSTALLED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
@@ -251,7 +245,7 @@ nodesController.delete(
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new ResponseHelper.ResponseError(message, undefined, 500);
+			throw new ResponseHelper.InternalServerError(message);
 		}
 
 		const pushInstance = Push.getInstance();
@@ -265,7 +259,7 @@ nodesController.delete(
 		});
 
 		void InternalHooksManager.getInstance().onCommunityPackageDeleteFinished({
-			user_id: req.user.id,
+			user: req.user,
 			package_name: name,
 			package_version: installedPackage.installedVersion,
 			package_node_names: installedPackage.installedNodes.map((node) => node.name),
@@ -286,13 +280,13 @@ nodesController.patch(
 		const { name } = req.body;
 
 		if (!name) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NAME_NOT_PROVIDED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
 		const previouslyInstalledPackage = await findInstalledPackage(name);
 
 		if (!previouslyInstalledPackage) {
-			throw new ResponseHelper.ResponseError(PACKAGE_NOT_INSTALLED, undefined, 400);
+			throw new ResponseHelper.BadRequestError(PACKAGE_NOT_INSTALLED);
 		}
 
 		try {
@@ -319,7 +313,7 @@ nodesController.patch(
 			});
 
 			void InternalHooksManager.getInstance().onCommunityPackageUpdateFinished({
-				user_id: req.user.id,
+				user: req.user,
 				package_name: name,
 				package_version_current: previouslyInstalledPackage.installedVersion,
 				package_version_new: newInstalledPackage.installedVersion,
@@ -343,7 +337,7 @@ nodesController.patch(
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
-			throw new ResponseHelper.ResponseError(message, undefined, 500);
+			throw new ResponseHelper.InternalServerError(message);
 		}
 	}),
 );

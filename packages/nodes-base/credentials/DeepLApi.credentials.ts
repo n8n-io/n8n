@@ -7,13 +7,17 @@ import {
 
 export class DeepLApi implements ICredentialType {
 	name = 'deepLApi';
+
 	displayName = 'DeepL API';
+
 	documentationUrl = 'deepL';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

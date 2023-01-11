@@ -376,8 +376,8 @@ export class Pushbullet implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'push') {
@@ -395,7 +395,7 @@ export class Pushbullet implements INodeType {
 
 						if (target !== 'default') {
 							const value = this.getNodeParameter('value', i) as string;
-							body[target as string] = value;
+							body[target] = value;
 						}
 
 						if (['note', 'link'].includes(type)) {
@@ -407,7 +407,7 @@ export class Pushbullet implements INodeType {
 						}
 
 						if (type === 'file') {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 							if (items[i].binary === undefined) {
 								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -430,7 +430,7 @@ export class Pushbullet implements INodeType {
 								file_name,
 								file_type,
 								file_url,
-							} = await pushbulletApiRequest.call(this, 'POST', `/upload-request`, {
+							} = await pushbulletApiRequest.call(this, 'POST', '/upload-request', {
 								file_name: binaryData.fileName,
 								file_type: binaryData.mimeType,
 							});
@@ -453,13 +453,13 @@ export class Pushbullet implements INodeType {
 							body.file_url = file_url;
 						}
 
-						responseData = await pushbulletApiRequest.call(this, 'POST', `/pushes`, body);
+						responseData = await pushbulletApiRequest.call(this, 'POST', '/pushes', body);
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -477,7 +477,7 @@ export class Pushbullet implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 
 							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
 

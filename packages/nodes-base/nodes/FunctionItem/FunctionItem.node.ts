@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-loop-func */
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -20,7 +22,7 @@ export class FunctionItem implements INodeType {
 		version: 1,
 		description: 'Run custom function code which gets executed once per item',
 		defaults: {
-			name: 'FunctionItem',
+			name: 'Function Item',
 			color: '#ddbb33',
 		},
 		inputs: ['main'],
@@ -74,7 +76,7 @@ return item;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -89,7 +91,7 @@ return item;`,
 				item.index = itemIndex;
 
 				// Copy the items as they may get changed in the functions
-				item = JSON.parse(JSON.stringify(item));
+				item = deepCopy(item);
 
 				// Define the global objects for the custom function
 				const sandbox = {
@@ -120,7 +122,7 @@ return item;`,
 						if (item?.binary && item?.index !== undefined && item?.index !== null) {
 							for (const binaryPropertyName of Object.keys(item.binary)) {
 								item.binary[binaryPropertyName].data = (
-									await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+									await this.helpers.getBinaryDataBuffer(item.index, binaryPropertyName)
 								)?.toString('base64');
 							}
 						}

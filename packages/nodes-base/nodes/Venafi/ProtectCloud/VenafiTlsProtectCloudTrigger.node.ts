@@ -17,10 +17,9 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		icon: 'file:../venafi.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Venafi events occure',
+		description: 'Starts the workflow when Venafi events occur',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​ Trigger',
-			color: '#000000',
+			name: 'Venafi TLS Protect Cloud Trigger',
 		},
 		credentials: [
 			{
@@ -87,7 +86,10 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				const activity = activitytypes.find(({ key }: { key: string }) => key === resource) as {
 					values: [{ key: string; readableName: string }];
 				};
-				const subActivities = activity.values.map(({ key, readableName }) => ({ name: readableName, value: key }));
+				const subActivities = activity.values.map(({ key, readableName }) => ({
+					name: readableName,
+					value: key,
+				}));
 				subActivities.unshift({ name: '[All]', value: '*' });
 				return subActivities;
 			},
@@ -137,7 +139,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					},
 				};
 
-				const responseData = await venafiApiRequest.call(this, 'POST', `/v1/connectors`, body);
+				const responseData = await venafiApiRequest.call(this, 'POST', '/v1/connectors', body);
 
 				if (responseData.id === undefined) {
 					// Required data is missing so was not successful

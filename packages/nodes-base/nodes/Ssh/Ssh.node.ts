@@ -1,8 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -248,8 +246,8 @@ export class Ssh implements INodeType {
 
 		const returnItems: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const authentication = this.getNodeParameter('authentication', 0) as string;
 
 		const temporaryFiles: string[] = [];
@@ -278,7 +276,7 @@ export class Ssh implements INodeType {
 					username: credentials.username as string,
 					port: credentials.port as number,
 					privateKey: path,
-				} as any; // tslint:disable-line: no-any
+				} as any;
 
 				if (credentials.passphrase) {
 					options.passphrase = credentials.passphrase as string;
@@ -304,10 +302,7 @@ export class Ssh implements INodeType {
 
 					if (resource === 'file') {
 						if (operation === 'download') {
-							const dataPropertyNameDownload = this.getNodeParameter(
-								'binaryPropertyName',
-								i,
-							) as string;
+							const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 							const parameterPath = this.getNodeParameter('path', i) as string;
 
 							const { path } = await file({ prefix: 'n8n-ssh-' });
@@ -332,7 +327,7 @@ export class Ssh implements INodeType {
 
 							items[i] = newItem;
 
-							const data = await readFile(path as string);
+							const data = await readFile(path);
 
 							items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 								data,
@@ -352,9 +347,9 @@ export class Ssh implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
-							const binaryData = item.binary[propertyNameUpload] as IBinaryData;
+							const binaryData = item.binary[propertyNameUpload];
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(

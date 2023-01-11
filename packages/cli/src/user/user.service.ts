@@ -1,11 +1,12 @@
-/* eslint-disable import/no-cycle */
 import { EntityManager, In } from 'typeorm';
-import { Db } from '..';
-import { User } from '../databases/entities/User';
+import * as Db from '@/Db';
+import { User } from '@db/entities/User';
 
 export class UserService {
 	static async get(user: Partial<User>): Promise<User | undefined> {
-		return Db.collections.User.findOne(user);
+		return Db.collections.User.findOne(user, {
+			relations: ['globalRole'],
+		});
 	}
 
 	static async getByIds(transaction: EntityManager, ids: string[]) {
