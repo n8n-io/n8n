@@ -105,7 +105,8 @@ export async function initTestServer({
 	const logger = getLogger();
 	LoggerProxy.init(logger);
 
-	await initTestTelemetry();
+	// Pre-requisite: Mock the telemetry module before calling.
+	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
 
 	testServer.app.use(bodyParser.json());
 	testServer.app.use(bodyParser.urlencoded({ extended: true }));
@@ -220,13 +221,6 @@ export async function initTestServer({
 	}
 
 	return testServer.app;
-}
-
-/**
- * Pre-requisite: Mock the telemetry module before calling.
- */
-export async function initTestTelemetry() {
-	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
 }
 
 /**
