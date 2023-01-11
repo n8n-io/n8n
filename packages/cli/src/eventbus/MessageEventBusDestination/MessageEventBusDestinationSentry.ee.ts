@@ -90,7 +90,7 @@ export class MessageEventBusDestinationSentry
 		} catch (error) {
 			console.log(error);
 		}
-		return new Promise(() => sendResult);
+		return sendResult;
 	}
 
 	serialize(): MessageEventBusDestinationSentryOptions {
