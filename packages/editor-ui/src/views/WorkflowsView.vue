@@ -121,7 +121,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, POSTHOG_ASSUMPTION_TEST, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { ITag, IUser, IWorkflowDb } from '@/Interface';
@@ -177,7 +177,7 @@ export default mixins(showMessage, debounceHelper).extend({
 			return !!this.workflowsStore.activeWorkflows.length;
 		},
 		isDemoTest(): boolean {
-			return window.posthog?.getFeatureFlag?.('adore-assumption-tests') === 'assumption-demo';
+			return window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-demo';
 		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [

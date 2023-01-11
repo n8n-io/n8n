@@ -185,6 +185,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
+	POSTHOG_ASSUMPTION_TEST,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -2443,7 +2444,7 @@ export default mixins(
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.('adore-assumption-tests') === 'assumption-video') {
+			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
