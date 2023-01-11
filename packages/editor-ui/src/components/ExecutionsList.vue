@@ -91,10 +91,22 @@
 								</span>
 								<i18n :path="getStatusTextTranslationPath(execution)">
 									<template #status>
-										<span :class="$style.status">{{ getStatusText(execution) }}</span>
+										<n8n-tooltip v-if="isWaitTillIndefinite(execution)" placement="top">
+											<template #content>
+												<span>{{
+													$locale.baseText(
+														'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+													)
+												}}</span>
+											</template>
+											<span :class="$style.status">{{ getStatusText(execution) }}</span>
+										</n8n-tooltip>
+										<span v-else :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
 									<template #time>
-										<span v-if="execution.waitTill">{{ formatDate(execution.waitTill) }}</span>
+										<span v-if="!isWaitTillIndefinite(execution)">{{
+											formatDate(execution.waitTill)
+										}}</span>
 										<span
 											v-else-if="execution.stoppedAt !== null && execution.stoppedAt !== undefined"
 										>
@@ -129,7 +141,12 @@
 							</span>
 						</td>
 						<td>
-							<font-awesome-icon v-if="execution.mode === 'manual'" icon="flask" />
+							<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+								<template #content>
+									<span>{{ $locale.baseText('executionsList.test') }}</span>
+								</template>
+								<font-awesome-icon icon="flask" />
+							</n8n-tooltip>
 						</td>
 						<td>
 							<div :class="$style.actionsContainer">
@@ -235,7 +252,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS } from '@/constants';
+import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
@@ -862,6 +879,12 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				);
 			}
 			this.isDataLoading = true;
+		},
+		isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
+			if (!execution.waitTill) {
+				return false;
+			}
+			return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
 		},
 	},
 });
