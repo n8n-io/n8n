@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import { INodeCredentials } from './Interfaces';
 
 // ===============================
@@ -7,7 +8,6 @@ import { INodeCredentials } from './Interfaces';
 export enum EventMessageTypeNames {
 	generic = '$$EventMessage',
 	audit = '$$EventMessageAudit',
-	user = '$$EventMessageUser',
 	confirm = '$$EventMessageConfirm',
 	workflow = '$$EventMessageWorkflow',
 	node = '$$EventMessageNode',
@@ -18,6 +18,25 @@ export enum MessageEventBusDestinationTypeNames {
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
 	syslog = '$$MessageEventBusDestinationSyslog',
+}
+
+// ===============================
+// Event Message Interfaces
+// ===============================
+
+export interface IAbstractEventMessage {
+	__type: EventMessageTypeNames;
+
+	id: string;
+
+	ts: DateTime;
+
+	eventName: string;
+
+	message: string;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	payload: any;
 }
 
 // ===============================
