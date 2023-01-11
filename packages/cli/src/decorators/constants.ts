@@ -1,2 +1,2 @@
-export const ROUTES = Symbol('controller_routes');
-export const BASE_PATH = Symbol('controller_base_path');
+export const CONTROLLER_ROUTES = 'CONTROLLER_ROUTES';
+export const CONTROLLER_BASE_PATH = 'CONTROLLER_BASE_PATH';

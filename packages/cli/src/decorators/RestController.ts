@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { BASE_PATH } from './constants';
+import { CONTROLLER_BASE_PATH } from './constants';
 
 export const RestController =
 	(basePath: `/${string}` = '/'): ClassDecorator =>
 	(target: object) => {
-		Reflect.defineMetadata(BASE_PATH, basePath, target);
+		Reflect.defineMetadata(CONTROLLER_BASE_PATH, basePath, target);
 	};
