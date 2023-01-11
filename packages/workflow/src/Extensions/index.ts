@@ -5,3 +5,5 @@ export {
 	hasNativeMethod,
 	extendTransform,
 } from './ExpressionExtension';
+
+export { EXTENSION_OBJECTS as ExpressionExtensions } from './ExpressionExtension';
