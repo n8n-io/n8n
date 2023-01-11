@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SpotifyOAuth2Api implements ICredentialType {
 	name = 'spotifyOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Spotify OAuth2 API';
+
 	documentationUrl = 'spotify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Spotify Server',

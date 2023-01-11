@@ -13,7 +13,7 @@ export class WhatsApp implements INodeType {
 		subtitle: '={{ $parameter["resource"] + ": " + $parameter["operation"] }}',
 		description: 'Access WhatsApp API',
 		defaults: {
-			name: 'WhatsApp',
+			name: 'WhatsApp Business Cloud',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -351,11 +351,7 @@ export class GraphQL implements INodeType {
 					method: requestMethod,
 					uri: endpoint,
 					simple: false,
-					rejectUnauthorized: !this.getNodeParameter(
-						'allowUnauthorizedCerts',
-						itemIndex,
-						false,
-					) as boolean,
+					rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false),
 				};
 
 				// Add credentials if any are set
@@ -372,7 +368,7 @@ export class GraphQL implements INodeType {
 					if (!requestOptions.qs) {
 						requestOptions.qs = {};
 					}
-					requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
+					requestOptions.qs[httpQueryAuth.name as string] = httpQueryAuth.value;
 				}
 				if (httpDigestAuth !== undefined) {
 					requestOptions.auth = {
@@ -430,7 +426,7 @@ export class GraphQL implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 				if (responseFormat === 'string') {
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,

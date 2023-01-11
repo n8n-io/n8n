@@ -19,6 +19,13 @@ export class CompareDatasets implements INodeType {
 		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [
 			{
+				displayName:
+					'Items from different branches are paired together when the fields below match. If paired, the rest of the fields are compared to determine whether the items are the same or different',
+				name: 'infoBox',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Fields to Match',
 				name: 'mergeByFields',
 				type: 'fixedCollection',
@@ -133,6 +140,14 @@ export class CompareDatasets implements INodeType {
 							"Fields that shouldn't be included when checking whether two items are the same",
 					},
 					{
+						displayName: 'Fuzzy Compare',
+						name: 'fuzzyCompare',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+					},
+					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
@@ -168,18 +183,18 @@ export class CompareDatasets implements INodeType {
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
 
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		const input1 = checkInput(
 			this.getInputData(0),
-			matchFields.map((pair) => pair.field1 as string),
+			matchFields.map((pair) => pair.field1),
 			(options.disableDotNotation as boolean) || false,
 			'Input A',
 		);
 
 		const input2 = checkInput(
 			this.getInputData(1),
-			matchFields.map((pair) => pair.field2 as string),
+			matchFields.map((pair) => pair.field2),
 			(options.disableDotNotation as boolean) || false,
 			'Input B',
 		);

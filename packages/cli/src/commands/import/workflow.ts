@@ -263,7 +263,7 @@ export class ImportWorkflowsCommand extends Command {
 					);
 
 					if (matchingCredentials.length === 1) {
-						nodeCredentials.id = matchingCredentials[0].id.toString();
+						nodeCredentials.id = matchingCredentials[0].id;
 					}
 
 					// eslint-disable-next-line no-param-reassign

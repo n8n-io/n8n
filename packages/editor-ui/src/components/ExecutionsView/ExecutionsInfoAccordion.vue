@@ -14,11 +14,19 @@
 				<n8n-tooltip :disabled="!isNewWorkflow">
 					<template #content>
 						<div>
-							<n8n-link @click.prevent="onSaveWorkflowClick">{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink') }}</n8n-link>
-							{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
+							<n8n-link @click.prevent="onSaveWorkflowClick">{{
+								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink')
+							}}</n8n-link>
+							{{
+								$locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText')
+							}}
 						</div>
 					</template>
-					<n8n-link @click.prevent="openWorkflowSettings" :class="{[$style.disabled]: isNewWorkflow}" size="small">
+					<n8n-link
+						@click.prevent="openWorkflowSettings"
+						:class="{ [$style.disabled]: isNewWorkflow }"
+						size="small"
+					>
 						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
 					</n8n-link>
 				</n8n-tooltip>
@@ -39,10 +47,10 @@ import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 interface IWorkflowSaveSettings {
-	saveFailedExecutions: boolean,
-	saveSuccessfulExecutions: boolean,
-	saveManualExecutions: boolean,
-};
+	saveFailedExecutions: boolean;
+	saveSuccessfulExecutions: boolean;
+	saveTestExecutions: boolean;
+}
 
 export default mixins(workflowHelpers).extend({
 	name: 'executions-info-accordion',
@@ -62,7 +70,7 @@ export default mixins(workflowHelpers).extend({
 			workflowSaveSettings: {
 				saveFailedExecutions: false,
 				saveSuccessfulExecutions: false,
-				saveManualExecutions: false,
+				saveTestExecutions: false,
 			} as IWorkflowSaveSettings,
 		};
 	},
@@ -78,26 +86,28 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		accordionItems(): Object[] {
 			return [
 				{
 					id: 'productionExecutions',
-					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutions'),
+					label: this.$locale.baseText(
+						'executionsLandingPage.emptyState.accordion.productionExecutions',
+					),
 					icon: this.productionExecutionsIcon.icon,
 					iconColor: this.productionExecutionsIcon.color,
-					tooltip: this.productionExecutionsStatus === 'unknown' ? this.$locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip') : null,
+					tooltip:
+						this.productionExecutionsStatus === 'unknown'
+							? this.$locale.baseText(
+									'executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip',
+							  )
+							: null,
 				},
 				{
 					id: 'manualExecutions',
-					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.manualExecutions'),
-					icon: this.workflowSaveSettings.saveManualExecutions ? 'check' : 'times',
-					iconColor: this.workflowSaveSettings.saveManualExecutions ? 'success' : 'danger',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.testExecutions'),
+					icon: this.workflowSaveSettings.saveTestExecutions ? 'check' : 'times',
+					iconColor: this.workflowSaveSettings.saveTestExecutions ? 'success' : 'danger',
 				},
 			];
 		},
@@ -105,11 +115,13 @@ export default mixins(workflowHelpers).extend({
 			if (this.initiallyExpanded === false) {
 				return false;
 			}
-			return this.workflowSaveSettings.saveFailedExecutions === false ||
-				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
-				this.workflowSaveSettings.saveManualExecutions === false;
+			return (
+				!this.workflowSaveSettings.saveFailedExecutions ||
+				!this.workflowSaveSettings.saveSuccessfulExecutions ||
+				!this.workflowSaveSettings.saveTestExecutions
+			);
 		},
-		productionExecutionsIcon(): { icon: string, color: string } {
+		productionExecutionsIcon(): { icon: string; color: string } {
 			if (this.productionExecutionsStatus === 'saving') {
 				return { icon: 'check', color: 'success' };
 			} else if (this.productionExecutionsStatus === 'not-saving') {
@@ -118,8 +130,11 @@ export default mixins(workflowHelpers).extend({
 			return { icon: 'exclamation-triangle', color: 'warning' };
 		},
 		productionExecutionsStatus(): string {
-			if (this.workflowSaveSettings.saveSuccessfulExecutions === this.workflowSaveSettings.saveFailedExecutions) {
-				if (this.workflowSaveSettings.saveSuccessfulExecutions === true) {
+			if (
+				this.workflowSaveSettings.saveSuccessfulExecutions ===
+				this.workflowSaveSettings.saveFailedExecutions
+			) {
+				if (this.workflowSaveSettings.saveSuccessfulExecutions) {
 					return 'saving';
 				}
 				return 'not-saving';
@@ -131,8 +146,11 @@ export default mixins(workflowHelpers).extend({
 			const workflowSettings = deepCopy(this.workflowsStore.workflowSettings);
 			return workflowSettings;
 		},
-		accordionIcon(): { icon: string, color: string }|null {
-			if (this.workflowSaveSettings.saveManualExecutions !== true || this.productionExecutionsStatus !== 'saving') {
+		accordionIcon(): { icon: string; color: string } | null {
+			if (
+				!this.workflowSaveSettings.saveTestExecutions ||
+				this.productionExecutionsStatus !== 'saving'
+			) {
 				return { icon: 'exclamation-triangle', color: 'warning' };
 			}
 			return null;
@@ -141,7 +159,11 @@ export default mixins(workflowHelpers).extend({
 			return this.workflowsStore.workflowId;
 		},
 		isNewWorkflow(): boolean {
-			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
+			return (
+				!this.currentWorkflowId ||
+				this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+				this.currentWorkflowId === 'new'
+			);
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
@@ -152,9 +174,18 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		updateSettings(workflowSettings: IWorkflowSettings): void {
-			this.workflowSaveSettings.saveFailedExecutions = workflowSettings.saveDataErrorExecution === undefined ?  this.defaultValues.saveFailedExecutions === 'all' : workflowSettings.saveDataErrorExecution === 'all';
-			this.workflowSaveSettings.saveSuccessfulExecutions = workflowSettings.saveDataSuccessExecution === undefined ? this.defaultValues.saveSuccessfulExecutions === 'all' : workflowSettings.saveDataSuccessExecution === 'all';
-			this.workflowSaveSettings.saveManualExecutions = workflowSettings.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : workflowSettings.saveManualExecutions as boolean;
+			this.workflowSaveSettings.saveFailedExecutions =
+				workflowSettings.saveDataErrorExecution === undefined
+					? this.defaultValues.saveFailedExecutions === 'all'
+					: workflowSettings.saveDataErrorExecution === 'all';
+			this.workflowSaveSettings.saveSuccessfulExecutions =
+				workflowSettings.saveDataSuccessExecution === undefined
+					? this.defaultValues.saveSuccessfulExecutions === 'all'
+					: workflowSettings.saveDataSuccessExecution === 'all';
+			this.workflowSaveSettings.saveTestExecutions =
+				workflowSettings.saveManualExecutions === undefined
+					? this.defaultValues.saveManualExecutions
+					: (workflowSettings.saveManualExecutions as boolean);
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {
@@ -178,7 +209,11 @@ export default mixins(workflowHelpers).extend({
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
 				currentId = this.$route.params.name;
 			}
-			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
+			const saved = await this.saveCurrentWorkflow({
+				id: currentId,
+				name: this.workflowName,
+				tags: this.currentWorkflowTagIds,
+			});
 			if (saved) this.settingsStore.fetchPromptsData();
 		},
 	},
@@ -186,7 +221,6 @@ export default mixins(workflowHelpers).extend({
 </script>
 
 <style module lang="scss">
-
 .accordion {
 	background: none;
 	width: 320px;
@@ -208,7 +242,9 @@ export default mixins(workflowHelpers).extend({
 		width: 100%;
 		padding: 0 var(--spacing-l) var(--spacing-s) !important;
 
-		span { width: 100%; }
+		span {
+			width: 100%;
+		}
 	}
 
 	footer {
@@ -224,5 +260,4 @@ export default mixins(workflowHelpers).extend({
 		text-decoration: none;
 	}
 }
-
 </style>

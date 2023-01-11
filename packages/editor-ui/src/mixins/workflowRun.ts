@@ -1,8 +1,4 @@
-import {
-	IExecutionPushResponse,
-	IExecutionResponse,
-	IStartRunData,
-} from '@/Interface';
+import { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
 import {
 	IRunData,
@@ -32,21 +28,15 @@ export const workflowRun = mixins(
 	titleChange,
 ).extend({
 	computed: {
-		...mapStores(
-			useRootStore,
-			useUIStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useRootStore, useUIStore, useWorkflowsStore),
 	},
 	methods: {
 		// Starts to executes a workflow on server.
-		async runWorkflowApi (runData: IStartRunData): Promise<IExecutionPushResponse> {
+		async runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
 			if (this.rootStore.pushConnectionActive === false) {
 				// Do not start if the connection to server is not active
 				// because then it can not receive the data as it executes.
-				throw new Error(
-					this.$locale.baseText('workflowRun.noActiveConnectionToTheServer'),
-				);
+				throw new Error(this.$locale.baseText('workflowRun.noActiveConnectionToTheServer'));
 			}
 
 			this.workflowsStore.subWorkflowExecutionError = null;
@@ -72,7 +62,10 @@ export const workflowRun = mixins(
 
 			return response;
 		},
-		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
+		async runWorkflow(
+			nodeName?: string,
+			source?: string,
+		): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getCurrentWorkflow();
 
 			if (this.uiStore.isActionActive('workflowRunning')) {
@@ -134,7 +127,12 @@ export const workflowRun = mixins(
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
 								execution_type: nodeName ? 'node' : 'workflow',
-								node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+								node_graph_string: JSON.stringify(
+									TelemetryHelpers.generateNodesGraph(
+										workflowData as IWorkflowBase,
+										this.getNodeTypes(),
+									).nodeGraph,
+								),
 								error_node_types: JSON.stringify(trackErrorNodeTypes),
 								errors: JSON.stringify(trackNodeIssues),
 							});
@@ -245,13 +243,10 @@ export const workflowRun = mixins(
 
 				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
-				 return runWorkflowApiResponse;
+				return runWorkflowApiResponse;
 			} catch (error) {
 				this.$titleSet(workflow.name as string, 'ERROR');
-				this.$showError(
-					error,
-					this.$locale.baseText('workflowRun.showError.title'),
-				);
+				this.$showError(error, this.$locale.baseText('workflowRun.showError.title'));
 				return undefined;
 			}
 		},

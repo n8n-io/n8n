@@ -4,7 +4,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BaserowApi implements ICredentialType {
 	name = 'baserowApi';
+
 	displayName = 'Baserow API';
+
+	documentationUrl = 'baserow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

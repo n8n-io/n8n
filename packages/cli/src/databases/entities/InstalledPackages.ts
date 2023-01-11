@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
-import { InstalledNodes } from './InstalledNodes';
+import type { InstalledNodes } from './InstalledNodes';
 import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
@@ -16,7 +16,7 @@ export class InstalledPackages extends AbstractEntity {
 	@Column()
 	authorEmail?: string;
 
-	@OneToMany(() => InstalledNodes, (installedNode) => installedNode.package)
+	@OneToMany('InstalledNodes', 'package')
 	@JoinColumn({ referencedColumnName: 'package' })
 	installedNodes: InstalledNodes[];
 }
