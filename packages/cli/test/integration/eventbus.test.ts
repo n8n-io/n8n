@@ -64,17 +64,16 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 
 async function cleanLogs() {
 	await eventBus.logWriter.getThread()?.cleanLogs();
-	const allMessages = await eventBus.getEvents('all');
+	const allMessages = await eventBus.getEventsAll();
 	expect(allMessages.length).toBe(0);
 }
 
-async function confirmIdsSentUnsent() {
-	const sent = await eventBus.getEvents('sent');
-	const unsent = await eventBus.getEvents('unsent');
+async function confirmIdsSentUnsent(id: string) {
+	const sent = await eventBus.getEventsSent();
+	const unsent = await eventBus.getEventsUnsent();
 	expect(sent.length).toBe(1);
-	expect(sent[0].id).toBe(testMessage.id);
-	expect(unsent.length).toBe(1);
-	expect(unsent[0].id).toBe(testMessageUnsubscribed.id);
+	expect(sent[0].id).toBe(id);
+	expect(unsent.length).toBe(0);
 }
 
 const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message' });
@@ -139,14 +138,14 @@ test('should have a running logwriter process', async () => {
 
 test('should have a clean log', async () => {
 	await eventBus.logWriter.getThread()?.cleanLogs();
-	const allMessages = await eventBus.getEvents('all');
+	const allMessages = await eventBus.getEventsAll();
 	expect(allMessages.length).toBe(0);
 });
 
 test('should have logwriter log messages', async () => {
 	await eventBus.send(testMessage);
-	const sent = await eventBus.getEvents('sent');
-	const unsent = await eventBus.getEvents('unsent');
+	const sent = await eventBus.getEventsSent();
+	const unsent = await eventBus.getEventsUnsent();
 	expect(sent.length).toBeGreaterThan(0);
 	expect(unsent.length).toBe(0);
 	expect(sent.find((e) => e.id === testMessage.id)).toEqual(testMessage);
@@ -209,11 +208,38 @@ test('should send message to syslog ', async () => {
 	});
 
 	await eventBus.send(testMessage);
+
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	expect(mockedSyslogClientLog).toHaveBeenCalled();
+	await confirmIdsSentUnsent(testMessage.id);
+
+	syslogDestination.disable();
+});
+
+test('should confirm send message if there are no subscribers', async () => {
+	config.set('enterprise.features.logStreaming', true);
+	await cleanLogs();
+
+	const syslogDestination = eventBus.destinations[
+		testSyslogDestination.id!
+	] as MessageEventBusDestinationSyslog;
+
+	syslogDestination.enable();
+
+	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
+	mockedSyslogClientLog.mockImplementation((_m, _options, _cb) => {
+		eventBus.confirmSent(testMessage, {
+			id: syslogDestination.id,
+			name: syslogDestination.label,
+		});
+		return syslogDestination.client;
+	});
+
 	await eventBus.send(testMessageUnsubscribed);
 
 	await new Promise((resolve) => setTimeout(resolve, 100));
 	expect(mockedSyslogClientLog).toHaveBeenCalled();
-	await confirmIdsSentUnsent();
+	await confirmIdsSentUnsent(testMessageUnsubscribed.id);
 
 	syslogDestination.disable();
 });
@@ -266,10 +292,9 @@ test('should send message to webhook ', async () => {
 	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
-	await eventBus.send(testMessageUnsubscribed);
 	// not elegant, but since communication happens through emitters, we'll wait for a bit
 	await new Promise((resolve) => setTimeout(resolve, 100));
-	await confirmIdsSentUnsent();
+	await confirmIdsSentUnsent(testMessage.id);
 
 	webhookDestination.disable();
 });
@@ -294,11 +319,10 @@ test('should send message to sentry ', async () => {
 	});
 
 	await eventBus.send(testMessage);
-	await eventBus.send(testMessageUnsubscribed);
 	// not elegant, but since communication happens through emitters, we'll wait for a bit
 	await new Promise((resolve) => setTimeout(resolve, 100));
 	expect(mockedSentryCaptureMessage).toHaveBeenCalled();
-	await confirmIdsSentUnsent();
+	await confirmIdsSentUnsent(testMessage.id);
 
 	sentryDestination.disable();
 });
