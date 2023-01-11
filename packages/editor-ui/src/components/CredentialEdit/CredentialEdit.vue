@@ -110,7 +110,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialsResponse, INodeUpdatePropertiesInformation, IUser } from '@/Interface';
 
 import {
 	CredentialInformation,
@@ -138,7 +138,7 @@ import CredentialSharing from './CredentialSharing.ee.vue';
 import SaveButton from '../SaveButton.vue';
 import Modal from '../Modal.vue';
 import InlineNameEdit from '../InlineNameEdit.vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import { CREDENTIAL_EDIT_MODAL_KEY, EnterpriseEditionFeature } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 import FeatureComingSoon from '../FeatureComingSoon.vue';
 import { getCredentialPermissions, IPermissions } from '@/permissions';
@@ -154,6 +154,7 @@ import {
 	isValidCredentialResponse,
 	getNodeAuthOptions,
 	getNodeCredentialForAuthType,
+	getMainAuthField,
 } from '@/utils';
 
 interface NodeAccessMap {
@@ -1017,6 +1018,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 						},
 						{},
 					);
+					// Update current node auth type so credentials dropdown can be displayed properly
+					if (this.ndvStore.activeNode) {
+						const nodeAuthField = getMainAuthField(this.activeNodeType);
+						if (nodeAuthField) {
+							const updateInformation = {
+								name: this.ndvStore.activeNode.name,
+								properties: {
+									parameters: {
+										...this.ndvStore.activeNode.parameters,
+										[nodeAuthField.name]: type,
+									},
+								} as IDataObject,
+							} as INodeUpdatePropertiesInformation;
+							this.workflowsStore.updateNodeProperties(updateInformation);
+						}
+					}
 				}
 			}
 		},
