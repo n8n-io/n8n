@@ -293,6 +293,51 @@ export class Jira implements INodeType {
 
 				return { results: returnData };
 			},
+
+			// Get all the custom fields to display them to user so that he can
+			// select them easily
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const operation = this.getCurrentNodeParameter('operation') as string;
+				let projectId: string;
+				let issueTypeId: string;
+				if (operation === 'create') {
+					projectId = this.getCurrentNodeParameter('project', { extractValue: true }) as string;
+					issueTypeId = this.getCurrentNodeParameter('issueType', { extractValue: true }) as string;
+				} else {
+					const issueKey = this.getCurrentNodeParameter('issueKey') as string;
+					const res = await jiraSoftwareCloudApiRequest.call(
+						this,
+						`/api/2/issue/${issueKey}`,
+						'GET',
+						{},
+						{},
+					);
+					projectId = res.fields.project.id;
+					issueTypeId = res.fields.issuetype.id;
+				}
+
+				const res = await jiraSoftwareCloudApiRequest.call(
+					this,
+					`/api/2/issue/createmeta?projectIds=${projectId}&issueTypeIds=${issueTypeId}&expand=projects.issuetypes.fields`,
+					'GET',
+				);
+
+				const fields = res.projects
+					.find((o: any) => o.id === projectId)
+					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
+
+				for (const key of Object.keys(fields)) {
+					const field = fields[key];
+					if (field.schema && Object.keys(field.schema).includes('customId')) {
+						returnData.push({
+							name: field.name,
+							value: field.key || field.fieldId,
+						});
+					}
+				}
+				return { results: returnData };
+			},
 		},
 		loadOptions: {
 			// Get all the labels to display them to user so that he can
@@ -559,6 +604,12 @@ export class Jira implements INodeType {
 						const customFields = (additionalFields.customFieldsUi as IDataObject)
 							.customFieldsValues as IDataObject[];
 						if (customFields) {
+							// resolve resource locator fieldId value
+							customFields.forEach((cf) => {
+								if (typeof cf.fieldId !== 'string') {
+									cf.fieldId = ((cf.fieldId as IDataObject).value as string).trim();
+								}
+							});
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
 								{},
@@ -677,6 +728,12 @@ export class Jira implements INodeType {
 						const customFields = (updateFields.customFieldsUi as IDataObject)
 							.customFieldsValues as IDataObject[];
 						if (customFields) {
+							// resolve resource locator fieldId value
+							customFields.forEach((cf) => {
+								if (typeof cf.fieldId !== 'string') {
+									cf.fieldId = ((cf.fieldId as IDataObject).value as string).trim();
+								}
+							});
 							const data = customFields.reduce(
 								(obj, value) => Object.assign(obj, { [`${value.fieldId}`]: value.fieldValue }),
 								{},

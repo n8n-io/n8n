@@ -255,16 +255,41 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'fieldId',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: ['project'],
-								},
-								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-								default: '',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['project'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Field Value',
@@ -484,16 +509,41 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'fieldId',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: ['issueKey'],
-								},
-								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-								default: '',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['issueKey'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Field Value',
