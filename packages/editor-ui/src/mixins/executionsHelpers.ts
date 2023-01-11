@@ -1,6 +1,6 @@
 import { IExecutionsSummary } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
-import dateFormat from 'dateformat';
+import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { genericHelpers } from './genericHelpers';
@@ -35,7 +35,7 @@ export const executionHelpers = mixins(genericHelpers).extend({
 		getExecutionUIDetails(execution: IExecutionsSummary): IExecutionUIData {
 			const status = {
 				name: 'unknown',
-				startTime: this.formatDate(new Date(execution.startedAt)),
+				startTime: this.formatDate(execution.startedAt),
 				label: 'Status unknown',
 				runningTime: '',
 			};
@@ -72,11 +72,9 @@ export const executionHelpers = mixins(genericHelpers).extend({
 
 			return status;
 		},
-		formatDate(date: Date) {
-			if (date.getFullYear() === new Date().getFullYear()) {
-				return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmm');
-			}
-			return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmm yyyy');
+		formatDate(fullDate: Date | string | number) {
+			const { date, time } = this.convertToDisplayDate(fullDate);
+			return locale.baseText('executionsList.started', { interpolate: { time, date } });
 		},
 	},
 });
