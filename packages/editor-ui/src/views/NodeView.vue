@@ -167,7 +167,6 @@ import type {
 	jsPlumbInstance,
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import once from 'lodash/once';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -2441,9 +2440,6 @@ export default mixins(
 			this.historyStore.reset();
 			this.workflowsStore.activeWorkflowExecution = null;
 			this.stopLoading();
-			setTimeout(() => {
-				this.canvasStore.zoomToFit();
-			}, 0);
 		},
 		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
@@ -2452,16 +2448,8 @@ export default mixins(
 				// Inject welcome sticky note and zoom to fit
 
 				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					const collisionPadding = NodeViewUtils.GRID_SIZE + NodeViewUtils.NODE_SIZE;
 					// Position the welcome sticky left to the added trigger node
-					let position: XYPosition = [450, 250];
-
-					position[0] -=
-						NodeViewUtils.WELCOME_STICKY_NODE.parameters.width + NodeViewUtils.GRID_SIZE * 4;
-					position = NodeViewUtils.getNewNodePosition(this.nodes, position, [
-						collisionPadding,
-						collisionPadding,
-					]);
+					const position: XYPosition = [50, 250];
 
 					await this.addNodes([
 						{
@@ -2475,7 +2463,11 @@ export default mixins(
 							position,
 						},
 					]);
-					this.$telemetry.track('welcome note inserted');
+					setTimeout(() => {
+						this.canvasStore.zoomToFit();
+						this.canvasStore.canvasAddButtonPosition = [500, 350];
+						this.$telemetry.track('welcome note inserted');
+					}, 0);
 				}
 			}
 		},
