@@ -91,7 +91,10 @@ export default mixins(restApi, showMessage).extend({
 	async mounted() {
 		this.isDataLoading = true;
 		try {
-			const eventFetchResult = await this.restApi().getExecutionEvents(this.executionId);
+			const eventFetchResult = await this.restApi().makeRestApiRequest(
+				'GET',
+				'/eventbus/execution/' + id,
+			);
 			const uniqueEvents = eventFetchResult.filter(
 				(event: IAbstractEventMessage, index: number, self: IAbstractEventMessage[]) =>
 					index === self.findIndex((t) => t.id === event.id),

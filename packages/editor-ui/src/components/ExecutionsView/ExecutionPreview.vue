@@ -1,6 +1,6 @@
 <template>
 	<div
-		v-if="executionUIDetails && executionUIDetails.name === 'running'"
+		v-if="executionUIDetails && executionUIDetails?.name === 'running'"
 		:class="$style.runningInfo"
 	>
 		<div :class="$style.spinner">
@@ -20,34 +20,44 @@
 		>
 			<div>
 				<n8n-text size="large" color="text-base" :bold="true">{{
-					executionUIDetails.startTime
+					executionUIDetails?.startTime
 				}}</n8n-text
 				><br />
 				<n8n-spinner
-					v-if="executionUIDetails.name === 'running'"
+					v-if="executionUIDetails?.name === 'running'"
 					size="small"
 					:class="[$style.spinner, 'mr-4xs']"
 				/>
-				<n8n-text size="medium" :class="[$style.status, $style[executionUIDetails.name]]">{{
-					executionUIDetails.label
-				}}</n8n-text>
-				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+				<n8n-text
+					size="medium"
+					:class="[$style.status, $style[executionUIDetails?.name ?? 'no name']]"
+					>{{ executionUIDetails?.label }}</n8n-text
+				>
+				<n8n-text v-if="executionUIDetails?.name === 'running'" color="text-base" size="medium">
 					{{
 						$locale.baseText('executionDetails.runningTimeRunning', {
-							interpolate: { time: executionUIDetails.runningTime },
+							interpolate: { time: executionUIDetails?.runningTime },
 						})
 					}}
 					| ID#{{ activeExecution.id }}
 				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="medium">
+				<n8n-text
+					v-else-if="executionUIDetails?.name !== 'waiting'"
+					color="text-base"
+					size="medium"
+				>
 					{{
 						$locale.baseText('executionDetails.runningTimeFinished', {
-							interpolate: { time: executionUIDetails.runningTime },
+							interpolate: { time: executionUIDetails?.runningTime ?? 'unknown' },
 						})
 					}}
 					| ID#{{ activeExecution.id }}
 				</n8n-text>
-				<n8n-text v-else-if="executionUIDetails.name === 'waiting'" color="text-base" size="medium">
+				<n8n-text
+					v-else-if="executionUIDetails?.name === 'waiting'"
+					color="text-base"
+					size="medium"
+				>
 					| ID#{{ activeExecution.id }}
 				</n8n-text>
 				<br /><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size="medium">
@@ -67,8 +77,16 @@
 				</n8n-text>
 			</div>
 			<div>
+				<span>
+					<n8n-icon-button
+						icon="list"
+						size="small"
+						:title="$locale.baseText('executionEvents.buttonLabel')"
+						@click.stop="() => getExecutionEvents(activeExecution?.id)"
+					/>
+				</span>
 				<el-dropdown
-					v-if="executionUIDetails.name === 'error'"
+					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
 					class="mr-xs"
 					@command="handleRetryClick"
@@ -122,6 +140,7 @@ import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { Dropdown as ElDropdown } from 'element-ui';
+import { IAbstractEventMessage } from 'n8n-workflow';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
@@ -171,6 +190,28 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
 			if (retryDropdown && event.relatedTarget === null) {
 				retryDropdown.hide();
+			}
+		},
+		async getExecutionEvents(id?: string) {
+			if (!id) {
+				return;
+			}
+			try {
+				const eventFetchResult = await this.restApi().makeRestApiRequest(
+					'GET',
+					'/eventbus/execution/' + id,
+				);
+				const uniqueEvents = eventFetchResult.filter(
+					(event: IAbstractEventMessage, index: number, self: IAbstractEventMessage[]) =>
+						index === self.findIndex((t) => t.id === event.id),
+				);
+				console.log(uniqueEvents);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.getExecutionEvents.title'),
+				);
+				return;
 			}
 		},
 	},

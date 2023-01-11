@@ -205,7 +205,6 @@ export const restApi = Vue.extend({
 				getBinaryUrl: (dataPath, mode): string =>
 					self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}?mode=${mode}`,
 
-				// Returns all the available timezones
 				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
 					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution/' + id);
 				},

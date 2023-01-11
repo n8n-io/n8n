@@ -491,7 +491,7 @@
 	"executionEvents.table.workflowName": "Workflow",
 	"executionEvents.table.nodeName": "Node / Workflow",
 	"executionEvents.noData": "No events found. This either means the execution never ran, or that it ran too long ago for the event logs to still keep a record.",
-	"executionEvents.buttonLabel": "View execution event log",
+	"executionEvents.buttonLabel": "Try updating from event log",
 	"executionSidebar.executionName": "Execution {id}",
 	"executionSidebar.searchPlaceholder": "Search executions...",
 	"executionView.onPaste.title": "Cannot paste here",
