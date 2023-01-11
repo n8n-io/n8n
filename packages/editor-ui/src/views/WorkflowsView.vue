@@ -16,7 +16,7 @@
 				{{ $locale.baseText('workflows.viewDemoNotice') }}
 
 				<template #trailingContent>
-					<n8n-link to="/collections/7" size="small" theme="secondary" bold underline>
+					<n8n-link size="small" theme="secondary" bold underline @click="goToTemplates">
 						{{ $locale.baseText('workflows.viewDemo') }}
 					</n8n-link>
 				</template>
@@ -208,6 +208,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		goToTemplates() {
 			if (this.isDemoTest) {
 				this.$router.push('/collections/7');
+				this.$telemetry.track('User clicked on inspect demo workflow', { location: this.allWorkflows.length ? 'workflows': 'start_page' });
 			} else {
 				this.$router.push({ name: VIEWS.TEMPLATES });
 			}
