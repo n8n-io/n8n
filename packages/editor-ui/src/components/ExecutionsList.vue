@@ -86,7 +86,7 @@
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
-								<span v-if="execution.stoppedAt === undefined" :class="$style.spinner">
+								<span v-if="getStatus(execution) === 'running'" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
 								<i18n
@@ -94,17 +94,7 @@
 									:path="getStatusTextTranslationPath(execution)"
 								>
 									<template #status>
-										<n8n-tooltip v-if="isWaitTillIndefinite(execution)" placement="top">
-											<template #content>
-												<span>{{
-													$locale.baseText(
-														'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
-													)
-												}}</span>
-											</template>
-											<span :class="$style.status">{{ getStatusText(execution) }}</span>
-										</n8n-tooltip>
-										<span v-else :class="$style.status">{{ getStatusText(execution) }}</span>
+										<span :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
 									<template #time>
 										<span v-if="execution.waitTill">{{ formatDate(execution.waitTill) }}</span>
@@ -122,7 +112,12 @@
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n>
-								<span v-else>{{ $locale.baseText('executionsList.statusWaiting') }}</span>
+								<n8n-tooltip v-else placement="top">
+									<template #content>
+										<span>{{ getStatusTooltipText(execution) }}</span>
+									</template>
+									<span :class="$style.status">{{ getStatusText(execution) }}</span>
+								</n8n-tooltip>
 							</div>
 						</td>
 						<td>
@@ -271,6 +266,8 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+
+type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'ExecutionsList',
@@ -549,22 +546,6 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				this.deleteExecution(commandData.execution);
 			}
 		},
-		getRowClass(execution: IExecutionsSummary): string {
-			const classes: string[] = [this.$style.execRow];
-			if (execution.waitTill) {
-				classes.push(this.$style.waiting);
-			} else if (execution.stoppedAt === undefined) {
-				classes.push(this.$style.running);
-			} else if (execution.finished) {
-				classes.push(this.$style.success);
-			} else if (execution.stoppedAt !== null) {
-				classes.push(this.$style.failed);
-			} else {
-				classes.push(this.$style.unknown);
-			}
-
-			return classes.join(' ');
-		},
 		getWorkflowName(workflowId: string): string | undefined {
 			const workflow = this.workflows.find((data) => data.id === workflowId);
 			if (workflow === undefined) {
@@ -798,16 +779,35 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 			this.isDataLoading = false;
 		},
+		getStatus(execution: IExecutionsSummary): ExecutionStatus {
+			let status: ExecutionStatus = 'unknown';
+			if (execution.waitTill) {
+				status = 'waiting';
+			} else if (execution.stoppedAt === undefined) {
+				status = 'running';
+			} else if (execution.finished) {
+				status = 'success';
+			} else if (execution.stoppedAt !== null) {
+				status = 'failed';
+			} else {
+				status = 'unknown';
+			}
+			return status;
+		},
+		getRowClass(execution: IExecutionsSummary): string {
+			return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
+		},
 		getStatusText(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
 			let text = '';
 
-			if (entry.waitTill) {
+			if (status === 'waiting') {
 				text = this.$locale.baseText('executionsList.waiting');
-			} else if (entry.stoppedAt === undefined) {
+			} else if (status === 'running') {
 				text = this.$locale.baseText('executionsList.running');
-			} else if (entry.finished) {
+			} else if (status === 'success') {
 				text = this.$locale.baseText('executionsList.succeeded');
-			} else if (entry.stoppedAt !== null) {
+			} else if (status === 'failed') {
 				text = this.$locale.baseText('executionsList.error');
 			} else {
 				text = this.$locale.baseText('executionsList.unknown');
@@ -816,21 +816,34 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			return text;
 		},
 		getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
 			let path = '';
 
-			if (entry.waitTill) {
+			if (status === 'waiting') {
 				path = 'executionsList.statusWaiting';
-			} else if (entry.stoppedAt === undefined) {
+			} else if (status === 'running') {
 				path = 'executionsList.statusRunning';
-			} else if (entry.finished) {
+			} else if (status === 'success') {
 				path = 'executionsList.statusText';
-			} else if (entry.stoppedAt !== null) {
+			} else if (status === 'failed') {
 				path = 'executionsList.statusText';
 			} else {
 				path = 'executionsList.statusUnknown';
 			}
 
 			return path;
+		},
+		getStatusTooltipText(entry: IExecutionsSummary): string {
+			const status = this.getStatus(entry);
+			let text = '';
+
+			if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
+				text = this.$locale.baseText(
+					'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+				);
+			}
+
+			return text;
 		},
 		async stopExecution(activeExecutionId: string) {
 			try {
@@ -953,6 +966,10 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 
 	.failed & {
 		color: var(--color-danger);
+	}
+
+	.waiting & {
+		color: var(--color-secondary);
 	}
 
 	.success & {
