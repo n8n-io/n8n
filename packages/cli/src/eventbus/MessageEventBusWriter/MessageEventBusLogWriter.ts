@@ -94,15 +94,6 @@ export class MessageEventBusLogWriter {
 		}
 	}
 
-	/**
-	 *  Delete log files. This is non-reversible!
-	 */
-	// async cleanLogs() {
-	// 	if (this.worker) {
-	// 		this.worker.postMessage({ command: 'cleanLogs', data: {} });
-	// 	}
-	// }
-
 	private async startThread() {
 		if (this.worker) {
 			await this.close();
