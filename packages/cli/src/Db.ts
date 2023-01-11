@@ -132,6 +132,7 @@ export async function init(
 		synchronize: false,
 		logging: loggingOption,
 		maxQueryExecutionTime,
+		migrationsTransactionMode: 'each',
 	});
 
 	connection = await createConnection(connectionOptions);
@@ -151,9 +152,7 @@ export async function init(
 
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
-		await connection.runMigrations({
-			transaction: 'none',
-		});
+		await connection.runMigrations();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
