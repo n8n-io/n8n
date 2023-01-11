@@ -24,11 +24,13 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 	let options: Completion[] = [];
 
 	try {
-		const proxy = resolveParameter(`={{ ${toResolve} }}`);
+		const resolved = resolveParameter(`={{ ${toResolve} }}`);
 
-		if (!proxy || typeof proxy !== 'object' || Array.isArray(proxy)) return null;
+		if (!resolved || typeof resolved !== 'object' || Array.isArray(resolved)) return null;
 
-		options = generateOptions(toResolve, proxy, word);
+		// resolved to proxy
+
+		options = generateOptions(toResolve, resolved, word);
 	} catch (_) {
 		return null;
 	}
