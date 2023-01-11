@@ -298,6 +298,15 @@ export class Expression {
 					throw error;
 				}
 			}
+
+			// temporary divergence until breaking change
+			if (
+				typeof process === 'undefined' &&
+				error instanceof Error &&
+				error.name === 'SyntaxError'
+			) {
+				throw new Error('invalid syntax');
+			}
 		}
 		return null;
 	}
