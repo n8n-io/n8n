@@ -70,6 +70,13 @@ export const description: INodeProperties[] = [
 				description:
 					'Subset of fields to return, supports select into sub fields. Example: <code>selectedFields = "a,e.d.f"</code>',
 			},
+			{
+				displayName: 'Return Table Schema',
+				name: 'returnTableSchema',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to return the table schema instead of the data',
+			},
 		],
 	},
 ];
@@ -89,28 +96,30 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const datasetId = this.getNodeParameter('datasetId', i) as string;
 			const tableId = this.getNodeParameter('tableId', i) as string;
 			const simple = this.getNodeParameter('simple', i) as boolean;
+			const options = this.getNodeParameter('options', i);
 
 			let fields: SchemaField[] = [];
 			const qs: IDataObject = {};
 
 			try {
-				if (simple) {
-					const tableSchema = (
-						await googleApiRequest.call(
-							this,
-							'GET',
-							`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
-							{},
-						)
-					).schema as TableSchema;
+				const tableSchema = (
+					await googleApiRequest.call(
+						this,
+						'GET',
+						`/v2/projects/${projectId}/datasets/${datasetId}/tables/${tableId}`,
+						{},
+					)
+				).schema as TableSchema;
 
-					// console.log(JSON.stringify(tableSchema, null, 2));
+				fields = tableSchema.fields;
 
-					fields = tableSchema.fields;
+				if (options.returnTableSchema) {
+					return [{ json: tableSchema }];
 				}
 
-				const options = this.getNodeParameter('options', i);
-				Object.assign(qs, options);
+				if (options.selectedFields) {
+					qs.selectedFields = options.selectedFields;
+				}
 
 				if (returnAll) {
 					responseData = await googleApiRequestAllItems.call(
