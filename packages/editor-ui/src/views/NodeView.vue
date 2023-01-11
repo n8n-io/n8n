@@ -2472,9 +2472,6 @@ export default mixins(
 				}
 			} else {
 				this.canvasStore.zoomToFit();
-				setTimeout(() => {
-					this.canvasStore.setRecenteredCanvasAddButtonPosition();
-				}, 0);
 			}
 		},
 		async initView(): Promise<void> {

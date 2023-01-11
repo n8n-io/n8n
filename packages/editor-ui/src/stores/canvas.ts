@@ -86,6 +86,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomToFit = () => {
+		setRecenteredCanvasAddButtonPosition();
 		const nodes = getNodesWithPlaceholderNode();
 		if (!nodes.length) {
 			// some unknown workflow executions
@@ -93,7 +94,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		}
 		const { zoomLevel, offset } = getZoomToFit(nodes, !isDemo.value);
 		setZoomLevel(zoomLevel, offset);
-		setRecenteredCanvasAddButtonPosition();
 	};
 
 	const wheelMoveWorkflow = (e: WheelEvent) => {
