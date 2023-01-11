@@ -1362,7 +1362,7 @@ return 0;`,
 				}
 				return this.prepareOutputData(newItems);
 			} else if (operation === 'summarize') {
-				return await summarize.execute.call(this, items);
+				return summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}

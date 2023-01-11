@@ -6,7 +6,15 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-type AggregationType = 'append' | 'concatenate' | 'count' | 'countUnique' | 'max' | 'min' | 'sum';
+type AggregationType =
+	| 'append'
+	| 'averege'
+	| 'concatenate'
+	| 'count'
+	| 'countUnique'
+	| 'max'
+	| 'min'
+	| 'sum';
 
 type Aggregation = {
 	aggregation: AggregationType;
@@ -20,16 +28,17 @@ type Aggregation = {
 type Aggregations = Aggregation[];
 
 enum AggregationDisplayNames {
-	append = 'List',
-	concatenate = 'Concatenation',
-	count = 'Count',
-	countUnique = 'Unique count',
-	max = 'Max value',
-	min = 'Min value',
-	sum = 'Sum',
+	append = 'appended_',
+	averege = 'average_',
+	concatenate = 'concatenated_',
+	count = 'count_',
+	countUnique = 'unique_count_',
+	max = 'max_',
+	min = 'min_',
+	sum = 'sum_',
 }
 
-const NUMERICAL_AGGREGATIONS = ['max', 'min', 'sum'];
+const NUMERICAL_AGGREGATIONS = ['averege', 'max', 'min', 'sum'];
 
 export const description: INodeProperties[] = [
 	{
@@ -54,6 +63,10 @@ export const description: INodeProperties[] = [
 							{
 								name: 'Append',
 								value: 'append',
+							},
+							{
+								name: 'Average',
+								value: 'average',
 							},
 							{
 								name: 'Concatenate',
@@ -95,8 +108,9 @@ export const description: INodeProperties[] = [
 						hint: ' Enter the field name as text',
 					},
 					{
-						displayName: 'Ignore Non-Numerical Values',
+						displayName: "Ignore Values That Aren't Numbers",
 						name: 'ignoreNonNumericalValues',
+						description: "Whether this isn't enabled, non-numerical values will cause an error",
 						type: 'boolean',
 						default: false,
 						displayOptions: {
@@ -338,7 +352,7 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 
 	items =
 		entry.ignoreNonNumericalValues && NUMERICAL_AGGREGATIONS.includes(aggregation)
-			? items.filter((item) => typeof item[field] === 'number')
+			? items.filter((item) => typeof item[field] === 'number' && item[field] !== null)
 			: items;
 
 	switch (aggregation) {
@@ -347,6 +361,12 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 				items = items.filter((item) => item[field] || typeof item[field] === 'number');
 			}
 			return items.map((item) => item[field]);
+		case 'averege':
+			return (
+				items.reduce((acc, item) => {
+					return acc + (item[field] as number);
+				}, 0) / items.length
+			);
 		case 'concatenate':
 			const separateBy = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
 			return items
@@ -384,11 +404,7 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 
 function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
 	return fieldsToSummarize.reduce((acc, entry) => {
-		acc[
-			`${AggregationDisplayNames[entry.aggregation as AggregationType]} of ${entry.field}${
-				['append', 'concatenate'].includes(entry.aggregation) ? ' fields' : ''
-			}`
-		] = aggregate(data, entry);
+		acc[`${AggregationDisplayNames[entry.aggregation]}${entry.field}$`] = aggregate(data, entry);
 		return acc;
 	}, {} as IDataObject);
 }
