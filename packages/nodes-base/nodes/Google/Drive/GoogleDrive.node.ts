@@ -2,9 +2,7 @@ import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
@@ -14,20 +12,9 @@ import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
+import { driveSearch, fileSearch, folderSearch } from './SearchFunctions';
 
 const UPLOAD_CHUNK_SIZE = 256 * 1024;
-
-interface GoogleDriveFilesItem {
-	id: string;
-	name: string;
-	mimeType: string;
-	webViewLink: string;
-}
-
-interface GoogleDriveDriveItem {
-	id: string;
-	name: string;
-}
 
 export class GoogleDrive implements INodeType {
 	description: INodeTypeDescription = {
@@ -2035,73 +2022,9 @@ export class GoogleDrive implements INodeType {
 
 	methods = {
 		listSearch: {
-			async fileSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const query: string[] = [];
-				if (filter) {
-					query.push(`name contains '${filter.replace("'", "\\'")}'`);
-				}
-				query.push("mimeType != 'application/vnd.google-apps.folder'");
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
-					q: query.join(' and '),
-					pageToken: paginationToken,
-					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
-					orderBy: 'name_natural',
-				});
-				return {
-					results: res.files.map((i: GoogleDriveFilesItem) => ({
-						name: i.name,
-						value: i.id,
-						url: i.webViewLink,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
-			async folderSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const query: string[] = [];
-				if (filter) {
-					query.push(`name contains '${filter.replace("'", "\\'")}'`);
-				}
-				query.push("mimeType = 'application/vnd.google-apps.folder'");
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/files', undefined, {
-					q: query.join(' and '),
-					pageToken: paginationToken,
-					fields: 'nextPageToken,files(id,name,mimeType,webViewLink)',
-					orderBy: 'name_natural',
-				});
-				return {
-					results: res.files.map((i: GoogleDriveFilesItem) => ({
-						name: i.name,
-						value: i.id,
-						url: i.webViewLink,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
-			async driveSearch(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const res = await googleApiRequest.call(this, 'GET', '/drive/v3/drives', undefined, {
-					q: filter ? `name contains '${filter.replace("'", "\\'")}'` : undefined,
-					pageToken: paginationToken,
-				});
-				return {
-					results: res.drives.map((i: GoogleDriveDriveItem) => ({
-						name: i.name,
-						value: i.id,
-					})),
-					paginationToken: res.nextPageToken,
-				};
-			},
+			fileSearch,
+			folderSearch,
+			driveSearch,
 		},
 	};
 
