@@ -37,7 +37,7 @@ function generateOptions() {
 
 	return emptyKeys.map((key) => {
 		const option: Completion = {
-			label: key,
+			label: key.endsWith('()') ? key.slice(0, -2) : key,
 			type: key.endsWith('()') ? 'function' : 'keyword',
 		};
 

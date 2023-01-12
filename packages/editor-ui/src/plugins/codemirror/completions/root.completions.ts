@@ -38,7 +38,7 @@ function generateOptions() {
 	const options: Completion[] = rootKeys.map((key) => {
 		const option: Completion = {
 			label: key,
-			type: key.endsWith('()') ? 'function' : 'keyword',
+			type: key === '$jmespath' ? 'function' : 'keyword', // @TODO: Extract $jmespath to constant set
 		};
 
 		const info = i18n.rootVars[key];

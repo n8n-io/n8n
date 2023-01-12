@@ -54,7 +54,7 @@ export const nowTodayOptions = () => {
 		const isFunction = typeof descriptor.value === 'function';
 
 		const option: Completion = {
-			label: isFunction ? `${key}()` : key,
+			label: key,
 			type: isFunction ? 'function' : 'keyword',
 		};
 
@@ -74,7 +74,7 @@ export const dateTimeOptions = () => {
 		.sort((a, b) => a.localeCompare(b));
 
 	return keys.map((key) => {
-		const option: Completion = { label: `${key}()`, type: 'function' };
+		const option: Completion = { label: key, type: 'function' };
 		const info = i18n.luxonStatic[key];
 
 		if (info) option.info = info;

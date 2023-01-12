@@ -85,7 +85,7 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 			const isFunction = typeof proxy[key] === 'function';
 
 			const option: Completion = {
-				label: isFunction ? `${key}()` : key,
+				label: key,
 				type: isFunction ? 'function' : 'keyword',
 			};
 

@@ -330,7 +330,7 @@ export class I18nClass {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),
 		$input: this.baseText('codeNodeEditor.completer.$input'),
-		'$jmespath()': this.baseText('codeNodeEditor.completer.$jmespath'),
+		$jmespath: this.baseText('codeNodeEditor.completer.$jmespath'),
 		$json: this.baseText('codeNodeEditor.completer.json'),
 		$itemIndex: this.baseText('codeNodeEditor.completer.$itemIndex'),
 		$now: this.baseText('codeNodeEditor.completer.$now'),
