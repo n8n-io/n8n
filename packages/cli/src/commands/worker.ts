@@ -1,12 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import http from 'http';
 import PCancelable from 'p-cancelable';
@@ -20,6 +16,7 @@ import {
 	IRun,
 	Workflow,
 	LoggerProxy,
+	ErrorReporterProxy as ErrorReporter,
 	sleep,
 } from 'n8n-workflow';
 
@@ -29,7 +26,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
@@ -41,9 +37,25 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
+import * as CrashJournal from '@/CrashJournal';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { N8N_VERSION } from '@/constants';
+import { initErrorHandling } from '@/ErrorReporting';
+
+const exitWithCrash = async (message: string, error: unknown) => {
+	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+	await sleep(2000);
+	process.exit(1);
+};
+
+const exitSuccessFully = async () => {
+	try {
+		await CrashJournal.cleanup();
+	} finally {
+		process.exit();
+	}
+};
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -63,9 +75,6 @@ export class Worker extends Command {
 	} = {};
 
 	static jobQueue: Queue.JobQueue;
-
-	static processExitCode = 0;
-	// static activeExecutions = ActiveExecutions.getInstance();
 
 	/**
 	 * Stop n8n in a graceful way.
@@ -87,10 +96,10 @@ export class Worker extends Command {
 
 			const stopTime = new Date().getTime() + maxStopTime;
 
-			setTimeout(() => {
+			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(Worker.processExitCode);
+				await exitSuccessFully();
 			}, maxStopTime);
 
 			// Wait for active workflow executions to finish
@@ -108,10 +117,10 @@ export class Worker extends Command {
 				await sleep(500);
 			}
 		} catch (error) {
-			LoggerProxy.error('There was an error shutting down n8n.', error);
+			await exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(Worker.processExitCode);
+		await exitSuccessFully();
 	}
 
 	async runJob(job: Queue.Job, nodeTypes: INodeTypes): Promise<Queue.JobResponse> {
@@ -261,20 +270,18 @@ export class Worker extends Command {
 		process.once('SIGTERM', Worker.stopProcess);
 		process.once('SIGINT', Worker.stopProcess);
 
+		await initErrorHandling();
+		await CrashJournal.init();
+
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
 				const { flags } = this.parse(Worker);
 
 				// Start directly with the init of the database to improve startup time
-				const startDbInitPromise = Db.init().catch((error) => {
-					logger.error(`There was an error initializing DB: "${error.message}"`);
-
-					Worker.processExitCode = 1;
-					// @ts-ignore
-					process.emit('SIGINT');
-					process.exit(1);
-				});
+				const startDbInitPromise = Db.init().catch(async (error: Error) =>
+					exitWithCrash('There was an error initializing DB', error),
+				);
 
 				// Make sure the settings exist
 				await UserSettings.prepareUserSettings();
@@ -428,12 +435,7 @@ export class Worker extends Command {
 					});
 				}
 			} catch (error) {
-				logger.error(`Worker process cannot continue. "${error.message}"`);
-
-				Worker.processExitCode = 1;
-				// @ts-ignore
-				process.emit('SIGINT');
-				process.exit(1);
+				await exitWithCrash('Worker process cannot continue.', error);
 			}
 		})();
 	}
