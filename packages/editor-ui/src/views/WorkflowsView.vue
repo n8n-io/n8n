@@ -12,7 +12,7 @@
 		@update:filters="filters = $event"
 	>
 		<template #callout v-if="!hasActiveWorkflows && isDemoTest">
-			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-2xs">
+			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
 				{{ $locale.baseText('workflows.viewDemoNotice') }}
 
 				<template #trailingContent>
