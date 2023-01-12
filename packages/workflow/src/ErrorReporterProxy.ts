@@ -2,7 +2,7 @@ import type { Primitives } from './utils';
 import * as Logger from './LoggerProxy';
 
 export interface ReportingOptions {
-	level?: 'warning' | 'error';
+	level?: 'warning' | 'error' | 'fatal';
 	tags?: Record<string, Primitives>;
 	extra?: Record<string, unknown>;
 }

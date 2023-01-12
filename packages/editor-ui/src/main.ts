@@ -45,7 +45,7 @@ router.afterEach((to, from) => {
 	runExternalHook('main.routeChange', useWebhooksStore(), { from, to });
 });
 
-if (import.meta.env.NODE_ENV !== 'production') {
+if (!import.meta.env.PROD) {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {

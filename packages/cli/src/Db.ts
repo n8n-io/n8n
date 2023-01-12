@@ -44,68 +44,57 @@ export function linkRepository<Entity extends ObjectLiteral>(
 	return getRepository(entityClass, connection.name);
 }
 
+export async function getConnectionOptions(dbType: DatabaseType): Promise<ConnectionOptions> {
+	switch (dbType) {
+		case 'postgresdb':
+			const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
+			const sslCert = (await GenericHelpers.getConfigValue(
+				'database.postgresdb.ssl.cert',
+			)) as string;
+			const sslKey = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.key')) as string;
+			const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
+				'database.postgresdb.ssl.rejectUnauthorized',
+			)) as boolean;
+
+			let ssl: TlsOptions | undefined;
+			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+				ssl = {
+					ca: sslCa || undefined,
+					cert: sslCert || undefined,
+					key: sslKey || undefined,
+					rejectUnauthorized: sslRejectUnauthorized,
+				};
+			}
+
+			return {
+				...getPostgresConnectionOptions(),
+				...(await getOptionOverrides('postgresdb')),
+				ssl,
+			};
+
+		case 'mariadb':
+		case 'mysqldb':
+			return {
+				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
+				...(await getOptionOverrides('mysqldb')),
+				timezone: 'Z', // set UTC as default
+			};
+
+		case 'sqlite':
+			return getSqliteConnectionOptions();
+
+		default:
+			throw new Error(`The database "${dbType}" is currently not supported!`);
+	}
+}
+
 export async function init(
 	testConnectionOptions?: ConnectionOptions,
 ): Promise<IDatabaseCollections> {
 	if (isInitialized) return collections;
 
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-
-	let connectionOptions: ConnectionOptions;
-
-	const entityPrefix = config.getEnv('database.tablePrefix');
-
-	if (testConnectionOptions) {
-		connectionOptions = testConnectionOptions;
-	} else {
-		switch (dbType) {
-			case 'postgresdb':
-				const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-				const sslCert = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.cert',
-				)) as string;
-				const sslKey = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.key',
-				)) as string;
-				const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.rejectUnauthorized',
-				)) as boolean;
-
-				let ssl: TlsOptions | undefined;
-				if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-					ssl = {
-						ca: sslCa || undefined,
-						cert: sslCert || undefined,
-						key: sslKey || undefined,
-						rejectUnauthorized: sslRejectUnauthorized,
-					};
-				}
-
-				connectionOptions = {
-					...getPostgresConnectionOptions(),
-					...(await getOptionOverrides('postgresdb')),
-					ssl,
-				};
-
-				break;
-
-			case 'mariadb':
-			case 'mysqldb':
-				connectionOptions = {
-					...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
-					...(await getOptionOverrides('mysqldb')),
-					timezone: 'Z', // set UTC as default
-				};
-				break;
-
-			case 'sqlite':
-				connectionOptions = getSqliteConnectionOptions();
-				break;
-
-			default:
-				throw new Error(`The database "${dbType}" is currently not supported!`);
-		}
-	}
+	const connectionOptions = testConnectionOptions ?? (await getConnectionOptions(dbType));
 
 	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
 		'database.logging.enabled',
@@ -132,6 +121,7 @@ export async function init(
 		synchronize: false,
 		logging: loggingOption,
 		maxQueryExecutionTime,
+		migrationsTransactionMode: 'each',
 	});
 
 	connection = await createConnection(connectionOptions);
@@ -142,6 +132,7 @@ export async function init(
 		// n8n knows it has changed. Happens only on sqlite.
 		let migrations = [];
 		try {
+			const entityPrefix = config.getEnv('database.tablePrefix');
 			migrations = await connection.query(
 				`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
 			);
@@ -151,9 +142,7 @@ export async function init(
 
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
-		await connection.runMigrations({
-			transaction: 'none',
-		});
+		await connection.runMigrations();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
