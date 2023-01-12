@@ -204,6 +204,25 @@ export const description: INodeProperties[] = [
 				resource: ['itemList'],
 				operation: ['summarize'],
 			},
+			hide: {
+				'/options.outputDataAsObject': [true],
+			},
+		},
+	},
+	{
+		displayName: 'Fields to Group By',
+		name: 'fieldsToSplitBy',
+		type: 'string',
+		placeholder: 'e.g. country, city',
+		default: '',
+		description: 'The name of the input fields that you want to split the summary by',
+		hint: 'Enter the name of the fields as text (separated by commas)',
+		displayOptions: {
+			show: {
+				resource: ['itemList'],
+				operation: ['summarize'],
+				'/options.outputDataAsObject': [true],
+			},
 		},
 	},
 	{
@@ -227,7 +246,7 @@ export const description: INodeProperties[] = [
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Skip row if split field is empty',
+				displayName: 'Ignore items without valid fields to group by',
 				name: 'skipEmptySplitFields',
 				type: 'boolean',
 				default: false,
@@ -280,9 +299,10 @@ export async function execute(
 		skipEmptySplitFields,
 	);
 
-	const result = outputDataAsObject
-		? aggregationResult
-		: aggregationToArray(aggregationResult, fieldsToSplitBy);
+	const result =
+		outputDataAsObject || !fieldsToSplitBy.length
+			? aggregationResult
+			: aggregationToArray(aggregationResult, fieldsToSplitBy);
 
 	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
 
@@ -383,7 +403,7 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 				return acc + (item[field] as number);
 			}, 0);
 		case 'countUnique':
-			return new Set(items.map((item) => item[field])).size;
+			return new Set(items.map((item) => item[field]).filter((item) => item)).size;
 		case 'min':
 			return Math.min(
 				...(items.map((item) => {
@@ -404,7 +424,7 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 
 function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
 	return fieldsToSummarize.reduce((acc, entry) => {
-		acc[`${AggregationDisplayNames[entry.aggregation]}${entry.field}$`] = aggregate(data, entry);
+		acc[`${AggregationDisplayNames[entry.aggregation]}${entry.field}`] = aggregate(data, entry);
 		return acc;
 	}, {} as IDataObject);
 }
