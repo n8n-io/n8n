@@ -75,7 +75,7 @@ export async function handleMatrixCall(
 			if (roomAlias) {
 				body.room_alias_name = roomAlias;
 			}
-			return matrixApiRequest.call(this, 'POST', `/createRoom`, body);
+			return matrixApiRequest.call(this, 'POST', '/createRoom', body);
 		} else if (operation === 'join') {
 			const roomIdOrAlias = this.getNodeParameter('roomIdOrAlias', index) as string;
 			return matrixApiRequest.call(this, 'POST', `/rooms/${roomIdOrAlias}/join`);
@@ -184,7 +184,7 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 
 			let body;
 			const qs: IDataObject = {};
@@ -214,7 +214,7 @@ export async function handleMatrixCall(
 			const uploadRequestResult = await matrixApiRequest.call(
 				this,
 				'POST',
-				`/upload`,
+				'/upload',
 				body,
 				qs,
 				headers,

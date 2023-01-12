@@ -426,7 +426,7 @@ export class GraphQL implements INodeType {
 					response = await this.helpers.request(requestOptions);
 				}
 				if (responseFormat === 'string') {
-					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
+					const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
 					returnItems.push({
 						json: {
 							[dataPropertyName]: response,

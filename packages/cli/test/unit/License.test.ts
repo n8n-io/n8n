@@ -1,13 +1,13 @@
 import { LicenseManager } from '@n8n_io/license-sdk';
 import config from '@/config';
 import { License } from '@/License';
+import { N8N_VERSION } from '@/constants';
 
 jest.mock('@n8n_io/license-sdk');
 
 const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
-const MOCK_N8N_VERSION = '0.27.0';
 const MOCK_ACTIVATION_KEY = 'activation-key';
 const MOCK_FEATURE_FLAG = 'feat:mock';
 const MOCK_MAIN_PLAN_ID = 1234;
@@ -23,7 +23,7 @@ describe('License', () => {
 
 	beforeEach(async () => {
 		license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+		await license.init(MOCK_INSTANCE_ID);
 	});
 
 	test('initializes license manager', async () => {
@@ -31,7 +31,7 @@ describe('License', () => {
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
 			deviceFingerprint: expect.any(Function),
-			productIdentifier: `n8n-${MOCK_N8N_VERSION}`,
+			productIdentifier: `n8n-${N8N_VERSION}`,
 			logger: expect.anything(),
 			loadCertStr: expect.any(Function),
 			saveCertStr: expect.any(Function),

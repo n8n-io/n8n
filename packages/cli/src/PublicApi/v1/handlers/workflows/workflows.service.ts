@@ -20,7 +20,7 @@ export async function getSharedWorkflowIds(user: User): Promise<string[]> {
 		where: { user },
 	});
 
-	return sharedWorkflows.map(({ workflowId }) => workflowId.toString());
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 export async function getSharedWorkflow(
@@ -30,7 +30,7 @@ export async function getSharedWorkflow(
 	return Db.collections.SharedWorkflow.findOne({
 		where: {
 			...(!isInstanceOwner(user) && { user }),
-			...(workflowId && { workflow: { id: workflowId } }),
+			...(workflowId && { workflowId }),
 		},
 		relations: [...insertIf(!config.getEnv('workflowTagsDisabled'), ['workflow.tags']), 'workflow'],
 	});
@@ -40,19 +40,19 @@ export async function getSharedWorkflows(
 	user: User,
 	options: {
 		relations?: string[];
-		workflowIds?: number[];
+		workflowIds?: string[];
 	},
 ): Promise<SharedWorkflow[]> {
 	return Db.collections.SharedWorkflow.find({
 		where: {
 			...(!isInstanceOwner(user) && { user }),
-			...(options.workflowIds && { workflow: { id: In(options.workflowIds) } }),
+			...(options.workflowIds && { workflowId: In(options.workflowIds) }),
 		},
 		...(options.relations && { relations: options.relations }),
 	});
 }
 
-export async function getWorkflowById(id: number): Promise<WorkflowEntity | undefined> {
+export async function getWorkflowById(id: string): Promise<WorkflowEntity | undefined> {
 	return Db.collections.Workflow.findOne({
 		where: { id },
 	});
@@ -62,7 +62,7 @@ export async function getWorkflowById(id: number): Promise<WorkflowEntity | unde
  * Returns the workflow IDs that have certain tags.
  * Intersection! e.g. workflow needs to have all provided tags.
  */
-export async function getWorkflowIdsViaTags(tags: string[]): Promise<number[]> {
+export async function getWorkflowIdsViaTags(tags: string[]): Promise<string[]> {
 	const dbTags = await Db.collections.Tag.find({
 		where: { name: In(tags) },
 		relations: ['workflows'],
@@ -118,7 +118,7 @@ export async function getWorkflowsCount(options: FindManyOptions<WorkflowEntity>
 }
 
 export async function updateWorkflow(
-	workflowId: number,
+	workflowId: string,
 	updateData: WorkflowEntity,
 ): Promise<UpdateResult> {
 	return Db.collections.Workflow.update(workflowId, updateData);

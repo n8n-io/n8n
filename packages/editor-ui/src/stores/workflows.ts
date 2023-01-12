@@ -15,6 +15,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
+	IPushDataUnsavedExecutionFinished,
 	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
@@ -46,6 +47,7 @@ import { useRootStore } from './n8nRootStore';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
+	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
 	getWorkflows,
@@ -885,7 +887,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			this.activeExecutions.unshift(newActiveExecution);
 		},
-		finishActiveExecution(finishedActiveExecution: IPushDataExecutionFinished): void {
+		finishActiveExecution(
+			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
+		): void {
 			// Find the execution to set to finished
 			const activeExecution = this.activeExecutions.find((execution) => {
 				return execution.id === finishedActiveExecution.executionId;
@@ -940,6 +944,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			} catch (error) {
 				throw error;
 			}
+		},
+		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
+			const rootStore = useRootStore();
+			return await getExecutionData(rootStore.getRestApiContext, executionId);
 		},
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);

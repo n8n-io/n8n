@@ -78,7 +78,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode"
+						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
@@ -144,6 +144,7 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -269,6 +270,11 @@ export default mixins(
 		},
 		parentNode(): string | undefined {
 			return this.parentNodes[0];
+		},
+		isExecutableTriggerNode(): boolean {
+			if (!this.activeNodeType) return false;
+
+			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(this.activeNodeType.name);
 		},
 		isTriggerNode(): boolean {
 			return (
