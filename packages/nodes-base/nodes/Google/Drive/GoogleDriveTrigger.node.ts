@@ -90,18 +90,66 @@ export class GoogleDriveTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'File URL or ID',
+				displayName: 'File',
 				name: 'fileToWatch',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'File',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a file...',
+						typeOptions: {
+							searchListMethod: 'fileSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder:
+							'https://docs.google.com/document/d/1ayrVjFMaxJNzNn1farJX1wP0Bqy7h7KpgfxgE1HbznA/edit',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive File URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive File ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/file/d/{{$value}}/view',
+					},
+				],
 				displayOptions: {
 					show: {
 						triggerOn: ['specificFile'],
 					},
 				},
-				default: '',
-				description:
-					'The address of this file when you view it in your browser (or just the ID contained within the URL)',
-				required: true,
 			},
 			{
 				displayName: 'Watch For',
@@ -441,7 +489,9 @@ export class GoogleDriveTrigger implements INodeType {
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = extractId(this.getNodeParameter('fileToWatch') as string);
+			const fileToWatch = extractId(
+				this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
+			);
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
