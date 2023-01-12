@@ -25,7 +25,7 @@ const config = {
 };
 
 if (process.env.CI === 'true') {
-	config.maxWorkers = 2;
+	config.maxWorkers = 1;
 	config.workerIdleMemoryLimit = 2048;
 }
 
