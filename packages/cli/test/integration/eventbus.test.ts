@@ -297,7 +297,6 @@ test('should anonymize audit message to syslog ', async () => {
 		eventBus.logWriter
 			.getWorker()
 			?.on('message', async function handler005(msg: { command: string; data: any }) {
-				console.log(msg);
 				if (msg.command === 'appendMessageToLog') {
 					const sent = await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
