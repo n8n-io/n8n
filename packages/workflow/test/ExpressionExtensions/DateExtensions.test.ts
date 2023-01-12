@@ -47,7 +47,29 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDate() should work on a string', () => {
-			expect(evaluate('={{ "2022-01-03T00:00:00.000+00:00".toDate() }}')).toEqual(new Date(2022, 0, 3));
+			const offsetToString = (input: number) => {
+				let output = '-';
+				if (input < 0) {
+					output = '+';
+					input = -input;
+				}
+
+				output += Math.floor(input / 60)
+					.toString()
+					.padStart(2, '0');
+				output += ':';
+				output += (input % 60).toString().padStart(2, '0');
+
+				return output;
+			};
+
+			expect(
+				evaluate(
+					`={{ "2022-01-03T00:00:00.000${offsetToString(
+						new Date().getTimezoneOffset(),
+					)}".toDate() }}`,
+				),
+			).toEqual(new Date(2022, 0, 3));
 		});
 	});
 });
