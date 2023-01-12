@@ -52,8 +52,9 @@ export function ownerNamespace(this: N8nApp): void {
 				throw new ResponseHelper.BadRequestError('First and last names are mandatory');
 			}
 
-			let owner = await Db.collections.User.findOne(userId, {
+			let owner = await Db.collections.User.findOne({
 				relations: ['globalRole'],
+				where: { id: userId },
 			});
 
 			if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {

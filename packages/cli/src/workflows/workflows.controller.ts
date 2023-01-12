@@ -23,6 +23,7 @@ import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { In } from 'typeorm';
 
 export const workflowsController = express.Router();
 
@@ -61,8 +62,11 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+			newWorkflow.tags = await Db.collections.Tag.find({
 				select: ['id', 'name'],
+				where: {
+					id: In(tagIds),
+				},
 			});
 		}
 
@@ -75,7 +79,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
+			const role = await Db.collections.Role.findOneByOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});

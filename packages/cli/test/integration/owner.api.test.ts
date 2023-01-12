@@ -15,14 +15,12 @@ import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
@@ -37,11 +35,11 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /owner should create owner and enable isInstanceOwnerSetUp', async () => {
@@ -83,7 +81,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(globalRole.scope).toBe('global');
 	expect(apiKey).toBeUndefined();
 
-	const storedOwner = await Db.collections.User.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneByOrFail({ id });
 	expect(storedOwner.password).not.toBe(newOwnerData.password);
 	expect(storedOwner.email).toBe(newOwnerData.email);
 	expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -115,7 +113,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 	expect(id).toBe(ownerShell.id);
 	expect(email).toBe(newOwnerData.email.toLowerCase());
 
-	const storedOwner = await Db.collections.User.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneByOrFail({ id });
 	expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 });
 
@@ -141,7 +139,7 @@ test('POST /owner/skip-setup should persist skipping setup to the DB', async () 
 	const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
 	expect(skipConfig).toBe(true);
 
-	const { value } = await Db.collections.Settings.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneByOrFail({
 		key: 'userManagement.skipInstanceOwnerSetup',
 	});
 	expect(value).toBe('true');

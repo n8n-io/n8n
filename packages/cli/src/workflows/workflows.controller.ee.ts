@@ -17,6 +17,7 @@ import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
+import { In } from 'typeorm';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -130,8 +131,11 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+			newWorkflow.tags = await Db.collections.Tag.find({
 				select: ['id', 'name'],
+				where: {
+					id: In(tagIds),
+				},
 			});
 		}
 
@@ -157,7 +161,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
+			const role = await Db.collections.Role.findOneByOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});

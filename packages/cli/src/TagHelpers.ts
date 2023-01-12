@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { EntityManager, getConnection } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 
+import { getConnection } from '@/Db';
 import { TagEntity } from '@db/entities/TagEntity';
-
-import { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
+import type { ITagToImport, ITagWithCountDb, IWorkflowToImport } from '@/Interfaces';
 
 // ----------------------------------
 //              utils

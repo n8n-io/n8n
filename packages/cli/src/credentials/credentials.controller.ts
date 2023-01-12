@@ -177,7 +177,7 @@ credentialsController.patch(
 
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
-		if (responseData === undefined) {
+		if (responseData === null) {
 			throw new ResponseHelper.NotFoundError(
 				`Credential ID "${credentialId}" could not be found to be updated.`,
 			);

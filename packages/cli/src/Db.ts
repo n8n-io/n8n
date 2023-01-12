@@ -4,12 +4,10 @@
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
 import {
-	Connection,
-	ConnectionOptions,
-	createConnection,
+	DataSource as Connection,
+	DataSourceOptions as ConnectionOptions,
 	EntityManager,
 	EntityTarget,
-	getRepository,
 	LoggerOptions,
 	ObjectLiteral,
 	Repository,
@@ -34,6 +32,8 @@ export const collections = {} as IDatabaseCollections;
 
 export let connection: Connection;
 
+export const getConnection = () => connection!;
+
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
 }
@@ -41,7 +41,7 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 export function linkRepository<Entity extends ObjectLiteral>(
 	entityClass: EntityTarget<Entity>,
 ): Repository<Entity> {
-	return getRepository(entityClass, connection.name);
+	return connection.getRepository(entityClass);
 }
 
 export async function getConnectionOptions(dbType: DatabaseType): Promise<ConnectionOptions> {
@@ -124,7 +124,8 @@ export async function init(
 		migrationsTransactionMode: 'each',
 	});
 
-	connection = await createConnection(connectionOptions);
+	connection = new Connection(connectionOptions);
+	await connection.initialize();
 
 	if (!testConnectionOptions && dbType === 'sqlite') {
 		// This specific migration changes database metadata.
@@ -146,8 +147,9 @@ export async function init(
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
-			await connection.close();
-			connection = await createConnection(connectionOptions);
+			await connection.destroy();
+			connection = new Connection(connectionOptions);
+			await connection.initialize();
 		}
 	}
 

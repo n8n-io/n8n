@@ -25,7 +25,6 @@ import { NodeMailer } from '@/UserManagement/email/NodeMailer';
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
-let testDbName = '';
 let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
@@ -34,8 +33,7 @@ let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	const [
 		fetchedGlobalOwnerRole,
@@ -56,10 +54,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials'],
-		testDbName,
-	);
+	await testDb.truncate(['User', 'SharedCredentials', 'SharedWorkflow', 'Workflow', 'Credentials']);
 
 	jest.mock('@/config');
 
@@ -70,7 +65,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /users should return all users', async () => {
@@ -156,28 +151,28 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-	const user = await Db.collections.User.findOne(userToDelete.id);
-	expect(user).toBeUndefined(); // deleted
+	const user = await Db.collections.User.findOneBy({ id: userToDelete.id });
+	expect(user).toBeNull(); // deleted
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		relations: ['user'],
-		where: { user: userToDelete, role: workflowOwnerRole },
+		where: { userId: userToDelete.id, roleId: workflowOwnerRole.id },
 	});
-	expect(sharedWorkflow).toBeUndefined(); // deleted
+	expect(sharedWorkflow).toBeNull(); // deleted
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOne({
 		relations: ['user'],
-		where: { user: userToDelete, role: credentialOwnerRole },
+		where: { userId: userToDelete.id, roleId: credentialOwnerRole.id },
 	});
-	expect(sharedCredential).toBeUndefined(); // deleted
+	expect(sharedCredential).toBeNull(); // deleted
 
-	const workflow = await Db.collections.Workflow.findOne(savedWorkflow.id);
-	expect(workflow).toBeUndefined(); // deleted
+	const workflow = await Db.collections.Workflow.findOneBy({ id: savedWorkflow.id });
+	expect(workflow).toBeNull(); // deleted
 
 	// TODO: Include active workflow and check whether webhook has been removed
 
-	const credential = await Db.collections.Credentials.findOne(savedCredential.id);
-	expect(credential).toBeUndefined(); // deleted
+	const credential = await Db.collections.Credentials.findOneBy({ id: savedCredential.id });
+	expect(credential).toBeNull(); // deleted
 });
 
 test('DELETE /users/:id should fail to delete self', async () => {
@@ -187,7 +182,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOne(owner.id);
+	const user = await Db.collections.User.findOneBy({ id: owner.id });
 	expect(user).toBeDefined();
 });
 
@@ -202,7 +197,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOne(idToDelete);
+	const user = await Db.collections.User.findOneBy({ id: idToDelete });
 	expect(user).toBeDefined();
 });
 
@@ -226,7 +221,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
 		relations: ['workflow'],
-		where: { user: owner },
+		where: { userId: owner.id },
 	});
 
 	expect(sharedWorkflow.workflow).toBeDefined();
@@ -234,15 +229,15 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['credentials'],
-		where: { user: owner },
+		where: { userId: owner.id },
 	});
 
 	expect(sharedCredential.credentials).toBeDefined();
 	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
-	const deletedUser = await Db.collections.User.findOne(userToDelete);
+	const deletedUser = await Db.collections.User.findOneBy({ id: userToDelete.id });
 
-	expect(deletedUser).toBeUndefined();
+	expect(deletedUser).toBeNull();
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
@@ -342,7 +337,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const member = await Db.collections.User.findOneOrFail(memberShell.id);
+	const member = await Db.collections.User.findOneByOrFail({ id: memberShell.id });
 	expect(member.firstName).toBe(memberData.firstName);
 	expect(member.lastName).toBe(memberData.lastName);
 	expect(member.password).not.toBe(memberData.password);
@@ -487,7 +482,7 @@ test('POST /users should email invites and create user shells but ignore existin
 			expect(error).toBe('Email could not be sent');
 		}
 
-		const storedUser = await Db.collections.User.findOneOrFail(id);
+		const storedUser = await Db.collections.User.findOneByOrFail({ id });
 		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
 			storedUser;
 

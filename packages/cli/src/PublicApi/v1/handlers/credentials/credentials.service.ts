@@ -1,4 +1,3 @@
-import type { FindConditions } from 'typeorm';
 import { UserSettings, Credentials } from 'n8n-core';
 import { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 import * as Db from '@/Db';
@@ -10,17 +9,22 @@ import { ExternalHooks } from '@/ExternalHooks';
 import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
-export async function getCredentials(credentialId: string): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+export async function getCredentials(credentialId: string): Promise<ICredentialsDb | null> {
+	return Db.collections.Credentials.findOneBy({ id: credentialId });
 }
 
 export async function getSharedCredentials(
 	userId: string,
 	credentialId: string,
 	relations?: string[],
-): Promise<SharedCredentials | undefined> {
-	const where: FindConditions<SharedCredentials> = { userId, credentialsId: credentialId };
-	return Db.collections.SharedCredentials.findOne({ where, relations });
+): Promise<SharedCredentials | null> {
+	return Db.collections.SharedCredentials.findOne({
+		where: {
+			userId,
+			credentialsId: credentialId,
+		},
+		relations,
+	});
 }
 
 export async function createCredential(
@@ -53,7 +57,7 @@ export async function saveCredential(
 	user: User,
 	encryptedData: ICredentialsDb,
 ): Promise<CredentialsEntity> {
-	const role = await Db.collections.Role.findOneOrFail({
+	const role = await Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});

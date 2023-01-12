@@ -88,7 +88,7 @@ export async function executeErrorWorkflow(
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		let workflowData;
+		let workflowData: WorkflowEntity | null = null;
 		if (workflowId !== workflowErrorData.workflow.id) {
 			// To make this code easier to understand, we split it in 2 parts:
 			// 1) Fetch the owner of the errored workflows and then
@@ -99,7 +99,7 @@ export async function executeErrorWorkflow(
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow.findOne({ id: workflowId });
+				workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
 			} else {
 				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
 					where: { workflowId, userId: user.id },
@@ -110,10 +110,10 @@ export async function executeErrorWorkflow(
 				}
 			}
 		} else {
-			workflowData = await Db.collections.Workflow.findOne({ id: workflowId });
+			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
 		}
 
-		if (workflowData === undefined) {
+		if (workflowData === null) {
 			// The error workflow could not be found
 			Logger.error(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -254,21 +254,13 @@ export async function saveStaticDataById(
 
 /**
  * Returns the static data of workflow
- *
- * @param {(string)} workflowId The id of the workflow to get static data of
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string) {
-	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
+	const workflowData = await Db.collections.Workflow.findOne({
 		select: ['staticData'],
+		where: { id: workflowId },
 	});
-
-	if (workflowData === undefined) {
-		return {};
-	}
-
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	return workflowData.staticData || {};
+	return workflowData?.staticData ?? {};
 }
 
 /**
@@ -312,7 +304,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials.find({
+					const credentials = await Db.collections.Credentials.findBy({
 						name,
 						type: nodeCredentialType,
 					});
@@ -348,7 +340,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials.findOne({
+				const credentials = await Db.collections.Credentials.findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
@@ -362,7 +354,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials.find({
+				const credsByName = await Db.collections.Credentials.findBy({
 					name: nodeCredentials.name,
 					type: nodeCredentialType,
 				});
@@ -414,14 +406,17 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Db.collections.Role.findOne({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	const workflowOwnerRoleId = await Db.collections.Role.findOne({
+		select: ['id'],
+		where: {
+			name: 'owner',
+			scope: 'workflow',
+		},
+	}).then((role) => role?.id);
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		where: {
-			user,
-			role: workflowOwnerRole,
+			userId: user.id,
+			roleId: workflowOwnerRoleId,
 		},
 		select: ['workflowId'],
 	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));

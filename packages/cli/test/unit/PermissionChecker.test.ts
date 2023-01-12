@@ -25,15 +25,13 @@ import type { SaveCredentialFunction } from '../integration/shared/types';
 import { User } from '@/databases/entities/User';
 import { SharedWorkflow } from '@/databases/entities/SharedWorkflow';
 
-let testDbName = '';
 let mockNodeTypes: INodeTypes;
 let credentialOwnerRole: Role;
 let workflowOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	mockNodeTypes = MockNodeTypes({
 		loaded: {
@@ -51,12 +49,12 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
-	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
+	await testDb.truncate(['SharedWorkflow', 'SharedCredentials']);
+	await testDb.truncate(['User', 'Workflow', 'Credentials']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 describe('PermissionChecker.check()', () => {

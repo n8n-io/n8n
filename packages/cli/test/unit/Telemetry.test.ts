@@ -39,7 +39,7 @@ describe('Telemetry', () => {
 
 	beforeEach(() => {
 		spyTrack.mockClear();
-		telemetry = new Telemetry(instanceId, n8nVersion);
+		telemetry = new Telemetry(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
 			identify: () => {},

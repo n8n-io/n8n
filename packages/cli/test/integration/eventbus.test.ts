@@ -29,7 +29,6 @@ jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let owner: User;
 let unAuthOwnerAgent: SuperAgentTest;
@@ -87,8 +86,7 @@ const testAuditMessage = new EventMessageAudit({
 });
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -119,7 +117,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// await testDb.truncate(['EventDestinations'], testDbName);
+	// await testDb.truncate(['EventDestinations']);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -127,7 +125,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 	await eventBus.close();
 });
 

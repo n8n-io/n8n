@@ -3,7 +3,7 @@ import type { INode, IWorkflowCredentials } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { WorkflowCredentials } from '@/WorkflowCredentials';
 
-// Define a function used to mock the findOne function
+// Define a function used to mock the findOneBy function
 async function mockFind({
 	id,
 	type,
@@ -33,7 +33,7 @@ jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Credentials: {
-				findOne: jest.fn(mockFind),
+				findOneBy: jest.fn(mockFind),
 			},
 		},
 	};
@@ -54,7 +54,7 @@ describe('WorkflowCredentials', () => {
 			`Credentials with name "${credentials.name}" for type "test" miss an ID.`,
 		);
 		expect(WorkflowCredentials([noIdNode])).rejects.toEqual(expectedError);
-		expect(mocked(Db.collections.Credentials.findOne)).toHaveBeenCalledTimes(0);
+		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(0);
 	});
 
 	test('Should return an error if credentials cannot be found in the DB', () => {
@@ -63,7 +63,7 @@ describe('WorkflowCredentials', () => {
 			`Could not find credentials for type "test" with ID "${credentials.id}".`,
 		);
 		expect(WorkflowCredentials([notFoundNode])).rejects.toEqual(expectedError);
-		expect(mocked(Db.collections.Credentials.findOne)).toHaveBeenCalledTimes(1);
+		expect(mocked(Db.collections.Credentials.findOneBy)).toHaveBeenCalledTimes(1);
 	});
 
 	test('Should ignore duplicates', async () => {

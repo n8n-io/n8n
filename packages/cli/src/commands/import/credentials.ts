@@ -14,7 +14,7 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import glob from 'fast-glob';
-import { EntityManager, getConnection } from 'typeorm';
+import type { EntityManager } from 'typeorm';
 import { getLogger } from '@/Logger';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
@@ -100,7 +100,7 @@ export class ImportCredentialsCommand extends Command {
 
 				totalImported = files.length;
 
-				await getConnection().transaction(async (transactionManager) => {
+				await Db.getConnection().transaction(async (transactionManager) => {
 					this.transactionManager = transactionManager;
 					for (const file of files) {
 						const credential = JSON.parse(fs.readFileSync(file, { encoding: 'utf8' }));
@@ -128,7 +128,7 @@ export class ImportCredentialsCommand extends Command {
 				);
 			}
 
-			await getConnection().transaction(async (transactionManager) => {
+			await Db.getConnection().transaction(async (transactionManager) => {
 				this.transactionManager = transactionManager;
 				for (const credential of credentials) {
 					if (typeof credential.data === 'object') {
@@ -187,7 +187,9 @@ export class ImportCredentialsCommand extends Command {
 			where: { name: 'owner', scope: 'global' },
 		});
 
-		const owner = await Db.collections.User.findOne({ globalRole: ownerGlobalRole });
+		const owner =
+			ownerGlobalRole &&
+			(await Db.collections.User.findOneBy({ globalRoleId: ownerGlobalRole.id }));
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
@@ -197,7 +199,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User.findOne(userId);
+		const user = await Db.collections.User.findOneBy({ id: userId });
 
 		if (!user) {
 			throw new Error(`Failed to find user with ID ${userId}`);

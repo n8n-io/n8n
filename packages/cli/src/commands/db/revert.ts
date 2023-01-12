@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
-import { Connection, ConnectionOptions, createConnection } from 'typeorm';
+import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
@@ -34,11 +34,12 @@ export class DbRevertMigrationCommand extends Command {
 				dropSchema: false,
 				logging: ['query', 'error', 'schema'],
 			};
-			connection = await createConnection(connectionOptions);
+			connection = new Connection(connectionOptions);
+			await connection.initialize();
 			await connection.undoLastMigration();
-			await connection.close();
+			await connection.destroy();
 		} catch (error) {
-			if (connection) await connection.close();
+			if (connection?.isInitialized) await connection.destroy();
 
 			console.error('Error reverting last migration. See log messages for details.');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

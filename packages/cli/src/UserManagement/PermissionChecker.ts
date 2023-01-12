@@ -5,11 +5,11 @@ import {
 	Workflow,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindConditions, In } from 'typeorm';
+import { FindOptionsWhere, In } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
-import { getRole, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
+import { getRoleId, getWorkflowOwner, isSharingEnabled } from './UserManagementHelper';
 import { WorkflowsService } from '@/workflows/workflows.services';
 import { UserService } from '@/user/user.service';
 
@@ -28,7 +28,8 @@ export class PermissionChecker {
 
 		// allow if requesting user is instance owner
 
-		const user = await Db.collections.User.findOneOrFail(userId, {
+		const user = await Db.collections.User.findOneOrFail({
+			where: { id: userId },
 			relations: ['globalRole'],
 		});
 
@@ -47,11 +48,11 @@ export class PermissionChecker {
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
-		const credentialsWhere: FindConditions<SharedCredentials> = { userId: In(workflowUserIds) };
+		const credentialsWhere: FindOptionsWhere<SharedCredentials> = { userId: In(workflowUserIds) };
 
 		if (!isSharingEnabled()) {
 			// If credential sharing is not enabled, get only credentials owned by this user
-			credentialsWhere.role = await getRole('credential', 'owner');
+			credentialsWhere.roleId = await getRoleId('credential', 'owner');
 		}
 
 		const credentialSharings = await Db.collections.SharedCredentials.find({

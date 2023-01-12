@@ -10,7 +10,7 @@ import {
 	LoggerProxy,
 	NodeHelpers,
 } from 'n8n-workflow';
-import { FindConditions, FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere, In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -28,11 +28,12 @@ import { CredentialTypes } from '@/CredentialTypes';
 
 export class CredentialsService {
 	static async get(
-		credential: Partial<ICredentialsDb>,
+		where: FindOptionsWhere<ICredentialsDb>,
 		options?: { relations: string[] },
-	): Promise<ICredentialsDb | undefined> {
-		return Db.collections.Credentials.findOne(credential, {
+	): Promise<ICredentialsDb | null> {
+		return Db.collections.Credentials.findOne({
 			relations: options?.relations,
+			where,
 		});
 	}
 
@@ -88,8 +89,8 @@ export class CredentialsService {
 		credentialId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const where: FindConditions<SharedCredentials> = { credentialsId: credentialId };
+	): Promise<SharedCredentials | null> {
+		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -204,7 +205,7 @@ export class CredentialsService {
 	static async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
-	): Promise<ICredentialsDb | undefined> {
+	): Promise<ICredentialsDb | null> {
 		await ExternalHooks().run('credentials.update', [newCredentialData]);
 
 		// Update the credentials in DB
@@ -212,7 +213,7 @@ export class CredentialsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialId);
+		return Db.collections.Credentials.findOneBy({ id: credentialId });
 	}
 
 	static async save(
@@ -226,7 +227,7 @@ export class CredentialsService {
 
 		await ExternalHooks().run('credentials.create', [encryptedData]);
 
-		const role = await Db.collections.Role.findOneOrFail({
+		const role = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'credential',
 		});

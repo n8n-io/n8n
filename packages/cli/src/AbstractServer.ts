@@ -6,7 +6,6 @@ import bodyParser from 'body-parser';
 import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
 import parseUrl from 'parseurl';
-import { getConnectionManager } from 'typeorm';
 import type { RedisOptions } from 'ioredis';
 
 import {
@@ -162,10 +161,10 @@ export abstract class AbstractServer {
 		this.app.get('/healthz', async (req, res) => {
 			Logger.debug('Health check started!');
 
-			const connection = getConnectionManager().get();
+			const connection = Db.getConnection();
 
 			try {
-				if (!connection.isConnected) {
+				if (!connection.isInitialized) {
 					// Connection is not active
 					throw new ServiceUnavailableError('No active database connection!');
 				}

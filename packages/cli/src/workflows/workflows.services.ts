@@ -1,6 +1,6 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindConditions, In } from 'typeorm';
+import { FindOptionsWhere, In } from 'typeorm';
 import pick from 'lodash.pick';
 import { v4 as uuid } from 'uuid';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -48,8 +48,8 @@ export class WorkflowsService {
 		workflowId: string,
 		relations: string[] = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedWorkflow | undefined> {
-		const where: FindConditions<SharedWorkflow> = { workflowId };
+	): Promise<SharedWorkflow | null> {
+		const where: FindOptionsWhere<SharedWorkflow> = { workflowId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
@@ -103,8 +103,8 @@ export class WorkflowsService {
 		return pinnedTriggers.find((pt) => pt.name === checkNodeName) ?? null; // partial execution
 	}
 
-	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
-		return Db.collections.Workflow.findOne(workflow, options);
+	static async get(workflow: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
+		return Db.collections.Workflow.findOne({ where: workflow, relations: options?.relations });
 	}
 
 	// Warning: this function is overridden by EE to disregard role list.
@@ -299,9 +299,12 @@ export class WorkflowsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the hopefully updated entry.
-		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, { relations });
+		const updatedWorkflow = await Db.collections.Workflow.findOne({
+			where: { id: workflowId },
+			relations,
+		});
 
-		if (updatedWorkflow === undefined) {
+		if (updatedWorkflow === null) {
 			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 			);

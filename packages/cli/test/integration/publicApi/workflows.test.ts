@@ -11,7 +11,6 @@ import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
@@ -19,8 +18,7 @@ let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =
 		await testDb.getAllRoles();
@@ -37,10 +35,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		['SharedCredentials', 'SharedWorkflow', 'Tag', 'User', 'Workflow', 'Credentials'],
-		testDbName,
-	);
+	await testDb.truncate([
+		'SharedCredentials',
+		'SharedWorkflow',
+		'Tag',
+		'User',
+		'Workflow',
+		'Credentials',
+	]);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -51,7 +53,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /workflows should fail due to missing API Key', async () => {
@@ -537,11 +539,11 @@ test('DELETE /workflows/:id should delete the workflow', async () => {
 	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 	// make sure the workflow actually deleted from the db
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
-		workflow,
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneBy({
+		workflowId: workflow.id,
 	});
 
-	expect(sharedWorkflow).toBeUndefined();
+	expect(sharedWorkflow).toBeNull();
 });
 
 test('DELETE /workflows/:id should delete non-owned workflow when owner', async () => {
@@ -576,11 +578,11 @@ test('DELETE /workflows/:id should delete non-owned workflow when owner', async 
 	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
 
 	// make sure the workflow actually deleted from the db
-	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
-		workflow,
+	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneBy({
+		workflowId: workflow.id,
 	});
 
-	expect(sharedWorkflow).toBeUndefined();
+	expect(sharedWorkflow).toBeNull();
 });
 
 test('POST /workflows/:id/activate should fail due to missing API Key', async () => {
@@ -679,8 +681,8 @@ test('POST /workflows/:id/activate should set workflow as active', async () => {
 	// check whether the workflow is on the database
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow,
+			userId: member.id,
+			workflowId: workflow.id,
 		},
 		relations: ['workflow'],
 	});
@@ -724,17 +726,17 @@ test('POST /workflows/:id/activate should set non-owned workflow as active when 
 	// check whether the workflow is on the database
 	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: owner,
-			workflow,
+			userId: owner.id,
+			workflowId: workflow.id,
 		},
 	});
 
-	expect(sharedOwnerWorkflow).toBeUndefined();
+	expect(sharedOwnerWorkflow).toBeNull();
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow,
+			userId: member.id,
+			workflowId: workflow.id,
 		},
 		relations: ['workflow'],
 	});
@@ -824,8 +826,8 @@ test('POST /workflows/:id/deactivate should deactivate workflow', async () => {
 	// get the workflow after it was deactivated
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow,
+			userId: member.id,
+			workflowId: workflow.id,
 		},
 		relations: ['workflow'],
 	});
@@ -869,17 +871,17 @@ test('POST /workflows/:id/deactivate should deactivate non-owned workflow when o
 	// check whether the workflow is deactivated in the database
 	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: owner,
-			workflow,
+			userId: owner.id,
+			workflowId: workflow.id,
 		},
 	});
 
-	expect(sharedOwnerWorkflow).toBeUndefined();
+	expect(sharedOwnerWorkflow).toBeNull();
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow,
+			userId: member.id,
+			workflowId: workflow.id,
 		},
 		relations: ['workflow'],
 	});
@@ -990,8 +992,8 @@ test('POST /workflows should create workflow', async () => {
 	// check if created workflow in DB
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow: response.body,
+			userId: member.id,
+			workflowId: response.body.id,
 		},
 		relations: ['workflow', 'role'],
 	});
@@ -1170,8 +1172,8 @@ test('PUT /workflows/:id should update workflow', async () => {
 	// check updated workflow in DB
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow: response.body,
+			userId: member.id,
+			workflowId: response.body.id,
 		},
 		relations: ['workflow'],
 	});
@@ -1247,17 +1249,17 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 	// check updated workflow in DB
 	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: owner,
-			workflow: response.body,
+			userId: owner.id,
+			workflowId: response.body.id,
 		},
 	});
 
-	expect(sharedOwnerWorkflow).toBeUndefined();
+	expect(sharedOwnerWorkflow).toBeNull();
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
 		where: {
-			user: member,
-			workflow: response.body,
+			userId: member.id,
+			workflowId: response.body.id,
 		},
 		relations: ['workflow', 'role'],
 	});

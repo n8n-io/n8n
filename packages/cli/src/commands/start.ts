@@ -304,7 +304,7 @@ export class Start extends Command {
 			await UserSettings.getEncryptionKey();
 
 			// Load settings from database and set them to config.
-			const databaseSettings = await Db.collections.Settings.find({ loadOnStartup: true });
+			const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 			databaseSettings.forEach((setting) => {
 				config.set(setting.key, JSON.parse(setting.value));
 			});

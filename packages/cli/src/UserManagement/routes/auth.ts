@@ -30,14 +30,12 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Password is required to log in');
 			}
 
-			let user: User | undefined;
+			let user: User | null;
 			try {
-				user = await Db.collections.User.findOne(
-					{ email },
-					{
-						relations: ['globalRole'],
-					},
-				);
+				user = await Db.collections.User.findOne({
+					where: { email },
+					relations: ['globalRole'],
+				});
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
@@ -77,7 +75,7 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			try {
-				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
+				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'], where: {} });
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
 					'No users found in database - did you wipe the users table? Create at least one user.',

@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, FindConditions, In, Not } from 'typeorm';
+import { DeleteResult, EntityManager, FindOptionsWhere, In, Not } from 'typeorm';
 import * as Db from '@/Db';
 import { RoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -33,14 +33,14 @@ export class EECredentialsService extends CredentialsService {
 		credentialId: string,
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
-	): Promise<SharedCredentials | undefined> {
-		const where: FindConditions<SharedCredentials> = { credentialsId: credentialId };
+	): Promise<SharedCredentials | null> {
+		const where: FindOptionsWhere<SharedCredentials> = { credentialsId: credentialId };
 
 		// Omit user from where if the requesting user is the global
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			where.user = { id: user.id };
+			where.userId = user.id;
 		}
 
 		return Db.collections.SharedCredentials.findOne({
@@ -65,7 +65,7 @@ export class EECredentialsService extends CredentialsService {
 		credentialId: string,
 		userIds: string[],
 	): Promise<DeleteResult> {
-		const conditions: FindConditions<SharedCredentials> = {
+		const conditions: FindOptionsWhere<SharedCredentials> = {
 			credentialsId: credentialId,
 			userId: Not(In(userIds)),
 		};
@@ -86,9 +86,9 @@ export class EECredentialsService extends CredentialsService {
 			.filter((user) => !user.isPending)
 			.map((user) =>
 				Db.collections.SharedCredentials.create({
-					credentials: credential,
-					user,
-					role,
+					credentialsId: credential.id,
+					userId: user.id,
+					roleId: role?.id,
 				}),
 			);
 
