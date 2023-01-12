@@ -33,12 +33,12 @@ export function alphaCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions() {
-	const emptyKeys = ['DateTime'];
+	const ALPHABETIC_KEYS = ['DateTime'];
 
-	return emptyKeys.map((key) => {
+	return ALPHABETIC_KEYS.map((key) => {
 		const option: Completion = {
-			label: key.endsWith('()') ? key.slice(0, -2) : key,
-			type: key.endsWith('()') ? 'function' : 'keyword',
+			label: key,
+			type: 'keyword',
 		};
 
 		const info = i18n.rootVars[key];
