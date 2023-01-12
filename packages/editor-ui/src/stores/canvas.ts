@@ -45,6 +45,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const getPlaceholderTriggerNodeUI = (): INodeUi => {
+		setRecenteredCanvasAddButtonPosition();
+
 		return {
 			id: uuid(),
 			...DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
@@ -86,7 +88,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomToFit = () => {
-		setRecenteredCanvasAddButtonPosition();
 		const nodes = getNodesWithPlaceholderNode();
 		if (!nodes.length) {
 			// some unknown workflow executions
