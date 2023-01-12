@@ -217,12 +217,16 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onDrop(data: string) {
-			this.forceShowExpression = true;
+			if (!this.parameter.requiresDataPath) {
+				this.forceShowExpression = true;
+			}
 			setTimeout(() => {
 				if (this.node) {
 					const prevValue = this.isResourceLocator ? this.value.value : this.value;
 					let updatedValue: string;
-					if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
+					if (this.parameter.requiresDataPath) {
+						updatedValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
+					} else if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
 						updatedValue = `${prevValue} ${data}`;
 					} else {
 						updatedValue = `=${data}`;
