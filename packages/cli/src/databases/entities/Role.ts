@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryColumn, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn, Unique } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 
 import type { User } from './User';
@@ -13,7 +13,6 @@ export type RoleScopes = 'global' | 'workflow' | 'credential';
 @Entity()
 @Unique(['scope', 'name'])
 export class Role extends AbstractEntity {
-	@PrimaryGeneratedColumn()
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 

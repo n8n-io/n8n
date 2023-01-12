@@ -1,4 +1,5 @@
-import { MoreThanOrEqual } from 'typeorm';
+import { FindOperator, MoreThanOrEqual } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
 import * as Db from '@/Db';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
@@ -40,12 +41,12 @@ async function getExecutionsInPastDays(days: number) {
 
 	date.setDate(date.getDate() - days);
 
-	// const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
+	const utcDate = DateUtils.mixedDateToUtcDatetimeString(date) as string;
 
 	return Db.collections.Execution.find({
 		select: ['workflowData'],
 		where: {
-			startedAt: MoreThanOrEqual(date),
+			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
 		},
 	});
 }

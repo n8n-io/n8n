@@ -334,7 +334,10 @@ export class ActiveWorkflowRunner {
 	 * Gets all request methods associated with a single webhook
 	 */
 	async getWebhookMethods(path: string): Promise<string[]> {
-		const webhooks = await Db.collections.Webhook.findBy({ webhookPath: path });
+		const webhooks = await Db.collections.Webhook.find({
+			select: ['method'],
+			where: { webhookPath: path },
+		});
 
 		// Gather all request methods in string array
 		return webhooks.map((webhook) => webhook.method);
@@ -375,8 +378,10 @@ export class ActiveWorkflowRunner {
 	 * @param {string} id The id of the workflow to check
 	 */
 	async isActive(id: string): Promise<boolean> {
-		// return Db.collections.Workflow.exist({ where: { id, active: true }});
-		const workflow = await Db.collections.Workflow.findOneBy({ id });
+		const workflow = await Db.collections.Workflow.findOne({
+			select: ['active'],
+			where: { id },
+		});
 		return !!workflow?.active;
 	}
 
