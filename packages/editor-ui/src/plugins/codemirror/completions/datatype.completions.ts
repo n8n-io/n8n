@@ -30,13 +30,18 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	if (word.from === word.to && !context.explicit) return null;
 
 	// remove opening marker grabbed by `objectRegex`, @TODO: negative lookbehind instead
-	if (word.text.startsWith('{{')) {
-		word.text = word.text.replace(/^{{/, '');
-	}
+	if (word.text.startsWith('{{')) word.text = word.text.replace(/^{{/, '');
 
 	const toResolve = word.text.endsWith('.')
 		? word.text.slice(0, -1)
 		: word.text.split('.').slice(0, -1).join('.');
+
+	/**
+	 * n8n vars that should not trigger datatype completions
+	 */
+	const SKIP_SET = new Set(['$execution', '$binary', '$itemIndex', '$now', '$today', '$runIndex']);
+
+	if (SKIP_SET.has(toResolve)) return null;
 
 	let options: Completion[] = [];
 	let resolved: IDataObject | null;
@@ -46,6 +51,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} catch (_) {
 		return null;
 	}
+
+	if (resolved === null) return null;
 
 	if (typeof resolved === 'number') {
 		options = extensionOptions('Number');
@@ -57,11 +64,11 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		options = extensionOptions('Date');
 	} else if (
 		typeof resolved === 'object' &&
-		resolved !== null &&
 		!resolved.isProxy &&
 		!resolved.json &&
 		!toResolve.endsWith('json')
 	) {
+		// object extension completions apply only to native objects
 		options = extensionOptions('Object');
 	}
 
@@ -97,7 +104,7 @@ const extensionOptions = (typeName: 'String' | 'Number' | 'Date' | 'Object' | 'A
 		.sort((a, b) => a.name.localeCompare(b.name))
 		.map((f) => {
 			const option: Completion = {
-				label: `${f.name}()`,
+				label: f.name,
 				type: 'function',
 			};
 
