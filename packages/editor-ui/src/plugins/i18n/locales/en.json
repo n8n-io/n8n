@@ -1478,7 +1478,7 @@
 	"workflows.empty.startFromScratch": "Start from scratch",
 	"workflows.empty.browseTemplates": "Browse templates",
 	"workflows.empty.viewDemo": "View a demo workflow",
-	"workflows.viewDemoNotice": "Experience n8n's key concepts firsthand with our demo workflow",
+	"workflows.viewDemoNotice": "Learn automation key concepts with our demo workflow",
 	"workflows.viewDemo": "View demo workflow",
 	"workflows.shareModal.title": "Share '{name}'",
 	"workflows.shareModal.select.placeholder": "Add users...",
