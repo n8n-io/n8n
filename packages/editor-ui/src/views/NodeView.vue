@@ -2215,13 +2215,12 @@ export default mixins(
 			let enterTimer: NodeJS.Timeout | undefined;
 			this.instance.bind(EVENT_DRAG_MOVE, () => {
 				this.instance?.connections.forEach((connection) => {
+					NodeViewUtils.showOrHideItemsLabel(connection);
 					NodeViewUtils.showOrHideMidpointArrow(connection);
 
 					Object.values(connection.overlays).forEach((overlay) => {
-						if (overlay.type === 'Arrow') {
-							if (!overlay.canvas) return;
-							this.instance?.repaint(overlay.canvas);
-						}
+						if (!overlay.canvas) return;
+						this.instance?.repaint(overlay.canvas);
 					});
 				});
 			});
@@ -2597,14 +2596,10 @@ export default mixins(
 
 				const uuid: [string, string] = [outputUuid, inputUuid];
 				// Create connections in DOM
-				const newConnection = this.instance?.connect({
+				this.instance?.connect({
 					uuids: uuid,
 					detachable: !this.isReadOnly,
-					reattach: true,
 				});
-				// setTimeout(() => {
-				// 	this.instance.revalidate(newConnection.connector.canvas);
-				// }, 3000);
 			} else {
 				const connectionProperties = { connection, setStateDirty: false };
 				// When nodes get connected it gets saved automatically to the storage
@@ -4045,28 +4040,31 @@ export default mixins(
 
 <style lang="scss">
 .connection-run-items-label {
-	border-radius: 7px;
-	background-color: hsla(
-		var(--color-canvas-background-h),
-		var(--color-canvas-background-s),
-		var(--color-canvas-background-l),
-		0.85
-	);
-	line-height: 1.3em;
-	padding: 0px 3px;
-	white-space: nowrap;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-regular);
-	color: var(--color-success);
-	margin-top: -15px;
+	span {
+		border-radius: 7px;
+		background-color: hsla(
+			var(--color-canvas-background-h),
+			var(--color-canvas-background-s),
+			var(--color-canvas-background-l),
+			0.85
+		);
+		line-height: 1.3em;
+		padding: 0px 3px;
+		white-space: nowrap;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		color: var(--color-success);
+		margin-top: -15px;
+
+		&.floating {
+			position: absolute;
+			top: -6px;
+			transform: translateX(-50%);
+		}
+	}
 
 	&--stalk {
 		margin-left: 40px;
-	}
-	.floating {
-		position: absolute;
-		top: -22px;
-		transform: translateX(-50%);
 	}
 }
 

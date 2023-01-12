@@ -1,6 +1,11 @@
 import { EndpointHandler, Endpoint, EndpointRepresentation, Overlay } from '@jsplumb/core';
 import { AnchorPlacement, EndpointRepresentationParams } from '@jsplumb/common';
-import { createElement, EVENT_ENDPOINT_MOUSEOVER, EVENT_ENDPOINT_MOUSEOUT, EVENT_ENDPOINT_CLICK } from '@jsplumb/browser-ui';
+import {
+	createElement,
+	EVENT_ENDPOINT_MOUSEOVER,
+	EVENT_ENDPOINT_MOUSEOUT,
+	EVENT_ENDPOINT_CLICK,
+} from '@jsplumb/browser-ui';
 
 export type ComputedN8nPlusEndpoint = [number, number, number, number, number];
 interface N8nPlusEndpointParams extends EndpointRepresentationParams {
@@ -109,7 +114,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 		// Re-render success output overlay if label is set and it doesn't exist
 		const successOutputOverlay = this.endpoint.getOverlay('successOutputOverlay');
-		if(visible && this.label && !successOutputOverlay) {
+		if (visible && this.label && !successOutputOverlay) {
 			this.setSuccessOutput(this.label);
 		}
 	};
@@ -123,16 +128,24 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				options: {
 					id: 'successOutputOverlay',
 					create: () => {
-						const successOutputLabel = createElement('span', {}, 'connection-run-items-label connection-run-items-label--stalk');
-						successOutputLabel.innerHTML = label;
-						return successOutputLabel;
+						const container = document.createElement('div');
+						const span = document.createElement('span');
+
+						container.classList.add(
+							'connection-run-items-label',
+							'connection-run-items-label--stalk',
+						);
+						span.classList.add('floating');
+						span.innerHTML = label;
+						container.appendChild(span);
+						return container;
 					},
 				},
 			});
 			this.label = label;
 			this.instance.repaint(this.endpoint.element);
 		}
-	};
+	}
 
 	clearSuccessOutput() {
 		this.endpoint.removeOverlay('successOutputOverlay');
@@ -145,15 +158,11 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8nPlusEndpoint> = {
 	type: N8nPlusEndpoint.type,
 	cls: N8nPlusEndpoint,
-	compute: (
-		ep: N8nPlusEndpoint,
-		anchorPoint: AnchorPlacement,
-	): ComputedN8nPlusEndpoint => {
-		const x = anchorPoint.curX - (ep.params.dimensions / 2);
-		const y = anchorPoint.curY - (ep.params.dimensions / 2);
+	compute: (ep: N8nPlusEndpoint, anchorPoint: AnchorPlacement): ComputedN8nPlusEndpoint => {
+		const x = anchorPoint.curX - ep.params.dimensions / 2;
+		const y = anchorPoint.curY - ep.params.dimensions / 2;
 		const w = ep.params.dimensions;
 		const h = ep.params.dimensions;
-
 
 		ep.x = x;
 		ep.y = y;

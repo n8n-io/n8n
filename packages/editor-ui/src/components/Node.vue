@@ -1,5 +1,12 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node" :ref="data.name" :data-name="data.name">
+	<div
+		class="node-wrapper"
+		:style="nodePosition"
+		:id="nodeId"
+		data-test-id="canvas-node"
+		:ref="data.name"
+		:data-name="data.name"
+	>
 		<div class="select-background" v-show="isSelected"></div>
 		<div
 			:class="{
@@ -944,7 +951,6 @@ export default mixins(
 		display: block;
 	}
 
-
 	&.hidden {
 		display: none;
 	}
@@ -966,6 +972,7 @@ export default mixins(
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
+	z-index: 1;
 }
 
 .node-output-endpoint-label {
@@ -987,27 +994,22 @@ export default mixins(
 	color: var(--color-text-light);
 	width: var(--hover-message-width);
 	margin-left: calc(
-		(var(--endpoint-size-medium) / 2) +
-		(var(--hover-message-width) / 2) +
-		var(--stalk-size) +
-		var(--plus-endpoint-box-size) +
-		var(--spacing-3xs)
+		(var(--endpoint-size-medium) / 2) + (var(--hover-message-width) / 2) + var(--stalk-size) +
+			var(--plus-endpoint-box-size) + var(--spacing-3xs)
 	);
 	opacity: 0;
-
+	pointer-events: none;
 	&.small {
 		margin-left: calc(
-			(var(--endpoint-size-small) / 2) +
-			(var(--hover-message-width) / 2) +
-			var(--stalk-size) +
-			var(--plus-endpoint-box-size-small) +
-			var(--spacing-3xs)
+			(var(--endpoint-size-small) / 2) + (var(--hover-message-width) / 2) + var(--stalk-size) +
+				var(--plus-endpoint-box-size-small) + var(--spacing-3xs)
 		);
 	}
 	&.success {
 		--stalk-size: var(--stalk-success-size);
 	}
 	&.visible {
+		pointer-events: all;
 		opacity: 1;
 	}
 }

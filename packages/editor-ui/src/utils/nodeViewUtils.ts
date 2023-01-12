@@ -1,10 +1,6 @@
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { isNumber } from '@/utils';
-import {
-	NODE_OUTPUT_DEFAULT_KEY,
-	STICKY_NODE_TYPE,
-	QUICKSTART_NOTE_NAME,
-} from '@/constants';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
 import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
 import { ArrayAnchorSpec, ConnectorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
 import { Endpoint, Connection } from '@jsplumb/core';
@@ -215,7 +211,10 @@ export const getInputNameOverlay = (labelText: string): OverlaySpec => ({
 	},
 });
 
-export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string): PaintStyle => ({
+export const getOutputEndpointStyle = (
+	nodeTypeData: INodeTypeDescription,
+	color: string,
+): PaintStyle => ({
 	strokeWidth: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
 	fill: getStyleTokenValue(color),
 	outlineStroke: 'none',
@@ -325,11 +324,15 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const minimum = hasItemsLabel ? 150 : 0;
 	const isBackwards = sourcePosition >= targetPosition;
 	const isTooLong = Math.abs(sourcePosition - targetPosition) >= minimum;
-	const isActionsOverlayHovered = getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)?.component.isHover();
+	const isActionsOverlayHovered = getOverlay(
+		connection,
+		OVERLAY_CONNECTION_ACTIONS_ID,
+	)?.component.isHover();
 	const isConnectionHovered = connection.isHover();
 
 	const arrow = getOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
-	const isVisible = isBackwards &&
+	const isVisible =
+		isBackwards &&
 		isTooLong &&
 		!isActionsOverlayHovered &&
 		!isConnectionHovered &&
@@ -357,8 +360,8 @@ const isLoopingBackwards = (connection: Connection) => {
 	const sourceEndpoint = connection.endpoints[0];
 	const targetEndpoint = connection.endpoints[1];
 
-	const sourcePosition = sourceEndpoint._anchor.computedPosition?.x ?? 0;
-	const targetPosition = targetEndpoint._anchor.computedPosition?.x ?? 0;
+	const sourcePosition = sourceEndpoint._anchor.computedPosition?.curX ?? 0;
+	const targetPosition = targetEndpoint._anchor.computedPosition?.curX ?? 0;
 
 	return targetPosition - sourcePosition < -1 * LOOPBACK_MINIMUM;
 };
@@ -368,7 +371,6 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 
 	const overlay = getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 	if (!overlay) return;
-
 
 	const actionsOverlay = getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 	if (actionsOverlay && actionsOverlay.visible) {
@@ -518,7 +520,7 @@ export const getBackgroundStyles = (
 };
 
 export const hideConnectionActions = (connection: Connection) => {
-	if(!connection) return;
+	if (!connection) return;
 
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
@@ -528,7 +530,7 @@ export const hideConnectionActions = (connection: Connection) => {
 };
 
 export const showConnectionActions = (connection: Connection) => {
-	if(!connection) return;
+	if (!connection) return;
 
 	showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 	hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
@@ -607,7 +609,6 @@ export const resetConnection = (connection: Connection) => {
 	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 	showOrHideMidpointArrow(connection);
 	connection.removeClass('success');
-
 };
 
 export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {
@@ -633,10 +634,14 @@ export const addConnectionOutputSuccess = (
 		options: {
 			id: OVERLAY_RUN_ITEMS_ID,
 			create() {
-				const label = document.createElement('div');
-				label.classList.add('connection-run-items-label');
-				label.innerHTML = getRunItemsLabel(output);
-				return label;
+				const container = document.createElement('div');
+				const span = document.createElement('span');
+
+				container.classList.add('connection-run-items-label');
+				span.classList.add('floating');
+				span.innerHTML = getRunItemsLabel(output);
+				container.appendChild(span);
+				return container;
 			},
 			location: 0.5,
 		},
@@ -744,7 +749,6 @@ export const addConnectionActionsOverlay = (
 	onDelete: Function,
 	onAdd: Function,
 ) => {
-
 	const overlay = connection.addOverlay({
 		type: 'Custom',
 		options: {
