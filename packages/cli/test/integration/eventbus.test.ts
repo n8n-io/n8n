@@ -23,7 +23,6 @@ import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEven
 import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
-jest.unmock('@/eventbus');
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 jest.mock('syslog-client');
@@ -126,6 +125,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
 	await testDb.terminate(testDbName);
 	await eventBus.close();
 });
