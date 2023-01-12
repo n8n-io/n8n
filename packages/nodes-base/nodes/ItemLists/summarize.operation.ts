@@ -8,7 +8,7 @@ import {
 
 type AggregationType =
 	| 'append'
-	| 'averege'
+	| 'average'
 	| 'concatenate'
 	| 'count'
 	| 'countUnique'
@@ -29,7 +29,7 @@ type Aggregations = Aggregation[];
 
 enum AggregationDisplayNames {
 	append = 'appended_',
-	averege = 'average_',
+	average = 'average_',
 	concatenate = 'concatenated_',
 	count = 'count_',
 	countUnique = 'unique_count_',
@@ -38,7 +38,7 @@ enum AggregationDisplayNames {
 	sum = 'sum_',
 }
 
-const NUMERICAL_AGGREGATIONS = ['averege', 'max', 'min', 'sum'];
+const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
 
 export const description: INodeProperties[] = [
 	{
@@ -96,6 +96,22 @@ export const description: INodeProperties[] = [
 						default: 'count',
 						description: 'How to combine the values of the field you want to summarize',
 					},
+					//field repeated to have different descriptions for different aggregations --------------------------------
+					{
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+						required: true,
+						description: 'The name of an input field that you want to summarize',
+						placeholder: 'e.g. cost',
+						hint: ' Enter the field name as text',
+						displayOptions: {
+							hide: {
+								aggregation: [...NUMERICAL_AGGREGATIONS, 'countUnique', 'count'],
+							},
+						},
+					},
 					{
 						displayName: 'Field',
 						name: 'field',
@@ -103,12 +119,35 @@ export const description: INodeProperties[] = [
 						default: '',
 						required: true,
 						description:
-							'The name of an input field that you want to summarize. The field should contain numbers or dates.',
+							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, emty strings would be ignored.',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
+						displayOptions: {
+							show: {
+								aggregation: NUMERICAL_AGGREGATIONS,
+							},
+						},
 					},
 					{
-						displayName: "Ignore Values That Aren't Numbers",
+						displayName: 'Field',
+						name: 'field',
+						type: 'string',
+						default: '',
+						required: true,
+						description:
+							'The name of an input field that you want to summarize; null, undefined, emty strings would be ignored',
+						placeholder: 'e.g. cost',
+						hint: ' Enter the field name as text',
+						displayOptions: {
+							show: {
+								aggregation: ['countUnique', 'count'],
+							},
+						},
+					},
+					//----------------------------------------------------------------------------------------------------------------
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						displayName: "Ignore values that aren't numbers",
 						name: 'ignoreNonNumericalValues',
 						description: "Whether this isn't enabled, non-numerical values will cause an error",
 						type: 'boolean',
@@ -126,7 +165,7 @@ export const description: INodeProperties[] = [
 						default: false,
 						displayOptions: {
 							show: {
-								aggregation: ['append'],
+								aggregation: ['append', 'concatenate'],
 							},
 						},
 					},
@@ -290,6 +329,7 @@ export async function execute(
 		);
 	}
 
+	checkIfFieldExists.call(this, newItems, fieldsToSummarize);
 	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
 
 	const aggregationResult = splitData(
@@ -309,24 +349,45 @@ export async function execute(
 	return executionData;
 }
 
+function checkIfFieldExists(
+	this: IExecuteFunctions,
+	items: IDataObject[],
+	aggregations: Aggregations,
+) {
+	for (const aggregation of aggregations) {
+		const exist = items.some((item) => Object.keys(item).includes(aggregation.field));
+		if (!exist) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`The field '${aggregation.field}' does not exist in any items`,
+			);
+		}
+	}
+}
+
 function checkAggregationsFieldType(
 	this: IExecuteFunctions,
 	items: IDataObject[],
 	aggregations: Aggregations,
 ) {
-	const numericFields = aggregations
+	const numericAggregations = aggregations
 		.filter(
 			(entry) =>
 				NUMERICAL_AGGREGATIONS.includes(entry.aggregation) && !entry.ignoreNonNumericalValues,
 		)
-		.map((entry) => entry.field);
+		.map((entry) => entry);
 
 	for (const [index, item] of items.entries()) {
-		for (const field of numericFields) {
-			if (item[field] === undefined || typeof item[field] !== 'number') {
+		for (const entry of numericAggregations) {
+			if (
+				item[entry.field] !== undefined &&
+				item[entry.field] !== null &&
+				typeof item[entry.field] !== 'number'
+			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`The field '${field}' is not a number [item ${index}]`,
+					`The field '${entry.field}' is not a number in [item ${index}], so can't perform ${entry.aggregation}`,
+					{ description: "To avoid this error, enable 'Ignore values that aren't numbers'" },
 				);
 			}
 		}
@@ -367,58 +428,74 @@ function splitData(
 	}, {} as IDataObject);
 }
 
+function isEmpty<T>(value: T) {
+	return value === undefined || value === null || value === '';
+}
+
 function aggregate(items: IDataObject[], entry: Aggregation) {
 	const { aggregation, field } = entry;
+	let data = [...items];
 
-	items =
-		entry.ignoreNonNumericalValues && NUMERICAL_AGGREGATIONS.includes(aggregation)
-			? items.filter((item) => typeof item[field] === 'number' && item[field] !== null)
-			: items;
+	if (NUMERICAL_AGGREGATIONS.includes(aggregation)) {
+		entry.ignoreNonNumericalValues
+			? (data = data.filter((item) => typeof item[field] === 'number' && !isEmpty(item[field])))
+			: (data = data.filter((item) => !isEmpty(item[field])));
+	}
+
+	console.log(data);
 
 	switch (aggregation) {
+		//combine operations
 		case 'append':
 			if (!entry.includeEmpty) {
-				items = items.filter((item) => item[field] || typeof item[field] === 'number');
+				data = data.filter((item) => !isEmpty(item[field]));
 			}
-			return items.map((item) => item[field]);
-		case 'averege':
-			return (
-				items.reduce((acc, item) => {
-					return acc + (item[field] as number);
-				}, 0) / items.length
-			);
+			return data.map((item) => item[field]);
 		case 'concatenate':
 			const separateBy = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
-			return items
+			if (!entry.includeEmpty) {
+				data = data.filter((item) => !isEmpty(item[field]));
+			}
+			return data
 				.map((item) => {
 					let value = item[field];
-					if (value !== null && typeof value === 'object') {
+					if (typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
 					return value;
 				})
 				.join(separateBy);
+
+		//numerical operations
+		case 'average':
+			return (
+				data.reduce((acc, item) => {
+					return acc + (item[field] as number);
+				}, 0) / data.length
+			);
 		case 'sum':
-			return items.reduce((acc, item) => {
+			return data.reduce((acc, item) => {
 				return acc + (item[field] as number);
 			}, 0);
-		case 'countUnique':
-			return new Set(items.map((item) => item[field]).filter((item) => item)).size;
 		case 'min':
 			return Math.min(
-				...(items.map((item) => {
+				...(data.map((item) => {
 					return item[field];
 				}) as number[]),
 			);
 		case 'max':
 			return Math.max(
-				...(items.map((item) => {
+				...(data.map((item) => {
 					return item[field];
 				}) as number[]),
 			);
+
+		//count operations
+		case 'countUnique':
+			return new Set(data.map((item) => item[field]).filter((item) => !isEmpty(item))).size;
 		default:
 			//count by default
-			return items.map((item) => item[field]).filter((item) => item).length;
+			return data.filter((item) => !isEmpty(item[field])).length;
 	}
 }
 
