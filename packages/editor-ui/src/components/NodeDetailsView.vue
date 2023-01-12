@@ -200,7 +200,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.ndvStore.setNDVSessionId;
 		dataPinningEventBus.$on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
@@ -410,9 +409,7 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => {
-					this.ndvStore.setNDVSessionId;
-				}, 0);
+				setTimeout(this.ndvStore.setNDVSessionId, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
