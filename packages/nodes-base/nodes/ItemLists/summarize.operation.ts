@@ -102,7 +102,6 @@ export const description: INodeProperties[] = [
 						name: 'field',
 						type: 'string',
 						default: '',
-						required: true,
 						description: 'The name of an input field that you want to summarize',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
@@ -117,7 +116,6 @@ export const description: INodeProperties[] = [
 						name: 'field',
 						type: 'string',
 						default: '',
-						required: true,
 						description:
 							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, emty strings would be ignored.',
 						placeholder: 'e.g. cost',
@@ -133,7 +131,6 @@ export const description: INodeProperties[] = [
 						name: 'field',
 						type: 'string',
 						default: '',
-						required: true,
 						description:
 							'The name of an input field that you want to summarize; null, undefined, emty strings would be ignored',
 						placeholder: 'e.g. cost',
@@ -323,9 +320,10 @@ export async function execute(
 		[],
 	) as Aggregations;
 
-	if (fieldsToSummarize.length === 0) {
-		return this.prepareOutputData(
-			this.helpers.returnJsonArray(aggregateData(newItems, fieldsToSummarize)),
+	if (fieldsToSummarize.filter((aggregation) => aggregation.field !== '').length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			"You need to add at least one aggregation to 'Fields to Summarize' with non empty 'Field'",
 		);
 	}
 
@@ -355,6 +353,9 @@ function checkIfFieldExists(
 	aggregations: Aggregations,
 ) {
 	for (const aggregation of aggregations) {
+		if (aggregation.field === '') {
+			continue;
+		}
 		const exist = items.some((item) => Object.keys(item).includes(aggregation.field));
 		if (!exist) {
 			throw new NodeOperationError(
