@@ -5,8 +5,8 @@ import { Connection, ConnectionOptions, createConnection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 
 import { getLogger } from '@/Logger';
-
-import * as Db from '@/Db';
+import { getConnectionOptions } from '@/Db';
+import config from '@/config';
 
 export class DbRevertMigrationCommand extends Command {
 	static description = 'Revert last database migration';
@@ -17,35 +17,24 @@ export class DbRevertMigrationCommand extends Command {
 		help: flags.help({ char: 'h' }),
 	};
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow, @typescript-eslint/no-unused-vars
-		const { flags } = this.parse(DbRevertMigrationCommand);
+		this.parse(DbRevertMigrationCommand);
 
 		let connection: Connection | undefined;
 		try {
-			await Db.init();
-			connection = Db.collections.Credentials.manager.connection;
-
-			if (!connection) {
-				throw new Error('No database connection available.');
-			}
-
-			const connectionOptions: ConnectionOptions = Object.assign(connection.options, {
+			const dbType = config.getEnv('database.type');
+			const connectionOptions: ConnectionOptions = {
+				...(await getConnectionOptions(dbType)),
 				subscribers: [],
 				synchronize: false,
 				migrationsRun: false,
 				dropSchema: false,
 				logging: ['query', 'error', 'schema'],
-			});
-
-			// close connection in order to reconnect with updated options
-			await connection.close();
+			};
 			connection = await createConnection(connectionOptions);
-
 			await connection.undoLastMigration();
 			await connection.close();
 		} catch (error) {
