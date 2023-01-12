@@ -30,6 +30,7 @@ import Vue, { PropType } from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';
+import { HTML_NODE_TYPE } from '@/constants';
 
 export default Vue.extend({
 	name: 'parameter-options',
@@ -94,7 +95,10 @@ export default Vue.extend({
 			return !!this.getArgument('loadOptionsMethod') || !!this.getArgument('loadOptions');
 		},
 		actions(): Array<{ label: string; value: string; disabled?: boolean }> {
-			if (this.ndvStore.activeNode?.type === 'n8n-nodes-base.htmlTemplate') {
+			if (
+				this.ndvStore.activeNode?.type === HTML_NODE_TYPE &&
+				this.ndvStore.activeNode?.parameters.operation === 'generateHtmlTemplate'
+			) {
 				return [
 					{
 						label: 'Format HTML',

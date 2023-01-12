@@ -478,7 +478,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
-	HTML_TEMPLATE_NODE_TYPE,
+	HTML_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -608,12 +608,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			branchIndex: this.currentOutputIndex,
 		});
 
-		if (this.paneType === 'output') {
-			this.ndvStore.setPanelDisplayMode({
-				pane: 'output',
-				mode: this.activeNode?.type === HTML_TEMPLATE_NODE_TYPE ? 'html' : 'table',
-			});
-		}
+		if (this.paneType === 'output') this.setDisplayMode();
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
@@ -667,7 +662,11 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
 			}
 
-			if (this.isPaneTypeOutput && this.activeNode?.type === HTML_TEMPLATE_NODE_TYPE) {
+			if (
+				this.isPaneTypeOutput &&
+				this.activeNode?.type === HTML_NODE_TYPE &&
+				this.activeNode.parameters.operation === 'generateHtmlTemplate'
+			) {
 				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
@@ -1293,10 +1292,25 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				this.ndvStore.activeNodeName = this.node.name;
 			}
 		},
+		setDisplayMode() {
+			if (!this.activeNode) return;
+
+			const shouldDisplayHtml =
+				this.activeNode.type === HTML_NODE_TYPE &&
+				this.activeNode.parameters.operation === 'generateHtmlTemplate';
+
+			this.ndvStore.setPanelDisplayMode({
+				pane: 'output',
+				mode: shouldDisplayHtml ? 'html' : 'table',
+			});
+		},
 	},
 	watch: {
 		node() {
 			this.init();
+		},
+		hasNodeRun() {
+			if (this.paneType === 'output') this.setDisplayMode();
 		},
 		inputData: {
 			handler(data: INodeExecutionData[]) {
