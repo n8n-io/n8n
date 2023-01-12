@@ -117,21 +117,19 @@
 					</n8n-info-tip>
 				</div>
 
-				<div class="mt-xs mb-l">
-					<ul
-						:class="[$style.list, 'list-style-none']"
+				<div class="pt-xs pb-l">
+					<N8nRecycleScroller
 						v-if="filteredAndSortedSubviewResources.length > 0"
 						data-test-id="resources-list"
+						:class="[$style.list, 'list-style-none']"
+						:items="filteredAndSortedSubviewResources"
+						:item-size="80"
+						id-field="id"
 					>
-						<li
-							v-for="resource in filteredAndSortedSubviewResources"
-							:key="resource.id"
-							class="mb-2xs"
-							data-test-id="resources-list-item"
-						>
-							<slot :data="resource" />
-						</li>
-					</ul>
+						<template #default="{ item }">
+							<slot :data="item" />
+						</template>
+					</N8nRecycleScroller>
 					<n8n-text color="text-base" size="medium" data-test-id="resources-list-empty" v-else>
 						{{ $locale.baseText(`${resourceKey}.noResults`) }}
 						<template v-if="shouldSwitchToAllSubview">
