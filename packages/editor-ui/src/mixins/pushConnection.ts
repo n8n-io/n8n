@@ -58,6 +58,10 @@ export const pushConnection = mixins(
 				this.connectRetries++;
 				if (this.connectRetries > 3 && !this.lostConnection) {
 					this.lostConnection = true;
+
+					this.workflowsStore.executingNode = null;
+					this.uiStore.removeActiveAction('workflowRunning');
+
 					this.$showMessage({
 						title: this.$locale.baseText('pushConnection.lostConnection'),
 						message: this.$locale.baseText('pushConnection.lostConnection.message'),
