@@ -67,6 +67,7 @@ import {
 	ITriggerFunctions,
 	IWebhookFunctions,
 	BinaryMetadata,
+	FileSystemHelperFunctions,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -93,6 +94,8 @@ import axios, {
 } from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import type { Readable } from 'stream';
+import { access as fsAccess } from 'fs/promises';
+import { createReadStream } from 'fs';
 
 import { BinaryDataManager } from './BinaryDataManager';
 import type { IResponseError, IWorkflowSettings } from './Interfaces';
@@ -1997,6 +2000,21 @@ const getRequestHelperFunctions = (
 	},
 });
 
+const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
+	async createReadStream(filePath) {
+		try {
+			await fsAccess(filePath);
+		} catch (error) {
+			throw error.code === 'ENOENT'
+				? new NodeOperationError(node, error, {
+						message: `The file "${String(filePath)}" could not be accessed.`,
+				  })
+				: error;
+		}
+		return createReadStream(filePath);
+	},
+});
+
 const getBinaryHelperFunctions = ({
 	executionId,
 }: IWorkflowExecuteAdditionalData): BinaryHelperFunctions => ({
@@ -2292,6 +2310,7 @@ export function getExecuteFunctions(
 			},
 			helpers: {
 				...getRequestHelperFunctions(workflow, node, additionalData),
+				...getFileSystemHelperFunctions(node),
 				...getBinaryHelperFunctions(additionalData),
 				getBinaryDataBuffer: async (itemIndex, propertyName, inputIndex = 0) =>
 					getBinaryDataBuffer(inputData, itemIndex, propertyName, inputIndex),

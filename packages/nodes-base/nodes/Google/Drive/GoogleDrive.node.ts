@@ -2392,10 +2392,7 @@ export class GoogleDrive implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							response.body as unknown as Readable,
@@ -2521,7 +2518,7 @@ export class GoogleDrive implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							const binary = item.binary[propertyNameUpload];
 							if (binary === undefined) {

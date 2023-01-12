@@ -52,7 +52,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		...mapStores(useNDVStore, useUIStore),
 		tabBarItems(): ITabBarItem[] {
 			return [
-				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
+				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
 				{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
 			];
 		},
@@ -99,7 +99,7 @@ export default mixins(pushConnection, workflowHelpers).extend({
 		syncTabsWithRoute(route: Route): void {
 			if (
 				route.name === VIEWS.EXECUTION_HOME ||
-				route.name === VIEWS.EXECUTIONS ||
+				route.name === VIEWS.WORKFLOW_EXECUTIONS ||
 				route.name === VIEWS.EXECUTION_PREVIEW
 			) {
 				this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;

@@ -546,6 +546,11 @@ export interface IPushDataExecutionFinished {
 	retryOf?: string;
 }
 
+export interface IPushDataUnsavedExecutionFinished {
+	executionId: string;
+	data: { finished: true; stoppedAt: Date };
+}
+
 export interface IPushDataExecutionStarted {
 	executionId: string;
 }

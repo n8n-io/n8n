@@ -420,4 +420,34 @@ export class WorkflowsService {
 			executionId,
 		};
 	}
+
+	static async delete(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		await ExternalHooks().run('workflow.delete', [workflowId]);
+
+		const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
+			relations: ['workflow', 'role'],
+			where: whereClause({
+				user,
+				entityType: 'workflow',
+				entityId: workflowId,
+				roles: ['owner'],
+			}),
+		});
+
+		if (!sharedWorkflow) {
+			return;
+		}
+
+		if (sharedWorkflow.workflow.active) {
+			// deactivate before deleting
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
+		}
+
+		await Db.collections.Workflow.delete(workflowId);
+
+		void InternalHooksManager.getInstance().onWorkflowDeleted(user, workflowId, false);
+		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
+
+		return sharedWorkflow.workflow;
+	}
 }
