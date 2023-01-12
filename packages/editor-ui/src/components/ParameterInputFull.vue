@@ -103,6 +103,7 @@ export default mixins(showMessage).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
+			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -176,7 +177,7 @@ export default mixins(showMessage).extend({
 				this.focused &&
 				this.isInputTypeString &&
 				!this.isInputDataEmpty &&
-				window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'
+				!this.localStorageMappingFlag
 			);
 		},
 	},
@@ -298,6 +299,7 @@ export default mixins(showMessage).extend({
 		},
 		onMappingTooltipDismissed() {
 			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+			this.localStorageMappingFlag = true;
 		},
 	},
 	watch: {
