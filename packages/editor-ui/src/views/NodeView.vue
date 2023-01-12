@@ -1915,6 +1915,7 @@ export default mixins(
 				newNodeData.webhookId = uuid();
 			}
 
+			newNodeData.pristine = true;
 			await this.addNodes([newNodeData], undefined, trackHistory);
 
 			this.uiStore.stateIsDirty = true;

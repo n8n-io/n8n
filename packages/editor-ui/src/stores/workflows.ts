@@ -960,5 +960,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 			});
 		},
+		setNodePristine(nodeId: string, isPristine: boolean): void {
+			const node = this.getNodeById(nodeId);
+			if (node) {
+				node.pristine = isPristine;
+			}
+		},
 	},
 });

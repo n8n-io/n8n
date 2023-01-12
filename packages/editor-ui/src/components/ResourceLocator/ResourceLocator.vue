@@ -684,6 +684,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			if (!this.isSearchable || this.currentQueryError) {
 				this.showResourceDropdown = false;
 			}
+			this.$emit('blur');
 		},
 	},
 });

@@ -27,10 +27,11 @@
 						size="small"
 					/>
 				</div>
-				<div v-else :class="issues.length ? $style.hasIssues : $style.input">
+				<div v-else :class="issues.length && !hideIssues ? $style.hasIssues : $style.input">
 					<n8n-select
 						:value="getSelectedId(credentialTypeDescription.name)"
 						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
+						@blur="$emit('blur', 'credentials')"
 						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
 						size="small"
 					>
@@ -49,7 +50,7 @@
 						</n8n-option>
 					</n8n-select>
 
-					<div :class="$style.warning" v-if="issues.length">
+					<div :class="$style.warning" v-if="issues.length && !hideIssues">
 						<n8n-tooltip placement="top">
 							<template #content>
 								<titled-list
@@ -82,6 +83,7 @@
 </template>
 
 <script lang="ts">
+import { PropType } from 'vue';
 import { restApi } from '@/mixins/restApi';
 import {
 	ICredentialsResponse,
@@ -108,11 +110,23 @@ import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend({
 	name: 'NodeCredentials',
-	props: [
-		'readonly',
-		'node', // INodeUi
-		'overrideCredType', // cred type
-	],
+	props: {
+		readonly: {
+			type: Boolean,
+			default: false,
+		},
+		node: {
+			type: Object as PropType<INodeUi>,
+			required: true,
+		},
+		overrideCredType: {
+			type: String,
+		},
+		hideIssues: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	components: {
 		TitledList,
 	},

@@ -193,6 +193,7 @@ export interface INodeUi extends INode {
 	issues?: INodeIssues;
 	name: string;
 	pinData?: IDataObject;
+	pristine: boolean;
 }
 
 export interface INodeTypesMaxCount {

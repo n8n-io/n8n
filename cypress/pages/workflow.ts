@@ -93,11 +93,12 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			cy.get('body').type('{esc}');
 		},
-		addNodeToCanvas: (nodeDisplayName: string) => {
+		addNodeToCanvas: (nodeDisplayName: string, preventNdvClose?: boolean) => {
 			this.getters.nodeCreatorPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
 			this.getters.nodeCreatorSearchBar().type('{enter}');
-			cy.get('body').type('{esc}');
+
+			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
 		openNodeNdv: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
