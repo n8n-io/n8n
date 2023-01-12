@@ -153,6 +153,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
@@ -212,6 +213,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 							{
 								displayName: 'Rename Field',
@@ -302,6 +304,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
@@ -338,6 +341,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
@@ -409,6 +413,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
@@ -444,6 +449,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
@@ -500,6 +506,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 							{
 								displayName: 'Order',

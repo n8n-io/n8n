@@ -47,6 +47,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 							{
 								displayName: 'Input B Field',
@@ -56,6 +57,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
+								requiresDataPath: true,
 							},
 						],
 					},
