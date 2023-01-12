@@ -64,7 +64,7 @@ export const WELCOME_STICKY_NODE = {
 	typeVersion: 1,
 	position: [0, 0] as XYPosition,
 	parameters: {
-		height: 300,
+		height: 320,
 		width: 380,
 	},
 };
