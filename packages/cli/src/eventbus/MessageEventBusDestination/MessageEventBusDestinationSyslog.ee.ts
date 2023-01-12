@@ -86,6 +86,7 @@ export class MessageEventBusDestinationSyslog
 			this.client.log(
 				JSON.stringify(serializedMessage),
 				{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					severity: msg.eventName.toLowerCase().endsWith('error')
 						? syslog.Severity.Error
 						: syslog.Severity.Debug,
@@ -96,7 +97,7 @@ export class MessageEventBusDestinationSyslog
 					if (error) {
 						console.log(error);
 					} else {
-						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					}
 				},

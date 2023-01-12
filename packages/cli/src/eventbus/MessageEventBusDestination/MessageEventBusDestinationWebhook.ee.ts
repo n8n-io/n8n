@@ -353,13 +353,13 @@ export class MessageEventBusDestinationWebhook
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {
-						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					} else {
 						sendResult = false;
 					}
 				} else {
-					await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+					eventBus.confirmSent(msg, { id: this.id, name: this.label });
 					sendResult = true;
 				}
 			}
