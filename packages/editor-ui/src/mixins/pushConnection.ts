@@ -56,15 +56,16 @@ export const pushConnection = mixins(
 
 			this.reconnectTimeout = setTimeout(() => {
 				this.connectRetries++;
-				if (this.connectRetries > 3 && !this.lostConnection) {
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');;
+				if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
 					this.lostConnection = true;
 
 					this.workflowsStore.executingNode = null;
 					this.uiStore.removeActiveAction('workflowRunning');
 
 					this.$showMessage({
-						title: this.$locale.baseText('pushConnection.lostConnection'),
-						message: this.$locale.baseText('pushConnection.lostConnection.message'),
+						title: this.$locale.baseText('pushConnection.executionFailed'),
+						message: this.$locale.baseText('pushConnection.executionFailed.message'),
 						type: 'error',
 						duration: 0,
 					});
