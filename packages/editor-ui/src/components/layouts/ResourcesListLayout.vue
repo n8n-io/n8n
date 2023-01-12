@@ -235,15 +235,6 @@ export default mixins(showMessage, debounceHelper).extend({
 			type: Boolean,
 			default: true,
 		},
-		callout: {
-			type: String,
-		},
-		calloutIcon: {
-			type: String,
-		},
-		calloutAction: {
-			type: String,
-		},
 	},
 	data() {
 		return {
