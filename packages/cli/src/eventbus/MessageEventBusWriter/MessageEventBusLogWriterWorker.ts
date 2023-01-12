@@ -81,11 +81,9 @@ if (!isMainThread) {
 		try {
 			switch (command) {
 				case 'appendMessageToLog':
-					appendMessageSync(data);
-					break;
-
 				case 'confirmMessageSent':
 					appendMessageSync(data);
+					parentPort?.postMessage({ command, data: true });
 					break;
 				case 'pauseLogging':
 					loggingPaused = true;
