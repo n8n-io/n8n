@@ -4,7 +4,7 @@
 
 import { extend } from '@/Extensions';
 import { dateExtensions } from '@/Extensions/DateExtensions';
-import { evaluate } from './Helpers';
+import { evaluate, getLocalISOString } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
@@ -47,29 +47,8 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDate() should work on a string', () => {
-			const offsetToString = (input: number) => {
-				let output = '-';
-				if (input < 0) {
-					output = '+';
-					input = -input;
-				}
-
-				output += Math.floor(input / 60)
-					.toString()
-					.padStart(2, '0');
-				output += ':';
-				output += (input % 60).toString().padStart(2, '0');
-
-				return output;
-			};
-
-			expect(
-				evaluate(
-					`={{ "2022-01-03T00:00:00.000${offsetToString(
-						new Date().getTimezoneOffset(),
-					)}".toDate() }}`,
-				),
-			).toEqual(new Date(2022, 0, 3));
+			const date = new Date(2022, 0, 3);
+			expect(evaluate(`={{ "${getLocalISOString(date)}".toDate() }}`)).toEqual(date);
 		});
 	});
 });
