@@ -365,6 +365,10 @@ function checkIfFieldExists(
 	}
 }
 
+function isEmpty<T>(value: T) {
+	return value === undefined || value === null || value === '';
+}
+
 function checkAggregationsFieldType(
 	this: IExecuteFunctions,
 	items: IDataObject[],
@@ -379,11 +383,7 @@ function checkAggregationsFieldType(
 
 	for (const [index, item] of items.entries()) {
 		for (const entry of numericAggregations) {
-			if (
-				item[entry.field] !== undefined &&
-				item[entry.field] !== null &&
-				typeof item[entry.field] !== 'number'
-			) {
+			if (!isEmpty(item[entry.field]) && typeof item[entry.field] !== 'number') {
 				throw new NodeOperationError(
 					this.getNode(),
 					`The field '${entry.field}' is not a number in [item ${index}], so can't perform ${entry.aggregation}`,
@@ -428,10 +428,6 @@ function splitData(
 	}, {} as IDataObject);
 }
 
-function isEmpty<T>(value: T) {
-	return value === undefined || value === null || value === '';
-}
-
 function aggregate(items: IDataObject[], entry: Aggregation) {
 	const { aggregation, field } = entry;
 	let data = [...items];
@@ -441,8 +437,6 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 			? (data = data.filter((item) => typeof item[field] === 'number' && !isEmpty(item[field])))
 			: (data = data.filter((item) => !isEmpty(item[field])));
 	}
-
-	console.log(data);
 
 	switch (aggregation) {
 		//combine operations
@@ -462,6 +456,10 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 					if (typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
+					if (typeof value === 'undefined') {
+						value = 'undefined';
+					}
+
 					return value;
 				})
 				.join(separateBy);
