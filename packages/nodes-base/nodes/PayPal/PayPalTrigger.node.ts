@@ -162,19 +162,28 @@ export class PayPalTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const endpoint = '/notifications/verify-webhook-signature';
 
+		const { env } = (await this.getCredentials('payPalApi')) as { env: string };
+
+		// if sanbox omit verification
+		if (env === 'sanbox') {
+			return {
+				workflowData: [this.helpers.returnJsonArray(req.body)],
+			};
+		}
+
 		if (
-			headerData['PAYPAL-AUTH-ALGO'] !== undefined &&
-			headerData['PAYPAL-CERT-URL'] !== undefined &&
-			headerData['PAYPAL-TRANSMISSION-ID'] !== undefined &&
-			headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined &&
-			headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined
+			headerData['paypal-auth-algo'] !== undefined &&
+			headerData['paypal-cert-url'] !== undefined &&
+			headerData['paypal-transmission-id'] !== undefined &&
+			headerData['paypal-transmission-sig'] !== undefined &&
+			headerData['paypal-transmission-time'] !== undefined
 		) {
 			const body = {
-				auth_algo: headerData['PAYPAL-AUTH-ALGO'],
-				cert_url: headerData['PAYPAL-CERT-URL'],
-				transmission_id: headerData['PAYPAL-TRANSMISSION-ID'],
-				transmission_sig: headerData['PAYPAL-TRANSMISSION-SIG'],
-				transmission_time: headerData['PAYPAL-TRANSMISSION-TIME'],
+				auth_algo: headerData['paypal-auth-algo'],
+				cert_url: headerData['paypal-cert-url'],
+				transmission_id: headerData['paypal-transmission-id'],
+				transmission_sig: headerData['paypal-transmission-sig'],
+				transmission_time: headerData['paypal-transmission-time'],
 				webhook_id: webhookData.webhookId,
 				webhook_event: bodyData,
 			};
