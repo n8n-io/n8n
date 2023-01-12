@@ -38,6 +38,8 @@ export const pushConnection = mixins(
 			reconnectTimeout: null as NodeJS.Timeout | null,
 			retryTimeout: null as NodeJS.Timeout | null,
 			pushMessageQueue: [] as Array<{ event: Event; retriesLeft: number }>,
+			connectRetries: 0,
+			lostConnection: false,
 		};
 	},
 	computed: {
@@ -53,6 +55,16 @@ export const pushConnection = mixins(
 			}
 
 			this.reconnectTimeout = setTimeout(() => {
+				this.connectRetries++;
+				if (this.connectRetries > 3 && !this.lostConnection) {
+					this.lostConnection = true;
+					this.$showMessage({
+						title: this.$locale.baseText('pushConnection.lostConnection'),
+						message: this.$locale.baseText('pushConnection.lostConnection.message'),
+						type: 'error',
+						duration: 0,
+					});
+				}
 				this.pushConnect();
 			}, 3000);
 		},
@@ -73,6 +85,9 @@ export const pushConnection = mixins(
 			this.eventSource.addEventListener(
 				'open',
 				() => {
+					this.connectRetries = 0;
+					this.lostConnection = false;
+
 					this.rootStore.pushConnectionActive = true;
 					if (this.reconnectTimeout !== null) {
 						clearTimeout(this.reconnectTimeout);
