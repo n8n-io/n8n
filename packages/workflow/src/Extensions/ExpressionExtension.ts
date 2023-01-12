@@ -45,6 +45,8 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 	]),
 );
 
+const PROXY_METHOD_NAMES = ['first', 'last', 'all'];
+
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
@@ -225,11 +227,12 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		// This is likely a builtin we're implementing for another type
 		// (e.g. toLocaleString). We'll just call it
 		if (
-			inputAny &&
-			functionName &&
-			functionName in inputAny &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			typeof inputAny[functionName] === 'function'
+			(inputAny &&
+				functionName &&
+				functionName in inputAny &&
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				typeof inputAny[functionName] === 'function') ||
+			PROXY_METHOD_NAMES.includes(functionName)
 		) {
 			// I was having weird issues with eslint not finding rules on this line.
 			// Just disabling all eslint rules for now.
