@@ -9,7 +9,6 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
-		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
 		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
