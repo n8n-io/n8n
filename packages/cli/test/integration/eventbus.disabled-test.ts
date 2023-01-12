@@ -16,11 +16,11 @@ import {
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
 import { SuperAgentTest } from 'supertest';
-import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
-import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -125,18 +125,18 @@ afterAll(async () => {
 	await eventBus.close();
 });
 
-test.skip('should have a running logwriter process', async () => {
+test('should have a running logwriter process', async () => {
 	const thread = eventBus.logWriter.getThread();
 	expect(thread).toBeDefined();
 });
 
-test.skip('should have a clean log', async () => {
+test('should have a clean log', async () => {
 	await eventBus.logWriter.getThread()?.cleanLogs();
 	const allMessages = await eventBus.getEventsAll();
 	expect(allMessages.length).toBe(0);
 });
 
-test.skip('should have logwriter log messages', async () => {
+test('should have logwriter log messages', async () => {
 	await eventBus.send(testMessage);
 	const sent = await eventBus.getEventsSent();
 	const unsent = await eventBus.getEventsUnsent();
@@ -145,27 +145,27 @@ test.skip('should have logwriter log messages', async () => {
 	expect(sent.find((e) => e.id === testMessage.id)).toEqual(testMessage);
 });
 
-test.skip('GET /eventbus/destination should fail due to missing authentication', async () => {
+test('GET /eventbus/destination should fail due to missing authentication', async () => {
 	const response = await unAuthOwnerAgent.get('/eventbus/destination');
 	expect(response.statusCode).toBe(401);
 });
 
-test.skip('POST /eventbus/destination create syslog destination', async () => {
+test('POST /eventbus/destination create syslog destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testSyslogDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('POST /eventbus/destination create sentry destination', async () => {
+test('POST /eventbus/destination create sentry destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testSentryDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('POST /eventbus/destination create webhook destination', async () => {
+test('POST /eventbus/destination create webhook destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testWebhookDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('GET /eventbus/destination all returned destinations should exist in eventbus', async () => {
+test('GET /eventbus/destination all returned destinations should exist in eventbus', async () => {
 	const response = await authOwnerAgent.get('/eventbus/destination');
 	expect(response.statusCode).toBe(200);
 
@@ -182,7 +182,7 @@ test.skip('GET /eventbus/destination all returned destinations should exist in e
 	}
 });
 
-test.skip('should send message to syslog ', async () => {
+test('should send message to syslog ', async () => {
 	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
@@ -209,7 +209,7 @@ test.skip('should send message to syslog ', async () => {
 	syslogDestination.disable();
 });
 
-test.skip('should confirm send message if there are no subscribers', async () => {
+test('should confirm send message if there are no subscribers', async () => {
 	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
@@ -236,7 +236,7 @@ test.skip('should confirm send message if there are no subscribers', async () =>
 	syslogDestination.disable();
 });
 
-test.skip('should anonymize audit message to syslog ', async () => {
+test('should anonymize audit message to syslog ', async () => {
 	config.set('enterprise.features.logStreaming', true);
 
 	const syslogDestination = eventBus.destinations[
@@ -269,7 +269,7 @@ test.skip('should anonymize audit message to syslog ', async () => {
 	syslogDestination.disable();
 });
 
-test.skip('should send message to webhook ', async () => {
+test('should send message to webhook ', async () => {
 	config.set('enterprise.features.logStreaming', true);
 
 	const webhookDestination = eventBus.destinations[
@@ -289,7 +289,7 @@ test.skip('should send message to webhook ', async () => {
 	webhookDestination.disable();
 });
 
-test.skip('should send message to sentry ', async () => {
+test('should send message to sentry ', async () => {
 	config.set('enterprise.features.logStreaming', true);
 
 	const sentryDestination = eventBus.destinations[
@@ -316,7 +316,7 @@ test.skip('should send message to sentry ', async () => {
 	sentryDestination.disable();
 });
 
-test.skip('DEL /eventbus/destination delete all destinations by id', async () => {
+test('DEL /eventbus/destination delete all destinations by id', async () => {
 	const existingDestinationIds = [...Object.keys(eventBus.destinations)];
 
 	await Promise.all(
