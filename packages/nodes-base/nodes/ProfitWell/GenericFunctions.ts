@@ -28,7 +28,7 @@ export async function profitWellApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri || `https://api.profitwell.com/v2${resource}`,
+			uri: uri ?? `https://api.profitwell.com/v2${resource}`,
 			json: true,
 		};
 

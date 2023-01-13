@@ -367,7 +367,9 @@ export class CrateDb implements INodeType {
 				for (let i = 0; i < items.length; i++) {
 					const itemCopy = getItemCopy(items[i], columns);
 					queries.push(
-						pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+						(pgp.helpers.update(itemCopy, cs) as string) +
+							pgp.as.format(where, itemCopy) +
+							returning,
 					);
 				}
 				const _updateItems = await db.multi(pgp.helpers.concat(queries));

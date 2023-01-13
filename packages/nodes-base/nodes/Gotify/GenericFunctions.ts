@@ -24,7 +24,7 @@ export async function gotifyApiRequest(
 		},
 		body,
 		qs,
-		uri: uri || `${credentials.url}${path}`,
+		uri: uri ?? `${credentials.url}${path}`,
 		json: true,
 	};
 	try {

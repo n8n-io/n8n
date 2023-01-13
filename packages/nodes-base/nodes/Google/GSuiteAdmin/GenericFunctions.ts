@@ -21,7 +21,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://www.googleapis.com/admin${resource}`,
+		uri: uri ?? `https://www.googleapis.com/admin${resource}`,
 		json: true,
 	};
 	try {
