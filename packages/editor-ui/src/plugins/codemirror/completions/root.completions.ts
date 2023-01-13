@@ -1,5 +1,5 @@
 import { i18n } from '@/plugins/i18n';
-import { autocompletableNodeNames, longestCommonPrefix } from './utils';
+import { autocompletableNodeNames, inputHasNoBinaryData, longestCommonPrefix } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
@@ -34,6 +34,9 @@ export function rootCompletions(context: CompletionContext): CompletionResult | 
 
 export function generateOptions() {
 	const BOOST_SET = new Set(['$input', '$json']);
+	const SKIP_SET = new Set();
+
+	if (inputHasNoBinaryData()) SKIP_SET.add('$binary');
 
 	// @TODO: Add $parameter to i18n and remove here
 	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => {
@@ -43,18 +46,20 @@ export function generateOptions() {
 		return a.localeCompare(b);
 	});
 
-	const options: Completion[] = rootKeys.map((key) => {
-		const option: Completion = {
-			label: key,
-			type: key === '$jmespath' ? 'function' : 'keyword', // @TODO: Extract $jmespath to constant set
-		};
+	const options: Completion[] = rootKeys
+		.filter((key) => !SKIP_SET.has(key))
+		.map((key) => {
+			const option: Completion = {
+				label: key,
+				type: key === '$jmespath' ? 'function' : 'keyword', // @TODO: Extract $jmespath to constant set
+			};
 
-		const info = i18n.rootVars[key];
+			const info = i18n.rootVars[key];
 
-		if (info) option.info = info;
+			if (info) option.info = info;
 
-		return option;
-	});
+			return option;
+		});
 
 	options.push(
 		...autocompletableNodeNames().map((nodeName) => ({

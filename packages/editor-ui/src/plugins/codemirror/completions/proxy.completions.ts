@@ -1,6 +1,11 @@
 import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-import { isAllowedInDotNotation, longestCommonPrefix } from './utils';
+import {
+	isSplitInBatchesAbsent,
+	isAllowedInDotNotation,
+	longestCommonPrefix,
+	inputHasNoParams,
+} from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject } from 'n8n-workflow';
 import type { Word } from '@/types/completions';
@@ -59,6 +64,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
 	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
+
 	const BOOST_SET = new Set(['item', 'all', 'first', 'last']);
 
 	if (word.text.includes('json[')) {
@@ -71,6 +77,10 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 				};
 			});
 	}
+
+	if (isSplitInBatchesAbsent()) SKIP_SET.add('context');
+
+	if (toResolve === '$input' && inputHasNoParams()) SKIP_SET.add('params');
 
 	const proxyName = toResolve.startsWith('$(') ? '$()' : toResolve;
 
