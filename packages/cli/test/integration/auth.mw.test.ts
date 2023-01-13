@@ -12,7 +12,6 @@ import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 let app: express.Application;
-let testDbName = '';
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
@@ -21,8 +20,7 @@ beforeAll(async () => {
 		applyAuth: true,
 		endpointGroups: ['me', 'auth', 'owner', 'users'],
 	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
@@ -33,7 +31,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 ROUTES_REQUIRING_AUTHENTICATION.concat(ROUTES_REQUIRING_AUTHORIZATION).forEach((route) => {

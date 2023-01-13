@@ -691,7 +691,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 								}
 								const addressInfo: IDataObject = {};
 								for (const answer of question.answers.rows as IDataObject[]) {
-									addressInfo[answer.type as string] = rows[answer.id as string] || '';
+									addressInfo[answer.type as string] = rows[answer.id as string] ?? '';
 								}
 								responseQuestions.set(heading, addressInfo);
 							}

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
 import {
 	INodeCredentials,
@@ -11,7 +9,7 @@ import * as Db from '@/Db';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
-import { DeleteResult, InsertResult } from 'typeorm';
+import type { DeleteResult, InsertResult } from 'typeorm';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
@@ -83,7 +81,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			id: this.getId(),
 			destination: this.serialize(),
 		};
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(data, {
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
@@ -97,7 +94,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 	}
 
 	static async deleteFromDb(id: string): Promise<DeleteResult> {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		const dbResult = await Db.collections.EventDestinations.delete({ id });
 		return dbResult;
 	}

@@ -9,14 +9,12 @@ import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
@@ -30,18 +28,15 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		[
-			'SharedCredentials',
-			'SharedWorkflow',
-			'User',
-			'Workflow',
-			'Credentials',
-			'Execution',
-			'Settings',
-		],
-		testDbName,
-	);
+	await testDb.truncate([
+		'SharedCredentials',
+		'SharedWorkflow',
+		'User',
+		'Workflow',
+		'Credentials',
+		'Execution',
+		'Settings',
+	]);
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
@@ -52,7 +47,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('GET /executions/:id should fail due to missing API Key', async () => {

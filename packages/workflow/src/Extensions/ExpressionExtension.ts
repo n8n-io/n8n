@@ -227,7 +227,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		if (
 			inputAny &&
 			functionName &&
-			functionName in inputAny &&
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			typeof inputAny[functionName] === 'function'
 		) {

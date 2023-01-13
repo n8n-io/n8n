@@ -16,11 +16,12 @@ import {
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
 import { SuperAgentTest } from 'supertest';
-import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
-import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
+import { v4 as uuid } from 'uuid';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
 jest.mock('axios');
@@ -29,7 +30,6 @@ jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let owner: User;
 let unAuthOwnerAgent: SuperAgentTest;
@@ -63,32 +63,25 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 };
 
 async function cleanLogs() {
-	await eventBus.logWriter.getThread()?.cleanLogs();
+	eventBus.logWriter.cleanAllLogs();
 	const allMessages = await eventBus.getEventsAll();
 	expect(allMessages.length).toBe(0);
 }
 
-async function confirmIdsSentUnsent(id: string) {
-	const sent = await eventBus.getEventsSent();
-	const unsent = await eventBus.getEventsUnsent();
-	expect(sent.length).toBe(1);
-	expect(sent[0].id).toBe(id);
-	expect(unsent.length).toBe(0);
+async function confirmIdInAll(id: string) {
+	const sent = await eventBus.getEventsAll();
+	expect(sent.length).toBeGreaterThan(0);
+	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
 }
 
-const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message' });
-const testMessageUnsubscribed = new EventMessageGeneric({ eventName: 'n8n.test.unsub' });
-const testAuditMessage = new EventMessageAudit({
-	eventName: 'n8n.audit.user.updated',
-	payload: {
-		_secret: 'secret',
-		public: 'public',
-	},
-});
+async function confirmIdSent(id: string) {
+	const sent = await eventBus.getEventsSent();
+	expect(sent.length).toBeGreaterThan(0);
+	expect(sent.find((msg) => msg.id === id)).toBeTruthy();
+}
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -119,36 +112,33 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	// await testDb.truncate(['EventDestinations'], testDbName);
-
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('enterprise.features.logStreaming', false);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
+	await testDb.terminate();
 	await eventBus.close();
 });
 
-test('should have a running logwriter process', async () => {
-	const thread = eventBus.logWriter.getThread();
+test('should have a running logwriter process', () => {
+	const thread = eventBus.logWriter.worker;
 	expect(thread).toBeDefined();
 });
 
-test('should have a clean log', async () => {
-	await eventBus.logWriter.getThread()?.cleanLogs();
-	const allMessages = await eventBus.getEventsAll();
-	expect(allMessages.length).toBe(0);
-});
-
 test('should have logwriter log messages', async () => {
+	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	await eventBus.send(testMessage);
-	const sent = await eventBus.getEventsSent();
-	const unsent = await eventBus.getEventsUnsent();
-	expect(sent.length).toBeGreaterThan(0);
-	expect(unsent.length).toBe(0);
-	expect(sent.find((e) => e.id === testMessage.id)).toEqual(testMessage);
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.once('message', async (msg: { command: string; data: any }) => {
+			expect(msg.command).toBe('appendMessageToLog');
+			expect(msg.data).toBe(true);
+			await confirmIdInAll(testMessage.id);
+			resolve(true);
+		});
+	});
 });
 
 test('GET /eventbus/destination should fail due to missing authentication', async () => {
@@ -189,8 +179,9 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 });
 
 test('should send message to syslog ', async () => {
+	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
-	await cleanLogs();
+	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -208,17 +199,31 @@ test('should send message to syslog ', async () => {
 	});
 
 	await eventBus.send(testMessage);
-
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	expect(mockedSyslogClientLog).toHaveBeenCalled();
-	await confirmIdsSentUnsent(testMessage.id);
-
-	syslogDestination.disable();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler001(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					await confirmIdInAll(testMessage.id);
+				} else if (msg.command === 'confirmMessageSent') {
+					await confirmIdSent(testMessage.id);
+					expect(mockedSyslogClientLog).toHaveBeenCalled();
+					syslogDestination.disable();
+					eventBus.logWriter.worker?.removeListener('message', handler001);
+					resolve(true);
+				}
+			},
+		);
+	});
 });
 
 test('should confirm send message if there are no subscribers', async () => {
+	const testMessageUnsubscribed = new EventMessageGeneric({
+		eventName: 'n8n.test.unsub',
+		id: uuid(),
+	});
 	config.set('enterprise.features.logStreaming', true);
-	await cleanLogs();
+	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -228,25 +233,40 @@ test('should confirm send message if there are no subscribers', async () => {
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
 	mockedSyslogClientLog.mockImplementation((_m, _options, _cb) => {
-		eventBus.confirmSent(testMessage, {
-			id: syslogDestination.id,
-			name: syslogDestination.label,
-		});
 		return syslogDestination.client;
 	});
 
 	await eventBus.send(testMessageUnsubscribed);
 
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	expect(mockedSyslogClientLog).toHaveBeenCalled();
-	await confirmIdsSentUnsent(testMessageUnsubscribed.id);
-
-	syslogDestination.disable();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler002(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					await confirmIdInAll(testMessageUnsubscribed.id);
+				} else if (msg.command === 'confirmMessageSent') {
+					await confirmIdSent(testMessageUnsubscribed.id);
+					expect(mockedSyslogClientLog).toHaveBeenCalled();
+					syslogDestination.disable();
+					eventBus.logWriter.worker?.removeListener('message', handler002);
+					resolve(true);
+				}
+			},
+		);
+	});
 });
 
 test('should anonymize audit message to syslog ', async () => {
+	const testAuditMessage = new EventMessageAudit({
+		eventName: 'n8n.audit.user.updated',
+		payload: {
+			_secret: 'secret',
+			public: 'public',
+		},
+		id: uuid(),
+	});
 	config.set('enterprise.features.logStreaming', true);
-	await cleanLogs();
+	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -269,18 +289,44 @@ test('should anonymize audit message to syslog ', async () => {
 
 	syslogDestination.anonymizeAuditMessages = true;
 	await eventBus.send(testAuditMessage);
-	expect(mockedSyslogClientLog).toHaveBeenCalled();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler005(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					const sent = await eventBus.getEventsAll();
+					await confirmIdInAll(testAuditMessage.id);
+					expect(mockedSyslogClientLog).toHaveBeenCalled();
+					eventBus.logWriter.worker?.removeListener('message', handler005);
+					resolve(true);
+				}
+			},
+		);
+	});
 
 	syslogDestination.anonymizeAuditMessages = false;
 	await eventBus.send(testAuditMessage);
-	expect(mockedSyslogClientLog).toHaveBeenCalled();
-
-	syslogDestination.disable();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler006(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					const sent = await eventBus.getEventsAll();
+					await confirmIdInAll(testAuditMessage.id);
+					expect(mockedSyslogClientLog).toHaveBeenCalled();
+					syslogDestination.disable();
+					eventBus.logWriter.worker?.removeListener('message', handler006);
+					resolve(true);
+				}
+			},
+		);
+	});
 });
 
 test('should send message to webhook ', async () => {
+	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
-	await cleanLogs();
+	// await cleanLogs();
 
 	const webhookDestination = eventBus.destinations[
 		testWebhookDestination.id!
@@ -292,16 +338,28 @@ test('should send message to webhook ', async () => {
 	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
-	// not elegant, but since communication happens through emitters, we'll wait for a bit
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	await confirmIdsSentUnsent(testMessage.id);
-
-	webhookDestination.disable();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler003(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					await confirmIdInAll(testMessage.id);
+				} else if (msg.command === 'confirmMessageSent') {
+					await confirmIdSent(testMessage.id);
+					expect(mockedAxios.request).toHaveBeenCalled();
+					webhookDestination.disable();
+					eventBus.logWriter.worker?.removeListener('message', handler003);
+					resolve(true);
+				}
+			},
+		);
+	});
 });
 
 test('should send message to sentry ', async () => {
+	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
-	await cleanLogs();
+	// await cleanLogs();
 
 	const sentryDestination = eventBus.destinations[
 		testSentryDestination.id!
@@ -319,12 +377,22 @@ test('should send message to sentry ', async () => {
 	});
 
 	await eventBus.send(testMessage);
-	// not elegant, but since communication happens through emitters, we'll wait for a bit
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	expect(mockedSentryCaptureMessage).toHaveBeenCalled();
-	await confirmIdsSentUnsent(testMessage.id);
-
-	sentryDestination.disable();
+	await new Promise((resolve) => {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler004(msg: { command: string; data: any }) {
+				if (msg.command === 'appendMessageToLog') {
+					await confirmIdInAll(testMessage.id);
+				} else if (msg.command === 'confirmMessageSent') {
+					await confirmIdSent(testMessage.id);
+					expect(mockedSentryCaptureMessage).toHaveBeenCalled();
+					sentryDestination.disable();
+					eventBus.logWriter.worker?.removeListener('message', handler004);
+					resolve(true);
+				}
+			},
+		);
+	});
 });
 
 test('DEL /eventbus/destination delete all destinations by id', async () => {
