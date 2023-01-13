@@ -23,7 +23,7 @@ export async function mauticApiRequest(
 		headers: {},
 		method,
 		qs: query,
-		uri: uri || `/api${endpoint}`,
+		uri: uri ?? `/api${endpoint}`,
 		body,
 		json: true,
 	};

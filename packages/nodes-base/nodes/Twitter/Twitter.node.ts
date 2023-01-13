@@ -21,7 +21,7 @@ import {
 
 import { ITweet } from './TweetInterface';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -247,7 +247,7 @@ export class Twitter implements INodeType {
 							}
 						}
 
-						qs.tweet_mode = additionalFields.tweetMode || 'compat';
+						qs.tweet_mode = additionalFields.tweetMode ?? 'compat';
 
 						if (returnAll) {
 							responseData = await twitterApiRequestAllItems.call(

@@ -32,7 +32,7 @@ export async function clickupApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.clickup.com/api/v2${resource}`,
+		uri: uri ?? `https://api.clickup.com/api/v2${resource}`,
 		json: true,
 	};
 
