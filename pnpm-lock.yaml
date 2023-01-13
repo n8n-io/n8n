@@ -184,7 +184,7 @@ importers:
       lodash.uniqby: ^4.7.0
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
-      mysql2: ~2.3.0
+      mysql2: ~2.3.3
       n8n-core: ~0.151.0
       n8n-editor-ui: ~0.177.0
       n8n-nodes-base: ~0.209.0
@@ -199,7 +199,7 @@ importers:
       passport: ^0.6.0
       passport-cookie: ^1.0.9
       passport-jwt: ^4.0.0
-      pg: ^8.3.0
+      pg: ^8.8.0
       picocolors: ^1.0.0
       posthog-node: ^2.2.2
       prom-client: ^13.1.0
@@ -209,7 +209,7 @@ importers:
       semver: ^7.3.8
       shelljs: ^0.8.5
       source-map-support: ^0.5.21
-      sqlite3: ^5.1.2
+      sqlite3: ^5.1.4
       sse-channel: ^4.0.0
       supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
@@ -218,7 +218,7 @@ importers:
       tsc-alias: ^1.7.0
       tsconfig-paths: ^3.14.1
       tslib: 1.14.1
-      typeorm: 0.2.45
+      typeorm: 0.3.11
       uuid: ^8.3.2
       validator: 13.7.0
       winston: ^3.3.3
@@ -299,12 +299,12 @@ importers:
       semver: 7.3.8
       shelljs: 0.8.5
       source-map-support: 0.5.21
-      sqlite3: 5.1.2
+      sqlite3: 5.1.4
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
       tslib: 1.14.1
-      typeorm: 0.2.45_b2izk5tn6tm5xb65gvog337urq
+      typeorm: 0.3.11_a77gzgdqnod3rkvxniiwirlqsi
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
@@ -3481,6 +3481,7 @@ packages:
   /@npmcli/move-file/1.1.2:
     resolution: {integrity: sha512-1SUf/Cg2GzGDyaf15aR9St9TWlb+XvbZXWpDx8YKs7MLzMH/BCeopv+y9vzrzgkfykCGuWOlSu3mZhj2+FQcrg==}
     engines: {node: '>=10'}
+    deprecated: This functionality has been moved to @npmcli/fs
     dependencies:
       mkdirp: 1.0.4
       rimraf: 3.0.2
@@ -6407,10 +6408,6 @@ packages:
     dev: true
     optional: true
 
-  /@types/zen-observable/0.8.3:
-    resolution: {integrity: sha512-fbF6oTd4sGGy0xjHPKAt+eS2CrxJ3+6gQ3FGcBoIJR2TLAyCkCyI8JqZNy+FeON0AhVgNJoUumVoZQjBFUqHkw==}
-    dev: false
-
   /@typescript-eslint/eslint-plugin/5.45.0_psz44bhp76u27vmulntnlx26h4:
     resolution: {integrity: sha512-CXXHNlf0oL+Yg021cxgOdMHNTXD17rHkq7iW6RFHoybdFgQBjU3yIXhhcPpGwr1CjZlo6ET8C6tzX5juQoXeGA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
@@ -7378,7 +7375,6 @@ packages:
 
   /arg/4.1.3:
     resolution: {integrity: sha512-58S9QDqG0Xx27YwPSt9fJxivjYl432YCwfDMfZ+71RAqUrZef7LrKQZ3LHLOwCS4FLNBplP533Zx895SeOCHvA==}
-    dev: true
 
   /argparse/1.0.10:
     resolution: {integrity: sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==}
@@ -9707,7 +9703,6 @@ packages:
 
   /create-require/1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
-    dev: true
 
   /crelt/1.0.5:
     resolution: {integrity: sha512-+BO9wPPi+DWTDcNYhr/W90myha8ptzftZT+LwcmUbbok0rcP/fequmFYCw8NMoH7pkAZQzU78b3kYrlua5a9eA==}
@@ -9998,7 +9993,6 @@ packages:
   /date-fns/2.29.3:
     resolution: {integrity: sha512-dDCnyH2WnnKusqvZZ6+jA1O51Ibt8ZMRNkDZdyAyK4YfbDwa/cEmuztzG5pk6hqlp9aSBPYcjOlktquahGwGeA==}
     engines: {node: '>=0.11'}
-    dev: true
 
   /date-now/0.1.4:
     resolution: {integrity: sha512-AsElvov3LoNB7tf5k37H2jYSB+ZZPMT5sG2QjJCcdlV5chIv6htBUBUui2IKRjgtKAKtCBN7Zbwa+MtwLjSeNw==}
@@ -10307,7 +10301,6 @@ packages:
   /diff/4.0.2:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
     engines: {node: '>=0.3.1'}
-    dev: true
 
   /diffie-hellman/5.0.3:
     resolution: {integrity: sha512-kqag/Nl+f3GwyK25fhUMYj81BUOrZ9IuJsjIcDE5icNM9FJHAVm3VcUDxdLPoQtTuUylWm6ZIknYJwwaPxsUzg==}
@@ -10460,7 +10453,6 @@ packages:
   /dotenv/16.0.3:
     resolution: {integrity: sha512-7GO6HghkA5fYG9TYnNxi14/7K9f5occMlp3zXAuSxn7CKCxt9xbNWG7yF8hTCSUchlfWSe3uLmlPfigevRItzQ==}
     engines: {node: '>=12'}
-    dev: true
 
   /dotenv/8.6.0:
     resolution: {integrity: sha512-IrPdXQsk2BbzvCBGBOTmmSH5SodmqZNt4ERAZDmW4CT+tL8VtvinqywuANaFu4bOMWki16nqf0e4oC0QIaDr/g==}
@@ -19609,8 +19601,8 @@ packages:
     resolution: {integrity: sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug==}
     dev: false
 
-  /sqlite3/5.1.2:
-    resolution: {integrity: sha512-D0Reg6pRWAFXFUnZKsszCI67tthFD8fGPewRddDCX6w4cYwz3MbvuwRICbL+YQjBAh9zbw+lJ/V9oC8nG5j6eg==}
+  /sqlite3/5.1.4:
+    resolution: {integrity: sha512-i0UlWAzPlzX3B5XP2cYuhWQJsTtlMD6obOa1PgeEQ4DHEXUuyJkgv50I3isqZAP5oFc2T8OFvakmDh2W6I+YpA==}
     requiresBuild: true
     peerDependenciesMeta:
       node-gyp:
@@ -20732,7 +20724,6 @@ packages:
       source-map-support: 0.5.21
       typescript: 4.8.4
       yn: 3.1.1
-    dev: true
 
   /ts-pnp/1.2.0_typescript@4.8.4:
     resolution: {integrity: sha512-csd+vJOb/gkzvcCHgTGSChYpy5f1/XKNsmvBGO4JXS+z1v2HobugDz4s1IeFXM3wZB44uczs+eazB5Q/ccdhQw==}
@@ -20935,26 +20926,31 @@ packages:
   /typedarray/0.0.6:
     resolution: {integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==}
 
-  /typeorm/0.2.45_b2izk5tn6tm5xb65gvog337urq:
-    resolution: {integrity: sha512-c0rCO8VMJ3ER7JQ73xfk0zDnVv0WDjpsP6Q1m6CVKul7DB9iVdWLRjPzc8v2eaeBuomsbZ2+gTaYr8k1gm3bYA==}
+  /typeorm/0.3.11_a77gzgdqnod3rkvxniiwirlqsi:
+    resolution: {integrity: sha512-pzdOyWbVuz/z8Ww6gqvBW4nylsM0KLdUCDExr2gR20/x1khGSVxQkjNV/3YqliG90jrWzrknYbYscpk8yxFJVg==}
+    engines: {node: '>= 12.9.0'}
     hasBin: true
     peerDependencies:
-      '@sap/hana-client': ^2.11.14
-      better-sqlite3: ^7.1.2
+      '@google-cloud/spanner': ^5.18.0
+      '@sap/hana-client': ^2.12.25
+      better-sqlite3: ^7.1.2 || ^8.0.0
       hdb-pool: ^0.1.6
-      ioredis: ^4.28.3
+      ioredis: ^5.0.4
       mongodb: ^3.6.0
-      mssql: ^6.3.1
+      mssql: ^7.3.0
       mysql2: ^2.2.5
       oracledb: ^5.1.0
       pg: ^8.5.1
       pg-native: ^3.0.0
       pg-query-stream: ^4.0.0
-      redis: ^3.1.1
+      redis: ^3.1.1 || ^4.0.0
       sql.js: ^1.4.0
-      sqlite3: ^5.0.2
+      sqlite3: ^5.0.3
+      ts-node: ^10.7.0
       typeorm-aurora-data-api-driver: ^2.0.0
     peerDependenciesMeta:
+      '@google-cloud/spanner':
+        optional: true
       '@sap/hana-client':
         optional: true
       better-sqlite3:
@@ -20983,6 +20979,8 @@ packages:
         optional: true
       sqlite3:
         optional: true
+      ts-node:
+        optional: true
       typeorm-aurora-data-api-driver:
         optional: true
     dependencies:
@@ -20991,8 +20989,9 @@ packages:
       buffer: 6.0.3
       chalk: 4.1.2
       cli-highlight: 2.1.11
+      date-fns: 2.29.3
       debug: 4.3.4
-      dotenv: 8.6.0
+      dotenv: 16.0.3
       glob: 7.2.3
       ioredis: 5.2.4
       js-yaml: 4.1.0
@@ -21001,12 +21000,12 @@ packages:
       pg: 8.8.0
       reflect-metadata: 0.1.13
       sha.js: 2.4.11
-      sqlite3: 5.1.2
+      sqlite3: 5.1.4
+      ts-node: 9.1.1_typescript@4.8.4
       tslib: 2.4.0
       uuid: 8.3.2
       xml2js: 0.4.23
       yargs: 17.6.0
-      zen-observable-ts: 1.1.0
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -22715,7 +22714,6 @@ packages:
   /yn/3.1.1:
     resolution: {integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==}
     engines: {node: '>=6'}
-    dev: true
 
   /yocto-queue/0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
@@ -22746,17 +22744,6 @@ packages:
     optionalDependencies:
       commander: 2.20.3
     dev: true
-
-  /zen-observable-ts/1.1.0:
-    resolution: {integrity: sha512-1h4zlLSqI2cRLPJUHJFL8bCWHhkpuXkF+dbGkRaWjgDIG26DmzyshUMrdV/rL3UnR+mhaX4fRq8LPouq0MYYIA==}
-    dependencies:
-      '@types/zen-observable': 0.8.3
-      zen-observable: 0.8.15
-    dev: false
-
-  /zen-observable/0.8.15:
-    resolution: {integrity: sha512-PQ2PC7R9rslx84ndNBZB/Dkv8V8fZEpk83RLgXtYd0fwUgEjseMn1Dgajh2x6S8QbZAFa9p2qVCEuYZNgve0dQ==}
-    dev: false
 
   /zwitch/1.0.5:
     resolution: {integrity: sha512-V50KMwwzqJV0NpZIZFwfOD5/lyny3WlSzRiXgA0G7VUnRlqttta1L6UQIHzd6EuBY/cHGfwTIck7w1yH6Q5zUw==}
