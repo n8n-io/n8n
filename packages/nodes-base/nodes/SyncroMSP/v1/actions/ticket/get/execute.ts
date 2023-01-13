@@ -16,5 +16,5 @@ export async function getTicket(
 	const body = {} as IDataObject;
 
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
-	return this.helpers.returnJsonArray(responseData.ticket);
+	return this.helpers.returnJsonArray(responseData.ticket as IDataObject[]);
 }

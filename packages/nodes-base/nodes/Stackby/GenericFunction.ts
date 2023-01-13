@@ -2,7 +2,7 @@ import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-co
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IPollFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 /**
  * Make an API request to Airtable
@@ -42,7 +42,7 @@ export async function apiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -58,7 +58,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	query.maxrecord = 100;
 
 	query.offset = 0;
@@ -69,7 +69,7 @@ export async function apiRequestAllItems(
 
 	do {
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 		query.offset += query.maxrecord;
 	} while (responseData.length !== 0);
 

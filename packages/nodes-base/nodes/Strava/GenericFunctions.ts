@@ -8,7 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function stravaApiRequest(
 	this:
@@ -19,12 +19,11 @@ export async function stravaApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-): Promise<any> {
+) {
 	const options: OptionsWithUri = {
 		method,
 		form: body,
@@ -49,16 +48,15 @@ export async function stravaApiRequest(
 				body.client_id = credentials.clientId;
 				body.client_secret = credentials.clientSecret;
 			}
-			//@ts-ignore
+
 			return await this.helpers?.request(options);
 		} else {
-			//@ts-ignore
 			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {
 				includeCredentialsOnRefreshOnBody: true,
 			});
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -67,9 +65,9 @@ export async function stravaApiRequestAllItems(
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -81,7 +79,7 @@ export async function stravaApiRequestAllItems(
 	do {
 		responseData = await stravaApiRequest.call(this, method, resource, body, query);
 		query.page++;
-		returnData.push.apply(returnData, responseData);
+		returnData.push.apply(returnData, responseData as IDataObject[]);
 	} while (responseData.length !== 0);
 
 	return returnData;

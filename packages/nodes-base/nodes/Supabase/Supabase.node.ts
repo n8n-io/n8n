@@ -74,7 +74,7 @@ export class Supabase implements INodeType {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');
-				for (const path of Object.keys(paths)) {
+				for (const path of Object.keys(paths as IDataObject)) {
 					//omit introspection path
 					if (path === '/') continue;
 					returnData.push({
@@ -88,7 +88,7 @@ export class Supabase implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
 				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/');
-				for (const column of Object.keys(definitions[tableName].properties)) {
+				for (const column of Object.keys(definitions[tableName].properties as IDataObject)) {
 					returnData.push({
 						name: `${column} - (${definitions[tableName].properties[column].type})`,
 						value: column,
@@ -159,7 +159,7 @@ export class Supabase implements INodeType {
 
 				try {
 					createdRow = await supabaseApiRequest.call(this, 'POST', endpoint, records);
-					returnData.push(...createdRow);
+					returnData.push(...(createdRow as IDataObject[]));
 				} catch (error) {
 					if (this.continueOnFail()) {
 						returnData.push({ error: error.description });
@@ -211,7 +211,7 @@ export class Supabase implements INodeType {
 							continue;
 						}
 					}
-					returnData.push(...rows);
+					returnData.push(...(rows as IDataObject[]));
 				}
 			}
 
@@ -241,7 +241,7 @@ export class Supabase implements INodeType {
 							continue;
 						}
 					}
-					returnData.push(...rows);
+					returnData.push(...(rows as IDataObject[]));
 				}
 			}
 
@@ -286,7 +286,7 @@ export class Supabase implements INodeType {
 							continue;
 						}
 					}
-					returnData.push(...rows);
+					returnData.push(...(rows as IDataObject[]));
 				}
 			}
 
@@ -346,7 +346,7 @@ export class Supabase implements INodeType {
 
 					try {
 						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
-						returnData.push(...updatedRow);
+						returnData.push(...(updatedRow as IDataObject[]));
 					} catch (error) {
 						if (this.continueOnFail()) {
 							returnData.push({ error: error.description });

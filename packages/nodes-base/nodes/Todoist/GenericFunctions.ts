@@ -44,7 +44,7 @@ export async function todoistApiRequest(
 
 export async function todoistSyncRequest(
 	this: Context,
-	body: IDataObject = {},
+	body: any = {},
 	qs: IDataObject = {},
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2');
@@ -57,7 +57,7 @@ export async function todoistSyncRequest(
 		json: true,
 	};
 
-	if (Object.keys(body).length !== 0) {
+	if (Object.keys(body as IDataObject).length !== 0) {
 		options.body = body;
 	}
 

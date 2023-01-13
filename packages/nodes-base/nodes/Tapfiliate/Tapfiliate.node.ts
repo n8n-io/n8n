@@ -81,8 +81,8 @@ export class Tapfiliate implements INodeType {
 				const programs = await tapfiliateApiRequestAllItems.call(this, 'GET', '/programs/');
 				for (const program of programs) {
 					returnData.push({
-						name: program.title,
-						value: program.id,
+						name: program.title as string,
+						value: program.id as string,
 					});
 				}
 				return returnData;
@@ -131,7 +131,7 @@ export class Tapfiliate implements INodeType {
 							delete body.companyName;
 						}
 						responseData = await tapfiliateApiRequest.call(this, 'POST', '/affiliates/', body);
-						returnData.push(responseData);
+						returnData.push(responseData as INodeExecutionData);
 					}
 					if (operation === 'delete') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliate-delete
@@ -297,7 +297,7 @@ export class Tapfiliate implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

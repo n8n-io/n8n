@@ -2017,7 +2017,7 @@ export class Telegram implements INodeType {
 						const fileName = filePath.split('/').pop();
 						const data = await this.helpers.prepareBinaryData(
 							Buffer.from(file.body as string),
-							fileName,
+							fileName as string,
 						);
 
 						returnData.push({
@@ -2031,7 +2031,7 @@ export class Telegram implements INodeType {
 					}
 				} else if (resource === 'chat' && operation === 'administrators') {
 					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData.result),
+						this.helpers.returnJsonArray(responseData.result as IDataObject[]),
 						{ itemData: { item: i } },
 					);
 					returnData.push(...executionData);
@@ -2039,7 +2039,7 @@ export class Telegram implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
