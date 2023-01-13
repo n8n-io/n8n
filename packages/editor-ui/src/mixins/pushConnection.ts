@@ -56,7 +56,7 @@ export const pushConnection = mixins(
 
 			this.reconnectTimeout = setTimeout(() => {
 				this.connectRetries++;
-				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');;
+				const isWorkflowRunning = this.uiStore.isActionActive('workflowRunning');
 				if (this.connectRetries > 3 && !this.lostConnection && isWorkflowRunning) {
 					this.lostConnection = true;
 
