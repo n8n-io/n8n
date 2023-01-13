@@ -72,7 +72,7 @@ export class CitrixAdc implements INodeType {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i);
 						const options = this.getNodeParameter('options', i);
-						const endpoint = `/config/systemfile`;
+						const endpoint = '/config/systemfile';
 
 						const item = items[i];
 
@@ -197,7 +197,7 @@ export class CitrixAdc implements INodeType {
 							};
 						}
 
-						const endpoint = `/config/sslcert?action=create`;
+						const endpoint = '/config/sslcert?action=create';
 
 						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
 
@@ -237,7 +237,7 @@ export class CitrixAdc implements INodeType {
 							});
 						}
 
-						const endpoint = `/config/sslcertkey`;
+						const endpoint = '/config/sslcertkey';
 
 						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcertkey: body });
 

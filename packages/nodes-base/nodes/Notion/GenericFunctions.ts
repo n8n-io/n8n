@@ -61,9 +61,9 @@ export async function notionApiRequest(
 			delete options.body;
 		}
 		if (!uri) {
-			return this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
+			return await this.helpers.requestWithAuthentication.call(this, 'notionApi', options);
 		}
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

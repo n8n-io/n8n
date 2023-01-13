@@ -391,7 +391,7 @@ export class RoutingNode {
 			return returnData;
 		}
 		if (action.type === 'binaryData') {
-			responseData.body = Buffer.from(responseData.body as string);
+			const body = (responseData.body = Buffer.from(responseData.body as string));
 			let { destinationProperty } = action.properties;
 
 			destinationProperty = this.getParameterValue(
@@ -403,7 +403,7 @@ export class RoutingNode {
 				false,
 			) as string;
 
-			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(responseData.body);
+			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(body);
 
 			return inputData.map((item) => {
 				if (typeof item.json === 'string') {

@@ -136,7 +136,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}
@@ -231,7 +231,7 @@ export class Mailjet implements INodeType {
 							if (parsedJson === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`Parameter 'Variables (JSON)' has a invalid JSON`,
+									"Parameter 'Variables (JSON)' has a invalid JSON",
 									{ itemIndex: i },
 								);
 							}

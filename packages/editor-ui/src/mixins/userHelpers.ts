@@ -21,10 +21,7 @@ export const userHelpers = Vue.extend({
 			const usersStore = useUsersStore();
 			const currentUser = usersStore.currentUser;
 
-			if (permissions && isAuthorized(permissions, currentUser)) {
-				return true;
-			}
-			return false;
+			return permissions && isAuthorized(permissions, currentUser);
 		},
 	},
 });

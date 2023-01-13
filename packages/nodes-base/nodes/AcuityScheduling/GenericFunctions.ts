@@ -45,10 +45,10 @@ export async function acuitySchedulingApiRequest(
 				password: credentials.apiKey as string,
 			};
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			delete options.auth;
-			return await this.helpers.requestOAuth2!.call(
+			return await this.helpers.requestOAuth2.call(
 				this,
 				'acuitySchedulingOAuth2Api',
 				options,

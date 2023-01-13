@@ -43,7 +43,7 @@ export async function bitwardenApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -76,7 +76,7 @@ export async function getAccessToken(
 	};
 
 	try {
-		const { access_token } = await this.helpers.request!(options);
+		const { access_token } = await this.helpers.request(options);
 		return access_token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

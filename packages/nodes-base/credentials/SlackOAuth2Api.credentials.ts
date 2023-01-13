@@ -2,6 +2,7 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
+	'channels:read',
 	'channels:write',
 	'chat:write',
 	'files:read',

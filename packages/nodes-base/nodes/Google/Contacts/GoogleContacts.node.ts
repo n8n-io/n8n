@@ -70,7 +70,7 @@ export class GoogleContacts implements INodeType {
 					this,
 					'contactGroups',
 					'GET',
-					`/contactGroups`,
+					'/contactGroups',
 				);
 				for (const group of groups) {
 					const groupName = group.name;
@@ -222,7 +222,7 @@ export class GoogleContacts implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/people:createContact`,
+							'/people:createContact',
 							body,
 							qs,
 						);

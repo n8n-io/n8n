@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style['expression-parameter-input']" v-click-outside="onBlur">
+	<div :class="$style['expression-parameter-input']" v-click-outside="onBlur" @keydown.tab="onBlur">
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
 			<div
 				:class="[
@@ -128,7 +128,7 @@ export default Vue.extend({
 
 			this.$emit('focus');
 		},
-		onBlur(event: FocusEvent) {
+		onBlur(event: FocusEvent | KeyboardEvent) {
 			if (
 				event.target instanceof Element &&
 				Array.from(event.target.classList).some((_class) => _class.includes('resizer'))

@@ -73,7 +73,7 @@ export class Strapi implements INodeType {
 
 				options = {
 					headers: {
-						'content-type': `application/json`,
+						'content-type': 'application/json',
 					},
 					method: 'POST',
 					body: {

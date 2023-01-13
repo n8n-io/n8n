@@ -70,7 +70,7 @@ export async function getToken(
 				: `${credentials.url}/auth/local`,
 		json: true,
 	};
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export async function strapiApiRequestAllItems(

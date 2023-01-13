@@ -29,6 +29,9 @@ if (![14, 16, 18].includes(nodeVersionMajor)) {
 	process.exit(1);
 }
 
+// Prevent oclif from loading ts-node and typescript
+process.env.OCLIF_TS_NODE = '0';
+
 require('source-map-support').install();
 
 require('@oclif/command')

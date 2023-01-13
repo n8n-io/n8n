@@ -42,7 +42,7 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<div v-if="isWorkflowSharingEnabled">
+				<div v-if="isSharingEnabled">
 					<el-row>
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ':' }}
@@ -84,6 +84,7 @@
 						</el-col>
 						<el-col :span="14">
 							<n8n-input
+								:placeholder="$locale.baseText('workflowSettings.callerIds.placeholder')"
 								type="text"
 								size="medium"
 								v-model="workflowSettings.callerIds"
@@ -331,7 +332,9 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import {
 	ITimeoutHMS,
+	IUser,
 	IWorkflowDataUpdate,
+	IWorkflowDb,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
 	WorkflowCallerPolicyDefaultOption,
@@ -350,6 +353,8 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import useWorkflowsEEStore from '@/stores/workflows.ee';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(externalHooks, genericHelpers, restApi, showMessage).extend({
 	name: 'WorkflowSettings',
@@ -389,7 +394,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 				saveDataSuccessExecution: 'all',
 				saveExecutionProgress: false,
 				saveManualExecutions: false,
-				workflowCallerPolicy: '',
+				workflowCallerPolicy: 'workflowsFromSameOwner',
 			},
 			workflowCallerPolicyOptions: [] as Array<{ key: string; value: string }>,
 			saveDataErrorExecutionOptions: [] as Array<{ key: string; value: string }>,
@@ -408,17 +413,34 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 	},
 
 	computed: {
-		...mapStores(useRootStore, useSettingsStore, useWorkflowsStore),
+		...mapStores(
+			useRootStore,
+			useUsersStore,
+			useSettingsStore,
+			useWorkflowsStore,
+			useWorkflowsEEStore,
+		),
 		workflowName(): string {
 			return this.workflowsStore.workflowName;
 		},
 		workflowId(): string {
 			return this.workflowsStore.workflowId;
 		},
-		isWorkflowSharingEnabled(): boolean {
-			return this.settingsStore.isEnterpriseFeatureEnabled(
-				EnterpriseEditionFeature.WorkflowSharing,
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflow;
+		},
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
+		},
+		isSharingEnabled(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
+		},
+		workflowOwnerName(): string {
+			const fallback = this.$locale.baseText(
+				'workflowSettings.callerPolicy.options.workflowsFromSameOwner.fallback',
 			);
+
+			return this.workflowsEEStore.getWorkflowOwnerName(`${this.workflowId}`, fallback);
 		},
 	},
 	async mounted() {
@@ -428,7 +450,7 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$showMessage({
 				title: 'No workflow active',
-				message: `No workflow active to display settings of.`,
+				message: 'No workflow active to display settings of.',
 				type: 'error',
 				duration: 0,
 			});
@@ -518,18 +540,35 @@ export default mixins(externalHooks, genericHelpers, restApi, showMessage).exten
 			};
 		},
 		async loadWorkflowCallerPolicyOptions() {
+			const currentUserIsOwner = this.workflow.ownedBy?.id === this.currentUser?.id;
+
 			this.workflowCallerPolicyOptions = [
-				{
-					key: 'any',
-					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
-				},
 				{
 					key: 'none',
 					value: this.$locale.baseText('workflowSettings.callerPolicy.options.none'),
 				},
 				{
+					key: 'workflowsFromSameOwner',
+					value: this.$locale.baseText(
+						'workflowSettings.callerPolicy.options.workflowsFromSameOwner',
+						{
+							interpolate: {
+								owner: currentUserIsOwner
+									? this.$locale.baseText(
+											'workflowSettings.callerPolicy.options.workflowsFromSameOwner.owner',
+									  )
+									: this.workflowOwnerName,
+							},
+						},
+					),
+				},
+				{
 					key: 'workflowsFromAList',
 					value: this.$locale.baseText('workflowSettings.callerPolicy.options.workflowsFromAList'),
+				},
+				{
+					key: 'any',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
 				},
 			];
 		},

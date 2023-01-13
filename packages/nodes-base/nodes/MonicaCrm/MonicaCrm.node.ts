@@ -277,7 +277,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/activities#list-all-the-activities-in-your-account
 
-						const endpoint = `/activities`;
+						const endpoint = '/activities';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -363,7 +363,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/calls#list-all-the-calls-in-your-account
 
-						const endpoint = `/calls`;
+						const endpoint = '/calls';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -887,7 +887,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/notes#list-all-the-notes-in-your-account
 
-						const endpoint = `/notes`;
+						const endpoint = '/notes';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------
@@ -1120,7 +1120,7 @@ export class MonicaCrm implements INodeType {
 
 						// https://www.monicahq.com/api/tasks#list-all-the-tasks-of-a-specific-contact
 
-						const endpoint = `/tasks`;
+						const endpoint = '/tasks';
 						responseData = await monicaCrmApiRequestAllItems.call(this, 'GET', endpoint);
 					} else if (operation === 'update') {
 						// ----------------------------------------

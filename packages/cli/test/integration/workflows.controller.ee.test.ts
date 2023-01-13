@@ -13,8 +13,6 @@ import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
@@ -46,8 +44,6 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
-
-	config.set('enterprise.workflowSharingEnabled', true); // @TODO: Remove once temp flag is removed
 
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
@@ -182,7 +178,7 @@ describe('GET /workflows', () => {
 						position: [0, 0],
 						credentials: {
 							actionNetworkApi: {
-								id: savedCredential.id.toString(),
+								id: savedCredential.id,
 								name: savedCredential.name,
 							},
 						},
@@ -222,7 +218,7 @@ describe('GET /workflows', () => {
 		const [usedCredential] = fetchedWorkflow.usedCredentials;
 
 		expect(usedCredential).toMatchObject({
-			id: savedCredential.id.toString(),
+			id: savedCredential.id,
 			name: savedCredential.name,
 			type: savedCredential.type,
 			currentUserHasAccess: true,
@@ -315,7 +311,7 @@ describe('GET /workflows/:id', () => {
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
@@ -324,7 +320,7 @@ describe('GET /workflows/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true,
 			},
@@ -340,7 +336,7 @@ describe('GET /workflows/:id', () => {
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
@@ -349,7 +345,7 @@ describe('GET /workflows/:id', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: false, // although owner can see, he does not have access
 			},
@@ -365,7 +361,7 @@ describe('GET /workflows/:id', () => {
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, member1);
 		await testDb.shareWorkflowWithUsers(workflow, [member2]);
@@ -374,7 +370,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseMember1.statusCode).toBe(200);
 		expect(responseMember1.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true, // one user has access
 			},
@@ -385,7 +381,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseMember2.statusCode).toBe(200);
 		expect(responseMember2.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: false, // the other one doesn't
 			},
@@ -402,7 +398,7 @@ describe('GET /workflows/:id', () => {
 
 		const workflowPayload = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 		const workflow = await createWorkflow(workflowPayload, member1);
 		await testDb.shareWorkflowWithUsers(workflow, [member2]);
@@ -411,7 +407,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseMember1.statusCode).toBe(200);
 		expect(responseMember1.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true,
 			},
@@ -422,7 +418,7 @@ describe('GET /workflows/:id', () => {
 		expect(responseMember2.statusCode).toBe(200);
 		expect(responseMember2.body.data.usedCredentials).toMatchObject([
 			{
-				id: savedCredential.id.toString(),
+				id: savedCredential.id,
 				name: savedCredential.name,
 				currentUserHasAccess: true,
 			},
@@ -448,7 +444,7 @@ describe('POST /workflows', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 		const workflow = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
 		const response = await authAgent(owner).post('/workflows').send(workflow);
@@ -464,7 +460,7 @@ describe('POST /workflows', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 		const workflow = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
 		const response = await authAgent(member).post('/workflows').send(workflow);
@@ -483,7 +479,7 @@ describe('POST /workflows', () => {
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 		const workflow = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
 		const response = await authAgent(owner).post('/workflows').send(workflow);
@@ -500,7 +496,7 @@ describe('POST /workflows', () => {
 
 		const workflow = makeWorkflow({
 			withPinData: false,
-			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
 		const response = await authAgent(member2).post('/workflows').send(workflow);
@@ -527,7 +523,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 					typeVersion: 1,
 					credentials: {
 						default: {
-							id: savedCredential.id.toString(),
+							id: savedCredential.id,
 							name: savedCredential.name,
 						},
 					},
@@ -565,7 +561,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 					typeVersion: 1,
 					credentials: {
 						default: {
-							id: savedCredential.id.toString(),
+							id: savedCredential.id,
 							name: savedCredential.name,
 						},
 					},
@@ -590,7 +586,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 						typeVersion: 1,
 						credentials: {
 							default: {
-								id: savedCredential.id.toString(),
+								id: savedCredential.id,
 								name: savedCredential.name,
 							},
 						},
@@ -621,7 +617,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 					typeVersion: 1,
 					credentials: {
 						default: {
-							id: savedCredential.id.toString(),
+							id: savedCredential.id,
 							name: savedCredential.name,
 						},
 					},
@@ -655,7 +651,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 						typeVersion: 1,
 						credentials: {
 							default: {
-								id: savedCredential.id.toString(),
+								id: savedCredential.id,
 								name: savedCredential.name,
 							},
 						},
@@ -666,7 +662,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		expect(response.statusCode).toBe(400);
 	});
 
-	it('Should succeed but prevent modifying nodes that are read-only for the requester', async () => {
+	it('Should succeed but prevent modifying node attributes other than position, name and disabled', async () => {
 		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
 		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -676,13 +672,15 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			{
 				id: 'uuid-1234',
 				name: 'Start',
-				parameters: {},
+				parameters: {
+					firstParam: 123,
+				},
 				position: [-20, 260],
 				type: 'n8n-nodes-base.start',
 				typeVersion: 1,
 				credentials: {
 					default: {
-						id: savedCredential.id.toString(),
+						id: savedCredential.id,
 						name: savedCredential.name,
 					},
 				},
@@ -693,8 +691,10 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			{
 				id: 'uuid-1234',
 				name: 'End',
-				parameters: {},
-				position: [-20, 260],
+				parameters: {
+					firstParam: 456,
+				},
+				position: [-20, 555],
 				type: 'n8n-nodes-base.no-op',
 				typeVersion: 1,
 				credentials: {
@@ -703,6 +703,27 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 						name: 'fake credential',
 					},
 				},
+				disabled: true,
+			},
+		];
+
+		const expectedNodes: INode[] = [
+			{
+				id: 'uuid-1234',
+				name: 'End',
+				parameters: {
+					firstParam: 123,
+				},
+				position: [-20, 555],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				credentials: {
+					default: {
+						id: savedCredential.id,
+						name: savedCredential.name,
+					},
+				},
+				disabled: true,
 			},
 		];
 
@@ -726,7 +747,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.nodes).toMatchObject(originalNodes);
+		expect(response.body.data.nodes).toMatchObject(expectedNodes);
 	});
 });
 

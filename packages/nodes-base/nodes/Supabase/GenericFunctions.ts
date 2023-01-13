@@ -320,5 +320,5 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

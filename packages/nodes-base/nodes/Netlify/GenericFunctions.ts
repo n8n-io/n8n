@@ -43,7 +43,7 @@ export async function netlifyApiRequest(
 
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

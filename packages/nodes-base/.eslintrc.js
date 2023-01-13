@@ -1,12 +1,12 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/node'],
-	parserOptions: {
-		project: ['./tsconfig.json'],
-		tsconfigRootDir: __dirname,
-	},
+
+	...sharedOptions(__dirname),
 
 	rules: {
 		// TODO: remove all the following rules
@@ -67,6 +67,7 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
 				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
+				'n8n-nodes-base/node-class-description-name-miscased': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',

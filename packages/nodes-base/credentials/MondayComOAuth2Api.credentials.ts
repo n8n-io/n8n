@@ -9,7 +9,7 @@ export class MondayComOAuth2Api implements ICredentialType {
 
 	displayName = 'Monday.com OAuth2 API';
 
-	documentationUrl = 'monday';
+	documentationUrl = 'mondaycom';
 
 	properties: INodeProperties[] = [
 		{

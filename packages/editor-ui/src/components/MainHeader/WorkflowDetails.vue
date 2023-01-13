@@ -61,7 +61,7 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-button type="secondary" class="mr-2xs" @click="onShareButtonClick">
 						{{ $locale.baseText('workflowDetails.share') }}
 					</n8n-button>
@@ -72,16 +72,17 @@
 							</n8n-button>
 							<template #content>
 								<i18n
-									:path="dynamicTranslations.workflows.sharing.unavailable.description"
+									:path="
+										contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
+									"
 									tag="span"
 								>
 									<template #action>
-										<a
-											:href="dynamicTranslations.workflows.sharing.unavailable.linkURL"
-											target="_blank"
-										>
+										<a @click="goToUpgrade">
 											{{
-												$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.action)
+												$locale.baseText(
+													contextBasedTranslationKeys.workflows.sharing.unavailable.button,
+												)
 											}}
 										</a>
 									</template>
@@ -139,13 +140,7 @@ import SaveButton from '@/components/SaveButton.vue';
 import TagsDropdown from '@/components/TagsDropdown.vue';
 import InlineTextEdit from '@/components/InlineTextEdit.vue';
 import BreakpointsObserver from '@/components/BreakpointsObserver.vue';
-import {
-	IUser,
-	IWorkflowDataUpdate,
-	IWorkflowDb,
-	IWorkflowToShare,
-	NestedRecord,
-} from '@/Interface';
+import { IUser, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare } from '@/Interface';
 
 import { saveAs } from 'file-saver';
 import { titleChange } from '@/mixins/titleChange';
@@ -158,6 +153,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useTagsStore } from '@/stores/tags';
 import { getWorkflowPermissions, IPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
+import { useUsageStore } from '@/stores/usage';
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -197,14 +193,15 @@ export default mixins(workflowHelpers, titleChange).extend({
 			useRootStore,
 			useSettingsStore,
 			useUIStore,
+			useUsageStore,
 			useWorkflowsStore,
 			useUsersStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
-		dynamicTranslations(): NestedRecord<string> {
-			return this.uiStore.dynamicTranslations;
+		contextBasedTranslationKeys(): NestedRecord<string> {
+			return this.uiStore.contextBasedTranslationKeys;
 		},
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;
@@ -243,7 +240,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		onExecutionsTab(): boolean {
 			return [
 				VIEWS.EXECUTION_HOME.toString(),
-				VIEWS.EXECUTIONS.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 				VIEWS.EXECUTION_PREVIEW,
 			].includes(this.$route.name || '');
 		},
@@ -437,10 +434,6 @@ export default mixins(workflowHelpers, titleChange).extend({
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
 					const workflowData = await this.getWorkflowDataToSave();
 					const { tags, ...data } = workflowData;
-					if (data.id && typeof data.id === 'string') {
-						data.id = parseInt(data.id, 10);
-					}
-
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
@@ -527,6 +520,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 				default:
 					break;
 			}
+		},
+		goToUpgrade() {
+			let linkUrl = this.$locale.baseText(this.contextBasedTranslationKeys.upgradeLinkUrl);
+			if (linkUrl.includes('subscription')) {
+				linkUrl = `${this.usageStore.viewPlansUrl}&source=workflow_sharing`;
+			}
+
+			window.open(linkUrl, '_blank');
 		},
 	},
 	watch: {

@@ -479,7 +479,7 @@ export class EmailReadImapV1 implements INodeType {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
 			}
 

@@ -21,10 +21,6 @@ import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
-jest.mock('@/telemetry');
-
-jest.mock('@/Push');
-
 jest.mock('@/CommunityNodes/helpers', () => {
 	return {
 		...jest.requireActual('@/CommunityNodes/helpers'),

@@ -222,7 +222,7 @@ export class CoinGecko implements INodeType {
 								this,
 								'',
 								'GET',
-								`/coins/markets`,
+								'/coins/markets',
 								{},
 								qs,
 							);
@@ -231,7 +231,7 @@ export class CoinGecko implements INodeType {
 
 							qs.per_page = limit;
 
-							responseData = await coinGeckoApiRequest.call(this, 'GET', `/coins/markets`, {}, qs);
+							responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/markets', {}, qs);
 						}
 					}
 

@@ -7,9 +7,9 @@ required:
   - settings
 properties:
   id:
-    type: number
+    type: string
     readOnly: true
-    example: 1
+    example: '1'
   name:
     type: string
     example: Workflow 1

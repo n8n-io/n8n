@@ -369,7 +369,7 @@ export class JiraTrigger implements INodeType {
 
 				const events = this.getNodeParameter('events') as string[];
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhooks = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'GET', {});
 
@@ -389,7 +389,7 @@ export class JiraTrigger implements INodeType {
 
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-				const endpoint = `/webhooks/1.0/webhook`;
+				const endpoint = '/webhooks/1.0/webhook';
 
 				const webhookData = this.getWorkflowStaticData('node');
 
@@ -426,11 +426,11 @@ export class JiraTrigger implements INodeType {
 					} catch (e) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`Could not retrieve HTTP Query Auth credentials: ${e}`,
+							new Error('Could not retrieve HTTP Query Auth credentials', { cause: e }),
 						);
 					}
 					if (!httpQueryAuth.name && !httpQueryAuth.value) {
-						throw new NodeOperationError(this.getNode(), `HTTP Query Auth credentials are empty`);
+						throw new NodeOperationError(this.getNode(), 'HTTP Query Auth credentials are empty');
 					}
 					parameters[encodeURIComponent(httpQueryAuth.name as string)] = Buffer.from(
 						httpQueryAuth.value as string,
@@ -439,6 +439,7 @@ export class JiraTrigger implements INodeType {
 
 				if (additionalFields.includeFields) {
 					for (const field of additionalFields.includeFields as string[]) {
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						parameters[field] = '${' + field + '}';
 					}
 				}

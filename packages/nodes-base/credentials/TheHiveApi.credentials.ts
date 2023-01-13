@@ -66,7 +66,7 @@ export class TheHiveApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `={{$credentials?.url}}`,
+			baseURL: '={{$credentials?.url}}',
 			url: '/api/case',
 		},
 	};

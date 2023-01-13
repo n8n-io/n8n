@@ -154,7 +154,7 @@ export class OpenThesaurus implements INodeType {
 					responseData = await openThesaurusApiRequest.call(
 						this,
 						'GET',
-						`/synonyme/search`,
+						'/synonyme/search',
 						{},
 						qs,
 					);

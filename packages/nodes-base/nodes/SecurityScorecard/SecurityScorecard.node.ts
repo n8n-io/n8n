@@ -242,7 +242,7 @@ export class SecurityScorecard implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const fileName = reportUrl.split('/').pop();
 
@@ -315,7 +315,7 @@ export class SecurityScorecard implements INodeType {
 					const additionalFields = this.getNodeParameter('additionalFields', i);
 					Object.assign(body, additionalFields);
 
-					responseData = await scorecardApiRequest.call(this, 'POST', `invitations`, body);
+					responseData = await scorecardApiRequest.call(this, 'POST', 'invitations', body);
 					returnData.push(responseData as IDataObject);
 				}
 			}

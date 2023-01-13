@@ -35,7 +35,7 @@
 		</div>
 		<template #append>
 			<div :class="$style.cardActions">
-				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
 					<n8n-badge v-if="workflowPermissions.isOwner" class="mr-xs" theme="tertiary" bold>
 						{{ $locale.baseText('workflows.item.owner') }}
 					</n8n-badge>

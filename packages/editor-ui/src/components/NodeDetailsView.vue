@@ -77,7 +77,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
-						:blockUI="blockUi && isTriggerNode"
+						:blockUI="blockUi && isTriggerNode && !isExecutableTriggerNode"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
@@ -143,6 +143,7 @@ import TriggerPanel from './TriggerPanel.vue';
 import {
 	BASE_NODE_SURVEY_URL,
 	EnterpriseEditionFeature,
+	EXECUTABLE_TRIGGER_NODE_TYPES,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -199,7 +200,6 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.ndvStore.setNDVSessionId;
 		dataPinningEventBus.$on(
 			'data-pinning-discovery',
 			({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
@@ -268,6 +268,11 @@ export default mixins(
 		},
 		parentNode(): string | undefined {
 			return this.parentNodes[0];
+		},
+		isExecutableTriggerNode(): boolean {
+			if (!this.activeNodeType) return false;
+
+			return EXECUTABLE_TRIGGER_NODE_TYPES.includes(this.activeNodeType.name);
 		},
 		isTriggerNode(): boolean {
 			return (
@@ -377,7 +382,7 @@ export default mixins(
 			let hasForeignCredential = false;
 			if (
 				credentials &&
-				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+				this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 			) {
 				Object.values(credentials).forEach((credential) => {
 					if (
@@ -404,9 +409,7 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				setTimeout(() => {
-					this.ndvStore.setNDVSessionId;
-				}, 0);
+				setTimeout(this.ndvStore.setNDVSessionId, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});

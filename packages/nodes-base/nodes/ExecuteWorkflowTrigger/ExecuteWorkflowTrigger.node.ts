@@ -9,6 +9,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow when called by the Execute Workflow node from a different workflow',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
 			name: 'Execute Workflow Trigger',

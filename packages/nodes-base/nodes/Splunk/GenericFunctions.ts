@@ -20,7 +20,7 @@ export async function splunkApiRequest(
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-) {
+): Promise<any> {
 	const { authToken, baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
 		'splunkApi',
 	)) as SplunkCredentials;
@@ -48,7 +48,7 @@ export async function splunkApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options).then(parseXml);
+		return await this.helpers.request(options).then(parseXml);
 	} catch (error) {
 		if (error?.cause?.code === 'ECONNREFUSED') {
 			throw new NodeApiError(this.getNode(), { ...error, code: 401 });

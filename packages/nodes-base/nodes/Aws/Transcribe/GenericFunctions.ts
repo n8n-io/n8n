@@ -63,7 +63,7 @@ export async function awsApiRequest(
 	};
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error); // no XML parsing needed
 	}

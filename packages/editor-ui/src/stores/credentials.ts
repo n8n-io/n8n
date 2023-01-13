@@ -72,6 +72,22 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				{},
 			);
 		},
+		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
+			const credentials = this.allCredentials;
+			const types = this.allCredentialTypes;
+			const usersStore = useUsersStore();
+
+			return types.reduce(
+				(accu: { [type: string]: ICredentialsResponse[] }, type: ICredentialType) => {
+					accu[type.name] = credentials.filter((cred: ICredentialsResponse) => {
+						return cred.type === type.name && usersStore.isResourceAccessible(cred);
+					});
+
+					return accu;
+				},
+				{},
+			);
+		},
 		getCredentialTypeByName() {
 			return (type: string): ICredentialType => this.credentialTypes[type];
 		},
@@ -87,6 +103,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		getCredentialsByType() {
 			return (credentialType: string): ICredentialsResponse[] => {
 				return this.allCredentialsByType[credentialType] || [];
+			};
+		},
+		getUsableCredentialByType() {
+			return (credentialType: string): ICredentialsResponse[] => {
+				return this.allUsableCredentialsByType[credentialType] || [];
 			};
 		},
 		getNodesWithAccess() {

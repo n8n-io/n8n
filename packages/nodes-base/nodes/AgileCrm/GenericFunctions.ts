@@ -48,7 +48,7 @@ export async function agileCrmApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -126,7 +126,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.properties) {
 			options.body.properties = payload.properties;
 			options.uri = baseUri + 'api/contacts/edit-properties';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			// Iterate trough properties and show them as individial updates instead of only vague "properties"
 			payload.properties?.map((property: any) => {
@@ -138,7 +138,7 @@ export async function agileCrmApiRequestUpdate(
 		if (payload.lead_score) {
 			options.body.lead_score = payload.lead_score;
 			options.uri = baseUri + 'api/contacts/edit/lead-score';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('lead_score');
 
@@ -147,7 +147,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.tags) {
 			options.body.tags = payload.tags;
 			options.uri = baseUri + 'api/contacts/edit/tags';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			payload.tags?.map((tag: string) => {
 				successfulUpdates.push(`(Tag) ${tag}`);
@@ -158,7 +158,7 @@ export async function agileCrmApiRequestUpdate(
 		if (body.star_value) {
 			options.body.star_value = payload.star_value;
 			options.uri = baseUri + 'api/contacts/edit/add-star';
-			lastSuccesfulUpdateReturn = await this.helpers.request!(options);
+			lastSuccesfulUpdateReturn = await this.helpers.request(options);
 
 			successfulUpdates.push('star_value');
 

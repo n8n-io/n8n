@@ -34,7 +34,7 @@ export async function posthogApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

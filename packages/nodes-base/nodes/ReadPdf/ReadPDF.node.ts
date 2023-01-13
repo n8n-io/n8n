@@ -7,6 +7,7 @@ const pdf = require('pdf-parse');
 export class ReadPDF implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Read PDF',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-name-miscased
 		name: 'readPDF',
 		icon: 'fa:file-pdf',
 		group: ['input'],
@@ -40,7 +41,7 @@ export class ReadPDF implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				if (item.binary === undefined) {
 					item.binary = {};

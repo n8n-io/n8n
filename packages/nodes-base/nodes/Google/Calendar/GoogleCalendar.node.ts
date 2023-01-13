@@ -163,7 +163,7 @@ export class GoogleCalendar implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'POST',
-							`/calendar/v3/freeBusy`,
+							'/calendar/v3/freeBusy',
 							body,
 							{},
 						);
@@ -287,7 +287,7 @@ export class GoogleCalendar implements INodeType {
 							if (additionalFields.repeatHowManyTimes && additionalFields.repeatUntil) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									"You can set either 'Repeat How Many Times' or 'Repeat Until' but not both",
 									{ itemIndex: i },
 								);
 							}
@@ -544,7 +544,7 @@ export class GoogleCalendar implements INodeType {
 							if (updateFields.repeatHowManyTimes && updateFields.repeatUntil) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`You can set either 'Repeat How Many Times' or 'Repeat Until' but not both`,
+									"You can set either 'Repeat How Many Times' or 'Repeat Until' but not both",
 									{ itemIndex: i },
 								);
 							}

@@ -58,7 +58,7 @@ import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 /**
- * Returns all the webhooks which should be created for the give workflow
+ * Returns all the webhooks which should be created for the given workflow
  *
  */
 export function getWorkflowWebhooks(
@@ -142,6 +142,7 @@ export async function executeWebhook(
 	req: express.Request,
 	res: express.Response,
 	responseCallback: (error: Error | null, data: IResponseCallbackData) => void,
+	destinationNode?: string,
 ): Promise<string | undefined> {
 	// Get the nodeType to know which responseMode is set
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(
@@ -166,7 +167,7 @@ export async function executeWebhook(
 		user = (workflowData as WorkflowEntity).shared[0].user;
 	} else {
 		try {
-			user = await getWorkflowOwner(workflowData.id.toString());
+			user = await getWorkflowOwner(workflowData.id);
 		} catch (error) {
 			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}
@@ -378,6 +379,10 @@ export async function executeWebhook(
 					waitingExecution: {},
 				},
 			} as IRunExecutionData);
+
+		if (destinationNode && runExecutionData.startData) {
+			runExecutionData.startData.destinationNode = destinationNode;
+		}
 
 		if (executionId !== undefined) {
 			// Set the data the webhook node did return on the waiting node if executionId

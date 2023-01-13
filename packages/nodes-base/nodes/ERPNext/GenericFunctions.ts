@@ -39,7 +39,7 @@ export async function erpNextApiRequest(
 		delete options.qs;
 	}
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'erpNextApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'erpNextApi', options);
 	} catch (error) {
 		if (error.statusCode === 403) {
 			throw new NodeApiError(this.getNode(), { message: 'DocType unavailable.' });

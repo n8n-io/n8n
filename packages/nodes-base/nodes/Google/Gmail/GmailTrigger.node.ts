@@ -211,7 +211,7 @@ export class GmailTrigger implements INodeType {
 			responseData = await googleApiRequest.call(
 				this,
 				'GET',
-				`/gmail/v1/users/me/messages`,
+				'/gmail/v1/users/me/messages',
 				{},
 				qs,
 			);

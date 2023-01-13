@@ -308,7 +308,7 @@ export class Reddit implements INodeType {
 						let username;
 
 						if (details === 'saved') {
-							({ name: username } = await redditApiRequest.call(this, 'GET', `api/v1/me`, {}));
+							({ name: username } = await redditApiRequest.call(this, 'GET', 'api/v1/me', {}));
 						}
 
 						responseData =

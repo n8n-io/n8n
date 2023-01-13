@@ -3,13 +3,13 @@
 exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_5xhkc_1"
+    class="_schemaWrapper_1mtap_1"
   >
     <div
       class=""
     >
       <div
-        class="_schema_5xhkc_1"
+        class="_schema_1mtap_1"
       >
         <div
           class="_item_14xdy_1"
@@ -235,7 +235,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_5xhkc_1"
+    class="_schemaWrapper_1mtap_1"
   >
     <div
       class="n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12"

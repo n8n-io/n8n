@@ -328,7 +328,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
 				}
 
 				for (const event of events) {

@@ -22,7 +22,7 @@ describe('Utils', () => {
 			[1, false],
 			[false, true],
 			[true, false],
-		])(`for value %s should return %s`, (value, expected) => {
+		])('for value %s should return %s', (value, expected) => {
 			expect(isEmpty(value)).toBe(expected);
 		});
 	});
@@ -212,7 +212,7 @@ describe('Utils', () => {
 				{ overwriteArrays: true },
 				{ a: 3, b: [{ z: 'c' }], c: '2', d: '3' },
 			],
-		])(`case %#. input %j, options %j should return %j`, (sources, options, expected) => {
+		])('case %#. input %j, options %j should return %j', (sources, options, expected) => {
 			expect(mergeDeep([...sources], options)).toEqual(expected);
 		});
 	});

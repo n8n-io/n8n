@@ -58,10 +58,10 @@ export async function googleApiRequest(
 			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
-			return this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			//@ts-ignore
-			return this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'googleDriveOAuth2Api', options);
 		}
 	} catch (error) {
 		if (error.code === 'ERR_OSSL_PEM_NO_START_LINE') {
@@ -117,7 +117,7 @@ async function getAccessToken(
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -145,7 +145,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export function extractId(url: string): string {

@@ -10,7 +10,7 @@ export async function postEphemeral(
 ): Promise<INodeExecutionData[]> {
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
-	const endpoint = `posts/ephemeral`;
+	const endpoint = 'posts/ephemeral';
 
 	const body = {
 		user_id: this.getNodeParameter('userId', index),

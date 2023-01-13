@@ -225,7 +225,7 @@ export class FreshworksCrm implements INodeType {
 				const response = (await freshworksCrmApiRequest.call(
 					this,
 					'GET',
-					`/selector/owners`,
+					'/selector/owners',
 				)) as FreshworksConfigResponse<LoadedUser>;
 
 				const key = Object.keys(response)[0];

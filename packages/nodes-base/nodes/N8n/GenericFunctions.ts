@@ -44,7 +44,7 @@ export async function apiRequest(
 	};
 
 	try {
-		return this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
+		return await this.helpers.requestWithAuthentication.call(this, 'n8nApi', options);
 	} catch (error) {
 		if (error instanceof NodeApiError) {
 			throw error;
@@ -166,7 +166,9 @@ export const parseAndSetBodyJson = (
 		} catch (err) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The '${parameterName}' property must be valid JSON, but cannot be parsed: ${err}`,
+				new Error(`The '${parameterName}' property must be valid JSON, but cannot be parsed`, {
+					cause: err,
+				}),
 			);
 		}
 		return requestOptions;

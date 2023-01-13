@@ -18,8 +18,19 @@
 				@mouseup="mouseUp"
 				@wheel="canvasStore.wheelScroll"
 			>
-				<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
-				<div id="node-view" class="node-view" :style="workflowStyle" ref="nodeView">
+				<div
+					id="node-view-background"
+					class="node-view-background"
+					:style="backgroundStyle"
+					data-test-id="node-view-background"
+				/>
+				<div
+					id="node-view"
+					class="node-view"
+					:style="workflowStyle"
+					ref="nodeView"
+					data-test-id="node-view"
+				>
 					<canvas-add-button
 						:style="canvasAddButtonStyle"
 						@click="showTriggerCreator('trigger_placeholder_button')"
@@ -104,6 +115,7 @@
 						icon="play-circle"
 						type="primary"
 						:disabled="isExecutionDisabled"
+						data-test-id="execute-workflow-button"
 					/>
 				</span>
 
@@ -155,7 +167,6 @@ import type {
 	jsPlumbInstance,
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import once from 'lodash/once';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -174,6 +185,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
+	POSTHOG_ASSUMPTION_TEST,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -361,7 +373,6 @@ export default mixins(
 			// Re-center CanvasAddButton if there's no triggers
 			if (containsTrigger === false)
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
-			else this.tryToAddWelcomeSticky();
 		},
 		nodeViewScale(newScale) {
 			const element = this.$refs.nodeView as HTMLDivElement;
@@ -883,6 +894,9 @@ export default mixins(
 		},
 		async openWorkflow(workflowId: string) {
 			this.startLoading();
+
+			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
+
 			this.resetWorkspace();
 			let data: IWorkflowDb | undefined;
 			try {
@@ -938,7 +952,12 @@ export default mixins(
 			}
 			this.canvasStore.zoomToFit();
 			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-			this.workflowsStore.activeWorkflowExecution = null;
+			if (selectedExecution?.workflowId !== workflowId) {
+				this.workflowsStore.activeWorkflowExecution = null;
+				this.workflowsStore.currentWorkflowExecutions = [];
+			} else {
+				this.workflowsStore.activeWorkflowExecution = selectedExecution;
+			}
 			this.stopLoading();
 			return data;
 		},
@@ -1363,7 +1382,28 @@ export default mixins(
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.restApi().getExecution(executionId);
-				if (execution?.finished) {
+
+				if (execution === undefined) {
+					// execution finished but was not saved (e.g. due to low connectivity)
+
+					this.workflowsStore.finishActiveExecution({
+						executionId,
+						data: { finished: true, stoppedAt: new Date() },
+					});
+					this.workflowsStore.executingNode = null;
+					this.uiStore.removeActiveAction('workflowRunning');
+
+					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.$showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
+						type: 'success',
+					});
+				} else if (execution?.finished) {
+					// execution finished before it could be stopped
+
 					const executedData = {
 						data: execution.data,
 						finished: execution.finished,
@@ -1694,7 +1734,7 @@ export default mixins(
 			const credentialPerType =
 				nodeTypeData.credentials &&
 				nodeTypeData.credentials
-					.map((type) => this.credentialsStore.getCredentialsByType(type.name))
+					.map((type) => this.credentialsStore.getUsableCredentialByType(type.name))
 					.flat();
 
 			if (credentialPerType && credentialPerType.length === 1) {
@@ -1901,10 +1941,7 @@ export default mixins(
 			// current node. But only if it's added manually by the user (not by undo/redo mechanism)
 			if (trackHistory) {
 				this.deselectAllNodes();
-				const preventDetailOpen =
-					window.posthog?.getFeatureFlag &&
-					window.posthog?.getFeatureFlag('prevent-ndv-auto-open') === 'prevent';
-				if (showDetail && !preventDetailOpen) {
+				if (showDetail) {
 					setTimeout(() => {
 						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 					});
@@ -2398,27 +2435,22 @@ export default mixins(
 			this.workflowsStore.activeWorkflowExecution = null;
 
 			this.uiStore.stateIsDirty = false;
-			this.canvasStore.setZoomLevel(1, 0);
-			this.canvasStore.zoomToFit();
+			this.canvasStore.setZoomLevel(1, [0, 0]);
+			this.tryToAddWelcomeSticky();
+			this.uiStore.nodeViewInitialized = true;
+			this.historyStore.reset();
+			this.workflowsStore.activeWorkflowExecution = null;
+			this.stopLoading();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		tryToAddWelcomeSticky: once(async function (this: any) {
+		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.('welcome-note') === 'test') {
+			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
 				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					const collisionPadding = NodeViewUtils.GRID_SIZE + NodeViewUtils.NODE_SIZE;
 					// Position the welcome sticky left to the added trigger node
-					let position: XYPosition = [...(this.triggerNodes[0].position as XYPosition)];
-
-					position[0] -=
-						NodeViewUtils.WELCOME_STICKY_NODE.parameters.width + NodeViewUtils.GRID_SIZE * 4;
-					position = NodeViewUtils.getNewNodePosition(this.nodes, position, [
-						collisionPadding,
-						collisionPadding,
-					]);
+					const position: XYPosition = [50, 250];
 
 					await this.addNodes([
 						{
@@ -2432,14 +2464,16 @@ export default mixins(
 							position,
 						},
 					]);
-					this.$telemetry.track('welcome note inserted');
+					setTimeout(() => {
+						this.canvasStore.zoomToFit();
+						this.canvasStore.canvasAddButtonPosition = [500, 350];
+						this.$telemetry.track('welcome note inserted');
+					}, 0);
 				}
+			} else {
+				this.canvasStore.zoomToFit();
 			}
-			this.uiStore.nodeViewInitialized = true;
-			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
-			this.stopLoading();
-		}),
+		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
@@ -2683,7 +2717,7 @@ export default mixins(
 
 				if (
 					newNodeData.credentials &&
-					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)
+					this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)
 				) {
 					const usedCredentials = this.workflowsStore.usedCredentials;
 					newNodeData.credentials = Object.fromEntries(
@@ -3482,6 +3516,9 @@ export default mixins(
 		},
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
+
+			this.onToggleNodeCreator({ createNodeActive: false });
+			this.nodeCreatorStore.setShowScrim(false);
 
 			// Reset nodes
 			this.deleteEveryEndpoint();

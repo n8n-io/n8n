@@ -19,7 +19,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		});
 	}
 
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index);
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(
@@ -56,7 +56,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 	}
 
 	//endpoint
-	const endpoint = `files`;
+	const endpoint = 'files';
 	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
 	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop() });
 }

@@ -15,10 +15,13 @@ import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 import { getLicense } from '@/License';
 import { WhereClause } from '@/Interfaces';
+import { RoleService } from '@/role/role.service';
 
-export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
+export async function getWorkflowOwner(workflowId: string): Promise<User> {
+	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
+
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflow: { id: workflowId } },
+		where: { workflowId, role: workflowOwnerRole },
 		relations: ['user', 'user.globalRole'],
 	});
 
@@ -96,6 +99,10 @@ export function getInstanceBaseUrl(): string {
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
 }
 
+export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
+	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
+}
+
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {
@@ -151,6 +158,13 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		});
 	}
 	return sanitizedUser;
+}
+
+export function addInviteLinktoUser(user: PublicUser, inviterId: string): PublicUser {
+	if (user.isPending) {
+		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
+	}
+	return user;
 }
 
 export async function getUserById(userId: string): Promise<User> {

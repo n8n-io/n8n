@@ -58,7 +58,7 @@ export async function seaTableApiRequest(
 
 	try {
 		//@ts-ignore
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -112,7 +112,7 @@ export async function getTableColumns(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 	);
 	for (const table of tables) {
 		if (table.name === tableName) {
@@ -131,7 +131,7 @@ export async function getTableViews(
 		this,
 		ctx,
 		'GET',
-		`/dtable-server/api/v1/dtables/{{dtable_uuid}}/views`,
+		'/dtable-server/api/v1/dtables/{{dtable_uuid}}/views',
 		{},
 		{ table_name: tableName },
 	);
@@ -154,7 +154,7 @@ export async function getBaseAccessToken(
 		json: true,
 	};
 
-	ctx.base = await this.helpers.request!(options);
+	ctx.base = await this.helpers.request(options);
 }
 
 export function resolveBaseUri(ctx: ICtx) {

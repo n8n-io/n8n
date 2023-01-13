@@ -32,7 +32,7 @@ export class MailjetSmsApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `https://api.mailjet.com`,
+			baseURL: 'https://api.mailjet.com',
 			url: '/v4/sms',
 			method: 'GET',
 		},

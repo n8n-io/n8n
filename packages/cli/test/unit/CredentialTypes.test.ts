@@ -43,4 +43,5 @@ const mockNodesAndCredentials = (): INodesAndCredentials => ({
 		},
 	},
 	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
 });

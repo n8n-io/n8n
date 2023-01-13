@@ -5,7 +5,7 @@ export class Smtp implements ICredentialType {
 
 	displayName = 'SMTP';
 
-	documentationUrl = 'smtp';
+	documentationUrl = 'sendemail';
 
 	properties: INodeProperties[] = [
 		{

@@ -43,6 +43,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -56,22 +57,25 @@ export const BREAKPOINT_MD = 992;
 export const BREAKPOINT_LG = 1200;
 export const BREAKPOINT_XL = 1920;
 
-export const N8N_IO_BASE_URL = `https://api.n8n.io/api/`;
-export const BUILTIN_NODES_DOCS_URL = `https://docs.n8n.io/integrations/builtin/`;
-export const BUILTIN_CREDENTIALS_DOCS_URL = `https://docs.n8n.io/integrations/builtin/credentials/`;
-export const DATA_PINNING_DOCS_URL = 'https://docs.n8n.io/data/data-pinning/';
-export const DATA_EDITING_DOCS_URL = 'https://docs.n8n.io/data/data-editing/';
-export const NPM_COMMUNITY_NODE_SEARCH_API_URL = `https://api.npms.io/v2/`;
-export const NPM_PACKAGE_DOCS_BASE_URL = `https://www.npmjs.com/package/`;
-export const NPM_KEYWORD_SEARCH_URL = `https://www.npmjs.com/search?q=keywords%3An8n-community-node-package`;
-export const N8N_QUEUE_MODE_DOCS_URL = `https://docs.n8n.io/hosting/scaling/queue-mode/`;
-export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/installation/`;
+export const N8N_IO_BASE_URL = 'https://api.n8n.io/api/';
+export const DOCS_DOMAIN = 'docs.n8n.io';
+export const BUILTIN_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/`;
+export const BUILTIN_CREDENTIALS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/builtin/credentials/`;
+export const DATA_PINNING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-pinning/`;
+export const DATA_EDITING_DOCS_URL = `https://${DOCS_DOMAIN}/data/data-editing/`;
+export const NPM_COMMUNITY_NODE_SEARCH_API_URL = 'https://api.npms.io/v2/';
+export const NPM_PACKAGE_DOCS_BASE_URL = 'https://www.npmjs.com/package/';
+export const NPM_KEYWORD_SEARCH_URL =
+	'https://www.npmjs.com/search?q=keywords%3An8n-community-node-package';
+export const N8N_QUEUE_MODE_DOCS_URL = `https://${DOCS_DOMAIN}/hosting/scaling/queue-mode/`;
+export const COMMUNITY_NODES_INSTALLATION_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/installation/`;
 export const COMMUNITY_NODES_NPM_INSTALLATION_URL =
 	'https://docs.npmjs.com/downloading-and-installing-node-js-and-npm';
-export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/risks/`;
-export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://docs.n8n.io/integrations/community-nodes/blocklist/`;
-export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-nodes/code/create-n8n-nodes-module/`;
-export const EXPRESSIONS_DOCS_URL = 'https://docs.n8n.io/code-examples/expressions/';
+export const COMMUNITY_NODES_RISKS_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/risks/`;
+export const COMMUNITY_NODES_BLOCKLIST_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/community-nodes/blocklist/`;
+export const CUSTOM_NODES_DOCS_URL = `https://${DOCS_DOMAIN}/integrations/creating-nodes/code/create-n8n-nodes-module/`;
+export const EXPRESSIONS_DOCS_URL = `https://${DOCS_DOMAIN}/code-examples/expressions/`;
+export const N8N_PRICING_PAGE_URL = 'https://n8n.io/pricing';
 
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -123,18 +127,21 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 
+export const EXECUTABLE_TRIGGER_NODE_TYPES = [
+	START_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+];
+
 export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 ];
 
-export const MULTIPLE_OUTPUT_NODE_TYPES = [IF_NODE_TYPE, SWITCH_NODE_TYPE];
-
-export const PIN_DATA_NODE_TYPES_DENYLIST = [
-	...MULTIPLE_OUTPUT_NODE_TYPES,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -290,7 +297,7 @@ export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
 	EXECUTION = 'ExecutionById',
-	EXECUTIONS = 'ExecutionList',
+	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
@@ -312,13 +319,15 @@ export enum VIEWS {
 	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
+	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
+	USAGE = 'Usage',
+	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
 
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	CREDENTIALS_SHARING = 'credentialsSharing',
-	WORKFLOWS_SHARING = 'workflowsSharing',
+	SSO = 'sso',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -373,7 +382,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
-	WorkflowSharing = 'workflowSharing',
+	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -433,3 +442,7 @@ export enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 }
+
+export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';

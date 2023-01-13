@@ -34,7 +34,7 @@ export async function pushcutApiRequest(
 			Object.assign(options, option);
 		}
 		//@ts-ignore
-		return this.helpers.request.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
