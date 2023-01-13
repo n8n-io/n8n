@@ -11,63 +11,60 @@ import { Code } from '../../../nodes/Code/Code.node';
 
 import { executeWorkflow } from '../ExecuteWorkflow';
 
-describe('Node', () => {
-	describe('If', () => {
-		const tests: Array<WorkflowTestData> = [
-			{
-				description: 'IF node true/false boolean',
-				input: {
-					workflowData: JSON.parse(readFileSync('test/nodes/If/workflow.json', 'utf-8')),
-				},
-				output: {
-					nodeData: {
-						"On True": [
-							[
-								{
-									value: true,
-								},
-							],
+describe('Execute If Node', () => {
+	const tests: Array<WorkflowTestData> = [
+		{
+			description: 'should execute IF node true/false boolean',
+			input: {
+				workflowData: JSON.parse(readFileSync('test/nodes/If/workflow.json', 'utf-8')),
+			},
+			output: {
+				nodeData: {
+					'On True': [
+						[
+							{
+								value: true,
+							},
 						],
-						"On False": [
-							[
-								{
-									value: false,
-								},
-							],
+					],
+					'On False': [
+						[
+							{
+								value: false,
+							},
 						],
-					},
+					],
 				},
 			},
-		];
+		},
+	];
 
-		const nodes: INodeType[] = [new ManualTrigger(), new Code(), new Set(), new If(), new NoOp()];
-		const nodeTypes = Helpers.setup(nodes);
+	const nodes: INodeType[] = [new ManualTrigger(), new Code(), new Set(), new If(), new NoOp()];
+	const nodeTypes = Helpers.setup(nodes);
 
-
-		for (const testData of tests) {
-			test(testData.description, async () => {
-				const { executionData, result, nodeExecutionOrder } = await executeWorkflow(
-					testData,
-					nodeTypes,
-				);
-
-				for (const nodeName of Object.keys(testData.output.nodeData)) {
-					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new Error(`Data for node "${nodeName}" is missing!`);
-					}
-
-					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
-						if (nodeData.data === undefined) {
-							return null;
-						}
-						return nodeData.data.main[0]!.map((entry) => entry.json);
-					});
-					// expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-					expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+	for (const testData of tests) {
+		test(testData.description, async () => {
+			// execute workflow
+			const { executionData, result, nodeExecutionOrder } = await executeWorkflow(
+				testData,
+				nodeTypes,
+			);
+			// check if output node data is as expected
+			for (const nodeName of Object.keys(testData.output.nodeData)) {
+				if (result.data.resultData.runData[nodeName] === undefined) {
+					throw new Error(`Data for node "${nodeName}" is missing!`);
 				}
 
-				expect(result.finished).toEqual(true);
-			});
-		}
-	});
+				const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
+					if (nodeData.data === undefined) {
+						return null;
+					}
+					return nodeData.data.main[0]!.map((entry) => entry.json);
+				});
+				expect(resultData).toEqual(testData.output.nodeData[nodeName]);
+			}
+
+			expect(result.finished).toEqual(true);
+		});
+	}
 });

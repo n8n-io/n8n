@@ -1,4 +1,3 @@
-import { flow } from 'lodash';
 import { Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -22,6 +21,7 @@ import {
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
+
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
@@ -138,27 +138,8 @@ export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
 	}
-
 	return nodeTypesInstance;
 }
-
-export function extractOutputData(testData: any, result: IRun) {
-	for (const nodeName of Object.keys(testData.output.nodeData)) {
-		if (result.data.resultData.runData[nodeName] === undefined) {
-			throw new Error(`Data for node "${nodeName}" is missing!`);
-		}
-
-		const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
-			if (nodeData.data === undefined) {
-				return null;
-			}
-			return nodeData.data.main[0]!.map((entry) => entry.json);
-		});
-		return resultData;
-	}
-}
-
-export function extractResultData() {}
 
 export function setup(nodes: INodeType[]) {
 	const nodeTypes = NodeTypes();

@@ -1,7 +1,4 @@
-import {
-	INode,
-	IConnections,
-} from 'n8n-workflow';
+import { INode, IConnections } from 'n8n-workflow';
 
 export interface WorkflowTestData {
 	description: string;
@@ -12,6 +9,7 @@ export interface WorkflowTestData {
 		};
 	};
 	output: {
+		nodeExecutionOrder?: string[];
 		nodeData: {
 			[key: string]: any[][];
 		};
