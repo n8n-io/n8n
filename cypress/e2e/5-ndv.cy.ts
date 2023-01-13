@@ -26,7 +26,7 @@ describe('NDV', () => {
 		workflowPage.actions.addInitialNodeToCanvas('Webhook');
 		workflowPage.getters.canvasNodes().first().dblclick();
 
-		ndv.getters.nodeExecuteButton().first().click();
+		ndv.actions.execute();
 		ndv.getters.copyInput().click();
 
 		cy.grantBrowserPermissions('clipboardReadWrite', 'clipboardSanitizedWrite');
