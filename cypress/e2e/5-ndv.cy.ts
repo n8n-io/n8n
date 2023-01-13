@@ -50,7 +50,7 @@ describe('NDV', () => {
 		ndv.getters.inputSelect().click();
 		ndv.getters.inputOption().last().click();
 		ndv.getters.inputPanel().within(() => {
-			ndv.getters.dataContainer().should('contain', 'start');
+			ndv.getters.outputDataContainer().should('contain', 'start');
 		});
 	});
 });
