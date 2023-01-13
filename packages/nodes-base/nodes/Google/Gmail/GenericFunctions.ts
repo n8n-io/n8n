@@ -41,7 +41,7 @@ export interface IAttachments {
 	content: string;
 }
 
-import mailComposer = require('nodemailer/lib/mail-composer');
+import MailComposer from 'nodemailer/lib/mail-composer';
 
 async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -306,10 +306,10 @@ export async function encodeEmail(email: IEmail) {
 		mailOptions.attachments = attachments;
 	}
 
-	const mail = new mailComposer(mailOptions).compile();
+	const mail = new MailComposer(mailOptions).compile();
 
 	// by default the bcc headers are deleted when the mail is built.
-	// So add keepBcc flag to averride such behaviour. Only works when
+	// So add keepBcc flag to override such behaviour. Only works when
 	// the flag is set after the compilation.
 	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;

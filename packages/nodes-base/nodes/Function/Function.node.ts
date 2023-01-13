@@ -1,3 +1,4 @@
+import { NodeVM, NodeVMOptions } from 'vm2';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
@@ -8,10 +9,6 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import vm2 = require('vm2');
-
-const { NodeVM } = vm2;
 
 export class Function implements INodeType {
 	description: INodeTypeDescription = {
@@ -150,7 +147,7 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options: vm2.NodeVMOptions = {
+		const options: NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
 			require: {

@@ -1,3 +1,4 @@
+import { NodeVM, NodeVMOptions } from 'vm2';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
@@ -10,10 +11,6 @@ import {
 } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
-
-import vm2 = require('vm2');
-
-const { NodeVM } = vm2;
 
 const compareItems = (
 	obj: INodeExecutionData,
@@ -1356,7 +1353,7 @@ return 0;`,
 							console: mode === 'manual' ? 'redirect' : 'inherit',
 							sandbox,
 						};
-						const vm = new NodeVM(options as unknown as vm2.NodeVMOptions);
+						const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 						newItems = await vm.run(
 							`
