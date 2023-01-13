@@ -219,9 +219,6 @@ export class KafkaTrigger implements INodeType {
 
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-		// eslint-disable-next-line @typescript-eslint/no-this-alias
-		const self = this;
-
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
@@ -265,7 +262,7 @@ export class KafkaTrigger implements INodeType {
 						data = value;
 					}
 
-					self.emit([self.helpers.returnJsonArray([data])]);
+					this.emit([this.helpers.returnJsonArray([data])]);
 				},
 			});
 		};
