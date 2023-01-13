@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue3';
 import { N8nText } from './index';
 
 export default {
@@ -33,7 +33,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nText,
 	},
-	template: '<n8n-text v-bind="$props">hello world</n8n-text>',
+	setup() {
+		return { args };
+	},
+	template: '<N8nText v-bind="args">hello world</N8nText>',
 });
 
 export const Text = Template.bind({});

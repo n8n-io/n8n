@@ -1,5 +1,5 @@
-import type { StoryFn } from '@storybook/vue';
-import { N8nIcon } from './index';
+import type { StoryFn } from '@storybook/vue3';
+import N8nIcon from './Icon.vue';
 
 export default {
 	title: 'Atoms/Icon',
@@ -27,7 +27,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nIcon,
 	},
-	template: '<n8n-icon v-bind="$props" />',
+	setup() {
+		return { args };
+	},
+	template: '<N8nIcon v-bind="args" />',
 });
 
 export const Clock = Template.bind({});

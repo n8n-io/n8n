@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "run-p type-check build-only",
+    "dev": "start-storybook -p 6006",
+    "build": "run-p build-only",
     "preview": "vite preview",
     "test:unit": "vitest --environment jsdom --root src/",
     "build-only": "vite build",
@@ -15,9 +15,19 @@
   },
   "dependencies": {
     "element-plus": "^2.2.28",
-    "vue": "^3.2.45"
+    "vue": "^3.2.45",
+    "vue-demi": "^0.13.11"
+  },
+  "peerDependencies": {
+    "@fortawesome/fontawesome-svg-core": "1.x",
+    "@fortawesome/free-solid-svg-icons": "5.x",
+    "@fortawesome/vue-fontawesome": "2.x",
+    "xss": "^1.0.10"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.35",
+    "@fortawesome/free-solid-svg-icons": "^5.15.3",
+    "@fortawesome/vue-fontawesome": "^3.0.2",
     "@rushstack/eslint-patch": "^1.1.4",
     "@storybook/addon-a11y": "^6.5.9",
     "@storybook/addon-actions": "^6.5.9",
@@ -41,6 +51,10 @@
     "eslint-plugin-vue": "^9.3.0",
     "husky": "^8.0.3",
     "jsdom": "^20.0.3",
+    "markdown-it": "^12.3.2",
+    "markdown-it-emoji": "^2.0.0",
+    "markdown-it-link-attributes": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
     "npm-run-all": "^4.1.5",
     "patch-package": "^6.5.1",
     "postcss": "^8.4.14",
@@ -57,5 +71,11 @@
     "vite": "^4.0.0",
     "vitest": "^0.25.6",
     "vue-tsc": "^1.0.12"
+  },
+  "exports": {
+    ".": {
+      "import": "./src/n8n.ts"
+    },
+    "./*": "./*"
   }
 }

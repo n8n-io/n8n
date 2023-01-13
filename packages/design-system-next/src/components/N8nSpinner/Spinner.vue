@@ -6,7 +6,7 @@
 			<div></div>
 			<div></div>
 		</div>
-		<n8n-icon v-else icon="spinner" :size="size" spin />
+		<N8nIcon v-else icon="spinner" :size="size" spin />
 	</span>
 </template>
 

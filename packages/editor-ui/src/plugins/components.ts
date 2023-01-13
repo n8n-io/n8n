@@ -10,6 +10,7 @@ import VueAgile from 'vue-agile';
 import ElementUI from 'element-ui';
 import { Loading, MessageBox, Message, Notification } from 'element-ui';
 import { designSystemComponents } from 'n8n-design-system';
+import { N8nDesignSystem, components } from 'n8n-design-system-next';
 import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
@@ -17,6 +18,8 @@ Vue.use(Fragment.Plugin);
 
 Vue.use(ElementUI);
 Vue.use(designSystemComponents);
+
+Vue.use(N8nDesignSystem, { components });
 
 Vue.component('enterprise-edition', EnterpriseEdition);
 

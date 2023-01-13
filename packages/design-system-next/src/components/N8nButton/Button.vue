@@ -8,8 +8,8 @@
 		v-bind="$attrs"
 	>
 		<span :class="$style.icon" v-if="loading || icon">
-			<n8n-spinner v-if="loading" :size="size" />
-			<n8n-icon v-else-if="icon" :icon="icon" :size="size" />
+			<N8nSpinner v-if="loading" :size="size" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
 		</span>
 		<span v-if="label || $slots.default">
 			<slot>{{ label }}</slot>
@@ -96,7 +96,7 @@ export default defineComponent({
 		},
 		classes(): string {
 			return (
-				`button ${this.$style.button} ${this.$style[this.type]}` +
+				`n8n-button ${this.$style[this.type]}` +
 				`${this.size ? ` ${this.$style[this.size]}` : ""}` +
 				`${this.outline ? ` ${this.$style.outline}` : ""}` +
 				`${this.loading ? ` ${this.$style.loading}` : ""}` +
@@ -116,67 +116,6 @@ export default defineComponent({
 <style lang="scss" module>
 @import "../../css/mixins/utils";
 @import "../../css/common/var";
-
-.button {
-	display: inline-block;
-	line-height: 1;
-	white-space: nowrap;
-	cursor: pointer;
-
-	border: var(--border-width-base) $button-border-color var(--border-style-base);
-	color: $button-font-color;
-	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
-	font-size: $button-font-size;
-
-	-webkit-appearance: none;
-	text-align: center;
-	box-sizing: border-box;
-	outline: none;
-	margin: 0;
-	transition: 0.3s;
-
-	@include utils-user-select(none);
-
-	&:hover {
-		color: $button-hover-color;
-		border-color: $button-hover-border-color;
-		background-color: $button-hover-background-color;
-	}
-
-	&:focus {
-		border-color: $button-focus-outline-color;
-		outline: $focus-outline-width solid $button-focus-outline-color;
-	}
-
-	&:active,
-	&.active {
-		color: $button-active-color;
-		border-color: $button-active-border-color;
-		background-color: $button-active-background-color;
-		outline: none;
-	}
-
-	&::-moz-focus-inner {
-		border: 0;
-	}
-
-	> i {
-		display: none;
-	}
-
-	> span {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-	}
-
-	span + span {
-		margin-left: var(--spacing-3xs);
-	}
-}
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
 

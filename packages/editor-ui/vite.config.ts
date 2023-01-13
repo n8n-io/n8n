@@ -73,6 +73,10 @@ export default mergeConfig(
 					find: /^n8n-design-system\//,
 					replacement: resolve(__dirname, '..', 'design-system', 'src') + '/',
 				},
+				{
+					find: /^n8n-design-system-next\//,
+					replacement: resolve(__dirname, '..', 'design-system-next', 'src') + '/',
+				},
 				...lodashAliases,
 				{
 					find: /^lodash.(.+)$/,

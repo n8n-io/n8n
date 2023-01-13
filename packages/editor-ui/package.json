@@ -58,6 +58,7 @@
     "luxon": "^2.3.0",
     "monaco-editor": "^0.33.0",
     "n8n-design-system": "~0.50.1",
+    "n8n-design-system-next": "~0.0.0",
     "n8n-workflow": "~0.132.1",
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.0.22",

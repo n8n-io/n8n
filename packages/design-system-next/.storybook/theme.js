@@ -7,12 +7,12 @@ const commonConfig = {
 
 export const light = create({
 	base: "light",
-	brandImage: "/assets/images/storybook-logo-light.png",
+	brandImage: "/storybook.png",
 	...commonConfig,
 });
 
 export const dark = create({
 	base: "dark",
-	brandImage: "/assets/images/storybook-logo-dark.png",
+	brandImage: "/storybook.png",
 	...commonConfig,
 });
