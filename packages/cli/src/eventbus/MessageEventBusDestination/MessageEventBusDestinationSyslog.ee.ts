@@ -86,7 +86,6 @@ export class MessageEventBusDestinationSyslog
 			this.client.log(
 				JSON.stringify(serializedMessage),
 				{
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 					severity: msg.eventName.toLowerCase().endsWith('error')
 						? syslog.Severity.Error
 						: syslog.Severity.Debug,
@@ -113,7 +112,6 @@ export class MessageEventBusDestinationSyslog
 
 	serialize(): MessageEventBusDestinationSyslogOptions {
 		const abstractSerialized = super.serialize();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...abstractSerialized,
 			expectedStatusCode: this.expectedStatusCode,

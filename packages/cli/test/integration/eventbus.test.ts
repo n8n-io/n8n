@@ -126,19 +126,15 @@ afterAll(async () => {
 });
 
 test('should have a running logwriter process', () => {
-	const thread = eventBus.logWriter.getWorker();
+	const thread = eventBus.logWriter.worker;
 	expect(thread).toBeDefined();
 });
-
-// test('should have a clean log', async () => {
-// 	await cleanLogs();
-// });
 
 test('should have logwriter log messages', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter.getWorker()?.once('message', async (msg: { command: string; data: any }) => {
+		eventBus.logWriter.worker?.once('message', async (msg: { command: string; data: any }) => {
 			expect(msg.command).toBe('appendMessageToLog');
 			expect(msg.data).toBe(true);
 			await confirmIdInAll(testMessage.id);
@@ -206,19 +202,20 @@ test('should send message to syslog ', async () => {
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler001(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler001(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler001);
+					eventBus.logWriter.worker?.removeListener('message', handler001);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 });
 
@@ -244,19 +241,20 @@ test('should confirm send message if there are no subscribers', async () => {
 	await eventBus.send(testMessageUnsubscribed);
 
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler002(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler002(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					await confirmIdInAll(testMessageUnsubscribed.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessageUnsubscribed.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler002);
+					eventBus.logWriter.worker?.removeListener('message', handler002);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 });
 
@@ -294,34 +292,36 @@ test('should anonymize audit message to syslog ', async () => {
 	syslogDestination.anonymizeAuditMessages = true;
 	await eventBus.send(testAuditMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler005(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler005(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					const sent = await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler005);
+					eventBus.logWriter.worker?.removeListener('message', handler005);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 
 	syslogDestination.anonymizeAuditMessages = false;
 	await eventBus.send(testAuditMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler006(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler006(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					const sent = await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
 					syslogDestination.disable();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler006);
+					eventBus.logWriter.worker?.removeListener('message', handler006);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 });
 
@@ -341,19 +341,20 @@ test('should send message to webhook ', async () => {
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler003(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler003(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockedAxios.request).toHaveBeenCalled();
 					webhookDestination.disable();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler003);
+					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 });
 
@@ -379,19 +380,20 @@ test('should send message to sentry ', async () => {
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
-		eventBus.logWriter
-			.getWorker()
-			?.on('message', async function handler004(msg: { command: string; data: any }) {
+		eventBus.logWriter.worker?.on(
+			'message',
+			async function handler004(msg: { command: string; data: any }) {
 				if (msg.command === 'appendMessageToLog') {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockedSentryCaptureMessage).toHaveBeenCalled();
 					sentryDestination.disable();
-					eventBus.logWriter.getWorker()?.removeListener('message', handler004);
+					eventBus.logWriter.worker?.removeListener('message', handler004);
 					resolve(true);
 				}
-			});
+			},
+		);
 	});
 });
 
