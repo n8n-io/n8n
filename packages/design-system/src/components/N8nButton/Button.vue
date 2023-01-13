@@ -119,9 +119,9 @@ export default Vue.extend({
 	border: var(--border-width-base) $button-border-color var(--border-style-base);
 	color: $button-font-color;
 	background-color: $button-background-color;
-	font-weight: var(--font-weight-bold);
-	border-radius: $button-border-radius;
-	padding: $button-padding-vertical $button-padding-horizontal;
+	font-weight: var(--font-weight-bold); // OK
+	border-radius: $button-border-radius; // OK
+	padding: $button-padding-vertical $button-padding-horizontal; // ! TODO Check
 	font-size: $button-font-size;
 
 	-webkit-appearance: none;
@@ -191,6 +191,10 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 	--button-hover-border-color: var(--color-primary);
 
 	--button-focus-outline-color: var(--color-primary-tint-1);
+
+	--button-disabled-color: var(--color-foreground-dark);
+	--button-disabled-background-color: var(--color-background-xlight);
+	--button-disabled-border-color: var(--color-foreground-dark);
 }
 
 .tertiary {
