@@ -1514,7 +1514,7 @@ export default mixins(
 					}
 				}
 
-				return this.importWorkflowData(workflowData!, false, 'paste');
+				return this.importWorkflowData(workflowData!, 'paste', false);
 			}
 		},
 
@@ -1542,8 +1542,8 @@ export default mixins(
 		// Imports the given workflow data into the current workflow
 		async importWorkflowData(
 			workflowData: IWorkflowToShare,
-			importTags = true,
 			source: string,
+			importTags = true,
 		): Promise<void> {
 			// eslint-disable-line @typescript-eslint/default-param-last
 			// If it is JSON check if it looks on the first look like data we can use
@@ -3650,12 +3650,12 @@ export default mixins(
 			} catch (e) {}
 		},
 		async onImportWorkflowDataEvent(data: IDataObject) {
-			await this.importWorkflowData(data.data as IWorkflowDataUpdate, undefined, 'file');
+			await this.importWorkflowData(data.data as IWorkflowDataUpdate, 'file');
 		},
 		async onImportWorkflowUrlEvent(data: IDataObject) {
 			const workflowData = await this.getWorkflowDataFromUrl(data.url as string);
 			if (workflowData !== undefined) {
-				await this.importWorkflowData(workflowData, undefined, 'url');
+				await this.importWorkflowData(workflowData, 'url');
 			}
 		},
 		addPinDataConnections(pinData: IPinData) {

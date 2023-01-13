@@ -479,7 +479,7 @@ export class N8nConnector extends AbstractConnector {
 		// TODO: Check if this is the best way to do this
 		// Object.assign(originalPaintInfo, paintInfo);
 		Object.keys(paintInfo).forEach((key) => {
-			if(key === undefined) return;
+			if (key === undefined) return;
 			// override so that bounding box is calculated correctly when target override is set
 			originalPaintInfo[key as keyof PaintGeometry] = paintInfo[key as keyof PaintGeometry];
 		});
@@ -490,10 +490,7 @@ export class N8nConnector extends AbstractConnector {
 			} else {
 				this._computeBezier(paintInfo);
 			}
-
-		} catch (error) {
-
-		}
+		} catch (error) {}
 	}
 	/**
 	 * Set target endpoint
@@ -502,7 +499,7 @@ export class N8nConnector extends AbstractConnector {
 	 */
 	setTargetEndpoint(endpoint: Endpoint) {
 		this.overrideTargetEndpoint = endpoint;
-	};
+	}
 	resetTargetEndpoint() {
 		this.overrideTargetEndpoint = null;
 	}
@@ -515,7 +512,6 @@ export class N8nConnector extends AbstractConnector {
 		const _sy = sp.curY < tp.curY ? _h : 0;
 		const _tx = sp.curX < tp.curX ? 0 : _w;
 		const _ty = sp.curY < tp.curY ? 0 : _h;
-
 
 		if (paintInfo.ySpan <= 20 || (paintInfo.ySpan <= 100 && paintInfo.xSpan <= 100)) {
 			this.majorAnchor = 0.1;

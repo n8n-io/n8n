@@ -193,8 +193,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getNodeById() {
 			return (nodeId: string): INodeUi | undefined =>
-			this.workflow.nodes.find((node: INodeUi) => {
-				  return node.id === nodeId;
+				this.workflow.nodes.find((node: INodeUi) => {
+					return node.id === nodeId;
 				});
 		},
 		nodesIssuesExist(): boolean {

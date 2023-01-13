@@ -13,9 +13,7 @@ import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import { EndpointOptions } from '@jsplumb/core';
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { useHistoryStore } from '@/stores/history';
-import { MoveNodeCommand } from '@/models/history';
 import { useCanvasStore } from '@/stores/canvas';
-import { getStyleTokenValue } from '@/utils';
 
 export const nodeBase = mixins(deviceSupportHelpers).extend({
 	mounted() {
@@ -110,7 +108,7 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					// Apply input names if they got set
 					endpoint.addOverlay(NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]));
 				}
-			if(!Array.isArray(endpoint)) {
+				if (!Array.isArray(endpoint)) {
 					endpoint.__meta = {
 						nodeName: node.name,
 						nodeId: this.nodeId,
@@ -180,8 +178,10 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 					dragAllowedWhenFull: false,
 				};
 
-
-				const endpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, newEndpointData);
+				const endpoint = this.instance.addEndpoint(
+					this.$refs[this.data.name] as Element,
+					newEndpointData,
+				);
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
 					const overlaySpec = NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]);
@@ -229,9 +229,12 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
 					};
-					const plusEndpoint = this.instance.addEndpoint(this.$refs[this.data.name] as Element, plusEndpointData);
+					const plusEndpoint = this.instance.addEndpoint(
+						this.$refs[this.data.name] as Element,
+						plusEndpointData,
+					);
 
-					if(!Array.isArray(plusEndpoint)) {
+					if (!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
 							nodeName: node.name,
 							nodeId: this.nodeId,

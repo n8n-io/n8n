@@ -9,7 +9,12 @@ import { useHistoryStore } from '@/stores/history';
 import { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
-import type { BeforeStartEventParams, BrowserJsPlumbInstance, DragStartEventParams, DragStopEventParams } from '@jsplumb/browser-ui';
+import type {
+	BeforeStartEventParams,
+	BrowserJsPlumbInstance,
+	DragStartEventParams,
+	DragStopEventParams,
+} from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
 import { N8nPlusEndpointHandler } from '@/plugins/endpoints/N8nPlusEndpointType';
 import * as N8nPlusEndpointRenderer from '@/plugins/endpoints/N8nPlusEndpointRenderer';
@@ -147,7 +152,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				start: (params: BeforeStartEventParams) => {
 					const draggedNode = params.drag.getDragElement();
 					const nodeName = draggedNode.getAttribute('data-name');
-					if(!nodeName) return;
+					if (!nodeName) return;
 					isDragging.value = true;
 
 					const isSelected = uiStore.isNodeSelected(nodeName);
@@ -166,7 +171,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				stop: (params: DragStopEventParams) => {
 					const draggedNode = params.drag.getDragElement();
 					const nodeName = draggedNode.getAttribute('data-name');
-					if(!nodeName) return;
+					if (!nodeName) return;
 					const nodeData = workflowStore.getNodeByName(nodeName);
 					isDragging.value = false;
 					if (uiStore.isActionActive('dragActive') && nodeData) {
