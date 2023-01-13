@@ -27,7 +27,7 @@ import {
 } from '@/CredentialsHelper';
 import { getLogger } from '@/Logger';
 import { OAuthRequest } from '@/requests';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl, getUserById } from '@/UserManagement/UserManagementHelper';
 import { exponentialBuckets } from 'prom-client';
@@ -149,12 +149,14 @@ oauth2CredentialController.get(
 			throw new ResponseHelper.InternalServerError((error as Error).message);
 		}
 
+		const credentialType = (credential as unknown as ICredentialsEncrypted).type;
+
 		const mode: WorkflowExecuteMode = 'internal';
 		const timezone = config.getEnv('generic.timezone');
 		const credentialsHelper = new CredentialsHelper(encryptionKey);
 		const decryptedDataOriginal = await credentialsHelper.getDecrypted(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 			true,
@@ -162,13 +164,19 @@ oauth2CredentialController.get(
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		if (decryptedDataOriginal?.scope) {
+		// Generic Oauth2 API is an exception because it needs to save the scope
+		const genericOAuth2 = ['oAuth2Api', 'googleOAuth2Api', 'microsoftOAuth2Api'];
+		if (
+			decryptedDataOriginal?.scope &&
+			credentialType.includes('OAuth2') &&
+			!genericOAuth2.includes(credentialType)
+		) {
 			delete decryptedDataOriginal.scope;
 		}
 
 		const oauthCredentials = credentialsHelper.applyDefaultsAndOverwrites(
 			decryptedDataOriginal,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			mode,
 			timezone,
 		);
@@ -192,12 +200,12 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+		await ExternalHooks().run('oauth2.authenticate', [oAuthOptions]);
 
 		// Encrypt the data
 		const credentials = new Credentials(
 			credential as INodeCredentialsDetails,
-			(credential as unknown as ICredentialsEncrypted).type,
+			credentialType,
 			(credential as unknown as ICredentialsEncrypted).nodesAccess,
 		);
 		decryptedDataOriginal.csrfSecret = csrfSecret;
@@ -342,7 +350,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await externalHooks.run('oauth2.callback', [oAuth2Parameters]);
+			await ExternalHooks().run('oauth2.callback', [oAuth2Parameters]);
 
 			//const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 

@@ -3,7 +3,7 @@ import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import {IExecuteContextData, IRunExecutionData} from 'n8n-workflow';
+import { IExecuteContextData, IRunExecutionData } from 'n8n-workflow';
 import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
@@ -14,9 +14,7 @@ let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
 	computed: {
-		...mapStores(
-			useWorkflowsStore,
-		),
+		...mapStores(useWorkflowsStore),
 	},
 	methods: {
 		$showMessage(
@@ -24,7 +22,9 @@ export const showMessage = mixins(externalHooks).extend({
 			track = true,
 		) {
 			messageData.dangerouslyUseHTMLString = true;
-			messageData.message = messageData.message ? sanitizeHtml(messageData.message) : messageData.message;
+			messageData.message = messageData.message
+				? sanitizeHtml(messageData.message)
+				: messageData.message;
 
 			if (messageData.position === undefined) {
 				messageData.position = 'bottom-right';
@@ -49,15 +49,15 @@ export const showMessage = mixins(externalHooks).extend({
 		},
 
 		$showToast(config: {
-				title: string,
-				message: string,
-				onClick?: () => void,
-				onClose?: () => void,
-				duration?: number,
-				customClass?: string,
-				closeOnClick?: boolean,
-				type?: MessageType,
-			}) {
+			title: string;
+			message: string;
+			onClick?: () => void;
+			onClose?: () => void;
+			duration?: number;
+			customClass?: string;
+			closeOnClick?: boolean;
+			type?: MessageType;
+		}) {
 			// eslint-disable-next-line prefer-const
 			let notification: ElNotificationComponent;
 			if (config.closeOnClick) {
@@ -102,14 +102,10 @@ export const showMessage = mixins(externalHooks).extend({
 				if (error && error.message) {
 					let nodeName: string | undefined;
 					if ('node' in error) {
-						nodeName = typeof error.node === 'string'
-							? error.node
-							: error.node!.name;
+						nodeName = typeof error.node === 'string' ? error.node : error.node!.name;
 					}
 
-					const receivedError = nodeName
-						? `${nodeName}: ${error.message}`
-						: error.message;
+					const receivedError = nodeName ? `${nodeName}: ${error.message}` : error.message;
 					errorMessage = `There was a problem executing the workflow:<br /><strong>"${receivedError}"</strong>`;
 				}
 			}
@@ -120,15 +116,18 @@ export const showMessage = mixins(externalHooks).extend({
 		$showError(e: Error | unknown, title: string, message?: string) {
 			const error = e as Error;
 			const messageLine = message ? `${message}<br/>` : '';
-			this.$showMessage({
-				title,
-				message: `
+			this.$showMessage(
+				{
+					title,
+					message: `
 					${messageLine}
 					<i>${error.message}</i>
 					${this.collapsableDetails(error)}`,
-				type: 'error',
-				duration: 0,
-			}, false);
+					type: 'error',
+					duration: 0,
+				},
+				false,
+			);
 
 			this.$externalHooks().run('showMessage.showError', {
 				title,
@@ -145,9 +144,15 @@ export const showMessage = mixins(externalHooks).extend({
 			});
 		},
 
-		async confirmMessage (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string): Promise<boolean> {
+		async confirmMessage(
+			message: string,
+			headline: string,
+			type: MessageType | null = 'warning',
+			confirmButtonText?: string,
+			cancelButtonText?: string,
+		): Promise<boolean> {
 			try {
-				const options: ElMessageBoxOptions  = {
+				const options: ElMessageBoxOptions = {
 					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
 					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
@@ -162,9 +167,16 @@ export const showMessage = mixins(externalHooks).extend({
 			}
 		},
 
-		async confirmModal (message: string, headline: string, type: MessageType | null = 'warning', confirmButtonText?: string, cancelButtonText?: string, showClose = false): Promise<string> {
+		async confirmModal(
+			message: string,
+			headline: string,
+			type: MessageType | null = 'warning',
+			confirmButtonText?: string,
+			cancelButtonText?: string,
+			showClose = false,
+		): Promise<string> {
 			try {
-				const options: ElMessageBoxOptions  = {
+				const options: ElMessageBoxOptions = {
 					confirmButtonText: confirmButtonText || this.$locale.baseText('showMessage.ok'),
 					cancelButtonText: cancelButtonText || this.$locale.baseText('showMessage.cancel'),
 					dangerouslyUseHTMLString: true,
@@ -195,9 +207,7 @@ export const showMessage = mixins(externalHooks).extend({
 			if (!description) return '';
 
 			const errorDescription =
-				description.length > 500
-					? `${description.slice(0, 500)}...`
-					: description;
+				description.length > 500 ? `${description.slice(0, 500)}...` : description;
 
 			return `
 				<br>

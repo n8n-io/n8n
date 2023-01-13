@@ -3,7 +3,7 @@
 		<div :class="$style.header">
 			<n8n-heading size="2xlarge">
 				{{ $locale.baseText('settings.api') }}
-				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)', }">
+				<span :style="{ fontSize: 'var(--font-size-s)', color: 'var(--color-text-light)' }">
 					({{ $locale.baseText('beta') }})
 				</span>
 			</n8n-heading>
@@ -48,16 +48,26 @@
 			</n8n-card>
 			<div :class="$style.hint">
 				<n8n-text size="small">
-					{{ $locale.baseText('settings.api.view.tryapi') }}
+					{{
+						$locale.baseText(`settings.api.view.${swaggerUIEnabled ? 'tryapi' : 'more-details'}`)
+					}}
 				</n8n-text>
-				<n8n-link :to="apiPlaygroundPath" :newWindow="true" size="small">
-					{{ $locale.baseText('settings.api.view.apiPlayground') }}
+				<n8n-link :to="apiDocsURL" :newWindow="true" size="small">
+					{{
+						$locale.baseText(
+							`settings.api.view.${swaggerUIEnabled ? 'apiPlayground' : 'external-docs'}`,
+						)
+					}}
 				</n8n-link>
 			</div>
 		</div>
 		<n8n-action-box
 			v-else-if="mounted"
-			:buttonText="$locale.baseText(loading ? 'settings.api.create.button.loading' : 'settings.api.create.button')"
+			:buttonText="
+				$locale.baseText(
+					loading ? 'settings.api.create.button.loading' : 'settings.api.create.button',
+				)
+			"
 			:description="$locale.baseText('settings.api.create.description')"
 			@click="createApiKey"
 		/>
@@ -74,11 +84,10 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useUsersStore } from '@/stores/users';
+import { DOCS_DOMAIN } from '@/constants';
 
-export default mixins(
-	showMessage,
-).extend({
-	name: 'SettingsPersonalView',
+export default mixins(showMessage).extend({
+	name: 'SettingsApiView',
 	components: {
 		CopyInput,
 	},
@@ -87,7 +96,8 @@ export default mixins(
 			loading: false,
 			mounted: false,
 			apiKey: '',
-			apiPlaygroundPath: '',
+			swaggerUIEnabled: false,
+			apiDocsURL: '',
 		};
 	},
 	mounted() {
@@ -95,14 +105,13 @@ export default mixins(
 		const baseUrl = this.rootStore.baseUrl;
 		const apiPath = this.settingsStore.publicApiPath;
 		const latestVersion = this.settingsStore.publicApiLatestVersion;
-		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
+		this.swaggerUIEnabled = this.settingsStore.isSwaggerUIEnabled;
+		this.apiDocsURL = this.swaggerUIEnabled
+			? `${baseUrl}${apiPath}/v${latestVersion}/docs`
+			: `https://${DOCS_DOMAIN}/api/api-reference/`;
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-			useUsersStore,
-		),
+		...mapStores(useRootStore, useSettingsStore, useUsersStore),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
@@ -122,7 +131,7 @@ export default mixins(
 		},
 		async getApiKey() {
 			try {
-				this.apiKey = await this.settingsStore.getApiKey() || '';
+				this.apiKey = (await this.settingsStore.getApiKey()) || '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
@@ -133,7 +142,7 @@ export default mixins(
 			this.loading = true;
 
 			try {
-				this.apiKey = await this.settingsStore.createApiKey() || '';
+				this.apiKey = (await this.settingsStore.createApiKey()) || '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
@@ -144,7 +153,10 @@ export default mixins(
 		async deleteApiKey() {
 			try {
 				await this.settingsStore.deleteApiKey();
-				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
+				this.$showMessage({
+					title: this.$locale.baseText('settings.api.delete.toast'),
+					type: 'success',
+				});
 				this.apiKey = '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.delete.error'));
@@ -191,4 +203,3 @@ export default mixins(
 	color: var(--color-text-light);
 }
 </style>
-

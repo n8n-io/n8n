@@ -46,7 +46,7 @@ export async function getAccessTokens(
 	};
 
 	try {
-		const tokens = await this.helpers.request!(options);
+		const tokens = await this.helpers.request(options);
 		return tokens;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
@@ -89,7 +89,7 @@ export async function haloPSAApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		const result = await this.helpers.request!(options);
+		const result = await this.helpers.request(options);
 		if (method === 'DELETE' && result.id) {
 			return { success: true };
 		}
@@ -246,5 +246,5 @@ export async function validateCredentials(
 		json: true,
 	};
 
-	return (await this.helpers.request!(options)) as IHaloPSATokens;
+	return (await this.helpers.request(options)) as IHaloPSATokens;
 }

@@ -41,7 +41,7 @@ executionsController.get(
  * GET /executions/:id
  */
 executionsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(
 		async (
 			req: ExecutionRequest.Get,

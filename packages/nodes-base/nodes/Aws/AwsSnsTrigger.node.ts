@@ -18,14 +18,14 @@ import { get } from 'lodash';
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS Trigger',
-		subtitle: `={{$parameter["topic"].split(':')[5]}}`,
+		subtitle: '={{$parameter["topic"].split(\':\')[5]}}',
 		name: 'awsSnsTrigger',
 		icon: 'file:sns.svg',
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle AWS SNS events via webhooks',
 		defaults: {
-			name: 'AWS-SNS-Trigger',
+			name: 'AWS SNS Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -154,7 +154,6 @@ export class AwsSnsTrigger implements INodeType {
 		},
 	};
 
-	//@ts-expect-error because of webhook
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -177,7 +176,7 @@ export class AwsSnsTrigger implements INodeType {
 					data,
 					'ListSubscriptionsByTopicResponse.ListSubscriptionsByTopicResult.Subscriptions',
 				);
-				if (!subscriptions || !subscriptions.member) {
+				if (!subscriptions?.member) {
 					return false;
 				}
 

@@ -22,7 +22,7 @@ export class FunctionItem implements INodeType {
 		version: 1,
 		description: 'Run custom function code which gets executed once per item',
 		defaults: {
-			name: 'FunctionItem',
+			name: 'Function Item',
 			color: '#ddbb33',
 		},
 		inputs: ['main'],

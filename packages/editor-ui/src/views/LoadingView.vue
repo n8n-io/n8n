@@ -1,5 +1,5 @@
 <template>
-  <div :class="$style.wrapper" data-test-id="node-view-loader">
+	<div :class="$style.wrapper" data-test-id="node-view-loader">
 		<div :class="$style.spinner">
 			<n8n-spinner />
 		</div>

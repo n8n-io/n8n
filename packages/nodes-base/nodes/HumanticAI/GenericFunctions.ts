@@ -38,7 +38,7 @@ export async function humanticAiApiRequest(
 			delete options.body;
 		}
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.data && response.data.status === 'error') {
 			throw new NodeApiError(this.getNode(), response.data);

@@ -55,7 +55,7 @@ export async function apiRequest(
 		if (authenticationMethod === 'accessToken') {
 			return await this.helpers.requestWithAuthentication.call(this, 'typeformApi', options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'typeformOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'typeformOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

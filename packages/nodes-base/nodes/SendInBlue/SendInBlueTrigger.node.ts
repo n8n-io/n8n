@@ -18,7 +18,7 @@ export class SendInBlueTrigger implements INodeType {
 		],
 		displayName: 'SendInBlue Trigger',
 		defaults: {
-			name: 'SendInBlue-Trigger',
+			name: 'SendInBlue Trigger',
 		},
 		description: 'Starts the workflow when SendInBlue events occur',
 		group: ['trigger'],

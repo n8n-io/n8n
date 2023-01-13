@@ -121,7 +121,7 @@ export async function getAccessToken(
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -149,7 +149,7 @@ export async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 // Hex to RGB

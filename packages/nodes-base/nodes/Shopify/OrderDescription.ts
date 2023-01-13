@@ -275,9 +275,6 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'An optional note that a shop owner can attach to the order',
 			},
@@ -816,9 +813,6 @@ export const orderFields: INodeProperties[] = [
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'An optional note that a shop owner can attach to the order',
 			},

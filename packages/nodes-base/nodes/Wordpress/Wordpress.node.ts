@@ -416,7 +416,7 @@ export class Wordpress implements INodeType {
 						const reassign = this.getNodeParameter('reassign', i) as string;
 						qs.reassign = reassign;
 						qs.force = true;
-						responseData = await wordpressApiRequest.call(this, 'DELETE', `/users/me`, {}, qs);
+						responseData = await wordpressApiRequest.call(this, 'DELETE', '/users/me', {}, qs);
 					}
 				}
 				const exectutionData = this.helpers.constructExecutionMetaData(

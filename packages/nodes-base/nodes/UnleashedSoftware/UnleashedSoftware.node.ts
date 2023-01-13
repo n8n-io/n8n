@@ -108,7 +108,7 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/SalesOrders`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/SalesOrders', {}, qs, 1);
 						responseData = responseData.Items;
 					}
 					convertNETDates(responseData);
@@ -152,7 +152,7 @@ export class UnleashedSoftware implements INodeType {
 					} else {
 						const limit = this.getNodeParameter('limit', i);
 						qs.pageSize = limit;
-						responseData = await unleashedApiRequest.call(this, 'GET', `/StockOnHand`, {}, qs, 1);
+						responseData = await unleashedApiRequest.call(this, 'GET', '/StockOnHand', {}, qs, 1);
 						responseData = responseData.Items;
 					}
 

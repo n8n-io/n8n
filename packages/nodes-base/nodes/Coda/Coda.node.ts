@@ -83,7 +83,7 @@ export class Coda implements INodeType {
 			async getDocs(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const qs = {};
-				const docs = await codaApiRequestAllItems.call(this, 'items', 'GET', `/docs`, {}, qs);
+				const docs = await codaApiRequestAllItems.call(this, 'items', 'GET', '/docs', {}, qs);
 				for (const doc of docs) {
 					const docName = doc.name;
 					const docId = doc.id;

@@ -76,9 +76,6 @@ export class Signl4 implements INodeType {
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				displayOptions: {
 					show: {

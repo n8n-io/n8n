@@ -1,9 +1,5 @@
 <template>
-	<AuthView
-		:form="formConfig"
-		:formLoading="loading"
-		@submit="onSubmit"
-	/>
+	<AuthView :form="formConfig" :formLoading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">
@@ -16,9 +12,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'ForgotMyPasswordView',
 	components: {
 		AuthView,
@@ -29,10 +23,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useUsersStore),
 		formConfig(): IFormBoxConfig {
 			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 				{
@@ -41,7 +32,7 @@ export default mixins(
 						label: this.$locale.baseText('auth.email'),
 						type: 'email',
 						required: true,
-						validationRules: [{name: 'VALID_EMAIL'}],
+						validationRules: [{ name: 'VALID_EMAIL' }],
 						autocomplete: 'email',
 						capitalize: true,
 					},
@@ -86,10 +77,9 @@ export default mixins(
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('forgotPassword.recoveryEmailSent'),
-					message: this.$locale.baseText(
-						'forgotPassword.emailSentIfExists',
-						{ interpolate: { email: values.email }},
-					),
+					message: this.$locale.baseText('forgotPassword.emailSentIfExists', {
+						interpolate: { email: values.email },
+					}),
 				});
 			} catch (error) {
 				this.$showMessage({

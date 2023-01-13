@@ -73,9 +73,6 @@ export class CrateDb implements INodeType {
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['executeQuery'],
@@ -354,6 +351,7 @@ export class CrateDb implements INodeType {
 				const where =
 					' WHERE ' +
 					updateKeys
+						// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 						.map((updateKey) => pgp.as.name(updateKey) + ' = ${' + updateKey + '}')
 						.join(' AND ');
 				// updateKeyValue = item.json[updateKey] as string | number;

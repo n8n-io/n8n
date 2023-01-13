@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import {EnterpriseEditionFeature} from "@/constants";
+import { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 
@@ -23,7 +23,10 @@ export default Vue.extend({
 		...mapStores(useSettingsStore),
 		canAccess(): boolean {
 			return this.features.reduce((acc: boolean, feature) => {
-				return acc && !!this.settingsStore.isEnterpriseFeatureEnabled(feature as EnterpriseEditionFeature);
+				return (
+					acc &&
+					!!this.settingsStore.isEnterpriseFeatureEnabled(feature as EnterpriseEditionFeature)
+				);
 			}, true);
 		},
 	},

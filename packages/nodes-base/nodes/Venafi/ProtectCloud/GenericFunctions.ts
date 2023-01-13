@@ -49,7 +49,11 @@ export async function venafiApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return this.helpers.requestWithAuthentication.call(this, 'venafiTlsProtectCloudApi', options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			'venafiTlsProtectCloudApi',
+			options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

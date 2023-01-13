@@ -10,7 +10,10 @@
 	>
 		<template #content>
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div :class="$style.descriptionContainer" v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
+			<div
+				:class="$style.descriptionContainer"
+				v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE"
+			>
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<template>
 						<span v-text="getModalContent.description"></span>
@@ -35,7 +38,10 @@
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
-import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
+import {
+	COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
+	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+} from '../constants';
 import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
@@ -80,8 +86,12 @@ export default mixins(showMessage).extend({
 							packageName: this.activePackageName,
 						},
 					}),
-					buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLabel'),
-					buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel'),
+					buttonLabel: this.$locale.baseText(
+						'settings.communityNodes.confirmModal.uninstall.buttonLabel',
+					),
+					buttonLoadingLabel: this.$locale.baseText(
+						'settings.communityNodes.confirmModal.uninstall.buttonLoadingLabel',
+					),
 				};
 			}
 			return {
@@ -90,15 +100,21 @@ export default mixins(showMessage).extend({
 						packageName: this.activePackageName,
 					},
 				}),
-				description: this.$locale.baseText('settings.communityNodes.confirmModal.update.description'),
+				description: this.$locale.baseText(
+					'settings.communityNodes.confirmModal.update.description',
+				),
 				message: this.$locale.baseText('settings.communityNodes.confirmModal.update.message', {
 					interpolate: {
 						packageName: this.activePackageName,
 						version: this.activePackage.updateAvailable,
 					},
 				}),
-				buttonLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLabel'),
-				buttonLoadingLabel: this.$locale.baseText('settings.communityNodes.confirmModal.update.buttonLoadingLabel'),
+				buttonLabel: this.$locale.baseText(
+					'settings.communityNodes.confirmModal.update.buttonLabel',
+				),
+				buttonLoadingLabel: this.$locale.baseText(
+					'settings.communityNodes.confirmModal.update.buttonLoadingLabel',
+				),
 			};
 		},
 	},
@@ -117,7 +133,7 @@ export default mixins(showMessage).extend({
 			try {
 				this.$telemetry.track('user started cnr package deletion', {
 					package_name: this.activePackage.packageName,
-					package_node_names: this.activePackage.installedNodes.map(node => node.name),
+					package_node_names: this.activePackage.installedNodes.map((node) => node.name),
 					package_version: this.activePackage.installedVersion,
 					package_author: this.activePackage.authorName,
 					package_author_email: this.activePackage.authorEmail,
@@ -129,7 +145,10 @@ export default mixins(showMessage).extend({
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.uninstall.error'));
+				this.$showError(
+					error,
+					this.$locale.baseText('settings.communityNodes.messages.uninstall.error'),
+				);
 			} finally {
 				this.loading = false;
 				this.modalBus.$emit('close');
@@ -139,7 +158,7 @@ export default mixins(showMessage).extend({
 			try {
 				this.$telemetry.track('user started cnr package update', {
 					package_name: this.activePackage.packageName,
-					package_node_names: this.activePackage.installedNodes.map(node => node.name),
+					package_node_names: this.activePackage.installedNodes.map((node) => node.name),
 					package_version_current: this.activePackage.installedVersion,
 					package_version_new: this.activePackage.updateAvailable,
 					package_author: this.activePackage.authorName,
@@ -150,16 +169,22 @@ export default mixins(showMessage).extend({
 				await this.communityNodesStore.updatePackage(this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
-					message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {
-						interpolate: {
-							packageName: this.activePackageName,
-							version: updatedVersion,
+					message: this.$locale.baseText(
+						'settings.communityNodes.messages.update.success.message',
+						{
+							interpolate: {
+								packageName: this.activePackageName,
+								version: updatedVersion,
+							},
 						},
-					}),
+					),
 					type: 'success',
 				});
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('settings.communityNodes.messages.update.error.title'));
+				this.$showError(
+					error,
+					this.$locale.baseText('settings.communityNodes.messages.update.error.title'),
+				);
 			} finally {
 				this.loading = false;
 				this.modalBus.$emit('close');
@@ -170,17 +195,17 @@ export default mixins(showMessage).extend({
 </script>
 
 <style module lang="scss">
-	.descriptionContainer {
-		display: flex;
-		margin: var(--spacing-s) 0;
-	}
+.descriptionContainer {
+	display: flex;
+	margin: var(--spacing-s) 0;
+}
 
-	.descriptionIcon {
-		align-self: center;
-		color: var(--color-text-lighter);
-	}
+.descriptionIcon {
+	align-self: center;
+	color: var(--color-text-lighter);
+}
 
-	.descriptionText {
-		padding: 0 var(--spacing-xs);
-	}
+.descriptionText {
+	padding: 0 var(--spacing-xs);
+}
 </style>

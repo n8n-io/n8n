@@ -10,7 +10,7 @@ import { SETTINGS_LICENSE_CERT_KEY } from '@/constants';
 export class ClearLicenseCommand extends Command {
 	static description = 'Clear license';
 
-	static examples = [`$ n8n clear:license`];
+	static examples = ['$ n8n clear:license'];
 
 	async run() {
 		const logger = getLogger();

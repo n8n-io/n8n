@@ -37,9 +37,6 @@ export class WiseApi implements ICredentialType {
 			default: '',
 			description:
 				'Optional private key used for Strong Customer Authentication (SCA). Only needed to retrieve statements, and execute transfers.',
-			typeOptions: {
-				alwaysOpenEditWindow: true,
-			},
 		},
 	];
 }

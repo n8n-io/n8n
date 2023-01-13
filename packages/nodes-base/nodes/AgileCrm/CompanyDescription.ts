@@ -266,9 +266,6 @@ export const companyFields: INodeProperties[] = [
 		displayName: 'Filters (JSON)',
 		name: 'filterJson',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				resource: ['company'],

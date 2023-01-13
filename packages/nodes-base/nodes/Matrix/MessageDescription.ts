@@ -56,9 +56,6 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		placeholder: 'Hello from n8n!',
 		displayOptions: {
@@ -136,9 +133,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		description:
 			'A plain text message to display in case the HTML cannot be rendered by the Matrix client',
 	},

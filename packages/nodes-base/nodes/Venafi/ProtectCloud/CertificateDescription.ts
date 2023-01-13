@@ -348,9 +348,6 @@ export const certificateFields: INodeProperties[] = [
 		displayName: 'Certificate Signing Request',
 		name: 'certificateSigningRequest',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['renew'],

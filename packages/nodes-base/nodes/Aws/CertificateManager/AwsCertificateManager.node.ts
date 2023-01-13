@@ -66,7 +66,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -90,7 +90,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -148,7 +148,7 @@ export class AwsCertificateManager implements INodeType {
 							body.MaxItems = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestREST.call(
 								this,
-								`acm`,
+								'acm',
 								'POST',
 								'',
 								JSON.stringify(body),
@@ -172,7 +172,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),
@@ -196,7 +196,7 @@ export class AwsCertificateManager implements INodeType {
 
 						responseData = await awsApiRequestREST.call(
 							this,
-							`acm`,
+							'acm',
 							'POST',
 							'',
 							JSON.stringify(body),

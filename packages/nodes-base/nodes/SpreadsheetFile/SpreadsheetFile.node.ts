@@ -308,7 +308,7 @@ export class SpreadsheetFile implements INodeType {
 				try {
 					item = items[i];
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const options = this.getNodeParameter('options', i, {});
 
 					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
@@ -413,7 +413,7 @@ export class SpreadsheetFile implements INodeType {
 		} else if (operation === 'toFile') {
 			try {
 				// Write the workflow data to spreadsheet file
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
 				const options = this.getNodeParameter('options', 0, {});
 				const sheetToJsonOptions: JSON2SheetOpts = {};

@@ -8,8 +8,6 @@ import type { Role } from '@db/entities/Role';
 import type { IPinData } from 'n8n-workflow';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
-jest.mock('@/telemetry');
-
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;

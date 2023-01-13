@@ -232,7 +232,7 @@ export class Iterable implements INodeType {
 
 					if (by === 'email') {
 						const email = this.getNodeParameter('email', i) as string;
-						endpoint = `/users/getByEmail`;
+						endpoint = '/users/getByEmail';
 						qs.email = email;
 					} else {
 						const userId = this.getNodeParameter('userId', i) as string;
@@ -244,7 +244,7 @@ export class Iterable implements INodeType {
 					if (!this.continueOnFail()) {
 						if (Object.keys(responseData).length === 0) {
 							throw new NodeApiError(this.getNode(), responseData, {
-								message: `User not found`,
+								message: 'User not found',
 								httpCode: '404',
 							});
 						}

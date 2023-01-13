@@ -10,7 +10,7 @@ export class FacebookGraphApi implements ICredentialType {
 
 	displayName = 'Facebook Graph API';
 
-	documentationUrl = 'facebookGraph';
+	documentationUrl = 'facebookgraph';
 
 	properties: INodeProperties[] = [
 		{

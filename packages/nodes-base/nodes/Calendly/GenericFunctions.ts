@@ -89,5 +89,5 @@ export async function validateCredentials(
 			uri: 'https://calendly.com/api/v1/users/me',
 		});
 	}
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }

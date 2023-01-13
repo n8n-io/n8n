@@ -20,7 +20,7 @@ export const versionDescription: INodeTypeDescription = {
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume Notion API (Beta)',
 	defaults: {
-		name: 'Notion',
+		name: 'Notion (Beta)',
 	},
 	inputs: ['main'],
 	outputs: ['main'],

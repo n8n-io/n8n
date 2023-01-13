@@ -1,10 +1,10 @@
 <template>
-		<n8n-menu
-			:items="menuItems"
-			mode="tabs"
-			:value="value ? 'owner' : 'all'"
-			@input="onSelectOwner"
-		/>
+	<n8n-menu
+		:items="menuItems"
+		mode="tabs"
+		:value="value ? 'owner' : 'all'"
+		@input="onSelectOwner"
+	/>
 </template>
 
 <script lang="ts">
@@ -30,15 +30,15 @@ export default Vue.extend({
 		menuItems(): IMenuItem[] {
 			return [
 				{
-					id: 'owner',
-					icon: 'user',
-					label: this.myResourcesLabel,
-					position: 'top',
-				},
-				{
 					id: 'all',
 					icon: 'globe-americas',
 					label: this.allResourcesLabel,
+					position: 'top',
+				},
+				{
+					id: 'owner',
+					icon: 'user',
+					label: this.myResourcesLabel,
 					position: 'top',
 				},
 			];

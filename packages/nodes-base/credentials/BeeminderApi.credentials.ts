@@ -39,7 +39,7 @@ export class BeeminderApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://www.beeminder.com/api/v1',
-			url: `=/users/{{$credentials.user}}.json`,
+			url: '=/users/{{$credentials.user}}.json',
 		},
 	};
 }

@@ -74,7 +74,7 @@ export class Automizy implements INodeType {
 					this,
 					'smartLists',
 					'GET',
-					`/smart-lists`,
+					'/smart-lists',
 				);
 				for (const list of lists) {
 					returnData.push({
@@ -272,7 +272,7 @@ export class Automizy implements INodeType {
 						name,
 					};
 
-					responseData = await automizyApiRequest.call(this, 'POST', `/smart-lists`, body);
+					responseData = await automizyApiRequest.call(this, 'POST', '/smart-lists', body);
 					responseData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(responseData),
 						{ itemData: { item: i } },
@@ -319,14 +319,14 @@ export class Automizy implements INodeType {
 							this,
 							'smartLists',
 							'GET',
-							`/smart-lists`,
+							'/smart-lists',
 							{},
 							qs,
 						);
 					} else {
 						qs.limit = this.getNodeParameter('limit', i);
 
-						responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists`, {}, qs);
+						responseData = await automizyApiRequest.call(this, 'GET', '/smart-lists', {}, qs);
 
 						responseData = responseData.smartLists;
 					}

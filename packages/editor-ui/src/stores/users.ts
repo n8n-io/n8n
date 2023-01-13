@@ -1,14 +1,43 @@
-import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, skipOwnerSetup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from "@/api/users";
-import { PERSONALIZATION_MODAL_KEY, STORES } from "@/constants";
-import { IInviteResponse, IPersonalizationLatestVersion, IUser, IUserResponse, IUsersState } from "@/Interface";
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from "@/utils";
-import { defineStore } from "pinia";
-import Vue from "vue";
-import { useRootStore } from "./n8nRootStore";
-import { useSettingsStore } from "./settings";
-import { useUIStore } from "./ui";
+import {
+	changePassword,
+	deleteUser,
+	getCurrentUser,
+	getInviteLink,
+	getUsers,
+	inviteUsers,
+	login,
+	loginCurrentUser,
+	logout,
+	reinvite,
+	sendForgotPasswordEmail,
+	setupOwner,
+	signup,
+	skipOwnerSetup,
+	submitPersonalizationSurvey,
+	updateCurrentUser,
+	updateCurrentUserPassword,
+	validatePasswordToken,
+	validateSignupToken,
+} from '@/api/users';
+import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
+import {
+	ICredentialsResponse,
+	IInviteResponse,
+	IPersonalizationLatestVersion,
+	IUser,
+	IUserResponse,
+	IUsersState,
+} from '@/Interface';
+import { getCredentialPermissions } from '@/permissions';
+import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from '@/utils';
+import { defineStore } from 'pinia';
+import Vue from 'vue';
+import { useRootStore } from './n8nRootStore';
+import { useSettingsStore } from './settings';
+import { useUIStore } from './ui';
 
-const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
+const isDefaultUser = (user: IUserResponse | null) =>
+	Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 const isPendingUser = (user: IUserResponse | null) => Boolean(user && user.isPending);
 
 export const useUsersStore = defineStore(STORES.USERS, {
@@ -23,6 +52,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},
+		isDefaultUser(): boolean {
+			return isDefaultUser(this.currentUser);
+		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},
@@ -31,6 +63,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		},
 		canUserDeleteTags(): boolean {
 			return isAuthorized(PERMISSIONS.TAGS.CAN_DELETE_TAGS, this.currentUser);
+		},
+		canUserActivateLicense(): boolean {
+			return isAuthorized(PERMISSIONS.USAGE.CAN_ACTIVATE_LICENSE, this.currentUser);
 		},
 		canUserAccessSidebarUserInfo() {
 			if (this.currentUser) {
@@ -58,6 +93,13 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			}
 			return getPersonalizedNodeTypes(answers);
 		},
+		isResourceAccessible() {
+			return (resource: ICredentialsResponse): boolean => {
+				const permissions = getCredentialPermissions(this.currentUser, resource);
+
+				return permissions.use;
+			};
+		},
 	},
 	actions: {
 		addUsers(users: IUserResponse[]) {
@@ -69,7 +111,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				};
 				const user: IUser = {
 					...updatedUser,
-					fullName: userResponse.firstName? `${updatedUser.firstName} ${updatedUser.lastName || ''}`: undefined,
+					fullName: userResponse.firstName
+						? `${updatedUser.firstName} ${updatedUser.lastName || ''}`
+						: undefined,
 					isDefaultUser: isDefaultUser(updatedUser),
 					isPendingUser: isPendingUser(updatedUser),
 					isOwner: Boolean(updatedUser.globalRole && updatedUser.globalRole.name === ROLE.Owner),
@@ -104,7 +148,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.currentUserId = user.id;
 			}
 		},
-		async loginWithCreds(params: {email: string, password: string}): Promise<void> {
+		async loginWithCreds(params: { email: string; password: string }): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
 			if (user) {
@@ -117,7 +161,12 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			await logout(rootStore.getRestApiContext);
 			this.currentUserId = null;
 		},
-		async createOwner(params: { firstName: string; lastName: string; email: string; password: string;}): Promise<void> {
+		async createOwner(params: {
+			firstName: string;
+			lastName: string;
+			email: string;
+			password: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await setupOwner(rootStore.getRestApiContext, params);
 			const settingsStore = useSettingsStore();
@@ -127,11 +176,20 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				settingsStore.stopShowingSetupPage();
 			}
 		},
-		async validateSignupToken(params: {inviteeId: string, inviterId: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
+		async validateSignupToken(params: {
+			inviteeId: string;
+			inviterId: string;
+		}): Promise<{ inviter: { firstName: string; lastName: string } }> {
 			const rootStore = useRootStore();
 			return await validateSignupToken(rootStore.getRestApiContext, params);
 		},
-		async signup(params: { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;}): Promise<void> {
+		async signup(params: {
+			inviteeId: string;
+			inviterId: string;
+			firstName: string;
+			lastName: string;
+			password: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await signup(rootStore.getRestApiContext, params);
 			if (user) {
@@ -139,28 +197,46 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.currentUserId = user.id;
 			}
 		},
-		async sendForgotPasswordEmail( params: {email: string}): Promise<void> {
+		async sendForgotPasswordEmail(params: { email: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await sendForgotPasswordEmail(rootStore.getRestApiContext, params);
 		},
-		async validatePasswordToken(params: {token: string, userId: string}): Promise<void> {
+		async validatePasswordToken(params: { token: string; userId: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await validatePasswordToken(rootStore.getRestApiContext, params);
 		},
-		async changePassword(params: {token: string, password: string, userId: string}): Promise<void> {
+		async changePassword(params: {
+			token: string;
+			password: string;
+			userId: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			await changePassword(rootStore.getRestApiContext, params);
 		},
-		async updateUser(params: {id: string, firstName: string, lastName: string, email: string}): Promise<void> {
+		async updateUser(params: {
+			id: string;
+			firstName: string;
+			lastName: string;
+			email: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await updateCurrentUser(rootStore.getRestApiContext, params);
 			this.addUsers([user]);
 		},
-		async updateCurrentUserPassword({password, currentPassword}: {password: string, currentPassword: string}): Promise<void> {
+		async updateCurrentUserPassword({
+			password,
+			currentPassword,
+		}: {
+			password: string;
+			currentPassword: string;
+		}): Promise<void> {
 			const rootStore = useRootStore();
-			await updateCurrentUserPassword(rootStore.getRestApiContext, {newPassword: password, currentPassword});
+			await updateCurrentUserPassword(rootStore.getRestApiContext, {
+				newPassword: password,
+				currentPassword,
+			});
 		},
-		async deleteUser(params: { id: string, transferId?: string}): Promise<void> {
+		async deleteUser(params: { id: string; transferId?: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await deleteUser(rootStore.getRestApiContext, params);
 			this.deleteUserById(params.id);
@@ -170,15 +246,19 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			const users = await getUsers(rootStore.getRestApiContext);
 			this.addUsers(users);
 		},
-		async inviteUsers(params: Array<{email: string}>): Promise<IInviteResponse[]> {
+		async inviteUsers(params: Array<{ email: string }>): Promise<IInviteResponse[]> {
 			const rootStore = useRootStore();
 			const users = await inviteUsers(rootStore.getRestApiContext, params);
-			this.addUsers(users.map(({user}) => ({ isPending: true, ...user })));
+			this.addUsers(users.map(({ user }) => ({ isPending: true, ...user })));
 			return users;
 		},
-		async reinviteUser(params: {id: string}): Promise<void> {
+		async reinviteUser(params: { id: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await reinvite(rootStore.getRestApiContext, params);
+		},
+		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
+			const rootStore = useRootStore();
+			return await getInviteLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();

@@ -184,9 +184,6 @@ export class AwsSns implements INodeType {
 					},
 				},
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The message you want to send',
 			},

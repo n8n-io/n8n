@@ -24,6 +24,7 @@
 								[$style.hasCustomStyling]: item.customClass !== undefined,
 								[item.customClass]: item.customClass !== undefined,
 							}"
+							:data-test-id="`workflow-menu-item-${item.id}`"
 						>
 							<span v-if="item.icon" :class="$style.icon">
 								<n8n-icon :icon="item.icon" :size="iconSize" />

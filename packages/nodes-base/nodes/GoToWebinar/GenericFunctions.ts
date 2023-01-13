@@ -57,7 +57,7 @@ export async function goToWebinarApiRequest(
 	}
 
 	try {
-		const response = await this.helpers.requestOAuth2!.call(this, 'goToWebinarOAuth2Api', options, {
+		const response = await this.helpers.requestOAuth2.call(this, 'goToWebinarOAuth2Api', options, {
 			tokenExpiredStatusCode: 403,
 		});
 

@@ -371,7 +371,7 @@ export class Pushover implements INodeType {
 							}
 						}
 
-						responseData = await pushoverApiRequest.call(this, 'POST', `/messages.json`, body);
+						responseData = await pushoverApiRequest.call(this, 'POST', '/messages.json', body);
 					}
 				}
 			} catch (error) {

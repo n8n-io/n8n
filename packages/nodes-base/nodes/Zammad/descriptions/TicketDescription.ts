@@ -157,9 +157,6 @@ export const ticketDescription: INodeProperties[] = [
 						name: 'body',
 						type: 'string',
 						default: '',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 					},
 					{
 						displayName: 'Visibility',

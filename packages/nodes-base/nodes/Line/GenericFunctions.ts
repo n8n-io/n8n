@@ -26,7 +26,7 @@ export async function lineApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || ``,
+		uri: uri || '',
 		json: true,
 	};
 	options = Object.assign({}, options, option);

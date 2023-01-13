@@ -312,7 +312,7 @@ export class GoogleDriveTrigger implements INodeType {
 					this,
 					'drives',
 					'GET',
-					`/drive/v3/drives`,
+					'/drive/v3/drives',
 				);
 				returnData.push({
 					name: 'Root',
@@ -355,9 +355,9 @@ export class GoogleDriveTrigger implements INodeType {
 		// }
 
 		if (event.startsWith('file')) {
-			query.push(`mimeType != 'application/vnd.google-apps.folder'`);
+			query.push("mimeType != 'application/vnd.google-apps.folder'");
 		} else {
-			query.push(`mimeType = 'application/vnd.google-apps.folder'`);
+			query.push("mimeType = 'application/vnd.google-apps.folder'");
 		}
 
 		if (options.fileType && options.fileType !== 'all') {
@@ -380,10 +380,10 @@ export class GoogleDriveTrigger implements INodeType {
 
 		if (this.getMode() === 'manual') {
 			qs.pageSize = 1;
-			files = await googleApiRequest.call(this, 'GET', `/drive/v3/files`, {}, qs);
+			files = await googleApiRequest.call(this, 'GET', '/drive/v3/files', {}, qs);
 			files = files.files;
 		} else {
-			files = await googleApiRequestAllItems.call(this, 'files', 'GET', `/drive/v3/files`, {}, qs);
+			files = await googleApiRequestAllItems.call(this, 'files', 'GET', '/drive/v3/files', {}, qs);
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {

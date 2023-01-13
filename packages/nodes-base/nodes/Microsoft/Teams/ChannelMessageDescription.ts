@@ -98,9 +98,6 @@ export const channelMessageFields: INodeProperties[] = [
 		name: 'message',
 		required: true,
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['create'],

@@ -148,7 +148,7 @@ describe('WorkflowHelpers', () => {
 
 function generateCredentialEntity(credentialId: string) {
 	const credentialEntity = new CredentialsEntity();
-	credentialEntity.id = parseInt(credentialId, 10);
+	credentialEntity.id = credentialId;
 	return credentialEntity;
 }
 

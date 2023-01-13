@@ -1,4 +1,5 @@
-import { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { auditFields, auditOperations } from './AuditDescription';
 import { credentialFields, credentialOperations } from './CredentialDescription';
 import { executionFields, executionOperations } from './ExecutionDescription';
 import { workflowFields, workflowOperations } from './WorkflowDescription';
@@ -45,6 +46,10 @@ export class N8n implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Audit',
+						value: 'audit',
+					},
+					{
 						name: 'Credential',
 						value: 'credential',
 					},
@@ -59,6 +64,9 @@ export class N8n implements INodeType {
 				],
 				default: 'workflow',
 			},
+
+			...auditOperations,
+			...auditFields,
 
 			...credentialOperations,
 			...credentialFields,

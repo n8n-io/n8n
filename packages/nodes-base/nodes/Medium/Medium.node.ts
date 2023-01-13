@@ -182,9 +182,6 @@ export class Medium implements INodeType {
 				default: '',
 				placeholder: 'My open source contribution',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['create'],
@@ -362,7 +359,7 @@ export class Medium implements INodeType {
 			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				//Get the User Id
-				const user = await mediumApiRequest.call(this, 'GET', `/me`);
+				const user = await mediumApiRequest.call(this, 'GET', '/me');
 
 				const userId = user.data.id;
 				//Get all publications of that user
@@ -496,7 +493,7 @@ export class Medium implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const user = await mediumApiRequest.call(this, 'GET', `/me`);
+						const user = await mediumApiRequest.call(this, 'GET', '/me');
 
 						const userId = user.data.id;
 						//Get all publications of that user

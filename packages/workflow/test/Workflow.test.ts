@@ -1057,6 +1057,11 @@ describe('Workflow', () => {
 				description:
 					'return resolved value when referencing another property with expression when a node has spaces (long "$node["{NODE}"].parameter" syntax)',
 				input: {
+					'Node 4 with spaces': {
+						parameters: {
+							value1: '',
+						},
+					},
 					Node1: {
 						parameters: {
 							value1: 'valueNode1',
@@ -1190,6 +1195,17 @@ describe('Workflow', () => {
 							],
 						],
 					},
+					'Node 4 with spaces': {
+						main: [
+							[
+								{
+									node: 'Node2',
+									type: 'main',
+									index: 0,
+								},
+							],
+						],
+					},
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
@@ -1219,6 +1235,8 @@ describe('Workflow', () => {
 									},
 								},
 							],
+							Node2: [],
+							'Node 4 with spaces': [],
 						},
 					},
 				};

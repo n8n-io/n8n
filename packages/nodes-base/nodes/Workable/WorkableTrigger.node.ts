@@ -129,7 +129,7 @@ export class WorkableTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { subscriptions } = await workableApiRequest.call(this, 'GET', `/subscriptions`);
+				const { subscriptions } = await workableApiRequest.call(this, 'GET', '/subscriptions');
 				for (const subscription of subscriptions) {
 					if (subscription.target === webhookUrl) {
 						webhookData.webhookId = subscription.id as string;

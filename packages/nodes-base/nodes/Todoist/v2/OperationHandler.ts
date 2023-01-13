@@ -5,7 +5,7 @@ import {
 	todoistApiRequest,
 	todoistSyncRequest,
 } from '../GenericFunctions';
-import { Section, TodoistResponse } from './Service';
+import type { Section, TodoistResponse } from './Service';
 import { v4 as uuid } from 'uuid';
 
 export interface OperationHandler {

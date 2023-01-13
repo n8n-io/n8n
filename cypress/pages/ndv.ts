@@ -1,4 +1,4 @@
-import { BasePage } from "./base";
+import { BasePage } from './base';
 
 export class NDV extends BasePage {
 	getters = {
@@ -12,5 +12,5 @@ export class NDV extends BasePage {
 		dataContainer: () => cy.getByTestId('ndv-data-container'),
 		runDataDisplayMode: () => cy.getByTestId('ndv-run-data-display-mode'),
 		digital: () => cy.getByTestId('ndv-run-data-display-mode'),
-	}
+	};
 }

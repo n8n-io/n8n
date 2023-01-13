@@ -38,7 +38,7 @@ export async function googleApiRequest(
 			delete options.body;
 		}
 
-		return await this.helpers.requestOAuth2!.call(
+		return await this.helpers.requestOAuth2.call(
 			this,
 			'googleFirebaseRealtimeDatabaseOAuth2Api',
 			options,

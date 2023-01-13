@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import Vue from 'vue';
 
-function broadcast(componentName: string, eventName: string, params: any) { // tslint:disable-line:no-any
+function broadcast(componentName: string, eventName: string, params: any) {
 	// @ts-ignore
-	(this as Vue).$children.forEach(child => {
+	(this as Vue).$children.forEach((child) => {
 		const name = child.$options.name;
 
 		if (name === componentName) {
@@ -18,7 +19,7 @@ function broadcast(componentName: string, eventName: string, params: any) { // t
 
 export default Vue.extend({
 	methods: {
-		$dispatch(componentName: string, eventName: string, params: any) { // tslint:disable-line:no-any
+		$dispatch(componentName: string, eventName: string, params: any) {
 			let parent = this.$parent || this.$root;
 			let name = parent.$options.name;
 
@@ -35,7 +36,8 @@ export default Vue.extend({
 				parent.$emit.apply(parent, [eventName].concat(params));
 			}
 		},
-		$broadcast(componentName: string, eventName: string, params: any) { // tslint:disable-line:no-any
+
+		$broadcast(componentName: string, eventName: string, params: any) {
 			broadcast.call(this, componentName, eventName, params);
 		},
 	},

@@ -1,8 +1,32 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 import path from 'path';
-import * as core from 'n8n-core';
+import convict from 'convict';
+import { UserSettings } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+convict.addFormat({
+	name: 'nodes-list',
+	// @ts-ignore
+	validate(values: string[], { env }: { env: string }): void {
+		try {
+			if (!Array.isArray(values)) {
+				throw new Error();
+			}
+
+			for (const value of values) {
+				if (typeof value !== 'string') {
+					throw new Error();
+				}
+			}
+		} catch (error) {
+			throw new TypeError(`${env} is not a valid Array of strings.`);
+		}
+	},
+	coerce(rawValue: string): string[] {
+		return jsonParse(rawValue, { errorMessage: 'nodes-list needs to be valid JSON' });
+	},
+});
 
 export const schema = {
 	database: {
@@ -193,8 +217,8 @@ export const schema = {
 		},
 		callerPolicyDefaultOption: {
 			doc: 'Default option for which workflows may call the current workflow',
-			format: ['any', 'none', 'workflowsFromAList'] as const,
-			default: 'any',
+			format: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'] as const,
+			default: 'workflowsFromSameOwner',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
@@ -356,6 +380,12 @@ export const schema = {
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
 				},
+				username: {
+					doc: 'Redis Username (needs Redis >= 6)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
@@ -439,6 +469,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -613,6 +651,14 @@ export const schema = {
 			env: 'N8N_PUBLIC_API_ENDPOINT',
 			doc: 'Path for the public api endpoints',
 		},
+		swaggerUi: {
+			disabled: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				doc: 'Whether to disable the Swagger UI for the Public API',
+			},
+		},
 	},
 
 	workflowTagsDisabled: {
@@ -634,6 +680,18 @@ export const schema = {
 			format: String,
 			default: '',
 			env: 'N8N_USER_MANAGEMENT_JWT_SECRET',
+		},
+		isInstanceOwnerSetUp: {
+			// n8n loads this setting from DB on startup
+			doc: "Whether the instance owner's account has been set up",
+			format: Boolean,
+			default: false,
+		},
+		skipInstanceOwnerSetup: {
+			// n8n loads this setting from DB on startup
+			doc: 'Whether to hide the prompt the first time n8n starts with UM enabled',
+			format: Boolean,
+			default: false,
 		},
 		emails: {
 			mode: {
@@ -716,47 +774,14 @@ export const schema = {
 	nodes: {
 		include: {
 			doc: 'Nodes to load',
-			format: function check(rawValue: string): void {
-				if (rawValue === '') {
-					return;
-				}
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to include is not a valid Array of strings.`);
-				}
-			},
+			format: 'nodes-list',
 			default: undefined,
 			env: 'NODES_INCLUDE',
 		},
 		exclude: {
 			doc: 'Nodes not to load',
-			format: function check(rawValue: string): void {
-				try {
-					const values = JSON.parse(rawValue);
-					if (!Array.isArray(values)) {
-						throw new Error();
-					}
-
-					for (const value of values) {
-						if (typeof value !== 'string') {
-							throw new Error();
-						}
-					}
-				} catch (error) {
-					throw new TypeError(`The Nodes to exclude is not a valid Array of strings.`);
-				}
-			},
-			default: '[]',
+			format: 'nodes-list',
+			default: undefined,
 			env: 'NODES_EXCLUDE',
 		},
 		errorTriggerType: {
@@ -772,6 +797,12 @@ export const schema = {
 				default: true,
 				env: 'N8N_COMMUNITY_PACKAGES_ENABLED',
 			},
+		},
+		packagesMissing: {
+			// Used to have a persistent list of packages
+			doc: 'Contains a comma separated list of packages that failed to load during startup',
+			format: String,
+			default: '',
 		},
 	},
 
@@ -804,7 +835,7 @@ export const schema = {
 			location: {
 				doc: 'Log file location; only used if log output is set to file.',
 				format: String,
-				default: path.join(core.UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
+				default: path.join(UserSettings.getUserN8nFolderPath(), 'logs/n8n.log'),
 				env: 'N8N_LOG_FILE_LOCATION',
 			},
 		},
@@ -824,7 +855,7 @@ export const schema = {
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
-			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			doc: "Url in New Versions Panel with more information on updating one's instance.",
 			format: String,
 			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
@@ -861,7 +892,7 @@ export const schema = {
 		},
 		localStoragePath: {
 			format: String,
-			default: path.join(core.UserSettings.getUserN8nFolderPath(), 'binaryData'),
+			default: path.join(UserSettings.getUserN8nFolderPath(), 'binaryData'),
 			env: 'N8N_BINARY_DATA_STORAGE_PATH',
 			doc: 'Path for binary data storage in "filesystem" mode',
 		},
@@ -893,12 +924,10 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
-		},
-		// This is a temporary flag (acting as feature toggle)
-		// Will be removed when feature goes live
-		workflowSharingEnabled: {
-			format: Boolean,
-			default: false,
+			logStreaming: {
+				format: Boolean,
+				default: false,
+			},
 		},
 	},
 
@@ -1018,6 +1047,48 @@ export const schema = {
 			default: 1,
 			env: 'N8N_LICENSE_TENANT_ID',
 			doc: 'Tenant id used by the license manager',
+		},
+	},
+
+	hideUsagePage: {
+		format: Boolean,
+		default: false,
+		env: 'N8N_HIDE_USAGE_PAGE',
+		doc: 'Hide or show the usage page',
+	},
+
+	eventBus: {
+		checkUnsentInterval: {
+			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
+			format: Number,
+			default: 0,
+			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
+		},
+		logWriter: {
+			syncFileAccess: {
+				doc: 'Whether all file access happens synchronously within the thread.',
+				format: Boolean,
+				default: false,
+				env: 'N8N_EVENTBUS_LOGWRITER_SYNCFILEACCESS',
+			},
+			keepLogCount: {
+				doc: 'How many event log files to keep.',
+				format: Number,
+				default: 3,
+				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
+			},
+			maxFileSizeInKB: {
+				doc: 'Maximum size of an event log file before a new one is started.',
+				format: Number,
+				default: 102400, // 100MB
+				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
+			},
+			logBaseName: {
+				doc: 'Basename of the event log file.',
+				format: String,
+				default: 'n8nEventLog',
+				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
 		},
 	},
 };

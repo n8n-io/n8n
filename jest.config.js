@@ -11,7 +11,7 @@ const tsJestOptions = {
 };
 
 /** @type {import('jest').Config} */
-module.exports = {
+const config = {
 	verbose: true,
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
@@ -23,3 +23,10 @@ module.exports = {
 		'^@/(.*)$': '<rootDir>/src/$1',
 	},
 };
+
+if (process.env.CI === 'true') {
+	config.maxWorkers = 2;
+	config.workerIdleMemoryLimit = 2048;
+}
+
+module.exports = config;

@@ -39,7 +39,7 @@ export async function baserowApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -97,7 +97,7 @@ export async function getJwtToken(
 	};
 
 	try {
-		const { token } = (await this.helpers.request!(options)) as { token: string };
+		const { token } = (await this.helpers.request(options)) as { token: string };
 		return token;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);

@@ -51,9 +51,6 @@ export const incidentNoteFields: INodeProperties[] = [
 		displayName: 'Content',
 		name: 'content',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		default: '',
 		displayOptions: {

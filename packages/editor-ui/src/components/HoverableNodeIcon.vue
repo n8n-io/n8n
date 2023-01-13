@@ -76,9 +76,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		fontStyleData(): object {
 			return {
 				'max-width': this.size + 'px',

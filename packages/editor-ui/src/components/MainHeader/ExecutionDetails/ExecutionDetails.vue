@@ -25,12 +25,13 @@
 				/>
 			</span>
 			{{ $locale.baseText('executionDetails.of') }}
-			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
+			<span
+				class="primary-color clickable"
+				:title="$locale.baseText('executionDetails.openWorkflow')"
+			>
 				<ShortenName :name="workflowName">
 					<template #default="{ shortenedName }">
-						<span @click="openWorkflow(workflowExecution.workflowId)">
-							"{{ shortenedName }}"
-						</span>
+						<span @click="openWorkflow(workflowExecution.workflowId)"> "{{ shortenedName }}" </span>
 					</template>
 				</ShortenName>
 			</span>
@@ -41,27 +42,25 @@
 </template>
 
 <script lang="ts">
-import mixins from "vue-typed-mixins";
+import mixins from 'vue-typed-mixins';
 
-import { IExecutionResponse, IExecutionsSummary } from "../../../Interface";
+import { IExecutionResponse, IExecutionsSummary } from '../../../Interface';
 
-import { titleChange } from "@/mixins/titleChange";
+import { titleChange } from '@/mixins/titleChange';
 
-import ShortenName from "@/components/ShortenName.vue";
-import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
-import { mapStores } from "pinia";
-import { useWorkflowsStore } from "@/stores/workflows";
+import ShortenName from '@/components/ShortenName.vue';
+import ReadOnly from '@/components/MainHeader/ExecutionDetails/ReadOnly.vue';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(titleChange).extend({
-	name: "ExecutionDetails",
+	name: 'ExecutionDetails',
 	components: {
 		ShortenName,
 		ReadOnly,
 	},
 	computed: {
-		...mapStores(
-			useWorkflowsStore,
-		),
+		...mapStores(useWorkflowsStore),
 		executionId(): string | undefined {
 			return this.$route.params.id;
 		},
@@ -84,10 +83,10 @@ export default mixins(titleChange).extend({
 	},
 	methods: {
 		async openWorkflow(workflowId: string) {
-			this.$titleSet(this.workflowName, "IDLE");
+			this.$titleSet(this.workflowName, 'IDLE');
 			// Change to other workflow
 			this.$router.push({
-				name: "NodeViewExisting",
+				name: 'NodeViewExisting',
 				params: { name: workflowId },
 			});
 		},
@@ -101,12 +100,12 @@ export default mixins(titleChange).extend({
 }
 
 .execution-icon {
- &.success {
-	color: var(--color-success);
- }
- &.warning {
-	 color: var(--color-warning);
- }
+	&.success {
+		color: var(--color-success);
+	}
+	&.warning {
+		color: var(--color-warning);
+	}
 }
 
 .container {

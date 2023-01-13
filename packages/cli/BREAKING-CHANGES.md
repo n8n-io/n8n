@@ -105,7 +105,7 @@ const items = this.getInputData();
 
 for (const i = 0; i < items.length; i++) {
 	const item = items[i].binary as IBinaryKeyData;
-	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 	const binaryData = item[binaryPropertyName] as IBinaryData;
 	// Before 0.135.0:
 	const binaryDataBuffer = Buffer.from(binaryData.data, BINARY_ENCODING);

@@ -508,7 +508,7 @@ export class TheHive implements INodeType {
 						};
 						qs.name = 'log-actions';
 						do {
-							response = await theHiveApiRequest.call(this, 'POST', `/v1/query`, body, qs);
+							response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 						} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 						responseData = response;
@@ -877,7 +877,7 @@ export class TheHive implements INodeType {
 						};
 						qs.name = 'log-actions';
 						do {
-							response = await theHiveApiRequest.call(this, 'POST', `/v1/query`, body, qs);
+							response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 						} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 						responseData = response;
@@ -1260,7 +1260,7 @@ export class TheHive implements INodeType {
 						};
 						qs.name = 'log-actions';
 						do {
-							response = await theHiveApiRequest.call(this, 'POST', `/v1/query`, body, qs);
+							response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 						} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 						responseData = response;
@@ -1535,7 +1535,7 @@ export class TheHive implements INodeType {
 						};
 						qs.name = 'task-actions';
 						do {
-							response = await theHiveApiRequest.call(this, 'POST', `/v1/query`, body, qs);
+							response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 						} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 						responseData = response;
@@ -1848,7 +1848,7 @@ export class TheHive implements INodeType {
 						};
 						qs.name = 'log-actions';
 						do {
-							response = await theHiveApiRequest.call(this, 'POST', `/v1/query`, body, qs);
+							response = await theHiveApiRequest.call(this, 'POST', '/v1/query', body, qs);
 						} while (response.status === 'Waiting' || response.status === 'InProgress');
 
 						responseData = response;

@@ -61,7 +61,9 @@ export default Vue.extend({
 				}
 			});
 
-			const darkModeBetaEnabled = document.body.classList.contains('theme-dark-beta') && window.matchMedia('(prefers-color-scheme: dark)').matches;
+			const darkModeBetaEnabled =
+				document.body.classList.contains('theme-dark-beta') &&
+				window.matchMedia('(prefers-color-scheme: dark)').matches;
 
 			monaco.editor.defineTheme('n8nCustomTheme', {
 				base: darkModeBetaEnabled ? 'vs-dark' : 'vs',

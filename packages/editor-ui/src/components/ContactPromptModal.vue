@@ -55,10 +55,7 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-		),
+		...mapStores(useRootStore, useSettingsStore),
 		title(): string {
 			if (this.settingsStore.promptsData && this.settingsStore.promptsData.title) {
 				return this.settingsStore.promptsData.title;
@@ -88,7 +85,9 @@ export default mixins(workflowHelpers).extend({
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response = await this.settingsStore.submitContactInfo(this.email) as IN8nPromptResponse;
+				const response = (await this.settingsStore.submitContactInfo(
+					this.email,
+				)) as IN8nPromptResponse;
 
 				if (response.updated) {
 					this.$telemetry.track('User closed email modal', {

@@ -60,6 +60,20 @@ export async function koBoToolboxApiRequest(
 	return results;
 }
 
+export async function koBoToolboxRawRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	option: IHttpRequestOptions,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = await this.getCredentials('koBoToolboxApi');
+
+	if (option.url && !/^http(s)?:/.test(option.url)) {
+		option.url = credentials.URL + option.url;
+	}
+
+	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
+}
+
 function parseGeoPoint(geoPoint: string): null | number[] {
 	// Check if it looks like a "lat lon z precision" flat string e.g. "-1.931161 30.079811 0 0" (lat, lon, elevation, precision)
 	// NOTE: we are discarding the elevation and precision values since they're not (well) supported in GeoJSON

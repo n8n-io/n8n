@@ -1,8 +1,8 @@
-export type Rule = { name: string; config?: any };
+export type Rule = { name: string; config?: unknown };
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: { messageKey: string; options?: any };
+	defaultError?: { messageKey: string; options?: unknown };
 };
 
 export type Validatable = string | number | boolean | null | undefined;
@@ -10,8 +10,13 @@ export type Validatable = string | number | boolean | null | undefined;
 export type IValidator = {
 	validate: (
 		value: Validatable,
-		config: any,
-	) => false | { messageKey: string; options?: any } | null;
+		config: unknown,
+	) => false | { messageKey: string; options?: unknown } | null;
+};
+
+export type FormState = {
+	isTyping: boolean;
+	hasBlutted: boolean;
 };
 
 export type IFormInput = {

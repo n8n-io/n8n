@@ -1,8 +1,17 @@
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
-import { SettingsUsersPage, SignupPage, WorkflowsPage, WorkflowPage, CredentialsPage, CredentialsModal, MessageBox } from '../pages';
+import {
+	SettingsUsersPage,
+	SignupPage,
+	WorkflowsPage,
+	WorkflowPage,
+	CredentialsPage,
+	CredentialsModal,
+	MessageBox,
+} from '../pages';
+import { SettingsUsagePage } from '../pages/settings-usage';
 
-import { MainSidebar, SettingsSidebar } from "../pages/sidebar";
+import { MainSidebar, SettingsSidebar } from '../pages/sidebar';
 
 const mainSidebar = new MainSidebar();
 const settingsSidebar = new SettingsSidebar();
@@ -15,6 +24,7 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 const settingsUsersPage = new SettingsUsersPage();
+const settingsUsagePage = new SettingsUsagePage();
 
 const messageBox = new MessageBox();
 
@@ -24,92 +34,88 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Default owner', () => {
-	// todo test should redirect to setup if have not skipped
-
-	beforeEach(() => {
+	before(() => {
 		cy.resetAll();
 	});
+	beforeEach(() => {
+		cy.visit('/');
+	});
 
-	it('should be able to use n8n without user management and setup UM', () => {
-		describe('should skip owner setup', () => {
-			cy.skipSetup();
-			cy.url().should('include', workflowsPage.url);
-		});
+	it('should skip owner setup', () => {
+		cy.skipSetup();
+	});
 
-		describe('should be able to create workflows', () => {
-			workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
-			workflowsPage.getters.newWorkflowButtonCard().click();
+	it('should be able to create workflows', () => {
+		workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
+		workflowsPage.getters.newWorkflowButtonCard().click();
 
-			cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
+		cy.createFixtureWorkflow('Test_workflow_1.json', `Test workflow`);
 
-			// reload page, ensure owner still has access
-			cy.reload();
+		// reload page, ensure owner still has access
+		cy.reload();
 
-			workflowPage.getters.workflowNameInput().should('contain.value', 'Test workflow');
-		});
+		workflowPage.getters.workflowNameInput().should('contain.value', 'Test workflow');
+	});
 
-		describe('should be able to add new credentials', () => {
-			cy.visit(credentialsPage.url);
+	it('should be able to add new credentials', () => {
+		cy.visit(credentialsPage.url);
 
-			credentialsPage.getters.emptyListCreateCredentialButton().click();
+		credentialsPage.getters.emptyListCreateCredentialButton().click();
 
-			credentialsModal.getters.newCredentialModal().should('be.visible');
-			credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
-			credentialsModal.getters.newCredentialTypeOption('Notion API').click();
+		credentialsModal.getters.newCredentialModal().should('be.visible');
+		credentialsModal.getters.newCredentialTypeSelect().should('be.visible');
+		credentialsModal.getters.newCredentialTypeOption('Notion API').click();
 
-			credentialsModal.getters.newCredentialTypeButton().click();
+		credentialsModal.getters.newCredentialTypeButton().click();
 
-			credentialsModal.getters.connectionParameter('API Key').type('1234567890');
+		credentialsModal.getters.connectionParameter('API Key').type('1234567890');
 
-			credentialsModal.actions.setName('My awesome Notion account');
-			credentialsModal.actions.save();
+		credentialsModal.actions.setName('My awesome Notion account');
+		credentialsModal.actions.save();
 
-			credentialsModal.actions.close();
+		credentialsModal.actions.close();
 
-			credentialsModal.getters.newCredentialModal().should('not.exist');
-			credentialsModal.getters.editCredentialModal().should('not.exist');
+		credentialsModal.getters.newCredentialModal().should('not.exist');
+		credentialsModal.getters.editCredentialModal().should('not.exist');
 
-			credentialsPage.getters.credentialCards().should('have.length', 1);
-		});
+		credentialsPage.getters.credentialCards().should('have.length', 1);
+	});
 
-		describe('should be able to setup UM from settings', () => {
-			mainSidebar.getters.settings().should('be.visible');
-			mainSidebar.actions.goToSettings();
-			cy.url().should('include', settingsUsersPage.url);
+	it('should be able to setup UM from settings', () => {
+		mainSidebar.getters.settings().should('be.visible');
+		mainSidebar.actions.goToSettings();
+		cy.url().should('include', settingsUsagePage.url);
 
-			settingsUsersPage.actions.goToOwnerSetup();
+		settingsSidebar.actions.goToUsers();
+		cy.url().should('include', settingsUsersPage.url);
 
-			cy.url().should('include', signupPage.url);
-		});
+		settingsUsersPage.actions.goToOwnerSetup();
 
-		describe('should be able to setup instance and migrate workflows and credentials', () => {
-			cy.setup({ email, firstName, lastName, password });
+		cy.url().should('include', signupPage.url);
+	});
 
-			messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential')
+	it('should be able to setup instance and migrate workflows and credentials', () => {
+		cy.setup({ email, firstName, lastName, password });
 
-			messageBox.actions.confirm();
-		});
+		messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential');
 
-		describe('should be redirected back to users page after setup', () => {
-			cy.url().should('include', settingsUsersPage.url);
-			// todo test users and that owner exist
-		});
+		messageBox.actions.confirm();
+		cy.url().should('include', settingsUsersPage.url);
+		settingsSidebar.actions.back();
 
-		describe('can click back to workflows and have migrated workflow after setup', () => {
-			settingsSidebar.actions.back();
+		cy.url().should('include', workflowsPage.url);
 
-			cy.url().should('include', workflowsPage.url);
+		workflowsPage.getters.workflowCards().should('have.length', 1);
+	});
 
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-		});
+	it('can click back to main menu and have migrated credential after setup', () => {
+		cy.signin({ email, password });
+		cy.visit(workflowsPage.url);
 
-		describe('can click back to main menu and have migrated credential after setup', () => {
-			mainSidebar.actions.goToCredentials();
+		mainSidebar.actions.goToCredentials();
 
-			cy.url().should('include', workflowsPage.url);
+		cy.url().should('include', credentialsPage.url);
 
-			workflowsPage.getters.workflowCards().should('have.length', 1);
-		});
+		credentialsPage.getters.credentialCards().should('have.length', 1);
 	});
 });
-

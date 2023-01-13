@@ -557,7 +557,7 @@ export class Disqus implements INodeType {
 					},
 					{
 						displayName: 'Thread',
-						name: 'threadId',
+						name: 'thread',
 						type: 'string',
 						default: '',
 						description:

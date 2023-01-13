@@ -481,7 +481,7 @@ export class GoogleSheetsV1 implements INodeType {
 							: undefined;
 						body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 
 						returnData.push(responseData);
 					} catch (error) {

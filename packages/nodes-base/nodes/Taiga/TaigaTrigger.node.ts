@@ -151,7 +151,7 @@ export class TaigaTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 
-				const endpoint = `/webhooks`;
+				const endpoint = '/webhooks';
 
 				const webhooks = await taigaApiRequest.call(this, 'GET', endpoint);
 

@@ -1,10 +1,10 @@
-import { createTag, deleteTag, getTags, updateTag } from "@/api/tags";
-import { STORES } from "@/constants";
-import { ITag, ITagsState } from "@/Interface";
-import { defineStore } from "pinia";
-import Vue from "vue";
-import { useRootStore } from "./n8nRootStore";
-import { useWorkflowsStore } from "./workflows";
+import { createTag, deleteTag, getTags, updateTag } from '@/api/tags';
+import { STORES } from '@/constants';
+import { ITag, ITagsState } from '@/Interface';
+import { defineStore } from 'pinia';
+import Vue from 'vue';
+import { useRootStore } from './n8nRootStore';
+import { useWorkflowsStore } from './workflows';
 
 export const useTagsStore = defineStore(STORES.TAGS, {
 	state: (): ITagsState => ({
@@ -15,8 +15,7 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 	}),
 	getters: {
 		allTags(): ITag[] {
-			return Object.values(this.tags)
-				.sort((a, b) => a.name.localeCompare(b.name));
+			return Object.values(this.tags).sort((a, b) => a.name.localeCompare(b.name));
 		},
 		isLoading(): boolean {
 			return this.loading;
@@ -30,12 +29,11 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 	},
 	actions: {
 		setAllTags(tags: ITag[]): void {
-			this.tags = tags
-				.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
-					accu[tag.id] = tag;
+			this.tags = tags.reduce((accu: { [id: string]: ITag }, tag: ITag) => {
+				accu[tag.id] = tag;
 
-					return accu;
-				}, {});
+				return accu;
+			}, {});
 			this.fetchedAll = true;
 		},
 		upsertTags(tags: ITag[]): void {
@@ -48,8 +46,7 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 						...tag,
 					};
 					Vue.set(this.tags, tagId, newTag);
-				}
-				else {
+				} else {
 					Vue.set(this.tags, tagId, tag);
 				}
 			});
@@ -58,7 +55,7 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 			Vue.delete(this.tags, id);
 		},
 
-		async fetchAll(params?: { force?: boolean, withUsageCount?: boolean }): Promise<ITag[]> {
+		async fetchAll(params?: { force?: boolean; withUsageCount?: boolean }): Promise<ITag[]> {
 			const { force = false, withUsageCount = false } = params || {};
 			if (!force && this.fetchedAll && this.fetchedUsageCount === withUsageCount) {
 				return Object.values(this.tags);
@@ -79,7 +76,7 @@ export const useTagsStore = defineStore(STORES.TAGS, {
 
 			return tag;
 		},
-		async rename({ id, name }: { id: string, name: string }) {
+		async rename({ id, name }: { id: string; name: string }) {
 			const rootStore = useRootStore();
 			const tag = await updateTag(rootStore.getRestApiContext, id, { name });
 			this.upsertTags([tag]);

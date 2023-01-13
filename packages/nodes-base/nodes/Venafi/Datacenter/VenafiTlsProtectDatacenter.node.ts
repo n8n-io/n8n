@@ -16,9 +16,9 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi TLS Protect Datacenter​',
+		description: 'Consume Venafi TLS Protect Datacenter',
 		defaults: {
-			name: 'Venafi TLS Protect Datacenter​',
+			name: 'Venafi TLS Protect Datacenter',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -87,7 +87,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Request`,
+							'/vedsdk/Certificates/Request',
 							body,
 							qs,
 						);
@@ -127,7 +127,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Retrieve`,
+							'/vedsdk/Certificates/Retrieve',
 							body,
 						);
 
@@ -170,7 +170,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 								this,
 								'Certificates',
 								'GET',
-								`/vedsdk/Certificates`,
+								'/vedsdk/Certificates',
 								{},
 								qs,
 							);
@@ -179,7 +179,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
-								`/vedsdk/Certificates`,
+								'/vedsdk/Certificates',
 								{},
 								qs,
 							);
@@ -202,7 +202,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/Renew`,
+							'/vedsdk/Certificates/Renew',
 							{},
 							qs,
 						);
@@ -224,7 +224,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						responseData = await venafiApiRequest.call(
 							this,
 							'POST',
-							`/vedsdk/Certificates/CheckPolicy`,
+							'/vedsdk/Certificates/CheckPolicy',
 							body,
 							qs,
 						);

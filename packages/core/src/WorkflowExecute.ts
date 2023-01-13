@@ -876,8 +876,8 @@ export class WorkflowExecute {
 								// The most nodes just have one but merge node for example has two and data
 								// of both inputs has to be available to be able to process the node.
 								if (
-									executionData.data.main!.length < connectionIndex ||
-									executionData.data.main![connectionIndex] === null
+									executionData.data.main.length < connectionIndex ||
+									executionData.data.main[connectionIndex] === null
 								) {
 									// Does not have the data of the connections so add back to stack
 									this.runExecutionData.executionData!.nodeExecutionStack.push(executionData);
@@ -1265,7 +1265,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.verbose(`Workflow execution finished with error`, {
+			Logger.verbose('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1281,7 +1281,7 @@ export class WorkflowExecute {
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
-			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
+			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 		}
 

@@ -258,7 +258,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -742,7 +741,6 @@ export class Asana implements INodeType {
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -841,7 +839,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -929,9 +926,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -947,9 +941,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -1869,7 +1860,7 @@ export class Asana implements INodeType {
 			// Get all users to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-users
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `/users`;
+				const endpoint = '/users';
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -2035,7 +2026,7 @@ export class Asana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/tasks`;
+						endpoint = '/tasks';
 
 						Object.assign(qs, filters);
 
@@ -2344,7 +2335,7 @@ export class Asana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/projects`;
+						endpoint = '/projects';
 
 						if (additionalFields.team) {
 							qs.team = additionalFields.team;

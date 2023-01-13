@@ -1,5 +1,5 @@
 <template>
-	<n8n-tooltip class="primary-color" placement="bottom-end" >
+	<n8n-tooltip class="primary-color" placement="bottom-end">
 		<template #content>
 			<div>
 				<span v-html="$locale.baseText('executionDetails.readOnly.youreViewingTheLogOf')"></span>
@@ -16,7 +16,7 @@
 import Vue from 'vue';
 
 export default Vue.extend({
-	name: "ReadOnly",
+	name: 'ReadOnly',
 });
 </script>
 

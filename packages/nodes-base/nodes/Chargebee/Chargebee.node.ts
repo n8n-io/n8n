@@ -493,7 +493,7 @@ export class Chargebee implements INodeType {
 							}
 						}
 
-						endpoint = `customers`;
+						endpoint = 'customers';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

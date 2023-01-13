@@ -50,7 +50,7 @@ export async function emeliaApiRequest(
 	};
 
 	try {
-		return this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -124,12 +124,12 @@ export async function emeliaApiTest(
 		},
 		method: 'POST',
 		body,
-		uri: `https://graphql.emelia.io/graphql`,
+		uri: 'https://graphql.emelia.io/graphql',
 		json: true,
 	};
 
 	try {
-		await this.helpers.request!(options);
+		await this.helpers.request(options);
 	} catch (error) {
 		return {
 			status: 'Error',

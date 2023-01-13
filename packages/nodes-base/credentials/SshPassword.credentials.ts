@@ -5,6 +5,8 @@ export class SshPassword implements ICredentialType {
 
 	displayName = 'SSH Password';
 
+	documentationUrl = 'ssh';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

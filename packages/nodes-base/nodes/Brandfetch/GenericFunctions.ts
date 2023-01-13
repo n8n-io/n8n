@@ -45,7 +45,7 @@ export async function brandfetchApiRequest(
 			delete options.qs;
 		}
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.statusCode && response.statusCode !== 200) {
 			throw new NodeApiError(this.getNode(), response);

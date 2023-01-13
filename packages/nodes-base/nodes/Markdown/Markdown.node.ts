@@ -67,9 +67,6 @@ export class Markdown implements INodeType {
 				displayName: 'Markdown',
 				name: 'markdown',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						mode: ['markdownToHtml'],

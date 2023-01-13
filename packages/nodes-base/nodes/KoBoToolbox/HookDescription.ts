@@ -63,7 +63,7 @@ export const hookFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['hook'],
-				operation: ['get', 'retryOne', 'retryAll', 'getLogs'],
+				operation: ['get', 'retryOne', 'retryAll', 'getLogs', 'getAll'],
 			},
 		},
 		description:
@@ -86,24 +86,6 @@ export const hookFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                hook:getAll                                 */
 	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Form Name or ID',
-		name: 'formId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'loadForms',
-		},
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['hook'],
-				operation: ['getAll'],
-			},
-		},
-		description:
-			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
 	{
 		displayName: 'Hook Log ID',
 		name: 'logId',

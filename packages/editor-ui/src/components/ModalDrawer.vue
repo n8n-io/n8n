@@ -6,25 +6,25 @@
 		:before-close="close"
 		:modal="modal"
 		:wrapperClosable="wrapperClosable"
-		>
+	>
 		<template #title>
 			<slot name="header" />
 		</template>
 		<template>
 			<span @keydown.stop>
-				<slot name="content"/>
+				<slot name="content" />
 			</span>
 		</template>
 	</el-drawer>
 </template>
 
 <script lang="ts">
-import { useUIStore } from "@/stores/ui";
-import { mapStores } from "pinia";
-import Vue from "vue";
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
+import Vue from 'vue';
 
 export default Vue.extend({
-	name: "ModalDrawer",
+	name: 'ModalDrawer',
 	props: {
 		name: {
 			type: String,
@@ -88,7 +88,8 @@ export default Vue.extend({
 		async close() {
 			if (this.beforeClose) {
 				const shouldClose = await this.beforeClose();
-				if (shouldClose === false) { // must be strictly false to stop modal from closing
+				if (shouldClose === false) {
+					// must be strictly false to stop modal from closing
 					return;
 				}
 			}

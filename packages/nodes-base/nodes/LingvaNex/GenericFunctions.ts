@@ -34,7 +34,7 @@ export async function lingvaNexApiRequest(
 
 		options = Object.assign({}, options, option);
 
-		const response = await this.helpers.request!(options);
+		const response = await this.helpers.request(options);
 
 		if (response.err !== null) {
 			throw new NodeApiError(this.getNode(), response);

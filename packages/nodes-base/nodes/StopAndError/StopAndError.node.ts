@@ -22,7 +22,7 @@ export class StopAndError implements INodeType {
 		version: 1,
 		description: 'Throw an error in the workflow',
 		defaults: {
-			name: 'Stop And Error',
+			name: 'Stop and Error',
 			color: '#ff0000',
 		},
 		inputs: ['main'],
@@ -51,9 +51,6 @@ export class StopAndError implements INodeType {
 				name: 'errorMessage',
 				type: 'string',
 				placeholder: 'An error occurred!',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				required: true,
 				displayOptions: {

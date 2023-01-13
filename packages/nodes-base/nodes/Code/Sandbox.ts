@@ -2,7 +2,7 @@ import { normalizeItems } from 'n8n-core';
 import { NodeVM, NodeVMOptions } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject, N8N_ITEM_KEYS } from './utils';
+import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 
 import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } from 'n8n-workflow';
 
@@ -104,7 +104,7 @@ export class Sandbox extends NodeVM {
 			 * item keys to be wrapped in `json` when normalizing items below.
 			 */
 			const mustHaveTopLevelN8nKey = executionResult.some((item) =>
-				Object.keys(item).find((key) => N8N_ITEM_KEYS.has(key)),
+				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
 			);
 
 			for (const item of executionResult) {
@@ -118,7 +118,7 @@ export class Sandbox extends NodeVM {
 
 				if (mustHaveTopLevelN8nKey) {
 					Object.keys(item).forEach((key) => {
-						if (N8N_ITEM_KEYS.has(key)) return;
+						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 						throw new ValidationError({
 							message: `Unknown top-level item key: ${key}`,
 							description: 'Access the properties of an item under `.json`, e.g. `item.json`',
@@ -226,7 +226,7 @@ export class Sandbox extends NodeVM {
 		// directly on the item, when they intended to add it on the `json` property
 
 		Object.keys(executionResult).forEach((key) => {
-			if (N8N_ITEM_KEYS.has(key)) return;
+			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 
 			throw new ValidationError({
 				message: `Unknown top-level item key: ${key}`,

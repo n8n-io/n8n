@@ -39,7 +39,7 @@ const versionDescription: INodeTypeDescription = {
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
-		name: 'IMAP Email',
+		name: 'Email Trigger (IMAP)',
 		color: '#44AA22',
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -479,7 +479,7 @@ export class EmailReadImapV1 implements INodeType {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
 			}
 

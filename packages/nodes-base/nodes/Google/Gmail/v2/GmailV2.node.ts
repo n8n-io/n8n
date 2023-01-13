@@ -260,7 +260,7 @@ export class GmailV2 implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						responseData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
+						responseData = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/labels');
 
 						responseData = this.helpers.returnJsonArray(responseData.labels);
 
@@ -390,7 +390,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -399,7 +399,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -613,7 +613,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -622,7 +622,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -713,7 +713,7 @@ export class GmailV2 implements INodeType {
 								this,
 								'threads',
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);
@@ -722,7 +722,7 @@ export class GmailV2 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/threads`,
+								'/gmail/v1/users/me/threads',
 								{},
 								qs,
 							);

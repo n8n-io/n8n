@@ -7,9 +7,9 @@ export class Build extends Command {
 	static description = 'Builds credentials and nodes and copies it to n8n custom extension folder';
 
 	static examples = [
-		`$ n8n-node-dev build`,
-		`$ n8n-node-dev build --destination ~/n8n-nodes`,
-		`$ n8n-node-dev build --watch`,
+		'$ n8n-node-dev build',
+		'$ n8n-node-dev build --destination ~/n8n-nodes',
+		'$ n8n-node-dev build --watch',
 	];
 
 	static flags = {

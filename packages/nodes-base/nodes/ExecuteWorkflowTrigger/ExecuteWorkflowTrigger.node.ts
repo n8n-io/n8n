@@ -9,9 +9,10 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow when called by the Execute Workflow node from a different workflow',
+		eventTriggerDescription: '',
 		maxNodes: 1,
 		defaults: {
-			name: 'When Called By Another Workflow',
+			name: 'Execute Workflow Trigger',
 			color: '#ff6d5a',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node

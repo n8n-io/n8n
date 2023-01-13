@@ -40,7 +40,7 @@ export async function mispApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		// MISP API wrongly returns 403 for malformed requests
 		if (error.statusCode === 403) {

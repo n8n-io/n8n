@@ -31,7 +31,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [14.x, 16.x]
+        node-version: [16.x]
 
     steps:
       - name: Call Start URL - optionally
@@ -63,6 +63,15 @@ jobs:
           pnpm cypress:install
           pnpm test:e2e:all
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: |
+            cypress/screenshots
+          retention-days: 1
+
       - name: Notify Slack on failure
         uses: act10ns/slack@v2.0.0
         if: failure()
@@ -70,7 +79,7 @@ jobs:
           status: ${{ job.status }}
           channel: '#updates-build-alerts'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
-          message: Tests failure for branch `${{ inputs.branch }}` deployed by ${{ inputs.user }}
+          message: E2E failure for branch `${{ inputs.branch || 'master' }}` deployed by ${{ inputs.user || 'schedule' }} (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Call Success URL - optionally
         run: |

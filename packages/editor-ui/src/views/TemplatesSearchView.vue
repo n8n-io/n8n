@@ -81,7 +81,12 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
-import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
+import {
+	ITemplatesCollection,
+	ITemplatesWorkflow,
+	ITemplatesQuery,
+	ITemplatesCategory,
+} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/utils';
@@ -123,12 +128,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useTemplatesStore,
-			useUIStore,
-			useUsersStore,
-		),
+		...mapStores(useSettingsStore, useTemplatesStore, useUIStore, useUsersStore),
 		totalWorkflows(): number {
 			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
 		},
@@ -145,7 +145,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			if (this.workflows.length && this.workflows.length >= this.totalWorkflows) {
 				return this.$locale.baseText('templates.endResult');
 			}
-			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
+			if (
+				!this.loadingCollections &&
+				this.workflows.length === 0 &&
+				this.collections.length === 0
+			) {
 				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
@@ -170,10 +174,10 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 	},
 	methods: {
-		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
+		onOpenCollection({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.COLLECTION, id);
 		},
-		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
+		onOpenTemplate({ event, id }: { event: MouseEvent; id: string }) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		navigateTo(e: MouseEvent, page: string, id: string) {
@@ -209,7 +213,10 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		trackSearch() {
 			if (this.searchEventToTrack) {
-				this.$telemetry.track('User searched workflow templates', this.searchEventToTrack as unknown as IDataObject);
+				this.$telemetry.track(
+					'User searched workflow templates',
+					this.searchEventToTrack as unknown as IDataObject,
+				);
 				this.searchEventToTrack = null;
 			}
 		},
@@ -292,7 +299,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		async loadCategories() {
 			try {
 				await this.templatesStore.getCategories();
-			} catch (e) { }
+			} catch (e) {}
 			this.loadingCategories = false;
 		},
 		async loadCollections() {
@@ -302,8 +309,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 					categories: this.categories,
 					search: this.search,
 				});
-			} catch (e) {
-			}
+			} catch (e) {}
 
 			this.loadingCollections = false;
 		},
@@ -352,7 +358,11 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		const contentArea = document.getElementById('content');
 		if (contentArea) {
 			// When leaving this page, store current scroll position in route data
-			if (this.$route.meta && this.$route.meta.setScrollPosition && typeof this.$route.meta.setScrollPosition === 'function') {
+			if (
+				this.$route.meta &&
+				this.$route.meta.setScrollPosition &&
+				typeof this.$route.meta.setScrollPosition === 'function'
+			) {
 				this.$route.meta.setScrollPosition(contentArea.scrollTop);
 			}
 		}
@@ -379,7 +389,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		}
 
 		if (typeof this.$route.query.categories === 'string' && this.$route.query.categories.length) {
-			this.categories = this.$route.query.categories.split(',').map((categoryId) => parseInt(categoryId, 10));
+			this.categories = this.$route.query.categories
+				.split(',')
+				.map((categoryId) => parseInt(categoryId, 10));
 			this.areCategoriesPrepopulated = true;
 		}
 	},
@@ -422,5 +434,4 @@ export default mixins(genericHelpers, debounceHelper).extend({
 .header {
 	margin-bottom: var(--spacing-2xs);
 }
-
 </style>

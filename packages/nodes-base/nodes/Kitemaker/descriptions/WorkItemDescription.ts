@@ -110,9 +110,6 @@ export const workItemFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Description of the item to create. Markdown supported.',
 			},
 			{
@@ -288,9 +285,6 @@ export const workItemFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Description of the item to update. Markdown supported.',
 			},
 			{

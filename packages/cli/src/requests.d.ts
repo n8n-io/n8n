@@ -197,6 +197,8 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
+	export type List = AuthenticatedRequest;
+
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
 	export type ResolveSignUp = AuthlessRequest<
@@ -339,4 +341,12 @@ export declare namespace NodeRequest {
 
 export declare namespace CurlHelper {
 	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
+}
+
+// ----------------------------------
+//           /license
+// ----------------------------------
+
+export declare namespace LicenseRequest {
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }

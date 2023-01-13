@@ -516,9 +516,6 @@ export const incidentFields: INodeProperties[] = [
 				displayName: 'Resolution',
 				name: 'resolution',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The resolution for this incident if status is set to resolved',
 			},
