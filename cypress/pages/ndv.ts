@@ -22,6 +22,7 @@ export class NDV extends BasePage {
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
 		outputTbodyCell: (row: number, cell: number) => this.getters.outputTableRow(row).find('td').eq(cell),
+		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 	};
 
 	actions = {
@@ -46,6 +47,16 @@ export class NDV extends BasePage {
 			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'),'{{}'));
 
 			this.getters.savePinnedDataButton().click();
+		},
+		typeIntoParameterInput: (parameterName: string, content: string) => {
+			this.getters.parameterInput(parameterName).type(content);
+		},
+		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+			this.getters
+				.parameterInput(parameterName)
+				.find('.option-headline')
+				.contains(content)
+				.click();
 		},
 	};
 }

@@ -24,9 +24,6 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
-		ndvParameterInput: (parameterName: string) =>
-			cy.getByTestId(`parameter-input-${parameterName}`),
-		ndvOutputPanel: () => cy.getByTestId('output-panel'),
 		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
 		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
@@ -108,16 +105,6 @@ export class WorkflowPage extends BasePage {
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
-		},
-		typeIntoParameterInput: (parameterName: string, content: string) => {
-			this.getters.ndvParameterInput(parameterName).type(content);
-		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters
-				.ndvParameterInput(parameterName)
-				.find('.option-headline')
-				.contains(content)
-				.click();
 		},
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
