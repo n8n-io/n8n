@@ -56,19 +56,11 @@ describe('Execute Airtable Node', () => {
 				nodeTypes,
 			);
 
-			// check if output node data is as expected
-			for (const nodeName of Object.keys(testData.output.nodeData)) {
-				if (result.data.resultData.runData[nodeName] === undefined) {
-					throw new Error(`Data for node "${nodeName}" is missing!`);
-				}
-				const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
-					if (nodeData.data === undefined) {
-						return null;
-					}
-					return nodeData.data.main[0]!.map((entry) => entry.json);
-				});
-				expect(resultData).toEqual(testData.output.nodeData[nodeName]);
-			}
+			// check if result node data matches expected test data
+			const resultNodeData = Helpers.getResultNodeData(result, testData);
+			resultNodeData.forEach(({ nodeName, resultData }) =>
+				expect(resultData).toEqual(testData.output.nodeData[nodeName]),
+			);
 
 			expect(result.finished).toEqual(true);
 		});

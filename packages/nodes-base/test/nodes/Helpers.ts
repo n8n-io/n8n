@@ -21,6 +21,7 @@ import {
 	NodeHelpers,
 	WorkflowHooks,
 } from 'n8n-workflow';
+import { WorkflowTestData } from './types';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
@@ -156,4 +157,22 @@ export function setup(nodes: INodeType[]) {
 	} as ILogger;
 	LoggerProxy.init(fakeLogger);
 	return nodeTypes;
+}
+
+export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
+	return Object.keys(testData.output.nodeData).map((nodeName) => {
+		if (result.data.resultData.runData[nodeName] === undefined) {
+			throw new Error(`Data for node "${nodeName}" is missing!`);
+		}
+		const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
+			if (nodeData.data === undefined) {
+				return null;
+			}
+			return nodeData.data.main[0]!.map((entry) => entry.json);
+		});
+		return {
+			nodeName,
+			resultData,
+		};
+	});
 }
