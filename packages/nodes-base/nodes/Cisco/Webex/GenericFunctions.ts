@@ -42,7 +42,7 @@ export async function webexApiRequest(
 			delete options.qs;
 		}
 		//@ts-ignore
-		return this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
+		return await this.helpers.requestOAuth2.call(this, 'ciscoWebexOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});
 	} catch (error) {

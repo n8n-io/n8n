@@ -45,9 +45,9 @@ export async function eventbriteApiRequest(
 			const credentials = await this.getCredentials('eventbriteApi');
 
 			options.headers!.Authorization = `Bearer ${credentials.apiKey}`;
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'eventbriteOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'eventbriteOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

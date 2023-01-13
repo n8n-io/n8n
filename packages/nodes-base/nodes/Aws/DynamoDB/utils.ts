@@ -1,4 +1,4 @@
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeExecutionData, assert } from 'n8n-workflow';
 
 import {
 	AdjustedPutItem,
@@ -59,7 +59,18 @@ export function adjustPutItem(putItemUi: PutItemUi) {
 	return adjustedPutItem;
 }
 
-function decodeAttribute(type: AttributeValueType, attribute: string) {
+export function simplify(item: IAttributeValue): IDataObject {
+	const output: IDataObject = {};
+
+	for (const [attribute, value] of Object.entries(item)) {
+		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
+		output[attribute] = decodeAttribute(type, content);
+	}
+
+	return output;
+}
+
+function decodeAttribute(type: AttributeValueType, attribute: string | IAttributeValue) {
 	switch (type) {
 		case 'BOOL':
 			return Boolean(attribute);
@@ -70,6 +81,12 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		case 'SS':
 		case 'NS':
 			return attribute;
+		case 'M':
+			assert(
+				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
+				'Attribute must be an object',
+			);
+			return simplify(attribute);
 		default:
 			return null;
 	}

@@ -504,6 +504,7 @@ export async function pgUpdate(
 	} else {
 		const where =
 			' WHERE ' +
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {
@@ -629,6 +630,7 @@ export async function pgUpdateV2(
 	} else {
 		const where =
 			' WHERE ' +
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			updateKeys.map((entry) => pgp.as.name(entry.name) + ' = ${' + entry.prop + '}').join(' AND ');
 		if (mode === 'transaction') {
 			return db.tx(async (t) => {

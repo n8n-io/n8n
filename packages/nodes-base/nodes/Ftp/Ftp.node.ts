@@ -585,10 +585,7 @@ export class Ftp implements INodeType {
 
 						responseData = await sftp!.get(path);
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const filePathDownload = this.getNodeParameter('path', i) as string;
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
@@ -613,7 +610,7 @@ export class Ftp implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -686,10 +683,7 @@ export class Ftp implements INodeType {
 						// @ts-ignore
 						responseData = Buffer.concat(chunks);
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						const filePathDownload = this.getNodeParameter('path', i) as string;
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
@@ -725,7 +719,7 @@ export class Ftp implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(

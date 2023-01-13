@@ -275,7 +275,7 @@ export class EmailReadImapV2 implements INodeType {
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), `Credentials are not valid for imap node.`);
+			throw new NodeOperationError(this.getNode(), 'Credentials are not valid for imap node.');
 		}
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
@@ -523,7 +523,7 @@ export class EmailReadImapV2 implements INodeType {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
 			}
 
@@ -596,11 +596,11 @@ export class EmailReadImapV2 implements INodeType {
 			return imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
-						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
+						Logger.debug('Email Read Imap: Connected closed for forced reconnecting');
 					} else if (closeFunctionWasCalled) {
-						Logger.debug(`Email Read Imap: Shutting down workflow - connected closed`);
+						Logger.debug('Email Read Imap: Shutting down workflow - connected closed');
 					} else {
-						Logger.error(`Email Read Imap: Connected closed unexpectedly`);
+						Logger.error('Email Read Imap: Connected closed unexpectedly');
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
 				});
@@ -623,7 +623,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(async () => {
-				Logger.verbose(`Forcing reconnect to IMAP server`);
+				Logger.verbose('Forcing reconnect to IMAP server');
 				try {
 					isCurrentlyReconnecting = true;
 					if (connection.closeBox) await connection.closeBox(false);

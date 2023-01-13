@@ -41,7 +41,7 @@ export async function mailCheckApiRequest(
 		if (Object.keys(body).length === 0) {
 			delete options.body;
 		}
-		return await this.helpers.request!.call(this, options);
+		return await this.helpers.request.call(this, options);
 	} catch (error) {
 		if (error.response?.body?.message) {
 			// Try to return the error prettier

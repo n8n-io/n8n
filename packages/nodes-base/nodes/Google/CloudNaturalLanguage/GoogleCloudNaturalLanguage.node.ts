@@ -287,7 +287,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					const response = await googleApiRequest.call(
 						this,
 						'POST',
-						`/v1/documents:analyzeSentiment`,
+						'/v1/documents:analyzeSentiment',
 						body,
 					);
 					responseData.push(response);

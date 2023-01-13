@@ -231,7 +231,7 @@ export class GmailV1 implements INodeType {
 						responseData = await googleApiRequest.call(
 							this,
 							'GET',
-							`/gmail/v1/users/me/labels`,
+							'/gmail/v1/users/me/labels',
 							{},
 							qs,
 						);
@@ -537,7 +537,7 @@ export class GmailV1 implements INodeType {
 								this,
 								'messages',
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -546,7 +546,7 @@ export class GmailV1 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/messages`,
+								'/gmail/v1/users/me/messages',
 								{},
 								qs,
 							);
@@ -765,7 +765,7 @@ export class GmailV1 implements INodeType {
 								this,
 								'drafts',
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);
@@ -774,7 +774,7 @@ export class GmailV1 implements INodeType {
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
-								`/gmail/v1/users/me/drafts`,
+								'/gmail/v1/users/me/drafts',
 								{},
 								qs,
 							);

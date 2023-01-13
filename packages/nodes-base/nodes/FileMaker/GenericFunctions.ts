@@ -113,7 +113,7 @@ export async function layoutsApiRequest(
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		const items = parseLayouts(responseData.response.layouts);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
@@ -145,7 +145,7 @@ export async function getFields(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		return responseData.response.fieldMetaData;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
@@ -176,7 +176,7 @@ export async function getPortals(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		return responseData.response.portalMetaData;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
@@ -221,13 +221,78 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	};
 
 	try {
-		const responseData = await this.helpers.request!(options);
+		const responseData = await this.helpers.request(options);
 		const items = parseScriptsList(responseData.response.scripts);
 		items.sort((a, b) => (a.name > b.name ? 0 : 1));
 		return items;
 	} catch (error) {
 		// If that data does not exist for some reason return the actual error
 		throw error;
+	}
+}
+
+function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
+	const returnData: INodePropertyOptions[] = [];
+	for (const script of scripts) {
+		if (script.isFolder!) {
+			returnData.push(...parseScriptsList(script.folderScriptNames!));
+		} else if (script.name !== '-') {
+			returnData.push({
+				name: script.name,
+				value: script.name,
+			});
+		}
+	}
+	return returnData;
+}
+
+export async function getToken(
+	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
+): Promise<any> {
+	const credentials = await this.getCredentials('fileMaker');
+
+	const host = credentials.host as string;
+	const db = credentials.db as string;
+	const login = credentials.login as string;
+	const password = credentials.password as string;
+
+	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
+
+	// Reset all values
+	const requestOptions: OptionsWithUri = {
+		uri: url,
+		headers: {},
+		method: 'POST',
+		json: true,
+		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
+	};
+	requestOptions.auth = {
+		user: login,
+		pass: password,
+	};
+	requestOptions.body = {
+		fmDataSource: [
+			{
+				database: host,
+				username: login,
+				password,
+			},
+		],
+	};
+
+	try {
+		const response = await this.helpers.request(requestOptions);
+
+		if (typeof response === 'string') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Response body is not valid JSON. Change "Response Format" to "String"',
+			);
+		}
+
+		return response.response.token;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
@@ -252,7 +317,7 @@ export async function logout(
 	};
 
 	try {
-		const response = await this.helpers.request!(requestOptions);
+		const response = await this.helpers.request(requestOptions);
 
 		if (typeof response === 'string') {
 			throw new NodeOperationError(

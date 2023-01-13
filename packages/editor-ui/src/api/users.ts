@@ -88,14 +88,14 @@ export function updateCurrentUser(
 	context: IRestApiContext,
 	params: { id: string; firstName: string; lastName: string; email: string },
 ): Promise<IUserResponse> {
-	return makeRestApiRequest(context, 'PATCH', `/me`, params as unknown as IDataObject);
+	return makeRestApiRequest(context, 'PATCH', '/me', params as unknown as IDataObject);
 }
 
 export function updateCurrentUserPassword(
 	context: IRestApiContext,
 	params: { newPassword: string; currentPassword: string },
 ): Promise<void> {
-	return makeRestApiRequest(context, 'PATCH', `/me/password`, params);
+	return makeRestApiRequest(context, 'PATCH', '/me/password', params);
 }
 
 export async function deleteUser(
@@ -118,6 +118,13 @@ export function inviteUsers(
 
 export async function reinvite(context: IRestApiContext, { id }: { id: string }): Promise<void> {
 	await makeRestApiRequest(context, 'POST', `/users/${id}/reinvite`);
+}
+
+export async function getInviteLink(
+	context: IRestApiContext,
+	{ id }: { id: string },
+): Promise<{ link: string }> {
+	return await makeRestApiRequest(context, 'GET', `/users/${id}/invite-link`);
 }
 
 export async function submitPersonalizationSurvey(

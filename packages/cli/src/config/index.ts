@@ -19,6 +19,9 @@ if (inE2ETests) {
 		EXTERNAL_FRONTEND_HOOKS_URLS: '',
 		N8N_PERSONALIZATION_ENABLED: 'false',
 	};
+}
+if (inTest) {
+	process.env.N8N_PUBLIC_API_DISABLED = 'true';
 } else {
 	dotenv.config();
 }
@@ -27,7 +30,6 @@ const config = convict(schema);
 
 if (inE2ETests) {
 	config.set('enterprise.features.sharing', true);
-	config.set('enterprise.workflowSharingEnabled', true);
 }
 
 config.getEnv = config.get;

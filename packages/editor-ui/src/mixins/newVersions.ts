@@ -22,7 +22,7 @@ export const newVersions = mixins(showMessage).extend({
 			const nextVersions = this.versionsStore.nextVersions;
 			if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
 				const fixVersion = currentVersion.securityIssueFixVersion;
-				let message = `Please update to latest version.`;
+				let message = 'Please update to latest version.';
 				if (fixVersion) {
 					message = `Please update to version ${fixVersion} or higher.`;
 				}

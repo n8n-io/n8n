@@ -15,6 +15,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
+	IPushDataUnsavedExecutionFinished,
 	IUpdateInformation,
 	IUsedCredential,
 	IWorkflowDb,
@@ -46,6 +47,7 @@ import { useRootStore } from './n8nRootStore';
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
+	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
 	getWorkflows,
@@ -278,7 +280,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			this.workflow = createEmptyWorkflow();
 
-			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				Vue.set(this.workflow, 'ownedBy', usersStore.currentUser);
 			}
 		},
@@ -827,7 +829,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				(node) => node.type === updateInformation.key,
 			) as INodeUi;
 			const nodeType = useNodeTypesStore().getNodeType(latestNode.type);
-			if(!nodeType) return;
+			if (!nodeType) return;
 
 			const nodeParams = NodeHelpers.getNodeParameters(
 				nodeType.properties,
@@ -885,7 +887,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			this.activeExecutions.unshift(newActiveExecution);
 		},
-		finishActiveExecution(finishedActiveExecution: IPushDataExecutionFinished): void {
+		finishActiveExecution(
+			finishedActiveExecution: IPushDataExecutionFinished | IPushDataUnsavedExecutionFinished,
+		): void {
 			// Find the execution to set to finished
 			const activeExecution = this.activeExecutions.find((execution) => {
 				return execution.id === finishedActiveExecution.executionId;
@@ -935,14 +939,26 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 						requestFilter,
 					);
 				}
-				// context.commit('setTotalFinishedExecutionsCount', finishedExecutions.count);
+				this.finishedExecutionsCount = finishedExecutions.count;
 				return [...activeExecutions, ...(finishedExecutions.results || [])];
 			} catch (error) {
 				throw error;
 			}
 		},
+		async fetchExecutionDataById(executionId: string): Promise<IExecutionResponse | null> {
+			const rootStore = useRootStore();
+			return await getExecutionData(rootStore.getRestApiContext, executionId);
+		},
 		deleteExecution(execution: IExecutionsSummary): void {
 			this.currentWorkflowExecutions.splice(this.currentWorkflowExecutions.indexOf(execution), 1);
+		},
+		addToCurrentExecutions(executions: IExecutionsSummary[]): void {
+			executions.forEach((execution) => {
+				const exists = this.currentWorkflowExecutions.find((ex) => ex.id === execution.id);
+				if (!exists && execution.workflowId === this.workflowId) {
+					this.currentWorkflowExecutions.push(execution);
+				}
+			});
 		},
 	},
 });

@@ -501,7 +501,7 @@ export class MicrosoftTeams implements INodeType {
 						responseData = await microsoftApiRequest.call(
 							this,
 							'POST',
-							`/v1.0/planner/tasks`,
+							'/v1.0/planner/tasks',
 							body,
 						);
 					}

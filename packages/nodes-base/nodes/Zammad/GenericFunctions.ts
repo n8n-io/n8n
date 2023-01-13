@@ -69,7 +69,7 @@ export async function zammadApiRequest(
 	}
 
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.error.error === 'Object already exists!') {
 			error.error.error = 'An entity with this name already exists.';

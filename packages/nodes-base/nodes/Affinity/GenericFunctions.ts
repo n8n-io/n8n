@@ -38,7 +38,7 @@ export async function affinityApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

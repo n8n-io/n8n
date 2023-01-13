@@ -402,7 +402,7 @@ export class GoogleBooks implements INodeType {
 							const userId = this.getNodeParameter('userId', i) as string;
 							endpoint = `v1/users/${userId}/bookshelves`;
 						} else {
-							endpoint = `v1/mylibrary/bookshelves`;
+							endpoint = 'v1/mylibrary/bookshelves';
 						}
 						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(

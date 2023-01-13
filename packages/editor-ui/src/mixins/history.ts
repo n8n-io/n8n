@@ -113,7 +113,7 @@ export const historyHelper = mixins(debounceHelper, deviceSupportHelpers).extend
 			if (this.isNDVOpen && !event.shiftKey) {
 				const activeNode = this.ndvStore.activeNode;
 				if (activeNode) {
-					this.$telemetry.track(`User hit undo in NDV`, { node_type: activeNode.type });
+					this.$telemetry.track('User hit undo in NDV', { node_type: activeNode.type });
 				}
 			}
 		},

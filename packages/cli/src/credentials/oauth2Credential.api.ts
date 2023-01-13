@@ -27,7 +27,7 @@ import {
 } from '@/CredentialsHelper';
 import { getLogger } from '@/Logger';
 import { OAuthRequest } from '@/requests';
-import { externalHooks } from '@/Server';
+import { ExternalHooks } from '@/ExternalHooks';
 import config from '@/config';
 import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
@@ -129,7 +129,7 @@ oauth2CredentialController.get(
 			state: stateEncodedStr,
 		};
 
-		await externalHooks.run('oauth2.authenticate', [oAuthOptions]);
+		await ExternalHooks().run('oauth2.authenticate', [oAuthOptions]);
 
 		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
@@ -281,7 +281,7 @@ oauth2CredentialController.get(
 				delete oAuth2Parameters.clientSecret;
 			}
 
-			await externalHooks.run('oauth2.callback', [oAuth2Parameters]);
+			await ExternalHooks().run('oauth2.callback', [oAuth2Parameters]);
 
 			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 

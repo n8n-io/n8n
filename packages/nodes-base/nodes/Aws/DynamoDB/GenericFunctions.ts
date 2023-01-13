@@ -66,7 +66,8 @@ export async function awsApiRequestAllItems(
 	let responseData;
 
 	do {
-		responseData = await awsApiRequest.call(this, service, method, path, body, headers);
+		const originalHeaders = Object.assign({}, headers); //The awsapirequest function adds the hmac signature to the headers, if we pass the modified headers back in on the next call it will fail with invalid signature
+		responseData = await awsApiRequest.call(this, service, method, path, body, originalHeaders);
 		if (responseData.LastEvaluatedKey) {
 			body!.ExclusiveStartKey = responseData.LastEvaluatedKey;
 		}

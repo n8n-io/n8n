@@ -84,7 +84,7 @@ export async function quickBooksApiRequest(
 	}
 
 	try {
-		return this.helpers.requestOAuth2!.call(this, 'quickBooksOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, 'quickBooksOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

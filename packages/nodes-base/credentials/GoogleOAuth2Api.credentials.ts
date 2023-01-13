@@ -7,7 +7,7 @@ export class GoogleOAuth2Api implements ICredentialType {
 
 	displayName = 'Google OAuth2 API';
 
-	documentationUrl = 'google/oauth-generic/';
+	documentationUrl = 'google/oauth-generic';
 
 	icon = 'file:Google.svg';
 

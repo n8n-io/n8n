@@ -990,7 +990,7 @@ export async function getProductAttributes(
 		this,
 		'items',
 		'GET',
-		`/rest/default/V1/products/attributes`,
+		'/rest/default/V1/products/attributes',
 		{},
 		{
 			search_criteria: 0,

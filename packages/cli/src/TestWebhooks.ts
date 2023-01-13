@@ -18,7 +18,8 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
-const WEBHOOK_TEST_UNREGISTERED_HINT = `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`;
+const WEBHOOK_TEST_UNREGISTERED_HINT =
+	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
 export class TestWebhooks {
 	private testWebhookData: {
@@ -27,6 +28,7 @@ export class TestWebhooks {
 			timeout: NodeJS.Timeout;
 			workflowData: IWorkflowDb;
 			workflow: Workflow;
+			destinationNode?: string;
 		};
 	} = {};
 
@@ -128,6 +130,7 @@ export class TestWebhooks {
 						}
 						resolve(data);
 					},
+					this.testWebhookData[webhookKey].destinationNode,
 				);
 
 				if (executionId === undefined) {
@@ -210,7 +213,7 @@ export class TestWebhooks {
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
-			this.cancelTestWebhook(workflowData.id.toString());
+			this.cancelTestWebhook(workflowData.id);
 		}, 120000);
 
 		let key: string;
@@ -230,6 +233,7 @@ export class TestWebhooks {
 				timeout,
 				workflow,
 				workflowData,
+				destinationNode,
 			};
 
 			try {
@@ -256,7 +260,7 @@ export class TestWebhooks {
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			const webhookData = this.testWebhookData[webhookKey];
 
-			if (webhookData.workflowData.id.toString() !== workflowId) {
+			if (webhookData.workflowData.id !== workflowId) {
 				// eslint-disable-next-line no-continue
 				continue;
 			}
