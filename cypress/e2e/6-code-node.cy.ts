@@ -14,9 +14,9 @@ describe('Code node', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNodeNdv('Code');
+		WorkflowPage.actions.openNode('Code');
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
 		WorkflowPage.getters.successToast().contains('Node executed successfully');
 	});
@@ -25,11 +25,11 @@ describe('Code node', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNodeNdv('Code');
+		WorkflowPage.actions.openNode('Code');
 		ndv.getters.parameterInput('mode').click();
 		ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
 		WorkflowPage.getters.successToast().contains('Node executed successfully');
 	});

@@ -14,10 +14,10 @@ describe('HTTP Request node', () => {
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('HTTP Request');
-		workflowPage.actions.openNodeNdv('HTTP Request');
+		workflowPage.actions.openNode('HTTP Request');
 		ndv.actions.typeIntoParameterInput('url', 'https://catfact.ninja/fact');
 
-		workflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
 		ndv.getters.outputPanel().contains('fact');
 	});

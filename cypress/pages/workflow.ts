@@ -41,8 +41,6 @@ export class WorkflowPage extends BasePage {
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
 		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
-		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
-		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		// Workflow menu items
 		workflowMenuItemDuplicate: () => cy.getByTestId('workflow-menu-item-duplicate'),
 		workflowMenuItemDownload: () => cy.getByTestId('workflow-menu-item-download'),
@@ -95,7 +93,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}');
 			cy.get('body').type('{esc}');
 		},
-		openNodeNdv: (nodeTypeName: string) => {
+		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
 		openExpressionEditorModal: () => {
@@ -105,9 +103,6 @@ export class WorkflowPage extends BasePage {
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
-		},
-		executeNodeFromNdv: () => {
-			cy.contains('Execute node').click();
 		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();

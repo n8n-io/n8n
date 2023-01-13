@@ -37,7 +37,7 @@ describe('Data pinning', () => {
 
 		workflowPage.actions.executeWorkflow();
 
-		workflowPage.actions.openNodeNdv('Schedule Trigger');
+		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTbodyCell(1, 0).should((after) => {
 			const currValue = after.text();
@@ -65,7 +65,7 @@ describe('Data pinning', () => {
 		workflowPage.actions.saveWorkflowOnButtonClick();
 
 		cy.reload();
-		workflowPage.actions.openNodeNdv('Schedule Trigger');
+		workflowPage.actions.openNode('Schedule Trigger');
 
 		ndv.getters.outputTableHeaders().first().should('include.text', 'test');
 		ndv.getters.outputTbodyCell(1, 0).should('include.text', 1);

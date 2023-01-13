@@ -23,6 +23,8 @@ export class NDV extends BasePage {
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
 		outputTbodyCell: (row: number, cell: number) => this.getters.outputTableRow(row).find('td').eq(cell),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
+		nodeNameContainer: () => cy.getByTestId('node-title-container'),
+		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 	};
 
 	actions = {
