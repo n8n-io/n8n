@@ -1069,7 +1069,7 @@ export class WorkflowDataProxy {
 				{},
 				{
 					ownKeys(target) {
-						return ['all', 'context', 'first', 'item', 'last', 'params'];
+						return ['item', 'all', 'first', 'last', 'params', 'context'];
 					},
 					getOwnPropertyDescriptor(k) {
 						return {

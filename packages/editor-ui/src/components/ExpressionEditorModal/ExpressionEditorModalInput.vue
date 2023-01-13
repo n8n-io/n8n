@@ -5,24 +5,28 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { EditorView } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
+import { completionManager } from '@/mixins/completionManager';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
-
-import type { IVariableItemSelected } from '@/Interface';
 import { forceParse } from '@/utils/forceParse';
-import { autocompletion } from '@codemirror/autocomplete';
+import { autocompletion, selectedCompletion } from '@codemirror/autocomplete';
+import type { IVariableItemSelected } from '@/Interface';
+import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default mixins(expressionManager, completionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
 	props: {
 		value: {
+			type: String,
+		},
+		path: {
 			type: String,
 		},
 		isReadOnly: {
@@ -37,7 +41,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme(),
-			autocompletion(),
+			Prec.highest(this.previewKeymap),
+			autocompletion({
+				aboveCursor: true,
+			}),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),
@@ -45,19 +52,33 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
+				if (!this.editor) return;
+
+				const completion = selectedCompletion(this.editor.state);
+
+				if (completion) {
+					const previewSegments = this.toPreviewSegments(completion, this.editor.state);
+
+					completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+
+					return;
+				}
+
+				if (!viewUpdate.docChanged) return;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
+				try {
+					this.trackCompletion(viewUpdate, this.path);
+				} catch (_) {}
+
 				setTimeout(() => this.editor?.focus()); // prevent blur on paste
 
-				setTimeout(() => {
-					this.$emit('change', {
-						value: this.unresolvedExpression,
-						segments: this.displayableSegments,
-					});
-				}, this.evaluationDelay);
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 

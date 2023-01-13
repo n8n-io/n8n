@@ -59,7 +59,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
 	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
-	const BOOSTED_KEYS = ['item'];
+	const BOOST_SET = new Set(['item', 'all', 'first', 'last']);
 
 	if (word.text.includes('json[')) {
 		return Object.keys(proxy.json as object)
@@ -81,8 +81,8 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 			return !SKIP_SET.has(key);
 		})
 		.sort((a, b) => {
-			if (BOOSTED_KEYS.includes(a)) return -1;
-			if (BOOSTED_KEYS.includes(b)) return 1;
+			if (BOOST_SET.has(a)) return -1;
+			if (BOOST_SET.has(b)) return 1;
 
 			return a.localeCompare(b);
 		})

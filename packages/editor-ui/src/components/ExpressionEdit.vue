@@ -46,6 +46,7 @@
 							<ExpressionEditorModalInput
 								:value="value"
 								:isReadOnly="isReadOnly"
+								:path="path"
 								@change="valueChanged"
 								@close="closeDialog"
 								ref="inputFieldExpression"
@@ -90,6 +91,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
 
 import type { Segment } from '@/types/expressions';
 
@@ -109,10 +111,19 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
+	mounted() {
+		completionEvaluationEventBus.$on('preview-in-output', this.previewSegments);
+	},
+	destroyed() {
+		completionEvaluationEventBus.$off('preview-in-output', this.previewSegments);
+	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
+		previewSegments(previewSegments: Segment[]) {
+			this.segments = previewSegments;
+		},
 		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
 			this.segments = segments;

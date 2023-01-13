@@ -33,12 +33,12 @@ export function rootCompletions(context: CompletionContext): CompletionResult | 
 }
 
 export function generateOptions() {
-	const BOOSTED_KEYS = ['$input', '$json'];
+	const BOOST_SET = new Set(['$input', '$json']);
 
 	// @TODO: Add $parameter to i18n and remove here
 	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => {
-		if (BOOSTED_KEYS.includes(a)) return -1;
-		if (BOOSTED_KEYS.includes(b)) return 1;
+		if (BOOST_SET.has(a)) return -1;
+		if (BOOST_SET.has(b)) return 1;
 
 		return a.localeCompare(b);
 	});
