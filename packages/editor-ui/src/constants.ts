@@ -444,3 +444,5 @@ export enum STORES {
 }
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';
