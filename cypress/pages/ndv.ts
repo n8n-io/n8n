@@ -14,11 +14,21 @@ export class NDV extends BasePage {
 		runDataDisplayMode: () => cy.getByTestId('ndv-run-data-display-mode'),
 		digital: () => cy.getByTestId('ndv-run-data-display-mode'),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
+		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
 	};
 
 	actions = {
 		pinData: () => {
 			this.getters.pinDataButton().click();
+		},
+		editPinnedData: () => {
+			this.getters.editPinnedDataButton().click();
+		},
+		execute: () => {
+			this.getters.nodeExecuteButton().first().click();
+		},
+		close: () => {
+			this.getters.backToCanvas().click();
 		},
 	};
 }

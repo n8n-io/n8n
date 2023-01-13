@@ -177,5 +177,8 @@ export class WorkflowPage extends BasePage {
 		hitPaste: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
 		},
+		executeWorkflow: () => {
+			this.getters.executeWorkflowButton().click();
+		},
 	};
 }
