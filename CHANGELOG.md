@@ -1,5 +1,7 @@
 # [0.211.0](https://github.com/n8n-io/n8n/compare/n8n@0.210.2...n8n@0.211.0) (2023-01-13)
 
+> **Do not update**
+> We are recommend not to update past version 0.210.2 as there seem to be some issues with expressions in version 0.211.0
 
 ### Bug Fixes
 
