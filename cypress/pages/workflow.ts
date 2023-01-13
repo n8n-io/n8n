@@ -27,7 +27,6 @@ export class WorkflowPage extends BasePage {
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
-		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
 		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),

@@ -9,12 +9,19 @@ export class NDV extends BasePage {
 		inputSelect: () => cy.getByTestId('ndv-input-select'),
 		inputOption: () => cy.getByTestId('ndv-input-option'),
 		inputPanel: () => cy.getByTestId('ndv-input-panel'),
-		outputPanel: () => cy.getByTestId('ndv-input-pane'),
-		dataContainer: () => cy.getByTestId('ndv-data-container'),
+		outputPanel: () => cy.getByTestId('output-panel'),
+		outputDataContainer: () => this.getters.outputPanel().getByTestId('ndv-data-container'),
 		runDataDisplayMode: () => cy.getByTestId('ndv-run-data-display-mode'),
 		digital: () => cy.getByTestId('ndv-run-data-display-mode'),
 		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
 		editPinnedDataButton: () => cy.getByTestId('ndv-edit-pinned-data'),
+		pinnedDataEditor: () => this.getters.outputPanel().find('.monaco-editor'),
+		runDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+		savePinnedDataButton: () => this.getters.runDataPaneHeader().find('button').contains('Save'),
+		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
+		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
+		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
+		outputTbodyCell: (row: number, cell: number) => this.getters.outputTableRow(row).find('td').eq(cell),
 	};
 
 	actions = {
@@ -29,6 +36,16 @@ export class NDV extends BasePage {
 		},
 		close: () => {
 			this.getters.backToCanvas().click();
+		},
+		setPinnedData: (data: object) => {
+			this.getters.editPinnedDataButton().click();
+
+			const editor = this.getters.pinnedDataEditor()
+			editor.click();
+			editor.type(`{selectall}{backspace}`);
+			editor.type(JSON.stringify(data).replace(new RegExp('{', 'g'),'{{}'));
+
+			this.getters.savePinnedDataButton().click();
 		},
 	};
 }
