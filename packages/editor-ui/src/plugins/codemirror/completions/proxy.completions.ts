@@ -58,7 +58,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
-	const SKIP_SET = new Set(['__ob__', 'pairedItem', 'context']);
+	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
 	const BOOSTED_KEYS = ['item'];
 
 	if (word.text.includes('json[')) {

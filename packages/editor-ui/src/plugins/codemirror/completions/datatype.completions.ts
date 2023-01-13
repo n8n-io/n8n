@@ -31,16 +31,14 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// remove opening marker grabbed by `objectRegex`, @TODO: negative lookbehind instead
+	// remove opening marker grabbed by objectRegex
 	if (word.text.startsWith('{{')) word.text = word.text.replace(/^{{/, '');
 
 	const toResolve = word.text.endsWith('.')
 		? word.text.slice(0, -1)
 		: word.text.split('.').slice(0, -1).join('.');
 
-	/**
-	 * n8n vars that should not trigger datatype completions
-	 */
+	// n8n vars should not trigger datatype completions
 	const SKIP_SET = new Set(['$execution', '$binary', '$itemIndex', '$now', '$today', '$runIndex']);
 
 	if (SKIP_SET.has(toResolve)) return null;

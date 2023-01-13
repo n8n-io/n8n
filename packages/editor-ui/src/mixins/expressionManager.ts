@@ -1,8 +1,11 @@
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree } from '@codemirror/language';
+import { EditorState } from '@codemirror/state';
+import { Completion } from '@codemirror/autocomplete';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { useNDVStore } from '@/stores/ndv';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 
@@ -10,7 +13,6 @@ import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
-import type { EditorState } from '@codemirror/state';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -21,7 +23,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 	data() {
 		return {
 			editor: null as EditorView | null,
-			errorsInSuccession: 0,
+			errorsInSuccession: 0, // @TODO: No longer used?
 		};
 	},
 	watch: {
@@ -63,6 +65,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return this.toSegments(this.editor.state);
 		},
 
+		// @TODO: No longer used?
 		evaluationDelay() {
 			const DEFAULT_EVALUATION_DELAY = 300; // ms
 
@@ -139,10 +142,6 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		isEmptyExpression(resolvable: string) {
-			return /\{\{\s*\}\}/.test(resolvable);
-		},
-
 		toSegments(state: EditorState) {
 			const rawSegments: RawSegment[] = [];
 
@@ -163,14 +162,11 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				});
 			});
 
-			// console.log('rawSegments', rawSegments);
-
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, type } = segment;
 
 				if (type === 'Resolvable') {
 					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-					// console.log('text', text);
 
 					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
@@ -181,6 +177,28 @@ export const expressionManager = mixins(workflowHelpers).extend({
 
 				return acc;
 			}, []);
+		},
+
+		toPreviewSegments(completion: Completion, state: EditorState) {
+			if (!this.editor) return [];
+
+			const cursorPosition = state.selection.ranges[0].from;
+
+			const firstHalf = state.doc.slice(0, cursorPosition).toString();
+			const secondHalf = state.doc.slice(cursorPosition, state.doc.length).toString();
+
+			const previewDoc = [
+				firstHalf,
+				firstHalf.endsWith('$') ? completion.label.slice(1) : completion.label,
+				secondHalf,
+			].join('');
+
+			const previewState = EditorState.create({
+				doc: previewDoc,
+				extensions: [n8nLang()],
+			});
+
+			return this.toSegments(previewState);
 		},
 
 		resolve(resolvable: string, targetItem?: TargetItem) {
@@ -207,7 +225,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				result.resolved = this.$locale.baseText('expressionModalInput.empty');
 			}
 
-			if (result.resolved === undefined && this.isEmptyExpression(resolvable)) {
+			if (result.resolved === undefined && /\{\{\s*\}\}/.test(resolvable)) {
 				result.resolved = this.$locale.baseText('expressionModalInput.empty');
 			}
 

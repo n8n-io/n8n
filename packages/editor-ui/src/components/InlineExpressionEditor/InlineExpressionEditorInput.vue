@@ -26,8 +26,9 @@ import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expre
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
+import { completionManager } from '@/mixins/completionManager';
 
-export default mixins(expressionManager, workflowHelpers).extend({
+export default mixins(completionManager, expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
 	props: {
 		value: {
@@ -45,34 +46,22 @@ export default mixins(expressionManager, workflowHelpers).extend({
 			type: String,
 		},
 	},
-	data() {
-		return {
-			cursorPosition: 0,
-		};
-	},
+
 	watch: {
 		value(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
 			if (isInternalChange) return;
 
-			// manual update on external change, e.g. from expression modal or mapping drop
+			// on external change (e.g. from expression modal or mapping drop), dispatch to update
 
 			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor?.state.doc.length,
-					insert: newValue,
-				},
+				changes: { from: 0, to: this.editor?.state.doc.length, insert: newValue },
 			});
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
-				changes: {
-					from: 0,
-					to: this.editor.state.doc.length,
-					insert: this.value,
-				},
+				changes: { from: 0, to: this.editor.state.doc.length, insert: this.value },
 			});
 
 			setTimeout(() => {
@@ -84,61 +73,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		...mapStores(useNDVStore),
 		ndvInputData(): object {
 			return this.ndvStore.ndvInputData;
-		},
-		expressionExtensionsCategories() {
-			return ExpressionExtensions.reduce<Record<string, string>>((acc, cur) => {
-				for (const funcName of Object.keys(cur.functions)) {
-					acc[funcName] = cur.typeName;
-				}
-
-				return acc;
-			}, {});
-		},
-		previewKeymap(): Extension {
-			return keymap.of([
-				{
-					key: 'Escape',
-					run: (view) => {
-						if (completionStatus(view.state) !== null) {
-							// on dismissing completions, recompute to clear preview
-							this.$emit('change', {
-								value: this.unresolvedExpression,
-								segments: this.displayableSegments,
-							});
-						}
-
-						return false;
-					},
-				},
-				{
-					key: 'ArrowUp',
-					run: (view) => {
-						const completion = this.getCompletion('previous');
-
-						if (completion === null) return false;
-
-						const previewSegments = this.toPreviewSegments(completion, view.state);
-
-						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
-
-						return false;
-					},
-				},
-				{
-					key: 'ArrowDown',
-					run: (view) => {
-						const completion = this.getCompletion('next');
-
-						if (completion === null) return false;
-
-						const previewSegments = this.toPreviewSegments(completion, view.state);
-
-						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
-
-						return false;
-					},
-				},
-			]);
 		},
 	},
 	mounted() {
@@ -176,10 +110,8 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
-				this.cursorPosition = viewUpdate.view.state.selection.ranges[0].from;
-
 				try {
-					this.trackCompletion(viewUpdate);
+					this.trackCompletion(viewUpdate, this.path);
 				} catch (_) {}
 
 				this.$emit('change', {
@@ -210,91 +142,6 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	methods: {
 		focus() {
 			this.editor?.focus();
-		},
-		getCompletion(which: 'previous' | 'next') {
-			if (!this.editor) return null;
-
-			if (completionStatus(this.editor.state) !== 'active') return null;
-
-			const currentIndex = selectedCompletionIndex(this.editor.state);
-
-			if (currentIndex === null) return null;
-
-			const requestedIndex = which === 'previous' ? currentIndex - 1 : currentIndex + 1;
-
-			return currentCompletions(this.editor.state)[requestedIndex] ?? null;
-		},
-		toPreviewSegments(completion: Completion, state: EditorState) {
-			const firstHalf = state.doc.slice(0, this.cursorPosition).toString();
-			const secondHalf = state.doc.slice(this.cursorPosition, state.doc.length).toString();
-
-			const previewDoc = [
-				firstHalf,
-				firstHalf.endsWith('$') ? completion.label.slice(1) : completion.label,
-				secondHalf,
-			].join('');
-
-			const previewState = EditorState.create({
-				doc: previewDoc,
-				extensions: [n8nLang()],
-			});
-
-			return this.toSegments(previewState);
-		},
-		trackCompletion(viewUpdate: ViewUpdate) {
-			if (!this.editor) return;
-
-			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-			if (!completionTx) return;
-
-			let completion = '';
-			let completionBase = '';
-
-			viewUpdate.changes.iterChanges((_: number, __: number, fromB: number, toB: number) => {
-				if (!this.editor) return;
-
-				completion = this.editor.state.doc.slice(fromB, toB).toString();
-
-				const completionBaseStartIndex = this.findCompletionStart(fromB);
-
-				completionBase = this.editor.state.doc
-					.slice(completionBaseStartIndex, fromB - 1)
-					.toString()
-					.trim();
-			});
-
-			const category = this.expressionExtensionsCategories[completion];
-
-			const payload = {
-				instance_id: this.rootStore.instanceId,
-				node_type: this.ndvStore.activeNode?.type,
-				field_name: this.path,
-				field_type: 'expression',
-				context: completionBase,
-				inserted_text: completion,
-				category: category ?? 'none', // only applicable for expression extension completion
-			};
-
-			this.$telemetry.track('User autocompleted code', payload);
-		},
-		findCompletionStart(fromIndex: number) {
-			if (!this.editor) return -1;
-
-			const INDICATORS = [
-				' $', // proxy
-				'{ ', // primitive
-			];
-
-			const doc = this.editor.state.doc.toString();
-
-			for (let index = fromIndex; index > 0; index--) {
-				if (INDICATORS.some((indicator) => indicator === doc[index] + doc[index + 1])) {
-					return index + 1;
-				}
-			}
-
-			return -1;
 		},
 	},
 });
