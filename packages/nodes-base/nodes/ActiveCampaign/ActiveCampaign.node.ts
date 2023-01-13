@@ -402,7 +402,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'contacts';
 						}
 
-						endpoint = `/api/3/contacts`;
+						endpoint = '/api/3/contacts';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         contact:update
@@ -479,7 +479,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'accounts';
 						}
 
-						endpoint = `/api/3/accounts`;
+						endpoint = '/api/3/accounts';
 
 						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
@@ -648,7 +648,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'lists';
 						}
 
-						endpoint = `/api/3/lists`;
+						endpoint = '/api/3/lists';
 					}
 				} else if (resource === 'tag') {
 					if (operation === 'create') {
@@ -704,7 +704,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'tags';
 						}
 
-						endpoint = `/api/3/tags`;
+						endpoint = '/api/3/tags';
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         tags:update
@@ -811,7 +811,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'deals';
 						}
 
-						endpoint = `/api/3/deals`;
+						endpoint = '/api/3/deals';
 					} else if (operation === 'createNote') {
 						// ----------------------------------
 						//         deal:createNote
@@ -910,7 +910,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'connections';
 						}
 
-						endpoint = `/api/3/connections`;
+						endpoint = '/api/3/connections';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1010,7 +1010,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomOrders';
 						}
 
-						endpoint = `/api/3/ecomOrders`;
+						endpoint = '/api/3/ecomOrders';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1099,7 +1099,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomCustomers';
 						}
 
-						endpoint = `/api/3/ecomCustomers`;
+						endpoint = '/api/3/ecomCustomers';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),
@@ -1145,7 +1145,7 @@ export class ActiveCampaign implements INodeType {
 							dataKey = 'ecomOrderProducts';
 						}
 
-						endpoint = `/api/3/ecomOrderProducts`;
+						endpoint = '/api/3/ecomOrderProducts';
 					} else {
 						throw new NodeOperationError(
 							this.getNode(),

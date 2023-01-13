@@ -2,21 +2,12 @@ import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
 
+jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {
 	return {
 		LicenseService: {
 			getActiveTriggerCount: async () => 0,
 		},
-	};
-});
-
-jest.mock('posthog-node');
-
-jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
-	return {
-		flush: () => {},
-		identify: () => {},
-		track: () => {},
 	};
 });
 
@@ -48,7 +39,12 @@ describe('Telemetry', () => {
 
 	beforeEach(() => {
 		spyTrack.mockClear();
-		telemetry = new Telemetry(instanceId, n8nVersion);
+		telemetry = new Telemetry(instanceId);
+		(telemetry as any).rudderStack = {
+			flush: () => {},
+			identify: () => {},
+			track: () => {},
+		};
 	});
 
 	afterEach(() => {

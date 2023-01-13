@@ -171,7 +171,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			required: true,
 		},
 		activeId: {
-			type: [String, Number],
+			type: [String],
 			required: true,
 		},
 		mode: {
@@ -919,7 +919,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return;
 			}
 
-			const params = `scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700`;
+			const params =
+				'scrollbars=no,resizable=yes,status=no,titlebar=noe,location=no,toolbar=no,menubar=no,width=500,height=700';
 			const oauthPopup = window.open(url, 'OAuth2 Authorization', params);
 			Vue.set(this.credentialData, 'oauthTokenData', null);
 

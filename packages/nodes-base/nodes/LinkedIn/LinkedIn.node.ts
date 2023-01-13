@@ -146,7 +146,7 @@ export class LinkedIn implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(

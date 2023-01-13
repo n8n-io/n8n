@@ -188,7 +188,8 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]`,
+				placeholder:
+					'[ {"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)" } ]',
 			},
 			{
 				displayName: 'Properties (JSON)',
@@ -202,7 +203,7 @@ export class ApiTemplateIo implements INodeType {
 						jsonParameters: [true],
 					},
 				},
-				placeholder: `{ "name": "text_1" }`,
+				placeholder: '{ "name": "text_1" }',
 			},
 			{
 				displayName: 'Overrides',
@@ -440,7 +441,7 @@ export class ApiTemplateIo implements INodeType {
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
 								data,
-								options.fileName || fileName,
+								options.fileName ?? fileName,
 							);
 							responseData = {
 								json: responseData,
@@ -524,7 +525,7 @@ export class ApiTemplateIo implements INodeType {
 							const fileName = responseData.download_url.split('/').pop();
 							const binaryData = await this.helpers.prepareBinaryData(
 								imageData,
-								options.fileName || fileName,
+								options.fileName ?? fileName,
 							);
 							responseData = {
 								json: responseData,

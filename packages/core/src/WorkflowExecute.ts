@@ -1265,7 +1265,7 @@ export class WorkflowExecute {
 		const fullRunData = this.getFullRunData(startedAt);
 
 		if (executionError !== undefined) {
-			Logger.verbose(`Workflow execution finished with error`, {
+			Logger.verbose('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
@@ -1281,7 +1281,7 @@ export class WorkflowExecute {
 			});
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
-			Logger.verbose(`Workflow execution finished successfully`, { workflowId: workflow.id });
+			Logger.verbose('Workflow execution finished successfully', { workflowId: workflow.id });
 			fullRunData.finished = true;
 		}
 

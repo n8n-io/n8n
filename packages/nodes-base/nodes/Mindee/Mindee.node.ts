@@ -160,7 +160,7 @@ export class Mindee implements INodeType {
 			try {
 				if (resource === 'receipt') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const rawData = this.getNodeParameter('rawData', i);
 
@@ -185,7 +185,7 @@ export class Mindee implements INodeType {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
-								`/expense_receipts/v2/predict`,
+								'/expense_receipts/v2/predict',
 								{},
 								{},
 								{
@@ -231,7 +231,7 @@ export class Mindee implements INodeType {
 
 				if (resource === 'invoice') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						const rawData = this.getNodeParameter('rawData', i);
 

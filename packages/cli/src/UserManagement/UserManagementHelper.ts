@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
 import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
@@ -17,11 +16,11 @@ import { getLicense } from '@/License';
 import { WhereClause } from '@/Interfaces';
 import { RoleService } from '@/role/role.service';
 
-export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
+export async function getWorkflowOwner(workflowId: string): Promise<User> {
 	const workflowOwnerRole = await RoleService.get({ name: 'owner', scope: 'workflow' });
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		where: { workflow: { id: workflowId }, role: workflowOwnerRole },
+		where: { workflowId, roleId: workflowOwnerRole?.id ?? undefined },
 		relations: ['user', 'user.globalRole'],
 	});
 
@@ -59,35 +58,26 @@ export function isUserManagementDisabled(): boolean {
 	);
 }
 
-async function getInstanceOwnerRole(): Promise<Role> {
-	const ownerRole = await Db.collections.Role.findOneOrFail({
-		where: {
-			name: 'owner',
-			scope: 'global',
-		},
-	});
-	return ownerRole;
-}
-
-export async function getInstanceOwner(): Promise<User> {
-	const ownerRole = await getInstanceOwnerRole();
-
-	const owner = await Db.collections.User.findOneOrFail({
-		relations: ['globalRole'],
-		where: {
-			globalRole: ownerRole,
-		},
-	});
-	return owner;
-}
-
-export async function getRole(scope: Role['scope'], name: Role['name']): Promise<Role> {
+export async function getRoleId(scope: Role['scope'], name: Role['name']): Promise<Role['id']> {
 	return Db.collections.Role.findOneOrFail({
+		select: ['id'],
 		where: {
 			name,
 			scope,
 		},
+	}).then((role) => role.id);
+}
+
+export async function getInstanceOwner(): Promise<User> {
+	const ownerRoleId = await getRoleId('global', 'owner');
+
+	const owner = await Db.collections.User.findOneOrFail({
+		relations: ['globalRole'],
+		where: {
+			globalRoleId: ownerRoleId,
+		},
 	});
+	return owner;
 }
 
 /**
@@ -97,6 +87,10 @@ export function getInstanceBaseUrl(): string {
 	const n8nBaseUrl = config.getEnv('editorBaseUrl') || getWebhookBaseUrl();
 
 	return n8nBaseUrl.endsWith('/') ? n8nBaseUrl.slice(0, n8nBaseUrl.length - 1) : n8nBaseUrl;
+}
+
+export function generateUserInviteUrl(inviterId: string, inviteeId: string): string {
+	return `${getInstanceBaseUrl()}/signup?inviterId=${inviterId}&inviteeId=${inviteeId}`;
 }
 
 // TODO: Enforce at model level
@@ -156,8 +150,16 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 	return sanitizedUser;
 }
 
+export function addInviteLinktoUser(user: PublicUser, inviterId: string): PublicUser {
+	if (user.isPending) {
+		user.inviteAcceptUrl = generateUserInviteUrl(inviterId, user.id);
+	}
+	return user;
+}
+
 export async function getUserById(userId: string): Promise<User> {
-	const user = await Db.collections.User.findOneOrFail(userId, {
+	const user = await Db.collections.User.findOneOrFail({
+		where: { id: userId },
 		relations: ['globalRole'],
 	});
 	return user;

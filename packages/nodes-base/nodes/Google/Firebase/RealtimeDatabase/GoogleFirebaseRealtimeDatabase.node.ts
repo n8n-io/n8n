@@ -219,7 +219,7 @@ export class GoogleFirebaseRealtimeDatabase implements INodeType {
 				if (responseData === null) {
 					if (operation === 'get') {
 						throw new NodeApiError(this.getNode(), responseData, {
-							message: `Requested entity was not found.`,
+							message: 'Requested entity was not found.',
 						});
 					} else if (method === 'DELETE') {
 						responseData = { success: true };

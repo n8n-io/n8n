@@ -228,7 +228,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'property',
-				format: ['camelCase', 'snake_case'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},
@@ -339,6 +339,10 @@ const config = (module.exports = {
 
 		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 
+		'n8n-local-rules/no-unneeded-backticks': 'error',
+
+		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
@@ -400,6 +404,15 @@ const config = (module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
+
+	overrides: [
+		{
+			files: ['**/*.d.ts'],
+			rules: {
+				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+	],
 });
 
 if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {

@@ -190,7 +190,7 @@ export class GmailTrigger implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		let responseData;
 
-		const now = Math.floor(DateTime.now().toSeconds()) + '';
+		const now = Math.floor(DateTime.now().toSeconds()).toString();
 		const startDate = (webhookData.lastTimeChecked as string) || +now;
 		const endDate = +now;
 
@@ -211,7 +211,7 @@ export class GmailTrigger implements INodeType {
 			responseData = await googleApiRequest.call(
 				this,
 				'GET',
-				`/gmail/v1/users/me/messages`,
+				'/gmail/v1/users/me/messages',
 				{},
 				qs,
 			);

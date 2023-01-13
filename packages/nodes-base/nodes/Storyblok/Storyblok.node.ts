@@ -189,7 +189,7 @@ export class Storyblok implements INodeType {
 								responseData = await storyblokApiRequest.call(
 									this,
 									'GET',
-									`/v1/cdn/stories`,
+									'/v1/cdn/stories',
 									{},
 									qs,
 								);

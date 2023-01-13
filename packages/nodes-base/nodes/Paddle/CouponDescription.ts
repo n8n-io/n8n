@@ -46,7 +46,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				jsonParameters: [false],
 			},
 		},
@@ -74,7 +74,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				couponType: ['product'],
 				jsonParameters: [false],
 			},
@@ -91,7 +91,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				jsonParameters: [false],
 			},
 		},
@@ -120,7 +120,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				discountType: ['flat'],
 				jsonParameters: [false],
 			},
@@ -139,7 +139,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				discountType: ['percentage'],
 				jsonParameters: [false],
 			},
@@ -260,7 +260,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`create`],
+				operation: ['create'],
 				discountType: ['flat'],
 				jsonParameters: [false],
 			},
@@ -384,7 +384,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`getAll`],
+				operation: ['getAll'],
 			},
 		},
 		default: '',
@@ -432,7 +432,7 @@ export const couponFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['coupon'],
-				operation: [`update`],
+				operation: ['update'],
 				jsonParameters: [false],
 			},
 		},

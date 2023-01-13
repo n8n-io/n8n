@@ -1860,7 +1860,7 @@ export class Asana implements INodeType {
 			// Get all users to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-users
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `/users`;
+				const endpoint = '/users';
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -2000,7 +2000,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2012,7 +2012,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2026,7 +2026,7 @@ export class Asana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/tasks`;
+						endpoint = '/tasks';
 
 						Object.assign(qs, filters);
 
@@ -2088,7 +2088,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
@@ -2335,7 +2335,7 @@ export class Asana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/projects`;
+						endpoint = '/projects';
 
 						if (additionalFields.team) {
 							qs.team = additionalFields.team;

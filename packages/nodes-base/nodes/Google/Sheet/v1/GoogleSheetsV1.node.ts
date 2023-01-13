@@ -117,8 +117,8 @@ export class GoogleSheetsV1 implements INodeType {
 
 			const options = this.getNodeParameter('options', 0, {});
 
-			const valueInputMode = (options.valueInputMode || 'RAW') as ValueInputOption;
-			const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+			const valueInputMode = (options.valueInputMode ?? 'RAW') as ValueInputOption;
+			const valueRenderMode = (options.valueRenderMode ?? 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 			if (operation === 'append') {
 				// ----------------------------------
@@ -134,7 +134,7 @@ export class GoogleSheetsV1 implements INodeType {
 						setData.push(item.json);
 					});
 
-					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
+					const usePathForKeyRow = (options.usePathForKeyRow ?? false) as boolean;
 
 					// Convert data into array format
 					const _data = await sheet.appendSheetData(
@@ -481,7 +481,7 @@ export class GoogleSheetsV1 implements INodeType {
 							: undefined;
 						body.properties.locale = options.locale ? (options.locale as string) : undefined;
 
-						responseData = await googleApiRequest.call(this, 'POST', `/v4/spreadsheets`, body);
+						responseData = await googleApiRequest.call(this, 'POST', '/v4/spreadsheets', body);
 
 						returnData.push(responseData);
 					} catch (error) {

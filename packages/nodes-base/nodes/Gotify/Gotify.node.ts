@@ -179,7 +179,7 @@ export class Gotify implements INodeType {
 
 						Object.assign(body, additionalFields);
 
-						responseData = await gotifyApiRequest.call(this, 'POST', `/message`, body);
+						responseData = await gotifyApiRequest.call(this, 'POST', '/message', body);
 					}
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
@@ -202,7 +202,7 @@ export class Gotify implements INodeType {
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await gotifyApiRequest.call(this, 'GET', `/message`, {}, qs);
+							responseData = await gotifyApiRequest.call(this, 'GET', '/message', {}, qs);
 							responseData = responseData.messages;
 						}
 					}

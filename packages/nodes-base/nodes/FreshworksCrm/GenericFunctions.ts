@@ -190,5 +190,5 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 }
 
 export function throwOnEmptyFilter(this: IExecuteFunctions) {
-	throw new NodeOperationError(this.getNode(), `Please select at least one filter.`);
+	throw new NodeOperationError(this.getNode(), 'Please select at least one filter.');
 }

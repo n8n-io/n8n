@@ -52,7 +52,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOneBy({ email, password: Not(IsNull()) });
 
 			if (!user?.password) {
 				Logger.debug(
@@ -76,7 +76,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('token', resetPasswordToken);
 
 			try {
-				const mailer = await UserManagementMailer.getInstance();
+				const mailer = UserManagementMailer.getInstance();
 				await mailer.passwordReset({
 					email,
 					firstName,
@@ -86,7 +86,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: user.id,
+					user,
 					message_type: 'Reset password',
 					public_api: false,
 				});
@@ -105,7 +105,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -133,7 +133,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -152,7 +152,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			Logger.info('Reset-password token resolved successfully', { userId: id });
 			void InternalHooksManager.getInstance().onUserPasswordResetEmailClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -184,7 +184,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id: userId,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -212,7 +212,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: userId,
+				user,
 				fields_changed: ['password'],
 			});
 

@@ -30,6 +30,42 @@ import { simpleParser, Source as ParserSource } from 'mailparser';
 import _ from 'lodash';
 import { ICredentialsDataImap, isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
+export async function parseRawEmail(
+	this: ITriggerFunctions,
+	messageEncoded: ParserSource,
+	dataPropertyNameDownload: string,
+): Promise<INodeExecutionData> {
+	const responseData = await simpleParser(messageEncoded);
+	const headers: IDataObject = {};
+	for (const header of responseData.headerLines) {
+		headers[header.key] = header.line;
+	}
+
+	// @ts-ignore
+	responseData.headers = headers;
+	// @ts-ignore
+	responseData.headerLines = undefined;
+
+	const binaryData: IBinaryKeyData = {};
+	if (responseData.attachments) {
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+				attachment.content,
+				attachment.filename,
+				attachment.contentType,
+			);
+		}
+		// @ts-ignore
+		responseData.attachments = undefined;
+	}
+
+	return {
+		json: responseData as unknown as IDataObject,
+		binary: Object.keys(binaryData).length ? binaryData : undefined,
+	} as INodeExecutionData;
+}
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
@@ -239,7 +275,7 @@ export class EmailReadImapV2 implements INodeType {
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), `Credentials are not valid for imap node.`);
+			throw new NodeOperationError(this.getNode(), 'Credentials are not valid for imap node.');
 		}
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
@@ -279,8 +315,6 @@ export class EmailReadImapV2 implements INodeType {
 		// Returns the email attachments
 		const getAttachment = async (
 			imapConnection: ImapSimple,
-			// tslint:disable-next-line:no-any
-
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {
@@ -487,7 +521,7 @@ export class EmailReadImapV2 implements INodeType {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
 			}
 
@@ -560,17 +594,18 @@ export class EmailReadImapV2 implements INodeType {
 			return imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
 					if (isCurrentlyReconnecting) {
-						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
+						Logger.debug('Email Read Imap: Connected closed for forced reconnecting');
 					} else if (closeFunctionWasCalled) {
-						Logger.debug(`Email Read Imap: Shutting down workflow - connected closed`);
+						Logger.debug('Email Read Imap: Shutting down workflow - connected closed');
 					} else {
-						Logger.error(`Email Read Imap: Connected closed unexpectedly`);
+						Logger.error('Email Read Imap: Connected closed unexpectedly');
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
 				});
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					Logger.verbose(`IMAP connection experienced an error: (${errorCode})`, { error });
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await closeFunction();
 					this.emitError(error);
 				});
@@ -586,7 +621,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(async () => {
-				Logger.verbose(`Forcing reconnect to IMAP server`);
+				Logger.verbose('Forcing reconnect to IMAP server');
 				try {
 					isCurrentlyReconnecting = true;
 					if (connection.closeBox) await connection.closeBox(false);
@@ -618,40 +653,4 @@ export class EmailReadImapV2 implements INodeType {
 			closeFunction,
 		};
 	}
-}
-
-export async function parseRawEmail(
-	this: ITriggerFunctions,
-	messageEncoded: ParserSource,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
-	const responseData = await simpleParser(messageEncoded);
-	const headers: IDataObject = {};
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
-	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
-
-	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-		// @ts-ignore
-		responseData.attachments = undefined;
-	}
-
-	return {
-		json: responseData as unknown as IDataObject,
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
 }

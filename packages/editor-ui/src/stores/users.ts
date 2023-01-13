@@ -2,6 +2,7 @@ import {
 	changePassword,
 	deleteUser,
 	getCurrentUser,
+	getInviteLink,
 	getUsers,
 	inviteUsers,
 	login,
@@ -254,6 +255,10 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		async reinviteUser(params: { id: string }): Promise<void> {
 			const rootStore = useRootStore();
 			await reinvite(rootStore.getRestApiContext, params);
+		},
+		async getUserInviteLink(params: { id: string }): Promise<{ link: string }> {
+			const rootStore = useRootStore();
+			return await getInviteLink(rootStore.getRestApiContext, params);
 		},
 		async submitPersonalizationSurvey(results: IPersonalizationLatestVersion): Promise<void> {
 			const rootStore = useRootStore();

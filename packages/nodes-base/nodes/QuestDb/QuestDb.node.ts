@@ -219,7 +219,7 @@ export class QuestDb implements INodeType {
 			// ----------------------------------
 
 			const additionalFields = this.getNodeParameter('additionalFields', 0);
-			const mode = (additionalFields.mode || 'independently') as string;
+			const mode = (additionalFields.mode ?? 'independently') as string;
 
 			const queryResult = await pgQuery(
 				this.getNodeParameter,
@@ -243,6 +243,7 @@ export class QuestDb implements INodeType {
 			const returnFields = this.getNodeParameter('returnFields', 0) as string;
 			const table = this.getNodeParameter('table', 0) as string;
 
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 			const insertData = await db.any('SELECT ${columns:name} from ${table:name}', {
 				columns: returnFields
 					.split(',')

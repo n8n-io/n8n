@@ -320,7 +320,7 @@ export class HubspotTrigger implements INodeType {
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
 					targetUrl: webhookUrl,
-					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
+					maxConcurrentRequests: additionalFields.maxConcurrentRequests ?? 5,
 				};
 
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);
@@ -328,7 +328,7 @@ export class HubspotTrigger implements INodeType {
 				endpoint = `/webhooks/v3/${appId}/subscriptions`;
 
 				if (Array.isArray(events) && events.length === 0) {
-					throw new NodeOperationError(this.getNode(), `You must define at least one event`);
+					throw new NodeOperationError(this.getNode(), 'You must define at least one event');
 				}
 
 				for (const event of events) {

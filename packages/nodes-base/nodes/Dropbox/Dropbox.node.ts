@@ -769,7 +769,7 @@ export class Dropbox implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -954,7 +954,7 @@ export class Dropbox implements INodeType {
 
 					items[i] = newItem;
 
-					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 					const filePathDownload = this.getNodeParameter('path', i) as string;
 					items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(

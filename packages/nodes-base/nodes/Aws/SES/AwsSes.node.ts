@@ -845,7 +845,7 @@ export class AwsSes implements INodeType {
 						const templateSubject = this.getNodeParameter('templateSubject', i) as string;
 
 						const params = [
-							`Action=CreateCustomVerificationEmailTemplate`,
+							'Action=CreateCustomVerificationEmailTemplate',
 							`FailureRedirectionURL=${failureRedirectionURL}`,
 							`FromEmailAddress=${email}`,
 							`SuccessRedirectionURL=${successRedirectionURL}`,
@@ -869,7 +869,7 @@ export class AwsSes implements INodeType {
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const params = [
-							`Action=DeleteCustomVerificationEmailTemplate`,
+							'Action=DeleteCustomVerificationEmailTemplate',
 							`TemplateName=${templateName}`,
 						];
 
@@ -935,7 +935,7 @@ export class AwsSes implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = [
-							`Action=SendCustomVerificationEmail`,
+							'Action=SendCustomVerificationEmail',
 							`TemplateName=${templateName}`,
 							`EmailAddress=${email}`,
 						];
@@ -961,7 +961,7 @@ export class AwsSes implements INodeType {
 						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const params = [
-							`Action=UpdateCustomVerificationEmailTemplate`,
+							'Action=UpdateCustomVerificationEmailTemplate',
 							`TemplateName=${templateName}`,
 						];
 
@@ -1018,7 +1018,7 @@ export class AwsSes implements INodeType {
 
 						if (isBodyHtml) {
 							params.push(`Message.Body.Html.Data=${encodeURIComponent(message)}`);
-							params.push(`Message.Body.Html.Charset=UTF-8`);
+							params.push('Message.Body.Html.Charset=UTF-8');
 						} else {
 							params.push(`Message.Body.Text.Data=${encodeURIComponent(message)}`);
 						}

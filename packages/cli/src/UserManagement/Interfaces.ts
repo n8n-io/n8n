@@ -23,12 +23,12 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	inviteAcceptUrl?: string;
 }
 
 export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 	externalHooks: IExternalHooksClass;
-	defaultCredentialsName: string;
 	activeWorkflowRunner: ActiveWorkflowRunner;
 }

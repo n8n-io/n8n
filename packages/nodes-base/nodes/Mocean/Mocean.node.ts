@@ -18,7 +18,7 @@ export class Mocean implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Mocean',
 		name: 'mocean',
-		subtitle: `={{$parameter["operation"] + ": " + $parameter["resource"]}}`,
+		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		icon: 'file:mocean.svg',
 		group: ['transform'],
 		version: 1,
@@ -196,7 +196,7 @@ export class Mocean implements INodeType {
 				const options = {
 					method: 'GET',
 					qs: query,
-					uri: `https://rest.moceanapi.com/rest/2/account/balance`,
+					uri: 'https://rest.moceanapi.com/rest/2/account/balance',
 					json: true,
 				};
 				try {

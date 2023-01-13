@@ -55,11 +55,9 @@ export class ActiveExecutions {
 				fullExecutionData.retryOf = executionData.retryOf.toString();
 			}
 
-			if (
-				executionData.workflowData.id !== undefined &&
-				WorkflowHelpers.isWorkflowIdValid(executionData.workflowData.id.toString())
-			) {
-				fullExecutionData.workflowId = executionData.workflowData.id.toString();
+			const workflowId = executionData.workflowData.id;
+			if (workflowId !== undefined && WorkflowHelpers.isWorkflowIdValid(workflowId)) {
+				fullExecutionData.workflowId = workflowId;
 			}
 
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);

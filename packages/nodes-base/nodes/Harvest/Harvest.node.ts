@@ -665,7 +665,7 @@ export class Harvest implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = `users/me`;
+						endpoint = 'users/me';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 
@@ -871,7 +871,7 @@ export class Harvest implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						endpoint = `company`;
+						endpoint = 'company';
 
 						const responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 

@@ -286,7 +286,7 @@ export class Jira implements INodeType {
 						if (user.active) {
 							activeUsers.push({
 								name: user.displayName as string,
-								value: (user.accountId || user.name) as string,
+								value: (user.accountId ?? user.name) as string,
 							});
 						}
 						return activeUsers;
@@ -684,7 +684,7 @@ export class Jira implements INodeType {
 						qs.expand = additionalFields.expand as string;
 					}
 					if (simplifyOutput) {
-						qs.expand = `${qs.expand || ''},names`;
+						qs.expand = `${qs.expand ?? ''},names`;
 					}
 					if (additionalFields.properties) {
 						qs.properties = additionalFields.properties as string;
@@ -702,7 +702,7 @@ export class Jira implements INodeType {
 
 					if (simplifyOutput) {
 						// Use rendered fields if requested and available
-						qs.expand = qs.expand || '';
+						qs.expand = qs.expand ?? '';
 						if (
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields &&
@@ -753,7 +753,7 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -762,7 +762,7 @@ export class Jira implements INodeType {
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -975,7 +975,7 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
 					if (items[i].binary === undefined) {

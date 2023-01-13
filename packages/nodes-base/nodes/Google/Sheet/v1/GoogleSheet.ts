@@ -481,7 +481,7 @@ export class GoogleSheet {
 
 		if (keyRowIndex < 0 || dataStartRowIndex < keyRowIndex || keyRowIndex >= inputData.length) {
 			// The key row does not exist so it is not possible to look up the data
-			throw new NodeOperationError(this.executeFunctions.getNode(), `The key row does not exist!`);
+			throw new NodeOperationError(this.executeFunctions.getNode(), 'The key row does not exist!');
 		}
 
 		// Create the keys array

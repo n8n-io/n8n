@@ -19,6 +19,7 @@ import {
 	INodeTranslationHeaders,
 } from '@/Interface';
 import {
+	IAbstractEventMessage,
 	IDataObject,
 	ILoadOptions,
 	INodeCredentials,
@@ -70,7 +71,7 @@ export const restApi = Vue.extend({
 					return makeRestApiRequest(self.rootStore.getRestApiContext, method, endpoint, data);
 				},
 				getActiveWorkflows: (): Promise<string[]> => {
-					return self.restApi().makeRestApiRequest('GET', `/active`);
+					return self.restApi().makeRestApiRequest('GET', '/active');
 				},
 				getActivationError: (id: string): Promise<IActivationError | undefined> => {
 					return self.restApi().makeRestApiRequest('GET', `/active/error/${id}`);
@@ -82,7 +83,7 @@ export const restApi = Vue.extend({
 							filter,
 						};
 					}
-					return self.restApi().makeRestApiRequest('GET', `/executions-current`, sendData);
+					return self.restApi().makeRestApiRequest('GET', '/executions-current', sendData);
 				},
 				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
 					return self
@@ -103,12 +104,12 @@ export const restApi = Vue.extend({
 
 				// Execute a workflow
 				runWorkflow: async (startRunData: IStartRunData): Promise<IExecutionPushResponse> => {
-					return self.restApi().makeRestApiRequest('POST', `/workflows/run`, startRunData);
+					return self.restApi().makeRestApiRequest('POST', '/workflows/run', startRunData);
 				},
 
 				// Creates a new workflow
 				createNewWorkflow: (sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
-					return self.restApi().makeRestApiRequest('POST', `/workflows`, sendData);
+					return self.restApi().makeRestApiRequest('POST', '/workflows', sendData);
 				},
 
 				// Updates an existing workflow
@@ -144,12 +145,12 @@ export const restApi = Vue.extend({
 							filter,
 						};
 					}
-					return self.restApi().makeRestApiRequest('GET', `/workflows`, sendData);
+					return self.restApi().makeRestApiRequest('GET', '/workflows', sendData);
 				},
 
 				// Returns a workflow from a given URL
 				getWorkflowFromUrl: (url: string): Promise<IWorkflowDb> => {
-					return self.restApi().makeRestApiRequest('GET', `/workflows/from-url`, { url });
+					return self.restApi().makeRestApiRequest('GET', '/workflows/from-url', { url });
 				},
 
 				// Returns the execution with the given name
@@ -160,7 +161,7 @@ export const restApi = Vue.extend({
 
 				// Deletes executions
 				deleteExecutions: (sendData: IExecutionDeleteFilter): Promise<void> => {
-					return self.restApi().makeRestApiRequest('POST', `/executions/delete`, sendData);
+					return self.restApi().makeRestApiRequest('POST', '/executions/delete', sendData);
 				},
 
 				// Returns the execution with the given name
@@ -179,8 +180,8 @@ export const restApi = Vue.extend({
 				getPastExecutions: (
 					filter: object,
 					limit: number,
-					lastId?: string | number,
-					firstId?: string | number,
+					lastId?: string,
+					firstId?: string,
 				): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
@@ -192,17 +193,22 @@ export const restApi = Vue.extend({
 						};
 					}
 
-					return self.restApi().makeRestApiRequest('GET', `/executions`, sendData);
+					return self.restApi().makeRestApiRequest('GET', '/executions', sendData);
 				},
 
 				// Returns all the available timezones
 				getTimezones: (): Promise<IDataObject> => {
-					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
+					return self.restApi().makeRestApiRequest('GET', '/options/timezones');
 				},
 
 				// Binary data
 				getBinaryUrl: (dataPath, mode): string =>
 					self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}?mode=${mode}`,
+
+				// Returns all the available timezones
+				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
+					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution/' + id);
+				},
 			};
 		},
 	},

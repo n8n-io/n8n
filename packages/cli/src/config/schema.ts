@@ -380,6 +380,12 @@ export const schema = {
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
 				},
+				username: {
+					doc: 'Redis Username (needs Redis >= 6)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
@@ -463,6 +469,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -636,6 +650,14 @@ export const schema = {
 			default: 'api',
 			env: 'N8N_PUBLIC_API_ENDPOINT',
 			doc: 'Path for the public api endpoints',
+		},
+		swaggerUi: {
+			disabled: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_PUBLIC_API_SWAGGERUI_DISABLED',
+				doc: 'Whether to disable the Swagger UI for the Public API',
+			},
 		},
 	},
 
@@ -833,7 +855,7 @@ export const schema = {
 			env: 'N8N_VERSION_NOTIFICATIONS_ENDPOINT',
 		},
 		infoUrl: {
-			doc: `Url in New Versions Panel with more information on updating one's instance.`,
+			doc: "Url in New Versions Panel with more information on updating one's instance.",
 			format: String,
 			default: 'https://docs.n8n.io/getting-started/installation/updating.html',
 			env: 'N8N_VERSION_NOTIFICATIONS_INFO_URL',
@@ -899,6 +921,10 @@ export const schema = {
 	enterprise: {
 		features: {
 			sharing: {
+				format: Boolean,
+				default: false,
+			},
+			logStreaming: {
 				format: Boolean,
 				default: false,
 			},
@@ -1029,5 +1055,34 @@ export const schema = {
 		default: false,
 		env: 'N8N_HIDE_USAGE_PAGE',
 		doc: 'Hide or show the usage page',
+	},
+
+	eventBus: {
+		checkUnsentInterval: {
+			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
+			format: Number,
+			default: 0,
+			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
+		},
+		logWriter: {
+			keepLogCount: {
+				doc: 'How many event log files to keep.',
+				format: Number,
+				default: 3,
+				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
+			},
+			maxFileSizeInKB: {
+				doc: 'Maximum size of an event log file before a new one is started.',
+				format: Number,
+				default: 102400, // 100MB
+				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
+			},
+			logBaseName: {
+				doc: 'Basename of the event log file.',
+				format: String,
+				default: 'n8nEventLog',
+				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
+		},
 	},
 };

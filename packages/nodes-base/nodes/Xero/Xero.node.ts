@@ -449,7 +449,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Invoices`,
+								'/Invoices',
 								{ organizationId },
 								qs,
 							);
@@ -602,7 +602,7 @@ export class Xero implements INodeType {
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
-								`/Contacts`,
+								'/Contacts',
 								{ organizationId },
 								qs,
 							);

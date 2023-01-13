@@ -146,6 +146,32 @@ export const adjustPersonFields = flow(adjustCompanyFields, adjustEmails);
 export const adjustTaskFields = flow(adjustLeadFields, adjustProjectIds);
 
 /**
+ * Make an authenticated API request to Copper and return all items.
+ */
+export async function copperApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri = '',
+	option: IDataObject = {},
+) {
+	let responseData;
+	qs.page_size = 200;
+	let totalItems = 0;
+	const returnData: IDataObject[] = [];
+
+	do {
+		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
+		totalItems = responseData.headers['x-pw-total'];
+		returnData.push(...responseData.body);
+	} while (totalItems > returnData.length);
+
+	return returnData;
+}
+
+/**
  * Handle a Copper listing by returning all items or up to a limit.
  */
 export async function handleListing(
@@ -175,30 +201,4 @@ export async function handleListing(
 		option,
 	);
 	return responseData.slice(0, limit);
-}
-
-/**
- * Make an authenticated API request to Copper and return all items.
- */
-export async function copperApiRequestAllItems(
-	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
-	method: string,
-	resource: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
-	uri = '',
-	option: IDataObject = {},
-) {
-	let responseData;
-	qs.page_size = 200;
-	let totalItems = 0;
-	const returnData: IDataObject[] = [];
-
-	do {
-		responseData = await copperApiRequest.call(this, method, resource, body, qs, uri, option);
-		totalItems = responseData.headers['x-pw-total'];
-		returnData.push(...responseData.body);
-	} while (totalItems > returnData.length);
-
-	return returnData;
 }

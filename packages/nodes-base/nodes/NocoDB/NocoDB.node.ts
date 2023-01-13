@@ -202,7 +202,7 @@ export class NocoDB implements INodeType {
 						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `No project selected!`);
+					throw new NodeOperationError(this.getNode(), 'No project selected!');
 				}
 			},
 		},

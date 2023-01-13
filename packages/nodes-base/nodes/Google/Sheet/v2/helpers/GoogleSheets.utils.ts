@@ -67,6 +67,7 @@ export function hexToRgb(hex: string) {
 	// Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
 	const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 	hex = hex.replace(shorthandRegex, (m, r, g, b) => {
+		// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 		return r + r + g + g + b + b;
 	});
 
@@ -134,6 +135,10 @@ export function removeEmptyColumns(data: SheetRangeData) {
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
 	for (let col = 0; col < longestRow; col++) {
 		const column = data.map((row) => row[col]);
+		if (column[0] !== '') {
+			returnData.push(column);
+			continue;
+		}
 		const hasData = column.slice(1).some((cell) => cell || typeof cell === 'number');
 		if (hasData) {
 			returnData.push(column);
@@ -267,7 +272,7 @@ export async function autoMapInputData(
 		items.forEach((item, itemIndex) => {
 			Object.keys(item.json).forEach((key) => {
 				if (!columnNames.includes(key)) {
-					throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+					throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
 						itemIndex,
 						description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 					});

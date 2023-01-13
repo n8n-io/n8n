@@ -3,7 +3,7 @@ import { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { LICENSE_FEATURES, SETTINGS_LICENSE_CERT_KEY } from './constants';
+import { LICENSE_FEATURES, N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 async function loadCertStr(): Promise<TLicenseContainerStr> {
 	const databaseSettings = await Db.collections.Settings.findOne({
@@ -35,7 +35,7 @@ export class License {
 		this.logger = getLogger();
 	}
 
-	async init(instanceId: string, version: string) {
+	async init(instanceId: string) {
 		if (this.manager) {
 			return;
 		}
@@ -48,7 +48,7 @@ export class License {
 			this.manager = new LicenseManager({
 				server,
 				tenantId: config.getEnv('license.tenantId'),
-				productIdentifier: `n8n-${version}`,
+				productIdentifier: `n8n-${N8N_VERSION}`,
 				autoRenewEnabled,
 				autoRenewOffset,
 				logger: this.logger,
@@ -91,6 +91,10 @@ export class License {
 
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
+	}
+
+	isLogStreamingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
 	}
 
 	getCurrentEntitlements() {

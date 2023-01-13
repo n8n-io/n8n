@@ -262,8 +262,8 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 				if (operation === 'analyzeSentiment') {
 					const source = this.getNodeParameter('source', i) as string;
 					const options = this.getNodeParameter('options', i);
-					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
-					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
+					const encodingType = (options.encodingType as string | undefined) ?? 'UTF16';
+					const documentType = (options.documentType as string | undefined) ?? 'PLAIN_TEXT';
 
 					const body: IData = {
 						document: {
@@ -287,7 +287,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 					const response = await googleApiRequest.call(
 						this,
 						'POST',
-						`/v1/documents:analyzeSentiment`,
+						'/v1/documents:analyzeSentiment',
 						body,
 					);
 					responseData.push(response);

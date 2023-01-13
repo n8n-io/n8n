@@ -22,7 +22,7 @@ export async function cockpitApiRequest(
 			token: credentials.accessToken,
 		},
 		body,
-		uri: uri || `${credentials.url}/api${resource}`,
+		uri: uri ?? `${credentials.url}/api${resource}`,
 		json: true,
 	};
 

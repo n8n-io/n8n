@@ -342,7 +342,7 @@ export class Misp implements INodeType {
 							tag: this.getNodeParameter('tagId', i),
 						};
 
-						const endpoint = `/events/addTag`;
+						const endpoint = '/events/addTag';
 						responseData = await mispApiRequest.call(this, 'POST', endpoint, body);
 					} else if (operation === 'remove') {
 						// ----------------------------------------

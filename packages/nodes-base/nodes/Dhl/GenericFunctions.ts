@@ -33,7 +33,7 @@ export async function dhlApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api-eu.dhl.com${path}`,
+		uri: uri ?? `https://api-eu.dhl.com${path}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -66,7 +66,7 @@ export async function validateCredentials(
 			trackingNumber: 123,
 		},
 		method: 'GET',
-		uri: `https://api-eu.dhl.com/track/shipments`,
+		uri: 'https://api-eu.dhl.com/track/shipments',
 		json: true,
 	};
 

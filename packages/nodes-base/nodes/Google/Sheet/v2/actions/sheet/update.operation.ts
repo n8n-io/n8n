@@ -171,7 +171,7 @@ export async function execute(
 
 	const options = this.getNodeParameter('options', 0, {});
 
-	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+	const valueRenderMode = (options.valueRenderMode ?? 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const locationDefineOptions = (options.locationDefine as IDataObject)?.values as IDataObject;
 
@@ -232,7 +232,7 @@ export async function execute(
 			if (handlingExtraDataOption === 'error') {
 				Object.keys(items[i].json).forEach((key) => {
 					if (!columnNames.includes(key)) {
-						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+						throw new NodeOperationError(this.getNode(), 'Unexpected fields in node input', {
 							itemIndex: i,
 							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
 						});
@@ -251,9 +251,14 @@ export async function execute(
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
-			const fields = (
-				(this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]) || []
-			).reduce((acc, entry) => {
+			const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+			if (!valuesToSend?.length) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			const fields = valuesToSend.reduce((acc, entry) => {
 				if (entry.column === 'newColumn') {
 					const columnName = entry.columnName as string;
 

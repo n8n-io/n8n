@@ -83,7 +83,7 @@ export async function mediaUploadFromItem(
 	const data = new FormData();
 	data.append('file', await BinaryDataManager.getInstance().retrieveBinaryData(binaryFile), {
 		contentType: mimeType,
-		filename: mediaFileName || binaryFileName,
+		filename: mediaFileName ?? binaryFileName,
 	});
 	data.append('messaging_product', 'whatsapp');
 
@@ -105,7 +105,7 @@ export async function mediaUploadFromItem(
 		set(
 			requestOptions.body as IDataObject,
 			`${operation}.filename`,
-			mediaFileName || binaryFileName,
+			mediaFileName ?? binaryFileName,
 		);
 	}
 

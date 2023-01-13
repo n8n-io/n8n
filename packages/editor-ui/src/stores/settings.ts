@@ -38,6 +38,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			enabled: false,
 			latestVersion: 0,
 			path: '/',
+			swaggerUi: {
+				enabled: false,
+			},
 		},
 		onboardingCallPromptEnabled: false,
 		saveDataErrorExecution: 'all',
@@ -56,6 +59,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		isPublicApiEnabled(): boolean {
 			return this.api.enabled;
+		},
+		isSwaggerUIEnabled(): boolean {
+			return this.api.swaggerUi.enabled;
 		},
 		publicApiLatestVersion(): number {
 			return this.api.latestVersion;
@@ -139,9 +145,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.userManagement.enabled = settings.userManagement.enabled;
 			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			this.userManagement.smtpSetup = settings.userManagement.smtpSetup;
-			this.api.enabled = settings.publicApi.enabled;
-			this.api.latestVersion = settings.publicApi.latestVersion;
-			this.api.path = settings.publicApi.path;
+			this.api = settings.publicApi;
 			this.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 		},
 		async getSettings(): Promise<void> {

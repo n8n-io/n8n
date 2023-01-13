@@ -166,9 +166,11 @@ function recommendedCategory(
 				i18n.baseText('nodeCreator.actionsCategory.recommended'),
 			),
 			actionKey: categoryItem.value as string,
-			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: { event: startCase(categoryItem.name) },
-			}),
+			displayName:
+				categoryItem.action ??
+				i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+					interpolate: { event: startCase(categoryItem.name) },
+				}),
 			description: categoryItem.description || '',
 			displayOptions: matchedProperty.displayOptions,
 			values: {
@@ -306,8 +308,16 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
-			const mergedNodes = this.visibleNodesWithActions.reduce(
-				(acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
+			const mergedNodes = [...this.visibleNodesWithActions]
+				// Sort triggers so they are always on top and when later get merged
+				// they won't be discarded if they have the same name as a core node which doesn't contain actions
+				.sort((a, b) => {
+					if (a.group.includes('trigger')) return -1;
+					if (b.group.includes('trigger')) return 1;
+
+					return 0;
+				})
+				.reduce((acc: Record<string, INodeTypeDescription>, node: INodeTypeDescription) => {
 					const clonedNode = deepCopy(node);
 					const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
 					const actions = node.actions || [];
@@ -324,14 +334,15 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 						acc[normalizedName].displayName = node.displayName.replace('Trigger', '');
 					}
 
-					acc[normalizedName].actions = filterSinglePlaceholderAction(
-						acc[normalizedName].actions || [],
-					);
 					return acc;
-				},
-				{},
-			);
-			return Object.values(mergedNodes);
+				}, {});
+
+			const filteredNodes = Object.values(mergedNodes).map((node) => ({
+				...node,
+				actions: filterSinglePlaceholderAction(node.actions || []),
+			}));
+
+			return filteredNodes;
 		},
 		getNodeTypesWithManualTrigger:
 			() =>
@@ -339,8 +350,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				if (!nodeType) return [];
 
 				const { workflowTriggerNodes } = useWorkflowsStore();
-				const isTrigger =
-					nodeType.toLocaleLowerCase().includes('trigger') || nodeType === WEBHOOK_NODE_TYPE;
+				const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;

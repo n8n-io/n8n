@@ -273,7 +273,7 @@ export class Odoo implements INodeType {
 					if (result.error || !result.result) {
 						return {
 							status: 'Error',
-							message: `Credentials are not valid`,
+							message: 'Credentials are not valid',
 						};
 					} else if (result.error) {
 						return {

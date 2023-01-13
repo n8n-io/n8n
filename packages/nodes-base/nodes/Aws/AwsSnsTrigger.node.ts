@@ -18,7 +18,7 @@ import { get } from 'lodash';
 export class AwsSnsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'AWS SNS Trigger',
-		subtitle: `={{$parameter["topic"].split(':')[5]}}`,
+		subtitle: '={{$parameter["topic"].split(\':\')[5]}}',
 		name: 'awsSnsTrigger',
 		icon: 'file:sns.svg',
 		group: ['trigger'],

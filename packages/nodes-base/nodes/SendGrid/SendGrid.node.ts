@@ -101,7 +101,7 @@ export class SendGrid implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await sendGridApiRequestAllItems.call(
 					this,
-					`/marketing/lists`,
+					'/marketing/lists',
 					'GET',
 					'result',
 					{},
@@ -323,7 +323,7 @@ export class SendGrid implements INodeType {
 						qs.ids = (this.getNodeParameter('ids', i) as string).replace(/\s/g, '');
 						responseData = await sendGridApiRequest.call(
 							this,
-							`/marketing/contacts`,
+							'/marketing/contacts',
 							'DELETE',
 							{},
 							qs,
@@ -355,7 +355,7 @@ export class SendGrid implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await sendGridApiRequestAllItems.call(
 							this,
-							`/marketing/lists`,
+							'/marketing/lists',
 							'GET',
 							'result',
 							{},
@@ -601,7 +601,7 @@ export class SendGrid implements INodeType {
 
 								attachmentsToSend.push({
 									content: dataBuffer.toString('base64'),
-									filename: binaryProperty.fileName || 'unknown',
+									filename: binaryProperty.fileName ?? 'unknown',
 									type: binaryProperty.mimeType,
 								});
 							}
