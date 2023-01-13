@@ -11,44 +11,7 @@ import {
 
 import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function payPalApiRequest(
-	this:
-		| IHookFunctions
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| ILoadOptionsFunctions
-		| IWebhookFunctions,
-	endpoint: string,
-	method: string,
-
-	body: any = {},
-	query?: IDataObject,
-	uri?: string,
-): Promise<any> {
-	const credentials = await this.getCredentials('payPalApi');
-	const env = getEnvironment(credentials.env as string);
-	const tokenInfo = await getAccessToken.call(this);
-	const headerWithAuthentication = Object.assign(
-		{},
-		{ Authorization: `Bearer ${tokenInfo.access_token}`, 'Content-Type': 'application/json' },
-	);
-	const options = {
-		headers: headerWithAuthentication,
-		method,
-		qs: query || {},
-		uri: uri || `${env}/v1${endpoint}`,
-		body,
-		json: true,
-	};
-	try {
-		return await this.helpers.request(options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-}
-
-function getEnvironment(env: string): string {
-	// @ts-ignore
+function getEnvironment(env: string) {
 	return {
 		sanbox: 'https://api-m.sandbox.paypal.com',
 		live: 'https://api-m.paypal.com',
@@ -118,7 +81,7 @@ export async function payPalApiRequest(
 		json: true,
 	};
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

@@ -59,7 +59,7 @@ export async function getToken(
 	};
 
 	try {
-		const response = await this.helpers.request!(requestOptions);
+		const response = await this.helpers.request(requestOptions);
 
 		if (typeof response === 'string') {
 			throw new NodeOperationError(
@@ -231,71 +231,6 @@ export async function getScripts(this: ILoadOptionsFunctions): Promise<any> {
 	}
 }
 
-function parseScriptsList(scripts: ScriptObject[]): INodePropertyOptions[] {
-	const returnData: INodePropertyOptions[] = [];
-	for (const script of scripts) {
-		if (script.isFolder!) {
-			returnData.push(...parseScriptsList(script.folderScriptNames!));
-		} else if (script.name !== '-') {
-			returnData.push({
-				name: script.name,
-				value: script.name,
-			});
-		}
-	}
-	return returnData;
-}
-
-export async function getToken(
-	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
-): Promise<any> {
-	const credentials = await this.getCredentials('fileMaker');
-
-	const host = credentials.host as string;
-	const db = credentials.db as string;
-	const login = credentials.login as string;
-	const password = credentials.password as string;
-
-	const url = `https://${host}/fmi/data/v1/databases/${db}/sessions`;
-
-	// Reset all values
-	const requestOptions: OptionsWithUri = {
-		uri: url,
-		headers: {},
-		method: 'POST',
-		json: true,
-		//rejectUnauthorized: !this.getNodeParameter('allowUnauthorizedCerts', itemIndex, false) as boolean,
-	};
-	requestOptions.auth = {
-		user: login,
-		pass: password,
-	};
-	requestOptions.body = {
-		fmDataSource: [
-			{
-				database: host,
-				username: login,
-				password,
-			},
-		],
-	};
-
-	try {
-		const response = await this.helpers.request(requestOptions);
-
-		if (typeof response === 'string') {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Response body is not valid JSON. Change "Response Format" to "String"',
-			);
-		}
-
-		return response.response.token;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-}
-
 export async function logout(
 	this: ILoadOptionsFunctions | IExecuteFunctions | IExecuteSingleFunctions,
 	token: string,
@@ -328,17 +263,12 @@ export async function logout(
 
 		return response;
 	} catch (error) {
-		const message =
-			(error.response.body.messages[0].message as string) +
-			'(' +
-			(error.response.body.messages[0].message as string) +
-			')';
+		const errorMessage = `${error.response.body.messages[0].message}'(' + ${error.response.body.messages[0].message}')'`;
 
-		if (message !== undefined) {
-			throw new NodeApiError(this.getNode(), error, { message });
+		if (errorMessage !== undefined) {
+			throw new Error(errorMessage);
 		}
-
-		throw new NodeApiError(this.getNode(), error.response.body);
+		throw error.response.body;
 	}
 }
 
@@ -351,9 +281,7 @@ export function parseSort(this: IExecuteFunctions, i: number): object | null {
 		sort = [];
 		const sortParametersUi = this.getNodeParameter('sortParametersUi', i, {}) as IDataObject;
 		if (sortParametersUi.rules !== undefined) {
-			// @ts-ignore
 			for (const parameterData of sortParametersUi.rules as IDataObject[]) {
-				// @ts-ignore
 				sort.push({
 					fieldName: parameterData.name as string,
 					sortOrder: parameterData.value,
@@ -397,47 +325,40 @@ export function parsePortals(this: IExecuteFunctions, i: number): object | null 
 	} else {
 		portals = this.getNodeParameter('portals', i);
 	}
-	// @ts-ignore
-	return portals;
+	return portals as IDataObject;
 }
 
 export function parseQuery(this: IExecuteFunctions, i: number): object | null {
 	let queries;
 	const queriesParamUi = this.getNodeParameter('queries', i, {}) as IDataObject;
 	if (queriesParamUi.query !== undefined) {
-		// @ts-ignore
 		queries = [];
 		for (const queryParam of queriesParamUi.query as IDataObject[]) {
-			const query = {
+			const query: IDataObject = {
 				omit: queryParam.omit ? 'true' : 'false',
 			};
-			// @ts-ignore
-			for (const field of queryParam.fields!.field as IDataObject[]) {
-				// @ts-ignore
-				query[field.name] = field.value;
+			for (const field of (queryParam.fields as IDataObject).field as IDataObject[]) {
+				query[field.name as string] = field.value;
 			}
 			queries.push(query);
 		}
 	} else {
 		queries = null;
 	}
-	// @ts-ignore
 	return queries;
 }
 
 export function parseFields(this: IExecuteFunctions, i: number): object | null {
-	let fieldData;
+	let fieldData: IDataObject | null;
 	const fieldsParametersUi = this.getNodeParameter('fieldsParametersUi', i, {}) as IDataObject;
 	if (fieldsParametersUi.fields !== undefined) {
-		// @ts-ignore
 		fieldData = {};
 		for (const field of fieldsParametersUi.fields as IDataObject[]) {
-			// @ts-ignore
-			fieldData[field.name] = field.value;
+			fieldData[field.name as string] = field.value;
 		}
 	} else {
 		fieldData = null;
 	}
-	// @ts-ignore
+
 	return fieldData;
 }

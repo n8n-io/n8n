@@ -26,7 +26,7 @@ export async function lineApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || '',
+		uri: uri ?? '',
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -36,7 +36,6 @@ export async function lineApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'lineNotifyOAuth2Api', options, {
 			tokenType: 'Bearer',
 		});

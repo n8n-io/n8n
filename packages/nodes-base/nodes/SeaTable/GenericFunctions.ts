@@ -54,7 +54,7 @@ export async function getBaseAccessToken(
 		json: true,
 	};
 
-	ctx.base = await this.helpers.request!(options);
+	ctx.base = await this.helpers.request(options);
 }
 
 function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
@@ -107,7 +107,6 @@ export async function seaTableApiRequest(
 	}
 
 	try {
-		//@ts-ignore
 		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -186,31 +185,6 @@ export async function getTableViews(
 		{ table_name: tableName },
 	);
 	return views;
-}
-
-export async function getBaseAccessToken(
-	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	ctx: ICtx,
-) {
-	if (ctx?.base?.access_token !== undefined) {
-		return;
-	}
-
-	const options: OptionsWithUri = {
-		headers: {
-			Authorization: `Token ${ctx?.credentials?.token}`,
-		},
-		uri: `${resolveBaseUri(ctx)}/api/v2.1/dtable/app-access-token/`,
-		json: true,
-	};
-
-	ctx.base = await this.helpers.request(options);
-}
-
-export function resolveBaseUri(ctx: ICtx) {
-	return ctx?.credentials?.environment === 'cloudHosted'
-		? 'https://cloud.seatable.io'
-		: userBaseUri(ctx?.credentials?.domain);
 }
 
 export function simplify(data: { results: IRow[] }, metadata: IDataObject) {

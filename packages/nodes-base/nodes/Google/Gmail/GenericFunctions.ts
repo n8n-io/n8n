@@ -41,7 +41,6 @@ export interface IAttachments {
 	content: string;
 }
 
-// const mailComposer = require('nodemailer/lib/mail-composer');
 import mailComposer = require('nodemailer/lib/mail-composer');
 
 async function getAccessToken(
@@ -69,7 +68,7 @@ async function getAccessToken(
 			iss: credentials.email,
 			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
-			aud: `https://oauth2.googleapis.com/token`,
+			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
 			exp: now + 3600,
 		},
@@ -97,7 +96,7 @@ async function getAccessToken(
 		json: true,
 	};
 
-	return this.helpers.request!(options);
+	return this.helpers.request(options);
 }
 
 export async function googleApiRequest(
@@ -312,9 +311,8 @@ export async function encodeEmail(email: IEmail) {
 	// by default the bcc headers are deleted when the mail is built.
 	// So add keepBcc flag to averride such behaviour. Only works when
 	// the flag is set after the compilation.
-	//https://nodemailer.com/extras/mailcomposer/#bcc
-
-	(mail as any).keepBcc = true;
+	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
+	mail.keepBcc = true;
 
 	const mailBody = await mail.build();
 
@@ -350,62 +348,6 @@ export function extractEmail(s: string) {
 		return data.substring(0, data.length - 1);
 	}
 	return s;
-}
-
-async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: ICredentialDataDecryptedObject,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const scopes = [
-		'https://www.googleapis.com/auth/gmail.labels',
-		'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
-		'https://www.googleapis.com/auth/gmail.addons.current.message.action',
-		'https://mail.google.com/',
-		'https://www.googleapis.com/auth/gmail.modify',
-		'https://www.googleapis.com/auth/gmail.compose',
-	];
-
-	const now = moment().unix();
-
-	credentials.email = (credentials.email as string).trim();
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email,
-			sub: credentials.delegatedEmail || credentials.email,
-			scope: scopes.join(' '),
-			aud: 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request(options);
 }
 
 export function prepareQuery(

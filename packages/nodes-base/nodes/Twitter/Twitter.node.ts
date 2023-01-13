@@ -21,12 +21,8 @@ import {
 
 import { ITweet } from './TweetInterface';
 
-type ISO = {
-	getAllNames: () => string[];
-	getCode: (name: string) => string;
-};
-
-import ISO6391 = require('iso-639-1');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ISO6391 = require('iso-639-1');
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
@@ -81,12 +77,10 @@ export class Twitter implements INodeType {
 			// select them easily
 			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const ISO = ISO6391 as unknown as ISO;
-
-				const languages = ISO.getAllNames();
+				const languages = ISO6391.getAllNames();
 				for (const language of languages) {
 					const languageName = language;
-					const languageId = ISO.getCode(language);
+					const languageId = ISO6391.getCode(language);
 					returnData.push({
 						name: languageName,
 						value: languageId,

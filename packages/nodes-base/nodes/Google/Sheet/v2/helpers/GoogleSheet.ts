@@ -466,7 +466,7 @@ export class GoogleSheet {
 		}
 
 		const columnValues: Array<string | number> =
-			columnValuesList ||
+			columnValuesList ??
 			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
 
 		const updateData: ISheetUpdateData[] = [];

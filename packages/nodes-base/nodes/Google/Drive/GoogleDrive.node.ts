@@ -2589,7 +2589,7 @@ export class GoogleDrive implements INodeType {
 
 							let offset = 0;
 							for await (const chunk of fileContent) {
-								const nextOffset = offset + chunk.length;
+								const nextOffset = offset + Number(chunk.length);
 								try {
 									const response = await this.helpers.httpRequest({
 										method: 'PUT',

@@ -315,8 +315,6 @@ export class EmailReadImapV2 implements INodeType {
 		// Returns the email attachments
 		const getAttachment = async (
 			imapConnection: ImapSimple,
-			// tslint:disable-next-line:no-any
-
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {

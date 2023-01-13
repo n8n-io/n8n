@@ -150,24 +150,27 @@ return items;`,
 
 		const mode = this.getMode();
 
-		const options = {
+		const options: vm2.NodeVMOptions = {
 			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
 			require: {
-				external: false as boolean | { modules: string[] },
+				external: false as boolean | { modules: string[]; transitive: boolean },
 				builtin: [] as string[],
 			},
 		};
 
-		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
+		if (process.env.NODE_FUNCTION_ALLOW_BUILTIN && typeof options.require === 'object') {
 			options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 		}
 
-		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-			options.require.external = { modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(',') };
+		if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL && typeof options.require === 'object') {
+			options.require.external = {
+				modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+				transitive: false,
+			};
 		}
 
-		const vm = new NodeVM(options as unknown as vm2.NodeVMOptions);
+		const vm = new NodeVM(options);
 
 		if (mode === 'manual') {
 			vm.on('console.log', this.sendMessageToUI);
