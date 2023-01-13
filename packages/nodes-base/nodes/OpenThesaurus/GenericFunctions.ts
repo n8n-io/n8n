@@ -27,7 +27,7 @@ export async function openThesaurusApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri || `https://www.openthesaurus.de${resource}`,
+			uri: uri ?? `https://www.openthesaurus.de${resource}`,
 			json: true,
 		};
 

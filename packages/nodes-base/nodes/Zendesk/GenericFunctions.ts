@@ -9,6 +9,14 @@ import {
 
 import { IDataObject } from 'n8n-workflow';
 
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+	}
+}
+
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -33,7 +41,7 @@ export async function zendeskApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || getUri(resource, credentials.subdomain),
+		uri: uri ?? getUri(resource, credentials.subdomain),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -89,12 +97,4 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
-}
-
-function getUri(resource: string, subdomain: string) {
-	if (resource.includes('webhooks')) {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
-	} else {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
-	}
 }
