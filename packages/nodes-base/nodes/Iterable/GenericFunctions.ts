@@ -24,7 +24,7 @@ export async function iterableApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.iterable.com/api${resource}`,
+		uri: uri ?? `https://api.iterable.com/api${resource}`,
 		json: true,
 	};
 	try {

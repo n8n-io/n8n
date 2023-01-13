@@ -26,7 +26,7 @@ export async function ouraApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.ouraring.com/v1${resource}`,
+		uri: uri ?? `https://api.ouraring.com/v1${resource}`,
 		json: true,
 	};
 

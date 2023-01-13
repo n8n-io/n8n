@@ -46,8 +46,7 @@ export function adjustPutItem(putItemUi: PutItemUi) {
 			type = 'BOOL';
 		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
 			type = 'M';
-			// @ts-ignore
-		} else if (isNaN(value)) {
+		} else if (isNaN(Number(value))) {
 			type = 'S';
 		} else {
 			type = 'N';
@@ -64,6 +63,8 @@ export function simplify(item: IAttributeValue): IDataObject {
 
 	for (const [attribute, value] of Object.entries(item)) {
 		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
+		//nedded as simplify is used in decodeItem
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		output[attribute] = decodeAttribute(type, content);
 	}
 

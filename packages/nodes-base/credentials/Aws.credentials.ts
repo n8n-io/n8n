@@ -303,7 +303,9 @@ export class Aws implements ICredentialType {
 			} else if (service) {
 				endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
 			}
-			endpoint = new URL(endpointString!.replace('{region}', credentials.region as string) + path);
+			endpoint = new URL(
+				endpointString!.replace('{region}', credentials.region as string) + (path as string),
+			);
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);

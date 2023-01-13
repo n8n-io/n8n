@@ -13,7 +13,7 @@ import { AttributesValuesUi, CommentAnalyzeBody, Language, RequestedAttributes }
 
 import { googleApiRequest } from './GenericFunctions';
 
-const ISO6391 = require('iso-639-1');
+import ISO6391 from 'iso-639-1';
 
 export class GooglePerspective implements INodeType {
 	description: INodeTypeDescription = {
