@@ -10,6 +10,7 @@ import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
 import type { Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import type { EditorState } from '@codemirror/state';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -59,44 +60,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		segments(): Segment[] {
 			if (!this.editor) return [];
 
-			const rawSegments: RawSegment[] = [];
-
-			const fullTree = ensureSyntaxTree(
-				this.editor.state,
-				this.editor.state.doc.length,
-				EXPRESSION_EDITOR_PARSER_TIMEOUT,
-			);
-
-			if (fullTree === null) {
-				throw new Error(`Failed to parse expression: ${this.editor.state.doc.toString()}`);
-			}
-
-			fullTree.cursor().iterate((node) => {
-				if (!this.editor || node.type.name === 'Program') return;
-
-				rawSegments.push({
-					from: node.from,
-					to: node.to,
-					text: this.editor.state.sliceDoc(node.from, node.to),
-					type: node.type.name,
-				});
-			});
-
-			return rawSegments.reduce<Segment[]>((acc, segment) => {
-				const { from, to, text, type } = segment;
-
-				if (type === 'Resolvable') {
-					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
-
-					return acc;
-				}
-
-				acc.push({ kind: 'plaintext', from, to, plaintext: text });
-
-				return acc;
-			}, []);
+			return this.toSegments(this.editor.state);
 		},
 
 		evaluationDelay() {
@@ -177,6 +141,46 @@ export const expressionManager = mixins(workflowHelpers).extend({
 	methods: {
 		isEmptyExpression(resolvable: string) {
 			return /\{\{\s*\}\}/.test(resolvable);
+		},
+
+		toSegments(state: EditorState) {
+			const rawSegments: RawSegment[] = [];
+
+			const fullTree = ensureSyntaxTree(state, state.doc.length, EXPRESSION_EDITOR_PARSER_TIMEOUT);
+
+			if (fullTree === null) {
+				throw new Error(`Failed to parse expression: ${state.doc.toString()}`);
+			}
+
+			fullTree.cursor().iterate((node) => {
+				if (!this.editor || node.type.name === 'Program') return;
+
+				rawSegments.push({
+					from: node.from,
+					to: node.to,
+					text: state.sliceDoc(node.from, node.to),
+					type: node.type.name,
+				});
+			});
+
+			// console.log('rawSegments', rawSegments);
+
+			return rawSegments.reduce<Segment[]>((acc, segment) => {
+				const { from, to, text, type } = segment;
+
+				if (type === 'Resolvable') {
+					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+					// console.log('text', text);
+
+					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
+
+					return acc;
+				}
+
+				acc.push({ kind: 'plaintext', from, to, plaintext: text });
+
+				return acc;
+			}, []);
 		},
 
 		resolve(resolvable: string, targetItem?: TargetItem) {

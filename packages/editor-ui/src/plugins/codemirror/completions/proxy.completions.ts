@@ -58,7 +58,8 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
-	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
+	const SKIP_SET = new Set(['__ob__', 'pairedItem', 'context']);
+	const BOOSTED_KEYS = ['item'];
 
 	if (word.text.includes('json[')) {
 		return Object.keys(proxy.json as object)
@@ -78,6 +79,12 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 			if (word.text.endsWith('json.')) return !SKIP_SET.has(key) && isAllowedInDotNotation(key);
 
 			return !SKIP_SET.has(key);
+		})
+		.sort((a, b) => {
+			if (BOOSTED_KEYS.includes(a)) return -1;
+			if (BOOSTED_KEYS.includes(b)) return 1;
+
+			return a.localeCompare(b);
 		})
 		.map((key) => {
 			ensureKeyCanBeResolved(proxy, key);

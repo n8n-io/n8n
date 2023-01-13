@@ -5,10 +5,18 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { EditorView, ViewUpdate } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
-import { history } from '@codemirror/commands';
 import { ExpressionExtensions } from 'n8n-workflow';
+import { EditorView, keymap, ViewUpdate } from '@codemirror/view';
+import { EditorState, Extension, Prec } from '@codemirror/state';
+import { history } from '@codemirror/commands';
+import {
+	autocompletion,
+	Completion,
+	completionStatus,
+	currentCompletions,
+	selectedCompletion,
+	selectedCompletionIndex,
+} from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -16,8 +24,8 @@ import { expressionManager } from '@/mixins/expressionManager';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
-import { autocompletion } from '@codemirror/autocomplete';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
+import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'InlineExpressionEditorInput',
@@ -77,7 +85,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		ndvInputData(): object {
 			return this.ndvStore.ndvInputData;
 		},
-		extensionsCategories() {
+		expressionExtensionsCategories() {
 			return ExpressionExtensions.reduce<Record<string, string>>((acc, cur) => {
 				for (const funcName of Object.keys(cur.functions)) {
 					acc[funcName] = cur.typeName;
@@ -86,11 +94,60 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				return acc;
 			}, {});
 		},
+		previewKeymap(): Extension {
+			return keymap.of([
+				{
+					key: 'Escape',
+					run: (view) => {
+						if (completionStatus(view.state) !== null) {
+							// on dismissing completions, recompute to clear preview
+							this.$emit('change', {
+								value: this.unresolvedExpression,
+								segments: this.displayableSegments,
+							});
+						}
+
+						return false;
+					},
+				},
+				{
+					key: 'ArrowUp',
+					run: (view) => {
+						const completion = this.getCompletion('previous');
+
+						if (completion === null) return false;
+
+						const previewSegments = this.toPreviewSegments(completion, view.state);
+
+						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+
+						return false;
+					},
+				},
+				{
+					key: 'ArrowDown',
+					run: (view) => {
+						const completion = this.getCompletion('next');
+
+						if (completion === null) return false;
+
+						const previewSegments = this.toPreviewSegments(completion, view.state);
+
+						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+
+						return false;
+					},
+				},
+			]);
+		},
 	},
 	mounted() {
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
-			autocompletion(),
+			Prec.highest(this.previewKeymap),
+			autocompletion({
+				aboveCursor: true,
+			}),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),
@@ -102,7 +159,19 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				},
 			}),
 			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor || !viewUpdate.docChanged) return;
+				if (!this.editor) return;
+
+				const completion = selectedCompletion(this.editor.state);
+
+				if (completion) {
+					const previewSegments = this.toPreviewSegments(completion, this.editor.state);
+
+					completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+
+					return;
+				}
+
+				if (!viewUpdate.docChanged) return;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
@@ -113,12 +182,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 					this.trackCompletion(viewUpdate);
 				} catch (_) {}
 
-				setTimeout(() => {
-					this.$emit('change', {
-						value: this.unresolvedExpression,
-						segments: this.displayableSegments,
-					});
-				}, this.evaluationDelay);
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 
@@ -144,6 +211,36 @@ export default mixins(expressionManager, workflowHelpers).extend({
 		focus() {
 			this.editor?.focus();
 		},
+		getCompletion(which: 'previous' | 'next') {
+			if (!this.editor) return null;
+
+			if (completionStatus(this.editor.state) !== 'active') return null;
+
+			const currentIndex = selectedCompletionIndex(this.editor.state);
+
+			if (currentIndex === null) return null;
+
+			const requestedIndex = which === 'previous' ? currentIndex - 1 : currentIndex + 1;
+
+			return currentCompletions(this.editor.state)[requestedIndex] ?? null;
+		},
+		toPreviewSegments(completion: Completion, state: EditorState) {
+			const firstHalf = state.doc.slice(0, this.cursorPosition).toString();
+			const secondHalf = state.doc.slice(this.cursorPosition, state.doc.length).toString();
+
+			const previewDoc = [
+				firstHalf,
+				firstHalf.endsWith('$') ? completion.label.slice(1) : completion.label,
+				secondHalf,
+			].join('');
+
+			const previewState = EditorState.create({
+				doc: previewDoc,
+				extensions: [n8nLang()],
+			});
+
+			return this.toSegments(previewState);
+		},
 		trackCompletion(viewUpdate: ViewUpdate) {
 			if (!this.editor) return;
 
@@ -159,7 +256,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 
 				completion = this.editor.state.doc.slice(fromB, toB).toString();
 
-				const completionBaseStartIndex = this.findStartOfCompletion(fromB);
+				const completionBaseStartIndex = this.findCompletionStart(fromB);
 
 				completionBase = this.editor.state.doc
 					.slice(completionBaseStartIndex, fromB - 1)
@@ -167,7 +264,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 					.trim();
 			});
 
-			const category = this.extensionsCategories[completion];
+			const category = this.expressionExtensionsCategories[completion];
 
 			const payload = {
 				instance_id: this.rootStore.instanceId,
@@ -176,12 +273,12 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				field_type: 'expression',
 				context: completionBase,
 				inserted_text: completion,
-				category: category ?? 'n/a', // only applicable for expression extension completion
+				category: category ?? 'none', // only applicable for expression extension completion
 			};
 
 			this.$telemetry.track('User autocompleted code', payload);
 		},
-		findStartOfCompletion(fromIndex: number) {
+		findCompletionStart(fromIndex: number) {
 			if (!this.editor) return -1;
 
 			const INDICATORS = [
@@ -189,7 +286,7 @@ export default mixins(expressionManager, workflowHelpers).extend({
 				'{ ', // primitive
 			];
 
-			const doc = this.editor?.state.doc.toString();
+			const doc = this.editor.state.doc.toString();
 
 			for (let index = fromIndex; index > 0; index--) {
 				if (INDICATORS.some((indicator) => indicator === doc[index] + doc[index + 1])) {

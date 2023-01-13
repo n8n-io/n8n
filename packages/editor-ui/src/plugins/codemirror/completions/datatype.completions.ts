@@ -7,14 +7,16 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
  * Completions from datatypes to native JS methods (pending) and expression extensions.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
-	const numberRegex = /[\S]+\.(\w|\W)*/;
-	const stringRegex = /(".+"|('.+'))\.(\w|\W)*/;
-	const arrayRegex = /(\[.+\])\.(\w|\W)*/;
-	const objectRegex = /(\{.*\})\.(\w|\W)*/;
-	const dateRegex = /\(?new Date\(\(?.*?\)\)?\.(\w|\W)*/;
+	const referenceRegex = /\$[\S]+\.(\w|\W)*/; // $input.item.json.name.
+	const numberRegex = /(\d+)\.?(\d*)\.(\w|\W)*/; // 123. or 123.4.
+	const stringRegex = /(".+"|('.+'))\.(\w|\W)*/; // 'abc'. or "abc".
+	const arrayRegex = /(\[.+\])\.(\w|\W)*/; // [1, 2, 3].
+	const objectRegex = /(\{.*\})\.(\w|\W)*/; // ({}).
+	const dateRegex = /\(?new Date\(\(?.*?\)\)?\.(\w|\W)*/; // new Date(). or (new Date()).
 
 	const combinedRegex = new RegExp(
 		[
+			referenceRegex.source,
 			numberRegex.source,
 			stringRegex.source,
 			arrayRegex.source,
@@ -66,9 +68,15 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 		typeof resolved === 'object' &&
 		!resolved.isProxy &&
 		!resolved.json &&
-		!toResolve.endsWith('json')
+		!toResolve.endsWith('json') &&
+		!toResolve.startsWith('{') &&
+		!toResolve.endsWith('}')
 	) {
-		// object extension completions apply only to native objects
+		/**
+		 * Object expression extensions are _only_ completed for
+		 * - bracketed object literals: `({}).`
+		 * - referenced objects: `$input.item.json.myObj.`
+		 */
 		options = extensionOptions('Object');
 	}
 

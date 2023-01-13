@@ -75,6 +75,7 @@ import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/In
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
+import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -109,6 +110,12 @@ export default Vue.extend({
 			default: false,
 		},
 	},
+	mounted() {
+		completionEvaluationEventBus.$on('preview-in-output', this.previewSegments);
+	},
+	destroyed() {
+		completionEvaluationEventBus.$off('preview-in-output', this.previewSegments);
+	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItemNumber(): number {
@@ -122,6 +129,9 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		previewSegments(previewSegments: Segment[]) {
+			this.segments = previewSegments;
+		},
 		focus() {
 			const inlineInput = this.$refs.inlineInput as (Vue & HTMLElement) | undefined;
 

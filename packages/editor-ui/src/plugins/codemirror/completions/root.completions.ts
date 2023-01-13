@@ -32,8 +32,16 @@ export function rootCompletions(context: CompletionContext): CompletionResult | 
 	};
 }
 
-function generateOptions() {
-	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => a.localeCompare(b));
+export function generateOptions() {
+	const BOOSTED_KEYS = ['$input', '$json'];
+
+	// @TODO: Add $parameter to i18n and remove here
+	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => {
+		if (BOOSTED_KEYS.includes(a)) return -1;
+		if (BOOSTED_KEYS.includes(b)) return 1;
+
+		return a.localeCompare(b);
+	});
 
 	const options: Completion[] = rootKeys.map((key) => {
 		const option: Completion = {
