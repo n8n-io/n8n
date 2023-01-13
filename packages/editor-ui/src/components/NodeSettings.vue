@@ -459,14 +459,6 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 			this.hiddenIssuesInputs.push('credentials');
 			this.parametersNoneSetting.forEach((parameter) => {
-				const containsDynamicOptions =
-					typeof (
-						parameter?.typeOptions?.loadOptions || parameter?.typeOptions?.loadOptionsMethod
-					) !== 'undefined';
-
-				// If the parameter has dynamic options, we do not want to suppress the issue
-				if (containsDynamicOptions) return;
-
 				this.hiddenIssuesInputs.push(parameter.name);
 			});
 
