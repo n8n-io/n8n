@@ -52,6 +52,10 @@ export default defineComponent({
 			props.items.forEach((item) => (itemSizeCache[item[props.itemKey]] = props.itemSize));
 		}
 
+		function setItemSize(itemKey: string, size: number) {
+			itemSizeCache[itemKey] = size;
+		}
+
 		/**
 		 * Event handlers
 		 */
@@ -77,14 +81,25 @@ export default defineComponent({
 		 */
 
 		const startIndex = computed(() => {
-			const index = Math.floor(scrollTop.value / props.itemSize) - props.offset;
+			const index =
+				props.items.findIndex((item) => {
+					const key = item[props.itemKey];
+					const position = itemPositionCache.value[key];
+
+					return position >= scrollTop.value;
+				}) - props.offset;
 
 			return index < 0 ? 0 : index;
 		});
 
 		const endIndex = computed(() => {
-			const index =
-				startIndex.value + Math.ceil(wrapperHeight.value / props.itemSize) + props.offset;
+			const foundIndex = props.items.findIndex((item) => {
+				const key = item[props.itemKey];
+				const position = itemPositionCache.value[key];
+
+				return position >= scrollTop.value + wrapperHeight.value;
+			});
+			const index = foundIndex === -1 ? props.items.length - 1 : foundIndex + props.offset;
 
 			return index >= props.items.length ? props.items.length - 1 : index;
 		});
@@ -135,6 +150,7 @@ export default defineComponent({
 			scrollerScrollTop: scrollTop,
 			scrollerRef,
 			wrapperRef,
+			setItemSize,
 		};
 	},
 });
@@ -149,7 +165,7 @@ export default defineComponent({
 				:key="item[itemKey]"
 				:style="itemStyles(item[itemKey])"
 			>
-				<slot :item="item" />
+				<slot :item="item" :setItemSize="setItemSize" />
 			</div>
 		</div>
 	</div>
