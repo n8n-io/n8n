@@ -36,7 +36,6 @@ export class MessageEventBusDestinationSentry
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.label = options.label ?? 'Sentry DSN';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
@@ -65,8 +64,9 @@ export class MessageEventBusDestinationSentry
 		try {
 			const payload = this.anonymizeAuditMessages ? msg.anonymize() : msg.payload;
 			const scope: Sentry.Scope = new Sentry.Scope();
-			const level = // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-				(msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log') as Sentry.SeverityLevel;
+			const level = (
+				msg.eventName.toLowerCase().endsWith('error') ? 'error' : 'log'
+			) as Sentry.SeverityLevel;
 			scope.setLevel(level);
 			scope.setTags({
 				event: msg.getEventName(),
@@ -108,7 +108,6 @@ export class MessageEventBusDestinationSentry
 	): MessageEventBusDestinationSentry | null {
 		if (
 			'__type' in data &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			data.__type === MessageEventBusDestinationTypeNames.sentry &&
 			isMessageEventBusDestinationSentryOptions(data)
 		) {

@@ -74,7 +74,6 @@ class MessageEventBus extends EventEmitter {
 
 		LoggerProxy.debug('Initializing event bus...');
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const savedEventDestinations = await Db.collections.EventDestinations.find({});
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
@@ -229,10 +228,8 @@ class MessageEventBus extends EventEmitter {
 		if (id && Object.keys(this.destinations).includes(id)) {
 			result = [this.destinations[id].serialize()];
 		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
@@ -276,11 +273,7 @@ class MessageEventBus extends EventEmitter {
 		for (const msg of msgs) {
 			this.logWriter?.putMessage(msg);
 			// if there are no set up destinations, immediately mark the event as sent
-			if (
-				!isLogStreamingEnabled() ||
-				Object.keys(this.destinations).length === 0 ||
-				!this.hasAnyDestinationSubscribedToEvent(msg)
-			) {
+			if (!this.shouldSendMsg(msg)) {
 				this.confirmSent(msg, { id: '0', name: 'eventBus' });
 			}
 			await this.emitMessage(msg);
@@ -319,15 +312,19 @@ class MessageEventBus extends EventEmitter {
 
 		// LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
-		if (
-			isLogStreamingEnabled() &&
-			Object.keys(this.destinations).length > 0 &&
-			this.hasAnyDestinationSubscribedToEvent(msg)
-		) {
+		if (this.shouldSendMsg(msg)) {
 			for (const destinationName of Object.keys(this.destinations)) {
 				this.emit(this.destinations[destinationName].getId(), msg);
 			}
 		}
+	}
+
+	shouldSendMsg(msg: EventMessageTypes): boolean {
+		return (
+			isLogStreamingEnabled() &&
+			Object.keys(this.destinations).length > 0 &&
+			this.hasAnyDestinationSubscribedToEvent(msg)
+		);
 	}
 
 	async getEventsAll(): Promise<EventMessageTypes[]> {

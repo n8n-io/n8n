@@ -48,7 +48,11 @@ export class MessageEventBusLogWriter {
 
 	static options: Required<MessageEventBusLogWriterOptions>;
 
-	private worker: Worker | null;
+	private _worker: Worker | undefined;
+
+	public get worker(): Worker | undefined {
+		return this._worker;
+	}
 
 	/**
 	 * Instantiates the Writer and the corresponding worker thread.
@@ -113,10 +117,9 @@ export class MessageEventBusLogWriter {
 		} else {
 			workerFileName = path.join(parsedName.dir, `${parsedName.name}Worker${parsedName.ext}`);
 		}
-		this.worker = new Worker(workerFileName);
+		this._worker = new Worker(workerFileName);
 		if (this.worker) {
 			this.worker.on('messageerror', async (error) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 				LoggerProxy.error('Event Bus Log Writer thread error, attempting to restart...', error);
 				await MessageEventBusLogWriter.instance.startThread();
 			});
@@ -125,17 +128,10 @@ export class MessageEventBusLogWriter {
 		return false;
 	}
 
-	getWorker(): Worker | undefined {
-		if (this.worker) {
-			return this.worker;
-		}
-		return;
-	}
-
 	async close(): Promise<void> {
 		if (this.worker) {
 			await this.worker.terminate();
-			this.worker = null;
+			this._worker = undefined;
 		}
 	}
 

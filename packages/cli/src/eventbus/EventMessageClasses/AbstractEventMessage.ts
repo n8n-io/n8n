@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
 import type { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -64,7 +63,6 @@ export const isEventMessageOptions = (
 	const o = candidate as AbstractEventMessageOptions;
 	if (!o) return false;
 	if (o.eventName !== undefined) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		if (o.eventName.match(/^[\w\s]+\.[\w\s]+\.[\w\s]+/)) {
 			return true;
 		}
@@ -126,9 +124,7 @@ export abstract class AbstractEventMessage {
 
 	setOptionsOrDefault(options: AbstractEventMessageOptions) {
 		this.id = options.id ?? uuid();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.eventName = options.eventName;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.message = options.message ?? options.eventName;
 		if (typeof options.ts === 'string') {
 			this.ts = DateTime.fromISO(options.ts) ?? DateTime.now();
