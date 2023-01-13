@@ -64,12 +64,16 @@
 					activatorIcon="redo"
 					@select="onRetryMenuItemSelect"
 				/>
-				<font-awesome-icon
-					v-if="execution.mode === 'manual'"
-					:class="[$style.icon, $style.manual]"
-					:title="$locale.baseText('executionsList.manual')"
-					icon="flask"
-				/>
+				<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+					<template #content>
+						<span>{{ $locale.baseText('executionsList.test') }}</span>
+					</template>
+					<font-awesome-icon
+						v-if="execution.mode === 'manual'"
+						:class="[$style.icon, $style.manual]"
+						icon="flask"
+					/>
+				</n8n-tooltip>
 			</div>
 		</router-link>
 	</div>
