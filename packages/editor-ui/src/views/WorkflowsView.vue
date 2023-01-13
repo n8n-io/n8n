@@ -65,9 +65,9 @@
 					/>
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{
-							isDemoTest
-								? $locale.baseText('workflows.empty.viewDemo')
-								: $locale.baseText('workflows.empty.browseTemplates')
+							$locale.baseText(
+								isDemoTest ? 'workflows.empty.viewDemo' : 'workflows.empty.browseTemplates',
+							)
 						}}
 					</n8n-text>
 				</n8n-card>
@@ -207,7 +207,7 @@ export default mixins(showMessage, debounceHelper).extend({
 		},
 		goToTemplates() {
 			if (this.isDemoTest) {
-				this.$router.push('/collections/7');
+				this.$router.push({ name: VIEWS.COLLECTION, params: { id: '7' } });
 				this.$telemetry.track('User clicked on inspect demo workflow', {
 					location: this.allWorkflows.length ? 'workflows' : 'start_page',
 				});

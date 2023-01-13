@@ -108,6 +108,8 @@
 					</div>
 				</template>
 
+				<slot name="callout"></slot>
+
 				<div v-show="hasFilters" class="mt-xs">
 					<n8n-info-tip :bold="false">
 						{{ $locale.baseText(`${resourceKey}.filters.active`) }}
@@ -118,7 +120,6 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<slot name="callout"></slot>
 					<ul
 						:class="[$style.list, 'list-style-none']"
 						v-if="filteredAndSortedSubviewResources.length > 0"
