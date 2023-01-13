@@ -27,6 +27,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 import { mapStores } from 'pinia';
@@ -207,6 +208,9 @@ export const restApi = Vue.extend({
 
 				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
 					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution/' + id);
+				},
+				recoverExecutionDataFromEvents: (id: string): Promise<IRunExecutionData | undefined> => {
+					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution-recover/' + id);
 				},
 			};
 		},

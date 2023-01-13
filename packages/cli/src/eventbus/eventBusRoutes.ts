@@ -107,6 +107,31 @@ eventBusRouter.get(
 	}),
 );
 
+eventBusRouter.get(
+	'/execution-recover/:id',
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (req.params?.id) {
+			let logHistory;
+			let applyToDb = true;
+			if (req.query?.logHistory) {
+				logHistory = parseInt(req.query.logHistory as string, 10);
+			}
+			if (req.query?.applyToDb) {
+				applyToDb = !!req.query.applyToDb;
+			}
+			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
+			if (messages.length > 0) {
+				const recoverResult = await eventBus.recoverExecutionDataFromEventLog(
+					req.params.id,
+					messages,
+					applyToDb,
+				);
+				return recoverResult;
+			}
+		}
+	}),
+);
+
 eventBusRouter.post(
 	'/event',
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {

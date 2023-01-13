@@ -238,6 +238,7 @@ export interface IRestApi {
 	getTimezones(): Promise<IDataObject>;
 	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
 	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
+	recoverExecutionDataFromEvents(id: string): Promise<IRunExecutionData | undefined>;
 }
 
 export interface INodeTranslationHeaders {
