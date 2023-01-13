@@ -575,13 +575,14 @@ export class WorkflowDataProxy {
 				get(target, name, receiver) {
 					const nodeName = name.toString();
 
-					if (that.workflow.getNode(nodeName) === null) {
-						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-							failExecution: true,
-						});
-					}
+					// TODO: re-enable this for v1.0.0 release
+					// if (that.workflow.getNode(nodeName) === null) {
+					// 	throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
+					// 		runIndex: that.runIndex,
+					// 		itemIndex: that.itemIndex,
+					// 		failExecution: true,
+					// 	});
+					// }
 
 					return that.nodeDataGetter(nodeName);
 				},
