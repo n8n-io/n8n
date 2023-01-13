@@ -110,8 +110,7 @@ export class GoogleDriveTrigger implements INodeType {
 						displayName: 'Link',
 						name: 'url',
 						type: 'string',
-						placeholder:
-							'https://docs.google.com/document/d/1ayrVjFMaxJNzNn1farJX1wP0Bqy7h7KpgfxgE1HbznA/edit',
+						placeholder: 'https://drive.google.com/file/d/1wroCSfK-hupQIYf_xzeoUEzOhvfTFH2P/edit',
 						extractValue: {
 							type: 'regex',
 							regex:

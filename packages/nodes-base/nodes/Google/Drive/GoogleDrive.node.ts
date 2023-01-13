@@ -235,7 +235,7 @@ export class GoogleDrive implements INodeType {
 						name: 'url',
 						type: 'string',
 						placeholder:
-							'https://docs.google.com/spreadsheets/d/1-i6Vx0NN-3333eeeeeeeeee333333333/edit',
+							'https://drive.google.com/file/d/1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A/edit',
 						extractValue: {
 							type: 'regex',
 							regex:
