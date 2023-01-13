@@ -617,7 +617,10 @@ export default mixins(
 			isExecutionPreview: false,
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
+			activeConnection: null as null | Connection,
 			isProductionExecutionPreview: false,
+			enterTimer: undefined as undefined | Timeout,
+			exitTimer: undefined as undefined | Timeout,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -2147,9 +2150,6 @@ export default mixins(
 				}
 			});
 
-			// only one set of visible actions should be visible at the same time
-			let activeConnection: null | Connection = null;
-
 			this.instance?.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
 				try {
 					const sourceInfo = info.sourceEndpoint.parameters;
@@ -2194,7 +2194,7 @@ export default mixins(
 						NodeViewUtils.addConnectionActionsOverlay(
 							info.connection,
 							() => {
-								activeConnection = null;
+								this.activeConnection = null;
 								this.__deleteJSPlumbConnection(info.connection);
 							},
 							() => {
@@ -2211,8 +2211,7 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			let exitTimer: NodeJS.Timeout | undefined;
-			let enterTimer: NodeJS.Timeout | undefined;
+
 			this.instance.bind(EVENT_DRAG_MOVE, () => {
 				this.instance?.connections.forEach((connection) => {
 					NodeViewUtils.showOrHideItemsLabel(connection);
@@ -2226,21 +2225,26 @@ export default mixins(
 			});
 			this.instance.bind(EVENT_CONNECTION_MOUSEOVER, (connection: Connection) => {
 				try {
-					if (exitTimer !== undefined) {
-						clearTimeout(exitTimer);
-						exitTimer = undefined;
+					if (this.exitTimer !== undefined) {
+						clearTimeout(this.exitTimer);
+						this.exitTimer = undefined;
 					}
 
-					if (this.isReadOnly || enterTimer || !connection || connection === activeConnection)
+					if (
+						this.isReadOnly ||
+						this.enterTimer ||
+						!connection ||
+						connection === this.activeConnection
+					)
 						return;
 
-					NodeViewUtils.hideConnectionActions(activeConnection);
+					NodeViewUtils.hideConnectionActions(this.activeConnection as Connection);
 
-					enterTimer = setTimeout(() => {
-						enterTimer = undefined;
+					this.enterTimer = setTimeout(() => {
+						this.enterTimer = undefined;
 						if (connection) {
 							NodeViewUtils.showConnectionActions(connection);
-							activeConnection = connection;
+							this.activeConnection = connection;
 						}
 					}, 150);
 				} catch (e) {
@@ -2249,21 +2253,21 @@ export default mixins(
 			});
 			this.instance.bind(EVENT_CONNECTION_MOUSEOUT, (connection: Connection) => {
 				try {
-					if (exitTimer) return;
+					if (this.exitTimer) return;
 
-					if (enterTimer) {
-						clearTimeout(enterTimer);
-						enterTimer = undefined;
+					if (this.enterTimer) {
+						clearTimeout(this.enterTimer);
+						this.enterTimer = undefined;
 					}
 
-					if (this.isReadOnly || !connection || activeConnection !== connection) return;
+					if (this.isReadOnly || !connection || this.activeConnection?.id !== connection.id) return;
 
-					exitTimer = setTimeout(() => {
-						exitTimer = undefined;
+					this.exitTimer = setTimeout(() => {
+						this.exitTimer = undefined;
 
-						if (connection && activeConnection === connection) {
-							NodeViewUtils.hideConnectionActions(activeConnection);
-							activeConnection = null;
+						if (connection && this.activeConnection === connection) {
+							NodeViewUtils.hideConnectionActions(this.activeConnection);
+							this.activeConnection = null;
 						}
 					}, 500);
 				} catch (e) {
@@ -4040,6 +4044,9 @@ export default mixins(
 
 <style lang="scss">
 .connection-run-items-label {
+	// Disable points events so that the label does not block the connection
+	// mouse over event.
+	pointer-events: none;
 	span {
 		border-radius: 7px;
 		background-color: hsla(

@@ -14,6 +14,7 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { EVENT_CONNECTION_MOUSEOUT, EVENT_CONNECTION_MOUSEOVER } from '@jsplumb/browser-ui';
 
 /*
 	Canvas constants and functions.
@@ -373,18 +374,17 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 	if (!overlay) return;
 
 	const actionsOverlay = getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-	if (actionsOverlay && actionsOverlay.visible) {
+	const isActionsOverlayHovered = actionsOverlay?.component.isHover();
+
+	if (isActionsOverlayHovered) {
 		overlay.setVisible(false);
 		return;
 	}
 
 	const [diffX, diffY] = getConnectorLengths(connection);
+	const isHidden = diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL;
 
-	if (diffX < MIN_X_TO_SHOW_OUTPUT_LABEL && diffY < MIN_Y_TO_SHOW_OUTPUT_LABEL) {
-		overlay.setVisible(false);
-	} else {
-		overlay.setVisible(true);
-	}
+	overlay.setVisible(!isHidden);
 	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
@@ -522,11 +522,11 @@ export const getBackgroundStyles = (
 export const hideConnectionActions = (connection: Connection) => {
 	if (!connection) return;
 
-	showOrHideItemsLabel(connection);
-	showOrHideMidpointArrow(connection);
+	connection.instance.setSuspendDrawing(true);
 	hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
-
-	connection.instance.repaintEverything();
+	showOrHideMidpointArrow(connection);
+	showOrHideItemsLabel(connection);
+	connection.instance.setSuspendDrawing(false, true);
 };
 
 export const showConnectionActions = (connection: Connection) => {
@@ -768,11 +768,14 @@ export const addConnectionActionsOverlay = (
 				addButton.addEventListener('click', () => onAdd());
 				deleteButton.addEventListener('click', () => onDelete());
 
-				// We have to use manually trigger mid-point arrow hide on mouseout because of a bug in jsPlumb
-				// where mouseout event is not fired on the connection when mouse is over the overlay
-				div.addEventListener('mouseout', () => {
-					showOrHideMidpointArrow(component);
-				});
+				// We have to manually trigger connection mouse events because the overlay
+				// is not part of the connection element
+				div.addEventListener('mouseout', () =>
+					connection.instance.fire(EVENT_CONNECTION_MOUSEOUT, component),
+				);
+				div.addEventListener('mouseover', () =>
+					connection.instance.fire(EVENT_CONNECTION_MOUSEOVER, component),
+				);
 
 				div.appendChild(addButton);
 				div.appendChild(deleteButton);
