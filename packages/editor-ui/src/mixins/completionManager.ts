@@ -7,7 +7,7 @@ import {
 	selectedCompletionIndex,
 } from '@codemirror/autocomplete';
 
-import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
+import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import { expressionManager } from './expressionManager';
 
 import type { Extension } from '@codemirror/state';
@@ -54,7 +54,7 @@ export const completionManager = mixins(expressionManager).extend({
 
 						const previewSegments = this.toPreviewSegments(completion, view.state);
 
-						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+						completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
 						return false;
 					},
@@ -68,7 +68,7 @@ export const completionManager = mixins(expressionManager).extend({
 
 						const previewSegments = this.toPreviewSegments(completion, view.state);
 
-						completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+						completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
 						return false;
 					},

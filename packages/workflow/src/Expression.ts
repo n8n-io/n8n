@@ -271,7 +271,9 @@ export class Expression {
 		const extendedExpression = this.extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new Error('invalid syntax');
+			if (returnValue.name === '$') {
+				throw new Error('This is an n8n prefix, please open completions');
+			}
 			throw new Error('This is a function. Please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;

@@ -17,8 +17,8 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 import { forceParse } from '@/utils/forceParse';
 import { autocompletion, selectedCompletion } from '@codemirror/autocomplete';
+import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import type { IVariableItemSelected } from '@/Interface';
-import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
 
 export default mixins(expressionManager, completionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
@@ -59,7 +59,7 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 				if (completion) {
 					const previewSegments = this.toPreviewSegments(completion, this.editor.state);
 
-					completionEvaluationEventBus.$emit('preview-in-output', previewSegments);
+					completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
 					return;
 				}

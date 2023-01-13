@@ -75,7 +75,7 @@ import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/In
 import ExpressionFunctionIcon from '@/components/ExpressionFunctionIcon.vue';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
-import { completionEvaluationEventBus } from '@/event-bus/completion-evaluation-event-bus';
+import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 
 import type { Segment } from '@/types/expressions';
 import type { TargetItem } from '@/Interface';
@@ -111,10 +111,10 @@ export default Vue.extend({
 		},
 	},
 	mounted() {
-		completionEvaluationEventBus.$on('preview-in-output', this.previewSegments);
+		completionPreviewEventBus.$on('preview-completion', this.previewSegments);
 	},
 	destroyed() {
-		completionEvaluationEventBus.$off('preview-in-output', this.previewSegments);
+		completionPreviewEventBus.$off('preview-completion', this.previewSegments);
 	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
