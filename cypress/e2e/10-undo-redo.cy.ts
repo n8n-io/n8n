@@ -208,7 +208,6 @@ describe('Undo/Redo', () => {
 		WorkflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		ndv.actions.rename(CODE_NODE_NEW_NAME);
-		cy.get('body').type('{enter}');
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.hitUndo();
 		cy.get('body').type('{esc}');
