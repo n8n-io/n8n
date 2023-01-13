@@ -5,12 +5,12 @@ import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } f
 import { OptionsWithUri } from 'request';
 
 interface ScriptsOptions {
-	script?: any; //tslint:disable-line:no-any
-	'script.param'?: any; //tslint:disable-line:no-any
-	'script.prerequest'?: any; //tslint:disable-line:no-any
-	'script.prerequest.param'?: any; //tslint:disable-line:no-any
-	'script.presort'?: any; //tslint:disable-line:no-any
-	'script.presort.param'?: any; //tslint:disable-line:no-any
+	script?: any;
+	'script.param'?: any;
+	'script.prerequest'?: any;
+	'script.prerequest.param'?: any;
+	'script.presort'?: any;
+	'script.presort.param'?: any;
 }
 interface LayoutObject {
 	name: string;

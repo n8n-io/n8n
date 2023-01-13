@@ -188,7 +188,6 @@ function compactResult(splunkObject: any): any {
 	};
 }
 
-/* tslint:disable: no-any */
 function formatResult(field: any): any {
 	return field.reduce((acc: any, cur: any) => {
 		acc = { ...acc, ...compactResult(cur) };

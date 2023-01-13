@@ -20,7 +20,6 @@ export async function slackApiRequest(
 	query: object = {},
 	headers: IDataObject | undefined = undefined,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 	let options: OptionsWithUri = {

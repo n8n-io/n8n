@@ -63,7 +63,6 @@ export async function koBoToolboxApiRequest(
 export async function koBoToolboxRawRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	option: IHttpRequestOptions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
