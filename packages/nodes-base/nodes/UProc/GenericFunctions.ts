@@ -5,7 +5,13 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
 
 export async function uprocApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -26,6 +32,6 @@ export async function uprocApiRequest(
 	try {
 		return await this.helpers.httpRequestWithAuthentication.call(this, 'uprocApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

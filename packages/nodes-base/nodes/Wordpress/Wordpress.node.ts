@@ -420,7 +420,7 @@ export class Wordpress implements INodeType {
 					}
 				}
 				const exectutionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...exectutionData);

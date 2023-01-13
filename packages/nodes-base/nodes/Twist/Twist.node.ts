@@ -269,7 +269,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -286,7 +286,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -378,7 +378,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -395,7 +395,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -457,7 +457,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -474,7 +474,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -582,7 +582,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -599,7 +599,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -666,7 +666,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -683,7 +683,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 
@@ -774,7 +774,7 @@ export class Twist implements INodeType {
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
 								attachments.push(
-									await twistApiRequest.call(
+									(await twistApiRequest.call(
 										this,
 										'POST',
 										'/attachments/upload',
@@ -791,7 +791,7 @@ export class Twist implements INodeType {
 												attachment_id: uuid(),
 											},
 										},
-									),
+									)) as IDataObject,
 								);
 							}
 

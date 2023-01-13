@@ -43,7 +43,7 @@ export async function woocommerceApiRequest(
 		json: true,
 	};
 
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
@@ -72,7 +72,7 @@ export async function woocommerceApiRequestAllItems(
 		if (nextLink) {
 			uri = nextLink.split(';')[0].replace(/<(.*)>/, '$1');
 		}
-		returnData.push.apply(returnData, responseData.body);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 	} while (responseData.headers.link?.includes('rel="next"'));
 
 	return returnData;

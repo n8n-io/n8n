@@ -31,7 +31,7 @@ export async function wufooApiRequest(
 	};
 
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body).length === 0 || method === 'PUT') {
+	if (Object.keys(options.body as IDataObject).length === 0 || method === 'PUT') {
 		delete options.body;
 	}
 

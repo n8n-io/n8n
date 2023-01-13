@@ -6,6 +6,7 @@ import {
 	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
+	JsonObject,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -66,7 +67,7 @@ export async function wiseApiRequest(
 		response = await this.helpers.httpRequest(options);
 	} catch (error) {
 		delete error.config;
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 
 	if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -97,7 +98,7 @@ export async function wiseApiRequest(
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), {
 				message: 'Error signing SCA request, check your private key',
-				...error,
+				...(error as JsonObject),
 			});
 		}
 		// Retry the request with signed token
@@ -110,7 +111,10 @@ export async function wiseApiRequest(
 			});
 		}
 	} else {
-		throw new NodeApiError(this.getNode(), { ...response, message: response.statusMessage });
+		throw new NodeApiError(this.getNode(), {
+			...(response as JsonObject),
+			message: response.statusMessage,
+		});
 	}
 }
 

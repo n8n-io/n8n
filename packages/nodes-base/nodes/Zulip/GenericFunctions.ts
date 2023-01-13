@@ -2,18 +2,27 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	IHookFunctions,
+	IWebhookFunctions,
+	JsonObject,
+	NodeApiError,
+} from 'n8n-workflow';
+import { IMessage } from './MessageInterface';
+import { IStream } from './StreamInterface';
+import { IUser } from './UserInterface';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
 
-	body: any = {},
+	body: IMessage | IStream | IUser = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('zulipApi');
 
 	const endpoint = `${credentials.url}/api/v1`;
@@ -42,7 +51,7 @@ export async function zulipApiRequest(
 	try {
 		return await this.helpers.request(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

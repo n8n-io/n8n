@@ -23,7 +23,7 @@ module.exports = {
 		'@typescript-eslint/no-this-alias': 'off',
 		'@typescript-eslint/no-throw-literal': 'off',
 		'@typescript-eslint/no-unnecessary-qualifier': 'off',
-		'@typescript-eslint/no-unsafe-argument': 'off',
+		// '@typescript-eslint/no-unsafe-argument': 'off',
 		'@typescript-eslint/no-unsafe-assignment': 'off',
 		'@typescript-eslint/no-unsafe-call': 'off',
 		'@typescript-eslint/no-unsafe-member-access': 'off',

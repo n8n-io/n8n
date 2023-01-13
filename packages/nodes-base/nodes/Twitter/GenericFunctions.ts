@@ -11,6 +11,7 @@ import {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 	sleep,
@@ -20,12 +21,11 @@ export async function twitterApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: string,
 	resource: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-): Promise<any> {
+) {
 	let options: OptionsWithUrl = {
 		method,
 		body,
@@ -43,10 +43,9 @@ export async function twitterApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth1.call(this, 'twitterOAuth1Api', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -55,10 +54,9 @@ export async function twitterApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -68,7 +66,7 @@ export async function twitterApiRequestAllItems(
 	do {
 		responseData = await twitterApiRequest.call(this, method, endpoint, body, query);
 		query.since_id = responseData.search_metadata.max_id;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.search_metadata?.next_results);
 
 	return returnData;

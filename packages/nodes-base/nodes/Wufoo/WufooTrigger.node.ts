@@ -98,7 +98,6 @@ export class WufooTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			// No API endpoint to allow checking of existing webhooks.
@@ -154,7 +153,7 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		const fieldsObject = jsonParse<any>(req.body.FieldStructure, {
+		const fieldsObject = jsonParse<any>(req.body.FieldStructure as string, {
 			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 		});
 
@@ -209,10 +208,10 @@ export class WufooTrigger implements INodeType {
 				entryId: req.body.EntryId as number,
 				dateCreated: req.body.DateCreated as Date,
 				formId: req.body.FormId as string,
-				formStructure: jsonParse(req.body.FormStructure, {
+				formStructure: jsonParse(req.body.FormStructure as string, {
 					errorMessage: "Invalid JSON in request body field 'FormStructure'",
 				}),
-				fieldStructure: jsonParse(req.body.FieldStructure, {
+				fieldStructure: jsonParse(req.body.FieldStructure as string, {
 					errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 				}),
 				entries,

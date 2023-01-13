@@ -165,7 +165,7 @@ export class ZendeskTrigger implements INodeType {
 					'/ticket_fields',
 				);
 				for (const field of fields) {
-					if (customFields.includes(field.type) && field.removable && field.active) {
+					if (customFields.includes(field.type as string) && field.removable && field.active) {
 						const fieldName = field.title;
 						const fieldId = field.id;
 						returnData.push({
@@ -218,7 +218,6 @@ export class ZendeskTrigger implements INodeType {
 		},
 	};
 
-	// @ts-ignore
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -316,7 +315,6 @@ export class ZendeskTrigger implements INodeType {
 
 					if (options.fields) {
 						for (const field of options.fields as string[]) {
-							// @ts-ignore
 							message[field] = `{{${field}}}`;
 						}
 					} else {
@@ -400,8 +398,10 @@ export class ZendeskTrigger implements INodeType {
 							.webhook as IDataObject;
 					}
 
-					// @ts-ignore
-					bodyTrigger.trigger.actions[0].value = [target.id, JSON.stringify(message)];
+					((bodyTrigger.trigger as IDataObject).actions as IDataObject[])[0].value = [
+						target.id,
+						JSON.stringify(message),
+					];
 
 					const { trigger } = await zendeskApiRequest.call(this, 'POST', '/triggers', bodyTrigger);
 					webhookData.webhookId = trigger.id;
@@ -427,7 +427,7 @@ export class ZendeskTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};
 	}
 }
