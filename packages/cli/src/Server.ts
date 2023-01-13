@@ -1246,9 +1246,9 @@ class Server extends AbstractServer {
 						await queue.stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution.findOne(
-						req.params.id,
-					)) as IExecutionFlattedDb;
+					const executionDb = (await Db.collections.Execution.findOneBy({
+						id: req.params.id,
+					})) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
@@ -1452,9 +1452,10 @@ export async function start(): Promise<void> {
 	// Set up event handling
 	initEvents();
 
-	const workflow = await Db.collections.Workflow!.findOne({
+	const workflow = await Db.collections.Workflow.findOne({
 		select: ['createdAt'],
 		order: { createdAt: 'ASC' },
+		where: {},
 	});
 	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
 }

@@ -85,7 +85,7 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+			const role = await Db.collections.Role.findOneBy({ scope: 'global', name: 'member' });
 
 			if (!role) {
 				Logger.error(
@@ -434,7 +434,7 @@ export function usersNamespace(this: N8nApp): void {
 						.getRepository(SharedWorkflow)
 						.find({
 							select: ['workflowId'],
-							where: { userId: userToDelete.id, role: workflowOwnerRole },
+							where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 						})
 						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -459,7 +459,7 @@ export function usersNamespace(this: N8nApp): void {
 						.getRepository(SharedCredentials)
 						.find({
 							select: ['credentialsId'],
-							where: { user: userToDelete, role: credentialOwnerRole },
+							where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 						})
 						.then((sharedCredentials) =>
 							sharedCredentials.map(({ credentialsId }) => credentialsId),
@@ -495,11 +495,11 @@ export function usersNamespace(this: N8nApp): void {
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
-					where: { user: userToDelete, role: workflowOwnerRole },
+					where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 				}),
 				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
-					where: { user: userToDelete, role: credentialOwnerRole },
+					where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 				}),
 			]);
 
@@ -546,7 +546,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const reinvitee = await Db.collections.User.findOne({ id: idToReinvite });
+			const reinvitee = await Db.collections.User.findOneBy({ id: idToReinvite });
 
 			if (!reinvitee) {
 				Logger.debug(
