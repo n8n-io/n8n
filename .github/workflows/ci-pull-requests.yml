@@ -12,6 +12,9 @@ jobs:
       matrix:
         node-version: [16.x]
 
+    env:
+      NODE_OPTIONS: '--no-deprecation'
+
     steps:
       - uses: actions/checkout@v3
 
