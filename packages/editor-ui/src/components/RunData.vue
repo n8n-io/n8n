@@ -67,6 +67,7 @@
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
+					data-test-id="ndv-pin-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip

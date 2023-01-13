@@ -9,8 +9,16 @@ export class NDV extends BasePage {
 		inputSelect: () => cy.getByTestId('ndv-input-select'),
 		inputOption: () => cy.getByTestId('ndv-input-option'),
 		inputPanel: () => cy.getByTestId('ndv-input-panel'),
+		outputPanel: () => cy.getByTestId('ndv-input-pane'),
 		dataContainer: () => cy.getByTestId('ndv-data-container'),
 		runDataDisplayMode: () => cy.getByTestId('ndv-run-data-display-mode'),
 		digital: () => cy.getByTestId('ndv-run-data-display-mode'),
+		pinDataButton: () => cy.getByTestId('ndv-pin-data'),
+	};
+
+	actions = {
+		pinData: () => {
+			this.getters.pinDataButton().click();
+		},
 	};
 }
