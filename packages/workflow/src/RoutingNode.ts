@@ -524,14 +524,85 @@ export class RoutingNode {
 				);
 			} else {
 				// Pagination via JSON properties
-				const { properties } = requestOperations.pagination;
 				responseData = [];
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
 				}
 
 				// Different predefined pagination types
-				if (requestOperations.pagination.type === 'offset') {
+				if (requestOperations.pagination.type === 'generic') {
+					const { properties } = requestOperations.pagination;
+
+					let tempResponseData: INodeExecutionData[];
+					let makeAdditionalRequest: boolean;
+					let paginateRequestData: IHttpRequestOptions;
+					do {
+						const additionalKeys = {
+							$request: requestData.options,
+							$response: {} as IDataObject,
+							$version: this.node.typeVersion,
+						};
+
+						makeAdditionalRequest = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as boolean;
+
+						if (!makeAdditionalRequest) {
+							break;
+						}
+
+						paginateRequestData = this.getParameterValue(
+							requestOperations.pagination.properties.request as unknown as NodeParameterValueType,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as object as IHttpRequestOptions;
+
+						// Make the HTTP request
+						tempResponseData = await this.rawRoutingRequest(
+							executeSingleFunctions,
+							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
+							itemIndex,
+							runIndex,
+							credentialType,
+							credentialsDecrypted,
+						);
+
+						if (tempResponseData.length) {
+							additionalKeys.$response = tempResponseData[0].json;
+						}
+
+						if (properties.rootProperty) {
+							const tempResponseValue = get(tempResponseData[0].json, properties.rootProperty) as
+								| IDataObject[]
+								| undefined;
+							if (tempResponseValue === undefined) {
+								throw new NodeOperationError(
+									this.node,
+									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
+									{ runIndex, itemIndex },
+								);
+							}
+
+							tempResponseData = tempResponseValue.map((item) => {
+								return {
+									json: item,
+								};
+							});
+						}
+
+						responseData.push(...tempResponseData);
+					} while (true);
+				} else if (requestOperations.pagination.type === 'offset') {
+					const { properties } = requestOperations.pagination;
+
 					const optionsType = properties.type === 'body' ? 'body' : 'qs';
 					if (properties.type === 'body' && !requestData.options.body) {
 						requestData.options.body = {};
