@@ -188,7 +188,6 @@
     "sse-channel": "^4.0.0",
     "swagger-ui-express": "^4.3.0",
     "syslog-client": "^1.1.1",
-    "threads": "^1.7.0",
     "tslib": "1.14.1",
     "typeorm": "0.2.45",
     "uuid": "^8.3.2",
