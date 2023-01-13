@@ -146,7 +146,7 @@ importers:
       bull: ^4.10.2
       callsites: ^3.1.0
       change-case: ^4.1.1
-      class-validator: ^0.13.1
+      class-validator: ^0.14.0
       client-oauth2: ^4.2.5
       compression: ^1.7.4
       concurrently: ^5.1.0
@@ -240,7 +240,7 @@ importers:
       bull: 4.10.2
       callsites: 3.1.0
       change-case: 4.1.2
-      class-validator: 0.13.2
+      class-validator: 0.14.0
       client-oauth2: 4.3.3
       compression: 1.7.4
       connect-history-api-fallback: 1.6.0
@@ -6308,6 +6308,10 @@ packages:
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
     dev: true
 
+  /@types/validator/13.7.10:
+    resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
+    dev: false
+
   /@types/validator/13.7.7:
     resolution: {integrity: sha512-jiEw2kTUJ8Jsh4A1K4b5Pkjj9Xz6FktLLOQ36ZVLRkmxFbpTvAV2VRoKMojz8UlZxNg/2dZqzpigH4JYn1bkQg==}
     dev: true
@@ -8813,9 +8817,10 @@ packages:
       static-extend: 0.1.2
     dev: true
 
-  /class-validator/0.13.2:
-    resolution: {integrity: sha512-yBUcQy07FPlGzUjoLuUfIOXzgynnQPPruyK1Ge2B74k9ROwnle1E+NxLWnUv5OLU8hA/qL5leAE9XnXq3byaBw==}
+  /class-validator/0.14.0:
+    resolution: {integrity: sha512-ct3ltplN8I9fOwUd8GrP8UQixwff129BkEtuWDKL5W45cQuLd19xqmTLu5ge78YDm/fdje6FMt0hGOhl0lii3A==}
     dependencies:
+      '@types/validator': 13.7.10
       libphonenumber-js: 1.10.14
       validator: 13.7.0
     dev: false

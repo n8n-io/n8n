@@ -1,7 +1,6 @@
 <template>
 	<div :class="$style.container" v-if="!loading">
 		<executions-sidebar
-			v-if="showSidebar"
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
@@ -18,11 +17,6 @@
 				@retryExecution="onRetryExecution"
 				@stopExecution="onStopExecution"
 			/>
-		</div>
-		<div v-if="executions.length === 0 && filterApplied" :class="$style.noResultsContainer">
-			<n8n-text color="text-base" size="medium" align="center">
-				{{ $locale.baseText('executionsLandingPage.noResults') }}
-			</n8n-text>
 		</div>
 	</div>
 </template>
@@ -76,7 +70,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-list',
+	name: 'executions-view',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -97,12 +91,6 @@ export default mixins(
 					(ex) => ex.id === this.activeExecution.id,
 				) === undefined;
 			return this.loading || nothingToShow || activeNotPresent;
-		},
-		showSidebar(): boolean {
-			if (this.executions.length === 0) {
-				return this.filterApplied;
-			}
-			return true;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
@@ -256,22 +244,32 @@ export default mixins(
 		async onDeleteCurrentExecution(): Promise<void> {
 			this.loading = true;
 			try {
+				const executionIndex = this.executions.findIndex(
+					(execution: IExecutionsSummary) => execution.id === this.$route.params.executionId,
+				);
+				const nextExecution =
+					this.executions[executionIndex + 1] ||
+					this.executions[executionIndex - 1] ||
+					this.executions[0];
+
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
-				await this.setExecutions();
-				// Select first execution in the list after deleting the current one
 				if (this.executions.length > 0) {
-					this.workflowsStore.activeWorkflowExecution = this.executions[0];
-					this.$router
+					await this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
 						.catch(() => {});
+					this.workflowsStore.activeWorkflowExecution = nextExecution;
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+					await this.$router.push({
+						name: VIEWS.EXECUTION_HOME,
+						params: { name: this.currentWorkflow },
+					});
 				}
+				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
 				this.$showError(
@@ -314,8 +312,7 @@ export default mixins(
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
-			const workflowExecutions = await this.loadExecutions();
-			this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
+			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
 			await this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
@@ -666,11 +663,5 @@ export default mixins(
 
 .content {
 	flex: 1;
-}
-
-.noResultsContainer {
-	width: 100%;
-	margin-top: var(--spacing-2xl);
-	text-align: center;
 }
 </style>

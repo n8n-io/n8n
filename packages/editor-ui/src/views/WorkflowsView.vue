@@ -11,6 +11,17 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
+		<template #callout v-if="!hasActiveWorkflows && isDemoTest">
+			<n8n-callout theme="secondary" icon="graduation-cap" class="mb-xs">
+				{{ $locale.baseText('workflows.viewDemoNotice') }}
+
+				<template #trailingContent>
+					<n8n-link size="small" theme="secondary" bold underline @click="goToTemplates">
+						{{ $locale.baseText('workflows.viewDemo') }}
+					</n8n-link>
+				</template>
+			</n8n-callout>
+		</template>
 		<template #default="{ data }">
 			<workflow-card :data="data" @click:tag="onClickTag" />
 		</template>
@@ -30,7 +41,7 @@
 					{{ $locale.baseText('workflows.empty.description') }}
 				</n8n-text>
 			</div>
-			<div class="text-center mt-2xl">
+			<div :class="['text-center', 'mt-2xl', $style.actionsContainer]">
 				<n8n-card
 					:class="[$style.emptyStateCard, 'mr-s']"
 					hoverable
@@ -48,9 +59,16 @@
 					@click="goToTemplates"
 					data-test-id="new-workflow-template-card"
 				>
-					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
+					<n8n-icon
+						:class="$style.emptyStateCardIcon"
+						:icon="isDemoTest ? 'graduation-cap' : 'box-open'"
+					/>
 					<n8n-text size="large" class="mt-xs" color="text-base">
-						{{ $locale.baseText('workflows.empty.browseTemplates') }}
+						{{
+							$locale.baseText(
+								isDemoTest ? 'workflows.empty.viewDemo' : 'workflows.empty.browseTemplates',
+							)
+						}}
 					</n8n-text>
 				</n8n-card>
 			</div>
@@ -103,7 +121,7 @@ import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import WorkflowCard from '@/components/WorkflowCard.vue';
 import TemplateCard from '@/components/TemplateCard.vue';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, POSTHOG_ASSUMPTION_TEST, VIEWS } from '@/constants';
 import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { ITag, IUser, IWorkflowDb } from '@/Interface';
@@ -155,6 +173,12 @@ export default mixins(showMessage, debounceHelper).extend({
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
+		hasActiveWorkflows(): boolean {
+			return !!this.workflowsStore.activeWorkflows.length;
+		},
+		isDemoTest(): boolean {
+			return window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-demo';
+		},
 		statusFilterOptions(): Array<{ label: string; value: string | boolean }> {
 			return [
 				{
@@ -182,7 +206,14 @@ export default mixins(showMessage, debounceHelper).extend({
 			});
 		},
 		goToTemplates() {
-			this.$router.push({ name: VIEWS.TEMPLATES });
+			if (this.isDemoTest) {
+				this.$router.push({ name: VIEWS.COLLECTION, params: { id: '7' } });
+				this.$telemetry.track('User clicked on inspect demo workflow', {
+					location: this.allWorkflows.length ? 'workflows' : 'start_page',
+				});
+			} else {
+				this.$router.push({ name: VIEWS.TEMPLATES });
+			}
 		},
 		async initialize() {
 			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
@@ -236,6 +267,11 @@ export default mixins(showMessage, debounceHelper).extend({
 </script>
 
 <style lang="scss" module>
+.actionsContainer {
+	display: flex;
+	justify-content: center;
+}
+
 .emptyStateCard {
 	width: 192px;
 	text-align: center;

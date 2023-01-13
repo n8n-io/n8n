@@ -167,7 +167,6 @@ import type {
 	jsPlumbInstance,
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import once from 'lodash/once';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -186,6 +185,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
+	POSTHOG_ASSUMPTION_TEST,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -373,7 +373,6 @@ export default mixins(
 			// Re-center CanvasAddButton if there's no triggers
 			if (containsTrigger === false)
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
-			else this.tryToAddWelcomeSticky();
 		},
 		nodeViewScale(newScale) {
 			const element = this.$refs.nodeView as HTMLDivElement;
@@ -2436,27 +2435,22 @@ export default mixins(
 			this.workflowsStore.activeWorkflowExecution = null;
 
 			this.uiStore.stateIsDirty = false;
-			this.canvasStore.setZoomLevel(1, 0);
-			this.canvasStore.zoomToFit();
+			this.canvasStore.setZoomLevel(1, [0, 0]);
+			this.tryToAddWelcomeSticky();
+			this.uiStore.nodeViewInitialized = true;
+			this.historyStore.reset();
+			this.workflowsStore.activeWorkflowExecution = null;
+			this.stopLoading();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		tryToAddWelcomeSticky: once(async function (this: any) {
+		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.('welcome-note') === 'test') {
+			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
 				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					const collisionPadding = NodeViewUtils.GRID_SIZE + NodeViewUtils.NODE_SIZE;
 					// Position the welcome sticky left to the added trigger node
-					let position: XYPosition = [...(this.triggerNodes[0].position as XYPosition)];
-
-					position[0] -=
-						NodeViewUtils.WELCOME_STICKY_NODE.parameters.width + NodeViewUtils.GRID_SIZE * 4;
-					position = NodeViewUtils.getNewNodePosition(this.nodes, position, [
-						collisionPadding,
-						collisionPadding,
-					]);
+					const position: XYPosition = [50, 250];
 
 					await this.addNodes([
 						{
@@ -2470,14 +2464,16 @@ export default mixins(
 							position,
 						},
 					]);
-					this.$telemetry.track('welcome note inserted');
+					setTimeout(() => {
+						this.canvasStore.zoomToFit();
+						this.canvasStore.canvasAddButtonPosition = [500, 350];
+						this.$telemetry.track('welcome note inserted');
+					}, 0);
 				}
+			} else {
+				this.canvasStore.zoomToFit();
 			}
-			this.uiStore.nodeViewInitialized = true;
-			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
-			this.stopLoading();
-		}),
+		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init

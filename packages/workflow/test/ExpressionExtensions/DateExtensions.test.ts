@@ -4,7 +4,7 @@
 
 import { extend } from '@/Extensions';
 import { dateExtensions } from '@/Extensions/DateExtensions';
-import { evaluate } from './Helpers';
+import { evaluate, getLocalISOString } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
@@ -47,7 +47,8 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDate() should work on a string', () => {
-			expect(evaluate('={{ "2022-01-03T00:00:00.000+00:00".toDate() }}')).toEqual(new Date(2022, 0, 3));
+			const date = new Date(2022, 0, 3);
+			expect(evaluate(`={{ "${getLocalISOString(date)}".toDate() }}`)).toEqual(date);
 		});
 	});
 });

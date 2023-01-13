@@ -110,7 +110,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-secondary);
-	background-color: var(--color-secondary-tint-2);
+	background-color: var(--color-secondary-tint-3);
 	border-color: var(--color-secondary-tint-1);
 }
 </style>

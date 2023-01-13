@@ -124,7 +124,7 @@
     "bull": "^4.10.2",
     "callsites": "^3.1.0",
     "change-case": "^4.1.1",
-    "class-validator": "^0.13.1",
+    "class-validator": "^0.14.0",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
     "connect-history-api-fallback": "^1.6.0",
