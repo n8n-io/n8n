@@ -50,7 +50,7 @@ export class MessageEventBusLogWriter {
 	private _worker: Worker | undefined;
 
 	public get worker(): Worker | undefined {
-		return this.worker;
+		return this._worker;
 	}
 
 	/**
