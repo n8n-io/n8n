@@ -60,6 +60,7 @@
 						<th></th>
 						<th></th>
 						<th></th>
+						<th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -86,10 +87,13 @@
 						</td>
 						<td>
 							<div :class="$style.statusColumn">
-								<span v-if="execution.stoppedAt === undefined" :class="$style.spinner">
+								<span v-if="isRunning(execution)" :class="$style.spinner">
 									<font-awesome-icon icon="spinner" spin />
 								</span>
-								<i18n :path="getStatusTextTranslationPath(execution)">
+								<i18n
+									v-if="!isWaitTillIndefinite(execution)"
+									:path="getStatusTextTranslationPath(execution)"
+								>
 									<template #status>
 										<span :class="$style.status">{{ getStatusText(execution) }}</span>
 									</template>
@@ -109,6 +113,12 @@
 										<execution-time v-else :start-time="execution.startedAt" />
 									</template>
 								</i18n>
+								<n8n-tooltip v-else placement="top">
+									<template #content>
+										<span>{{ getStatusTooltipText(execution) }}</span>
+									</template>
+									<span :class="$style.status">{{ getStatusText(execution) }}</span>
+								</n8n-tooltip>
 							</div>
 						</td>
 						<td>
@@ -129,18 +139,15 @@
 							</span>
 						</td>
 						<td>
-							<font-awesome-icon v-if="execution.mode === 'manual'" icon="flask" />
+							<n8n-tooltip v-if="execution.mode === 'manual'" placement="top">
+								<template #content>
+									<span>{{ $locale.baseText('executionsList.test') }}</span>
+								</template>
+								<font-awesome-icon icon="flask" />
+							</n8n-tooltip>
 						</td>
 						<td>
-							<div :class="$style.actionsContainer">
-								<n8n-button
-									v-if="execution.stoppedAt === undefined || execution.waitTill"
-									size="small"
-									outline
-									:label="$locale.baseText('executionsList.stop')"
-									@click.stop="stopExecution(execution.id)"
-									:loading="stoppingExecutions.includes(execution.id)"
-								/>
+							<div :class="$style.buttonCell">
 								<n8n-button
 									v-if="execution.stoppedAt !== undefined && execution.id"
 									size="small"
@@ -151,7 +158,23 @@
 							</div>
 						</td>
 						<td>
-							<el-dropdown trigger="click" @command="handleActionItemClick">
+							<div :class="$style.buttonCell">
+								<n8n-button
+									v-if="execution.stoppedAt === undefined || execution.waitTill"
+									size="small"
+									outline
+									:label="$locale.baseText('executionsList.stop')"
+									@click.stop="stopExecution(execution.id)"
+									:loading="stoppingExecutions.includes(execution.id)"
+								/>
+							</div>
+						</td>
+						<td>
+							<el-dropdown
+								v-if="!isRunning(execution)"
+								trigger="click"
+								@command="handleActionItemClick"
+							>
 								<span class="retry-button">
 									<n8n-icon-button
 										text
@@ -235,7 +258,7 @@ import Vue from 'vue';
 import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import { externalHooks } from '@/mixins/externalHooks';
-import { VIEWS } from '@/constants';
+import { VIEWS, WAIT_TIME_UNLIMITED } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
@@ -253,6 +276,8 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+
+type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -528,22 +553,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					this.deleteExecution(commandData.execution);
 				}
 			},
-			getRowClass(execution: IExecutionsSummary): string {
-				const classes: string[] = [this.$style.execRow];
-				if (execution.waitTill) {
-					classes.push(this.$style.waiting);
-				} else if (execution.stoppedAt === undefined) {
-					classes.push(this.$style.running);
-				} else if (execution.finished) {
-					classes.push(this.$style.success);
-				} else if (execution.stoppedAt !== null) {
-					classes.push(this.$style.failed);
-				} else {
-					classes.push(this.$style.unknown);
-				}
-
-				return classes.join(' ');
-			},
 			getWorkflowName(workflowId: string): string | undefined {
 				const workflow = this.workflows.find((data) => data.id === workflowId);
 				if (workflow === undefined) {
@@ -784,16 +793,35 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				this.isDataLoading = false;
 			},
+			getStatus(execution: IExecutionsSummary): ExecutionStatus {
+				let status: ExecutionStatus = 'unknown';
+				if (execution.waitTill) {
+					status = 'waiting';
+				} else if (execution.stoppedAt === undefined) {
+					status = 'running';
+				} else if (execution.finished) {
+					status = 'success';
+				} else if (execution.stoppedAt !== null) {
+					status = 'failed';
+				} else {
+					status = 'unknown';
+				}
+				return status;
+			},
+			getRowClass(execution: IExecutionsSummary): string {
+				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
+			},
 			getStatusText(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
 				let text = '';
 
-				if (entry.waitTill) {
+				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
-				} else if (entry.stoppedAt === undefined) {
+				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
-				} else if (entry.finished) {
+				} else if (status === 'success') {
 					text = this.$locale.baseText('executionsList.succeeded');
-				} else if (entry.stoppedAt !== null) {
+				} else if (status === 'failed') {
 					text = this.$locale.baseText('executionsList.error');
 				} else {
 					text = this.$locale.baseText('executionsList.unknown');
@@ -802,21 +830,34 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return text;
 			},
 			getStatusTextTranslationPath(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
 				let path = '';
 
-				if (entry.waitTill) {
+				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
-				} else if (entry.stoppedAt === undefined) {
+				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
-				} else if (entry.finished) {
+				} else if (status === 'success') {
 					path = 'executionsList.statusText';
-				} else if (entry.stoppedAt !== null) {
+				} else if (status === 'failed') {
 					path = 'executionsList.statusText';
 				} else {
 					path = 'executionsList.statusUnknown';
 				}
 
 				return path;
+			},
+			getStatusTooltipText(entry: IExecutionsSummary): string {
+				const status = this.getStatus(entry);
+				let text = '';
+
+				if (status === 'waiting' && this.isWaitTillIndefinite(entry)) {
+					text = this.$locale.baseText(
+						'executionsList.statusTooltipText.theWorkflowIsWaitingIndefinitely',
+					);
+				}
+
+				return text;
 			},
 			async stopExecution(activeExecutionId: string) {
 				try {
@@ -867,6 +908,15 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					);
 				}
 				this.isDataLoading = true;
+			},
+			isWaitTillIndefinite(execution: IExecutionsSummary): boolean {
+				if (!execution.waitTill) {
+					return false;
+				}
+				return new Date(execution.waitTill).toISOString() === WAIT_TIME_UNLIMITED;
+			},
+			isRunning(execution: IExecutionsSummary): boolean {
+				return this.getStatus(execution) === 'running';
 			},
 		},
 	},
@@ -936,6 +986,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		color: var(--color-danger);
 	}
 
+	.waiting & {
+		color: var(--color-secondary);
+	}
+
 	.success & {
 		font-weight: var(--font-weight-normal);
 	}
@@ -949,7 +1003,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 	}
 }
 
-.actionsContainer {
+.buttonCell {
 	overflow: hidden;
 
 	button {
@@ -959,10 +1013,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		&:focus-visible,
 		.execRow:hover & {
 			transform: translateX(0);
-		}
-
-		&:not(:first-child) {
-			margin-left: 5px;
 		}
 	}
 }
