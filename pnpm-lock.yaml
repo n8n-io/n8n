@@ -146,7 +146,7 @@ importers:
       bull: ^4.10.2
       callsites: ^3.1.0
       change-case: ^4.1.1
-      class-validator: ^0.13.1
+      class-validator: ^0.14.0
       client-oauth2: ^4.2.5
       compression: ^1.7.4
       concurrently: ^5.1.0
@@ -185,10 +185,10 @@ importers:
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
       mysql2: ~2.3.0
-      n8n-core: ~0.150.1
-      n8n-editor-ui: ~0.176.2
-      n8n-nodes-base: ~0.208.2
-      n8n-workflow: ~0.132.1
+      n8n-core: ~0.151.0
+      n8n-editor-ui: ~0.177.0
+      n8n-nodes-base: ~0.209.0
+      n8n-workflow: ~0.133.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -214,7 +214,6 @@ importers:
       supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
-      threads: ^1.7.0
       ts-node: ^9.1.1
       tsc-alias: ^1.7.0
       tsconfig-paths: ^3.14.1
@@ -240,7 +239,7 @@ importers:
       bull: 4.10.2
       callsites: 3.1.0
       change-case: 4.1.2
-      class-validator: 0.13.2
+      class-validator: 0.14.0
       client-oauth2: 4.3.3
       compression: 1.7.4
       connect-history-api-fallback: 1.6.0
@@ -304,7 +303,6 @@ importers:
       sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
-      threads: 1.7.0
       tslib: 1.14.1
       typeorm: 0.2.45_b2izk5tn6tm5xb65gvog337urq
       uuid: 8.3.2
@@ -380,7 +378,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.132.1
+      n8n-workflow: ~0.133.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       pretty-bytes: ^5.6.0
@@ -556,8 +554,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.50.1
-      n8n-workflow: ~0.132.1
+      n8n-design-system: ~0.51.0
+      n8n-workflow: ~0.133.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -676,8 +674,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.150.1
-      n8n-workflow: ~0.132.1
+      n8n-core: ~0.151.0
+      n8n-workflow: ~0.133.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -721,7 +719,9 @@ importers:
       '@types/mailparser': ^2.7.3
       '@types/mime-types': ^2.1.0
       '@types/mssql': ^6.0.2
+      '@types/node-ssh': ^7.0.1
       '@types/nodemailer': ^6.4.0
+      '@types/pdf-parse': ^1.1.1
       '@types/promise-ftp': ^1.3.4
       '@types/redis': ^2.8.11
       '@types/request-promise-native': ~1.0.15
@@ -767,8 +767,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.150.1
-      n8n-workflow: ~0.132.1
+      n8n-core: ~0.151.0
+      n8n-workflow: ~0.133.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -866,7 +866,9 @@ importers:
       '@types/mailparser': 2.7.4
       '@types/mime-types': 2.1.1
       '@types/mssql': 6.0.8
+      '@types/node-ssh': 7.0.1
       '@types/nodemailer': 6.4.6
+      '@types/pdf-parse': 1.1.1
       '@types/promise-ftp': 1.3.4
       '@types/redis': 2.8.32
       '@types/request-promise-native': 1.0.18
@@ -6043,6 +6045,14 @@ packages:
       '@types/node': 16.11.65
       form-data: 3.0.1
 
+  /@types/node-ssh/7.0.1:
+    resolution: {integrity: sha512-98EuH7UQl/WWwwDxpbANQ76HwBdzcSnC9zLSdrtVW7jjYeOTQ6TxBygbGwzZR4ho1agbd941UnHCdrXz2sS8JQ==}
+    dependencies:
+      '@types/node': 16.11.65
+      '@types/ssh2': 1.11.6
+      '@types/ssh2-streams': 0.1.9
+    dev: true
+
   /@types/node/14.18.33:
     resolution: {integrity: sha512-qelS/Ra6sacc4loe/3MSjXNL1dNQ/GjxNHVzuChwMfmk7HuycRLVQN2qNY3XahK+fZc5E2szqQSKUyAF0E+2bg==}
     dev: true
@@ -6097,6 +6107,10 @@ packages:
     resolution: {integrity: sha512-pz1cx9ptZvozyGKKKIPLcVDVHwae4hrH5d6g5J+DkMRRjR3cVETb4jMabhXAUbg3Ov7T22nFHEgaK2jj+5CBpw==}
     dependencies:
       '@types/express': 4.17.14
+    dev: true
+
+  /@types/pdf-parse/1.1.1:
+    resolution: {integrity: sha512-lDBKAslCwvfK2uvS1Uk+UCpGvw+JRy5vnBFANPKFSY92n/iEnunXi0KVBjPJXhsM4jtdcPnS7tuZ0zjA9x6piQ==}
     dev: true
 
   /@types/prettier/2.7.1:
@@ -6214,6 +6228,12 @@ packages:
       '@types/ssh2': 1.11.6
     dev: true
 
+  /@types/ssh2-streams/0.1.9:
+    resolution: {integrity: sha512-I2J9jKqfmvXLR5GomDiCoHrEJ58hAOmFrekfFqmCFd+A6gaEStvWnPykoWUwld1PNg4G5ag1LwdA+Lz1doRJqg==}
+    dependencies:
+      '@types/node': 16.11.65
+    dev: true
+
   /@types/ssh2/1.11.6:
     resolution: {integrity: sha512-8Mf6bhzYYBLEB/G6COux7DS/F5bCWwojv/qFo2yH/e4cLzAavJnxvFXrYW59iKfXdhG6OmzJcXDasgOb/s0rxw==}
     dependencies:
@@ -6307,6 +6327,10 @@ packages:
   /@types/uuid/8.3.4:
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
     dev: true
+
+  /@types/validator/13.7.10:
+    resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
+    dev: false
 
   /@types/validator/13.7.7:
     resolution: {integrity: sha512-jiEw2kTUJ8Jsh4A1K4b5Pkjj9Xz6FktLLOQ36ZVLRkmxFbpTvAV2VRoKMojz8UlZxNg/2dZqzpigH4JYn1bkQg==}
@@ -8813,9 +8837,10 @@ packages:
       static-extend: 0.1.2
     dev: true
 
-  /class-validator/0.13.2:
-    resolution: {integrity: sha512-yBUcQy07FPlGzUjoLuUfIOXzgynnQPPruyK1Ge2B74k9ROwnle1E+NxLWnUv5OLU8hA/qL5leAE9XnXq3byaBw==}
+  /class-validator/0.14.0:
+    resolution: {integrity: sha512-ct3ltplN8I9fOwUd8GrP8UQixwff129BkEtuWDKL5W45cQuLd19xqmTLu5ge78YDm/fdje6FMt0hGOhl0lii3A==}
     dependencies:
+      '@types/validator': 13.7.10
       libphonenumber-js: 1.10.14
       validator: 13.7.0
     dev: false
@@ -11299,12 +11324,6 @@ packages:
       - supports-color
     dev: true
 
-  /esm/3.2.25:
-    resolution: {integrity: sha512-U1suiZ2oDVWv4zPO56S0NcR5QriEahGtdN2OR6FiOG4WJvcjBVFB0qI4+eKoWFH483PKGuLuu6V8Z4T5g63UVA==}
-    engines: {node: '>=6'}
-    dev: false
-    optional: true
-
   /espree/6.2.1:
     resolution: {integrity: sha512-ysCxRQY3WaXJz9tdbWOwuWr5Y/XrPTGX9Kiz3yoUXwW0VZ4w30HTkQLaGx/+ttFjF8i+ACbArnB4ce68a9m5hw==}
     engines: {node: '>=6.0.0'}
@@ -13629,11 +13648,6 @@ packages:
   /is-object/1.0.2:
     resolution: {integrity: sha512-2rRIahhZr2UWb45fIOuvZGpFtz0TyOZLf32KxBbSoUCeZR495zCKlWUKKUByk3geS2eAs7ZAABt0Y/Rx0GiQGA==}
     dev: true
-
-  /is-observable/2.1.0:
-    resolution: {integrity: sha512-DailKdLb0WU+xX8K5w7VsJhapwHLZ9jjmazqCJq4X12CTgqq73TKnbRcnSLuXYPOoLQgV5IrD7ePiX/h1vnkBw==}
-    engines: {node: '>=8'}
-    dev: false
 
   /is-path-inside/3.0.3:
     resolution: {integrity: sha512-Fd4gABb+ycGAmKou8eMftCupSir5lRxqf4aD/vd0cD2qc4HL07OjCeuHMr8Ro4CoMaeCKDB0/ECBOVWjTwUvPQ==}
@@ -16626,10 +16640,6 @@ packages:
       define-properties: 1.1.4
       es-abstract: 1.20.4
     dev: true
-
-  /observable-fns/0.6.1:
-    resolution: {integrity: sha512-9gRK4+sRWzeN6AOewNBTLXir7Zl/i3GB6Yl26gK4flxz8BXVpD3kt8amREmWNb0mxYOGDotvE5a4N+PtGGKdkg==}
-    dev: false
 
   /on-finished/2.4.1:
     resolution: {integrity: sha512-oVlzkg3ENAhCk2zdv7IJwd/QUD4z2RxRwpkcGY8psCVcCYZNq4wYnVWALHM+brtuJjePWiYF/ClmuDr8Ch5+kg==}
@@ -20386,19 +20396,6 @@ packages:
       any-promise: 1.3.0
     dev: false
 
-  /threads/1.7.0:
-    resolution: {integrity: sha512-Mx5NBSHX3sQYR6iI9VYbgHKBLisyB+xROCBGjjWm1O9wb9vfLxdaGtmT/KCjUqMsSNW6nERzCW3T6H43LqjDZQ==}
-    dependencies:
-      callsites: 3.1.0
-      debug: 4.3.4
-      is-observable: 2.1.0
-      observable-fns: 0.6.1
-    optionalDependencies:
-      tiny-worker: 2.3.0
-    transitivePeerDependencies:
-      - supports-color
-    dev: false
-
   /throttle-debounce/1.1.0:
     resolution: {integrity: sha512-XH8UiPCQcWNuk2LYePibW/4qL97+ZQ1AN3FNXwZRBNPPowo/NRU5fAlDCSNBJIYCKbioZfuYtMhG4quqoJhVzg==}
     engines: {node: '>=4'}
@@ -20449,13 +20446,6 @@ packages:
       globalyzer: 0.1.0
       globrex: 0.1.2
     dev: true
-
-  /tiny-worker/2.3.0:
-    resolution: {integrity: sha512-pJ70wq5EAqTAEl9IkGzA+fN0836rycEuz2Cn6yeZ6FRzlVS5IDOkFHpIoEsksPRQV34GDqXm65+OlnZqUSyK2g==}
-    dependencies:
-      esm: 3.2.25
-    dev: false
-    optional: true
 
   /tinycolor2/1.4.2:
     resolution: {integrity: sha512-vJhccZPs965sV/L2sU4oRQVAos0pQXwsvTLkWYdqJ+a8Q5kPFzJTuOFwy7UniPli44NKQGAglksjvOcpo95aZA==}

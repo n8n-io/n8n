@@ -96,7 +96,7 @@ export class MessageEventBusDestinationSyslog
 					if (error) {
 						console.log(error);
 					} else {
-						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					}
 				},
@@ -112,7 +112,6 @@ export class MessageEventBusDestinationSyslog
 
 	serialize(): MessageEventBusDestinationSyslogOptions {
 		const abstractSerialized = super.serialize();
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...abstractSerialized,
 			expectedStatusCode: this.expectedStatusCode,
