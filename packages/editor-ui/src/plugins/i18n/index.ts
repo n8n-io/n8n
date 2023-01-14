@@ -326,6 +326,10 @@ export class I18nClass {
 		};
 	}
 
+	expressionEditor: Record<string, string> = {
+		previewHint: this.baseText('expressionEditor.previewHint'),
+	};
+
 	rootVars: Record<string, string | undefined> = {
 		$binary: this.baseText('codeNodeEditor.completer.binary'),
 		$execution: this.baseText('codeNodeEditor.completer.$execution'),

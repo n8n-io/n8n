@@ -175,15 +175,17 @@ export const expressionManager = mixins(workflowHelpers).extend({
 
 				/**
 				 * If this is a preview of an uncalled function, call it and display it
-				 * with a hint `<if called> [result]` if the call succeeds
+				 * with a hint `[if called:] [result]` if the call succeeds
 				 */
 				if (isPreview && fullError?.message.startsWith('This is a function')) {
 					// @TODO: Use error code for check
 					const textWithCall = text.replace(/\s{1}}}$/, '() }}'); // @TODO: Improve this replacement
 					const resultWithCall = this.resolve(textWithCall, this.hoveringItem);
 
+					const hint = this.$locale.baseText('expressionEditor.previewHint');
+
 					if (!resultWithCall.error) {
-						resolved = '<if called> ' + resultWithCall.resolved;
+						resolved = [hint, resultWithCall.resolved].join(' ');
 						error = false;
 						fullError = null;
 					}

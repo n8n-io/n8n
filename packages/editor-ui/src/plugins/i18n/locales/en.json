@@ -496,6 +496,7 @@
 	"expressionEdit.expression": "Expression",
 	"expressionEdit.resultOfItem1": "Result of item 1",
 	"expressionEdit.variableSelector": "Variable Selector",
+	"expressionEditor.previewHint": "[if called:]",
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.undefined": "[undefined]",
 	"expressionModalInput.null": "null",
