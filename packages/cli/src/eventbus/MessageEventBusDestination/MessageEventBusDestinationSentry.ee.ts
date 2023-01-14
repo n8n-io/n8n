@@ -36,7 +36,6 @@ export class MessageEventBusDestinationSentry
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.label = options.label ?? 'Sentry DSN';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
@@ -85,7 +84,7 @@ export class MessageEventBusDestinationSentry
 			);
 
 			if (sentryResult) {
-				await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+				eventBus.confirmSent(msg, { id: this.id, name: this.label });
 				sendResult = true;
 			}
 		} catch (error) {
@@ -109,7 +108,6 @@ export class MessageEventBusDestinationSentry
 	): MessageEventBusDestinationSentry | null {
 		if (
 			'__type' in data &&
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			data.__type === MessageEventBusDestinationTypeNames.sentry &&
 			isMessageEventBusDestinationSentryOptions(data)
 		) {

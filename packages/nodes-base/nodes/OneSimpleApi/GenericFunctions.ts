@@ -21,7 +21,7 @@ export async function oneSimpleApiRequest(
 		body,
 		qs,
 		uri:
-			uri ||
+			uri ??
 			`https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${outputFormat}`,
 		json: true,
 	};

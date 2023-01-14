@@ -28,7 +28,7 @@ export async function autopilotApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: uri ?? `${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

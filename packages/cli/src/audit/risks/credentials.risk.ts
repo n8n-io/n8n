@@ -1,4 +1,4 @@
-import { MoreThanOrEqual } from 'typeorm';
+import { FindOperator, MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import * as Db from '@/Db';
 import config from '@/config';
@@ -46,7 +46,7 @@ async function getExecutionsInPastDays(days: number) {
 	return Db.collections.Execution.find({
 		select: ['workflowData'],
 		where: {
-			startedAt: MoreThanOrEqual(utcDate),
+			startedAt: MoreThanOrEqual(utcDate) as unknown as FindOperator<Date>,
 		},
 	});
 }
