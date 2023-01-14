@@ -30,3 +30,4 @@ export {
 } from './type-guards';
 
 export { ExpressionExtensions } from './Extensions';
+export { EXPRESSION_RESOLUTION_ERROR_CODES } from './ErrorCodes';

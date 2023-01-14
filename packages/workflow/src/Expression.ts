@@ -28,6 +28,7 @@ import {
 } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
+import { EXPRESSION_RESOLUTION_ERROR_CODES } from './ErrorCodes';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -276,9 +277,14 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') {
-				throw new Error('This is an n8n prefix, please open completions');
+				throw new Error('This is an n8n prefix, please open completions', {
+					cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.N8N_PREFIX },
+				});
 			}
-			throw new Error('This is a function. Please add ()');
+
+			throw new Error('This is a function. Please add ()', {
+				cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.UNCALLED_FUNCTION },
+			});
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {

@@ -1,4 +1,5 @@
 import mixins from 'vue-typed-mixins';
+import { EXPRESSION_RESOLUTION_ERROR_CODES as ERROR_CODES } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
@@ -169,16 +170,17 @@ export const expressionManager = mixins(workflowHelpers).extend({
 					return acc.push({ kind: 'plaintext', from, to, plaintext: text }), acc;
 				}
 
-				// resolvable
-
 				let { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 
 				/**
 				 * If this is a preview of an uncalled function, call it and display it
 				 * with a hint `[if called:] [result]` if the call succeeds
 				 */
-				if (isPreview && fullError?.message.startsWith('This is a function')) {
-					// @TODO: Use error code for check
+				if (
+					isPreview &&
+					hasErrorCode(fullError) &&
+					fullError.cause.code === ERROR_CODES.UNCALLED_FUNCTION
+				) {
 					const textWithCall = text.replace(/\s{1}}}$/, '() }}'); // @TODO: Improve this replacement
 					const resultWithCall = this.resolve(textWithCall, this.hoveringItem);
 
@@ -260,3 +262,12 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		},
 	},
 });
+
+function hasErrorCode(error: Error | null): error is Error & { cause: { code: number } } {
+	return (
+		error instanceof Error &&
+		typeof error.cause === 'object' &&
+		error.cause !== null &&
+		'code' in error.cause
+	);
+}
