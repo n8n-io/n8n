@@ -1,5 +1,10 @@
 <template>
-	<div ref="root" class="ph-no-capture" data-test-id="inline-expression-editor-input"></div>
+	<div
+		ref="root"
+		class="ph-no-capture"
+		data-test-id="inline-expression-editor-input"
+		@keydown.esc="onClose"
+	></div>
 </template>
 
 <script lang="ts">
@@ -134,6 +139,9 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 	methods: {
 		focus() {
 			this.editor?.focus();
+		},
+		onClose() {
+			this.ndvStore.activeNodeName = null;
 		},
 	},
 });

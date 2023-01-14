@@ -33,6 +33,16 @@ export const completionManager = mixins(expressionManager).extend({
 		previewKeymap(): Extension {
 			return keymap.of([
 				{
+					any(view: EditorView, event: KeyboardEvent) {
+						if (event.key === 'Escape' && completionStatus(view.state) !== null) {
+							// prevent completions dismissal from also closing modal
+							event.stopPropagation();
+						}
+
+						return false;
+					},
+				},
+				{
 					key: 'Escape',
 					run: (view) => {
 						if (completionStatus(view.state) !== null) {
