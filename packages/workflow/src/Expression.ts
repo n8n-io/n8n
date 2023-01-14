@@ -56,6 +56,11 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
+
+		if (value instanceof DateTime && value.invalidReason !== undefined) {
+			throw new Error('invalid DateTime');
+		}
+
 		const result = JSON.stringify(value)
 			.replace(/,"/g, ', "') // spacing for
 			.replace(/":/g, '": '); // readability
