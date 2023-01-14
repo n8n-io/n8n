@@ -1,4 +1,4 @@
-import { parserWithMetaData as n8nParser } from 'codemirror-lang-n8n-expression';
+import { parserWithMetaData as n8nParser } from './parser-with-unicode'; // @TODO: Update lib
 import { LanguageSupport, LRLanguage } from '@codemirror/language';
 import { parseMixed } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';

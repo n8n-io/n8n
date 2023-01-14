@@ -159,14 +159,14 @@ export const expressionManager = mixins(workflowHelpers).extend({
 					from: node.from,
 					to: node.to,
 					text: state.sliceDoc(node.from, node.to),
-					type: node.type.name,
+					token: node.type.name,
 				});
 			});
 
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
-				const { from, to, text, type } = segment;
+				const { from, to, text, token } = segment;
 
-				if (type === 'plaintext') {
+				if (token === 'Plaintext') {
 					return acc.push({ kind: 'plaintext', from, to, plaintext: text }), acc;
 				}
 
