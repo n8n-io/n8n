@@ -25,12 +25,12 @@ const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
 export function n8nLang() {
 	const options = [
-		blankCompletions, // from blank position {{ | }}
-		rootCompletions, // $entity.
-		proxyCompletions, // $input., $prevNode., etc.
-		datatypeCompletions, // 'abc'., $json.name., etc.
-		alphaCompletions, // D (for DateTime)
-		luxonCompletions, // DateTime., $now., $today.
+		blankCompletions, // from `{{ | }}`
+		rootCompletions, // from `$`
+		proxyCompletions, // from `$var.`
+		datatypeCompletions, // from primitives `'abc'.` and from references `$json.name.`
+		alphaCompletions, // from alphabetic chars: `D`
+		luxonCompletions, // from luxon vars: `DateTime.`, `$now.`, `$today.`
 	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 
 	return new LanguageSupport(n8nLanguage, [
