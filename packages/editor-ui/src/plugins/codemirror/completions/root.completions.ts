@@ -6,7 +6,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
  * Completions from `$` to proxies.
  */
 export function rootCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/\$\w*[^.]*/);
+	const word = context.matchBefore(/\$\w*[^.}]*/);
 
 	if (!word) return null;
 
