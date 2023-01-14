@@ -536,25 +536,15 @@ export class RoutingNode {
 					let tempResponseData: INodeExecutionData[];
 					let makeAdditionalRequest: boolean;
 					let paginateRequestData: IHttpRequestOptions;
+
+					const additionalKeys = {
+						$request: requestData.options,
+						$response: {} as IDataObject,
+						$version: this.node.typeVersion,
+					};
+
 					do {
-						const additionalKeys = {
-							$request: requestData.options,
-							$response: {} as IDataObject,
-							$version: this.node.typeVersion,
-						};
-
-						makeAdditionalRequest = this.getParameterValue(
-							requestOperations.pagination.properties.continue,
-							itemIndex,
-							runIndex,
-							executeSingleFunctions.getExecuteData(),
-							additionalKeys,
-							false,
-						) as boolean;
-
-						if (!makeAdditionalRequest) {
-							break;
-						}
+						additionalKeys.$request = requestData.options;
 
 						paginateRequestData = this.getParameterValue(
 							requestOperations.pagination.properties.request as unknown as NodeParameterValueType,
@@ -599,7 +589,16 @@ export class RoutingNode {
 						}
 
 						responseData.push(...tempResponseData);
-					} while (true);
+
+						makeAdditionalRequest = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							additionalKeys,
+							false,
+						) as boolean;
+					} while (makeAdditionalRequest);
 				} else if (requestOperations.pagination.type === 'offset') {
 					const { properties } = requestOperations.pagination;
 
