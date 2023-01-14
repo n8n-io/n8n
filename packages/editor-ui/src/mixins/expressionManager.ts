@@ -142,7 +142,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		toSegments(state: EditorState) {
+		toSegments(state: EditorState, { isPreview } = { isPreview: false }) {
 			const rawSegments: RawSegment[] = [];
 
 			const fullTree = ensureSyntaxTree(state, state.doc.length, EXPRESSION_EDITOR_PARSER_TIMEOUT);
@@ -165,15 +165,31 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, type } = segment;
 
-				if (type === 'Resolvable') {
-					const { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
-
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
-
-					return acc;
+				if (type === 'plaintext') {
+					return acc.push({ kind: 'plaintext', from, to, plaintext: text }), acc;
 				}
 
-				acc.push({ kind: 'plaintext', from, to, plaintext: text });
+				// resolvable
+
+				let { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
+
+				/**
+				 * If this is a preview of an uncalled function, call it and display it
+				 * with a hint `<if called> [result]` if the call succeeds
+				 */
+				if (isPreview && fullError?.message.startsWith('This is a function')) {
+					// @TODO: Use error code for check
+					const textWithCall = text.replace(/\s{1}}}$/, '() }}'); // @TODO: Improve this replacement
+					const resultWithCall = this.resolve(textWithCall, this.hoveringItem);
+
+					if (!resultWithCall.error) {
+						resolved = '<if called> ' + resultWithCall.resolved;
+						error = false;
+						fullError = null;
+					}
+				}
+
+				acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
 				return acc;
 			}, []);
@@ -198,7 +214,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				extensions: [n8nLang()],
 			});
 
-			return this.toSegments(previewState);
+			return this.toSegments(previewState, { isPreview: true });
 		},
 
 		resolve(resolvable: string, targetItem?: TargetItem) {
