@@ -37,10 +37,10 @@ export const isSplitInBatchesAbsent = () =>
 
 export const inputHasNoBinaryData = () => resolveParameter('={{ $binary }}')?.data === undefined;
 
-export function inputHasNoParams() {
-	const PSEUDO_PARAMS = ['notice']; // disallowing user input
+export function hasNoParams(toResolve: string) {
+	const PSEUDO_PARAMS = ['notice']; // not proper params, no user input allowed
 
-	const params = resolveParameter('={{ $input.params }}');
+	const params = resolveParameter(`={{ ${toResolve}.params }}`);
 
 	if (!params) return true;
 

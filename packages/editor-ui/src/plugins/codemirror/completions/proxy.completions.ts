@@ -4,7 +4,7 @@ import {
 	isSplitInBatchesAbsent,
 	isAllowedInDotNotation,
 	longestCommonPrefix,
-	inputHasNoParams,
+	hasNoParams,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject } from 'n8n-workflow';
@@ -80,7 +80,9 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 
 	if (isSplitInBatchesAbsent()) SKIP_SET.add('context');
 
-	if (toResolve === '$input' && inputHasNoParams()) SKIP_SET.add('params');
+	if ((toResolve === '$input' || toResolve.startsWith('$(')) && hasNoParams(toResolve)) {
+		SKIP_SET.add('params');
+	}
 
 	const proxyName = toResolve.startsWith('$(') ? '$()' : toResolve;
 
