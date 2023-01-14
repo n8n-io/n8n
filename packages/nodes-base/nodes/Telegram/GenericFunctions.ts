@@ -149,7 +149,7 @@ export async function apiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 
-	query = query || {};
+	query = query ?? {};
 
 	const options: OptionsWithUri = {
 		headers: {},

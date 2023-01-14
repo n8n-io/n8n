@@ -36,7 +36,7 @@ export async function webflowApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.webflow.com${resource}`,
+		uri: uri ?? `https://api.webflow.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

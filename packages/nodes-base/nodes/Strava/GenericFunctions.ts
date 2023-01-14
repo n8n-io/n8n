@@ -28,7 +28,7 @@ export async function stravaApiRequest(
 		method,
 		form: body,
 		qs,
-		uri: uri || `https://www.strava.com/api/v3${resource}`,
+		uri: uri ?? `https://www.strava.com/api/v3${resource}`,
 		json: true,
 	};
 	try {

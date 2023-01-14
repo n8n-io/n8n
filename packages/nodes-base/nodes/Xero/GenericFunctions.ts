@@ -21,7 +21,7 @@ export async function xeroApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
+		uri: uri ?? `https://api.xero.com/api.xro/2.0${resource}`,
 		json: true,
 	};
 	try {

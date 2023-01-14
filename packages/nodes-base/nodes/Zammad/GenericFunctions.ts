@@ -14,6 +14,10 @@ import { flow } from 'lodash';
 
 import type { Zammad } from './types';
 
+export function tolerateTrailingSlash(url: string) {
+	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
+}
+
 export async function zammadApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -111,10 +115,6 @@ export async function zammadApiRequestAllItems(
 	return returnData;
 }
 
-export function tolerateTrailingSlash(url: string) {
-	return url.endsWith('/') ? url.substr(0, url.length - 1) : url;
-}
-
 export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 	throw new NodeOperationError(
 		this.getNode(),
@@ -126,11 +126,11 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 //        loadOptions utils
 // ----------------------------------
 
+export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
+
 export const fieldToLoadOption = (i: Zammad.Field) => {
 	return { name: i.display ? prettifyDisplayName(i.display) : i.name, value: i.name };
 };
-
-export const prettifyDisplayName = (fieldName: string) => fieldName.replace('name', ' Name');
 
 export const isCustomer = (user: Zammad.User) =>
 	user.role_ids.includes(3) && !user.email.endsWith('@zammad.org');

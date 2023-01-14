@@ -23,7 +23,7 @@ export async function upleadApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.uplead.com/v2${resource}`,
+		uri: uri ?? `https://api.uplead.com/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

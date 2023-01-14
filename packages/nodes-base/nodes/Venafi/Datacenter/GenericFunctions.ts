@@ -30,7 +30,7 @@ export async function venafiApiRequest(
 		body,
 		qs,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
-		uri: uri || `${credentials.domain}${resource}`,
+		uri: uri ?? `${credentials.domain}${resource}`,
 		json: true,
 	};
 

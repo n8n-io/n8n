@@ -28,7 +28,7 @@ export async function tapfiliateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.tapfiliate.com/1.6${endpoint}`,
+		uri: uri ?? `https://api.tapfiliate.com/1.6${endpoint}`,
 		json: true,
 	};
 
