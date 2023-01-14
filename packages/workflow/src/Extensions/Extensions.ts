@@ -1,3 +1,5 @@
+// @TODO: Improve typings, rename file
+
 type TypeName = 'String' | 'Number' | 'Array' | 'Object' | 'Date';
 
 export type ExtensionMap =
