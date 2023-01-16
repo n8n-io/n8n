@@ -39,5 +39,10 @@ export default mergeConfig(
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 		},
+		css: {
+			modules: {
+				generateScopedName: (name) => `_${name}_`,
+			},
+		},
 	}),
 );
