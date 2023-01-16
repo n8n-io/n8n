@@ -16,11 +16,11 @@ import {
 } from 'n8n-workflow';
 import { eventBus } from '@/eventbus';
 import { SuperAgentTest } from 'supertest';
-import { EventMessageGeneric } from '../../src/eventbus/EventMessageClasses/EventMessageGeneric';
-import { MessageEventBusDestinationSyslog } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
-import { MessageEventBusDestinationWebhook } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { MessageEventBusDestinationSentry } from '../../src/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
-import { EventMessageAudit } from '../../src/eventbus/EventMessageClasses/EventMessageAudit';
+import { EventMessageGeneric } from '@/eventbus/EventMessageClasses/EventMessageGeneric';
+import { MessageEventBusDestinationSyslog } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationWebhook } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
+import { MessageEventBusDestinationSentry } from '@/eventbus/MessageEventBusDestination/MessageEventBusDestinationSentry.ee';
+import { EventMessageAudit } from '@/eventbus/EventMessageClasses/EventMessageAudit';
 import { v4 as uuid } from 'uuid';
 
 jest.unmock('@/eventbus/MessageEventBus/MessageEventBus');
@@ -30,7 +30,6 @@ jest.mock('syslog-client');
 const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let owner: User;
 let unAuthOwnerAgent: SuperAgentTest;
@@ -82,8 +81,7 @@ async function confirmIdSent(id: string) {
 }
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
@@ -121,7 +119,7 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	jest.mock('@/eventbus/MessageEventBus/MessageEventBus');
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 	await eventBus.close();
 });
 

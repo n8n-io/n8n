@@ -20,8 +20,6 @@ import {
 	sleep,
 } from 'n8n-workflow';
 
-import { FindOneOptions, getConnectionManager } from 'typeorm';
-
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
@@ -125,7 +123,7 @@ export class Worker extends Command {
 
 	async runJob(job: Queue.Job, nodeTypes: INodeTypes): Promise<Queue.JobResponse> {
 		const { executionId, loadStaticData } = job.data;
-		const executionDb = await Db.collections.Execution.findOne(executionId);
+		const executionDb = await Db.collections.Execution.findOneBy({ id: executionId });
 
 		if (!executionDb) {
 			LoggerProxy.error(
@@ -145,14 +143,13 @@ export class Worker extends Command {
 
 		let { staticData } = currentExecutionDb.workflowData;
 		if (loadStaticData) {
-			const findOptions = {
+			const workflowData = await Db.collections.Workflow.findOne({
 				select: ['id', 'staticData'],
-			} as FindOneOptions;
-			const workflowData = await Db.collections.Workflow.findOne(
-				currentExecutionDb.workflowData.id,
-				findOptions,
-			);
-			if (workflowData === undefined) {
+				where: {
+					id: currentExecutionDb.workflowData.id,
+				},
+			});
+			if (workflowData === null) {
 				LoggerProxy.error(
 					'Worker execution failed because workflow could not be found in database.',
 					{
@@ -384,10 +381,10 @@ export class Worker extends Command {
 						async (req: express.Request, res: express.Response) => {
 							LoggerProxy.debug('Health check started!');
 
-							const connection = getConnectionManager().get();
+							const connection = Db.getConnection();
 
 							try {
-								if (!connection.isConnected) {
+								if (!connection.isInitialized) {
 									// Connection is not active
 									throw new Error('No active database connection!');
 								}

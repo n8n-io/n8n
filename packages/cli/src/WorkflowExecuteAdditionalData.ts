@@ -402,9 +402,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					const execution = await Db.collections.Execution.findOne(this.executionId);
+					const execution = await Db.collections.Execution.findOneBy({ id: this.executionId });
 
-					if (execution === undefined) {
+					if (execution === null) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
 						return;
@@ -829,7 +829,7 @@ export async function getWorkflowData(
 		);
 	}
 
-	let workflowData: IWorkflowBase | undefined;
+	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
 		if (!Db.isInitialized) {
 			// The first time executeWorkflow gets called the Database has
@@ -845,7 +845,7 @@ export async function getWorkflowData(
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {
-		workflowData = workflowInfo.code;
+		workflowData = workflowInfo.code ?? null;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;
