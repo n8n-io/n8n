@@ -51,6 +51,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
+import { eventBus } from './eventbus';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -100,6 +101,28 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 		};
+
+		// The following will attempt to recover runData from event logs
+		// Note that this will only work as long as the event logs actually contain the events from this workflow execution
+		// Since processError is run almost immediately after the workflow execution has failed, it is likely that the event logs
+		// does contain those messages.
+		try {
+			// Search for messages for this executionId in event logs
+			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
+			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
+			if (eventLogMessages.length > 0) {
+				const eventLogExecutionData = await eventBus.recoverExecutionDataFromEventLogMessages(
+					executionId,
+					eventLogMessages,
+					false,
+				);
+				if (eventLogExecutionData) {
+					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
+				}
+			}
+		} catch {
+			// Ignore errors
+		}
 
 		// Remove from active execution with empty data. That will
 		// set the execution to failed.

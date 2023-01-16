@@ -119,7 +119,7 @@ eventBusRouter.get(
 			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
 			if (messages.length > 0) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const recoverResult = await eventBus.recoverExecutionDataFromEventLog(
+				const recoverResult = await eventBus.recoverExecutionDataFromEventLogMessages(
 					req.params.id,
 					messages,
 					applyToDb,

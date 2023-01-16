@@ -108,26 +108,13 @@ export class MessageEventBus extends EventEmitter {
 		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
-		// console.error(unsentAndUnfinished.unfinishedExecutions);
-
 		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
 			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
-				await this.recoverExecutionDataFromEventLog(
+				await this.recoverExecutionDataFromEventLogMessages(
 					executionId,
 					unsentAndUnfinished.unfinishedExecutions[executionId],
+					true,
 				);
-
-				// if (!executionEntry?.stoppedAt) {
-				// 	LoggerProxy.debug(`Found unfinished execution ${executionId}, marking them as failed`);
-				// 	await Db.collections.Execution.update(executionId, {
-				// 		finished: false,
-				// 		stoppedAt: new Date(),
-				// 	});
-				// } else {
-				// 	LoggerProxy.debug(
-				// 		`Found unfinished execution ${executionId}, but it was already marked as failed`,
-				// 	);
-				// }
 			}
 		}
 
@@ -145,7 +132,7 @@ export class MessageEventBus extends EventEmitter {
 		this.isInitialized = true;
 	}
 
-	async recoverExecutionDataFromEventLog(
+	async recoverExecutionDataFromEventLogMessages(
 		executionId: string,
 		messages: EventMessageTypes[],
 		applyToDb = true,
@@ -155,7 +142,6 @@ export class MessageEventBus extends EventEmitter {
 				id: executionId,
 			},
 		});
-		console.log(executionId, messages, executionEntry);
 
 		if (executionEntry && messages) {
 			const executionData: IRunExecutionData | undefined = executionEntry?.data
@@ -321,35 +307,15 @@ export class MessageEventBus extends EventEmitter {
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emitMessageWithCallback('message', msg);
-		// this.emit('message', [
-		// 	msg,
-		// 	(message: EventMessageTypes, src: EventMessageConfirmSource) =>
-		// 		this.confirmSent(message, src),
-		// ]);
-
-		// LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		if (this.shouldSendMsg(msg)) {
 			for (const destinationName of Object.keys(this.destinations)) {
 				this.emitMessageWithCallback(this.destinations[destinationName].getId(), msg);
-				// this.emit(this.destinations[destinationName].getId(), [
-				// 	msg,
-				// 	(message: EventMessageTypes, src: EventMessageConfirmSource) =>
-				// 		this.confirmSent(message, src),
-				// ]);
 			}
 		}
 	}
 
 	private emitMessageWithCallback(eventName: string, msg: EventMessageTypes): boolean {
-		// return this.emit(eventName, msg, (message: EventMessageTypes, src: EventMessageConfirmSource) =>
-		// 	this.confirmSent(message, src),
-		// );
-		// const emitterPayload: MessageWithCallback = {
-		// 	msg,
-		// 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) =>
-		// 		this.confirmSent(message, src),
-		// };
 		const confirmCallback = (message: EventMessageTypes, src: EventMessageConfirmSource) =>
 			this.confirmSent(message, src);
 		return this.emit(eventName, msg, confirmCallback);

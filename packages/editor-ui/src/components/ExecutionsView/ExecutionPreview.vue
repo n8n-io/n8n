@@ -77,14 +77,6 @@
 				</n8n-text>
 			</div>
 			<div>
-				<span>
-					<n8n-icon-button
-						icon="list"
-						size="small"
-						:title="$locale.baseText('executionEvents.buttonLabel')"
-						@click.stop="() => getExecutionEvents(activeExecution?.id)"
-					/>
-				</span>
 				<el-dropdown
 					v-if="executionUIDetails?.name === 'error'"
 					trigger="click"
@@ -190,28 +182,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			const retryDropdown = this.$refs.retryDropdown as (Vue & { hide: () => void }) | undefined;
 			if (retryDropdown && event.relatedTarget === null) {
 				retryDropdown.hide();
-			}
-		},
-		async getExecutionEvents(id?: string) {
-			if (!id) {
-				return;
-			}
-			try {
-				const eventFetchResult = await this.restApi().makeRestApiRequest(
-					'GET',
-					'/eventbus/execution/' + id,
-				);
-				const uniqueEvents = eventFetchResult.filter(
-					(event: IAbstractEventMessage, index: number, self: IAbstractEventMessage[]) =>
-						index === self.findIndex((t) => t.id === event.id),
-				);
-				console.log(uniqueEvents);
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.getExecutionEvents.title'),
-				);
-				return;
 			}
 		},
 	},

@@ -461,7 +461,6 @@
 	"executionsList.showError.refreshData.title": "Problem loading data",
 	"executionsList.showError.retryExecution.title": "Problem with retry",
 	"executionsList.showError.stopExecution.title": "Problem stopping execution",
-	"executionsList.showError.getExecutionEvents.title": "Problem fetching execution events",
 	"executionsList.showMessage.handleDeleteSelected.title": "Execution deleted",
 	"executionsList.showMessage.retrySuccessfulFalse.title": "Retry unsuccessful",
 	"executionsList.showMessage.retrySuccessfulTrue.title": "Retry successful",
