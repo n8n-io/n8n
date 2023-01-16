@@ -1,7 +1,8 @@
 <script lang="ts">
-import { computed, defineComponent, onMounted, onBeforeMount, ref, reactive, PropType } from 'vue';
+import { computed, defineComponent, onMounted, onBeforeMount, ref, PropType } from 'vue';
 
 export default defineComponent({
+	name: 'n8n-recycle-scroller',
 	props: {
 		itemSize: {
 			type: Number,
@@ -23,6 +24,7 @@ export default defineComponent({
 	setup(props) {
 		const wrapperRef = ref<HTMLElement | null>(null);
 		const scrollerRef = ref<HTMLElement | null>(null);
+		const itemsRef = ref<Record<string, HTMLElement | null>>({});
 
 		const scrollTop = ref(0);
 		const wrapperHeight = ref(0);
@@ -34,13 +36,13 @@ export default defineComponent({
 		 * Cache
 		 */
 
-		const itemSizeCache = reactive<Record<string, number>>({});
+		const itemSizeCache = ref<Record<string, number>>({});
 		const itemPositionCache = computed(() => {
 			return props.items.reduce<Record<string, number>>((acc, item, index) => {
 				const key = item[props.itemKey];
 				const prevItem = props.items[index - 1];
 				const prevItemPosition = prevItem ? acc[prevItem[props.itemKey]] : 0;
-				const prevItemSize = prevItem ? itemSizeCache[prevItem[props.itemKey]] : 0;
+				const prevItemSize = prevItem ? itemSizeCache.value[prevItem[props.itemKey]] : 0;
 
 				acc[key] = prevItemPosition + prevItemSize;
 
@@ -49,11 +51,22 @@ export default defineComponent({
 		});
 
 		function initializeItemSizeCache() {
-			props.items.forEach((item) => (itemSizeCache[item[props.itemKey]] = props.itemSize));
+			props.items.forEach((item) => {
+				itemSizeCache.value = {
+					...itemSizeCache.value,
+					[item[props.itemKey]]: props.itemSize,
+				};
+			});
 		}
 
-		function setItemSize(itemKey: string, size: number) {
-			itemSizeCache[itemKey] = size;
+		function setItemSize(itemKey: string) {
+			const itemRef = itemsRef.value[itemKey];
+			const size = itemRef ? itemRef.clientHeight : props.itemSize;
+
+			itemSizeCache.value = {
+				...itemSizeCache.value,
+				[itemKey]: size,
+			};
 		}
 
 		/**
@@ -112,7 +125,13 @@ export default defineComponent({
 		 * Computed sizes and styles
 		 */
 
-		const scrollerHeight = computed(() => itemCount.value * props.itemSize);
+		const scrollerHeight = computed(() => {
+			const lastItem = props.items[props.items.length - 1];
+			const lastItemPosition = lastItem ? itemPositionCache.value[lastItem[props.itemKey]] : 0;
+			const lastItemSize = lastItem ? itemSizeCache.value[lastItem[props.itemKey]] : props.itemSize;
+
+			return lastItemPosition + lastItemSize;
+		});
 
 		const scrollerStyles = computed(() => ({
 			height: `${scrollerHeight.value}px`,
@@ -150,6 +169,7 @@ export default defineComponent({
 			scrollerScrollTop: scrollTop,
 			scrollerRef,
 			wrapperRef,
+			itemsRef,
 			setItemSize,
 		};
 	},
@@ -158,12 +178,13 @@ export default defineComponent({
 
 <template>
 	<div class="recycle-scroller-wrapper" ref="wrapperRef">
-		<div class="recycle-scroller" ref="scrollerRef" :style="scrollerStyles">
+		<div class="recycle-scroller" :style="scrollerStyles" ref="scrollerRef">
 			<div
-				class="recycle-scroller-item"
 				v-for="item in itemsVisible"
 				:key="item[itemKey]"
+				class="recycle-scroller-item"
 				:style="itemStyles(item[itemKey])"
+				:ref="(element) => (itemsRef[item[itemKey]] = element)"
 			>
 				<slot :item="item" :setItemSize="setItemSize" />
 			</div>
