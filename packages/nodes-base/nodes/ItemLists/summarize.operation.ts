@@ -19,7 +19,6 @@ type AggregationType =
 type Aggregation = {
 	aggregation: AggregationType;
 	field: string;
-	ignoreNonNumericalValues?: boolean;
 	includeEmpty?: boolean;
 	separateBy?: string;
 	customSeparator?: string;
@@ -141,20 +140,7 @@ export const description: INodeProperties[] = [
 							},
 						},
 					},
-					//----------------------------------------------------------------------------------------------------------------
-					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						displayName: "Ignore values that aren't numbers",
-						name: 'ignoreNonNumericalValues',
-						description: "Whether this isn't enabled, non-numerical values will cause an error",
-						type: 'boolean',
-						default: false,
-						displayOptions: {
-							show: {
-								aggregation: NUMERICAL_AGGREGATIONS,
-							},
-						},
-					},
+					// ----------------------------------------------------------------------------------------------------------
 					{
 						displayName: 'Include Empty Values',
 						name: 'includeEmpty',
@@ -227,6 +213,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	// fieldsToSplitBy repeated to have different displayName for singleItem and separateItems -----------------------------
 	{
 		displayName: 'Fields to Split By',
 		name: 'fieldsToSplitBy',
@@ -261,6 +248,7 @@ export const description: INodeProperties[] = [
 			},
 		},
 	},
+	// ----------------------------------------------------------------------------------------------------------
 	{
 		displayName: 'Options',
 		name: 'options',
@@ -324,39 +312,12 @@ function isEmpty<T>(value: T) {
 	return value === undefined || value === null || value === '';
 }
 
-function checkAggregationsFieldType(
-	this: IExecuteFunctions,
-	items: IDataObject[],
-	aggregations: Aggregations,
-) {
-	const numericAggregations = aggregations
-		.filter(
-			(entry) =>
-				NUMERICAL_AGGREGATIONS.includes(entry.aggregation) && !entry.ignoreNonNumericalValues,
-		)
-		.map((entry) => entry);
-
-	for (const [index, item] of items.entries()) {
-		for (const entry of numericAggregations) {
-			if (!isEmpty(item[entry.field]) && typeof item[entry.field] !== 'number') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The field '${entry.field}' is not a number in [item ${index}], so can't perform ${entry.aggregation}`,
-					{ description: "To avoid this error, enable 'Ignore values that aren't numbers'" },
-				);
-			}
-		}
-	}
-}
-
 function aggregate(items: IDataObject[], entry: Aggregation) {
 	const { aggregation, field } = entry;
 	let data = [...items];
 
 	if (NUMERICAL_AGGREGATIONS.includes(aggregation)) {
-		entry.ignoreNonNumericalValues
-			? (data = data.filter((item) => typeof item[field] === 'number' && !isEmpty(item[field])))
-			: (data = data.filter((item) => !isEmpty(item[field])));
+		data = data.filter((item) => typeof item[field] === 'number' && !isEmpty(item[field]));
 	}
 
 	switch (aggregation) {
@@ -524,7 +485,6 @@ export async function execute(
 	}
 
 	checkIfFieldExists.call(this, newItems, fieldsToSummarize);
-	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
 
 	const aggregationResult = splitData(
 		fieldsToSplitBy,
