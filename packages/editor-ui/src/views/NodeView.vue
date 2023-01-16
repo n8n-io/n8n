@@ -3139,6 +3139,7 @@ export default mixins(
 		deleteEveryEndpoint() {
 			// Check as it does not exist on first load
 			if (this.instance) {
+				this.instance?.reset();
 				Object.values(this.instance?.endpointsByElement)
 					.flatMap((endpoint) => endpoint)
 					.forEach((endpoint) => endpoint.destroy());
@@ -3521,7 +3522,6 @@ export default mixins(
 		resetWorkspace() {
 			this.workflowsStore.resetWorkflow();
 
-			this.instance?.reset();
 			this.onToggleNodeCreator({ createNodeActive: false });
 			this.nodeCreatorStore.setShowScrim(false);
 
