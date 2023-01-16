@@ -449,11 +449,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 					id: 'sharing',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
 					position: 'top',
+					available: this.selectedCredential !== '',
 				},
 				{
 					id: 'details',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
 					position: 'top',
+					available: this.selectedCredential !== '',
 				},
 			];
 		},
@@ -917,6 +919,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.isDeleting = false;
 			// Now that the credentials were removed check if any nodes used them
 			this.updateNodesCredentialsIssues();
+			this.credentialData = {};
 
 			this.$showMessage({
 				title: this.$locale.baseText('credentialEdit.credentialEdit.showMessage.title'),
