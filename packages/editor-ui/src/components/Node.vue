@@ -911,7 +911,6 @@ export default mixins(
 	}
 	&.ep-success {
 		border-color: var(--color-success-light);
-		// --stalk-size: var(--stalk-success-size);
 
 		&:after {
 			content: attr(data-label);
