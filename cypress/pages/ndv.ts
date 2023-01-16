@@ -62,9 +62,10 @@ export class NDV extends BasePage {
 		},
 		rename: (newName: string) => {
 			this.getters.nodeNameContainer().click();
-			this.getters.nodeRenameInput().should('be.visible');
-			this.getters.nodeRenameInput().type('{selectall}');
-			this.getters.nodeRenameInput().type(newName);
+			this.getters.nodeRenameInput()
+				.should('be.visible')
+				.type('{selectall}')
+				.type(newName);
 			cy.get('body').type('{enter}');
 		},
 	};
