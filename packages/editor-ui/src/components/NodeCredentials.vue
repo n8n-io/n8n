@@ -391,6 +391,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			if (
 				oldCredentials.id === null ||
 				(oldCredentials.id &&
+					!this.showAll &&
 					!this.credentialsStore.getCredentialByIdAndType(oldCredentials.id, credentialType))
 			) {
 				// update all nodes in the workflow with the same old/invalid credentials
