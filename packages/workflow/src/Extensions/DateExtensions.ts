@@ -164,7 +164,7 @@ function isWeekend(date: Date): boolean {
 
 function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
 	if (isDateTime(date) && extraArgs.length === 1) {
-		return date.plus(extraArgs[0] as DurationLike);
+		return date.minus(extraArgs[0] as DurationLike);
 	}
 
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
