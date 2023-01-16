@@ -455,14 +455,14 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	methods: {
 		populateHiddenIssuesSet() {
-			if (!this.node || this.node.pristine !== true) return;
+			if (!this.node || !this.workflowsStore.getIsNodePristine(this.node.name)) return;
 
 			this.hiddenIssuesInputs.push('credentials');
 			this.parametersNoneSetting.forEach((parameter) => {
 				this.hiddenIssuesInputs.push(parameter.name);
 			});
 
-			this.workflowsStore.setNodePristine(this.node.id, false);
+			this.workflowsStore.setNodePristine(this.node.name, false);
 		},
 		onParameterBlur(parameterName: string) {
 			this.hiddenIssuesInputs = this.hiddenIssuesInputs.filter((name) => name !== parameterName);

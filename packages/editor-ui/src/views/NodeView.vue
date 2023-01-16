@@ -1915,8 +1915,8 @@ export default mixins(
 				newNodeData.webhookId = uuid();
 			}
 
-			newNodeData.pristine = true;
 			await this.addNodes([newNodeData], undefined, trackHistory);
+			this.workflowsStore.setNodePristine(newNodeData.name, true);
 
 			this.uiStore.stateIsDirty = true;
 
