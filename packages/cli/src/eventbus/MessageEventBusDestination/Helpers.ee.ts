@@ -1,5 +1,4 @@
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
 import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
@@ -10,7 +9,6 @@ import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationW
 export function messageEventBusDestinationFromDb(
 	dbData: EventDestinations,
 ): MessageEventBusDestination | null {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment
 	const destinationData = dbData.destination;
 	if ('__type' in destinationData) {
 		switch (destinationData.__type) {
