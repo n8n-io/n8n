@@ -1,5 +1,5 @@
 <template>
-	<div class="htmlDisplay" v-html="html"></div>
+	<div class="__html-display" v-html="html"></div>
 </template>
 
 <script lang="ts">
@@ -17,19 +17,34 @@ export default {
 		html() {
 			if (!this.inputData) return '';
 
-			return this.inputData[0].json.html; // @TODO: Sanitize?
+			return this.scopeCss(this.inputData[0].json.html as string);
+		},
+	},
+	methods: {
+		/**
+		 * Scope all CSS selectors to prevent user stylesheets leaking.
+		 */
+		scopeCss(str: string) {
+			const stylesheets = str.match(/<style>([\s\S]*?)<\/style>/g);
+
+			if (!stylesheets) return str;
+
+			const map = stylesheets.reduce<Record<string, string>>((acc, match) => {
+				match.split('\n').forEach((line) => {
+					if (line.endsWith('{')) acc[line] = ['.__html-display', line].join(' ');
+				});
+
+				return acc;
+			}, {});
+
+			return Object.entries(map).reduce((acc, [key, value]) => acc.replace(key, value), str);
 		},
 	},
 };
 </script>
 
-<style lang="scss" scoped>
-.htmlDisplay {
+<style lang="scss">
+.__html-display {
 	padding: 0 var(--spacing-s);
-}
-
-.htmlDisplay ::v-deep ol,
-.htmlDisplay ::v-deep ul {
-	padding-left: var(--spacing-s);
 }
 </style>
