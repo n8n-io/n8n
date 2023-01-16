@@ -143,7 +143,54 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		};
 	},
 	mounted() {
-		this.listenForCredentialUpdates();
+		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
+		this.credentialsStore.$onAction(({ name, after, store, args }) => {
+			const listeningForActions = ['createNewCredential', 'updateCredential', 'deleteCredential'];
+			const credentialType = this.subscribedToCredentialType;
+			if (!credentialType) {
+				return;
+			}
+
+			after((result) => {
+				const credentialsOfType = [
+					...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+				];
+				const current = this.selected[credentialType];
+				if (listeningForActions.includes(name)) {
+					switch (name) {
+						// new credential was added
+						case 'createNewCredential':
+							this.onCredentialSelected(
+								credentialType,
+								credentialsOfType[credentialsOfType.length - 1].id,
+							);
+							break;
+						case 'updateCredential':
+							const updatedCredential = result as ICredentialsResponse;
+							// credential name was changed, update it
+							if (updatedCredential.name !== current.name) {
+								this.onCredentialSelected(credentialType, current.id);
+							}
+							break;
+						case 'deleteCredential':
+							// all credentials were deleted
+							if (credentialsOfType.length === 0) {
+								this.clearSelectedCredential(credentialType);
+							} else {
+								const id = args[0].id;
+								// credential was deleted, select last one added to replace with
+								if (current.id === id) {
+									this.onCredentialSelected(
+										credentialType,
+										credentialsOfType[credentialsOfType.length - 1].id,
+									);
+								}
+							}
+							break;
+					}
+				}
+			});
+		});
 	},
 	watch: {
 		'ndvStore.activeNode.parameters': {
@@ -158,7 +205,6 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				if (isActive && nodeType && this.listeningForAuthChange) {
 					const authField = getMainAuthField(nodeType);
 					if (authField && oldValue && newValue) {
-						const oldAuth = oldValue[authField.name];
 						const newAuth = newValue[authField.name];
 
 						if (newAuth) {
@@ -287,72 +333,6 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 			return styles;
 		},
-		// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
-		listenForCredentialUpdates() {
-			const getCounts = () => {
-				return Object.keys(this.credentialsStore.allUsableCredentialsByType).reduce(
-					(counts: { [key: string]: number }, key: string) => {
-						counts[key] = this.credentialsStore.allUsableCredentialsByType[key].length;
-						return counts;
-					},
-					{},
-				);
-			};
-
-			let previousCredentialCounts = getCounts();
-			const onCredentialMutation = () => {
-				// Once credentials are updated, stop listening for auth change
-				this.listeningForAuthChange = false;
-				// This data pro stores credential type that the component is currently interested in
-				const credentialType = this.subscribedToCredentialType;
-				if (!credentialType) {
-					return;
-				}
-
-				let credentialsOfType = [
-					...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
-				];
-				// all credentials were deleted
-				if (credentialsOfType.length === 0) {
-					this.clearSelectedCredential(credentialType);
-					return;
-				}
-
-				credentialsOfType = credentialsOfType.sort((a, b) => (a.id < b.id ? -1 : 1));
-				const previousCredsOfType = previousCredentialCounts[credentialType] || 0;
-				const current = this.selected[credentialType];
-
-				// new credential was added
-				if (credentialsOfType.length > previousCredsOfType || !current) {
-					this.onCredentialSelected(
-						credentialType,
-						credentialsOfType[credentialsOfType.length - 1].id,
-					);
-					return;
-				}
-
-				const matchingCredential = credentialsOfType.find((cred) => cred.id === current.id);
-				// credential was deleted, select last one added to replace with
-				if (!matchingCredential) {
-					this.onCredentialSelected(
-						credentialType,
-						credentialsOfType[credentialsOfType.length - 1].id,
-					);
-					return;
-				}
-
-				// credential was updated
-				if (matchingCredential.name !== current.name) {
-					// credential name was changed, update it
-					this.onCredentialSelected(credentialType, current.id);
-				}
-			};
-
-			this.credentialsStore.$subscribe((mutation, state) => {
-				onCredentialMutation();
-				previousCredentialCounts = getCounts();
-			});
-		},
 
 		clearSelectedCredential(credentialType: string) {
 			const node: INodeUi = this.node;
@@ -378,6 +358,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				// If new credential dialog is open, start listening for auth type change which should happen in the modal
 				// this will be handled in this component's watcher which will set subscribed credential accordingly
 				this.listeningForAuthChange = true;
+				this.subscribedToCredentialType = credentialType;
 			}
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.uiStore.openNewCredential(credentialType);
