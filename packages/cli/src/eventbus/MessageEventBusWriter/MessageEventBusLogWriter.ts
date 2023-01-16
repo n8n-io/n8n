@@ -36,7 +36,6 @@ export interface MessageEventBusLogWriterOptions {
 interface ReadMessagesFromLogFileResult {
 	loggedMessages: EventMessageTypes[];
 	sentMessages: EventMessageTypes[];
-	// unfinishedExecutions: Set<string>;
 	unfinishedExecutions: Record<string, EventMessageTypes[]>;
 }
 

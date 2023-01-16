@@ -183,7 +183,6 @@ test('should send message to syslog ', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -225,7 +224,6 @@ test('should confirm send message if there are no subscribers', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -268,7 +266,6 @@ test('should anonymize audit message to syslog ', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const syslogDestination = eventBus.destinations[
 		testSyslogDestination.id!
@@ -331,7 +328,6 @@ test('should send message to webhook ', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const webhookDestination = eventBus.destinations[
 		testWebhookDestination.id!
@@ -367,7 +363,6 @@ test('should send message to sentry ', async () => {
 		id: uuid(),
 	});
 	config.set('enterprise.features.logStreaming', true);
-	// await cleanLogs();
 
 	const sentryDestination = eventBus.destinations[
 		testSentryDestination.id!

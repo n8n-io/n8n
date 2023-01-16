@@ -1347,8 +1347,6 @@ class Server extends AbstractServer {
 		// add Event Bus REST endpoints
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
-		config.set('enterprise.features.logStreaming', true);
-
 		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------
