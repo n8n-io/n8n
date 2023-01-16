@@ -827,6 +827,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 			Vue.set(node, 'parameters', newParameters);
 
+			if (!this.nodeMetadata[node.name]) {
+				Vue.set(this.nodeMetadata, node.name, {});
+			}
+
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
