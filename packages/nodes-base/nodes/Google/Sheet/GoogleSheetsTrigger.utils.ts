@@ -5,7 +5,7 @@ import { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 import * as XLSX from 'xlsx';
 import { isEqual, zip } from 'lodash';
 
-const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+export const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 type DiffData = Array<{
 	rowIndex: number;
@@ -74,6 +74,27 @@ export function arrayOfArraysToJson(sheetData: SheetRangeData, columns: SheetDat
 
 	return returnData;
 }
+
+const getSpecificColumns = (
+	row: SheetDataRow,
+	selectedColumns: SheetDataRow,
+	columns: SheetDataRow,
+) => {
+	return row ? selectedColumns.map((column) => row[columns.indexOf(column) - 1]) : [];
+};
+
+const extractVersionData = (
+	data: DiffData,
+	version: 'previous' | 'current',
+	triggerEvent: string,
+) => {
+	if (triggerEvent === 'anyUpdate') {
+		return data.map(({ [version]: entry, rowIndex, changeType }) =>
+			entry ? [rowIndex, changeType, ...entry] : [rowIndex, changeType],
+		);
+	}
+	return data.map(({ [version]: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex]));
+};
 
 export function compareRevisions(
 	previous: SheetRangeData,
@@ -184,37 +205,3 @@ export function compareRevisions(
 
 	return arrayOfArraysToJson(extractVersionData(diffData, 'current', event), columns);
 }
-
-export function columnNumberToLetter(colNumber: number) {
-	const A = 'a'.charCodeAt(0);
-	const Z = 'z'.charCodeAt(0);
-	const len = Z - A + 1;
-
-	let colName = '';
-	while (colNumber >= 0) {
-		colName = String.fromCharCode((colNumber % len) + A) + colName;
-		colNumber = Math.floor(colNumber / len) - 1;
-	}
-	return colName;
-}
-
-const getSpecificColumns = (
-	row: SheetDataRow,
-	selectedColumns: SheetDataRow,
-	columns: SheetDataRow,
-) => {
-	return row ? selectedColumns.map((column) => row[columns.indexOf(column) - 1]) : [];
-};
-
-const extractVersionData = (
-	data: DiffData,
-	version: 'previous' | 'current',
-	triggerEvent: string,
-) => {
-	if (triggerEvent === 'anyUpdate') {
-		return data.map(({ [version]: entry, rowIndex, changeType }) =>
-			entry ? [rowIndex, changeType, ...entry] : [rowIndex, changeType],
-		);
-	}
-	return data.map(({ [version]: entry, rowIndex }) => (entry ? [rowIndex, ...entry] : [rowIndex]));
-};

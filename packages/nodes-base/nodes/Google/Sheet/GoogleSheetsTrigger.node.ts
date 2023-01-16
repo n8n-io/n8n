@@ -10,17 +10,16 @@ import {
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
+import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
+import { ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 
 import {
 	arrayOfArraysToJson,
+	BINARY_MIME_TYPE,
 	compareRevisions,
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
-import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
-import { ValueRenderOption } from './v1/GoogleSheet';
-
-const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -401,48 +400,65 @@ export class GoogleSheetsTrigger implements INodeType {
 				extractValue: true,
 			}) as string;
 
-			let pageToken;
-			const previousRevision = workflowStaticData.lastRevision as number;
-			const previousRevisionLink = workflowStaticData.lastRevisionLink as string;
-			do {
-				const { revisions, nextPageToken } = await apiRequest.call(
-					this,
-					'GET',
-					'',
-					undefined,
-					{
-						fields: 'revisions(id, exportLinks), nextPageToken',
-						pageToken,
-						pageSize: 1000,
-					},
-					`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
-				);
-
-				if (nextPageToken) {
-					pageToken = nextPageToken as string;
-				} else {
-					pageToken = undefined;
-
-					const lastRevision = +revisions[revisions.length - 1].id;
-					if (lastRevision <= previousRevision) {
-						return null;
-					} else {
-						workflowStaticData.lastRevision = lastRevision;
-						workflowStaticData.lastRevisionLink =
-							revisions[revisions.length - 1].exportLinks[BINARY_MIME_TYPE];
-					}
-				}
-			} while (pageToken);
-
 			let sheetId = this.getNodeParameter('sheetName', undefined, {
 				extractValue: true,
 			}) as string;
 
 			sheetId = sheetId === 'gid=0' ? '0' : sheetId;
 
+			// If the documentId or sheetId changed, reset the workflow static data
+			if (
+				this.getMode() !== 'manual' &&
+				(workflowStaticData.documentId !== documentId || workflowStaticData.sheetId !== sheetId)
+			) {
+				workflowStaticData.documentId = documentId;
+				workflowStaticData.sheetId = sheetId;
+				workflowStaticData.lastRevision = undefined;
+				workflowStaticData.lastRevisionLink = undefined;
+				workflowStaticData.lastIndexChecked = undefined;
+			}
+
 			const googleSheet = new GoogleSheet(documentId, this);
 			const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 			const options = this.getNodeParameter('options') as IDataObject;
+
+			const previousRevision = workflowStaticData.lastRevision as number;
+			const previousRevisionLink = workflowStaticData.lastRevisionLink as string;
+
+			if (event !== 'rowAdded') {
+				let pageToken;
+				do {
+					const { revisions, nextPageToken } = await apiRequest.call(
+						this,
+						'GET',
+						'',
+						undefined,
+						{
+							fields: 'revisions(id, exportLinks), nextPageToken',
+							pageToken,
+							pageSize: 1000,
+						},
+						`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+					);
+
+					if (nextPageToken) {
+						pageToken = nextPageToken as string;
+					} else {
+						pageToken = undefined;
+
+						const lastRevision = +revisions[revisions.length - 1].id;
+						if (lastRevision <= previousRevision) {
+							return null;
+						} else {
+							if (this.getMode() !== 'manual') {
+								workflowStaticData.lastRevision = lastRevision;
+								workflowStaticData.lastRevisionLink =
+									revisions[revisions.length - 1].exportLinks[BINARY_MIME_TYPE];
+							}
+						}
+					}
+				} while (pageToken);
+			}
 
 			let range = 'A:ZZZ';
 			let keyRow = 1;
@@ -474,14 +490,13 @@ export class GoogleSheetsTrigger implements INodeType {
 				}
 
 				const [rangeFrom, rangeTo] = range.split(':');
-				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
-				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) ?? [];
+				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) ?? [];
 
 				if (rangeDefinition === 'specifyRangeA1' && cellDataFrom[2] !== undefined) {
 					keyRange = `${cellDataFrom[1]}${+cellDataFrom[2]}:${cellDataTo[1]}${+cellDataFrom[2]}`;
 					rangeToCheck = `${cellDataFrom[1]}${+cellDataFrom[2] + 1}:${rangeTo}`;
 				} else {
-					// range = `${cellDataFrom[1]}${keyRow}:${rangeTo}`;
 					keyRange = `${cellDataFrom[1]}${keyRow}:${cellDataTo[1]}${keyRow}`;
 					rangeToCheck = `${cellDataFrom[1]}${startIndex}:${rangeTo}`;
 				}
@@ -492,10 +507,6 @@ export class GoogleSheetsTrigger implements INodeType {
 			Object.assign(qs, options);
 
 			if (event === 'rowAdded') {
-				if (workflowStaticData.lastIndexChecked === undefined) {
-					workflowStaticData.lastIndexChecked = 0;
-				}
-
 				const [columns] = ((
 					(await apiRequest.call(
 						this,
@@ -517,9 +528,23 @@ export class GoogleSheetsTrigger implements INodeType {
 					(options.dateTimeRenderOption as string) || 'FORMATTED_STRING',
 				);
 
-				const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) || [];
+				if (this.getMode() === 'manual') {
+					if (Array.isArray(sheetData)) {
+						const returnData = arrayOfArraysToJson(sheetData, columns);
 
-				if (Array.isArray(sheetData)) {
+						if (Array.isArray(returnData) && returnData.length !== 0) {
+							return [this.helpers.returnJsonArray(returnData)];
+						}
+					}
+				}
+
+				if (Array.isArray(sheetData) && this.getMode() !== 'manual') {
+					if (workflowStaticData.lastIndexChecked === undefined) {
+						workflowStaticData.lastIndexChecked = sheetData.length;
+						return null;
+					}
+
+					const addedRows = sheetData?.slice(workflowStaticData.lastIndexChecked as number) ?? [];
 					const returnData = arrayOfArraysToJson(addedRows, columns);
 
 					workflowStaticData.lastIndexChecked = sheetData.length;
@@ -606,6 +631,16 @@ export class GoogleSheetsTrigger implements INodeType {
 				}
 			}
 		} catch (error) {
+			if (
+				error?.description
+					?.toLowerCase()
+					.includes('user does not have sufficient permissions for file')
+			) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"Edit access to the document is required for 'Row Update' or 'Row Added or Updated' as trigger, choose 'Row Added' as trigger in 'Trigger On' dropdown.",
+				);
+			}
 			if (
 				error?.error?.error?.message !== undefined &&
 				!(error.error.error.message as string).toLocaleLowerCase().includes('unknown error') &&

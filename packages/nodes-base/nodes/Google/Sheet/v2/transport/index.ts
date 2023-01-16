@@ -16,7 +16,8 @@ export async function getAccessToken(
 		| IExecuteFunctions
 		| IExecuteSingleFunctions
 		| ILoadOptionsFunctions
-		| ICredentialTestFunctions,
+		| ICredentialTestFunctions
+		| IPollFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
