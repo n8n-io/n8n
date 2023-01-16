@@ -4043,48 +4043,6 @@ export default mixins(
 </style>
 
 <style lang="scss">
-.connection-run-items-label {
-	// Disable points events so that the label does not block the connection
-	// mouse over event.
-	pointer-events: none;
-	span {
-		border-radius: 7px;
-		background-color: hsla(
-			var(--color-canvas-background-h),
-			var(--color-canvas-background-s),
-			var(--color-canvas-background-l),
-			0.85
-		);
-		line-height: 1.3em;
-		padding: 0px 3px;
-		white-space: nowrap;
-		font-size: var(--font-size-s);
-		font-weight: var(--font-weight-regular);
-		color: var(--color-success);
-		margin-top: -15px;
-
-		&.floating {
-			position: absolute;
-			top: -6px;
-			transform: translateX(-50%);
-		}
-	}
-
-	&--stalk {
-		margin-left: 40px;
-	}
-}
-
-.connection-input-name-label {
-	position: relative;
-
-	span {
-		position: absolute;
-		top: -10px;
-		left: -60px;
-	}
-}
-
 .drop-add-node-label {
 	color: var(--color-text-dark);
 	font-weight: 600;

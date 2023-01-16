@@ -5,6 +5,7 @@ import {
 	EVENT_ENDPOINT_MOUSEOVER,
 	EVENT_ENDPOINT_MOUSEOUT,
 	EVENT_ENDPOINT_CLICK,
+	EVENT_CONNECTION_ABORT,
 } from '@jsplumb/browser-ui';
 
 export type ComputedN8nPlusEndpoint = [number, number, number, number, number];
@@ -48,7 +49,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			options: {
 				id: PlusStalkOverlay,
 				create: () => {
-					const stalk = createElement('i', {}, `${PlusStalkOverlay} ${this.params.size}`);
+					const stalk = createElement('div', {}, `${PlusStalkOverlay} ${this.params.size}`);
 					return stalk;
 				},
 			},
@@ -71,11 +72,13 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
+		this.instance.bind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	};
 	unbindEvents = () => {
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
+		this.instance.unbind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
 	};
 	fireClickEvent = (endpoint: Endpoint) => {
 		if (endpoint === this.endpoint) {
@@ -112,46 +115,42 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 
 		this.setVisible(visible);
 
-		// Re-render success output overlay if label is set and it doesn't exist
-		const successOutputOverlay = this.endpoint.getOverlay('successOutputOverlay');
-		if (visible && this.label && !successOutputOverlay) {
+		// Re-trigger the success state if label is set
+		if (visible && this.label) {
 			this.setSuccessOutput(this.label);
 		}
 	};
 
 	setSuccessOutput(label: string) {
-		this.endpoint.addClass('success');
+		this.endpoint.addClass('ep-success');
 		if (this.params.showOutputLabel) {
-			this.endpoint.removeOverlay('successOutputOverlay');
-			this.endpoint.addOverlay({
-				type: 'Custom',
-				options: {
-					id: 'successOutputOverlay',
-					create: () => {
-						const container = document.createElement('div');
-						const span = document.createElement('span');
-
-						container.classList.add(
-							'connection-run-items-label',
-							'connection-run-items-label--stalk',
-						);
-						span.classList.add('floating');
-						span.innerHTML = label;
-						container.appendChild(span);
-						return container;
-					},
-				},
-			});
 			this.label = label;
-			this.instance.repaint(this.endpoint.element);
 		}
 	}
 
 	clearSuccessOutput() {
 		this.endpoint.removeOverlay('successOutputOverlay');
-		this.endpoint.removeClass('success');
+		this.endpoint.removeClass('ep-success');
 		this.label = '';
-		this.instance.repaint(this.endpoint.element);
+	}
+
+	setStalkLabels() {
+		if (!this.endpoint) return;
+
+		const stalkOverlay = this.endpoint.getOverlay(PlusStalkOverlay);
+		const messageOverlay = this.endpoint.getOverlay(HoverMessageOverlay);
+		if (stalkOverlay && messageOverlay) {
+			// Increase the size of the stalk overlay if the label is too long
+			const fnKey = this.label.length > 10 ? 'add' : 'remove';
+			this.instance[`${fnKey}OverlayClass`](stalkOverlay, 'long-stalk');
+			this.instance[`${fnKey}OverlayClass`](messageOverlay, 'long-stalk');
+			this[`${fnKey}Class`]('long-stalk');
+
+			if (this.label) {
+				// @ts-expect-error: Overlay interface is missing the `canvas` property
+				stalkOverlay.canvas.setAttribute('data-label', this.label);
+			}
+		}
 	}
 }
 
@@ -170,6 +169,8 @@ export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8
 		ep.h = h;
 
 		ep.addClass('plus-endpoint');
+		ep.setStalkLabels();
+
 		return [x, y, w, h, ep.params.dimensions];
 	},
 

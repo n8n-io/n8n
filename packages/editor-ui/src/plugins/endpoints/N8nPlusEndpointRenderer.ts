@@ -25,7 +25,6 @@ export const register = () => {
 
 			ep.setupOverlays();
 			ep.setVisible(false);
-
 			return group;
 		},
 

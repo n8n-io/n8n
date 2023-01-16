@@ -827,8 +827,16 @@ export default mixins(
 	transition: stroke 0.1s ease-in-out;
 }
 
+.jtk-overlay {
+	z-index: 3;
+}
 .jtk-connector.success {
 	z-index: 4;
+}
+.node-input-endpoint-label,
+.node-output-endpoint-label,
+.connection-run-items-label {
+	z-index: 5;
 }
 .jtk-connector.jtk-hover {
 	z-index: 6;
@@ -840,10 +848,6 @@ export default mixins(
 .jtk-endpoint.dot-output-endpoint {
 	z-index: 7;
 	overflow: auto;
-}
-
-.jtk-overlay {
-	z-index: 9;
 }
 
 .disabled-linethrough {
@@ -876,7 +880,8 @@ export default mixins(
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
-	--stalk-success-size: 70px;
+	--stalk-success-size: 80px;
+	--stalk-long-size: 120px;
 	--plus-endpoint-box-size: 22px;
 	--plus-endpoint-box-size-small: 17px;
 }
@@ -900,21 +905,75 @@ export default mixins(
 	width: var(--stalk-size);
 	border: 1px solid var(--color-foreground-dark);
 	margin-left: calc((var(--endpoint-size-medium) / 2) + (var(--stalk-size) / 2) + 0.5px);
-
+	z-index: 3;
 	&.small {
 		margin-left: calc((var(--endpoint-size-small) / 2) + (var(--stalk-size) / 2) + 0.5px);
 	}
-	&.success {
+	&.ep-success {
 		border-color: var(--color-success-light);
-		--stalk-size: var(--stalk-success-size);
+		// --stalk-size: var(--stalk-success-size);
+
+		&:after {
+			content: attr(data-label);
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 100%;
+			margin: auto;
+			margin-bottom: 5px;
+			text-align: center;
+
+			line-height: 1.3em;
+			font-size: var(--font-size-s);
+			font-weight: var(--font-weight-regular);
+			color: var(--color-success);
+		}
 	}
 }
+.connection-run-items-label {
+	// Disable points events so that the label does not block the connection
+	// mouse over event.
+	pointer-events: none;
+	span {
+		border-radius: 7px;
+		background-color: hsla(
+			var(--color-canvas-background-h),
+			var(--color-canvas-background-s),
+			var(--color-canvas-background-l),
+			0.85
+		);
+		line-height: 1.3em;
+		padding: 0px 3px;
+		white-space: nowrap;
+		font-size: var(--font-size-s);
+		font-weight: var(--font-weight-regular);
+		color: var(--color-success);
+		margin-top: -15px;
+
+		&.floating {
+			position: absolute;
+			top: -6px;
+			transform: translateX(-50%);
+		}
+	}
+}
+
+.connection-input-name-label {
+	position: relative;
+
+	span {
+		position: absolute;
+		top: -10px;
+		left: -60px;
+	}
+}
+
 .plus-endpoint {
 	cursor: pointer;
-	z-index: 100;
+	z-index: 10;
 	margin-left: calc((var(--endpoint-size-medium)) + var(--stalk-size) + 3px);
-
 	g {
+		fill: var(--color-background-xlight);
 		pointer-events: none;
 	}
 
@@ -954,10 +1013,6 @@ export default mixins(
 	&.hidden {
 		display: none;
 	}
-
-	&.success {
-		--stalk-size: var(--stalk-success-size);
-	}
 }
 
 .node-input-endpoint-label,
@@ -972,7 +1027,6 @@ export default mixins(
 	font-size: 0.7em;
 	padding: 2px;
 	white-space: nowrap;
-	z-index: 1;
 }
 
 .node-output-endpoint-label {
@@ -1005,12 +1059,15 @@ export default mixins(
 				var(--plus-endpoint-box-size-small) + var(--spacing-3xs)
 		);
 	}
-	&.success {
-		--stalk-size: var(--stalk-success-size);
-	}
 	&.visible {
 		pointer-events: all;
 		opacity: 1;
 	}
+}
+.ep-success {
+	--stalk-size: var(--stalk-success-size);
+}
+.long-stalk {
+	--stalk-size: var(--stalk-long-size);
 }
 </style>
