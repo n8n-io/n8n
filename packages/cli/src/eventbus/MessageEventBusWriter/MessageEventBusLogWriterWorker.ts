@@ -1,17 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'fs';
-import { appendFile, stat } from 'fs/promises';
-import { expose, isWorkerRuntime } from 'threads/worker';
-
-// -----------------------------------------
-// * This part runs in the Worker Thread ! *
-// -----------------------------------------
-
-// all references to and imports from classes have been remove to keep memory usage low
+import { stat } from 'fs/promises';
+import { isMainThread, parentPort } from 'worker_threads';
+import type { MessageEventBusLogWriterOptions } from './MessageEventBusLogWriter';
 
 let logFileBasePath = '';
 let loggingPaused = true;
-let syncFileAccess = false;
 let keepFiles = 10;
 let fileStatTimer: NodeJS.Timer;
 let maxLogFileSizeInKB = 102400;
@@ -20,12 +14,8 @@ function setLogFileBasePath(basePath: string) {
 	logFileBasePath = basePath;
 }
 
-function setUseSyncFileAccess(useSync: boolean) {
-	syncFileAccess = useSync;
-}
-
-function setMaxLogFileSizeInKB(maxSizeInKB: number) {
-	maxLogFileSizeInKB = maxSizeInKB;
+function setMaxLogFileSizeInKB(maxFileSizeInKB: number) {
+	maxLogFileSizeInKB = maxFileSizeInKB;
 }
 
 function setKeepFiles(keepNumberOfFiles: number) {
@@ -81,65 +71,53 @@ function appendMessageSync(msg: any) {
 	appendFileSync(buildLogFileNameWithCounter(), JSON.stringify(msg) + '\n');
 }
 
-async function appendMessage(msg: any) {
-	if (loggingPaused) {
-		return;
-	}
-	await appendFile(buildLogFileNameWithCounter(), JSON.stringify(msg) + '\n');
+if (!isMainThread) {
+	// -----------------------------------------
+	// * This part runs in the Worker Thread ! *
+	// -----------------------------------------
+	parentPort?.on('message', async (msg: { command: string; data: any }) => {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const { command, data } = msg;
+		try {
+			switch (command) {
+				case 'appendMessageToLog':
+				case 'confirmMessageSent':
+					appendMessageSync(data);
+					parentPort?.postMessage({ command, data: true });
+					break;
+				case 'pauseLogging':
+					loggingPaused = true;
+					clearInterval(fileStatTimer);
+					break;
+				case 'initialize':
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const settings: MessageEventBusLogWriterOptions = {
+						logFullBasePath: (data as MessageEventBusLogWriterOptions).logFullBasePath ?? '',
+						keepNumberOfFiles: (data as MessageEventBusLogWriterOptions).keepNumberOfFiles ?? 10,
+						maxFileSizeInKB: (data as MessageEventBusLogWriterOptions).maxFileSizeInKB ?? 102400,
+					};
+					setLogFileBasePath(settings.logFullBasePath);
+					setKeepFiles(settings.keepNumberOfFiles);
+					setMaxLogFileSizeInKB(settings.maxFileSizeInKB);
+					break;
+				case 'startLogging':
+					if (logFileBasePath) {
+						renameAndCreateLogs();
+						loggingPaused = false;
+						fileStatTimer = setInterval(async () => {
+							await checkFileSize(buildLogFileNameWithCounter());
+						}, 5000);
+					}
+					break;
+				case 'cleanLogs':
+					cleanAllLogs();
+					parentPort?.postMessage('cleanedAllLogs');
+					break;
+				default:
+					break;
+			}
+		} catch (error) {
+			parentPort?.postMessage(error);
+		}
+	});
 }
-
-const messageEventBusLogWriterWorker = {
-	async appendMessageToLog(msg: any) {
-		if (syncFileAccess) {
-			appendMessageSync(msg);
-		} else {
-			await appendMessage(msg);
-		}
-	},
-	async confirmMessageSent(confirm: unknown) {
-		if (syncFileAccess) {
-			appendMessageSync(confirm);
-		} else {
-			await appendMessage(confirm);
-		}
-	},
-	pauseLogging() {
-		loggingPaused = true;
-		clearInterval(fileStatTimer);
-	},
-	initialize(
-		basePath: string,
-		useSyncFileAccess = false,
-		keepNumberOfFiles = 10,
-		maxSizeInKB = 102400,
-	) {
-		setLogFileBasePath(basePath);
-		setUseSyncFileAccess(useSyncFileAccess);
-		setKeepFiles(keepNumberOfFiles);
-		setMaxLogFileSizeInKB(maxSizeInKB);
-	},
-	startLogging() {
-		if (logFileBasePath) {
-			renameAndCreateLogs();
-			loggingPaused = false;
-			fileStatTimer = setInterval(async () => {
-				await checkFileSize(buildLogFileNameWithCounter());
-			}, 5000);
-		}
-	},
-	getLogFileName(counter?: number) {
-		if (logFileBasePath) {
-			return buildLogFileNameWithCounter(counter);
-		} else {
-			return undefined;
-		}
-	},
-	cleanLogs() {
-		cleanAllLogs();
-	},
-};
-if (isWorkerRuntime()) {
-	// Register the serializer on the worker thread
-	expose(messageEventBusLogWriterWorker);
-}
-export type MessageEventBusLogWriterWorker = typeof messageEventBusLogWriterWorker;

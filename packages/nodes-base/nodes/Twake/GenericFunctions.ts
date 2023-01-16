@@ -19,7 +19,7 @@ export async function twakeApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://plugins.twake.app/plugins/n8n${resource}`,
+		uri: uri ?? `https://plugins.twake.app/plugins/n8n${resource}`,
 		json: true,
 	};
 

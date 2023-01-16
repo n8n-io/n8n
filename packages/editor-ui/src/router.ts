@@ -6,7 +6,7 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
-import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
+import WorkflowExecutionsList from '@/components/ExecutionsView/ExecutionsList.vue';
 import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsView from './views/SettingsView.vue';
@@ -25,6 +25,7 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
+import ExecutionsView from '@/views/ExecutionsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
 import { LOGIN_STATUS, ROLE } from '@/utils';
@@ -112,23 +113,6 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/execution/:id',
-			name: VIEWS.EXECUTION,
-			components: {
-				default: NodeView,
-				header: MainHeader,
-				sidebar: MainSidebar,
-			},
-			meta: {
-				nodeView: true,
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-				},
-			},
-		},
-		{
 			path: '/templates/:id',
 			name: VIEWS.TEMPLATE,
 			components: {
@@ -200,6 +184,21 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/workflow',
 			redirect: '/workflow/new',
 		},
@@ -254,9 +253,9 @@ const router = new Router({
 		},
 		{
 			path: '/workflow/:name/executions',
-			name: VIEWS.EXECUTIONS,
+			name: VIEWS.WORKFLOW_EXECUTIONS,
 			components: {
-				default: ExecutionsView,
+				default: WorkflowExecutionsList,
 				header: MainHeader,
 				sidebar: MainSidebar,
 			},

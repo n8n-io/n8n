@@ -298,6 +298,17 @@ export class Expression {
 					throw error;
 				}
 			}
+
+			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
+			// This is a temporary divergence in evaluation behavior until we make the
+			// breaking change to allow syntax errors to fail executions.
+			if (
+				typeof process === 'undefined' &&
+				error instanceof Error &&
+				error.name === 'SyntaxError'
+			) {
+				throw new Error('invalid syntax');
+			}
 		}
 		return null;
 	}

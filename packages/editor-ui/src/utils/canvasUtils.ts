@@ -81,7 +81,7 @@ export const getNodeViewTab = (route: Route): string | null => {
 		return MAIN_HEADER_TABS.WORKFLOW;
 	} else {
 		const executionTabRoutes = [
-			VIEWS.EXECUTION.toString(),
+			VIEWS.WORKFLOW_EXECUTIONS.toString(),
 			VIEWS.EXECUTION_PREVIEW.toString(),
 			VIEWS.EXECUTION_HOME.toString(),
 		];

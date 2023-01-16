@@ -36,7 +36,7 @@ export async function hubspotApiRequest(
 		method,
 		qs: query,
 		headers: {},
-		uri: uri || `https://api.hubapi.com${endpoint}`,
+		uri: uri ?? `https://api.hubapi.com${endpoint}`,
 		body,
 		json: true,
 		useQuerystring: true,
@@ -85,7 +85,7 @@ export async function hubspotApiRequestAllItems(
 
 	let responseData;
 
-	query.limit = query.limit || 250;
+	query.limit = query.limit ?? 250;
 	query.count = 100;
 	body.limit = body.limit || 100;
 

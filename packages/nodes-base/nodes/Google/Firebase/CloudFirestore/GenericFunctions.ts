@@ -25,7 +25,7 @@ export async function googleApiRequest(
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
-		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
+		uri: uri ?? `https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
 	try {
@@ -104,20 +104,6 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 	return {};
 }
 
-export function fullDocumentToJson(data: IDataObject): IDataObject {
-	if (data === undefined) {
-		return data;
-	}
-
-	return {
-		_name: data.name,
-		_id: data.id,
-		_createTime: data.createTime,
-		_updateTime: data.updateTime,
-		...documentToJson(data.fields as IDataObject),
-	};
-}
-
 export function documentToJson(fields: IDataObject): IDataObject {
 	if (fields === undefined) return {};
 	const result = {};
@@ -162,4 +148,18 @@ export function documentToJson(fields: IDataObject): IDataObject {
 		}
 	}
 	return result;
+}
+
+export function fullDocumentToJson(data: IDataObject): IDataObject {
+	if (data === undefined) {
+		return data;
+	}
+
+	return {
+		_name: data.name,
+		_id: data.id,
+		_createTime: data.createTime,
+		_updateTime: data.updateTime,
+		...documentToJson(data.fields as IDataObject),
+	};
 }

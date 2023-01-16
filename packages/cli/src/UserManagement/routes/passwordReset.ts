@@ -52,7 +52,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOneBy({ email, password: Not(IsNull()) });
 
 			if (!user?.password) {
 				Logger.debug(
@@ -133,7 +133,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -184,7 +184,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id: userId,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),

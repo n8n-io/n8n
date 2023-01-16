@@ -1412,8 +1412,8 @@ export class Hubspot implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
-							const sortBy = additionalFields.sortBy || 'createdate';
-							const direction = additionalFields.direction || 'DESCENDING';
+							const sortBy = additionalFields.sortBy ?? 'createdate';
+							const direction = additionalFields.direction ?? 'DESCENDING';
 
 							const body: IDataObject = {
 								sorts: [
@@ -2232,8 +2232,8 @@ export class Hubspot implements INodeType {
 							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
-							const sortBy = additionalFields.sortBy || 'createdate';
-							const direction = additionalFields.direction || 'DESCENDING';
+							const sortBy = additionalFields.sortBy ?? 'createdate';
+							const direction = additionalFields.direction ?? 'DESCENDING';
 
 							const body: IDataObject = {
 								sorts: [

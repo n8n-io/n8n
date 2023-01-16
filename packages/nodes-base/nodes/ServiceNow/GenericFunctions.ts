@@ -30,7 +30,7 @@ export async function serviceNowApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://${credentials.subdomain}.service-now.com/api${resource}`,
+		uri: uri ?? `https://${credentials.subdomain}.service-now.com/api${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
