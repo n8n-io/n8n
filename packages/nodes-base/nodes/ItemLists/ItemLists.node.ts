@@ -86,10 +86,10 @@ export class ItemLists implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Aggregate Items',
+						name: 'Concatenate Items',
 						value: 'aggregateItems',
-						description: 'Combine fields into a single new item',
-						action: 'Combine fields into a single new item',
+						description: 'Combine fields into a list in a single new item',
+						action: 'Combine fields into a list in a single new item',
 					},
 					{
 						name: 'Limit',
@@ -118,8 +118,8 @@ export class ItemLists implements INodeType {
 					{
 						name: 'Summarize',
 						value: 'summarize',
-						description: 'Summarize items',
-						action: 'Summarize items',
+						description: 'Aggregate items together (pivot table)',
+						action: 'Aggregate items together (pivot table)',
 					},
 				],
 				default: 'splitOutItems',

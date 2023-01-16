@@ -241,7 +241,7 @@ export const description: INodeProperties[] = [
 				operation: ['summarize'],
 			},
 			hide: {
-				'/options.outputDataAsObject': [true],
+				'/options.outputFormat': ['singleItem'],
 			},
 		},
 	},
@@ -257,7 +257,7 @@ export const description: INodeProperties[] = [
 			show: {
 				resource: ['itemList'],
 				operation: ['summarize'],
-				'/options.outputDataAsObject': [true],
+				'/options.outputFormat': ['singleItem'],
 			},
 		},
 	},
@@ -275,10 +275,20 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Output Data as Object',
-				name: 'outputDataAsObject',
-				type: 'boolean',
-				default: false,
+				displayName: 'Output Format',
+				name: 'outputFormat',
+				type: 'options',
+				default: 'separateItems',
+				options: [
+					{
+						name: 'Each Split in a Separate Item',
+						value: 'separateItems',
+					},
+					{
+						name: 'All Splits in a Single Item',
+						value: 'singleItem',
+					},
+				],
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
@@ -487,11 +497,7 @@ export async function execute(
 ): Promise<INodeExecutionData[][]> {
 	const newItems = items.map(({ json }) => json);
 
-	const outputDataAsObject = this.getNodeParameter(
-		'options.outputDataAsObject',
-		0,
-		false,
-	) as boolean;
+	const outputFormat = this.getNodeParameter('options.outputFormat', 0, 'separateItems') as string;
 
 	const skipEmptySplitFields = this.getNodeParameter(
 		'options.skipEmptySplitFields',
@@ -528,7 +534,7 @@ export async function execute(
 	);
 
 	const result =
-		outputDataAsObject || !fieldsToSplitBy.length
+		outputFormat === 'singleItem' || !fieldsToSplitBy.length
 			? aggregationResult
 			: aggregationToArray(aggregationResult, fieldsToSplitBy);
 
