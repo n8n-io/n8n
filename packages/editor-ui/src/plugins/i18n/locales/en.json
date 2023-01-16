@@ -1158,6 +1158,7 @@
 	"settings.log-streaming.$$MessageEventBusDestinationSentry": "Sentry",
 	"settings.log-streaming.$$MessageEventBusDestinationRedis": "Redis",
 	"settings.log-streaming.$$MessageEventBusDestinationSyslog": "Syslog",
+	"settings.log-streaming.$$MessageEventBusDestinationStdout": "Stdout",
 	"settings.log-streaming.destinationDelete.cancelButtonText": "",
 	"settings.log-streaming.destinationDelete.confirmButtonText": "Yes, delete",
 	"settings.log-streaming.destinationDelete.headline": "Delete Destination?",

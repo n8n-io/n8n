@@ -18,6 +18,7 @@ export enum MessageEventBusDestinationTypeNames {
 	webhook = '$$MessageEventBusDestinationWebhook',
 	sentry = '$$MessageEventBusDestinationSentry',
 	syslog = '$$MessageEventBusDestinationSyslog',
+	stdout = '$$MessageEventBusDestinationStdout',
 }
 
 // ===============================
@@ -118,6 +119,8 @@ export interface MessageEventBusDestinationSyslogOptions extends MessageEventBus
 	eol?: string;
 }
 
+export type MessageEventBusDestinationStdoutOptions = MessageEventBusDestinationOptions;
+
 export interface MessageEventBusDestinationSentryOptions extends MessageEventBusDestinationOptions {
 	dsn: string;
 	tracesSampleRate?: number;
@@ -150,6 +153,13 @@ export const defaultMessageEventBusDestinationSyslogOptions: MessageEventBusDest
 		facility: 16,
 		app_name: 'n8n',
 		eol: '\n',
+	};
+
+export const defaultMessageEventBusDestinationStdoutOptions: MessageEventBusDestinationStdoutOptions =
+	{
+		__type: MessageEventBusDestinationTypeNames.stdout,
+		label: 'Stdout',
+		...defaultMessageEventBusDestinationOptions,
 	};
 
 export const defaultMessageEventBusDestinationWebhookOptions: MessageEventBusDestinationWebhookOptions =

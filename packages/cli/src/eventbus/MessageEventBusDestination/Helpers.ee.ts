@@ -5,6 +5,7 @@ import type { EventDestinations } from '@/databases/entities/MessageEventBusDest
 import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog.ee';
+import { MessageEventBusDestinationStdout } from './MessageEventBusDestinationStdout.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook.ee';
 
 export function messageEventBusDestinationFromDb(
@@ -18,6 +19,8 @@ export function messageEventBusDestinationFromDb(
 				return MessageEventBusDestinationSentry.deserialize(destinationData);
 			case MessageEventBusDestinationTypeNames.syslog:
 				return MessageEventBusDestinationSyslog.deserialize(destinationData);
+			case MessageEventBusDestinationTypeNames.stdout:
+				return MessageEventBusDestinationStdout.deserialize(destinationData);
 			case MessageEventBusDestinationTypeNames.webhook:
 				return MessageEventBusDestinationWebhook.deserialize(destinationData);
 			default:

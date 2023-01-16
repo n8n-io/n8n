@@ -1,8 +1,22 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import * as ResponseHelper from '@/ResponseHelper';
+import { BadRequestError } from '@/ResponseHelper';
 import express from 'express';
+import {
+	EventMessageTypeNames,
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationTypeNames,
+	MessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
+import { User } from '../databases/entities/User';
+import { eventNamesAll } from './EventMessageClasses';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
+import {
+	EventMessageAudit,
+	EventMessageAuditOptions,
+} from './EventMessageClasses/EventMessageAudit';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
 	EventMessageWorkflow,
@@ -17,21 +31,11 @@ import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog.ee';
+import {
+	isMessageEventBusDestinationStdoutOptions,
+	MessageEventBusDestinationStdout,
+} from './MessageEventBusDestination/MessageEventBusDestinationStdout.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook.ee';
-import { eventNamesAll } from './EventMessageClasses';
-import {
-	EventMessageAudit,
-	EventMessageAuditOptions,
-} from './EventMessageClasses/EventMessageAudit';
-import { BadRequestError } from '../ResponseHelper';
-import {
-	MessageEventBusDestinationTypeNames,
-	MessageEventBusDestinationWebhookOptions,
-	EventMessageTypeNames,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
-import { User } from '../databases/entities/User';
-import * as ResponseHelper from '@/ResponseHelper';
 
 export const eventBusRouter = express.Router();
 
@@ -175,6 +179,11 @@ eventBusRouter.post(
 				case MessageEventBusDestinationTypeNames.syslog:
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
 						result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
+					}
+					break;
+				case MessageEventBusDestinationTypeNames.stdout:
+					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
+						result = await eventBus.addDestination(new MessageEventBusDestinationStdout(req.body));
 					}
 					break;
 				default:

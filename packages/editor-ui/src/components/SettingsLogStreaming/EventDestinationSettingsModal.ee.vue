@@ -134,6 +134,16 @@
 								@valueChanged="valueChanged"
 							/>
 						</template>
+						<template v-else-if="isTypeStdout">
+							<parameter-input-list
+								:parameters="stdoutDescription"
+								:hideDelete="true"
+								:nodeValues="nodeParameters"
+								:isReadOnly="!isInstanceOwner"
+								path=""
+								@valueChanged="valueChanged"
+							/>
+						</template>
 						<template v-else-if="isTypeSentry">
 							<parameter-input-list
 								:parameters="sentryDescription"
@@ -192,6 +202,7 @@ import {
 	MessageEventBusDestinationTypeNames,
 	MessageEventBusDestinationOptions,
 	defaultMessageEventBusDestinationSyslogOptions,
+	defaultMessageEventBusDestinationStdoutOptions,
 	defaultMessageEventBusDestinationSentryOptions,
 } from 'n8n-workflow';
 import Vue from 'vue';
@@ -205,6 +216,7 @@ import {
 	webhookModalDescription,
 	sentryModalDescription,
 	syslogModalDescription,
+	stdoutModalDescription,
 } from './descriptions.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 import InlineNameEdit from '../InlineNameEdit.vue';
@@ -249,6 +261,7 @@ export default mixins(showMessage, restApi).extend({
 			webhookDescription: webhookModalDescription,
 			sentryDescription: sentryModalDescription,
 			syslogDescription: syslogModalDescription,
+			stdoutDescription: stdoutModalDescription,
 			modalBus: new Vue(),
 			headerLabel: this.$props.destination.label,
 			testMessageSent: false,
@@ -280,6 +293,9 @@ export default mixins(showMessage, restApi).extend({
 		},
 		isTypeSyslog(): boolean {
 			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.syslog;
+		},
+		isTypeStdout(): boolean {
+			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.stdout;
 		},
 		isTypeSentry(): boolean {
 			return this.nodeParameters.__type === MessageEventBusDestinationTypeNames.sentry;
@@ -371,6 +387,11 @@ export default mixins(showMessage, restApi).extend({
 			switch (this.typeSelectValue) {
 				case MessageEventBusDestinationTypeNames.syslog:
 					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), {
+						id: this.destination.id,
+					});
+					break;
+				case MessageEventBusDestinationTypeNames.stdout:
+					newDestination = Object.assign(deepCopy(defaultMessageEventBusDestinationStdoutOptions), {
 						id: this.destination.id,
 					});
 					break;
