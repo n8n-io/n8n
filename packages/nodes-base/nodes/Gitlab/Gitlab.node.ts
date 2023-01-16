@@ -1117,20 +1117,6 @@ export class Gitlab implements INodeType {
 					'Name of the binary property in which to save the binary data of the received file',
 			},
 			{
-				displayName: 'Raw',
-				name: 'raw',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						operation: ['get'],
-						resource: ['file'],
-					},
-				},
-				placeholder: '',
-				description: 'Whether to get raw file from repository or not',
-			},
-			{
 				displayName: 'Additional Parameters',
 				name: 'additionalParameters',
 				placeholder: 'Add Parameter',
@@ -1608,6 +1594,7 @@ export class Gitlab implements INodeType {
 							// Currently internally n8n uses base64 and also Github expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
 							body.content = item.binary[binaryPropertyName].data;
+							body.encoding = 'base64';
 						} else {
 							// Is text file
 							if (additionalParameters.encoding === 'base64') {
@@ -1619,7 +1606,7 @@ export class Gitlab implements INodeType {
 							}
 						}
 
-						endpoint = `${baseEndpoint}/repository/files/${encodeURI(filePath)}`;
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'delete') {
 						// ----------------------------------
 						//         delete
@@ -1640,7 +1627,7 @@ export class Gitlab implements INodeType {
 
 						const filePath = this.getNodeParameter('filePath', i);
 
-						endpoint = `${baseEndpoint}/repository/files/${encodeURI(filePath)}`;
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'get') {
 						// ----------------------------------
 						//         get
@@ -1653,7 +1640,6 @@ export class Gitlab implements INodeType {
 							'additionalParameters',
 							i,
 						) as IDataObject;
-						const raw: boolean = this.getNodeParameter('raw', i) as boolean;
 
 						if (additionalParameters.reference) {
 							qs.ref = additionalParameters.reference;
@@ -1661,11 +1647,7 @@ export class Gitlab implements INodeType {
 							qs.ref = 'master';
 						}
 
-						endpoint = `${baseEndpoint}/repository/files/${encodeURI(filePath)}`;
-
-						if (raw) {
-							endpoint += '/raw';
-						}
+						endpoint = `${baseEndpoint}/repository/files/${encodeURIComponent(filePath)}`;
 					} else if (operation === 'list') {
 						requestMethod = 'GET';
 
@@ -1689,6 +1671,7 @@ export class Gitlab implements INodeType {
 					});
 				}
 
+				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll) {
 					responseData = await gitlabApiRequestAllItems.call(
 						this,
@@ -1701,11 +1684,47 @@ export class Gitlab implements INodeType {
 					responseData = await gitlabApiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 
-				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
-					{ itemData: { item: i } },
-				);
-				returnData.push(...executionData);
+				if (fullOperation === 'file:get' && asBinaryProperty) {
+					if (Array.isArray(responseData) && responseData.length > 1) {
+						throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
+							itemIndex: i,
+						});
+					}
+					// Add the returned data to the item as binary property
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+
+					const newItem: INodeExecutionData = {
+						json: items[i].json,
+						binary: {},
+					};
+
+					if (items[i].binary !== undefined) {
+						// Create a shallow copy of the binary data so that the old
+						// data references which do not get changed still stay behind
+						// but the incoming data does not get changed.
+						Object.assign(newItem.binary as object, items[i].binary!);
+					}
+					const { content, path } = responseData;
+					newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+						Buffer.from(content as string, 'base64'),
+						path as string,
+					);
+
+					items[i] = newItem;
+
+					return [items];
+				}
+
+				if (
+					overwriteDataOperations.includes(fullOperation) ||
+					overwriteDataOperationsArray.includes(fullOperation)
+				) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					if (
