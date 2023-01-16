@@ -476,16 +476,8 @@ export default mixins(
 		isDemo(): boolean {
 			return this.$route.name === VIEWS.DEMO;
 		},
-		isExecutionView(): boolean {
-			return this.$route.name === VIEWS.EXECUTION;
-		},
 		showCanvasAddButton(): boolean {
-			return (
-				this.loadingService === null &&
-				!this.containsTrigger &&
-				!this.isDemo &&
-				!this.isExecutionView
-			);
+			return this.loadingService === null && !this.containsTrigger && !this.isDemo;
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -2486,10 +2478,6 @@ export default mixins(
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
-			} else if (this.isExecutionView) {
-				// Load an execution
-				const executionId = this.$route.params.id;
-				await this.openExecution(executionId);
 			} else {
 				const result = this.uiStore.stateIsDirty;
 				if (result) {

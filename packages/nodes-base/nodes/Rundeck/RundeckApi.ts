@@ -23,7 +23,7 @@ export class RundeckApi {
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials?.url + endpoint,
+			uri: (this.credentials?.url as string) + endpoint,
 			body,
 			json: true,
 		};
@@ -54,7 +54,7 @@ export class RundeckApi {
 
 		if (args) {
 			for (const arg of args) {
-				params += '-' + arg.name + ' ' + arg.value + ' ';
+				params += '-' + (arg.name as string) + ' ' + (arg.value as string) + ' ';
 			}
 		}
 

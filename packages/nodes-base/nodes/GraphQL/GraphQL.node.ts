@@ -335,7 +335,7 @@ export class GraphQL implements INodeType {
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
 					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
-				const headerParameters = (parameter || []).reduce(
+				const headerParameters = (parameter ?? []).reduce(
 					(result, item) => ({
 						...result,
 						[item.name]: item.value,
@@ -398,9 +398,9 @@ export class GraphQL implements INodeType {
 								throw new NodeOperationError(
 									this.getNode(),
 									'Using variables failed:\n' +
-										requestOptions.body.variables +
+										(requestOptions.body.variables as string) +
 										'\n\nWith error message:\n' +
-										error,
+										(error as string),
 									{ itemIndex },
 								);
 							}

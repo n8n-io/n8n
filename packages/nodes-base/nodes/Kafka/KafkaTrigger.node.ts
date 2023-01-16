@@ -219,8 +219,6 @@ export class KafkaTrigger implements INodeType {
 
 		await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-		const self = this;
-
 		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
@@ -250,7 +248,7 @@ export class KafkaTrigger implements INodeType {
 						const headers: { [key: string]: string } = {};
 						for (const key of Object.keys(message.headers)) {
 							const header = message.headers[key];
-							headers[key] = header?.toString('utf8') || '';
+							headers[key] = header?.toString('utf8') ?? '';
 						}
 
 						data.headers = headers;
@@ -264,7 +262,7 @@ export class KafkaTrigger implements INodeType {
 						data = value;
 					}
 
-					self.emit([self.helpers.returnJsonArray([data])]);
+					this.emit([this.helpers.returnJsonArray([data])]);
 				},
 			});
 		};

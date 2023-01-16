@@ -3,10 +3,11 @@ import * as Db from '@/Db';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 
-export async function findInstalledPackage(
-	packageName: string,
-): Promise<InstalledPackages | undefined> {
-	return Db.collections.InstalledPackages.findOne(packageName, { relations: ['installedNodes'] });
+export async function findInstalledPackage(packageName: string): Promise<InstalledPackages | null> {
+	return Db.collections.InstalledPackages.findOne({
+		where: { packageName },
+		relations: ['installedNodes'],
+	});
 }
 
 export async function isPackageInstalled(packageName: string): Promise<boolean> {
