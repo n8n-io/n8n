@@ -40,7 +40,7 @@ export async function jiraSoftwareCloudApiRequest(
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest${endpoint}`,
+		uri: uri ?? `${domain}/rest${endpoint}`,
 		body,
 		json: true,
 	};
@@ -81,9 +81,12 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query.startAt = responseData.startAt + responseData.maxResults;
-		body.startAt = responseData.startAt + responseData.maxResults;
-	} while (responseData.startAt + responseData.maxResults < responseData.total);
+		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+	} while (
+		(responseData.startAt as number) + (responseData.maxResults as number) <
+		responseData.total
+	);
 
 	return returnData;
 }

@@ -26,6 +26,7 @@ import { AddWorkflowVersionIdColumn1669739707126 } from './1669739707126-AddWork
 import { AddTriggerCountColumn1669823906995 } from './1669823906995-AddTriggerCountColumn';
 import { RemoveWorkflowDataLoadedFlag1671726148421 } from './1671726148421-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -56,4 +57,5 @@ export const postgresMigrations = [
 	AddTriggerCountColumn1669823906995,
 	RemoveWorkflowDataLoadedFlag1671726148421,
 	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
 ];

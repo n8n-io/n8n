@@ -2392,10 +2392,7 @@ export class GoogleDrive implements INodeType {
 
 						items[i] = newItem;
 
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
 							response.body as unknown as Readable,
@@ -2521,7 +2518,7 @@ export class GoogleDrive implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							const binary = item.binary[propertyNameUpload];
 							if (binary === undefined) {
@@ -2592,7 +2589,7 @@ export class GoogleDrive implements INodeType {
 
 							let offset = 0;
 							for await (const chunk of fileContent) {
-								const nextOffset = offset + chunk.length;
+								const nextOffset = offset + Number(chunk.length);
 								try {
 									const response = await this.helpers.httpRequest({
 										method: 'PUT',
@@ -2732,7 +2729,7 @@ export class GoogleDrive implements INodeType {
 						const body = {
 							name,
 							mimeType: 'application/vnd.google-apps.folder',
-							parents: options.parents || [],
+							parents: options.parents ?? [],
 						};
 
 						const qs = {

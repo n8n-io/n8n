@@ -64,7 +64,6 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
-import { eventBus } from './eventbus';
 import { WorkflowsService } from './workflows/workflows.services';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
@@ -204,18 +203,24 @@ async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
+		const toPrune = { stoppedAt: LessThanOrEqual(utcDate) };
+		const isBinaryModeDefaultMode = config.getEnv('binaryDataManager.mode') === 'default';
 		try {
-			const executions = await Db.collections.Execution.find({
-				stoppedAt: LessThanOrEqual(utcDate),
-			});
-			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			const executions = isBinaryModeDefaultMode
+				? []
+				: await Db.collections.Execution.find({
+						select: ['id'],
+						where: toPrune,
+				  });
+			await Db.collections.Execution.delete(toPrune);
 			setTimeout(() => {
 				throttling = false;
 			}, timeout * 1000);
 			// Mark binary data for deletion for all executions
-			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-				executions.map(({ id }) => id),
-			);
+			if (!isBinaryModeDefaultMode)
+				await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+					executions.map(({ id }) => id),
+				);
 		} catch (error) {
 			ErrorReporter.error(error);
 			throttling = false;
@@ -397,9 +402,9 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						{ executionId: this.executionId, nodeName },
 					);
 
-					const execution = await Db.collections.Execution.findOne(this.executionId);
+					const execution = await Db.collections.Execution.findOneBy({ id: this.executionId });
 
-					if (execution === undefined) {
+					if (execution === null) {
 						// Something went badly wrong if this happens.
 						// This check is here mostly to make typescript happy.
 						return;
@@ -824,7 +829,7 @@ export async function getWorkflowData(
 		);
 	}
 
-	let workflowData: IWorkflowBase | undefined;
+	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
 		if (!Db.isInitialized) {
 			// The first time executeWorkflow gets called the Database has
@@ -840,7 +845,7 @@ export async function getWorkflowData(
 			throw new Error(`The workflow with the id "${workflowInfo.id}" does not exist.`);
 		}
 	} else {
-		workflowData = workflowInfo.code;
+		workflowData = workflowInfo.code ?? null;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;

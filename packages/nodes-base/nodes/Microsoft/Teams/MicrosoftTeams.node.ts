@@ -245,7 +245,9 @@ export class MicrosoftTeams implements INodeType {
 							.map((member: IDataObject) => member.displayName)
 							.join(', ');
 					}
-					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
+					const chatName = `${chat.topic || '(no title) - ' + (chat.id as string)} (${
+						chat.chatType
+					})`;
 					const chatId = chat.id;
 					returnData.push({
 						name: chatName,

@@ -62,7 +62,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="EXECUTIONS_MODAL_KEY">
-			<ExecutionsList />
+			<ExecutionsModal />
 		</ModalRoot>
 
 		<ModalRoot :name="WORKFLOW_ACTIVE_MODAL_KEY">
@@ -153,7 +153,7 @@ import UpdatesPanel from './UpdatesPanel.vue';
 import ValueSurvey from './ValueSurvey.vue';
 import WorkflowSettings from './WorkflowSettings.vue';
 import DeleteUserModal from './DeleteUserModal.vue';
-import ExecutionsList from './ExecutionsList.vue';
+import ExecutionsModal from './ExecutionsModal.vue';
 import ActivationModal from './ActivationModal.vue';
 import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
@@ -173,7 +173,7 @@ export default Vue.extend({
 		DeleteUserModal,
 		DuplicateWorkflowDialog,
 		InviteUsersModal,
-		ExecutionsList,
+		ExecutionsModal,
 		ModalRoot,
 		OnboardingCallSignupModal,
 		PersonalizationModal,

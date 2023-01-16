@@ -41,7 +41,7 @@ export async function invoiceNinjaApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri || `${baseUrl}/api/v1${endpoint}`,
+		uri: uri ?? `${baseUrl}/api/v1${endpoint}`,
 		body,
 		json: true,
 	};

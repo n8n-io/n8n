@@ -37,6 +37,7 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
@@ -236,6 +237,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
 export interface INodeTranslationHeaders {
@@ -544,6 +546,11 @@ export interface IPushDataExecutionFinished {
 	retryOf?: string;
 }
 
+export interface IPushDataUnsavedExecutionFinished {
+	executionId: string;
+	data: { finished: true; stoppedAt: Date };
+}
+
 export interface IPushDataExecutionStarted {
 	executionId: string;
 }
@@ -641,6 +648,7 @@ export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	isOwner: boolean;
+	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: Date;
 }
@@ -1297,6 +1305,8 @@ export interface IInviteResponse {
 	user: {
 		id: string;
 		email: string;
+		emailSent: boolean;
+		inviteAcceptUrl: string;
 	};
 	error?: string;
 }

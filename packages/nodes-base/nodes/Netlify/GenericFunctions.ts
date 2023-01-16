@@ -26,7 +26,7 @@ export async function netlifyApiRequest(
 		},
 		qs: query,
 		body,
-		uri: uri || `https://api.netlify.com/api/v1${endpoint}`,
+		uri: uri ?? `https://api.netlify.com/api/v1${endpoint}`,
 		json: true,
 	};
 

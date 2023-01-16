@@ -47,14 +47,14 @@ function compareItems(
 	differentKeys.forEach((key) => {
 		switch (resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] || null;
+				different[key] = item1.json[key] ?? null;
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] || null;
+				different[key] = item2.json[key] ?? null;
 				break;
 			default:
-				const input1 = item1.json[key] || null;
-				const input2 = item2.json[key] || null;
+				const input1 = item1.json[key] ?? null;
+				const input2 = item2.json[key] ?? null;
 				if (skipFields.includes(key)) {
 					skipped[key] = { input1, input2 };
 				} else {
@@ -89,7 +89,7 @@ function combineItems(
 		if (disableDotNotation) {
 			entry.json[field] = match.json[field];
 		} else {
-			const value = get(match.json, field) || null;
+			const value = get(match.json, field) ?? null;
 			set(entry, `json.${field}`, value);
 		}
 	});
@@ -158,6 +158,93 @@ function findFirstMatch(
 
 	return [{ entry: data[index], index }];
 }
+
+const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
+	try {
+		const parsedArray = jsonParse(str);
+		return isEqual(parsedArray, arr);
+	} catch (error) {
+		return false;
+	}
+};
+
+function isFalsy<T>(value: T) {
+	if (isNull(value)) return true;
+	if (typeof value === 'string' && value === '') return true;
+	if (Array.isArray(value) && value.length === 0) return true;
+	return false;
+}
+
+const fuzzyCompare =
+	(options: IDataObject) =>
+	<T, U>(item1: T, item2: U) => {
+		//Fuzzy compare is disabled, so we do strict comparison
+		if (!options.fuzzyCompare) return isEqual(item1, item2);
+
+		//Both types are the same, so we do strict comparison
+		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
+			return isEqual(item1, item2);
+		}
+
+		//Null, empty strings, empty arrays all treated as the same
+		if (isFalsy(item1) && isFalsy(item2)) return true;
+
+		//When a field is missing in one branch and isFalsy() in another, treat them as matching
+		if (isFalsy(item1) && item2 === undefined) return true;
+		if (item1 === undefined && isFalsy(item2)) return true;
+
+		//Compare numbers and strings representing that number
+		if (typeof item1 === 'number' && typeof item2 === 'string') {
+			return item1.toString() === item2;
+		}
+
+		if (typeof item1 === 'string' && typeof item2 === 'number') {
+			return item1 === item2.toString();
+		}
+
+		//Compare objects/arrays and their stringified version
+		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
+			return parseStringAndCompareToObject(item2, item1 as IDataObject);
+		}
+
+		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
+			return parseStringAndCompareToObject(item1, item2 as IDataObject);
+		}
+
+		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
+		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
+			if (item1 === true && item2.toLocaleLowerCase() === 'true') return true;
+			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
+			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
+		}
+
+		//Compare booleans and the numbers/string 0 and 1
+		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
+			if (item1 === true && item2 === 1) return true;
+			if (item1 === false && item2 === 0) return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
+			if (item2 === true && item1 === 1) return true;
+			if (item2 === false && item1 === 0) return true;
+		}
+
+		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
+			if (item1 === true && item2 === '1') return true;
+			if (item1 === false && item2 === '0') return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1 === '1') return true;
+			if (item2 === false && item1 === '0') return true;
+		}
+
+		return isEqual(item1, item2);
+	};
 
 export function findMatches(
 	input1: INodeExecutionData[],
@@ -340,91 +427,4 @@ export function checkInput(
 		}
 	}
 	return input;
-}
-
-const fuzzyCompare =
-	(options: IDataObject) =>
-	<T, U>(item1: T, item2: U) => {
-		//Fuzzy compare is disabled, so we do strict comparison
-		if (!options.fuzzyCompare) return isEqual(item1, item2);
-
-		//Both types are the same, so we do strict comparison
-		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
-			return isEqual(item1, item2);
-		}
-
-		//Null, empty strings, empty arrays all treated as the same
-		if (isFalsy(item1) && isFalsy(item2)) return true;
-
-		//When a field is missing in one branch and isFalsy() in another, treat them as matching
-		if (isFalsy(item1) && item2 === undefined) return true;
-		if (item1 === undefined && isFalsy(item2)) return true;
-
-		//Compare numbers and strings representing that number
-		if (typeof item1 === 'number' && typeof item2 === 'string') {
-			return item1.toString() === item2;
-		}
-
-		if (typeof item1 === 'string' && typeof item2 === 'number') {
-			return item1 === item2.toString();
-		}
-
-		//Compare objects/arrays and their stringified version
-		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
-			return parseStringAndCompareToObject(item2, item1 as IDataObject);
-		}
-
-		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
-			return parseStringAndCompareToObject(item1, item2 as IDataObject);
-		}
-
-		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2.toLocaleLowerCase() === 'true') return true;
-			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
-			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
-		}
-
-		//Compare booleans and the numbers/string 0 and 1
-		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
-			if (item1 === true && item2 === 1) return true;
-			if (item1 === false && item2 === 0) return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
-			if (item2 === true && item1 === 1) return true;
-			if (item2 === false && item1 === 0) return true;
-		}
-
-		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
-			if (item1 === true && item2 === '1') return true;
-			if (item1 === false && item2 === '0') return true;
-		}
-
-		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
-			if (item2 === true && item1 === '1') return true;
-			if (item2 === false && item1 === '0') return true;
-		}
-
-		return isEqual(item1, item2);
-	};
-
-const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
-	try {
-		const parsedArray = jsonParse(str);
-		return isEqual(parsedArray, arr);
-	} catch (error) {
-		return false;
-	}
-};
-
-function isFalsy<T>(value: T) {
-	if (isNull(value)) return true;
-	if (typeof value === 'string' && value === '') return true;
-	if (Array.isArray(value) && value.length === 0) return true;
-	return false;
 }

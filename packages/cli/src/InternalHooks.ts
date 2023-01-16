@@ -436,6 +436,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		user: User;
 		target_user_id: string[];
 		public_api: boolean;
+		email_sent: boolean;
 	}): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
@@ -449,6 +450,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				user_id: userInviteData.user.id,
 				target_user_id: userInviteData.target_user_id,
 				public_api: userInviteData.public_api,
+				email_sent: userInviteData.email_sent,
 			}),
 		]);
 	}

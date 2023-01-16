@@ -18,7 +18,7 @@ export async function matrixApiRequest(
 ) {
 	let options: OptionsWithUri = {
 		method,
-		headers: headers || {
+		headers: headers ?? {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,
@@ -38,7 +38,7 @@ export async function matrixApiRequest(
 
 		options.uri = `${credentials.homeserverUrl}/_matrix/${
 			//@ts-ignore
-			option.overridePrefix || 'client'
+			option.overridePrefix ?? 'client'
 		}/r0${resource}`;
 		options.headers!.Authorization = `Bearer ${credentials.accessToken}`;
 		const response = await this.helpers.request(options);
@@ -184,7 +184,7 @@ export async function handleMatrixCall(
 		if (operation === 'upload') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
 			const mediaType = this.getNodeParameter('mediaType', index) as string;
-			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index) as string;
+			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', index);
 
 			let body;
 			const qs: IDataObject = {};

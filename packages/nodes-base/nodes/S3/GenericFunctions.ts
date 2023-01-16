@@ -17,6 +17,12 @@ import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
+function queryToString(params: IDataObject) {
+	return Object.keys(params)
+		.map((key) => key + '=' + (params[key] as string))
+		.join('&');
+}
+
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
@@ -51,8 +57,8 @@ export async function s3ApiRequest(
 
 	// Sign AWS API request with the user credentials
 	const signOpts = {
-		headers: headers || {},
-		region: region || credentials.region,
+		headers: headers ?? {},
+		region: region ?? credentials.region,
 		host: endpoint.host,
 		method,
 		path: `${path}?${queryToString(query).replace(/\+/g, '%2B')}`,
@@ -205,10 +211,4 @@ export async function s3ApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }
