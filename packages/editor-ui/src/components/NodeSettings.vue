@@ -455,7 +455,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	methods: {
 		populateHiddenIssuesSet() {
-			if (!this.node || !this.workflowsStore.getIsNodePristine(this.node.name)) return;
+			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
 
 			this.hiddenIssuesInputs.push('credentials');
 			this.parametersNoneSetting.forEach((parameter) => {

@@ -227,7 +227,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				this.nodeMetadata[nodeName] && this.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
-		getIsNodePristine(): (name: string) => boolean {
+		isNodePristine(): (name: string) => boolean {
 			return (nodeName: string) =>
 				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine === true;
 		},
