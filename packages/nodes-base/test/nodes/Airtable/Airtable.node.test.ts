@@ -51,10 +51,7 @@ describe('Execute Airtable Node', () => {
 	for (const testData of tests) {
 		test(testData.description, async () => {
 			// execute workflow
-			const { executionData, result, nodeExecutionOrder } = await executeWorkflow(
-				testData,
-				nodeTypes,
-			);
+			const { result } = await executeWorkflow(testData, nodeTypes);
 
 			// check if result node data matches expected test data
 			const resultNodeData = Helpers.getResultNodeData(result, testData);

@@ -36,10 +36,7 @@ describe('Execute Start Node', () => {
 	for (const testData of tests) {
 		test(testData.description, async () => {
 			// execute workflow
-			const { executionData, result, nodeExecutionOrder } = await executeWorkflow(
-				testData,
-				nodeTypes,
-			);
+			const { result, nodeExecutionOrder } = await executeWorkflow(testData, nodeTypes);
 			// Check if the nodes did execute in the correct order
 			expect(nodeExecutionOrder).toEqual(testData.output.nodeExecutionOrder);
 			// Check if other data has correct value
