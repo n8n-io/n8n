@@ -14,7 +14,6 @@ import * as utils from './shared/utils';
 import type { IUser } from 'n8n-workflow';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -27,8 +26,7 @@ beforeAll(async () => {
 		endpointGroups: ['credentials'],
 		applyAuth: true,
 	});
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	utils.initConfigFile();
 
@@ -46,11 +44,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'SharedCredentials', 'Credentials'], testDbName);
+	await testDb.truncate(['User', 'SharedCredentials', 'Credentials']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 // ----------------------------------------
@@ -380,7 +378,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
 		relations: ['role'],
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
 	// check that sharings have been removed/added correctly
@@ -420,7 +418,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	// check that sharings got correctly set in DB
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
 		relations: ['role'],
-		where: { credentials: savedCredential, user: { id: In([...memberIds]) } },
+		where: { credentialsId: savedCredential.id, userId: In([...memberIds]) },
 	});
 
 	expect(sharedCredentials.length).toBe(memberIds.length);
@@ -433,7 +431,7 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	// check that owner still exists
 	const ownerSharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
 		relations: ['role'],
-		where: { credentials: savedCredential, user: owner },
+		where: { credentialsId: savedCredential.id, userId: owner.id },
 	});
 
 	expect(ownerSharedCredential.role.name).toBe('owner');
@@ -475,7 +473,7 @@ test('PUT /credentials/:id/share should ignore pending sharee', async () => {
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
 	expect(sharedCredentials).toHaveLength(1);
@@ -493,7 +491,7 @@ test('PUT /credentials/:id/share should ignore non-existing sharee', async () =>
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
 	expect(sharedCredentials).toHaveLength(1);
@@ -535,7 +533,7 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 	expect(response.statusCode).toBe(200);
 
 	const sharedCredentials = await Db.collections.SharedCredentials.find({
-		where: { credentials: savedCredential },
+		where: { credentialsId: savedCredential.id },
 	});
 
 	expect(sharedCredentials).toHaveLength(1);

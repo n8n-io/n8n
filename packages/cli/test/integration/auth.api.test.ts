@@ -11,15 +11,13 @@ import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -31,7 +29,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -42,7 +40,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /login should log user in', async () => {

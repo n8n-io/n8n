@@ -79,7 +79,7 @@ export class KoBoToolboxTrigger implements INodeType {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				const webhooks = await koBoToolboxApiRequest.call(this, {
 					url: `/api/v2/assets/${formId}/hooks/`,
 				});
@@ -96,7 +96,7 @@ export class KoBoToolboxTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const workflow = this.getWorkflow();
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 
 				const response = await koBoToolboxApiRequest.call(this, {
 					method: 'POST',
@@ -118,7 +118,7 @@ export class KoBoToolboxTrigger implements INodeType {
 
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const formId = this.getNodeParameter('formId') as string; //tslint:disable-line:variable-name
+				const formId = this.getNodeParameter('formId') as string;
 				try {
 					await koBoToolboxApiRequest.call(this, {
 						method: 'DELETE',

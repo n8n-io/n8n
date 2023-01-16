@@ -198,7 +198,7 @@ export class InvoiceNinja implements INodeType {
 					'/invoices',
 				);
 				for (const invoice of invoices) {
-					const invoiceName = (invoice.invoice_number || invoice.number) as string;
+					const invoiceName = (invoice.invoice_number ?? invoice.number) as string;
 					const invoiceId = invoice.id as string;
 					returnData.push({
 						name: invoiceName,

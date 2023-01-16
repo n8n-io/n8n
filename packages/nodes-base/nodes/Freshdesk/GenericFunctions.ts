@@ -28,7 +28,7 @@ export async function freshdeskApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://${credentials.domain}.${endpoint}${resource}`,
+		uri: uri ?? `https://${credentials.domain}.${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

@@ -446,3 +446,4 @@ export enum STORES {
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
 export const KEEP_AUTH_IN_NDV_FOR_NODES = [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE];
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';
