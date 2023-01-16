@@ -291,62 +291,6 @@ export const description: INodeProperties[] = [
 	},
 ];
 
-export async function execute(
-	this: IExecuteFunctions,
-	items: INodeExecutionData[],
-): Promise<INodeExecutionData[][]> {
-	const newItems = items.map(({ json }) => json);
-
-	const outputDataAsObject = this.getNodeParameter(
-		'options.outputDataAsObject',
-		0,
-		false,
-	) as boolean;
-
-	const skipEmptySplitFields = this.getNodeParameter(
-		'options.skipEmptySplitFields',
-		0,
-		false,
-	) as boolean;
-
-	const fieldsToSplitBy = (this.getNodeParameter('fieldsToSplitBy', 0, '') as string)
-		.split(',')
-		.map((field) => field.trim())
-		.filter((field) => field);
-
-	const fieldsToSummarize = this.getNodeParameter(
-		'fieldsToSummarize.values',
-		0,
-		[],
-	) as Aggregations;
-
-	if (fieldsToSummarize.filter((aggregation) => aggregation.field !== '').length === 0) {
-		throw new NodeOperationError(
-			this.getNode(),
-			"You need to add at least one aggregation to 'Fields to Summarize' with non empty 'Field'",
-		);
-	}
-
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize);
-	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
-
-	const aggregationResult = splitData(
-		fieldsToSplitBy,
-		newItems,
-		fieldsToSummarize,
-		skipEmptySplitFields,
-	);
-
-	const result =
-		outputDataAsObject || !fieldsToSplitBy.length
-			? aggregationResult
-			: aggregationToArray(aggregationResult, fieldsToSplitBy);
-
-	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
-
-	return executionData;
-}
-
 function checkIfFieldExists(
 	this: IExecuteFunctions,
 	items: IDataObject[],
@@ -393,40 +337,6 @@ function checkAggregationsFieldType(
 			}
 		}
 	}
-}
-
-function splitData(
-	splitKeys: string[],
-	data: IDataObject[],
-	fieldsToSummarize: Aggregations,
-	skipEmptySplitFields = false,
-) {
-	if (!splitKeys || splitKeys.length === 0) {
-		return aggregateData(data, fieldsToSummarize);
-	}
-
-	const [firstSplitKey, ...restSplitKeys] = splitKeys;
-
-	const groupedData = data.reduce((acc, item) => {
-		const keyValuee = item[firstSplitKey] as string;
-
-		if (skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
-			return acc;
-		}
-
-		if (acc[keyValuee] === undefined) {
-			acc[keyValuee] = [item];
-		} else {
-			(acc[keyValuee] as IDataObject[]).push(item);
-		}
-		return acc;
-	}, {} as IDataObject);
-
-	return Object.keys(groupedData).reduce((acc, key) => {
-		const value = groupedData[key] as IDataObject[];
-		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, skipEmptySplitFields);
-		return acc;
-	}, {} as IDataObject);
 }
 
 function aggregate(items: IDataObject[], entry: Aggregation) {
@@ -505,6 +415,40 @@ function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
 	}, {} as IDataObject);
 }
 
+function splitData(
+	splitKeys: string[],
+	data: IDataObject[],
+	fieldsToSummarize: Aggregations,
+	skipEmptySplitFields = false,
+) {
+	if (!splitKeys || splitKeys.length === 0) {
+		return aggregateData(data, fieldsToSummarize);
+	}
+
+	const [firstSplitKey, ...restSplitKeys] = splitKeys;
+
+	const groupedData = data.reduce((acc, item) => {
+		const keyValuee = item[firstSplitKey] as string;
+
+		if (skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
+			return acc;
+		}
+
+		if (acc[keyValuee] === undefined) {
+			acc[keyValuee] = [item];
+		} else {
+			(acc[keyValuee] as IDataObject[]).push(item);
+		}
+		return acc;
+	}, {} as IDataObject);
+
+	return Object.keys(groupedData).reduce((acc, key) => {
+		const value = groupedData[key] as IDataObject[];
+		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, skipEmptySplitFields);
+		return acc;
+	}, {} as IDataObject);
+}
+
 function aggregationToArray(
 	aggregationResult: IDataObject,
 	fieldsToSplitBy: string[],
@@ -535,4 +479,60 @@ function aggregationToArray(
 		}
 		return returnData;
 	}
+}
+
+export async function execute(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[][]> {
+	const newItems = items.map(({ json }) => json);
+
+	const outputDataAsObject = this.getNodeParameter(
+		'options.outputDataAsObject',
+		0,
+		false,
+	) as boolean;
+
+	const skipEmptySplitFields = this.getNodeParameter(
+		'options.skipEmptySplitFields',
+		0,
+		false,
+	) as boolean;
+
+	const fieldsToSplitBy = (this.getNodeParameter('fieldsToSplitBy', 0, '') as string)
+		.split(',')
+		.map((field) => field.trim())
+		.filter((field) => field);
+
+	const fieldsToSummarize = this.getNodeParameter(
+		'fieldsToSummarize.values',
+		0,
+		[],
+	) as Aggregations;
+
+	if (fieldsToSummarize.filter((aggregation) => aggregation.field !== '').length === 0) {
+		throw new NodeOperationError(
+			this.getNode(),
+			"You need to add at least one aggregation to 'Fields to Summarize' with non empty 'Field'",
+		);
+	}
+
+	checkIfFieldExists.call(this, newItems, fieldsToSummarize);
+	checkAggregationsFieldType.call(this, newItems, fieldsToSummarize);
+
+	const aggregationResult = splitData(
+		fieldsToSplitBy,
+		newItems,
+		fieldsToSummarize,
+		skipEmptySplitFields,
+	);
+
+	const result =
+		outputDataAsObject || !fieldsToSplitBy.length
+			? aggregationResult
+			: aggregationToArray(aggregationResult, fieldsToSplitBy);
+
+	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
+
+	return executionData;
 }
