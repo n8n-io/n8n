@@ -24,7 +24,7 @@ export class MessageEventBusDestinationStdout
 	implements MessageEventBusDestinationStdoutOptions
 {
 	constructor(options: MessageEventBusDestinationStdoutOptions) {
-		super(options as MessageEventBusDestinationOptions);
+		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.stdout;
 		this.label = options.label ?? 'Stdout';
 
@@ -47,7 +47,7 @@ export class MessageEventBusDestinationStdout
 				msgid: msg.id,
 				timestamp: msg.ts.toJSDate(),
 			});
-			await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+			eventBus.confirmSent(msg, { id: this.id, name: this.label });
 			sendResult = true;
 		} catch (error) {
 			console.log(error);
