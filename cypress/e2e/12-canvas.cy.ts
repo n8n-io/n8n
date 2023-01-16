@@ -58,9 +58,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().realHover();
 		cy.get('.connection-actions .add').should('be.visible').click()
-
-		WorkflowPage.getters.nodeCreatorSearchBar().type(SET_NODE_NAME);
-		WorkflowPage.getters.nodeCreatorSearchBar().type('{enter}');
+		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME, false);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		// And last node should be pushed to the right
