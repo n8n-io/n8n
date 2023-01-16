@@ -28,7 +28,7 @@ export async function webexApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://webexapis.com/v1${resource}`,
+		uri: uri ?? `https://webexapis.com/v1${resource}`,
 		json: true,
 	};
 	try {
@@ -126,6 +126,12 @@ export function mapResource(event: string) {
 			all: 'all',
 		} as { [key: string]: string }
 	)[event];
+}
+
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAttachemnts(attachements: IDataObject[]) {
@@ -619,12 +625,6 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

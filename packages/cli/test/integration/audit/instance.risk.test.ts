@@ -13,21 +13,18 @@ import * as testDb from '../shared/testDb';
 import { toReportTitle } from '@/audit/utils';
 import config from '@/config';
 
-let testDbName = '';
-
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	simulateUpToDateInstance();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow'], testDbName);
+	await testDb.truncate(['Workflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('should report webhook lacking authentication', async () => {

@@ -26,7 +26,7 @@ export async function clearbitApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://${api}.clearbit.com${resource}`,
+		uri: uri ?? `https://${api}.clearbit.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

@@ -5,19 +5,16 @@ import { FILESYSTEM_INTERACTION_NODE_TYPES, FILESYSTEM_REPORT } from '@/audit/co
 import { getRiskSection, saveManualTriggerWorkflow } from './utils';
 import * as testDb from '../shared/testDb';
 
-let testDbName = '';
-
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow'], testDbName);
+	await testDb.truncate(['Workflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('should report filesystem interaction nodes', async () => {

@@ -22,7 +22,7 @@ export async function theHiveApiRequest(
 	let options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/api${resource}`,
+		uri: uri ?? `${credentials.url}/api${resource}`,
 		body,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 		json: true,
