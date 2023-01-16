@@ -1,5 +1,5 @@
 <script lang="ts">
-import { computed, defineComponent, onMounted, onBeforeMount, ref, PropType } from 'vue';
+import { computed, defineComponent, onMounted, onBeforeMount, ref, PropType, nextTick } from 'vue';
 
 export default defineComponent({
 	name: 'n8n-recycle-scroller',
@@ -59,13 +59,15 @@ export default defineComponent({
 			});
 		}
 
-		function setItemSize(itemKey: string) {
-			const itemRef = itemsRef.value[itemKey];
+		async function updateItemSize(item: { [key: string]: string }) {
+			await nextTick();
+
+			const itemRef = itemsRef.value[item[props.itemKey]];
 			const size = itemRef ? itemRef.clientHeight : props.itemSize;
 
 			itemSizeCache.value = {
 				...itemSizeCache.value,
-				[itemKey]: size,
+				[item[props.itemKey]]: size,
 			};
 		}
 
@@ -94,13 +96,14 @@ export default defineComponent({
 		 */
 
 		const startIndex = computed(() => {
-			const index =
-				props.items.findIndex((item) => {
-					const key = item[props.itemKey];
-					const position = itemPositionCache.value[key];
+			const foundIndex = props.items.findIndex((item) => {
+				const key = item[props.itemKey];
+				const position = itemPositionCache.value[key];
 
-					return position >= scrollTop.value;
-				}) - props.offset;
+				return position >= scrollTop.value;
+			});
+			const offset = props.offset;
+			const index = foundIndex === -1 ? 0 : foundIndex - offset;
 
 			return index < 0 ? 0 : index;
 		});
@@ -112,7 +115,8 @@ export default defineComponent({
 
 				return position >= scrollTop.value + wrapperHeight.value;
 			});
-			const index = foundIndex === -1 ? props.items.length - 1 : foundIndex + props.offset;
+			const offset = props.offset + (startIndex.value < props.offset ? startIndex.value + 1 : 0);
+			const index = foundIndex === -1 ? props.items.length - 1 : foundIndex + offset;
 
 			return index >= props.items.length ? props.items.length - 1 : index;
 		});
@@ -162,6 +166,8 @@ export default defineComponent({
 		});
 
 		return {
+			startIndex,
+			endIndex,
 			itemCount,
 			itemsVisible: visibleItems,
 			itemStyles,
@@ -170,7 +176,7 @@ export default defineComponent({
 			scrollerRef,
 			wrapperRef,
 			itemsRef,
-			setItemSize,
+			updateItemSize,
 		};
 	},
 });
@@ -186,7 +192,7 @@ export default defineComponent({
 				:style="itemStyles(item[itemKey])"
 				:ref="(element) => (itemsRef[item[itemKey]] = element)"
 			>
-				<slot :item="item" :setItemSize="setItemSize" />
+				<slot :item="item" :updateItemSize="updateItemSize" />
 			</div>
 		</div>
 	</div>

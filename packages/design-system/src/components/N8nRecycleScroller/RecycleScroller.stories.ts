@@ -22,12 +22,12 @@ const Template: StoryFn = () => ({
 		};
 	},
 	methods: {
-		resizeItem(item: { id: string; height: string }, fn: (id: string) => void) {
+		resizeItem(item: { id: string; height: string }, fn: (item: { id: string }) => void) {
 			const itemRef = (this as ComponentInstance).$refs[`item-${item.id}`] as HTMLElement;
 
 			item.height = '200px';
 			itemRef.style.height = '200px';
-			fn(item.id);
+			fn(item);
 		},
 		getItemStyle(item: { id: string; height?: string }) {
 			return {
@@ -42,11 +42,11 @@ const Template: StoryFn = () => ({
 	},
 	template: `<div style="height: 500px; width: 100%; overflow: auto">
 		<N8nRecycleScroller :items="items" :item-size="100" item-key="id" v-bind="$props">
-			<template	#default="{ item, setItemSize }">
+			<template	#default="{ item, updateItemSize }">
 				<div
 					:ref="'item-' + item.id"
 					:style="getItemStyle(item)"
-					@click="resizeItem(item, setItemSize)"
+					@click="resizeItem(item, updateItemSize)"
 				>
 					{{item.id}}
 				</div>
