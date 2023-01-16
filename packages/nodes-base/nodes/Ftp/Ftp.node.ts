@@ -34,6 +34,72 @@ interface ReturnFtpItem {
 	path: string;
 }
 
+async function callRecursiveList(
+	path: string,
+	client: sftpClient | ftpClient,
+	normalizeFunction: (
+		input: ftpClient.ListingElement & sftpClient.FileInfo,
+		path: string,
+		recursive?: boolean,
+	) => void,
+) {
+	const pathArray: string[] = [path];
+	let currentPath = path;
+	const directoryItems: sftpClient.FileInfo[] = [];
+	let index = 0;
+
+	const prepareAndNormalize = (item: sftpClient.FileInfo) => {
+		if (pathArray[index].endsWith('/')) {
+			currentPath = `${pathArray[index]}${item.name}`;
+		} else {
+			currentPath = `${pathArray[index]}/${item.name}`;
+		}
+
+		// Is directory
+		if (item.type === 'd') {
+			pathArray.push(currentPath);
+		}
+
+		normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath, true);
+		directoryItems.push(item);
+	};
+
+	do {
+		const returnData: sftpClient.FileInfo[] | Array<string | ftpClient.ListingElement> =
+			await client.list(pathArray[index]);
+
+		// @ts-ignore
+		returnData.map(prepareAndNormalize);
+		index++;
+	} while (index <= pathArray.length - 1);
+
+	return directoryItems;
+}
+
+async function recursivelyCreateSftpDirs(sftp: sftpClient, path: string) {
+	const dirPath = dirname(path);
+	const dirExists = await sftp.exists(dirPath);
+
+	if (!dirExists) {
+		await sftp.mkdir(dirPath, true);
+	}
+}
+
+function normalizeSFtpItem(input: sftpClient.FileInfo, path: string, recursive = false) {
+	const item = input as unknown as ReturnFtpItem;
+	item.accessTime = new Date(input.accessTime);
+	item.modifyTime = new Date(input.modifyTime);
+	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
+}
+
+function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursive = false) {
+	const item = input as unknown as ReturnFtpItem;
+	item.modifyTime = input.date;
+	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
+	//@ts-ignore
+	item.date = undefined;
+}
+
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'FTP',
@@ -708,72 +774,5 @@ export class Ftp implements INodeType {
 			throw error;
 		}
 		return [returnItems];
-	}
-}
-
-function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursive = false) {
-	const item = input as unknown as ReturnFtpItem;
-	item.modifyTime = input.date;
-	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
-	//@ts-ignore
-	item.date = undefined;
-}
-
-function normalizeSFtpItem(input: sftpClient.FileInfo, path: string, recursive = false) {
-	const item = input as unknown as ReturnFtpItem;
-	item.accessTime = new Date(input.accessTime);
-	item.modifyTime = new Date(input.modifyTime);
-	item.path = !recursive ? `${path}${path.endsWith('/') ? '' : '/'}${item.name}` : path;
-}
-
-async function callRecursiveList(
-	path: string,
-	client: sftpClient | ftpClient,
-	normalizeFunction: (
-		input: ftpClient.ListingElement & sftpClient.FileInfo,
-		path: string,
-		recursive?: boolean,
-	) => void,
-) {
-	const pathArray: string[] = [path];
-	let currentPath = path;
-	const directoryItems: sftpClient.FileInfo[] = [];
-	let index = 0;
-
-	const prepareAndNormalize = (item: sftpClient.FileInfo) => {
-		if (pathArray[index].endsWith('/')) {
-			currentPath = `${pathArray[index]}${item.name}`;
-		} else {
-			currentPath = `${pathArray[index]}/${item.name}`;
-		}
-
-		// Is directory
-		if (item.type === 'd') {
-			pathArray.push(currentPath);
-		}
-
-		normalizeFunction(item as ftpClient.ListingElement & sftpClient.FileInfo, currentPath, true);
-		directoryItems.push(item);
-	};
-
-	do {
-		// tslint:disable-next-line: array-type
-		const returnData: sftpClient.FileInfo[] | Array<string | ftpClient.ListingElement> =
-			await client.list(pathArray[index]);
-
-		// @ts-ignore
-		returnData.map(prepareAndNormalize);
-		index++;
-	} while (index <= pathArray.length - 1);
-
-	return directoryItems;
-}
-
-async function recursivelyCreateSftpDirs(sftp: sftpClient, path: string) {
-	const dirPath = dirname(path);
-	const dirExists = await sftp.exists(dirPath);
-
-	if (!dirExists) {
-		await sftp.mkdir(dirPath, true);
 	}
 }

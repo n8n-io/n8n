@@ -6,6 +6,26 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
+async function processCampaignSearchResponse(
+	this: IExecuteSingleFunctions,
+	_inputData: INodeExecutionData[],
+	responseData: IN8nHttpFullResponse,
+): Promise<INodeExecutionData[]> {
+	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
+
+	return Promise.resolve(
+		results.map((result) => {
+			return {
+				json: {
+					...result.campaign,
+					...result.metrics,
+					...result.campaignBudget,
+				},
+			};
+		}),
+	);
+}
+
 export const campaignOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -262,26 +282,6 @@ export const campaignFields: INodeProperties[] = [
 		],
 	},
 ];
-
-async function processCampaignSearchResponse(
-	this: IExecuteSingleFunctions,
-	_inputData: INodeExecutionData[],
-	responseData: IN8nHttpFullResponse,
-): Promise<INodeExecutionData[]> {
-	const results = (responseData.body as IDataObject).results as GoogleAdsCampaignElement;
-
-	return Promise.resolve(
-		results.map((result) => {
-			return {
-				json: {
-					...result.campaign,
-					...result.metrics,
-					...result.campaignBudget,
-				},
-			};
-		}),
-	);
-}
 
 type GoogleAdsCampaignElement = [
 	{

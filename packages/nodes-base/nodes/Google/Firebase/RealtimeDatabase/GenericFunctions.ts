@@ -26,7 +26,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		url: uri || `https://${projectId}.${region}/${resource}.json`,
+		url: uri ?? `https://${projectId}.${region}/${resource}.json`,
 		json: true,
 	};
 

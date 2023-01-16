@@ -579,7 +579,8 @@ export class WorkflowDataProxy {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
+							// TODO: re-enable this for v1.0.0 release
+							// failExecution: true,
 						});
 					}
 

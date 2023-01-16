@@ -64,7 +64,7 @@ export async function dueDatePreSendAction(
 		);
 	}
 	const dueDate = dateToIsoSupressMillis(dueDateParam);
-	requestOptions.body = (requestOptions.body || {}) as object;
+	requestOptions.body = (requestOptions.body ?? {}) as object;
 	Object.assign(requestOptions.body, { dueDate });
 	return requestOptions;
 }
@@ -73,7 +73,7 @@ export async function contactIdentifierPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	requestOptions.body = (requestOptions.body || {}) as object;
+	requestOptions.body = (requestOptions.body ?? {}) as object;
 	let identifier = this.getNodeParameter('contactIdentifier', null) as string;
 	if (!identifier) {
 		const fields = this.getNodeParameter('updateFields') as { contactIdentifier: string };
@@ -93,7 +93,7 @@ export async function validEmailAndPhonePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { email?: string; phone?: string };
+	const body = (requestOptions.body ?? {}) as { email?: string; phone?: string };
 
 	if (body.email && !isEmailValid(body.email)) {
 		const message = `email "${body.email}" has invalid format`;
@@ -112,7 +112,7 @@ export async function dateTimeToEpochPreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
-	const qs = (requestOptions.qs || {}) as {
+	const qs = (requestOptions.qs ?? {}) as {
 		startDate?: string | number;
 		endDate?: string | number;
 	};
@@ -120,87 +120,6 @@ export async function dateTimeToEpochPreSendAction(
 	if (qs.startDate) qs.startDate = toEpoch(qs.startDate as string);
 	if (qs.endDate) qs.endDate = toEpoch(qs.endDate as string);
 	return requestOptions;
-}
-
-export async function opportunityUpdatePreSendAction(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string; status?: string };
-	if (!body.status || !body.title) {
-		const pipelineId = this.getNodeParameter('pipelineId');
-		const opportunityId = this.getNodeParameter('opportunityId');
-		const resource = `/pipelines/${pipelineId}/opportunities/${opportunityId}`;
-		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
-		body.status = body.status || responseData.status;
-		body.title = body.title || responseData.name;
-		requestOptions.body = body;
-	}
-	return requestOptions;
-}
-
-export async function taskUpdatePreSendAction(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as { title?: string; dueDate?: string };
-	if (!body.title || !body.dueDate) {
-		const contactId = this.getNodeParameter('contactId');
-		const taskId = this.getNodeParameter('taskId');
-		const resource = `/contacts/${contactId}/tasks/${taskId}`;
-		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
-		body.title = body.title || responseData.title;
-		// the api response dueDate has to be formatted or it will error on update
-		body.dueDate = body.dueDate || dateToIsoSupressMillis(responseData.dueDate);
-		requestOptions.body = body;
-	}
-	return requestOptions;
-}
-
-export async function splitTagsPreSendAction(
-	this: IExecuteSingleFunctions,
-	requestOptions: IHttpRequestOptions,
-): Promise<IHttpRequestOptions> {
-	const body = (requestOptions.body || {}) as IDataObject;
-	if (body.tags) {
-		if (Array.isArray(body.tags)) return requestOptions;
-		body.tags = (body.tags as string).split(',').map((tag) => tag.trim());
-	}
-	return requestOptions;
-}
-
-export async function highLevelApiPagination(
-	this: IExecutePaginationFunctions,
-	requestData: DeclarativeRestApiSettings.ResultOptions,
-): Promise<INodeExecutionData[]> {
-	const responseData: INodeExecutionData[] = [];
-	const resource = this.getNodeParameter('resource') as string;
-	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
-
-	const resourceMapping: { [key: string]: string } = {
-		contact: 'contacts',
-		opportunity: 'opportunities',
-	};
-	const rootProperty = resourceMapping[resource];
-
-	requestData.options.qs = requestData.options.qs || {};
-	if (returnAll) requestData.options.qs.limit = 100;
-
-	let responseTotal = 0;
-
-	do {
-		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
-		const items = pageResponseData[0].json[rootProperty] as [];
-		items.forEach((item) => responseData.push({ json: item }));
-
-		const meta = pageResponseData[0].json.meta as IDataObject;
-		const startAfterId = meta.startAfterId as string;
-		const startAfter = meta.startAfter as number;
-		requestData.options.qs = { startAfterId, startAfter };
-		responseTotal = (meta.total as number) || 0;
-	} while (returnAll && responseTotal > responseData.length);
-
-	return responseData;
 }
 
 export async function highLevelApiRequest(
@@ -222,7 +141,7 @@ export async function highLevelApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
+		uri: uri ?? `https://rest.gohighlevel.com/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -233,6 +152,87 @@ export async function highLevelApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	return this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
+}
+
+export async function opportunityUpdatePreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body ?? {}) as { title?: string; status?: string };
+	if (!body.status || !body.title) {
+		const pipelineId = this.getNodeParameter('pipelineId');
+		const opportunityId = this.getNodeParameter('opportunityId');
+		const resource = `/pipelines/${pipelineId}/opportunities/${opportunityId}`;
+		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
+		body.status = body.status ?? responseData.status;
+		body.title = body.title ?? responseData.name;
+		requestOptions.body = body;
+	}
+	return requestOptions;
+}
+
+export async function taskUpdatePreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body ?? {}) as { title?: string; dueDate?: string };
+	if (!body.title || !body.dueDate) {
+		const contactId = this.getNodeParameter('contactId');
+		const taskId = this.getNodeParameter('taskId');
+		const resource = `/contacts/${contactId}/tasks/${taskId}`;
+		const responseData = await highLevelApiRequest.call(this, 'GET', resource);
+		body.title = body.title ?? responseData.title;
+		// the api response dueDate has to be formatted or it will error on update
+		body.dueDate = body.dueDate ?? dateToIsoSupressMillis(responseData.dueDate);
+		requestOptions.body = body;
+	}
+	return requestOptions;
+}
+
+export async function splitTagsPreSendAction(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
+	const body = (requestOptions.body ?? {}) as IDataObject;
+	if (body.tags) {
+		if (Array.isArray(body.tags)) return requestOptions;
+		body.tags = (body.tags as string).split(',').map((tag) => tag.trim());
+	}
+	return requestOptions;
+}
+
+export async function highLevelApiPagination(
+	this: IExecutePaginationFunctions,
+	requestData: DeclarativeRestApiSettings.ResultOptions,
+): Promise<INodeExecutionData[]> {
+	const responseData: INodeExecutionData[] = [];
+	const resource = this.getNodeParameter('resource') as string;
+	const returnAll = this.getNodeParameter('returnAll', false) as boolean;
+
+	const resourceMapping: { [key: string]: string } = {
+		contact: 'contacts',
+		opportunity: 'opportunities',
+	};
+	const rootProperty = resourceMapping[resource];
+
+	requestData.options.qs = requestData.options.qs ?? {};
+	if (returnAll) requestData.options.qs.limit = 100;
+
+	let responseTotal = 0;
+
+	do {
+		const pageResponseData: INodeExecutionData[] = await this.makeRoutingRequest(requestData);
+		const items = pageResponseData[0].json[rootProperty] as [];
+		items.forEach((item) => responseData.push({ json: item }));
+
+		const meta = pageResponseData[0].json.meta as IDataObject;
+		const startAfterId = meta.startAfterId as string;
+		const startAfter = meta.startAfter as number;
+		requestData.options.qs = { startAfterId, startAfter };
+		responseTotal = (meta.total as number) || 0;
+	} while (returnAll && responseTotal > responseData.length);
+
+	return responseData;
 }
 
 export async function getPipelineStages(
