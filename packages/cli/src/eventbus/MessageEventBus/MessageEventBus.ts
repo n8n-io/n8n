@@ -34,7 +34,12 @@ import { parse, stringify } from 'flatted';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all' | 'unfinished';
 
-class MessageEventBus extends EventEmitter {
+export interface MessageWithCallback {
+	msg: EventMessageTypes;
+	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) => void;
+}
+
+export class MessageEventBus extends EventEmitter {
 	private static instance: MessageEventBus;
 
 	isInitialized: boolean;
@@ -78,7 +83,7 @@ class MessageEventBus extends EventEmitter {
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
-					const destination = messageEventBusDestinationFromDb(destinationData);
+					const destination = messageEventBusDestinationFromDb(this, destinationData);
 					if (destination) {
 						await this.addDestination(destination);
 					}
@@ -103,7 +108,7 @@ class MessageEventBus extends EventEmitter {
 		this.logWriter?.startLogging();
 		await this.send(unsentAndUnfinished.unsentMessages);
 
-		console.error(unsentAndUnfinished.unfinishedExecutions);
+		// console.error(unsentAndUnfinished.unfinishedExecutions);
 
 		if (Object.keys(unsentAndUnfinished.unfinishedExecutions).length > 0) {
 			for (const executionId of Object.keys(unsentAndUnfinished.unfinishedExecutions)) {
@@ -145,7 +150,11 @@ class MessageEventBus extends EventEmitter {
 		messages: EventMessageTypes[],
 		applyToDb = true,
 	): Promise<IRunExecutionData | undefined> {
-		const executionEntry = await Db.collections.Execution.findOne(executionId);
+		const executionEntry = await Db.collections.Execution.findOne({
+			where: {
+				id: executionId,
+			},
+		});
 		console.log(executionId, messages, executionEntry);
 
 		if (executionEntry && messages) {
@@ -281,12 +290,15 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	async testDestination(destinationId: string): Promise<boolean> {
-		const testMessage = new EventMessageGeneric({
+		const msg = new EventMessageGeneric({
 			eventName: eventMessageGenericDestinationTestEvent,
 		});
 		const destination = await this.findDestination(destinationId);
 		if (destination.length > 0) {
-			const sendResult = await this.destinations[destinationId].receiveFromEventBus(testMessage);
+			const sendResult = await this.destinations[destinationId].receiveFromEventBus({
+				msg,
+				confirmCallback: () => this.confirmSent(msg, { id: '0', name: 'eventBus' }),
+			});
 			return sendResult;
 		}
 		return false;
@@ -308,15 +320,39 @@ class MessageEventBus extends EventEmitter {
 	private async emitMessage(msg: EventMessageTypes) {
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
-		this.emit('message', msg);
+		this.emitMessageWithCallback('message', msg);
+		// this.emit('message', [
+		// 	msg,
+		// 	(message: EventMessageTypes, src: EventMessageConfirmSource) =>
+		// 		this.confirmSent(message, src),
+		// ]);
 
 		// LoggerProxy.debug(`Listeners: ${this.eventNames().join(',')}`);
 
 		if (this.shouldSendMsg(msg)) {
 			for (const destinationName of Object.keys(this.destinations)) {
-				this.emit(this.destinations[destinationName].getId(), msg);
+				this.emitMessageWithCallback(this.destinations[destinationName].getId(), msg);
+				// this.emit(this.destinations[destinationName].getId(), [
+				// 	msg,
+				// 	(message: EventMessageTypes, src: EventMessageConfirmSource) =>
+				// 		this.confirmSent(message, src),
+				// ]);
 			}
 		}
+	}
+
+	private emitMessageWithCallback(eventName: string, msg: EventMessageTypes): boolean {
+		// return this.emit(eventName, msg, (message: EventMessageTypes, src: EventMessageConfirmSource) =>
+		// 	this.confirmSent(message, src),
+		// );
+		// const emitterPayload: MessageWithCallback = {
+		// 	msg,
+		// 	confirmCallback: (message: EventMessageTypes, src: EventMessageConfirmSource) =>
+		// 		this.confirmSent(message, src),
+		// };
+		const confirmCallback = (message: EventMessageTypes, src: EventMessageConfirmSource) =>
+			this.confirmSent(message, src);
+		return this.emit(eventName, msg, confirmCallback);
 	}
 
 	shouldSendMsg(msg: EventMessageTypes): boolean {

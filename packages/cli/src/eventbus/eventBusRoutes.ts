@@ -118,6 +118,7 @@ eventBusRouter.get(
 			}
 			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
 			if (messages.length > 0) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const recoverResult = await eventBus.recoverExecutionDataFromEventLog(
 					req.params.id,
 					messages,
@@ -183,17 +184,23 @@ eventBusRouter.post(
 			switch (req.body.__type) {
 				case MessageEventBusDestinationTypeNames.sentry:
 					if (isMessageEventBusDestinationSentryOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSentry(eventBus, req.body),
+						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.webhook:
 					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationWebhook(eventBus, req.body),
+						);
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.syslog:
 					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
-						result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSyslog(eventBus, req.body),
+						);
 					}
 					break;
 				default:
@@ -204,7 +211,10 @@ eventBusRouter.post(
 			}
 			if (result) {
 				await result.saveToDb();
-				return result;
+				return {
+					...result,
+					eventBusInstance: undefined,
+				};
 			}
 			throw new BadRequestError('There was an error adding the destination');
 		}

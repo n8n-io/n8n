@@ -38,7 +38,7 @@ import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
 import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
-import { eventBus } from '../eventbus';
+import { eventBus } from '@/eventbus';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

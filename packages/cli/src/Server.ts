@@ -146,7 +146,6 @@ import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { eventBus } from '@/eventbus';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
@@ -154,6 +153,7 @@ import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
 import { initEvents } from './events';
 import { AbstractServer } from './AbstractServer';
+import { eventBus } from './eventbus/MessageEventBus/MessageEventBus';
 
 const exec = promisify(callbackExec);
 
@@ -1346,6 +1346,8 @@ class Server extends AbstractServer {
 		}
 		// add Event Bus REST endpoints
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
+
+		config.set('enterprise.features.logStreaming', true);
 
 		// ----------------------------------------
 		// Webhooks

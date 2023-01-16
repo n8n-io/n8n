@@ -1,6 +1,5 @@
 import type { DateTime } from 'luxon';
 import { EventMessageTypeNames } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
 import { EventNamesTypes } from '.';
 import type { AbstractEventPayload } from './AbstractEventPayload';
 
