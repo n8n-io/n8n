@@ -116,7 +116,7 @@ export const description: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, emty strings would be ignored.',
+							'The name of an input field that you want to summarize. The field should contain numerical values; null, undefined, empty strings would be ignored.',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
 						displayOptions: {
@@ -131,7 +131,7 @@ export const description: INodeProperties[] = [
 						type: 'string',
 						default: '',
 						description:
-							'The name of an input field that you want to summarize; null, undefined, emty strings would be ignored',
+							'The name of an input field that you want to summarize; null, undefined, empty strings would be ignored',
 						placeholder: 'e.g. cost',
 						hint: ' Enter the field name as text',
 						displayOptions: {
