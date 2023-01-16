@@ -32,6 +32,7 @@ const Template: StoryFn = () => ({
 		getItemStyle(item: { id: string; height?: string }) {
 			return {
 				height: item.height || '100px',
+				width: '100%',
 				backgroundColor: `hsl(${parseInt(item.id, 10) * 1.4}, 100%, 50%)`,
 				cursor: 'pointer',
 				display: 'flex',

@@ -233,5 +233,6 @@ export default defineComponent({
 .recycle-scroller-item {
 	display: flex;
 	position: relative;
+	width: 100%;
 }
 </style>
