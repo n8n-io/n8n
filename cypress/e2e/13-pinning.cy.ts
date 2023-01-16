@@ -27,22 +27,14 @@ describe('Data pinning', () => {
 		ndv.getters.outputTableHeaders().first().should('include.text', 'timestamp');
 		ndv.getters.outputTableHeaders().eq(1).should('include.text', 'Readable date');
 
-		let prevValue = '';
-		ndv.getters.outputTbodyCell(1, 0).should((before) => {
-			prevValue = before.text();
-		});
+		ndv.getters.outputTbodyCell(1, 0).invoke('text').then((prevValue) => {
+			ndv.actions.pinData();
+			ndv.actions.close();
 
-		ndv.actions.pinData();
-		ndv.actions.close();
+			workflowPage.actions.executeWorkflow();
+			workflowPage.actions.openNode('Schedule Trigger');
 
-		workflowPage.actions.executeWorkflow();
-
-		workflowPage.actions.openNode('Schedule Trigger');
-
-		ndv.getters.outputTbodyCell(1, 0).should((after) => {
-			const currValue = after.text();
-
-			expect(prevValue).to.equal(currValue);
+			ndv.getters.outputTbodyCell(1, 0).invoke('text').should('eq', prevValue);
 		});
 	});
 
