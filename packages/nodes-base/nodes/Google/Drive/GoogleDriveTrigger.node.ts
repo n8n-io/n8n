@@ -13,6 +13,7 @@ import {
 import { extractId, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import moment from 'moment';
+import { fileSearch, folderSearch } from './SearchFunctions';
 
 export class GoogleDriveTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -89,18 +90,65 @@ export class GoogleDriveTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'File URL or ID',
+				displayName: 'File',
 				name: 'fileToWatch',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'File',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a file...',
+						typeOptions: {
+							searchListMethod: 'fileSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/file/d/1wroCSfK-hupQIYf_xzeoUEzOhvfTFH2P/edit',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/(?:drive|docs)\\.google\\.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/(?:drive|docs)\\.google.com\\/\\w+\\/d\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive File URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive File ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/file/d/{{$value}}/view',
+					},
+				],
 				displayOptions: {
 					show: {
 						triggerOn: ['specificFile'],
 					},
 				},
-				default: '',
-				description:
-					'The address of this file when you view it in your browser (or just the ID contained within the URL)',
-				required: true,
 			},
 			{
 				displayName: 'Watch For',
@@ -122,18 +170,65 @@ export class GoogleDriveTrigger implements INodeType {
 				description: 'When to trigger this node',
 			},
 			{
-				displayName: 'Folder URL or ID',
+				displayName: 'Folder',
 				name: 'folderToWatch',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'Folder',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a folder...',
+						typeOptions: {
+							searchListMethod: 'folderSearch',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Link',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://drive.google.com/drive/folders/1Tx9WHbA3wBpPB4C_HcoZDH9WZFWYxAMU',
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/drive\\.google\\.com\\/\\w+\\/folders\\/([0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+									errorMessage: 'Not a valid Google Drive Folder URL',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1anGBg0b5re2VtF2bKu201_a-Vnz5BHq9Y4r-yBDAj5A',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9\\-_]{2,}',
+									errorMessage: 'Not a valid Google Drive Folder ID',
+								},
+							},
+						],
+						url: '=https://drive.google.com/drive/folders/{{$value}}',
+					},
+				],
 				displayOptions: {
 					show: {
 						triggerOn: ['specificFolder'],
 					},
 				},
-				default: '',
-				description:
-					'The address of this folder when you view it in your browser (or just the ID contained within the URL)',
-				required: true,
 			},
 			{
 				displayName: 'Watch For',
@@ -303,6 +398,10 @@ export class GoogleDriveTrigger implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			fileSearch,
+			folderSearch,
+		},
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
@@ -345,7 +444,9 @@ export class GoogleDriveTrigger implements INodeType {
 		const query = ['trashed = false'];
 
 		if (triggerOn === 'specificFolder' && event !== 'watchFolderUpdated') {
-			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
+			const folderToWatch = extractId(
+				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+			);
 			query.push(`'${folderToWatch}' in parents`);
 		}
 
@@ -387,7 +488,9 @@ export class GoogleDriveTrigger implements INodeType {
 		}
 
 		if (triggerOn === 'specificFile' && this.getMode() !== 'manual') {
-			const fileToWatch = extractId(this.getNodeParameter('fileToWatch') as string);
+			const fileToWatch = extractId(
+				this.getNodeParameter('fileToWatch', '', { extractValue: true }) as string,
+			);
 			files = files.filter((file: { id: string }) => file.id === fileToWatch);
 		}
 
@@ -396,7 +499,9 @@ export class GoogleDriveTrigger implements INodeType {
 			event === 'watchFolderUpdated' &&
 			this.getMode() !== 'manual'
 		) {
-			const folderToWatch = extractId(this.getNodeParameter('folderToWatch') as string);
+			const folderToWatch = extractId(
+				this.getNodeParameter('folderToWatch', '', { extractValue: true }) as string,
+			);
 			files = files.filter((file: { id: string }) => file.id === folderToWatch);
 		}
 
