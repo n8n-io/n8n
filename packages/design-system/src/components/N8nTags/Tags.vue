@@ -70,8 +70,11 @@ export default mixins(Locale).extend({
 	methods: {
 		onExpand() {
 			this.showAll = true;
-			this.$emit('expand');
+			this.$emit('expand', true);
 		},
+	},
+	beforeDestroy() {
+		this.$emit('expand', false);
 	},
 });
 </script>

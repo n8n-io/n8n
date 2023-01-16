@@ -24,7 +24,8 @@ export default defineComponent({
 	setup(props) {
 		const wrapperRef = ref<HTMLElement | null>(null);
 		const scrollerRef = ref<HTMLElement | null>(null);
-		const itemsRef = ref<Record<string, HTMLElement | null>>({});
+		const itemsRef = ref<HTMLElement | null>(null);
+		const itemRefs = ref<Record<string, HTMLElement | null>>({});
 
 		const scrollTop = ref(0);
 		const wrapperHeight = ref(0);
@@ -59,16 +60,24 @@ export default defineComponent({
 			});
 		}
 
-		async function updateItemSize(item: { [key: string]: string }) {
+		async function onUpdateItemSize(item: { [key: string]: string }) {
 			await nextTick();
 
-			const itemRef = itemsRef.value[item[props.itemKey]];
-			const size = itemRef ? itemRef.clientHeight : props.itemSize;
+			const itemId = item[props.itemKey];
+			const itemRef = itemRefs.value[itemId];
+			const previousSize = itemSizeCache.value[itemId];
+			const size = itemRef ? itemRef.offsetHeight : props.itemSize;
+			const difference = size - previousSize;
 
 			itemSizeCache.value = {
 				...itemSizeCache.value,
 				[item[props.itemKey]]: size,
 			};
+
+			if (wrapperRef.value) {
+				wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
+				scrollTop.value = wrapperRef.value.scrollTop;
+			}
 		}
 
 		/**
@@ -77,7 +86,7 @@ export default defineComponent({
 
 		function onWindowResize() {
 			if (wrapperRef.value) {
-				wrapperHeight.value = wrapperRef.value.clientHeight;
+				wrapperHeight.value = wrapperRef.value.offsetHeight;
 			}
 
 			windowHeight.value = window.innerHeight;
@@ -141,12 +150,13 @@ export default defineComponent({
 			height: `${scrollerHeight.value}px`,
 		}));
 
-		function itemStyles(itemKey: string) {
-			const offset = itemPositionCache.value[itemKey];
+		const itemsStyles = computed(() => {
+			const offset = itemPositionCache.value[props.items[startIndex.value][props.itemKey]];
+
 			return {
 				transform: `translateY(${offset}px)`,
 			};
-		}
+		});
 
 		/**
 		 * Lifecycle hooks
@@ -170,13 +180,14 @@ export default defineComponent({
 			endIndex,
 			itemCount,
 			itemsVisible: visibleItems,
-			itemStyles,
+			itemsStyles,
 			scrollerStyles,
 			scrollerScrollTop: scrollTop,
 			scrollerRef,
 			wrapperRef,
 			itemsRef,
-			updateItemSize,
+			itemRefs,
+			onUpdateItemSize,
 		};
 	},
 });
@@ -185,14 +196,15 @@ export default defineComponent({
 <template>
 	<div class="recycle-scroller-wrapper" ref="wrapperRef">
 		<div class="recycle-scroller" :style="scrollerStyles" ref="scrollerRef">
-			<div
-				v-for="item in itemsVisible"
-				:key="item[itemKey]"
-				class="recycle-scroller-item"
-				:style="itemStyles(item[itemKey])"
-				:ref="(element) => (itemsRef[item[itemKey]] = element)"
-			>
-				<slot :item="item" :updateItemSize="updateItemSize" />
+			<div class="recycle-scroller-items-wrapper" :style="itemsStyles" ref="itemsRef">
+				<div
+					v-for="item in itemsVisible"
+					:key="item[itemKey]"
+					class="recycle-scroller-item"
+					:ref="(element) => (itemRefs[item[itemKey]] = element)"
+				>
+					<slot :item="item" :updateItemSize="onUpdateItemSize" />
+				</div>
 			</div>
 		</div>
 	</div>
@@ -212,8 +224,14 @@ export default defineComponent({
 	position: relative;
 }
 
-.recycle-scroller-item {
+.recycle-scroller-items-wrapper {
 	position: absolute;
+	display: block;
 	width: 100%;
+}
+
+.recycle-scroller-item {
+	display: flex;
+	position: relative;
 }
 </style>
