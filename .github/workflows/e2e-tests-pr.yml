@@ -1,0 +1,59 @@
+name: PR E2E (skip with label skip-e2e)
+
+on:
+  pull_request_review:
+    types: [submitted]
+    branch:
+      - 'master'
+
+jobs:
+  runTests:
+    name: 'Run E2E tests'
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
+
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [16.x]
+
+    steps:
+      - name: 'Cancel previous runs'
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+
+      - name: 'Cancel if PR is not approved'
+        if: github.event.review.state != 'approved'
+        uses: andymckay/cancel-action@0.2
+
+      - uses: actions/checkout@v3
+
+      - uses: pnpm/action-setup@v2.2.4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test E2E
+        run: |
+          pnpm cypress:install
+          pnpm test:e2e:all
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: |
+            cypress/screenshots
+          retention-days: 1

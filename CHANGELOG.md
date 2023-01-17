@@ -1,7 +1,24 @@
+## [0.211.1](https://github.com/n8n-io/n8n/compare/n8n@0.211.0...n8n@0.211.1) (2023-01-16)
+
+
+### Bug Fixes
+
+* Build `cli` to fix Postgres and MySQL test runs ([#5171](https://github.com/n8n-io/n8n/issues/5171)) ([a0c5232](https://github.com/n8n-io/n8n/commit/a0c5232aa53b13e581b5da4b6f984f5d7893fe33))
+* Extend date functions clobbering plus/minus ([#5170](https://github.com/n8n-io/n8n/issues/5170)) ([f634f0d](https://github.com/n8n-io/n8n/commit/f634f0dc59389a8c7ecd4154d2cf9af495b129aa))
+* Extension deep compare not quite working for some primitives ([#5172](https://github.com/n8n-io/n8n/issues/5172)) ([98017dc](https://github.com/n8n-io/n8n/commit/98017dc36f3e2fc3d2a5178fb7259205504e5582))
+* Upgrade `jsonwebtoken` to address CVE-2022-23540 ([#5116](https://github.com/n8n-io/n8n/issues/5116)) ([97969fc](https://github.com/n8n-io/n8n/commit/97969fc81581379d2a3c49d839206cc9b9e05d9d))
+
+
+### Features
+
+* **editor:** Supress validation errors for freshly added nodes ([#5149](https://github.com/n8n-io/n8n/issues/5149)) ([582865c](https://github.com/n8n-io/n8n/commit/582865c7e9eff99eabb36636ca7af2d2b2e76af8))
+* **Google Ads Node:** Update api version to v11 ([#4427](https://github.com/n8n-io/n8n/issues/4427)) ([dfff982](https://github.com/n8n-io/n8n/commit/dfff982662b7cee5c0203764a59d2355a02a9030))
+* **Google Drive Trigger Node:** Use resource locator component ([#5148](https://github.com/n8n-io/n8n/issues/5148)) ([9958c32](https://github.com/n8n-io/n8n/commit/9958c324dbf88f25efd34433ce51af9e3aa44ae3))
+
+
+
 # [0.211.0](https://github.com/n8n-io/n8n/compare/n8n@0.210.2...n8n@0.211.0) (2023-01-13)
 
-> **Do not update**
-> We are recommend not to update past version 0.210.2 as there seem to be some issues with expressions in version 0.211.0
 
 ### Bug Fixes
 
