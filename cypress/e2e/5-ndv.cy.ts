@@ -53,4 +53,41 @@ describe('NDV', () => {
 			ndv.getters.dataContainer().should('contain', 'start');
 		});
 	});
+
+	it('should show correct validation state for resource locator params', () => {
+		workflowPage.actions.addNodeToCanvas('Typeform', true);
+		ndv.getters.container().should('be.visible');
+		cy.get('.has-issues').should('have.length', 0);
+		cy.get('[class*=hasIssues]').should('have.length', 0);
+		ndv.getters.backToCanvas().click();
+		// Both credentials and resource locator errors should be visible
+		workflowPage.actions.openNodeNdv('Typeform');
+		cy.get('.has-issues').should('have.length', 1);
+		cy.get('[class*=hasIssues]').should('have.length', 1);
+	});
+
+	it('should show validation errors only after blur or re-opening of NDV', () => {
+		workflowPage.actions.addNodeToCanvas('Manual Trigger');
+		workflowPage.actions.addNodeToCanvas('Airtable', true);
+		ndv.getters.container().should('be.visible');
+		cy.get('.has-issues').should('have.length', 0);
+		workflowPage.getters.ndvParameterInput('table').find('input').eq(1).focus().blur()
+		workflowPage.getters.ndvParameterInput('application').find('input').eq(1).focus().blur()
+		cy.get('.has-issues').should('have.length', 2);
+		ndv.getters.backToCanvas().click();
+		workflowPage.actions.openNodeNdv('Airtable');
+		cy.get('.has-issues').should('have.length', 3);
+		cy.get('[class*=hasIssues]').should('have.length', 1);
+	});
+
+	it('should show all validation errors when opening pasted node', () => {
+		cy.fixture('Test_workflow_ndv_errors.json').then((data) => {
+			cy.get('body').paste(JSON.stringify(data));
+			workflowPage.getters.canvasNodes().should('have.have.length', 1);
+			workflowPage.actions.openNodeNdv('Airtable');
+			cy.get('.has-issues').should('have.length', 3);
+			cy.get('[class*=hasIssues]').should('have.length', 1);
+		});
+	});
+
 });
