@@ -131,6 +131,7 @@ export class ItemLists implements INodeType {
 					},
 				},
 				description: 'The name of the input field to break out into separate items',
+				requiresDataPath: 'single',
 			},
 			{
 				displayName: 'Include',
