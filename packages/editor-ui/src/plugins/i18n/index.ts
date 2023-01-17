@@ -327,7 +327,9 @@ export class I18nClass {
 	}
 
 	expressionEditor: Record<string, string> = {
+		completablePrefix: this.baseText('expressionEditor.completablePrefix'),
 		previewHint: this.baseText('expressionEditor.previewHint'),
+		previewUnavailable: this.baseText('expressionEditor.previewUnavailable'),
 	};
 
 	rootVars: Record<string, string | undefined> = {

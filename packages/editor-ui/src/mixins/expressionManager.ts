@@ -5,10 +5,12 @@ import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
 import { Completion } from '@codemirror/autocomplete';
 
+import { i18n } from '@/plugins/i18n';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { useNDVStore } from '@/stores/ndv';
 import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
+import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 
 import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
@@ -28,6 +30,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 		};
 	},
 	watch: {
+		isCursorAtCompletablePrefix() {
+			// @TODO: Overrides output but is not a preview, so improve naming
+			completionPreviewEventBus.$emit('preview-completion', this.segments);
+		},
 		targetItem() {
 			setTimeout(() => {
 				this.$emit('change', {
@@ -64,6 +70,25 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			if (!this.editor) return [];
 
 			return this.toSegments(this.editor.state);
+		},
+
+		cursorPosition(): number {
+			if (!this.editor) return -1;
+
+			return this.editor.state.selection.ranges[0].from;
+		},
+
+		/**
+		 * Whether cursor position is at `{{ $| }}`.
+		 */
+		isCursorAtCompletablePrefix(): boolean {
+			if (!this.editor) return false;
+
+			return (
+				this.editor.state.doc
+					.slice(this.cursorPosition - '{{ $'.length, this.cursorPosition + ' }}'.length)
+					.toString() === '{{ $ }}'
+			);
 		},
 
 		// @TODO: No longer used?
@@ -190,7 +215,19 @@ export const expressionManager = mixins(workflowHelpers).extend({
 						resolved = [hint, resultWithCall.resolved].join(' ');
 						error = false;
 						fullError = null;
+					} else {
+						fullError = new Error(i18n.expressionEditor.previewUnavailable);
+						resolved = fullError.message;
 					}
+				}
+
+				if (
+					this.isCursorAtCompletablePrefix &&
+					hasErrorCode(fullError) &&
+					fullError.cause.code === ERROR_CODES.N8N_PREFIX
+				) {
+					fullError = new Error(i18n.expressionEditor.completablePrefix);
+					resolved = fullError.message;
 				}
 
 				acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
