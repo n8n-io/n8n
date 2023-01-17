@@ -93,14 +93,18 @@
 					:hideDelete="true"
 					:nodeValues="nodeValues"
 					:isReadOnly="isReadOnly"
+					:hiddenIssuesInputs="hiddenIssuesInputs"
 					path="parameters"
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
+					@parameterBlur="onParameterBlur"
 				>
 					<node-credentials
 						:node="node"
 						:readonly="isReadOnly"
 						@credentialSelected="credentialSelected"
+						@blur="onParameterBlur"
+						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 					/>
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -124,16 +128,20 @@
 					:parameters="parametersSetting"
 					:nodeValues="nodeValues"
 					:isReadOnly="isReadOnly"
+					:hiddenIssuesInputs="hiddenIssuesInputs"
 					path="parameters"
 					@valueChanged="valueChanged"
+					@parameterBlur="onParameterBlur"
 				/>
 				<parameter-input-list
 					:parameters="nodeSettings"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
 					:isReadOnly="isReadOnly"
+					:hiddenIssuesInputs="hiddenIssuesInputs"
 					path=""
 					@valueChanged="valueChanged"
+					@parameterBlur="onParameterBlur"
 				/>
 			</div>
 		</div>
@@ -414,6 +422,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 			CUSTOM_NODES_DOCS_URL,
 			MAIN_NODE_PANEL_WIDTH,
+			hiddenIssuesInputs: [] as string[],
 		};
 	},
 	watch: {
@@ -445,10 +454,25 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 	},
 	methods: {
+		populateHiddenIssuesSet() {
+			if (!this.node || !this.workflowsStore.isNodePristine(this.node.name)) return;
+
+			this.hiddenIssuesInputs.push('credentials');
+			this.parametersNoneSetting.forEach((parameter) => {
+				this.hiddenIssuesInputs.push(parameter.name);
+			});
+
+			this.workflowsStore.setNodePristine(this.node.name, false);
+		},
+		onParameterBlur(parameterName: string) {
+			this.hiddenIssuesInputs = this.hiddenIssuesInputs.filter((name) => name !== parameterName);
+		},
 		onWorkflowActivate() {
+			this.hiddenIssuesInputs = [];
 			this.$emit('activate');
 		},
 		onNodeExecute() {
+			this.hiddenIssuesInputs = [];
 			this.$emit('execute');
 		},
 		setValue(name: string, value: NodeParameterValue) {
@@ -457,7 +481,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 			let isArray = false;
 			if (lastNamePart !== undefined && lastNamePart.includes('[')) {
-				// It incldues an index so we have to extract it
+				// It includes an index so we have to extract it
 				const lastNameParts = lastNamePart.match(/(.*)\[(\d+)\]$/);
 				if (lastNameParts) {
 					nameParts.push(lastNameParts[1]);
@@ -835,6 +859,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 	},
 	mounted() {
+		this.populateHiddenIssuesSet();
 		this.setNodeValues();
 		if (this.eventBus) {
 			(this.eventBus as Vue).$on('openSettings', () => {
