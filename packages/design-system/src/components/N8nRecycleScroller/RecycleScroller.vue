@@ -18,7 +18,7 @@ export default defineComponent({
 		},
 		offset: {
 			type: Number,
-			default: 2,
+			default: 1,
 		},
 	},
 	setup(props) {
@@ -105,33 +105,52 @@ export default defineComponent({
 		 */
 
 		const startIndex = computed(() => {
-			const foundIndex = props.items.findIndex((item) => {
-				const key = item[props.itemKey];
-				const position = itemPositionCache.value[key];
+			const foundIndex =
+				props.items.findIndex((item) => {
+					const itemPosition = itemPositionCache.value[item[props.itemKey]];
 
-				return position >= scrollTop.value;
-			});
-			const offset = props.offset;
-			const index = foundIndex === -1 ? 0 : foundIndex - offset;
+					return itemPosition >= scrollTop.value;
+				}) - 1;
 
-			return index < 0 ? 0 : index;
+			return foundIndex < 0 ? 0 : foundIndex;
 		});
 
 		const endIndex = computed(() => {
 			const foundIndex = props.items.findIndex((item) => {
-				const key = item[props.itemKey];
-				const position = itemPositionCache.value[key];
+				const itemPosition = itemPositionCache.value[item[props.itemKey]];
+				const itemSize = itemSizeCache.value[item[props.itemKey]];
 
-				return position >= scrollTop.value + wrapperHeight.value;
+				return itemPosition + itemSize >= scrollTop.value + wrapperHeight.value;
 			});
-			const offset = props.offset + (startIndex.value < props.offset ? startIndex.value + 1 : 0);
-			const index = foundIndex === -1 ? props.items.length - 1 : foundIndex + offset;
 
-			return index >= props.items.length ? props.items.length - 1 : index;
+			return foundIndex === -1 ? props.items.length - 1 : foundIndex;
+		});
+
+		const startIndexWithOffset = computed(() => {
+			const extraOffset =
+				props.items.length - 1 - endIndex.value < props.offset
+					? endIndex.value + props.offset - props.items.length + 1
+					: 0;
+			const offset = props.offset + extraOffset;
+			const computedIndex = startIndex.value - offset;
+
+			return computedIndex < 0 ? 0 : computedIndex;
+		});
+
+		const endIndexWithOffset = computed(() => {
+			const extraOffset = startIndex.value < props.offset ? props.offset - startIndex.value : 0;
+			const offset = props.offset + extraOffset;
+			const computedIndex = endIndex.value + offset;
+
+			return computedIndex >= props.items.length - 1 ? props.items.length - 1 : computedIndex;
+		});
+
+		const maxVisibleItems = computed(() => {
+			return Math.ceil(wrapperHeight.value / props.itemSize) + 2 * props.offset;
 		});
 
 		const visibleItems = computed(() => {
-			return props.items.slice(startIndex.value, endIndex.value + 1);
+			return props.items.slice(startIndexWithOffset.value, endIndexWithOffset.value + 1);
 		});
 
 		/**
@@ -151,7 +170,8 @@ export default defineComponent({
 		}));
 
 		const itemsStyles = computed(() => {
-			const offset = itemPositionCache.value[props.items[startIndex.value][props.itemKey]];
+			const offset =
+				itemPositionCache.value[props.items[startIndexWithOffset.value][props.itemKey]];
 
 			return {
 				transform: `translateY(${offset}px)`,
@@ -179,6 +199,7 @@ export default defineComponent({
 			startIndex,
 			endIndex,
 			itemCount,
+			maxVisibleItems,
 			itemsVisible: visibleItems,
 			itemsStyles,
 			scrollerStyles,
@@ -215,10 +236,10 @@ export default defineComponent({
 	height: 100%;
 	width: 100%;
 	overflow: auto;
+	flex: 1 1 auto;
 }
 
 .recycle-scroller {
-	height: 100%;
 	width: 100%;
 	display: block;
 	position: relative;
@@ -226,7 +247,6 @@ export default defineComponent({
 
 .recycle-scroller-items-wrapper {
 	position: absolute;
-	display: block;
 	width: 100%;
 }
 

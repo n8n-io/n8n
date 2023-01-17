@@ -41,7 +41,7 @@ const Template: StoryFn = () => ({
 			};
 		},
 	},
-	template: `<div style="height: 500px; width: 100%; overflow: auto">
+	template: `<div style="height: calc(100vh - 30px); width: 100%; overflow: auto">
 		<N8nRecycleScroller :items="items" :item-size="100" item-key="id" v-bind="$props">
 			<template	#default="{ item, updateItemSize }">
 				<div

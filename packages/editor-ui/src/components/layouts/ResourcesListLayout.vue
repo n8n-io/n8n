@@ -438,8 +438,8 @@ export default mixins(showMessage, debounceHelper).extend({
 }
 
 .list {
-	display: flex;
-	flex-direction: column;
+	//display: flex;
+	//flex-direction: column;
 }
 
 .sort-and-filter {
