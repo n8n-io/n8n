@@ -86,6 +86,7 @@ export const starFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{

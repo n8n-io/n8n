@@ -50,6 +50,7 @@ export const reactionFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{

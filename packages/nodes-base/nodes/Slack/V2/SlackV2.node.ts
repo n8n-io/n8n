@@ -5,6 +5,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
 	INodeListSearchResult,
 	INodeParameterResourceLocator,
 	INodePropertyOptions,
@@ -134,49 +135,61 @@ export class SlackV2 implements INodeType {
 
 	methods = {
 		listSearch: {
-			async getChannels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+			async getChannels(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
 				const qs = { types: 'public_channel,private_channel', limit: 1000 };
-				const channels = await slackApiRequestAllItems.call(
+				const channels = (await slackApiRequestAllItems.call(
 					this,
 					'channels',
 					'GET',
 					'/conversations.list',
 					{},
 					qs,
-				);
-				channels.sort((a: IDataObject, b: IDataObject) => {
-					if (a.name! < b.name!) {
-						return -1;
-					}
-					if (a.name! > b.name!) {
-						return 1;
-					}
-					return 0;
-				});
-				return {
-					results: channels.map((channel: IDataObject) => ({
-						name: channel.name,
-						value: channel.id,
-					})),
-				};
+				)) as Array<{ id: string; name: string }>;
+				const results: INodeListSearchItems[] = channels
+					.map((c) => ({
+						name: c.name,
+						value: c.id,
+					}))
+					.filter(
+						(c) =>
+							!filter ||
+							c.name.toLowerCase().includes(filter.toLowerCase()) ||
+							c.value?.toString() === filter,
+					)
+					.sort((a, b) => {
+						if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+						return 0;
+					});
+				return { results };
 			},
-			async getUsers(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
-				users.sort((a: IDataObject, b: IDataObject) => {
-					if (a.name! < b.name!) {
-						return -1;
-					}
-					if (a.name! > b.name!) {
-						return 1;
-					}
-					return 0;
-				});
-				return {
-					results: users.map((user: IDataObject) => ({
-						name: user.name,
-						value: user.id,
-					})),
-				};
+			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+				const users = (await slackApiRequestAllItems.call(
+					this,
+					'members',
+					'GET',
+					'/users.list',
+				)) as Array<{ id: string; name: string }>;
+				const results: INodeListSearchItems[] = users
+					.map((c) => ({
+						name: c.name,
+						value: c.id,
+					}))
+					.filter(
+						(c) =>
+							!filter ||
+							c.name.toLowerCase().includes(filter.toLowerCase()) ||
+							c.value?.toString() === filter,
+					)
+					.sort((a, b) => {
+						if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+						return 0;
+					});
+				return { results };
 			},
 		},
 		loadOptions: {
@@ -897,7 +910,6 @@ export class SlackV2 implements INodeType {
 							sort: sort !== 'relevance' ? 'timestamp' : undefined,
 							sort_dir: sort === 'asc' ? 'asc' : 'desc',
 						};
-						console.log(qs);
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,

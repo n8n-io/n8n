@@ -67,6 +67,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -162,6 +163,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -230,6 +232,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a user...',
 				typeOptions: {
 					searchListMethod: 'getUsers',
+					searchable: true,
 				},
 			},
 			{
@@ -689,6 +692,7 @@ export const messageFields: INodeProperties[] = [
 										placeholder: 'Select a user...',
 										typeOptions: {
 											searchListMethod: 'getUsers',
+											searchable: true,
 										},
 									},
 									{
@@ -770,6 +774,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -930,6 +935,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -998,6 +1004,7 @@ export const messageFields: INodeProperties[] = [
 				placeholder: 'Select a user...',
 				typeOptions: {
 					searchListMethod: 'getUsers',
+					searchable: true,
 				},
 			},
 			{

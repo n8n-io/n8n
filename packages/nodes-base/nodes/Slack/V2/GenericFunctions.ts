@@ -107,7 +107,6 @@ export async function slackApiRequestAllItems(
 		responseData = await slackApiRequest.call(this, method, endpoint, body, query);
 		query.cursor = _.get(responseData, 'response_metadata.next_cursor');
 		query.page++;
-		console.log(responseData[propertyName]);
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
 		(responseData.response_metadata?.next_cursor !== undefined &&
@@ -117,7 +116,6 @@ export async function slackApiRequestAllItems(
 			responseData.paging.page !== undefined &&
 			responseData.paging.page < responseData.paging.pages)
 	);
-	console.log(returnData);
 	return returnData;
 }
 

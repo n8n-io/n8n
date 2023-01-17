@@ -144,6 +144,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -199,6 +200,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -306,6 +308,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -388,6 +391,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -473,6 +477,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -555,6 +560,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -702,6 +708,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -834,6 +841,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -899,6 +907,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -1052,6 +1061,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -1130,6 +1140,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -1277,6 +1288,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -1355,6 +1367,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{
@@ -1432,6 +1445,7 @@ export const channelFields: INodeProperties[] = [
 				placeholder: 'Select a channel...',
 				typeOptions: {
 					searchListMethod: 'getChannels',
+					searchable: true,
 				},
 			},
 			{

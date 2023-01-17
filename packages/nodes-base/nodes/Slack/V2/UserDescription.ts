@@ -66,6 +66,7 @@ export const userFields: INodeProperties[] = [
 				placeholder: 'Select a user...',
 				typeOptions: {
 					searchListMethod: 'getUsers',
+					searchable: true,
 				},
 			},
 			{
@@ -144,6 +145,7 @@ export const userFields: INodeProperties[] = [
 				placeholder: 'Select a user...',
 				typeOptions: {
 					searchListMethod: 'getUsers',
+					searchable: true,
 				},
 			},
 			{
