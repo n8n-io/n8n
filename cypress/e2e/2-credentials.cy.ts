@@ -1,6 +1,8 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
+import { NEW_NOTION_ACCOUNT_NAME } from './../constants';
+import { visit } from 'recast';
+import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD, GMAIL_NODE_NAME, NEW_GOOGLE_ACCOUNT_NAME, NEW_TRELLO_ACCOUNT_NAME, SCHEDULE_TRIGGER_NODE_NAME, TRELLO_NODE_NAME } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
-import { CredentialsPage, CredentialsModal } from '../pages';
+import { CredentialsPage, CredentialsModal, WorkflowPage } from '../pages';
 
 const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -8,6 +10,9 @@ const firstName = randFirstName();
 const lastName = randLastName();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
+const workflowPage = new WorkflowPage();
+
+const NEW_CREDENTIAL_NAME = 'Something else';
 
 describe('Credentials', () => {
 	before(() => {
@@ -82,5 +87,99 @@ describe('Credentials', () => {
 		credentialsPage.actions.sortBy('nameDesc');
 		credentialsPage.getters.credentialCards().eq(0).should('contain.text', 'Notion');
 		credentialsPage.actions.sortBy('nameAsc');
+	});
+
+	it('should create credentials from NDV for node with multiple auth options', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
+		credentialsModal.getters.credentialInputs().first().type('test');
+		credentialsModal.getters.credentialInputs().last().type('test');
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		cy.get('.el-message-box').find('button').contains('Close').click();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_GOOGLE_ACCOUNT_NAME);
+	})
+
+	it('should create credentials from NDV for node with no auth options', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
+		credentialsModal.getters.credentialInputs().first().type('test');
+		credentialsModal.getters.credentialInputs().last().type('test');
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_TRELLO_ACCOUNT_NAME);
+	});
+
+	it('should delete credentials from NDV', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas('Notion');
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
+		credentialsModal.getters.credentialInputs().should('have.length', 1);
+		credentialsModal.getters.credentialInputs().first().type('test');
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_NOTION_ACCOUNT_NAME);
+
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.deleteButton().click();
+		cy.get('.el-message-box').find('button').contains('Yes').click();
+		workflowPage.getters.successToast().contains('Credential deleted');
+		workflowPage.getters.nodeCredentialsSelect().should('not.contain', NEW_TRELLO_ACCOUNT_NAME);
+	});
+
+	it('should rename credentials from NDV', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(TRELLO_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
+		credentialsModal.getters.credentialInputs().should('have.length', 2);
+		credentialsModal.getters.credentialInputs().first().type('test');
+		credentialsModal.getters.credentialInputs().last().type('test');
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_TRELLO_ACCOUNT_NAME);
+
+		workflowPage.getters.nodeCredentialsEditButton().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.name().click();
+		credentialsModal.getters.nameInput().type('{selectall}');
+		credentialsModal.getters.nameInput().type(NEW_CREDENTIAL_NAME);
+		credentialsModal.getters.nameInput().type('{enter}');
+		credentialsModal.getters.saveButton().click();
+		credentialsModal.getters.closeButton().click();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_CREDENTIAL_NAME);
 	});
 });

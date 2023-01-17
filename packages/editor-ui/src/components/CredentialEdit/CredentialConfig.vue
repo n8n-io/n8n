@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="node-credentials-config-container">
 		<banner
 			v-show="showValidationWarning"
 			theme="danger"
@@ -62,7 +62,11 @@
 				</span>
 			</n8n-notice>
 
-			<div v-if="mode === 'new' && nodeAuthOptions.length > 0" :class="$style.authTypeContainer">
+			<div
+				v-if="mode === 'new' && nodeAuthOptions.length > 0"
+				:class="$style.authTypeContainer"
+				data-test-id="node-auth-type-selector"
+			>
 				<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
 					<parameter-input-full
 						:parameter="parameter"
@@ -118,14 +122,16 @@
 			</div>
 		</enterprise-edition>
 
-		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
-			:credentialData="credentialData"
-			:credentialProperties="credentialProperties"
-			:documentationUrl="documentationUrl"
-			:showValidationWarnings="showValidationWarning"
-			@change="onDataChange"
-		/>
+		<div data-test-id="credential-inputs-container">
+			<CredentialInputs
+				v-if="credentialType && credentialPermissions.updateConnection"
+				:credentialData="credentialData"
+				:credentialProperties="credentialProperties"
+				:documentationUrl="documentationUrl"
+				:showValidationWarnings="showValidationWarning"
+				@change="onDataChange"
+			/>
+		</div>
 
 		<OauthButton
 			v-if="

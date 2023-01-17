@@ -52,7 +52,7 @@
 			<hr />
 		</template>
 		<template #content>
-			<div :class="$style.container">
+			<div :class="$style.container" data-test-id="credential-edit-dialog">
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect"></n8n-menu>
 				</div>

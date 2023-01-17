@@ -21,7 +21,11 @@
 						size="small"
 					/>
 				</div>
-				<div v-else :class="issues.length && !hideIssues ? $style.hasIssues : $style.input">
+				<div
+					v-else
+					:class="issues.length && !hideIssues ? $style.hasIssues : $style.input"
+					data-test-id="node-credentials-select"
+				>
 					<n8n-select
 						:value="getSelectedId(credentialTypeDescription.name)"
 						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
@@ -66,6 +70,7 @@
 							selected[credentialTypeDescription.name] &&
 							isCredentialExisting(credentialTypeDescription.name)
 						"
+						data-test-id="credential-edit-button"
 					>
 						<font-awesome-icon
 							icon="pen"

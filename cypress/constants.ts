@@ -7,5 +7,11 @@ export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
 export const SET_NODE_NAME = 'Set';
+export const GMAIL_NODE_NAME = 'Gmail';
+export const TRELLO_NODE_NAME = 'Trello';
 
 export const META_KEY = Cypress.platform === 'darwin' ? '{meta}' : '{ctrl}';
+
+export const NEW_GOOGLE_ACCOUNT_NAME = 'Google account';
+export const NEW_TRELLO_ACCOUNT_NAME = 'Trello account';
+export const NEW_NOTION_ACCOUNT_NAME = 'Notion account';
