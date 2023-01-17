@@ -17,7 +17,7 @@
 					<InlineNameEdit
 						:name="credentialName"
 						:subtitle="credentialType ? credentialType.displayName : ''"
-						:readonly="!credentialPermissions.updateName"
+						:readonly="!credentialPermissions.updateName || !credentialType"
 						type="Credential"
 						@input="onNameEdit"
 						data-test-id="credential-name"
