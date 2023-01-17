@@ -367,8 +367,8 @@ export const getNodeCredentialForAuthType = (
 };
 
 export const getAuthTypeForNodeCredential = (
-	nodeType: INodeTypeDescription | null,
-	credentialType: INodeCredentialDescription | null,
+	nodeType: INodeTypeDescription | null | undefined,
+	credentialType: INodeCredentialDescription | null | undefined,
 ): INodePropertyOptions | INodeProperties | INodePropertyCollection | null => {
 	if (nodeType && credentialType) {
 		const authField = getMainAuthField(nodeType);

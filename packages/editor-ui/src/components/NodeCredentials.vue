@@ -96,9 +96,11 @@ import {
 } from '@/Interface';
 import {
 	ICredentialType,
+	IDataObject,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeParameters,
+INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -116,7 +118,11 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useNDVStore } from '@/stores/ndv';
 import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
-import { getMainAuthField, getNodeCredentialForAuthType } from '@/utils';
+import {
+	getAuthTypeForNodeCredential,
+	getMainAuthField,
+	getNodeCredentialForAuthType,
+} from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
@@ -282,6 +288,9 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		selected(): { [type: string]: INodeCredentialsDetails } {
 			return this.node.credentials || {};
 		},
+		nodeType(): INodeTypeDescription | null {
+			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
+		},
 	},
 
 	methods: {
@@ -393,9 +402,10 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			});
 
 			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
+			const selectedCredentialsType = this.showAll ? selectedCredentials.type : credentialType;
 			const oldCredentials =
-				this.node.credentials && this.node.credentials[credentialType]
-					? this.node.credentials[credentialType]
+				this.node.credentials && this.node.credentials[selectedCredentialsType]
+					? this.node.credentials[selectedCredentialsType]
 					: {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
@@ -405,13 +415,16 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				oldCredentials.id === null ||
 				(oldCredentials.id &&
 					!this.showAll &&
-					!this.credentialsStore.getCredentialByIdAndType(oldCredentials.id, credentialType))
+					!this.credentialsStore.getCredentialByIdAndType(
+						oldCredentials.id,
+						selectedCredentialsType,
+					))
 			) {
 				// update all nodes in the workflow with the same old/invalid credentials
 				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,
 					invalid: oldCredentials,
-					type: credentialType,
+					type: selectedCredentialsType,
 				});
 				this.updateNodesCredentialsIssues();
 				this.$showMessage({
@@ -426,11 +439,34 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				});
 			}
 
+			// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
+			if (this.showAll) {
+				const nodeAuthField = getMainAuthField(this.nodeType || undefined);
+				if (nodeAuthField) {
+					const nodeCredentialDescription = this.nodeType?.credentials?.find(
+						(cred) => cred.name === selectedCredentialsType,
+					);
+					const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
+					if (authOption) {
+						const updateInformation = {
+							name: this.node.name,
+							properties: {
+								parameters: {
+									...this.node.parameters,
+									[nodeAuthField.name]: authOption.value,
+								},
+							} as IDataObject,
+						} as INodeUpdatePropertiesInformation;
+						this.workflowsStore.updateNodeProperties(updateInformation);
+					}
+				}
+			}
+
 			const node: INodeUi = this.node;
 
 			const credentials = {
 				...(node.credentials || {}),
-				[credentialType]: selected,
+				[selectedCredentialsType]: selected,
 			};
 
 			const updateInformation: INodeUpdatePropertiesInformation = {
