@@ -130,7 +130,7 @@ export class WorkflowDataProxy {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
-		if (!that.runExecutionData?.executionData) {
+		if (!that.runExecutionData?.executionData && !that.runExecutionData?.resultData) {
 			throw new ExpressionError(
 				"The workflow hasn't been executed yet, so you can't reference any context data",
 				{
@@ -579,7 +579,8 @@ export class WorkflowDataProxy {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
+							// TODO: re-enable this for v1.0.0 release
+							// failExecution: true,
 						});
 					}
 
@@ -931,6 +932,18 @@ export class WorkflowDataProxy {
 				return new Proxy(
 					{},
 					{
+						ownKeys(target) {
+							return [
+								'pairedItem',
+								'itemMatching',
+								'item',
+								'first',
+								'last',
+								'all',
+								'context',
+								'params',
+							];
+						},
 						get(target, property, receiver) {
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {

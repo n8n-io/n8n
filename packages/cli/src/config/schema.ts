@@ -469,6 +469,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -1057,12 +1065,6 @@ export const schema = {
 			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
 		},
 		logWriter: {
-			syncFileAccess: {
-				doc: 'Whether all file access happens synchronously within the thread.',
-				format: Boolean,
-				default: false,
-				env: 'N8N_EVENTBUS_LOGWRITER_SYNCFILEACCESS',
-			},
 			keepLogCount: {
 				doc: 'How many event log files to keep.',
 				format: Number,

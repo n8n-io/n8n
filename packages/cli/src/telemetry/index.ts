@@ -155,7 +155,6 @@ export class Telemetry {
 				this.rudderStack.identify(
 					{
 						userId: this.instanceId,
-						anonymousId: '000000000000',
 						traits: {
 							...traits,
 							instanceId: this.instanceId,
@@ -185,7 +184,6 @@ export class Telemetry {
 
 				const payload = {
 					userId: `${this.instanceId}${user_id ? `#${user_id}` : ''}`,
-					anonymousId: '000000000000',
 					event: eventName,
 					properties: updatedProperties,
 				};

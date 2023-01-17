@@ -24,7 +24,7 @@ const extractFunctions: {
 } = {
 	attribute: ($: Cheerio, valueData: IValueData): string | undefined =>
 		$.attr(valueData.attribute!),
-	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() || undefined,
+	html: ($: Cheerio, _valueData: IValueData): string | undefined => $.html() ?? undefined,
 	text: ($: Cheerio, _valueData: IValueData): string | undefined => $.text(),
 	value: ($: Cheerio, _valueData: IValueData): string | undefined => $.val(),
 };
@@ -214,7 +214,7 @@ export class HtmlExtract implements INodeType {
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				const extractionValues = this.getNodeParameter(
 					'extractionValues',
 					itemIndex,

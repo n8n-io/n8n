@@ -152,6 +152,7 @@ import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBu
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
+import { initEvents } from './events';
 import { AbstractServer } from './AbstractServer';
 
 const exec = promisify(callbackExec);
@@ -1245,9 +1246,9 @@ class Server extends AbstractServer {
 						await queue.stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution.findOne(
-						req.params.id,
-					)) as IExecutionFlattedDb;
+					const executionDb = (await Db.collections.Execution.findOneBy({
+						id: req.params.id,
+					})) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
@@ -1448,9 +1449,13 @@ export async function start(): Promise<void> {
 		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
 	};
 
-	const workflow = await Db.collections.Workflow!.findOne({
+	// Set up event handling
+	initEvents();
+
+	const workflow = await Db.collections.Workflow.findOne({
 		select: ['createdAt'],
 		order: { createdAt: 'ASC' },
+		where: {},
 	});
 	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
 }

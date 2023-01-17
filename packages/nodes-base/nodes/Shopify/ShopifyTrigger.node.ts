@@ -79,7 +79,7 @@ export class ShopifyTrigger implements INodeType {
 				default: 'apiKey',
 			},
 			{
-				displayName: 'Topic',
+				displayName: 'Trigger On',
 				name: 'topic',
 				type: 'options',
 				default: '',
@@ -321,7 +321,6 @@ export class ShopifyTrigger implements INodeType {
 						value: 'themes/update',
 					},
 				],
-				description: 'Event that triggers the webhook',
 			},
 		],
 	};

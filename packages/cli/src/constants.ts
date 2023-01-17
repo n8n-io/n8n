@@ -22,9 +22,11 @@ export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
-export const N8N_VERSION = jsonParse<n8n.PackageJson>(
-	readFileSync(join(CLI_DIR, 'package.json'), 'utf8'),
-).version;
+export function getN8nPackageJson() {
+	return jsonParse<n8n.PackageJson>(readFileSync(join(CLI_DIR, 'package.json'), 'utf8'));
+}
+
+export const N8N_VERSION = getN8nPackageJson().version;
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 

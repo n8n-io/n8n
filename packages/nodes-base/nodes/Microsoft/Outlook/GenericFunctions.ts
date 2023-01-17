@@ -35,7 +35,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || apiUrl,
+		uri: uri ?? apiUrl,
 	};
 	try {
 		Object.assign(options, option);

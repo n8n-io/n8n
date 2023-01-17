@@ -3,6 +3,8 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
 import { getLogger } from '@/Logger';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { QueryFailedError } from 'typeorm';
 
 const FAKE_USER_ID = 'abcde-fghij';
 
@@ -27,8 +29,11 @@ jest.mock('@/Db', () => {
 				}),
 			},
 			WorkflowStatistics: {
+				// Have made a tech debt ticket to refactor this test suite for later
 				insert: jest.fn(({ count, name, workflowId }) => {
-					if (workflowId === '-1') throw new Error('test error');
+					if (workflowId === '-1') throw new QueryFailedError('test error', [], '');
+					else if (name === StatisticsNames.dataLoaded && workflowId === '2')
+						throw new QueryFailedError('test error 2', [], '');
 					return null;
 				}),
 				update: jest.fn((...args) => {}),

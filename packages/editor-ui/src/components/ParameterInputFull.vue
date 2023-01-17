@@ -53,6 +53,7 @@
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
+							:hide-issues="hideIssues"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -103,6 +104,7 @@ export default mixins(showMessage).extend({
 			forceShowExpression: false,
 			dataMappingTooltipButtons: [] as IN8nButton[],
 			mappingTooltipEnabled: false,
+			localStorageMappingFlag: window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true',
 		};
 	},
 	props: {
@@ -115,6 +117,10 @@ export default mixins(showMessage).extend({
 			default: false,
 		},
 		hideLabel: {
+			type: Boolean,
+			default: false,
+		},
+		hideIssues: {
 			type: Boolean,
 			default: false,
 		},
@@ -176,7 +182,7 @@ export default mixins(showMessage).extend({
 				this.focused &&
 				this.isInputTypeString &&
 				!this.isInputDataEmpty &&
-				window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'
+				!this.localStorageMappingFlag
 			);
 		},
 	},
@@ -196,6 +202,7 @@ export default mixins(showMessage).extend({
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
+			this.$emit('blur');
 		},
 		onMenuExpanded(expanded: boolean) {
 			this.menuExpanded = expanded;
@@ -298,6 +305,7 @@ export default mixins(showMessage).extend({
 		},
 		onMappingTooltipDismissed() {
 			window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
+			this.localStorageMappingFlag = true;
 		},
 	},
 	watch: {

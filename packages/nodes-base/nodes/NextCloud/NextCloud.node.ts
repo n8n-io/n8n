@@ -911,7 +911,7 @@ export class NextCloud implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -1144,7 +1144,7 @@ export class NextCloud implements INodeType {
 
 					items[i] = newItem;
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 					items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 						responseData,

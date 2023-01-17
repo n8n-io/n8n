@@ -21,6 +21,7 @@ import { getLogger } from '@/Logger';
 import config from '@/config';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
+import { initEvents } from '@/events';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -47,6 +48,9 @@ export class Execute extends Command {
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig, true);
 
+		// Add event handlers
+		initEvents();
+
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Execute);
 
@@ -68,7 +72,7 @@ export class Execute extends Command {
 		}
 
 		let workflowId: string | undefined;
-		let workflowData: IWorkflowBase | undefined;
+		let workflowData: IWorkflowBase | null = null;
 		if (flags.file) {
 			// Path to workflow is given
 			try {
@@ -87,7 +91,7 @@ export class Execute extends Command {
 			// Do a basic check if the data in the file looks right
 			// TODO: Later check with the help of TypeScript data if it is valid or not
 			if (
-				workflowData === undefined ||
+				workflowData === null ||
 				workflowData.nodes === undefined ||
 				workflowData.connections === undefined
 			) {
@@ -104,8 +108,8 @@ export class Execute extends Command {
 		if (flags.id) {
 			// Id of workflow is given
 			workflowId = flags.id;
-			workflowData = await Db.collections.Workflow.findOne(workflowId);
-			if (workflowData === undefined) {
+			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
+			if (workflowData === null) {
 				console.info(`The workflow with the id "${workflowId}" does not exist.`);
 				process.exit(1);
 			}

@@ -15,6 +15,7 @@ import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
 import type { ExpressionError } from './ExpressionError';
+import { PathLike } from 'fs';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -336,6 +337,7 @@ export interface ICredentialTypes {
 	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
 	getNodeTypesToTestWith(type: string): string[];
+	getParentTypes(typeName: string): string[];
 }
 
 // The way the credentials get saved in the database (data encrypted)
@@ -558,7 +560,16 @@ export interface IGetNodeParameterOptions {
 
 namespace ExecuteFunctions {
 	namespace StringReturning {
-		export type NodeParameter = 'binaryProperty' | 'resource' | 'operation';
+		export type NodeParameter =
+			| 'binaryProperty'
+			| 'binaryPropertyName'
+			| 'binaryPropertyOutput'
+			| 'dataPropertyName'
+			| 'dataBinaryProperty'
+			| 'resource'
+			| 'operation'
+			| 'filePath'
+			| 'encodingType';
 	}
 
 	namespace NumberReturning {
@@ -637,6 +648,10 @@ export interface ICredentialTestFunctions {
 
 export interface JsonHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
+}
+
+export interface FileSystemHelperFunctions {
+	createReadStream(path: PathLike): Promise<Readable>;
 }
 
 export interface BinaryHelperFunctions {
@@ -724,6 +739,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 
 		helpers: RequestHelperFunctions &
 			BinaryHelperFunctions &
+			FileSystemHelperFunctions &
 			JsonHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
@@ -1492,6 +1508,7 @@ export type LoadedNodesAndCredentials = {
 export interface INodesAndCredentials {
 	known: KnownNodesAndCredentials;
 	loaded: LoadedNodesAndCredentials;
+	credentialTypes: ICredentialTypes;
 }
 
 export interface IRun {

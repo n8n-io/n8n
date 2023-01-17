@@ -8,7 +8,7 @@ import {
 	lineNumbers,
 } from '@codemirror/view';
 import { bracketMatching, foldGutter, indentOnInput } from '@codemirror/language';
-import { acceptCompletion, closeBrackets } from '@codemirror/autocomplete';
+import { acceptCompletion } from '@codemirror/autocomplete';
 import {
 	history,
 	indentWithTab,
@@ -16,11 +16,8 @@ import {
 	toggleComment,
 } from '@codemirror/commands';
 import { lintGutter } from '@codemirror/lint';
-import type { Extension } from '@codemirror/state';
 
-import { customInputHandler } from './inputHandler';
-
-const [_, bracketState] = closeBrackets() as readonly Extension[];
+import { codeInputHandler } from '@/plugins/codemirror/inputHandlers/code.inputHandler';
 
 export const baseExtensions = [
 	lineNumbers(),
@@ -29,7 +26,7 @@ export const baseExtensions = [
 	history(),
 	foldGutter(),
 	lintGutter(),
-	[customInputHandler, bracketState],
+	codeInputHandler(),
 	dropCursor(),
 	indentOnInput(),
 	bracketMatching(),

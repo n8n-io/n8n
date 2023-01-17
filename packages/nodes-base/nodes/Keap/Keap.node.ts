@@ -827,7 +827,7 @@ export class Keap implements INodeType {
 						body.contact_id = contactId;
 					}
 					if (binaryData) {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
