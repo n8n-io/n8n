@@ -1046,7 +1046,7 @@ export class SlackV2 implements INodeType {
 							body.title = options.title as string;
 						}
 						if (binaryData) {
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 							if (
 								items[i].binary === undefined ||
 								//@ts-ignore
