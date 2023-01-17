@@ -260,7 +260,7 @@ export default mixins(restApi).extend({
 	},
 	mounted() {
 		// Select auth type radio button based on the selected credential type and it's display options
-		if (this.selectedCredentialType && this.activeNodeType?.credentials) {
+		if ((this.selectedCredentialType || this.credentialType) && this.activeNodeType?.credentials) {
 			const credentialsForType =
 				this.activeNodeType.credentials.find((cred) => cred.name === this.credentialType.name) ||
 				null;
