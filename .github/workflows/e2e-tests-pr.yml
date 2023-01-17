@@ -8,21 +8,6 @@ on:
       - 'master'
 
 jobs:
-  cancel:
-    name: 'Cancel previous runs'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: styfle/cancel-workflow-action@0.9.0
-        with:
-          access_token: ${{ github.token }}
-
-  ifNotApproved:
-    name: 'Cancel if PR is not approved'
-    if: github.event.review.state != 'approved'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: andymckay/cancel-action@0.2
-
   runTests:
     name: 'Run E2E tests'
     runs-on: ubuntu-latest
@@ -35,6 +20,15 @@ jobs:
         node-version: [16.x]
 
     steps:
+      - name: 'Cancel previous runs'
+        uses: styfle/cancel-workflow-action@0.9.0
+        with:
+          access_token: ${{ github.token }}
+
+      - name: 'Cancel if PR is not approved'
+        if: github.event.review.state != 'approved'
+        uses: andymckay/cancel-action@0.2
+
       - uses: actions/checkout@v3
 
       - uses: pnpm/action-setup@v2.2.4
