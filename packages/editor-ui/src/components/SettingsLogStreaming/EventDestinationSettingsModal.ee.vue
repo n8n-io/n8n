@@ -307,13 +307,15 @@ export default mixins(showMessage, restApi).extend({
 			return `settings.log-streaming.${this.nodeParameters.__type}` as BaseTextKey;
 		},
 		sidebarItems(): IMenuItem[] {
-			const items: IMenuItem[] = [
-				{
+			const items: IMenuItem[] = [];
+
+			if (!this.isTypeStdout) {
+				items.push({
 					id: 'settings',
 					label: this.$locale.baseText('settings.log-streaming.tab.settings'),
 					position: 'top',
-				},
-			];
+				});
+			}
 			if (!this.isTypeAbstract) {
 				items.push({
 					id: 'events',

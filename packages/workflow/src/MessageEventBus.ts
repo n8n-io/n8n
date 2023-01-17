@@ -157,9 +157,9 @@ export const defaultMessageEventBusDestinationSyslogOptions: MessageEventBusDest
 
 export const defaultMessageEventBusDestinationStdoutOptions: MessageEventBusDestinationStdoutOptions =
 	{
+		...defaultMessageEventBusDestinationOptions,
 		__type: MessageEventBusDestinationTypeNames.stdout,
 		label: 'Stdout',
-		...defaultMessageEventBusDestinationOptions,
 	};
 
 export const defaultMessageEventBusDestinationWebhookOptions: MessageEventBusDestinationWebhookOptions =

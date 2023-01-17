@@ -467,16 +467,7 @@ export const syslogModalDescription = [
 	},
 ] as INodeProperties[];
 
-export const stdoutModalDescription = [
-	{
-		displayName: 'xxx',
-		name: 'xxx',
-		type: 'string',
-		default: 'xxx',
-		noDataExpression: true,
-		description: 'xxx',
-	},
-] as INodeProperties[];
+export const stdoutModalDescription = [] as INodeProperties[];
 
 export const sentryModalDescription = [
 	{

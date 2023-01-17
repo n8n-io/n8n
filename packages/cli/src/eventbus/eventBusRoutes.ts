@@ -176,7 +176,7 @@ eventBusRouter.post(
 					}
 					break;
 				case MessageEventBusDestinationTypeNames.stdout:
-					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
+					if (isMessageEventBusDestinationStdoutOptions(req.body)) {
 						result = await eventBus.addDestination(new MessageEventBusDestinationStdout(req.body));
 					}
 					break;
