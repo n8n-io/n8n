@@ -5,6 +5,7 @@ import {
 	DateTimeFormatOptions,
 	DateTimeUnit,
 	Duration,
+	DurationLike,
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
@@ -161,7 +162,11 @@ function isWeekend(date: Date): boolean {
 	return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
 }
 
-function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
+function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
+	if (isDateTime(date) && extraArgs.length === 1) {
+		return date.minus(extraArgs[0] as DurationLike);
+	}
+
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
@@ -170,7 +175,11 @@ function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
 	return DateTime.fromJSDate(date).minus(generateDurationObject(durationValue, unit)).toJSDate();
 }
 
-function plus(date: Date | DateTime, extraArgs: unknown[]): Date {
+function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
+	if (isDateTime(date) && extraArgs.length === 1) {
+		return date.plus(extraArgs[0] as DurationLike);
+	}
+
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
