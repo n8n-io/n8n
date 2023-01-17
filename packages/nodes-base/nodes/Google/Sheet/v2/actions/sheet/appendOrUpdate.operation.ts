@@ -172,7 +172,7 @@ export async function execute(
 
 	const options = this.getNodeParameter('options', 0, {});
 
-	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+	const valueRenderMode = (options.valueRenderMode ?? 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 	const locationDefineOption = (options.locationDefine as IDataObject)?.values as IDataObject;
 

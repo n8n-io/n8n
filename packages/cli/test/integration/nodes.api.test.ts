@@ -43,14 +43,12 @@ jest.mock('@/CommunityNodes/packageModel', () => {
 const mockedEmptyPackage = mocked(utils.emptyPackage);
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
@@ -62,14 +60,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User'], testDbName);
+	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User']);
 
 	mocked(executeCommand).mockReset();
 	mocked(findInstalledPackage).mockReset();
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 /**

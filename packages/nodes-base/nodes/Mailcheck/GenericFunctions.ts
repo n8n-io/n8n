@@ -30,7 +30,7 @@ export async function mailCheckApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.mailcheck.co/v1${resource}`,
+		uri: uri ?? `https://api.mailcheck.co/v1${resource}`,
 		json: true,
 	};
 	try {

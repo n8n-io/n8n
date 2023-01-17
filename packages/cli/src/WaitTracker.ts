@@ -107,9 +107,9 @@ export class WaitTrackerClass {
 		}
 
 		// Also check in database
-		const execution = await Db.collections.Execution.findOne(executionId);
+		const execution = await Db.collections.Execution.findOneBy({ id: executionId });
 
-		if (execution === undefined || !execution.waitTill) {
+		if (execution === null || !execution.waitTill) {
 			throw new Error(`The execution ID "${executionId}" could not be found.`);
 		}
 
@@ -146,9 +146,11 @@ export class WaitTrackerClass {
 
 		(async () => {
 			// Get the data to execute
-			const fullExecutionDataFlatted = await Db.collections.Execution.findOne(executionId);
+			const fullExecutionDataFlatted = await Db.collections.Execution.findOneBy({
+				id: executionId,
+			});
 
-			if (fullExecutionDataFlatted === undefined) {
+			if (fullExecutionDataFlatted === null) {
 				throw new Error(`The execution with the id "${executionId}" does not exist.`);
 			}
 

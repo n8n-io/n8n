@@ -10,6 +10,12 @@ import {
 	IWebhookFunctions,
 } from 'n8n-workflow';
 
+export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
+	// The access token is a JWT, so it will always include dots to separate
+	// header, payoload and signature.
+	return data.includes('.') ? 'accessToken' : 'apiKey';
+}
+
 export async function calendlyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -40,7 +46,7 @@ export async function calendlyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: uri ?? `${endpoint}${resource}`,
 		json: true,
 	};
 
@@ -52,12 +58,6 @@ export async function calendlyApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	return this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
-}
-
-export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
-	// The access token is a JWT, so it will always include dots to separate
-	// header, payoload and signature.
-	return data.includes('.') ? 'accessToken' : 'apiKey';
 }
 
 export async function validateCredentials(

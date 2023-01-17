@@ -44,7 +44,6 @@ export interface EventMessageAuditOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageAudit extends AbstractEventMessage {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type = EventMessageTypeNames.audit;
 
 	eventName: EventNamesAuditType;

@@ -1065,12 +1065,6 @@ export const schema = {
 			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
 		},
 		logWriter: {
-			syncFileAccess: {
-				doc: 'Whether all file access happens synchronously within the thread.',
-				format: Boolean,
-				default: false,
-				env: 'N8N_EVENTBUS_LOGWRITER_SYNCFILEACCESS',
-			},
 			keepLogCount: {
 				doc: 'How many event log files to keep.',
 				format: Number,

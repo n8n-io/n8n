@@ -53,6 +53,7 @@
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
+							:hide-issues="hideIssues"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -116,6 +117,10 @@ export default mixins(showMessage).extend({
 			default: false,
 		},
 		hideLabel: {
+			type: Boolean,
+			default: false,
+		},
+		hideIssues: {
 			type: Boolean,
 			default: false,
 		},
@@ -197,6 +202,7 @@ export default mixins(showMessage).extend({
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
+			this.$emit('blur');
 		},
 		onMenuExpanded(expanded: boolean) {
 			this.menuExpanded = expanded;

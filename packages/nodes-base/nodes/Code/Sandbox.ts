@@ -78,7 +78,7 @@ export class Sandbox extends NodeVM {
 			// anticipate user expecting `items` to pre-exist as in Function Item node
 			if (error.message === 'items is not defined' && !/(let|const|var) items =/.test(script)) {
 				const quoted = error.message.replace('items', '`items`');
-				error.message = quoted + '. Did you mean `$input.all()`?';
+				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
 			}
 
 			throw new ExecutionError(error);
@@ -189,7 +189,7 @@ export class Sandbox extends NodeVM {
 			// anticipate user expecting `item` to pre-exist as in Function Item node
 			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
 				const quoted = error.message.replace('item', '`item`');
-				error.message = quoted + '. Did you mean `$input.item.json`?';
+				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
 			}
 
 			throw new ExecutionError(error, this.itemIndex);
