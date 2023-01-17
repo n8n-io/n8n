@@ -581,7 +581,6 @@ importers:
       vue-template-compiler: ^2.7
       vue-tsc: ^0.35.0
       vue-typed-mixins: ^0.2.0
-      vue-virtual-scroller: ^1.1.2
       vue2-boring-avatars: 0.3.4
       vue2-teleport: ^1.0.1
       vue2-touch-events: ^3.2.1
@@ -634,7 +633,6 @@ importers:
       vue-router: 3.6.5_vue@2.7.13
       vue-template-compiler: 2.7.13
       vue-typed-mixins: 0.2.0
-      vue-virtual-scroller: 1.1.2_vue@2.7.13
       vue2-boring-avatars: 0.3.4
       vue2-teleport: 1.0.1
       vue2-touch-events: 3.2.2
@@ -19068,10 +19066,6 @@ packages:
       ajv-keywords: 3.5.2_ajv@6.12.6
     dev: true
 
-  /scrollparent/2.0.1:
-    resolution: {integrity: sha512-HSdN78VMvFCSGCkh0oYX/tY4R3P1DW61f8+TeZZ4j2VLgfwvw0bpRSOv4PCVKisktIwbzHCfZsx+rLbbDBqIBA==}
-    dev: false
-
   /seedrandom/3.0.5:
     resolution: {integrity: sha512-8OwmbklUNzwezjGInmZ+2clQmExQPvomqjL7LFqOYqtmuxRgQYqOD3mHaU+MvZn5FLUeVxVfQjwLZW/n/JFuqg==}
     dev: true
@@ -21952,10 +21946,6 @@ packages:
       - whiskers
     dev: true
 
-  /vue-observe-visibility/0.4.6:
-    resolution: {integrity: sha512-xo0CEVdkjSjhJoDdLSvoZoQrw/H2BlzB5jrCBKGZNXN2zdZgMuZ9BKrxXDjNP2AxlcCoKc8OahI3F3r3JGLv2Q==}
-    dev: false
-
   /vue-prism-editor/0.3.0:
     resolution: {integrity: sha512-yNSuwql/xHMJrWghn/OhZ5WPBKdhx7FkvFjgq2uDm99jHSJhuGwhcgPyuoGzpm6w8DRDzi85lgerKCu8DTDWWg==}
     dependencies:
@@ -21973,14 +21963,6 @@ packages:
       vue: 2.7.13
       vue-class-component: 7.2.6_vue@2.7.13
     dev: true
-
-  /vue-resize/0.4.5_vue@2.7.13:
-    resolution: {integrity: sha512-bhP7MlgJQ8TIkZJXAfDf78uJO+mEI3CaLABLjv0WNzr4CcGRGPIAItyWYnP6LsPA4Oq0WE+suidNs6dgpO4RHg==}
-    peerDependencies:
-      vue: ^2.3.0
-    dependencies:
-      vue: 2.7.13
-    dev: false
 
   /vue-router/3.6.5_vue@2.7.13:
     resolution: {integrity: sha512-VYXZQLtjuvKxxcshuRAwjHnciqZVoXAjTjcqBTz4rKc8qih9g9pI3hbDjmqXaHdgL3v8pV6P8Z335XvHzESxLQ==}
@@ -22019,17 +22001,6 @@ packages:
 
   /vue-typed-mixins/0.2.0:
     resolution: {integrity: sha512-0OxuinandPWv3nm5k/reYkuKtX3jjPZ40Sy9roJz0ih8PUzmI7zSRiXFEJ62LsyRegw9Tqy+qMkajk7ipKP8Vg==}
-    dev: false
-
-  /vue-virtual-scroller/1.1.2_vue@2.7.13:
-    resolution: {integrity: sha512-SkUyc7QHCJFB5h1Fya7LxVizlVzOZZuFVipBGHYoTK8dwLs08bIz/tclvRApYhksaJIm/nn51inzO2UjpGJPMQ==}
-    peerDependencies:
-      vue: ^2.6.11
-    dependencies:
-      scrollparent: 2.0.1
-      vue: 2.7.13
-      vue-observe-visibility: 0.4.6
-      vue-resize: 0.4.5_vue@2.7.13
     dev: false
 
   /vue/2.7.13:
