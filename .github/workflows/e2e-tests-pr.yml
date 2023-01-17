@@ -1,5 +1,4 @@
-name: End-to-End tests for PRs
-run-name: E2E Tests on branch ${{ github.event.inputs.branch }}
+name: PR E2E (skip with label skip-e2e)
 
 on:
   pull_request_review:
