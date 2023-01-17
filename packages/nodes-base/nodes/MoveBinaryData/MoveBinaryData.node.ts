@@ -1,8 +1,8 @@
 import { get, set, unset } from 'lodash';
+import prettyBytes from 'pretty-bytes';
 
-import { BINARY_ENCODING } from 'n8n-core';
+import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
-import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
 	IBinaryData,
@@ -13,6 +13,7 @@ import {
 	INodeTypeDescription,
 	jsonParse,
 	NodeOperationError,
+	fileTypeFromMimeType,
 } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
@@ -21,7 +22,7 @@ iconv.encodingExists('utf8');
 // Create options for bomAware and encoding
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
-const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
+const encodings = (iconv as any).encodings;
 Object.keys(encodings).forEach((encoding) => {
 	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
 		// only encodings without direct alias or internals
@@ -331,7 +332,7 @@ export class MoveBinaryData implements INodeType {
 		let options: IDataObject;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			item = items[itemIndex];
-			options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			options = this.getNodeParameter('options', itemIndex, {});
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
@@ -358,7 +359,7 @@ export class MoveBinaryData implements INodeType {
 
 				let convertedValue: string;
 
-				if (setAllData === true) {
+				if (setAllData) {
 					// Set the full data
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
@@ -398,7 +399,7 @@ export class MoveBinaryData implements INodeType {
 
 				const encoding = (options.encoding as string) || 'utf8';
 				let value: IDataObject | string = item.json;
-				if (convertAllData === false) {
+				if (!convertAllData) {
 					const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 					value = get(item.json, sourceKey) as IDataObject;
 				}
@@ -416,26 +417,32 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = {};
 				}
 
+				const mimeType = (options.mimeType as string) || 'application/json';
+				const convertedValue: IBinaryData = {
+					data: '',
+					mimeType,
+					fileType: fileTypeFromMimeType(mimeType),
+				};
+
 				if (options.dataIsBase64 !== true) {
-					if (options.useRawData !== true) {
+					if (options.useRawData !== true || typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
 
-					value = iconv
-						.encode(value as string, encoding, { addBOM: options.addBOM as boolean })
-						.toString(BINARY_ENCODING);
-				}
+					convertedValue.fileSize = prettyBytes(value.length);
 
-				const convertedValue: IBinaryData = {
-					data: value as string,
-					mimeType: (options.mimeType as string) || 'application/json',
-				};
+					convertedValue.data = iconv
+						.encode(value, encoding, { addBOM: options.addBOM as boolean })
+						.toString(BINARY_ENCODING);
+				} else {
+					convertedValue.data = value as unknown as string;
+				}
 
 				if (options.fileName) {
 					convertedValue.fileName = options.fileName as string;
 				}
 
-				set(newItem.binary!, destinationKey, convertedValue);
+				set(newItem.binary, destinationKey, convertedValue);
 
 				if (options.keepSource === true) {
 					// JSON data does not get touched so simply reference it
@@ -443,7 +450,7 @@ export class MoveBinaryData implements INodeType {
 				} else {
 					// JSON data will change so copy it
 
-					if (convertAllData === true) {
+					if (convertAllData) {
 						// Data should not be kept and all data got converted. So simply set new as empty
 						newItem.json = {};
 					} else {

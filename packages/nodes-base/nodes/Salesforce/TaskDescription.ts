@@ -100,9 +100,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Call Disposition',
 				name: 'callDisposition',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					"Represents the result of a given call, for example, “we'll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.",
@@ -119,9 +116,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Call Object',
 				name: 'callObject',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
@@ -179,9 +173,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Contains a text description of the task',
 			},
 			{
@@ -452,9 +443,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Call Disposition',
 				name: 'callDisposition',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					"Represents the result of a given call, for example, “we'll call back,” or “call unsuccessful.” Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.",
@@ -471,9 +459,6 @@ export const taskFields: INodeProperties[] = [
 				displayName: 'Call Object',
 				name: 'callObject',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Name of a call center. Limit is 255 characters. Not subject to field-level security, available for any user in an organization with Salesforce CRM Call Center.',
@@ -531,9 +516,6 @@ export const taskFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Contains a text description of the task',
 			},
 			{

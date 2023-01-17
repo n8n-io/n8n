@@ -16,7 +16,6 @@ export async function sms77ApiRequest(
 	endpoint: string,
 	body: IDataObject,
 	qs: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {

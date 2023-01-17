@@ -7,18 +7,25 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
+
+function getUri(resource: string, subdomain: string) {
+	if (resource.includes('webhooks')) {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
+	} else {
+		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
+	}
+}
 
 export async function zendeskApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -34,7 +41,7 @@ export async function zendeskApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || getUri(resource, credentials.subdomain),
+		uri: uri ?? getUri(resource, credentials.subdomain),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -48,11 +55,7 @@ export async function zendeskApiRequest(
 
 	const credentialType = authenticationMethod === 'apiToken' ? 'zendeskApi' : 'zendeskOAuth2Api';
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 /**
@@ -64,10 +67,9 @@ export async function zendeskApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -87,7 +89,6 @@ export async function zendeskApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
@@ -96,12 +97,4 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
-}
-
-function getUri(resource: string, subdomain: string) {
-	if (resource.includes('webhooks')) {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}`;
-	} else {
-		return `https://${subdomain}.zendesk.com/api/v2${resource}.json`;
-	}
 }

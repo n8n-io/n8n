@@ -4,9 +4,13 @@ const scopes = ['files.content.write', 'files.content.read', 'sharing.read', 'ac
 
 export class DropboxOAuth2Api implements ICredentialType {
 	name = 'dropboxOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Dropbox OAuth2 API';
+
 	documentationUrl = 'dropbox';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

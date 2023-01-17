@@ -28,9 +28,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-		),
+		...mapStores(useRootStore),
 		basePath(): string {
 			return this.rootStore.baseUrl;
 		},

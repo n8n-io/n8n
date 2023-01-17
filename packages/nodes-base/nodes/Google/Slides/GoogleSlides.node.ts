@@ -387,8 +387,8 @@ export class GoogleSlides implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
@@ -431,9 +431,9 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
 						);
 
-						const download = this.getNodeParameter('download', 0) as boolean;
-						if (download === true) {
-							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
+						const download = this.getNodeParameter('download', 0);
+						if (download) {
+							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
 							const data = await this.helpers.request({
 								uri: responseData.contentUrl,
@@ -510,7 +510,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						responseData = await googleApiRequest.call(
 							this,
@@ -520,8 +520,8 @@ export class GoogleSlides implements INodeType {
 							{ fields: 'slides' },
 						);
 						responseData = responseData.slides;
-						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+						if (!returnAll) {
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 
@@ -537,12 +537,12 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const requests = texts.map((text) => {
 							return {
 								replaceAllText: {
 									replaceText: text.replaceText,
-									pageObjectIds: text.pageObjectIds || [],
+									pageObjectIds: text.pageObjectIds ?? [],
 									containsText: {
 										text: text.text,
 										matchCase: text.matchCase,
@@ -556,7 +556,7 @@ export class GoogleSlides implements INodeType {
 						};
 
 						if (options.revisionId) {
-							body['writeControl'] = {
+							body.writeControl = {
 								requiredRevisionId: options.revisionId as string,
 							};
 						}

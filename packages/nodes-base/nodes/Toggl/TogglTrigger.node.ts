@@ -21,7 +21,7 @@ export class TogglTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Toggl events occur',
 		defaults: {
-			name: 'Toggl',
+			name: 'Toggl Trigger',
 		},
 		credentials: [
 			{

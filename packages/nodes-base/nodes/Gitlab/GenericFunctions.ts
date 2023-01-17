@@ -14,7 +14,6 @@ export async function gitlabApiRequest(
 	body: object,
 	query?: object,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
@@ -44,7 +43,7 @@ export async function gitlabApiRequest(
 
 			options.uri = `${(credentials.server as string).replace(/\/$/, '')}/api/v4${endpoint}`;
 
-			return await this.helpers.requestOAuth2!.call(this, 'gitlabOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'gitlabOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -55,10 +54,9 @@ export async function gitlabApiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -73,6 +71,6 @@ export async function gitlabApiRequestAllItems(
 		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (responseData.headers.link && responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 	return returnData;
 }

@@ -1,7 +1,8 @@
 import { Request, sign } from 'aws4';
-import { ICredentialTestRequest } from 'n8n-workflow';
+
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IDataObject,
 	IHttpRequestOptions,
@@ -125,9 +126,13 @@ export type AWSRegion = typeof regions[number]['name'];
 
 export class Aws implements ICredentialType {
 	name = 'aws';
+
 	displayName = 'AWS';
+
 	documentationUrl = 'aws';
+
 	icon = 'file:AWS.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Region',
@@ -298,12 +303,14 @@ export class Aws implements ICredentialType {
 			} else if (service) {
 				endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
 			}
-			endpoint = new URL(endpointString!.replace('{region}', credentials.region as string) + path);
+			endpoint = new URL(
+				endpointString!.replace('{region}', credentials.region as string) + (path as string),
+			);
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
 			const customUrl = new URL(`${requestOptions.baseURL!}${requestOptions.url}${path ?? ''}`);
-			service = customUrl.hostname.split('.')[0] as string;
-			region = customUrl.hostname.split('.')[1] as string;
+			service = customUrl.hostname.split('.')[0];
+			region = customUrl.hostname.split('.')[1];
 			if (service === 'sts') {
 				try {
 					customUrl.searchParams.set('Action', 'GetCallerIdentity');

@@ -8,12 +8,11 @@ export async function surveyMonkeyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -26,7 +25,7 @@ export async function surveyMonkeyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: uri ?? `${endpoint}${resource}`,
 		json: true,
 	};
 
@@ -42,9 +41,9 @@ export async function surveyMonkeyApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('surveyMonkeyApi');
 			// @ts-ignore
-			options.headers['Authorization'] = `bearer ${credentials.accessToken}`;
+			options.headers.Authorization = `bearer ${credentials.accessToken}`;
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2?.call(this, 'surveyMonkeyOAuth2Api', options);
 		}
@@ -58,10 +57,9 @@ export async function surveyMonkeyRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

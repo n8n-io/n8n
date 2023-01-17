@@ -8,12 +8,11 @@ export async function contentfulApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('contentfulApi');
 	const source = this.getNodeParameter('source', 0) as string;
@@ -23,7 +22,7 @@ export async function contentfulApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
+		uri: uri ?? `https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
 		json: true,
 	};
 
@@ -34,7 +33,7 @@ export async function contentfulApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -45,10 +44,9 @@ export async function contenfulApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

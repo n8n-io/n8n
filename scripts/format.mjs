@@ -16,7 +16,7 @@ const config = path.resolve('.prettierrc.js');
 const ignore = path.resolve('.prettierignore');
 
 const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages'];
-const EXTENSIONS_TO_FORMAT = ['.md', '.yml', '.js', '.json'];
+const EXTENSIONS_TO_FORMAT = ['.md', '.yml', '.js', '.json', '.ts'];
 
 const isDir = (path) => fs.lstatSync(path).isDirectory();
 

@@ -1,13 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
 import { In } from 'typeorm';
 import {
 	IDataObject,
@@ -25,23 +15,16 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
-import {
-	ICredentialsDb,
-	ICredentialsTypeData,
-	ITransferNodeTypes,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-	WhereClause,
-} from '@/Interfaces';
+import { ICredentialsDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 
 import config from '@/config';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { User } from '@db/entities/User';
-import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import omit from 'lodash.omit';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -88,16 +71,8 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
  *
  * @param {(string | null | undefined)} id The id to check
  */
-export function isWorkflowIdValid(id: string | null | undefined | number): boolean {
-	if (typeof id === 'string') {
-		id = parseInt(id, 10);
-	}
-
-	// eslint-disable-next-line no-restricted-globals
-	if (isNaN(id as number)) {
-		return false;
-	}
-	return true;
+export function isWorkflowIdValid(id: string | null | undefined): boolean {
+	return !(typeof id === 'string' && isNaN(parseInt(id, 10)));
 }
 
 /**
@@ -113,23 +88,21 @@ export async function executeErrorWorkflow(
 ): Promise<void> {
 	// Wrap everything in try/catch to make sure that no errors bubble up and all get caught here
 	try {
-		let workflowData;
-		if (workflowId.toString() !== workflowErrorData.workflow.id?.toString()) {
+		let workflowData: WorkflowEntity | null = null;
+		if (workflowId !== workflowErrorData.workflow.id) {
 			// To make this code easier to understand, we split it in 2 parts:
 			// 1) Fetch the owner of the errored workflows and then
 			// 2) if now instance owner, then check if the user has access to the
 			//    triggered workflow.
 
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 			const user = await getWorkflowOwner(workflowErrorData.workflow.id!);
 
 			if (user.globalRole.name === 'owner') {
-				workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+				workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
 			} else {
 				const sharedWorkflowData = await Db.collections.SharedWorkflow.findOne({
-					where: {
-						workflow: { id: workflowId },
-						user,
-					},
+					where: { workflowId, userId: user.id },
 					relations: ['workflow'],
 				});
 				if (sharedWorkflowData) {
@@ -137,10 +110,10 @@ export async function executeErrorWorkflow(
 				}
 			}
 		} else {
-			workflowData = await Db.collections.Workflow.findOne({ id: Number(workflowId) });
+			workflowData = await Db.collections.Workflow.findOneBy({ id: workflowId });
 		}
 
-		if (workflowData === undefined) {
+		if (workflowData === null) {
 			// The error workflow could not be found
 			Logger.error(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -184,6 +157,7 @@ export async function executeErrorWorkflow(
 
 		if (workflowStartNode === undefined) {
 			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
 			);
 			return;
@@ -232,6 +206,7 @@ export async function executeErrorWorkflow(
 	} catch (error) {
 		ErrorReporter.error(error);
 		Logger.error(
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
 		);
@@ -239,163 +214,7 @@ export async function executeErrorWorkflow(
 }
 
 /**
- * Returns all the defined NodeTypes
- *
- */
-export function getAllNodeTypeData(): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Get the data of all the node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
-		}
-
-		returnData[nodeTypeName] = {
-			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns all the defined CredentialTypes
- *
- */
-export function getAllCredentalsTypeData(): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-
-	// Get the data of all the credential types that they
-	// can be loaded again in the subprocess
-	const returnData: ICredentialsTypeData = {};
-	for (const credentialTypeName of Object.keys(credentialTypes.credentialTypes)) {
-		if (credentialTypes.credentialTypes[credentialTypeName] === undefined) {
-			throw new Error(`The CredentialType "${credentialTypeName}" could not be found!`);
-		}
-
-		returnData[credentialTypeName] = {
-			className: credentialTypes.credentialTypes[credentialTypeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[credentialTypeName].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns the data of the node types that are needed
- * to execute the given nodes
- *
- */
-export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Check which node-types have to be loaded
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const neededNodeTypes = getNeededNodeTypes(nodes);
-
-	// Get all the data of the needed node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of neededNodeTypes) {
-		if (nodeTypes.nodeTypes[nodeTypeName.type] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName.type}" could not be found!`);
-		}
-
-		returnData[nodeTypeName.type] = {
-			className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
-		};
-	}
-
-	return returnData;
-}
-
-/**
- * Returns the credentials data of the given type and its parent types
- * it extends
- *
- * @param {string} type The credential type to return data off
- */
-export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-	const credentialType = credentialTypes.getByName(type);
-
-	const credentialTypeData: ICredentialsTypeData = {};
-	credentialTypeData[type] = {
-		className: credentialTypes.credentialTypes[type].type.constructor.name,
-		sourcePath: credentialTypes.credentialTypes[type].sourcePath,
-	};
-
-	if (credentialType === undefined || credentialType.extends === undefined) {
-		return credentialTypeData;
-	}
-
-	for (const typeName of credentialType.extends) {
-		if (credentialTypeData[typeName] !== undefined) {
-			continue;
-		}
-
-		credentialTypeData[typeName] = {
-			className: credentialTypes.credentialTypes[typeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[typeName].sourcePath,
-		};
-		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
-	}
-
-	return credentialTypeData;
-}
-
-/**
- * Returns all the credentialTypes which are needed to resolve
- * the given workflow credentials
- *
- * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
- */
-export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
-	const credentialTypeData: ICredentialsTypeData = {};
-
-	for (const node of nodes) {
-		const credentialsUsedByThisNode = node.credentials;
-		if (credentialsUsedByThisNode) {
-			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
-			for (const credentialType of Object.keys(credentialsUsedByThisNode)) {
-				if (credentialTypeData[credentialType] !== undefined) {
-					continue;
-				}
-
-				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
-			}
-		}
-	}
-
-	return credentialTypeData;
-}
-
-/**
- * Returns the names of the NodeTypes which are are needed
- * to execute the gives nodes
- *
- */
-export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
-	// Check which node-types have to be loaded
-	const neededNodeTypes: Array<{ type: string; version: number }> = [];
-	for (const node of nodes) {
-		if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
-			neededNodeTypes.push({ type: node.type, version: node.typeVersion });
-		}
-	}
-
-	return neededNodeTypes;
-}
-
-/**
  * Saves the static data if it changed
- *
  */
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
@@ -403,12 +222,13 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define, @typescript-eslint/no-non-null-assertion
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
@@ -420,11 +240,11 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 /**
  * Saves the given static data on workflow
  *
- * @param {(string | number)} workflowId The id of the workflow to save data on
+ * @param {(string)} workflowId The id of the workflow to save data on
  * @param {IDataObject} newStaticData The static data to save
  */
 export async function saveStaticDataById(
-	workflowId: string | number,
+	workflowId: string,
 	newStaticData: IDataObject,
 ): Promise<void> {
 	await Db.collections.Workflow.update(workflowId, {
@@ -434,26 +254,17 @@ export async function saveStaticDataById(
 
 /**
  * Returns the static data of workflow
- *
- * @param {(string | number)} workflowId The id of the workflow to get static data of
  */
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export async function getStaticDataById(workflowId: string | number) {
-	const workflowData = await Db.collections.Workflow.findOne(workflowId, {
+export async function getStaticDataById(workflowId: string) {
+	const workflowData = await Db.collections.Workflow.findOne({
 		select: ['staticData'],
+		where: { id: workflowId },
 	});
-
-	if (workflowData === undefined) {
-		return {};
-	}
-
-	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-	return workflowData.staticData || {};
+	return workflowData?.staticData ?? {};
 }
 
 /**
  * Set node ids if not already set
- *
  */
 export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;
@@ -493,14 +304,14 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials.find({
+					const credentials = await Db.collections.Credentials.findBy({
 						name,
 						type: nodeCredentialType,
 					});
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
 						credentialsByName[nodeCredentialType][name] = {
-							id: credentials[0].id.toString(),
+							id: credentials[0].id,
 							name: credentials[0].name,
 						};
 						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
@@ -529,13 +340,13 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials.findOne({
+				const credentials = await Db.collections.Credentials.findOneBy({
 					id: nodeCredentials.id,
 					type: nodeCredentialType,
 				});
 				if (credentials) {
 					credentialsById[nodeCredentialType][nodeCredentials.id] = {
-						id: credentials.id.toString(),
+						id: credentials.id,
 						name: credentials.name,
 					};
 					node.credentials[nodeCredentialType] =
@@ -543,7 +354,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials.find({
+				const credsByName = await Db.collections.Credentials.findBy({
 					name: nodeCredentials.name,
 					type: nodeCredentialType,
 				});
@@ -551,7 +362,7 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 				if (credsByName?.length === 1) {
 					// add found credential to cache
 					credentialsById[nodeCredentialType][credsByName[0].id] = {
-						id: credsByName[0].id.toString(),
+						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
 					node.credentials[nodeCredentialType] =
@@ -574,42 +385,17 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 }
 
 /**
- * Build a `where` clause for a TypeORM entity search,
- * checking for member access if the user is not an owner.
- */
-export function whereClause({
-	user,
-	entityType,
-	entityId = '',
-}: {
-	user: User;
-	entityType: 'workflow' | 'credentials';
-	entityId?: string;
-}): WhereClause {
-	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
-
-	// TODO: Decide if owner access should be restricted
-	if (user.globalRole.name !== 'owner') {
-		where.user = { id: user.id };
-	}
-
-	return where;
-}
-
-/**
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<string[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow'],
-		where: whereClause({
-			user,
-			entityType: 'workflow',
-		}),
+		relations: ['workflow', 'role'],
+		where: whereClause({ user, entityType: 'workflow', roles }),
+		select: ['workflowId'],
 	});
 
-	return sharedWorkflows.map(({ workflow }) => workflow.id);
+	return sharedWorkflows.map(({ workflowId }) => workflowId);
 }
 
 /**
@@ -620,14 +406,20 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Db.collections.Role.findOne({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	const workflowOwnerRoleId = await Db.collections.Role.findOne({
+		select: ['id'],
+		where: {
+			name: 'owner',
+			scope: 'workflow',
+		},
+	}).then((role) => role?.id);
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
-		user,
-		role: workflowOwnerRole,
-	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+		where: {
+			userId: user.id,
+			roleId: workflowOwnerRoleId,
+		},
+		select: ['workflowId'],
+	}).then((ownedWorkflows) => ownedWorkflows.map(({ workflowId }) => workflowId));
 
 	if (ownedWorkflowsIds.length > 15) {
 		belowThreshold = false;
@@ -735,7 +527,7 @@ export function validateWorkflowCredentialUsage(
 	 * - It's a new node which indicates tampering and therefore must fail saving
 	 */
 
-	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id.toString());
+	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id);
 
 	const nodesWithCredentialsUserDoesNotHaveAccessTo = getNodesWithInaccessibleCreds(
 		newWorkflowVersion,
@@ -756,15 +548,16 @@ export function validateWorkflowCredentialUsage(
 
 	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 		if (isTamperingAttempt(node.id)) {
-			Logger.info('Blocked workflow update due to tampering attempt', {
+			Logger.verbose('Blocked workflow update due to tampering attempt', {
 				nodeType: node.type,
 				nodeName: node.name,
 				nodeId: node.id,
 				nodeCredentials: node.credentials,
 			});
 			// Node is new, so this is probably a tampering attempt. Throw an error
-			throw new Error(
-				'Workflow contains new nodes with credentials the user does not have access to',
+			throw new NodeOperationError(
+				node,
+				`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
 			);
 		}
 		// Replace the node with the previous version of the node
@@ -778,9 +571,14 @@ export function validateWorkflowCredentialUsage(
 			nodeName: node.name,
 			nodeId: node.id,
 		});
-		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
+		const previousNodeVersion = previousWorkflowVersion.nodes.find(
 			(previousNode) => previousNode.id === node.id,
-		)!;
+		);
+		// Allow changing only name, position and disabled status for read-only nodes
+		Object.assign(
+			newWorkflowVersion.nodes[nodeIdx],
+			omit(previousNodeVersion, ['name', 'position', 'disabled']),
+		);
 	});
 
 	return newWorkflowVersion;

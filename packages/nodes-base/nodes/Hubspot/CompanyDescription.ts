@@ -99,9 +99,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'About Us',
 				name: 'aboutUs',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -362,9 +359,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Twitter Bio',
 				name: 'twitterBio',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The Twitter bio of the company or organization',
 			},
@@ -459,9 +453,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'About Us',
 				name: 'aboutUs',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -728,9 +719,6 @@ export const companyFields: INodeProperties[] = [
 				displayName: 'Twitter Bio',
 				name: 'twitterBio',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'The Twitter bio of the company or organization',
 			},

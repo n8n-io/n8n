@@ -1,4 +1,4 @@
-import * as ErrorReporter from './ErrorReporterProxy';
+import { BinaryFileType } from './Interfaces';
 
 export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 
@@ -19,9 +19,6 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
-		ErrorReporter.warn('Circular reference detected', {
-			extra: { source, path },
-		});
 		return hash.get(source);
 	}
 	// Array
@@ -69,3 +66,29 @@ export const sleep = async (ms: number): Promise<void> =>
 	new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
+
+export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
+	if (mimeType.startsWith('application/json')) return 'json';
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('text/')) return 'text';
+	return;
+}
+
+export function assert<T>(condition: T, msg?: string): asserts condition {
+	if (!condition) {
+		const error = new Error(msg ?? 'Invalid assertion');
+		// hide assert stack frame if supported
+		if (Error.hasOwnProperty('captureStackTrace')) {
+			// V8 only - https://nodejs.org/api/errors.html#errors_error_capturestacktrace_targetobject_constructoropt
+			Error.captureStackTrace(error, assert);
+		} else if (error.stack) {
+			// fallback for IE and Firefox
+			error.stack = error.stack
+				.split('\n')
+				.slice(1) // skip assert function from stack frames
+				.join('\n');
+		}
+		throw error;
+	}
+}

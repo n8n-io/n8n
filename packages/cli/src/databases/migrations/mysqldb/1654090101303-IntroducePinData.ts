@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';;
+import config from '@/config';
 
 export class IntroducePinData1654090101303 implements MigrationInterface {
 	name = 'IntroducePinData1654090101303';
@@ -10,9 +10,7 @@ export class IntroducePinData1654090101303 implements MigrationInterface {
 
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(
-			`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD \`pinData\` json`,
-		);
+		await queryRunner.query(`ALTER TABLE \`${tablePrefix}workflow_entity\` ADD \`pinData\` json`);
 
 		logMigrationEnd(this.name);
 	}
@@ -20,6 +18,8 @@ export class IntroducePinData1654090101303 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = config.getEnv('database.tablePrefix');
 
-		await queryRunner.query(`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN \`pinData\``);
+		await queryRunner.query(
+			`ALTER TABLE \`${tablePrefix}workflow_entity\` DROP COLUMN \`pinData\``,
+		);
 	}
 }

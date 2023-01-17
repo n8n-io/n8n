@@ -9,17 +9,17 @@ export async function members(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const channelId = this.getNodeParameter('channelId', index) as string;
-	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const resolveData = this.getNodeParameter('resolveData', index) as boolean;
-	const limit = this.getNodeParameter('limit', index, 0) as number;
+	const returnAll = this.getNodeParameter('returnAll', index);
+	const resolveData = this.getNodeParameter('resolveData', index);
+	const limit = this.getNodeParameter('limit', index, 0);
 
 	const body = {} as IDataObject;
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
 	const endpoint = `channels/${channelId}/members`;
 
-	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+	if (!returnAll) {
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
 	let responseData;

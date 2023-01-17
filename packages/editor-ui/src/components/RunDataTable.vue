@@ -5,14 +5,18 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+			<tr
+				v-for="(row, index1) in tableData.data"
+				:key="index1"
+				:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+			>
 				<td
 					:data-row="index1"
 					:data-col="0"
 					@mouseenter="onMouseEnterCell"
 					@mouseleave="onMouseLeaveCell"
 				>
-					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
+					<n8n-info-tip>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-info-tip>
 				</td>
 				<td :class="$style.tableRightMargin"></td>
 			</tr>
@@ -21,15 +25,13 @@
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip
-							placement="bottom-start"
-							:disabled="!mappingEnabled"
-							:open-delay="1000"
-						>
-							<div slot="content">
-								<img src='/static/data-mapping-gif.gif'/>
-								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
-							</div>
+						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled" :open-delay="1000">
+							<template #content>
+								<div>
+									<img src="/static/data-mapping-gif.gif" />
+									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+								</div>
+							</template>
 							<draggable
 								type="mapping"
 								:data="getExpression(column)"
@@ -37,23 +39,16 @@
 								@dragstart="onDragStart"
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
-								<template v-slot:preview="{ canDrop }">
-									<div
-										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
-									>
-										{{
-											$locale.baseText('dataMapping.mapKeyToField', {
-												interpolate: { name: shorten(column, 16, 2) },
-											})
-										}}
-									</div>
+								<template #preview="{ canDrop }">
+									<MappingPill :html="shorten(column, 16, 2)" :can-drop="canDrop" />
 								</template>
-								<template v-slot="{ isDragging }">
+								<template #default="{ isDragging }">
 									<div
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: i === activeColumn && mappingEnabled,
+											[$style.activeHeader]:
+												(i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -68,13 +63,23 @@
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
 						<n8n-tooltip placement="bottom-end">
-							<div slot="content">
-								<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
-									<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
-								</i18n>
-							</div>
+							<template #content>
+								<div>
+									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+										<template #columnLimit>{{ columnLimit }}</template>
+										<template #link>
+											<a @click="switchToJsonView">{{
+												$locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link')
+											}}</a>
+										</template>
+									</i18n>
+								</div>
+							</template>
 							<span>
-								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								<font-awesome-icon
+									:class="$style['warningTooltip']"
+									icon="exclamation-triangle"
+								></font-awesome-icon>
 								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
 							</span>
 						</n8n-tooltip>
@@ -91,22 +96,18 @@
 				@dragend="onCellDragEnd"
 				ref="draggable"
 			>
-				<template v-slot:preview="{ canDrop, el }">
-					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-						{{
-							$locale.baseText(
-								tableData.data.length > 1
-									? 'dataMapping.mapAllKeysToField'
-									: 'dataMapping.mapKeyToField',
-								{
-									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
-								},
-							)
-						}}
-					</div>
+				<template #preview="{ canDrop, el }">
+					<MappingPill
+						:html="shorten(getPathNameFromTarget(el) || '', 16, 2)"
+						:can-drop="canDrop"
+					/>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+					<tr
+						v-for="(row, index1) in tableData.data"
+						:key="index1"
+						:class="{ [$style.hoveringRow]: isHoveringRow(index1) }"
+					>
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
@@ -116,9 +117,13 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
+							<span
+								v-if="isSimple(data)"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+								>{{ getValueToRender(data) }}</span
+							>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template v-slot:label="{ label, path }">
+								<template #label="{ label, path }">
 									<span
 										@mouseenter="() => onMouseEnterKey(path, index2)"
 										@mouseleave="onMouseLeaveKey"
@@ -135,7 +140,7 @@
 										>{{ label || $locale.baseText('runData.unnamedField') }}</span
 									>
 								</template>
-								<template v-slot:value="{ value }">
+								<template #value="{ value }">
 									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
 										getValueToRender(value)
 									}}</span>
@@ -154,22 +159,23 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/pairedItemUtils';
+import { getPairedItemId } from '@/utils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
-import { externalHooks } from './mixins/externalHooks';
+import { shorten } from '@/utils';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import MappingPill from './MappingPill.vue';
 
 const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
-	components: { Draggable },
+	components: { Draggable, MappingPill },
 	props: {
 		node: {
 			type: Object as PropType<INodeUi>,
@@ -202,11 +208,13 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeColumn: -1,
+			forceShowGrip: false,
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimit: MAX_COLUMNS_LIMIT,
 			columnLimitExceeded: false,
 		};
 	},
@@ -221,18 +229,18 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		hoveringItem(): NDVState['hoveringItem'] {
 			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): {[itemId: string]: Set<string>} {
+		pairedItemMappings(): { [itemId: string]: Set<string> } {
 			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
+		},
+		focusedMappableInput(): string {
+			return this.ndvStore.focusedMappableInput;
 		},
 	},
 	methods: {
@@ -243,15 +251,30 @@ export default mixins(externalHooks).extend({
 			}
 
 			const itemIndex = this.pageOffset + row;
-			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+			if (
+				itemIndex === 0 &&
+				!this.hoveringItem &&
+				this.hasDefaultHoverState &&
+				this.distanceFromActive === 1
+			) {
 				return true;
 			}
-			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			const itemNodeId = getPairedItemId(
+				this.node.name,
+				this.runIndex || 0,
+				this.outputIndex || 0,
+				itemIndex,
+			);
 			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
 				return false;
 			}
 
-			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			const hoveringItemId = getPairedItemId(
+				this.hoveringItem.nodeName,
+				this.hoveringItem.runIndex,
+				this.hoveringItem.outputIndex,
+				this.hoveringItem.itemIndex,
+			);
 			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
 		},
 		onMouseEnterCell(e: MouseEvent) {
@@ -341,7 +364,8 @@ export default mixins(externalHooks).extend({
 				value === '' ||
 				(Array.isArray(value) && value.length === 0) ||
 				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
-				(value === null || value === undefined)
+				value === null ||
+				value === undefined
 			);
 		},
 		getValueToRender(value: unknown) {
@@ -411,9 +435,12 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return (typeof data !== 'object' || data === null) ||
+			return (
+				typeof data !== 'object' ||
+				data === null ||
 				(Array.isArray(data) && data.length === 0) ||
-				(typeof data === 'object' && Object.keys(data).length === 0);
+				(typeof data === 'object' && Object.keys(data).length === 0)
+			);
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
@@ -435,7 +462,7 @@ export default mixins(externalHooks).extend({
 				entryRows = [];
 				const entryColumns = Object.keys(entry || {});
 
-				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+				if (entryColumns.length > MAX_COLUMNS_LIMIT) {
 					this.columnLimitExceeded = true;
 					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 				} else {
@@ -455,8 +482,8 @@ export default mixins(externalHooks).extend({
 							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
 							false;
 					} else {
-						// Entry does not have key so add null
-						entryRows.push(null);
+						// Entry does not have key so add undefined
+						entryRows.push(undefined);
 					}
 				});
 
@@ -490,8 +517,18 @@ export default mixins(externalHooks).extend({
 				data: tableData,
 			};
 		},
-		switchToJsonView(){
+		switchToJsonView() {
 			this.$emit('displayModeChange', 'json');
+		},
+	},
+	watch: {
+		focusedMappableInput(curr: boolean) {
+			setTimeout(
+				() => {
+					this.forceShowGrip = !!this.focusedMappableInput;
+				},
+				curr ? 300 : 150,
+			);
 		},
 	},
 });
@@ -537,11 +574,13 @@ export default mixins(externalHooks).extend({
 		white-space: pre-wrap;
 	}
 
-	td:first-child, td:nth-last-child(2) {
+	td:first-child,
+	td:nth-last-child(2) {
 		position: relative;
 		z-index: 0;
 
-		&:after { // add border without shifting content
+		&:after {
+			// add border without shifting content
 			content: '';
 			position: absolute;
 			height: 100%;
@@ -611,25 +650,6 @@ export default mixins(externalHooks).extend({
 	margin-left: var(--spacing-2xs);
 }
 
-.dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
-	white-space: nowrap;
-}
-
-.droppablePill {
-	background-color: var(--color-success);
-}
-
-.defaultPill {
-	background-color: var(--color-primary);
-	transform: translate(-50%, -100%);
-	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
-}
-
 .dataKey {
 	color: var(--color-text-dark);
 	line-height: 1.7;
@@ -682,7 +702,8 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	td:first-child:after, td:nth-last-child(2):after {
+	td:first-child:after,
+	td:nth-last-child(2):after {
 		background-color: var(--color-secondary);
 	}
 }
@@ -690,5 +711,4 @@ export default mixins(externalHooks).extend({
 .warningTooltip {
 	color: var(--color-warning);
 }
-
 </style>

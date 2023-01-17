@@ -6,12 +6,11 @@ export async function codaApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('codaApi');
 
@@ -20,7 +19,7 @@ export async function codaApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://coda.io/apis/v1${resource}`,
+		uri: uri ?? `https://coda.io/apis/v1${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -29,7 +28,7 @@ export async function codaApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -44,10 +43,9 @@ export async function codaApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

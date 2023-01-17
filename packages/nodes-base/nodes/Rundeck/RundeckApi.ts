@@ -9,6 +9,7 @@ export interface RundeckCredentials {
 
 export class RundeckApi {
 	private credentials?: RundeckCredentials;
+
 	private executeFunctions: IExecuteFunctions;
 
 	constructor(executeFunctions: IExecuteFunctions) {
@@ -22,7 +23,7 @@ export class RundeckApi {
 			rejectUnauthorized: false,
 			method,
 			qs: query,
-			uri: this.credentials?.url + endpoint,
+			uri: (this.credentials?.url as string) + endpoint,
 			body,
 			json: true,
 		};
@@ -48,12 +49,12 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
+	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 		let params = '';
 
 		if (args) {
 			for (const arg of args) {
-				params += '-' + arg.name + ' ' + arg.value + ' ';
+				params += '-' + (arg.name as string) + ' ' + (arg.value as string) + ' ';
 			}
 		}
 
@@ -64,7 +65,7 @@ export class RundeckApi {
 		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
 	}
 
-	getJobMetadata(jobId: string): Promise<IDataObject> {
+	async getJobMetadata(jobId: string): Promise<IDataObject> {
 		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
 }

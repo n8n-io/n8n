@@ -7,8 +7,11 @@ import {
 
 export class MailgunApi implements ICredentialType {
 	name = 'mailgunApi';
+
 	displayName = 'Mailgun API';
+
 	documentationUrl = 'mailgun';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Domain',
@@ -41,6 +44,7 @@ export class MailgunApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -50,6 +54,7 @@ export class MailgunApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '=https://{{$credentials.apiDomain}}/v3',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const loadBalancerOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const loadBalancerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
+				resource: ['loadBalancer'],
 			},
 		},
 		options: [
@@ -46,7 +42,6 @@ export const loadBalancerOperations: INodeProperties[] = [
 ];
 
 export const loadBalancerFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                  loadBalancer:create                       */
 	/* -------------------------------------------------------------------------- */
@@ -57,12 +52,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['loadBalancer'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -85,16 +76,13 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['loadBalancer'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'This name must be unique per region per account, can have a maximum of 32 characters',
+		description:
+			'This name must be unique per region per account, can have a maximum of 32 characters',
 	},
 	{
 		displayName: 'Schema',
@@ -103,12 +91,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['loadBalancer'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -130,12 +114,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['loadBalancer'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -154,15 +134,12 @@ export const loadBalancerFields: INodeProperties[] = [
 		displayName: 'Subnet ID Names or IDs',
 		name: 'subnets',
 		type: 'multiOptions',
-		description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['loadBalancer'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -178,12 +155,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'loadBalancer',
-				],
+				operation: ['create'],
+				resource: ['loadBalancer'],
 			},
 		},
 		default: {},
@@ -192,7 +165,8 @@ export const loadBalancerFields: INodeProperties[] = [
 				displayName: 'Security Group IDs',
 				name: 'securityGroups',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getSecurityGroups',
 				},
@@ -243,12 +217,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['loadBalancer'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -264,12 +234,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'getMany',
-				],
+				resource: ['loadBalancer'],
+				operation: ['getMany'],
 			},
 		},
 		default: false,
@@ -287,15 +253,9 @@ export const loadBalancerFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'getMany',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['loadBalancer'],
+				operation: ['getMany'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -306,15 +266,9 @@ export const loadBalancerFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				operation: [
-					'getMany',
-				],
-				resource: [
-					'loadBalancer',
-				],
-				returnAll: [
-					true,
-				],
+				operation: ['getMany'],
+				resource: ['loadBalancer'],
+				returnAll: [true],
 			},
 		},
 		default: {},
@@ -324,7 +278,8 @@ export const loadBalancerFields: INodeProperties[] = [
 				name: 'names',
 				type: 'string',
 				default: '',
-				description: 'The names of the load balancers. Multiples can be defined separated by comma.',
+				description:
+					'The names of the load balancers. Multiples can be defined separated by comma.',
 			},
 		],
 	},
@@ -339,12 +294,8 @@ export const loadBalancerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'loadBalancer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['loadBalancer'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

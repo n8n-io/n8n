@@ -7,8 +7,11 @@ import {
 
 export class MailjetEmailApi implements ICredentialType {
 	name = 'mailjetEmailApi';
+
 	displayName = 'Mailjet Email API';
+
 	documentationUrl = 'mailjet';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -45,7 +48,7 @@ export class MailjetEmailApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: `https://api.mailjet.com`,
+			baseURL: 'https://api.mailjet.com',
 			url: '/v3/REST/template',
 			method: 'GET',
 		},

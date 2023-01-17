@@ -139,13 +139,13 @@ export class OpenThesaurus implements INodeType {
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'getSynonyms') {
 					const text = this.getNodeParameter('text', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					qs.q = text;
 
@@ -154,7 +154,7 @@ export class OpenThesaurus implements INodeType {
 					responseData = await openThesaurusApiRequest.call(
 						this,
 						'GET',
-						`/synonyme/search`,
+						'/synonyme/search',
 						{},
 						qs,
 					);

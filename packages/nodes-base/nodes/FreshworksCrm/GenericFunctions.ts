@@ -49,7 +49,7 @@ export async function getAllItemsViewId(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	{ fromLoadOptions } = { fromLoadOptions: false },
 ) {
-	let resource = this.getNodeParameter('resource', 0) as string;
+	let resource = this.getNodeParameter('resource', 0);
 	let keyword = 'All';
 
 	if (resource === 'account' || fromLoadOptions) {
@@ -83,7 +83,7 @@ export async function freshworksCrmApiRequestAllItems(
 	qs: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
-	let response: any; // tslint:disable-line: no-any
+	let response: any;
 
 	qs.page = 1;
 
@@ -104,10 +104,10 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshworksCrmApiRequestAllItems.call(this, method, endpoint, body, qs);
@@ -190,5 +190,5 @@ export function throwOnEmptyUpdate(this: IExecuteFunctions, resource: string) {
 }
 
 export function throwOnEmptyFilter(this: IExecuteFunctions) {
-	throw new NodeOperationError(this.getNode(), `Please select at least one filter.`);
+	throw new NodeOperationError(this.getNode(), 'Please select at least one filter.');
 }

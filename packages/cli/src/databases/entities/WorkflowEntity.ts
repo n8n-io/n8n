@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { Length } from 'class-validator';
 
 import type {
@@ -11,30 +10,30 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	AfterLoad,
-	AfterUpdate,
-	AfterInsert,
 	Column,
 	Entity,
+	Generated,
 	Index,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
-	PrimaryGeneratedColumn,
+	PrimaryColumn,
 } from 'typeorm';
 
 import config from '@/config';
-import { TagEntity } from './TagEntity';
-import { SharedWorkflow } from './SharedWorkflow';
-import { objectRetriever, sqlite } from '../utils/transformers';
+import type { TagEntity } from './TagEntity';
+import type { SharedWorkflow } from './SharedWorkflow';
+import type { WorkflowStatistics } from './WorkflowStatistics';
+import { idStringifier, objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '@/Interfaces';
-import { alphabetizeKeys } from '@/utils';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
-	@PrimaryGeneratedColumn()
-	id: number;
+	@Generated()
+	@PrimaryColumn({ transformer: idStringifier })
+	id: string;
 
 	// TODO: Add XSS check
 	@Index({ unique: true })
@@ -66,7 +65,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	staticData?: IDataObject;
 
-	@ManyToMany(() => TagEntity, (tag) => tag.workflows)
+	@ManyToMany('TagEntity', 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
@@ -80,8 +79,12 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	tags?: TagEntity[];
 
-	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
+	@OneToMany('SharedWorkflow', 'workflow')
 	shared: SharedWorkflow[];
+
+	@OneToMany('WorkflowStatistics', 'workflow')
+	@JoinColumn({ referencedColumnName: 'workflow' })
+	statistics: WorkflowStatistics[];
 
 	@Column({
 		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
@@ -90,29 +93,11 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	})
 	pinData: ISimplifiedPinData;
 
-	/**
-	 * Hash of editable workflow state.
-	 */
-	hash: string;
+	@Column({ length: 36 })
+	versionId: string;
 
-	@AfterLoad()
-	@AfterUpdate()
-	@AfterInsert()
-	setHash(): void {
-		const { name, active, nodes, connections, settings, staticData, pinData } = this;
-
-		const state = JSON.stringify({
-			name,
-			active,
-			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
-			connections,
-			settings,
-			staticData,
-			pinData,
-		});
-
-		this.hash = crypto.createHash('md5').update(state).digest('hex');
-	}
+	@Column({ default: 0 })
+	triggerCount: number;
 }
 
 /**

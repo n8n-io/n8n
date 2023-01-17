@@ -8,12 +8,11 @@ export async function coinGeckoApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -23,7 +22,7 @@ export async function coinGeckoApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.coingecko.com/api/v3${endpoint}`,
+		uri: uri ?? `https://api.coingecko.com/api/v3${endpoint}`,
 		json: true,
 	};
 
@@ -46,10 +45,9 @@ export async function coinGeckoRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

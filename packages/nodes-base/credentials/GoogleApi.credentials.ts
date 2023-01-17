@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
+
 	displayName = 'Google API';
+
 	documentationUrl = 'google/service-account';
+
 	icon = 'file:Google.svg';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Service Account Email',

@@ -121,9 +121,6 @@ export const messageFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {
@@ -253,9 +250,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Fallback Text',
 				name: 'fallback',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Required plain-text summary of the attachment',
 			},
@@ -263,9 +257,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text to send',
 			},
@@ -273,9 +264,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Title of the message',
 			},
@@ -283,9 +271,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Title Link',
 				name: 'title_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link of the title',
 			},
@@ -300,9 +285,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Pretext',
 				name: 'pretext',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text which appears before the message block',
 			},
@@ -317,9 +299,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Author Link',
 				name: 'author_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link for the author',
 			},
@@ -327,9 +306,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Author Icon',
 				name: 'author_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear for the user',
 			},
@@ -337,9 +313,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Image URL',
 				name: 'image_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of image',
 			},
@@ -347,9 +320,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Thumbnail URL',
 				name: 'thumb_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of thumbnail',
 			},
@@ -357,9 +327,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text of footer to add',
 			},
@@ -367,9 +334,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Footer Icon',
 				name: 'footer_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear next to footer',
 			},
@@ -1456,9 +1420,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Fallback Text',
 				name: 'fallback',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Required plain-text summary of the attachment',
 			},
@@ -1466,9 +1427,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Text',
 				name: 'text',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text to send',
 			},
@@ -1476,9 +1434,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Title',
 				name: 'title',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Title of the message',
 			},
@@ -1486,9 +1441,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Title Link',
 				name: 'title_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link of the title',
 			},
@@ -1503,9 +1455,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Pretext',
 				name: 'pretext',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text which appears before the message block',
 			},
@@ -1520,9 +1469,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Author Link',
 				name: 'author_link',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Link for the author',
 			},
@@ -1530,9 +1476,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Author Icon',
 				name: 'author_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear for the user',
 			},
@@ -1540,9 +1483,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Image URL',
 				name: 'image_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of image',
 			},
@@ -1550,9 +1490,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Thumbnail URL',
 				name: 'thumb_url',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'URL of thumbnail',
 			},
@@ -1560,9 +1497,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Footer',
 				name: 'footer',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text of footer to add',
 			},
@@ -1570,9 +1504,6 @@ export const messageFields: INodeProperties[] = [
 				displayName: 'Footer Icon',
 				name: 'footer_icon',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Icon which should appear next to footer',
 			},

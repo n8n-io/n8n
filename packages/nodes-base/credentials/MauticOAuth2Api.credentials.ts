@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MauticOAuth2Api implements ICredentialType {
 	name = 'mauticOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Mautic OAuth2 API';
+
 	documentationUrl = 'mautic';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

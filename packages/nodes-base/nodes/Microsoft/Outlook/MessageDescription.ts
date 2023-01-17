@@ -27,7 +27,7 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many messages in the signed-in user\'s mailbox',
+				description: "Get many messages in the signed-in user's mailbox",
 				action: 'Get many messages',
 			},
 			{

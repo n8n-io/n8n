@@ -18,7 +18,8 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 
-const WEBHOOK_TEST_UNREGISTERED_HINT = `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`;
+const WEBHOOK_TEST_UNREGISTERED_HINT =
+	"Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)";
 
 export class TestWebhooks {
 	private testWebhookData: {
@@ -27,6 +28,7 @@ export class TestWebhooks {
 			timeout: NodeJS.Timeout;
 			workflowData: IWorkflowDb;
 			workflow: Workflow;
+			destinationNode?: string;
 		};
 	} = {};
 
@@ -67,10 +69,8 @@ export class TestWebhooks {
 			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
 			}
@@ -94,10 +94,8 @@ export class TestWebhooks {
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${httpMethod} ${path}" is not registered.`,
-				404,
-				404,
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -108,7 +106,7 @@ export class TestWebhooks {
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
 		// eslint-disable-next-line no-async-promise-executor
@@ -132,6 +130,7 @@ export class TestWebhooks {
 						}
 						resolve(data);
 					},
+					this.testWebhookData[webhookKey].destinationNode,
 				);
 
 				if (executionId === undefined) {
@@ -173,10 +172,8 @@ export class TestWebhooks {
 
 		if (webhookMethods === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${path}" is not registered.`,
-				404,
-				404,
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -216,7 +213,7 @@ export class TestWebhooks {
 
 		// Remove test-webhooks automatically if they do not get called (after 120 seconds)
 		const timeout = setTimeout(() => {
-			this.cancelTestWebhook(workflowData.id.toString());
+			this.cancelTestWebhook(workflowData.id);
 		}, 120000);
 
 		let key: string;
@@ -236,6 +233,7 @@ export class TestWebhooks {
 				timeout,
 				workflow,
 				workflowData,
+				destinationNode,
 			};
 
 			try {
@@ -262,7 +260,7 @@ export class TestWebhooks {
 		for (const webhookKey of Object.keys(this.testWebhookData)) {
 			const webhookData = this.testWebhookData[webhookKey];
 
-			if (webhookData.workflowData.id.toString() !== workflowId) {
+			if (webhookData.workflowData.id !== workflowId) {
 				// eslint-disable-next-line no-continue
 				continue;
 			}

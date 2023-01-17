@@ -94,6 +94,7 @@ export class CopperTrigger implements INodeType {
 			},
 		],
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {

@@ -114,9 +114,6 @@ export class AwsLambda implements INodeType {
 				},
 				default: '',
 				description: 'The JSON that you want to provide to your Lambda function as input',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	};
@@ -189,7 +186,7 @@ export class AwsLambda implements INodeType {
 					},
 				);
 
-				if (responseData !== null && responseData?.errorMessage !== undefined) {
+				if (responseData?.errorMessage !== undefined) {
 					let _errorMessage = responseData.errorMessage;
 
 					if (responseData.stackTrace) {

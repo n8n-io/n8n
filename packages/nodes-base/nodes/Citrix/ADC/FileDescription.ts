@@ -26,9 +26,7 @@ export const fileDescription: INodeProperties[] = [
 		default: 'upload',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 	},
@@ -90,7 +88,7 @@ export const fileDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: ['delete', 'download' ],
+				operation: ['delete', 'download'],
 				resource: ['file'],
 			},
 		},
@@ -105,7 +103,7 @@ export const fileDescription: INodeProperties[] = [
 		description: 'Name of the file. It should not include filepath.',
 		displayOptions: {
 			show: {
-				operation: ['delete', 'download' ],
+				operation: ['delete', 'download'],
 				resource: ['file'],
 			},
 		},
@@ -116,11 +114,10 @@ export const fileDescription: INodeProperties[] = [
 		type: 'string',
 		required: true,
 		default: 'data',
-		description:
-			'The name of the output field to put the binary file data in',
+		description: 'The name of the output field to put the binary file data in',
 		displayOptions: {
 			show: {
-				operation: ['download' ],
+				operation: ['download'],
 				resource: ['file'],
 			},
 		},

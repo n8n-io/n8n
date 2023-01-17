@@ -62,9 +62,6 @@ export const smsFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {

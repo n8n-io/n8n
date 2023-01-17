@@ -31,7 +31,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export function createConnection(
+export async function createConnection(
 	credentials: ICredentialDataDecryptedObject,
 ): Promise<mysql2.Connection> {
 	const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
@@ -62,7 +62,7 @@ export async function searchTables(
 	const sql = `
 	SELECT table_name FROM information_schema.tables
 	WHERE table_schema = '${credentials.database}'
-		and table_name like '%${query || ''}%'
+		and table_name like '%${query ?? ''}%'
 	ORDER BY table_name
 	`;
 	const [rows] = await connection.query(sql);
@@ -70,6 +70,6 @@ export async function searchTables(
 		name: r.TABLE_NAME as string,
 		value: r.TABLE_NAME as string,
 	}));
-	connection.end();
+	await connection.end();
 	return { results };
 }

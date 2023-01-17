@@ -7,21 +7,19 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function ghostApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const source = this.getNodeParameter('source', 0) as string;
 
-	let credentials;
 	let version;
 	let credentialType;
 
@@ -34,21 +32,17 @@ export async function ghostApiRequest(
 		credentialType = 'ghostAdminApi';
 	}
 
-	credentials = await this.getCredentials(credentialType);
+	const credentials = await this.getCredentials(credentialType);
 
 	const options: OptionsWithUri = {
 		method,
 		qs: query,
-		uri: uri || `${credentials.url}/ghost/api/${version}${endpoint}`,
+		uri: uri ?? `${credentials.url}/ghost/api/${version}${endpoint}`,
 		body,
 		json: true,
 	};
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function ghostApiRequestAllItems(
@@ -56,10 +50,9 @@ export async function ghostApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -76,7 +69,6 @@ export async function ghostApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

@@ -1,13 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-param-description-excess-final-period */
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	NodeApiError,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData, NodeApiError } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
 
@@ -920,7 +914,7 @@ export class StripeTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 
 		const events = this.getNodeParameter('events', []) as string[];

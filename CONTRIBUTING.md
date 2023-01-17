@@ -185,19 +185,7 @@ tests of all packages.
 
 ## Create custom nodes
 
-> **IMPORTANT**: Avoid use of external libraries to ensure your custom nodes can be reviewed and merged quickly.
-
-Learn about [using the node dev CLI](https://docs.n8n.io/integrations/creating-nodes/archive/node-developer-cli/) to create custom nodes for n8n.
-
-More information can be found in the documentation of [n8n-node-dev](https://github.com/n8n-io/n8n/tree/master/packages/node-dev), a small CLI which helps with n8n-node-development.
-
-## Create a new node to contribute to n8n
-
-Follow this tutorial on [creating your first node](https://docs.n8n.io/integrations/creating-nodes/build/) for n8n.
-
-## Checklist before submitting a new node
-
-There are several things to keep in mind when creating a node. To help you, we prepared a [checklist](https://docs.n8n.io/integrations/creating-nodes/build/reference/) that covers the requirements for creating nodes, from preparation to submission. This will help us be quicker to review and merge your PR.
+Learn about [building nodes](https://docs.n8n.io/integrations/creating-nodes/) to create custom nodes for n8n. You can create community nodes and make them available using [npm](https://www.npmjs.com/).
 
 ## Extend documentation
 

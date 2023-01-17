@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HomeAssistantApi implements ICredentialType {
 	name = 'homeAssistantApi';
+
 	displayName = 'Home Assistant API';
+
 	documentationUrl = 'homeAssistant';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Host',

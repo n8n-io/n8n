@@ -241,9 +241,6 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text description of the account. Limited to 32,000 KB.',
 			},
@@ -315,9 +312,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'sicDesc',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description:
 					'A brief description of an organization’s line of business, based on its SIC code',
 			},
@@ -521,9 +515,6 @@ export const accountFields: INodeProperties[] = [
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description: 'Text description of the account. Limited to 32,000 KB.',
 			},
@@ -602,9 +593,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'sicDesc',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description:
 					'A brief description of an organization’s line of business, based on its SIC code',
 			},
@@ -876,9 +864,6 @@ export const accountFields: INodeProperties[] = [
 				name: 'body',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Body of the note. Limited to 32 KB.',
 			},
 			{

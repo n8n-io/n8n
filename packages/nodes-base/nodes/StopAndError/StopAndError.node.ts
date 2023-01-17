@@ -22,7 +22,7 @@ export class StopAndError implements INodeType {
 		version: 1,
 		description: 'Throw an error in the workflow',
 		defaults: {
-			name: 'Stop And Error',
+			name: 'Stop and Error',
 			color: '#ff0000',
 		},
 		inputs: ['main'],
@@ -51,9 +51,6 @@ export class StopAndError implements INodeType {
 				name: 'errorMessage',
 				type: 'string',
 				placeholder: 'An error occurred!',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				required: true,
 				displayOptions: {
@@ -82,7 +79,7 @@ export class StopAndError implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const errorType = this.getNodeParameter('errorType', 0) as 'errorMessage' | 'errorObject';
 		const { id: workflowId, name: workflowName } = this.getWorkflow();
 
@@ -92,7 +89,7 @@ export class StopAndError implements INodeType {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			// tslint:disable-next-line:no-any
+
 			const errorObject = jsonParse<any>(json);
 
 			toThrow = {

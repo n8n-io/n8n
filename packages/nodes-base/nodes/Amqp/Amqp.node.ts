@@ -102,12 +102,12 @@ export class Amqp implements INodeType {
 			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
 				| string
 				| object;
-			const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+			const options = this.getNodeParameter('options', 0, {});
 			const containerId = options.containerId as string;
 			const containerReconnect = (options.reconnect as boolean) || true;
 			const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
-			let headerProperties: Dictionary<any>; // tslint:disable-line:no-any
+			let headerProperties: Dictionary<any>;
 			if (typeof applicationProperties === 'string' && applicationProperties !== '') {
 				headerProperties = JSON.parse(applicationProperties);
 			} else {

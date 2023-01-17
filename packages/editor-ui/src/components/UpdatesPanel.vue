@@ -1,50 +1,40 @@
 <template>
-	<ModalDrawer
-		:name="VERSIONS_MODAL_KEY"
-		direction="ltr"
-		width="520px"
-	>
-		<template slot="header">
+	<ModalDrawer :name="VERSIONS_MODAL_KEY" direction="ltr" width="520px">
+		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style['description']">
 				<p v-if="currentVersion">
-					{{ $locale.baseText(
-						'updatesPanel.youReOnVersion',
-						{ interpolate: { currentVersionName: currentVersion.name } }
-					) }}
-					<strong><TimeAgo :date="currentVersion.createdAt" /></strong>{{ $locale.baseText('updatesPanel.andIs') }} <strong>{{ $locale.baseText(
-							'updatesPanel.version',
-							{
-								interpolate: {
-									numberOfVersions: nextVersions.length,
-									howManySuffix: nextVersions.length > 1 ? "s" : "",
-								}
-							}
-					)}}</strong> {{ $locale.baseText('updatesPanel.behindTheLatest') }}
+					{{
+						$locale.baseText('updatesPanel.youReOnVersion', {
+							interpolate: { currentVersionName: currentVersion.name },
+						})
+					}}
+					<strong><TimeAgo :date="currentVersion.createdAt" /></strong
+					>{{ $locale.baseText('updatesPanel.andIs') }}
+					<strong>{{
+						$locale.baseText('updatesPanel.version', {
+							interpolate: {
+								numberOfVersions: nextVersions.length,
+								howManySuffix: nextVersions.length > 1 ? 's' : '',
+							},
+						})
+					}}</strong>
+					{{ $locale.baseText('updatesPanel.behindTheLatest') }}
 				</p>
 
-				<n8n-link
-					v-if="infoUrl"
-					:to="infoUrl"
-					:bold="true"
-				>
+				<n8n-link v-if="infoUrl" :to="infoUrl" :bold="true">
 					<font-awesome-icon icon="info-circle"></font-awesome-icon>
 					<span>
 						{{ $locale.baseText('updatesPanel.howToUpdateYourN8nVersion') }}
 					</span>
 				</n8n-link>
-
 			</section>
 			<section :class="$style.versions">
-				<div
-					v-for="version in nextVersions"
-					:key="version.name"
-					:class="$style['versions-card']"
-				>
+				<div v-for="version in nextVersions" :key="version.name" :class="$style['versions-card']">
 					<VersionCard :version="version" />
 				</div>
 			</section>
@@ -71,9 +61,7 @@ export default Vue.extend({
 		TimeAgo,
 	},
 	computed: {
-		...mapStores(
-			useVersionsStore,
-		),
+		...mapStores(useVersionsStore),
 		nextVersions(): IVersion[] {
 			return this.versionsStore.nextVersions;
 		},

@@ -3,7 +3,6 @@
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { access as fsAccess, mkdir as fsMkdir } from 'fs/promises';
-import { createContext, Script } from 'vm';
 import axios from 'axios';
 import { UserSettings } from 'n8n-core';
 import { LoggerProxy, PublicInstalledPackage } from 'n8n-workflow';
@@ -234,13 +233,3 @@ export const isClientError = (error: Error): boolean => {
 export function isNpmError(error: unknown): error is { code: number; stdout: string } {
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
-
-const context = createContext({ require });
-export const loadClassInIsolation = (filePath: string, className: string) => {
-	if (process.platform === 'win32') {
-		filePath = filePath.replace(/\\/g, '/');
-	}
-	const script = new Script(`new (require('${filePath}').${className})()`);
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return script.runInContext(context);
-};

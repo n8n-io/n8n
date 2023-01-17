@@ -8,6 +8,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        docker-context: ['', '-debian']
+
     steps:
       - uses: actions/checkout@v3
 
@@ -30,23 +35,11 @@ jobs:
       - name: Build
         uses: docker/build-push-action@v2
         with:
-          context: ./docker/images/n8n
-          build-args: |
-            N8N_VERSION=${{steps.vars.outputs.tag}}
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}
-            ${{ secrets.DOCKER_USERNAME }}/n8n:latest
-
-      - name: Build (debian)
-        uses: docker/build-push-action@v2
-        with:
-          context: ./docker/images/n8n-debian
+          context: ./docker/images/n8n${{ matrix.docker-context }}
           build-args: |
             N8N_VERSION=${{ steps.vars.outputs.tag }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}-debian
-            ${{ secrets.DOCKER_USERNAME }}/n8n:latest-debian
+            ${{ secrets.DOCKER_USERNAME }}/n8n:${{ steps.vars.outputs.tag }}${{ matrix.docker-context }}
+            ${{ secrets.DOCKER_USERNAME }}/n8n:latest${{ matrix.docker-context }}

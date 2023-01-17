@@ -7,7 +7,11 @@ import {
 
 export class VenafiTlsProtectCloudApi implements ICredentialType {
 	name = 'venafiTlsProtectCloudApi';
+
 	displayName = 'Venafi TLS Protect Cloud';
+
+	documentationUrl = 'venafitlsprotectcloud';
+
 	properties = [
 		{
 			displayName: 'API Key',
@@ -16,6 +20,7 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -24,6 +29,7 @@ export class VenafiTlsProtectCloudApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.venafi.cloud',

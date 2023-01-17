@@ -2,7 +2,7 @@ type: object
 properties:
   id:
     type: string
-    example: 12
+    example: '12'
   name:
     type: string
     example: Production

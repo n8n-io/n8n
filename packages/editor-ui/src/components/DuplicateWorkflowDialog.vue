@@ -7,7 +7,7 @@
 		:center="true"
 		width="420px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.content">
 				<n8n-input
 					v-model="name"
@@ -28,34 +28,47 @@
 				/>
 			</div>
 		</template>
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<div :class="$style.footer">
-				<n8n-button @click="save" :loading="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.save')" float="right" />
-				<n8n-button type="secondary" @click="close" :disabled="isSaving" :label="$locale.baseText('duplicateWorkflowDialog.cancel')" float="right" />
+				<n8n-button
+					@click="save"
+					:loading="isSaving"
+					:label="$locale.baseText('duplicateWorkflowDialog.save')"
+					float="right"
+				/>
+				<n8n-button
+					type="secondary"
+					@click="close"
+					:disabled="isSaving"
+					:label="$locale.baseText('duplicateWorkflowDialog.cancel')"
+					float="right"
+				/>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import mixins from "vue-typed-mixins";
+import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
 
-import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from "@/constants";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import { showMessage } from "@/components/mixins/showMessage";
-import TagsDropdown from "@/components/TagsDropdown.vue";
-import Modal from "./Modal.vue";
-import {restApi} from "@/components/mixins/restApi";
-import { mapStores } from "pinia";
-import { useSettingsStore } from "@/stores/settings";
-import { useWorkflowsStore } from "@/stores/workflows";
-import { IWorkflowDataUpdate } from "@/Interface";
+import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import TagsDropdown from '@/components/TagsDropdown.vue';
+import Modal from './Modal.vue';
+import { restApi } from '@/mixins/restApi';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { IWorkflowDataUpdate } from '@/Interface';
+import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
-	name: "DuplicateWorkflow",
-	props: ["modalName", "isActive", "data"],
+	name: 'DuplicateWorkflow',
+	props: ['modalName', 'isActive', 'data'],
 	data() {
 		const currentTagIds = this.data.tags;
 
@@ -74,10 +87,13 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapStores(
-			useSettingsStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useUsersStore, useSettingsStore, useWorkflowsStore),
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(
+				this.usersStore.currentUser,
+				this.workflowsStore.getWorkflowById(this.data.id),
+			);
+		},
 	},
 	watch: {
 		isActive(active) {
@@ -110,9 +126,9 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: this.$locale.baseText('duplicateWorkflowDialog.showMessage.title'),
-					message: this.$locale.baseText('duplicateWorkflowDialog.showMessage.message'),
-					type: "error",
+					title: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.title'),
+					message: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.message'),
+					type: 'error',
 				});
 
 				return;
@@ -122,33 +138,56 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 
 			this.isSaving = true;
 
-			let workflowToUpdate: IWorkflowDataUpdate | undefined;
-			if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
-				workflowToUpdate = workflow;
-			}
+			try {
+				let workflowToUpdate: IWorkflowDataUpdate | undefined;
+				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+					const { createdAt, updatedAt, usedCredentials, ...workflow } =
+						await this.restApi().getWorkflow(this.data.id);
+					workflowToUpdate = workflow;
 
-			const saved = await this.saveAsNewWorkflow({
-				name,
-				data: workflowToUpdate,
-				tags: this.currentTagIds,
-				resetWebhookUrls: true,
-				openInNewWindow: true,
-				resetNodeIds: true,
-			});
+					this.removeForeignCredentialsFromWorkflow(
+						workflowToUpdate,
+						this.credentialsStore.allCredentials,
+					);
+				}
 
-			if (saved) {
-				this.closeDialog();
-				this.$telemetry.track('User duplicated workflow', {
-					old_workflow_id: currentWorkflowId,
-					workflow_id: this.data.id,
+				const saved = await this.saveAsNewWorkflow({
+					name,
+					data: workflowToUpdate,
+					tags: this.currentTagIds,
+					resetWebhookUrls: true,
+					openInNewWindow: true,
+					resetNodeIds: true,
 				});
-			}
 
-			this.isSaving = false;
+				if (saved) {
+					this.closeDialog();
+					this.$telemetry.track('User duplicated workflow', {
+						old_workflow_id: currentWorkflowId,
+						workflow_id: this.data.id,
+						sharing_role: this.workflowPermissions.isOwner ? 'owner' : 'sharee',
+					});
+				}
+			} catch (error) {
+				if (error.httpStatusCode === 403) {
+					error.message = this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.message');
+
+					this.$showError(
+						error,
+						this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.title'),
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('duplicateWorkflowDialog.errors.generic.title'),
+					);
+				}
+			} finally {
+				this.isSaving = false;
+			}
 		},
 		closeDialog(): void {
-			this.modalBus.$emit("close");
+			this.modalBus.$emit('close');
 		},
 	},
 });

@@ -7,8 +7,11 @@ import {
 
 export class TwakeCloudApi implements ICredentialType {
 	name = 'twakeCloudApi';
+
 	displayName = 'Twake Cloud API';
+
 	documentationUrl = 'twake';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Workspace Key',

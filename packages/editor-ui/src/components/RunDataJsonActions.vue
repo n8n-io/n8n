@@ -9,35 +9,37 @@
 					:circle="false"
 				/>
 			</span>
-			<el-dropdown-menu slot="dropdown">
-				<el-dropdown-item :command="{command: 'value'}">
-					{{ $locale.baseText('runData.copyValue') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'itemPath'}" divided>
-					{{ $locale.baseText('runData.copyItemPath') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'parameterPath'}">
-					{{ $locale.baseText('runData.copyParameterPath') }}
-				</el-dropdown-item>
-			</el-dropdown-menu>
+			<template #dropdown>
+				<el-dropdown-menu>
+					<el-dropdown-item :command="{ command: 'value' }">
+						{{ $locale.baseText('runData.copyValue') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{ command: 'itemPath' }" divided>
+						{{ $locale.baseText('runData.copyItemPath') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{ command: 'parameterPath' }">
+						{{ $locale.baseText('runData.copyParameterPath') }}
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>
 
 <script lang="ts">
-import { PropType } from "vue";
-import mixins from "vue-typed-mixins";
-import jp from "jsonpath";
-import { INodeUi } from "@/Interface";
-import { IDataObject } from "n8n-workflow";
-import { copyPaste } from "@/components/mixins/copyPaste";
-import { pinData } from "@/components/mixins/pinData";
-import { nodeHelpers } from "@/components/mixins/nodeHelpers";
-import { genericHelpers } from "@/components/mixins/genericHelpers";
-import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
-import { mapStores } from "pinia";
-import { useWorkflowsStore } from "@/stores/workflows";
-import { useNDVStore } from "@/stores/ndv";
+import { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
+import jp from 'jsonpath';
+import { INodeUi } from '@/Interface';
+import { IDataObject } from 'n8n-workflow';
+import { copyPaste } from '@/mixins/copyPaste';
+import { pinData } from '@/mixins/pinData';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 type JsonPathData = {
 	path: string;
@@ -47,12 +49,7 @@ type JsonPathData = {
 // A path that does not exist so that nothing is selected by default
 const nonExistingJsonPath = '_!^&*';
 
-export default mixins(
-	genericHelpers,
-	nodeHelpers,
-	pinData,
-	copyPaste,
-).extend({
+export default mixins(genericHelpers, nodeHelpers, pinData, copyPaste).extend({
 	name: 'run-data-json-actions',
 	props: {
 		node: {
@@ -86,10 +83,7 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useWorkflowsStore,
-		),
+		...mapStores(useNDVStore, useWorkflowsStore),
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
@@ -100,12 +94,14 @@ export default mixins(
 	},
 	methods: {
 		getJsonValue(): string {
-			let selectedValue = jp.query(this.jsonData, `$${ this.normalisedJsonPath }`)[0];
+			let selectedValue = jp.query(this.jsonData, `$${this.normalisedJsonPath}`)[0];
 			if (this.selectedJsonPath === nonExistingJsonPath) {
 				if (this.hasPinData) {
 					selectedValue = clearJsonKey(this.pinData as object);
 				} else {
-					selectedValue = executionDataToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
+					selectedValue = executionDataToJson(
+						this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex),
+					);
 				}
 			}
 
@@ -126,17 +122,17 @@ export default mixins(
 			const pathParts = newPath.split(']');
 			const index = pathParts[0].slice(1);
 			path = pathParts.slice(1).join(']');
-			startPath = `$item(${ index }).$node["${ this.node!.name }"].json`;
+			startPath = `$item(${index}).$node["${this.node!.name}"].json`;
 
 			return { path, startPath };
 		},
 		getJsonParameterPath(): JsonPathData {
 			const newPath = convertPath(this.normalisedJsonPath);
 			const path = newPath.split(']').slice(1).join(']');
-			let startPath = `$node["${ this.node!.name }"].json`;
+			let startPath = `$node["${this.node!.name}"].json`;
 
 			if (this.distanceFromActive === 1) {
-				startPath = `$json`;
+				startPath = '$json';
 			}
 
 			return { path, startPath };
@@ -181,7 +177,7 @@ export default mixins(
 				if (!path.startsWith('[') && !path.startsWith('.') && path) {
 					path += '.';
 				}
-				value = `{{ ${ startPath + path } }}`;
+				value = `{{ ${startPath + path} }}`;
 			}
 
 			const copyType = {

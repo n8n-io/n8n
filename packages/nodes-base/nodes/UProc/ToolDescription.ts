@@ -49,7 +49,7 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 	}
 
 	//Tool
-	item.options = options.sort((a, b) => (a.name > b.name ? 1 : -1)) as any; // tslint:disable-line:no-any
+	item.options = options.sort((a, b) => (a.name > b.name ? 1 : -1)) as any;
 	item.default = options[0].value as string;
 	operations.push(item);
 }
@@ -60,7 +60,7 @@ let parameters = [];
 //all tools
 for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 	//all parameters in tool
-	for (const param of (tool as IDataObject).p as IDataObject[]) {
+	for (const param of tool.p as IDataObject[]) {
 		const displayName = param.n as string;
 		const capitalizedDisplayName = capitalize(displayName.replace(/_/g, ' '));
 		const description = `The "${capitalizedDisplayName}" value to use as a parameter for this Operation`;

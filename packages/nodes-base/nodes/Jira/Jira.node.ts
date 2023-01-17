@@ -3,7 +3,6 @@ import { mergeWith } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
@@ -47,7 +46,7 @@ export class Jira implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira',
+			name: 'Jira Software',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -287,7 +286,7 @@ export class Jira implements INodeType {
 						if (user.active) {
 							activeUsers.push({
 								name: user.displayName as string,
-								value: (user.accountId || user.name) as string,
+								value: (user.accountId ?? user.name) as string,
 							});
 						}
 						return activeUsers;
@@ -389,9 +388,9 @@ export class Jira implements INodeType {
 				);
 
 				const fields = res.projects
-					// tslint:disable-next-line:no-any
+
 					.find((o: any) => o.id === projectId)
-					// tslint:disable-next-line:no-any
+
 					.issuetypes.find((o: any) => o.id === issueTypeId).fields;
 				for (const key of Object.keys(fields)) {
 					const field = fields[key];
@@ -446,8 +445,8 @@ export class Jira implements INodeType {
 		let responseData;
 		const qs: IDataObject = {};
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 		if (resource === 'issue') {
@@ -457,7 +456,7 @@ export class Jira implements INodeType {
 					const summary = this.getNodeParameter('summary', i) as string;
 					const projectId = this.getNodeParameter('project', i) as string;
 					const issueTypeId = this.getNodeParameter('issueType', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IIssue = {};
 					const fields: IFields = {
 						summary,
@@ -560,7 +559,7 @@ export class Jira implements INodeType {
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IIssue = {};
 					const fields: IFields = {};
 					if (updateFields.summary) {
@@ -674,7 +673,7 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const simplifyOutput = this.getNodeParameter('simplifyOutput', i) as boolean;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.fields) {
 						qs.fields = additionalFields.fields as string;
 					}
@@ -685,7 +684,7 @@ export class Jira implements INodeType {
 						qs.expand = additionalFields.expand as string;
 					}
 					if (simplifyOutput) {
-						qs.expand = `${qs.expand || ''},names`;
+						qs.expand = `${qs.expand ?? ''},names`;
 					}
 					if (additionalFields.properties) {
 						qs.properties = additionalFields.properties as string;
@@ -703,7 +702,7 @@ export class Jira implements INodeType {
 
 					if (simplifyOutput) {
 						// Use rendered fields if requested and available
-						qs.expand = qs.expand || '';
+						qs.expand = qs.expand ?? '';
 						if (
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields &&
@@ -734,11 +733,11 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v2/#api-rest-api-2-search-post
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
 					if (options.fields) {
-						body.fields = (options.fields as string).split(',') as string[];
+						body.fields = (options.fields as string).split(',');
 					}
 					if (options.jql) {
 						body.jql = options.jql as string;
@@ -754,16 +753,16 @@ export class Jira implements INodeType {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
 							'issues',
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
-							`/api/2/search`,
+							'/api/2/search',
 							'POST',
 							body,
 						);
@@ -782,7 +781,7 @@ export class Jira implements INodeType {
 			if (operation === 'changelog') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					if (returnAll) {
 						responseData = await jiraSoftwareCloudApiRequestAllItems.call(
 							this,
@@ -791,7 +790,7 @@ export class Jira implements INodeType {
 							'GET',
 						);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit', i);
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
 							`/api/2/issue/${issueKey}/changelog`,
@@ -814,8 +813,8 @@ export class Jira implements INodeType {
 			if (operation === 'notify') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
+					const jsonActive = this.getNodeParameter('jsonParameters', 0);
 					const body: INotify = {};
 					if (additionalFields.textBody) {
 						body.textBody = additionalFields.textBody as string;
@@ -920,7 +919,7 @@ export class Jira implements INodeType {
 			if (operation === 'transitions') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					if (additionalFields.transitionId) {
 						qs.transitionId = additionalFields.transitionId as string;
 					}
@@ -976,7 +975,7 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-issue-issueidorkey-attachments-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 
 					if (items[i].binary === undefined) {
@@ -987,7 +986,7 @@ export class Jira implements INodeType {
 
 					const item = items[i].binary as IBinaryKeyData;
 
-					const binaryData = item[binaryPropertyName] as IBinaryData;
+					const binaryData = item[binaryPropertyName];
 					const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 					if (binaryData === undefined) {
@@ -1047,7 +1046,7 @@ export class Jira implements INodeType {
 			}
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-attachments/#api-rest-api-3-attachment-id-get
 			if (operation === 'get') {
-				const download = this.getNodeParameter('download', 0) as boolean;
+				const download = this.getNodeParameter('download', 0);
 				for (let i = 0; i < length; i++) {
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					responseData = await jiraSoftwareCloudApiRequest.call(
@@ -1066,9 +1065,9 @@ export class Jira implements INodeType {
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
+						returnData[index].binary = {};
 
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1077,11 +1076,11 @@ export class Jira implements INodeType {
 							{},
 							{},
 							// @ts-ignore
-							attachment?.json!.content,
+							attachment?.json.content,
 							{ json: false, encoding: null },
 						);
 						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
+						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
 							buffer,
 							// @ts-ignore
 							attachment.json.filename,
@@ -1092,10 +1091,10 @@ export class Jira implements INodeType {
 				}
 			}
 			if (operation === 'getAll') {
-				const download = this.getNodeParameter('download', 0) as boolean;
+				const download = this.getNodeParameter('download', 0);
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const {
 						fields: { attachment },
 					} = await jiraSoftwareCloudApiRequest.call(
@@ -1106,8 +1105,8 @@ export class Jira implements INodeType {
 						qs,
 					);
 					responseData = attachment;
-					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+					if (!returnAll) {
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 					responseData = responseData.map((data: IDataObject) => ({ json: data }));
@@ -1120,9 +1119,9 @@ export class Jira implements INodeType {
 					returnData.push(...executionData);
 				}
 				if (download) {
-					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0) as string;
+					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
-						returnData[index]['binary'] = {};
+						returnData[index].binary = {};
 						//@ts-ignore
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1135,7 +1134,7 @@ export class Jira implements INodeType {
 							{ json: false, encoding: null },
 						);
 						//@ts-ignore
-						returnData[index]['binary'][binaryPropertyName] = await this.helpers.prepareBinaryData(
+						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
 							buffer,
 							// @ts-ignore
 							attachment.json.filename,
@@ -1153,9 +1152,9 @@ export class Jira implements INodeType {
 			//https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/#api-rest-api-3-issue-issueidorkey-comment-post
 			if (operation === 'add') {
 				for (let i = 0; i < length; i++) {
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
 					if (options.expand) {
 						qs.expand = options.expand as string;
@@ -1163,7 +1162,7 @@ export class Jira implements INodeType {
 					}
 
 					Object.assign(body, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });
@@ -1219,7 +1218,7 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(qs, options);
 					responseData = await jiraSoftwareCloudApiRequest.call(
 						this,
@@ -1241,8 +1240,8 @@ export class Jira implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const returnAll = this.getNodeParameter('returnAll', i);
+					const options = this.getNodeParameter('options', i);
 					const body: IDataObject = {};
 					Object.assign(qs, options);
 					if (returnAll) {
@@ -1255,7 +1254,7 @@ export class Jira implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -1301,15 +1300,15 @@ export class Jira implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const issueKey = this.getNodeParameter('issueKey', i) as string;
 					const commentId = this.getNodeParameter('commentId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonParameters = this.getNodeParameter('jsonParameters', 0) as boolean;
+					const options = this.getNodeParameter('options', i);
+					const jsonParameters = this.getNodeParameter('jsonParameters', 0);
 					const body: IDataObject = {};
 					if (options.expand) {
 						qs.expand = options.expand as string;
 						delete options.expand;
 					}
 					Object.assign(qs, options);
-					if (jsonParameters === false) {
+					if (!jsonParameters) {
 						const comment = this.getNodeParameter('comment', i) as string;
 						if (jiraVersion === 'server') {
 							Object.assign(body, { body: comment });
@@ -1373,7 +1372,7 @@ export class Jira implements INodeType {
 						displayName: this.getNodeParameter('displayName', i),
 					};
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					Object.assign(body, additionalFields);
 

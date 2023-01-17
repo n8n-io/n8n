@@ -23,7 +23,7 @@ export class CiscoWebexTrigger implements INodeType {
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
-			name: 'Webex Trigger',
+			name: 'Webex by Cisco Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -534,13 +534,13 @@ export class CiscoWebexTrigger implements INodeType {
 				};
 
 				if (filters.ownedBy) {
-					body['ownedBy'] = filters.ownedBy as string;
+					body.ownedBy = filters.ownedBy as string;
 				}
 
-				body['secret'] = secret;
+				body.secret = secret;
 
 				if (filter.length) {
-					body['filter'] = filter.join('&');
+					body.filter = filter.join('&');
 				}
 
 				const responseData = await webexApiRequest.call(this, 'POST', endpoint, body);

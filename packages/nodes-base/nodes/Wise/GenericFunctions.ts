@@ -63,7 +63,7 @@ export async function wiseApiRequest(
 
 	let response;
 	try {
-		response = await this.helpers.httpRequest!(options);
+		response = await this.helpers.httpRequest(options);
 	} catch (error) {
 		delete error.config;
 		throw new NodeApiError(this.getNode(), error);
@@ -102,7 +102,7 @@ export async function wiseApiRequest(
 		}
 		// Retry the request with signed token
 		try {
-			response = await this.helpers.httpRequest!(options);
+			response = await this.helpers.httpRequest(options);
 			return response.body;
 		} catch (error) {
 			throw new NodeApiError(this.getNode(), {

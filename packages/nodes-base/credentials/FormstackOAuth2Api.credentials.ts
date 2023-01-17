@@ -4,9 +4,13 @@ const scopes: string[] = [];
 
 export class FormstackOAuth2Api implements ICredentialType {
 	name = 'formstackOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Formstack OAuth2 API';
+
 	documentationUrl = 'formstackTrigger';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

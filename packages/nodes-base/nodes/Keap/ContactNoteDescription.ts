@@ -97,9 +97,6 @@ export const contactNoteFields: INodeProperties[] = [
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{
@@ -276,9 +273,6 @@ export const contactNoteFields: INodeProperties[] = [
 				displayName: 'Body',
 				name: 'body',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

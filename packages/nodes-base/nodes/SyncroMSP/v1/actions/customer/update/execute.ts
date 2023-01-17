@@ -22,7 +22,7 @@ export async function updateCustomer(
 		notificationEmail,
 		phone,
 		referredBy,
-	} = this.getNodeParameter('updateFields', index) as IDataObject;
+	} = this.getNodeParameter('updateFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -31,7 +31,7 @@ export async function updateCustomer(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address_2 = addressData.address2;
 	}
 
@@ -50,8 +50,7 @@ export async function updateCustomer(
 		referred_by: referredBy,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	if (!responseData.customer) {
 		throw new NodeApiError(this.getNode(), responseData, {
 			httpCode: '404',

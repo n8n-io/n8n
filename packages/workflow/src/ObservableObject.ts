@@ -4,7 +4,7 @@
 /* eslint-disable no-underscore-dangle */
 import { IDataObject, IObservableObject } from './Interfaces';
 
-export interface IObservableOptions {
+interface IObservableOptions {
 	ignoreEmptyOnFirstChild?: boolean;
 }
 

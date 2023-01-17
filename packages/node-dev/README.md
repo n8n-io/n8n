@@ -14,23 +14,19 @@ npm install n8n-node-dev -g
 - [Usage](#usage)
 - [Commands](#commands)
 - [Create a node](#create-a-node)
-    - [Node Type](#node-type)
-    - [Node Type Description](#node-type-description)
-    - [Node Properties](#node-properties)
-    - [Node Property Options](#node-property-options)
+  - [Node Type](#node-type)
+  - [Node Type Description](#node-type-description)
+  - [Node Properties](#node-properties)
+  - [Node Property Options](#node-property-options)
 - [License](#license)
-
 
 ## Usage
 
 The commandline tool can be started with `n8n-node-dev <COMMAND>`
 
-
-
 ## Commands
 
 The following commands exist:
-
 
 ### build
 
@@ -41,12 +37,9 @@ overwritten with `--destination <FOLDER_PATH>`
 When "--watch" gets set it starts in watch mode and automatically builds and
 copies files whenever they change. To stop press "ctrl + c".
 
-
 ### new
 
 Creates new basic credentials or node of the selected type to have a first starting point.
-
-
 
 ## Create a node
 
@@ -59,12 +52,14 @@ Depending on which method got implemented defines if it is a a regular-, trigger
 or webhook-node.
 
 A simple regular node which:
- - defines one node property
- - sets its value do all items it receives
+
+- defines one node property
+- sets its value do all items it receives
 
 would look like this:
 
 File named: `MyNode.node.ts`
+
 ```TypeScript
 import { IExecuteFunctions } from 'n8n-core';
 import {
@@ -132,84 +127,79 @@ following methods defined which contains the actual logic:
 **Regular node**
 
 Method get called when the workflow gets executed
- - `execute`: Executed once no matter how many items
- - `executeSingle`: Executed once for every item
+
+- `execute`: Executed once no matter how many items
+- `executeSingle`: Executed once for every item
 
 By default always `execute` should be used especially when creating a
 third-party integration. The reason for that is that it is way more flexible
 and allows to, for example, return a different amount of items than it received
-as input. This is very important when a node should query data like *return
-all users*. In that case, does the node normally just receive one input-item
+as input. This is very important when a node should query data like _return
+all users_. In that case, does the node normally just receive one input-item
 but returns as many as users exist. So in doubt always `execute` should be
 used!
-
 
 **Trigger node**
 
 Method gets called once when the workflow gets activated. It can then trigger
 workflow runs which data it provides by itself.
 
- - `trigger`
+- `trigger`
 
- **Webhook node**
+**Webhook node**
 
 Method gets called when webhook gets called.
 
- - `webhook`
-
+- `webhook`
 
 ### Node Type
 
 Property overview
 
- - **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
- - **execute** [optional]: Method get called when the workflow gets executed (once).
- - **executeSingle** [optional]: Method get called when the workflow gets executed (once for every item).
- - **hooks** [optional]: The hook methods.
- - **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
- - **trigger** [optional]: Method gets called once when the workflow gets activated.
- - **webhook** [optional]: Method gets called when webhook gets called.
- - **webhookMethods** [optional]: Methods to setup webhooks on external services.
-
-
+- **description** [required]: Describes the node like its name, properties, hooks, ... see `Node Type Description` bellow.
+- **execute** [optional]: Method get called when the workflow gets executed (once).
+- **executeSingle** [optional]: Method get called when the workflow gets executed (once for every item).
+- **hooks** [optional]: The hook methods.
+- **methods** [optional]: Additional methods. Currently only "loadOptions" exists which allows loading options for parameters from external services
+- **trigger** [optional]: Method gets called once when the workflow gets activated.
+- **webhook** [optional]: Method gets called when webhook gets called.
+- **webhookMethods** [optional]: Methods to setup webhooks on external services.
 
 ### Node Type Description
 
 The following properties can be set in the node description:
 
- - **credentials** [optional]: Credentials the node requests access to
- - **defaults** [required]: Default "name" and "color" to set on node when it gets created
- - **displayName** [required]: Name to display users in Editor UI
- - **description** [required]: Description to display users in Editor UI
- - **group** [required]: Node group for example "transform" or "trigger"
- - **hooks** [optional]: Methods to execute at different points in time like when the workflow gets activated or deactivated
- - **icon** [optional]: Icon to display (can be an icon or a font awsome icon)
- - **inputs** [required]: Types of inputs the node has (currently only "main" exists) and the amount
- - **outputs** [required]: Types of outputs the node has (currently only "main" exists) and the amount
- - **outputNames** [optional]: In case a node has multiple outputs names can be set that users know what data to expect
- - **maxNodes** [optional]: If not an unlimited amount of nodes of that type can exist in a workflow the max-amount can be specified
- - **name** [required]: Name of the node (for n8n to use internally, in camelCase)
- - **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
- - **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
- - **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet.
- - **webhooks** [optional]: Webhooks the node should listen to
-
+- **credentials** [optional]: Credentials the node requests access to
+- **defaults** [required]: Default "name" and "color" to set on node when it gets created
+- **displayName** [required]: Name to display users in Editor UI
+- **description** [required]: Description to display users in Editor UI
+- **group** [required]: Node group for example "transform" or "trigger"
+- **hooks** [optional]: Methods to execute at different points in time like when the workflow gets activated or deactivated
+- **icon** [optional]: Icon to display (can be an icon or a font awsome icon)
+- **inputs** [required]: Types of inputs the node has (currently only "main" exists) and the amount
+- **outputs** [required]: Types of outputs the node has (currently only "main" exists) and the amount
+- **outputNames** [optional]: In case a node has multiple outputs names can be set that users know what data to expect
+- **maxNodes** [optional]: If not an unlimited amount of nodes of that type can exist in a workflow the max-amount can be specified
+- **name** [required]: Name of the node (for n8n to use internally, in camelCase)
+- **properties** [required]: Properties which get displayed in the Editor UI and can be set by the user
+- **subtitle** [optional]: Text which should be displayed underneath the name of the node in the Editor UI (can be an expression)
+- **version** [required]: Version of the node. Currently always "1" (integer). For future usage, does not get used yet.
+- **webhooks** [optional]: Webhooks the node should listen to
 
 ### Node Properties
 
 The following properties can be set in the node properties:
 
- - **default** [required]: Default value of the property
- - **description** [required]: Description that is displayed to users in the Editor UI
- - **displayName** [required]: Name that is displayed to users in the Editor UI
- - **displayOptions**  [optional]: Defines logic to decide if a property should be displayed or not
- - **name** [required]: Name of the property (for n8n to use internally, in camelCase)
- - **options** [optional]: The options the user can select when type of property is "collection", "fixedCollection" or "options"
- - **placeholder** [optional]: Placeholder text that is displayed to users in the Editor UI
- - **type** [required]: Type of the property. If it is for example a "string", "number", ...
- - **typeOptions** [optional]: Additional options for type. Like for example the min or max value of a number
- - **required** [optional]: Defines if the value has to be set or if it can stay empty
-
+- **default** [required]: Default value of the property
+- **description** [required]: Description that is displayed to users in the Editor UI
+- **displayName** [required]: Name that is displayed to users in the Editor UI
+- **displayOptions** [optional]: Defines logic to decide if a property should be displayed or not
+- **name** [required]: Name of the property (for n8n to use internally, in camelCase)
+- **options** [optional]: The options the user can select when type of property is "collection", "fixedCollection" or "options"
+- **placeholder** [optional]: Placeholder text that is displayed to users in the Editor UI
+- **type** [required]: Type of the property. If it is for example a "string", "number", ...
+- **typeOptions** [optional]: Additional options for type. Like for example the min or max value of a number
+- **required** [optional]: Defines if the value has to be set or if it can stay empty
 
 ### Node Property Options
 
@@ -217,7 +207,7 @@ The following properties can be set in the node property options.
 
 All properties are optional. However, most only work when the node-property is of a specfic type.
 
-- **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
+- **alwaysOpenEditWindow** [type: json]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
 - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
 - **maxValue** [type: number]: Maximum value of the number
 - **minValue** [type: number]: Minimum value of the number

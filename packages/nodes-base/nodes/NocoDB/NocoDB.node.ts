@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -181,7 +180,10 @@ export class NocoDB implements INodeType {
 					const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 					return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), `Error while fetching projects! (${e})`);
+					throw new NodeOperationError(
+						this.getNode(),
+						new Error('Error while fetching projects!', { cause: e }),
+					);
 				}
 			},
 			// This only supports using the Project ID
@@ -194,10 +196,13 @@ export class NocoDB implements INodeType {
 						const responseData = await apiRequest.call(this, requestMethod, endpoint, {}, {});
 						return responseData.list.map((i: IDataObject) => ({ name: i.title, value: i.id }));
 					} catch (e) {
-						throw new NodeOperationError(this.getNode(), `Error while fetching tables! (${e})`);
+						throw new NodeOperationError(
+							this.getNode(),
+							new Error('Error while fetching tables!', { cause: e }),
+						);
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `No project selected!`);
+					throw new NodeOperationError(this.getNode(), 'No project selected!');
 				}
 			},
 		},
@@ -209,8 +214,8 @@ export class NocoDB implements INodeType {
 		let responseData;
 
 		const version = this.getNodeParameter('version', 0) as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let returnAll = false;
 		let requestMethod = '';
@@ -273,7 +278,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -291,7 +296,6 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 
 								let postUrl = '';
 								if (version === 1) {
@@ -300,9 +304,17 @@ export class NocoDB implements INodeType {
 									postUrl = '/api/v1/db/storage/upload';
 								}
 
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}
@@ -378,60 +390,70 @@ export class NocoDB implements INodeType {
 				const data = [];
 				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
 				try {
-						for (let i = 0; i < items.length; i++) {
-								requestMethod = 'GET';
+					for (let i = 0; i < items.length; i++) {
+						requestMethod = 'GET';
 
-								if (version === 1) {
-										endPoint = `/nc/${projectId}/api/v1/${table}`;
-								} else if (version === 2) {
-										endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
-								}
-
-								returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-								qs = this.getNodeParameter('options', i, {}) as IDataObject;
-
-								if (qs.sort) {
-										const properties = (qs.sort as IDataObject).property as Array<{ field: string, direction: string }>;
-										qs.sort = properties.map(prop => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`).join(',');
-								}
-
-								if (qs.fields) {
-										qs.fields = (qs.fields as IDataObject[]).join(',');
-								}
-
-								if (returnAll === true) {
-										responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
-								} else {
-										qs.limit = this.getNodeParameter('limit', 0) as number;
-										responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-										if (version === 2) {
-												responseData = responseData.list;
-										}
-								}
-
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray(responseData),
-									{ itemData: { item: i } },
-								);
-								returnData.push(...executionData);
-
-								if (downloadAttachments === true) {
-										const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', 0) as string).split(',');
-										const response = await downloadRecordAttachments.call(this, responseData, downloadFieldNames);
-										data.push(...response);
-								}
+						if (version === 1) {
+							endPoint = `/nc/${projectId}/api/v1/${table}`;
+						} else if (version === 2) {
+							endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
 						}
+
+						returnAll = this.getNodeParameter('returnAll', 0);
+						qs = this.getNodeParameter('options', i, {});
+
+						if (qs.sort) {
+							const properties = (qs.sort as IDataObject).property as Array<{
+								field: string;
+								direction: string;
+							}>;
+							qs.sort = properties
+								.map((prop) => `${prop.direction === 'asc' ? '' : '-'}${prop.field}`)
+								.join(',');
+						}
+
+						if (qs.fields) {
+							qs.fields = (qs.fields as IDataObject[]).join(',');
+						}
+
+						if (returnAll) {
+							responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
+						} else {
+							qs.limit = this.getNodeParameter('limit', 0);
+							responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+							if (version === 2) {
+								responseData = responseData.list;
+							}
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 
 						if (downloadAttachments) {
-								return [data];
+							const downloadFieldNames = (
+								this.getNodeParameter('downloadFieldNames', 0) as string
+							).split(',');
+							const response = await downloadRecordAttachments.call(
+								this,
+								responseData,
+								downloadFieldNames,
+							);
+							data.push(...response);
 						}
+					}
 
-				 } catch (error) {
-						if (this.continueOnFail()) {
-								returnData.push({ json:{ error: error.toString() } });
-						} else {
-							throw error;
-						}
+					if (downloadAttachments) {
+						return [data];
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						returnData.push({ json: { error: error.toString() } });
+					} else {
+						throw error;
+					}
 				}
 
 				return this.prepareOutputData(returnData as INodeExecutionData[]);
@@ -442,72 +464,81 @@ export class NocoDB implements INodeType {
 				const newItems: INodeExecutionData[] = [];
 
 				for (let i = 0; i < items.length; i++) {
-						try {
-								const id = this.getNodeParameter('id', i) as string;
+					try {
+						const id = this.getNodeParameter('id', i) as string;
 
-								if (version === 1) {
-										endPoint = `/nc/${projectId}/api/v1/${table}/${id}`;
-								}	else if (version === 2) {
-										endPoint = `/api/v1/db/data/noco/${projectId}/${table}/${id}`;
-								}
-
-								responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
-
-								if (version === 2 ) {
-										if (Object.keys(responseData).length === 0) {
-												// Get did fail
-												const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
-												if (this.continueOnFail()) {
-														newItems.push({ json: {error: errorMessage }});
-														continue;
-												}
-												throw new NodeApiError(this.getNode(), { message: errorMessage }, { message: errorMessage, itemIndex: i });
-										}
-								}
-
-								const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
-
-								if (downloadAttachments === true) {
-										const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(',');
-										const data = await downloadRecordAttachments.call(this, [responseData], downloadFieldNames);
-										const newItem = {
-											binary: data[0].binary,
-											json: {},
-										};
-
-										const executionData = this.helpers.constructExecutionMetaData(
-											[newItem] as INodeExecutionData[],
-											{ itemData: { item: i } },
-										);
-
-										newItems.push(...executionData);
-								} else {
-										const executionData = this.helpers.constructExecutionMetaData(
-											this.helpers.returnJsonArray(responseData),
-											{ itemData: { item: i } },
-										);
-
-										newItems.push(...executionData);
-								}
-
-						} catch (error) {
-								if (this.continueOnFail()) {
-									const executionData = this.helpers.constructExecutionMetaData(
-										this.helpers.returnJsonArray({error: error.toString()}),
-										{ itemData: { item: i } },
-								);
-
-								newItems.push(...executionData);
-										continue;
-								}
-								throw new NodeApiError(this.getNode(), error, {itemIndex: i});
+						if (version === 1) {
+							endPoint = `/nc/${projectId}/api/v1/${table}/${id}`;
+						} else if (version === 2) {
+							endPoint = `/api/v1/db/data/noco/${projectId}/${table}/${id}`;
 						}
+
+						responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
+
+						if (version === 2) {
+							if (Object.keys(responseData).length === 0) {
+								// Get did fail
+								const errorMessage = `The row with the ID "${id}" could not be queried. It probably doesn't exist.`;
+								if (this.continueOnFail()) {
+									newItems.push({ json: { error: errorMessage } });
+									continue;
+								}
+								throw new NodeApiError(
+									this.getNode(),
+									{ message: errorMessage },
+									{ message: errorMessage, itemIndex: i },
+								);
+							}
+						}
+
+						const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
+
+						if (downloadAttachments) {
+							const downloadFieldNames = (
+								this.getNodeParameter('downloadFieldNames', i) as string
+							).split(',');
+							const data = await downloadRecordAttachments.call(
+								this,
+								[responseData],
+								downloadFieldNames,
+							);
+							const newItem = {
+								binary: data[0].binary,
+								json: {},
+							};
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								[newItem] as INodeExecutionData[],
+								{ itemData: { item: i } },
+							);
+
+							newItems.push(...executionData);
+						} else {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							newItems.push(...executionData);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.toString() }),
+								{ itemData: { item: i } },
+							);
+
+							newItems.push(...executionData);
+							continue;
+						}
+						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
+					}
 				}
 				return this.prepareOutputData(newItems);
 			}
 
 			if (operation === 'update') {
-				let requestMethod = 'PATCH';
+				requestMethod = 'PATCH';
 
 				if (version === 1) {
 					endPoint = `/nc/${projectId}/api/v1/${table}/bulk`;
@@ -557,7 +588,7 @@ export class NocoDB implements INodeType {
 										{ itemIndex: i },
 									);
 								}
-								const binaryData = items[i].binary![binaryPropertyName] as IBinaryData;
+								const binaryData = items[i].binary![binaryPropertyName];
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 								const formData = {
@@ -575,16 +606,23 @@ export class NocoDB implements INodeType {
 										args: {},
 									}),
 								};
-								const qs = { project_id: projectId };
 								let postUrl = '';
 								if (version === 1) {
 									postUrl = '/dashboard';
 								} else if (version === 2) {
 									postUrl = '/api/v1/db/storage/upload';
 								}
-								responseData = await apiRequest.call(this, 'POST', postUrl, {}, qs, undefined, {
-									formData,
-								});
+								responseData = await apiRequest.call(
+									this,
+									'POST',
+									postUrl,
+									{},
+									{ project_id: projectId },
+									undefined,
+									{
+										formData,
+									},
+								);
 								newItem[field.fieldName] = JSON.stringify([responseData]);
 							}
 						}

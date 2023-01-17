@@ -11,10 +11,15 @@ const scopes = [
 
 export class YouTubeOAuth2Api implements ICredentialType {
 	name = 'youTubeOAuth2Api';
+
 	icon = 'node:n8n-nodes-base.youTube';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'YouTube OAuth2 API';
+
 	documentationUrl = 'google';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

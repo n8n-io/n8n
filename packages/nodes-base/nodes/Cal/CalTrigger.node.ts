@@ -95,7 +95,6 @@ export class CalTrigger implements INodeType {
 						description: 'Template to customize the webhook payload',
 						default: '',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 4,
 						},
 					},

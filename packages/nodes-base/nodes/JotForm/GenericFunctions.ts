@@ -17,12 +17,11 @@ export async function jotformApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('jotFormApi');
 	let options: OptionsWithUri = {
@@ -33,7 +32,7 @@ export async function jotformApiRequest(
 		method,
 		qs,
 		form: body,
-		uri: uri || `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
+		uri: uri ?? `https://${credentials.apiDomain || 'api.jotform.com'}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -42,7 +41,7 @@ export async function jotformApiRequest(
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

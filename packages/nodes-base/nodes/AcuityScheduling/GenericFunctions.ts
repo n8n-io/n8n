@@ -17,12 +17,10 @@ export async function acuitySchedulingApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	_option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -34,7 +32,7 @@ export async function acuitySchedulingApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://acuityscheduling.com/api/v1${resource}`,
+		uri: uri ?? `https://acuityscheduling.com/api/v1${resource}`,
 		json: true,
 	};
 
@@ -47,10 +45,10 @@ export async function acuitySchedulingApiRequest(
 				password: credentials.apiKey as string,
 			};
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
 			delete options.auth;
-			return await this.helpers.requestOAuth2!.call(
+			return await this.helpers.requestOAuth2.call(
 				this,
 				'acuitySchedulingOAuth2Api',
 				options,

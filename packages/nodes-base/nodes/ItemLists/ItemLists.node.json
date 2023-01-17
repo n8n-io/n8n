@@ -35,6 +35,6 @@
 		"Iterate"
 	],
 	"subcategories": {
-		"Core Nodes": ["Helpers"]
+		"Core Nodes": ["Helpers", "Data Transformation"]
 	}
 }

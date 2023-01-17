@@ -229,14 +229,7 @@ export function getUserSettingsPath(): string {
  *
  */
 export function getUserN8nFolderPath(): string {
-	let userFolder;
-	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
-		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE];
-	} else {
-		userFolder = getUserHome();
-	}
-
-	return path.join(userFolder, USER_SETTINGS_SUBFOLDER);
+	return path.join(getUserHome(), USER_SETTINGS_SUBFOLDER);
 }
 
 /**
@@ -264,16 +257,19 @@ export function getUserN8nFolderDownloadedNodesPath(): string {
  *
  */
 export function getUserHome(): string {
-	let variableName = 'HOME';
-	if (process.platform === 'win32') {
-		variableName = 'USERPROFILE';
-	}
+	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
+		return process.env[USER_FOLDER_ENV_OVERWRITE];
+	} else {
+		let variableName = 'HOME';
+		if (process.platform === 'win32') {
+			variableName = 'USERPROFILE';
+		}
 
-	if (process.env[variableName] === undefined) {
-		// If for some reason the variable does not exist
-		// fall back to current folder
-		return process.cwd();
+		if (process.env[variableName] === undefined) {
+			// If for some reason the variable does not exist
+			// fall back to current folder
+			return process.cwd();
+		}
+		return process.env[variableName] as string;
 	}
-
-	return process.env[variableName] as string;
 }

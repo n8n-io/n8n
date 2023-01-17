@@ -10,7 +10,7 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
@@ -39,7 +39,7 @@ export type AuthenticatedRequest<
 // ----------------------------------
 
 export declare namespace WorkflowRequest {
-	type RequestBody = Partial<{
+	type CreateUpdatePayload = Partial<{
 		id: string; // delete if sent
 		name: string;
 		nodes: INode[];
@@ -50,13 +50,26 @@ export declare namespace WorkflowRequest {
 		hash: string;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+	type ManualRunPayload = {
+		workflowData: IWorkflowDb;
+		runData: IRunData;
+		pinData: IPinData;
+		startNodes?: string[];
+		destinationNode?: string;
+	};
+
+	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
 	type Get = AuthenticatedRequest<{ id: string }>;
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		CreateUpdatePayload,
+		{ forceSave?: string }
+	>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
@@ -66,17 +79,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActivationErrors = Get;
 
-	type ManualRun = AuthenticatedRequest<
-		{},
-		{},
-		{
-			workflowData: IWorkflowDb;
-			runData: IRunData;
-			pinData: IPinData;
-			startNodes?: string[];
-			destinationNode?: string;
-		}
-	>;
+	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
@@ -194,6 +197,8 @@ export declare namespace PasswordResetRequest {
 // ----------------------------------
 
 export declare namespace UserRequest {
+	export type List = AuthenticatedRequest;
+
 	export type Invite = AuthenticatedRequest<{}, {}, Array<{ email: string }>>;
 
 	export type ResolveSignUp = AuthlessRequest<
@@ -336,4 +341,12 @@ export declare namespace NodeRequest {
 
 export declare namespace CurlHelper {
 	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
+}
+
+// ----------------------------------
+//           /license
+// ----------------------------------
+
+export declare namespace LicenseRequest {
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }

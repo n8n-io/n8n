@@ -13,12 +13,11 @@ export async function workableApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('workableApi')) as {
 		accessToken: string;
@@ -30,7 +29,7 @@ export async function workableApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://${credentials.subdomain}.workable.com/spi/v3${resource}`,
+		uri: uri ?? `https://${credentials.subdomain}.workable.com/spi/v3${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);
@@ -38,7 +37,7 @@ export async function workableApiRequest(
 		delete options.body;
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

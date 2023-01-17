@@ -20,7 +20,7 @@ export class AffinityTrigger implements INodeType {
 		version: 1,
 		description: 'Handle Affinity events via webhooks',
 		defaults: {
-			name: 'Affinity-Trigger',
+			name: 'Affinity Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

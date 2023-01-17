@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';;
+import config from '@/config';
 
 export class IntroducePinData1654090467022 implements MigrationInterface {
 	name = 'IntroducePinData1654090467022';

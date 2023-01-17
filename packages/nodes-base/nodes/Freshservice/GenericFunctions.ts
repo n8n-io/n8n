@@ -45,7 +45,7 @@ export async function freshserviceApiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		if (error.error.description === 'Validation failed') {
 			const numberOfErrors = error.error.errors.length;
@@ -99,14 +99,14 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
-		return await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
+		return freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
 	}
 
 	const responseData = await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

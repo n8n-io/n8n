@@ -9,5 +9,8 @@
 				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/"
 			}
 		]
+	},
+	"subcategories": {
+		"Core Nodes": ["Helpers", "Data Transformation"]
 	}
 }

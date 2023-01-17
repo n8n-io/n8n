@@ -7,8 +7,11 @@ import {
 
 export class CloudflareApi implements ICredentialType {
 	name = 'cloudflareApi';
+
 	displayName = 'Cloudflare API';
+
 	documentationUrl = 'cloudflare';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',
@@ -22,7 +25,7 @@ export class CloudflareApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'Authorization': '=Bearer {{$credentials.apiToken}}',
+				Authorization: '=Bearer {{$credentials.apiToken}}',
 			},
 		},
 	};

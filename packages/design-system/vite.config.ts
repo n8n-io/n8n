@@ -5,9 +5,7 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 export default mergeConfig(
 	defineConfig({
-		plugins: [
-			vue(),
-		],
+		plugins: [vue()],
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
@@ -40,6 +38,11 @@ export default mergeConfig(
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+		},
+		css: {
+			modules: {
+				generateScopedName: (name) => `_${name}_`,
+			},
 		},
 	}),
 );

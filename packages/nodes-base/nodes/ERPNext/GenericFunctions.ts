@@ -4,6 +4,12 @@ import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
+/**
+ * Return the base API URL based on the user's environment.
+ */
+const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
+	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
+
 export async function erpNextApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -24,9 +30,9 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${baseUrl}${resource}`,
+		uri: uri ?? `${baseUrl}${resource}`,
 		json: true,
-		rejectUnauthorized: !credentials.allowUnauthorizedCerts as boolean,
+		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
 
 	options = Object.assign({}, options, option);
@@ -50,8 +56,7 @@ export async function erpNextApiRequest(
 				message: 'Please ensure the subdomain is correct.',
 			});
 		}
-
-		throw new NodeApiError(this.getNode(), error);
+		throw error;
 	}
 }
 
@@ -63,27 +68,20 @@ export async function erpNextApiRequestAllItems(
 	body: IDataObject,
 	query: IDataObject = {},
 ) {
-	// tslint:disable-next-line: no-any
 	const returnData: any[] = [];
 
 	let responseData;
-	query!.limit_start = 0;
-	query!.limit_page_length = 1000;
+	query.limit_start = 0;
+	query.limit_page_length = 1000;
 
 	do {
 		responseData = await erpNextApiRequest.call(this, method, resource, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query!.limit_start += query!.limit_page_length - 1;
+		query.limit_start += query.limit_page_length - 1;
 	} while (responseData.data && responseData.data.length > 0);
 
 	return returnData;
 }
-
-/**
- * Return the base API URL based on the user's environment.
- */
-const getBaseUrl = ({ environment, domain, subdomain }: ERPNextApiCredentials) =>
-	environment === 'cloudHosted' ? `https://${subdomain}.erpnext.com` : domain;
 
 type ERPNextApiCredentials = {
 	apiKey: string;

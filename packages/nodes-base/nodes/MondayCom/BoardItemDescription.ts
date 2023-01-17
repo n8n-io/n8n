@@ -33,8 +33,8 @@ export const boardItemOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create an item in a board\'s group',
-				action: 'Create an item in a board\'s group',
+				description: "Create an item in a board's group",
+				action: "Create an item in a board's group",
 			},
 			{
 				name: 'Delete',

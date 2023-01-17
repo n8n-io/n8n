@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryData,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -154,16 +153,16 @@ export class Mindee implements INodeType {
 		const length = items.length;
 		let responseData;
 		const version = this.getNodeParameter('apiVersion', 0) as number;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		let endpoint;
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'receipt') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -173,7 +172,7 @@ export class Mindee implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
@@ -186,7 +185,7 @@ export class Mindee implements INodeType {
 							responseData = await mindeeApiRequest.call(
 								this,
 								'POST',
-								`/expense_receipts/v2/predict`,
+								'/expense_receipts/v2/predict',
 								{},
 								{},
 								{
@@ -220,7 +219,7 @@ export class Mindee implements INodeType {
 								},
 							);
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {
@@ -232,9 +231,9 @@ export class Mindee implements INodeType {
 
 				if (resource === 'invoice') {
 					if (operation === 'predict') {
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 
 						if (items[i].binary === undefined) {
 							throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
@@ -244,7 +243,7 @@ export class Mindee implements INodeType {
 
 						const item = items[i].binary as IBinaryKeyData;
 
-						const binaryData = item[binaryPropertyName] as IBinaryData;
+						const binaryData = item[binaryPropertyName];
 						const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 						if (binaryData === undefined) {
@@ -294,7 +293,7 @@ export class Mindee implements INodeType {
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Invalid API version');
 						}
-						if (rawData === false) {
+						if (!rawData) {
 							if (version === 1) {
 								responseData = cleanDataPreviousApiVersions(responseData.predictions);
 							} else if (version === 3) {

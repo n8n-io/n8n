@@ -7,8 +7,11 @@ import {
 
 export class ClockifyApi implements ICredentialType {
 	name = 'clockifyApi';
+
 	displayName = 'Clockify API';
+
 	documentationUrl = 'clockify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
@@ -18,6 +21,7 @@ export class ClockifyApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class ClockifyApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.clockify.me/api/v1',

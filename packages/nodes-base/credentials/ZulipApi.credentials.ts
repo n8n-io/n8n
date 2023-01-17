@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ZulipApi implements ICredentialType {
 	name = 'zulipApi';
+
 	displayName = 'Zulip API';
+
 	documentationUrl = 'zulip';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'URL',

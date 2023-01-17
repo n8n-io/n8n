@@ -30,6 +30,42 @@ import { simpleParser, Source as ParserSource } from 'mailparser';
 import _ from 'lodash';
 import { ICredentialsDataImap, isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
+export async function parseRawEmail(
+	this: ITriggerFunctions,
+	messageEncoded: ParserSource,
+	dataPropertyNameDownload: string,
+): Promise<INodeExecutionData> {
+	const responseData = await simpleParser(messageEncoded);
+	const headers: IDataObject = {};
+	for (const header of responseData.headerLines) {
+		headers[header.key] = header.line;
+	}
+
+	// @ts-ignore
+	responseData.headers = headers;
+	// @ts-ignore
+	responseData.headerLines = undefined;
+
+	const binaryData: IBinaryKeyData = {};
+	if (responseData.attachments) {
+		for (let i = 0; i < responseData.attachments.length; i++) {
+			const attachment = responseData.attachments[i];
+			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
+				attachment.content,
+				attachment.filename,
+				attachment.contentType,
+			);
+		}
+		// @ts-ignore
+		responseData.attachments = undefined;
+	}
+
+	return {
+		json: responseData as unknown as IDataObject,
+		binary: Object.keys(binaryData).length ? binaryData : undefined,
+	} as INodeExecutionData;
+}
+
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
@@ -39,7 +75,7 @@ const versionDescription: INodeTypeDescription = {
 	description: 'Triggers the workflow when a new email is received',
 	eventTriggerDescription: 'Waiting for you to receive an email',
 	defaults: {
-		name: 'IMAP Email',
+		name: 'Email Trigger (IMAP)',
 		color: '#44AA22',
 	},
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -202,7 +238,7 @@ export class EmailReadImapV2 implements INodeType {
 						};
 						const tlsOptions: IDataObject = {};
 
-						if (credentials.allowUnauthorizedCerts === true) {
+						if (credentials.allowUnauthorizedCerts) {
 							tlsOptions.rejectUnauthorized = false;
 						}
 
@@ -239,7 +275,7 @@ export class EmailReadImapV2 implements INodeType {
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
 		if (!credentials) {
-			throw new NodeOperationError(this.getNode(), `Credentials are not valid for imap node.`);
+			throw new NodeOperationError(this.getNode(), 'Credentials are not valid for imap node.');
 		}
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
@@ -253,7 +289,7 @@ export class EmailReadImapV2 implements INodeType {
 		let isCurrentlyReconnecting = false;
 
 		// Returns the email text
-		// tslint:disable-next-line:no-any
+
 		const getText = async (parts: any[], message: Message, subtype: string) => {
 			if (!message.attributes.struct) {
 				return '';
@@ -278,8 +314,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns the email attachments
 		const getAttachment = async (
-			connection: ImapSimple,
-			// tslint:disable-next-line:no-any
+			imapConnection: ImapSimple,
 			parts: any[],
 			message: Message,
 		): Promise<IBinaryData[]> => {
@@ -295,13 +330,15 @@ export class EmailReadImapV2 implements INodeType {
 			const attachmentPromises = [];
 			let attachmentPromise;
 			for (const attachmentPart of attachmentParts) {
-				attachmentPromise = connection.getPartData(message, attachmentPart).then((partData) => {
-					// Return it in the format n8n expects
-					return this.helpers.prepareBinaryData(
-						partData,
-						attachmentPart.disposition.params.filename,
-					);
-				});
+				attachmentPromise = imapConnection
+					.getPartData(message, attachmentPart)
+					.then(async (partData) => {
+						// Return it in the format n8n expects
+						return this.helpers.prepareBinaryData(
+							partData,
+							attachmentPart.disposition.params.filename,
+						);
+					});
 
 				attachmentPromises.push(attachmentPromise);
 			}
@@ -311,7 +348,7 @@ export class EmailReadImapV2 implements INodeType {
 
 		// Returns all the new unseen messages
 		const getNewEmails = async (
-			connection: ImapSimple,
+			imapConnection: ImapSimple,
 			searchCriteria: Array<string | string[]>,
 		): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
@@ -332,7 +369,7 @@ export class EmailReadImapV2 implements INodeType {
 				};
 			}
 
-			const results = await connection.search(searchCriteria, fetchOptions);
+			const results = await imapConnection.search(searchCriteria, fetchOptions);
 
 			const newEmails: INodeExecutionData[] = [];
 			let newEmail: INodeExecutionData, messageHeader, messageBody;
@@ -378,7 +415,7 @@ export class EmailReadImapV2 implements INodeType {
 				const downloadAttachments = this.getNodeParameter('downloadAttachments') as boolean;
 
 				let dataPropertyAttachmentsPrefixName = '';
-				if (downloadAttachments === true) {
+				if (downloadAttachments) {
 					dataPropertyAttachmentsPrefixName = this.getNodeParameter(
 						'dataPropertyAttachmentsPrefixName',
 					) as string;
@@ -423,9 +460,9 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 
-					if (downloadAttachments === true) {
+					if (downloadAttachments) {
 						// Get attachments and add them if any get found
-						attachments = await getAttachment(connection, parts, message);
+						attachments = await getAttachment(imapConnection, parts, message);
 						if (attachments.length) {
 							newEmail.binary = {};
 							for (let i = 0; i < attachments.length; i++) {
@@ -470,21 +507,21 @@ export class EmailReadImapV2 implements INodeType {
 			if (postProcessAction === 'read') {
 				const uidList = results.map((e) => e.attributes.uid);
 				if (uidList.length > 0) {
-					connection.addFlags(uidList, '\\SEEN');
+					await imapConnection.addFlags(uidList, '\\SEEN');
 				}
 			}
 			return newEmails;
 		};
 
-		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise<void>();
+		const returnedPromise: IDeferredPromise<void> | undefined = await createDeferredPromise();
 
-		const establishConnection = (): Promise<ImapSimple> => {
+		const establishConnection = async (): Promise<ImapSimple> => {
 			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
 			if (options.customEmailConfig !== undefined) {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);
 				} catch (error) {
-					throw new NodeOperationError(this.getNode(), `Custom email config is not valid JSON.`);
+					throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 				}
 			}
 
@@ -527,7 +564,7 @@ export class EmailReadImapV2 implements INodeType {
 							});
 							// Wait with resolving till the returnedPromise got resolved, else n8n will be unhappy
 							// if it receives an error before the workflow got activated
-							returnedPromise.promise().then(() => {
+							await returnedPromise.promise().then(() => {
 								this.emitError(error as Error);
 							});
 						}
@@ -540,12 +577,12 @@ export class EmailReadImapV2 implements INodeType {
 
 			const tlsOptions: IDataObject = {};
 
-			if (credentials.allowUnauthorizedCerts === true) {
+			if (credentials.allowUnauthorizedCerts) {
 				tlsOptions.rejectUnauthorized = false;
 			}
 
 			if (credentials.secure) {
-				tlsOptions.servername = credentials.host as string;
+				tlsOptions.servername = credentials.host;
 			}
 
 			if (!_.isEmpty(tlsOptions)) {
@@ -556,18 +593,19 @@ export class EmailReadImapV2 implements INodeType {
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async (conn) => {
 				conn.on('close', async (_hadError: boolean) => {
-					if (isCurrentlyReconnecting === true) {
-						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
-					} else if (closeFunctionWasCalled === true) {
-						Logger.debug(`Email Read Imap: Shutting down workflow - connected closed`);
+					if (isCurrentlyReconnecting) {
+						Logger.debug('Email Read Imap: Connected closed for forced reconnecting');
+					} else if (closeFunctionWasCalled) {
+						Logger.debug('Email Read Imap: Shutting down workflow - connected closed');
 					} else {
-						Logger.error(`Email Read Imap: Connected closed unexpectedly`);
+						Logger.error('Email Read Imap: Connected closed unexpectedly');
 						this.emitError(new Error('Imap connection closed unexpectedly'));
 					}
 				});
 				conn.on('error', async (error) => {
 					const errorCode = error.code.toUpperCase();
 					Logger.verbose(`IMAP connection experienced an error: (${errorCode})`, { error });
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					await closeFunction();
 					this.emitError(error);
 				});
@@ -583,10 +621,10 @@ export class EmailReadImapV2 implements INodeType {
 
 		if (options.forceReconnect !== undefined) {
 			reconnectionInterval = setInterval(async () => {
-				Logger.verbose(`Forcing reconnect to IMAP server`);
+				Logger.verbose('Forcing reconnect to IMAP server');
 				try {
 					isCurrentlyReconnecting = true;
-					if (connection.closeBox) connection.closeBox(false);
+					if (connection.closeBox) await connection.closeBox(false);
 					connection.end();
 					connection = await establishConnection();
 					await connection.openBox(mailbox);
@@ -604,7 +642,7 @@ export class EmailReadImapV2 implements INodeType {
 			if (reconnectionInterval) {
 				clearInterval(reconnectionInterval);
 			}
-			if (connection.closeBox) connection.closeBox(false);
+			if (connection.closeBox) await connection.closeBox(false);
 			connection.end();
 		}
 
@@ -615,40 +653,4 @@ export class EmailReadImapV2 implements INodeType {
 			closeFunction,
 		};
 	}
-}
-
-export async function parseRawEmail(
-	this: ITriggerFunctions,
-	messageEncoded: ParserSource,
-	dataPropertyNameDownload: string,
-): Promise<INodeExecutionData> {
-	const responseData = await simpleParser(messageEncoded);
-	const headers: IDataObject = {};
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
-	}
-
-	// @ts-ignore
-	responseData.headers = headers;
-	// @ts-ignore
-	responseData.headerLines = undefined;
-
-	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
-		for (let i = 0; i < responseData.attachments.length; i++) {
-			const attachment = responseData.attachments[i];
-			binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-				attachment.content,
-				attachment.filename,
-				attachment.contentType,
-			);
-		}
-		// @ts-ignore
-		responseData.attachments = undefined;
-	}
-
-	return {
-		json: responseData as unknown as IDataObject,
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
 }

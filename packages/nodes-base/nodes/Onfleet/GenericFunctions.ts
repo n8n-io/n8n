@@ -17,12 +17,11 @@ export async function onfleetApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
-	// tslint:disable-next-line:no-any
+
 	qs?: any,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('onfleetApi');
 
@@ -38,7 +37,7 @@ export async function onfleetApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://onfleet.com/api/v2/${resource}`,
+		uri: uri ?? `https://onfleet.com/api/v2/${resource}`,
 		json: true,
 	};
 	try {
@@ -54,10 +53,9 @@ export async function onfleetApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line: no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -65,9 +63,9 @@ export async function onfleetApiRequestAllItems(
 
 	do {
 		responseData = await onfleetApiRequest.call(this, method, endpoint, body, query);
-		query.lastId = responseData['lastId'];
+		query.lastId = responseData.lastId;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (responseData['lastId'] !== undefined);
+	} while (responseData.lastId !== undefined);
 
 	return returnData;
 }

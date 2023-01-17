@@ -218,8 +218,8 @@ export class AwsElb implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -229,11 +229,11 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							('Certificates.member.1.CertificateArn=' +
-								this.getNodeParameter('certificateId', i)) as string,
+							'Certificates.member.1.CertificateArn=' +
+								(this.getNodeParameter('certificateId', i) as string),
 						);
 
-						params.push(('ListenerArn=' + this.getNodeParameter('listenerId', i)) as string);
+						params.push('ListenerArn=' + (this.getNodeParameter('listenerId', i) as string));
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
@@ -251,7 +251,7 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const listenerId = this.getNodeParameter('listenerId', i) as string;
 
@@ -266,7 +266,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeListenerCertificates&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + (this.getNodeParameter('limit', 0) as unknown as string));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -286,11 +286,11 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							('Certificates.member.1.CertificateArn=' +
-								this.getNodeParameter('certificateId', i)) as string,
+							'Certificates.member.1.CertificateArn=' +
+								(this.getNodeParameter('certificateId', i) as string),
 						);
 
-						params.push(('ListenerArn=' + this.getNodeParameter('listenerId', i)) as string);
+						params.push('ListenerArn=' + (this.getNodeParameter('listenerId', i) as string));
 
 						responseData = await awsApiRequestSOAP.call(
 							this,
@@ -316,7 +316,7 @@ export class AwsElb implements INodeType {
 
 						const subnets = this.getNodeParameter('subnets', i) as string[];
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = ['Version=2015-12-01'];
 
@@ -328,15 +328,15 @@ export class AwsElb implements INodeType {
 
 						params.push(`Type=${type}`);
 
-						for (let i = 1; i <= subnets.length; i++) {
-							params.push(`Subnets.member.${i}=${subnets[i - 1]}`);
+						for (let index = 1; index <= subnets.length; index++) {
+							params.push(`Subnets.member.${index}=${subnets[index - 1]}`);
 						}
 
 						if (additionalFields.securityGroups) {
 							const securityGroups = additionalFields.securityGroups as string[];
 
-							for (let i = 1; i <= securityGroups.length; i++) {
-								params.push(`SecurityGroups.member.${i}=${securityGroups[i - 1]}`);
+							for (let index = 1; index <= securityGroups.length; index++) {
+								params.push(`SecurityGroups.member.${index}=${securityGroups[index - 1]}`);
 							}
 						}
 
@@ -344,10 +344,10 @@ export class AwsElb implements INodeType {
 							const tags = (additionalFields.tagsUi as IDataObject).tagValues as IDataObject[];
 
 							if (tags) {
-								for (let i = 1; i <= tags.length; i++) {
-									params.push(`Tags.member.${i}.Key=${tags[i - 1].key}`);
+								for (let index = 1; index <= tags.length; index++) {
+									params.push(`Tags.member.${index}.Key=${tags[index - 1].key}`);
 
-									params.push(`Tags.member.${i}.Value=${tags[i - 1].value}`);
+									params.push(`Tags.member.${index}.Value=${tags[index - 1].value}`);
 								}
 							}
 						}
@@ -368,7 +368,7 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							('LoadBalancerArn=' + this.getNodeParameter('loadBalancerId', i)) as string,
+							'LoadBalancerArn=' + (this.getNodeParameter('loadBalancerId', i) as string),
 						);
 
 						responseData = await awsApiRequestSOAP.call(
@@ -385,16 +385,16 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 
 							if (filters.names) {
 								const names = (filters.names as string).split(',');
 
-								for (let i = 1; i <= names.length; i++) {
-									params.push(`Names.member.${i}=${names[i - 1]}`);
+								for (let index = 1; index <= names.length; index++) {
+									params.push(`Names.member.${index}=${names[index - 1]}`);
 								}
 							}
 
@@ -406,7 +406,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeLoadBalancers&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + this.getNodeParameter('limit', 0).toString());
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -426,7 +426,7 @@ export class AwsElb implements INodeType {
 						const params = ['Version=2015-12-01'];
 
 						params.push(
-							('LoadBalancerArns.member.1=' + this.getNodeParameter('loadBalancerId', i)) as string,
+							'LoadBalancerArns.member.1=' + (this.getNodeParameter('loadBalancerId', i) as string),
 						);
 
 						responseData = await awsApiRequestSOAP.call(

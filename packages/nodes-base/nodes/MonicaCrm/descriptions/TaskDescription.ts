@@ -98,9 +98,6 @@ export const taskFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description of the task - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 		],
 	},
@@ -225,9 +222,6 @@ export const taskFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Description of the task - max 100,000 characters',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Title',

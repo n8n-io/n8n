@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
-		<template v-slot:header>
+		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
@@ -25,7 +25,7 @@
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
-		<template v-if="!notFoundError" v-slot:content>
+		<template v-if="!notFoundError" #content>
 			<div :class="$style.image">
 				<WorkflowPreview
 					v-if="showPreview"
@@ -60,9 +60,9 @@ import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';
@@ -75,9 +75,7 @@ export default mixins(workflowHelpers).extend({
 		WorkflowPreview,
 	},
 	computed: {
-		...mapStores(
-			useTemplatesStore,
-		),
+		...mapStores(useTemplatesStore),
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
 			return this.templatesStore.getTemplateById(this.templateId);
 		},
@@ -128,9 +126,8 @@ export default mixins(workflowHelpers).extend({
 		template(template: ITemplatesWorkflowFull) {
 			if (template) {
 				setPageTitle(`n8n - Template template: ${template.name}`);
-			}
-			else {
-				setPageTitle(`n8n - Templates`);
+			} else {
+				setPageTitle('n8n - Templates');
 			}
 		},
 	},

@@ -7,8 +7,11 @@ import {
 
 export class WebflowApi implements ICredentialType {
 	name = 'webflowApi';
+
 	displayName = 'Webflow API';
+
 	documentationUrl = 'webflow';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
@@ -18,6 +21,7 @@ export class WebflowApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -26,6 +30,7 @@ export class WebflowApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.webflow.com',

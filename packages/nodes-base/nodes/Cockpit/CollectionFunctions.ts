@@ -8,7 +8,6 @@ export async function createCollectionEntry(
 	resourceName: string,
 	data: IDataObject,
 	id?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {
 		data,
@@ -28,7 +27,6 @@ export async function getAllCollectionEntries(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	resourceName: string,
 	options: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const body: ICollection = {};
 
@@ -71,7 +69,7 @@ export async function getAllCollectionEntries(
 
 	body.simple = true;
 	if (options.rawData) {
-		body.simple = !options.rawData as boolean;
+		body.simple = !options.rawData;
 	}
 
 	if (options.language) {
@@ -84,5 +82,5 @@ export async function getAllCollectionEntries(
 export async function getAllCollectionNames(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 ): Promise<string[]> {
-	return cockpitApiRequest.call(this, 'GET', `/collections/listCollections`, {});
+	return cockpitApiRequest.call(this, 'GET', '/collections/listCollections', {});
 }

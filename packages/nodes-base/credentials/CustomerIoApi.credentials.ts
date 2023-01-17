@@ -7,8 +7,11 @@ import {
 
 export class CustomerIoApi implements ICredentialType {
 	name = 'customerIoApi';
+
 	displayName = 'Customer.io API';
+
 	documentationUrl = 'customerIo';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Tracking API Key',
@@ -52,6 +55,7 @@ export class CustomerIoApi implements ICredentialType {
 			description: 'Required for App API',
 		},
 	];
+
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,

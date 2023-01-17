@@ -6,7 +6,7 @@
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
@@ -21,7 +21,7 @@
 				</n8n-input-label>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-notice
 					:class="$style.notice"
@@ -47,7 +47,7 @@ import {
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
@@ -67,10 +67,7 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(
-			useNDVStore,
-			useUIStore,
-		),
+		...mapStores(useNDVStore, useUIStore),
 		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},

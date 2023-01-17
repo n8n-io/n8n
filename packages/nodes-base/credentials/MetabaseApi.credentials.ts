@@ -9,8 +9,11 @@ import {
 
 export class MetabaseApi implements ICredentialType {
 	name = 'metabaseApi';
+
 	displayName = 'Metabase API';
+
 	documentationUrl = 'metabase';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Session Token',
@@ -59,6 +62,7 @@ export class MetabaseApi implements ICredentialType {
 		})) as { id: string };
 		return { sessionToken: id };
 	}
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -67,6 +71,7 @@ export class MetabaseApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}',

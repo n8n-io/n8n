@@ -1,7 +1,6 @@
 import { Builder, Parser } from 'xml2js';
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -221,8 +220,8 @@ export class Xml implements INodeType {
 		const items = this.getInputData();
 
 		const mode = this.getNodeParameter('mode', 0) as string;
-		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0);
+		const options = this.getNodeParameter('options', 0, {});
 
 		let item: INodeExecutionData;
 		const returnData: INodeExecutionData[] = [];

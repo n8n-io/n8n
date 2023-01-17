@@ -1,4 +1,4 @@
-import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeExecutionData, assert } from 'n8n-workflow';
 
 import {
 	AdjustedPutItem,
@@ -46,8 +46,7 @@ export function adjustPutItem(putItemUi: PutItemUi) {
 			type = 'BOOL';
 		} else if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
 			type = 'M';
-			// @ts-ignore
-		} else if (isNaN(value)) {
+		} else if (isNaN(Number(value))) {
 			type = 'S';
 		} else {
 			type = 'N';
@@ -64,13 +63,15 @@ export function simplify(item: IAttributeValue): IDataObject {
 
 	for (const [attribute, value] of Object.entries(item)) {
 		const [type, content] = Object.entries(value)[0] as [AttributeValueType, string];
+		//nedded as simplify is used in decodeItem
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		output[attribute] = decodeAttribute(type, content);
 	}
 
 	return output;
 }
 
-function decodeAttribute(type: AttributeValueType, attribute: string) {
+function decodeAttribute(type: AttributeValueType, attribute: string | IAttributeValue) {
 	switch (type) {
 		case 'BOOL':
 			return Boolean(attribute);
@@ -81,12 +82,17 @@ function decodeAttribute(type: AttributeValueType, attribute: string) {
 		case 'SS':
 		case 'NS':
 			return attribute;
+		case 'M':
+			assert(
+				typeof attribute === 'object' && !Array.isArray(attribute) && attribute !== null,
+				'Attribute must be an object',
+			);
+			return simplify(attribute);
 		default:
 			return null;
 	}
 }
 
-// tslint:disable-next-line: no-any
 export function validateJSON(input: any): object {
 	try {
 		return JSON.parse(input);
@@ -97,8 +103,7 @@ export function validateJSON(input: any): object {
 
 export function copyInputItem(item: INodeExecutionData, properties: string[]): IDataObject {
 	// Prepare the data to insert and copy it to be returned
-	let newItem: IDataObject;
-	newItem = {};
+	const newItem: IDataObject = {};
 	for (const property of properties) {
 		if (item.json[property] === undefined) {
 			newItem[property] = null;

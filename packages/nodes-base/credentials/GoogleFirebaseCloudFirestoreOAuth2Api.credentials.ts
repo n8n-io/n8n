@@ -7,9 +7,13 @@ const scopes = [
 
 export class GoogleFirebaseCloudFirestoreOAuth2Api implements ICredentialType {
 	name = 'googleFirebaseCloudFirestoreOAuth2Api';
+
 	extends = ['googleOAuth2Api'];
+
 	displayName = 'Google Firebase Cloud Firestore OAuth2 API';
+
 	documentationUrl = 'google/oauth-single-service';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

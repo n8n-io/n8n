@@ -96,9 +96,6 @@ export const conversationFields: INodeProperties[] = [
 		name: 'subject',
 		type: 'string',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -284,9 +281,6 @@ export const conversationFields: INodeProperties[] = [
 						displayName: 'Text',
 						name: 'text',
 						type: 'string',
-						typeOptions: {
-							alwaysOpenEditWindow: true,
-						},
 						default: '',
 						description: 'The message text',
 					},
@@ -471,9 +465,6 @@ export const conversationFields: INodeProperties[] = [
 				displayName: 'Query',
 				name: 'query',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 				description:
 					'Advanced search <a href="https://developer.helpscout.com/mailbox-api/endpoints/conversations/list/#query">Examples</a>',

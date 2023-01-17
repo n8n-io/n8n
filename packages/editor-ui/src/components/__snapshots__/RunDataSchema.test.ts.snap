@@ -1,0 +1,261 @@
+// Vitest Snapshot v1
+
+exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
+<div>
+  <div
+    class="_schemaWrapper_1mtap_1"
+  >
+    <div
+      class=""
+    >
+      <div
+        class="_schema_1mtap_1"
+      >
+        <div
+          class="_item_14xdy_1"
+        >
+          <!---->
+          <!---->
+          <!---->
+          <!---->
+          <div
+            class="_sub_14xdy_14"
+          >
+            <div
+              class="_item_14xdy_1"
+              style="transition-delay: 0s;"
+            >
+              <div
+                class="_pill_14xdy_51 _mappable_14xdy_70"
+                title="string"
+              >
+                <span
+                  class="_label_14xdy_89"
+                  data-depth="1"
+                  data-name="name"
+                  data-path="[\\"name\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"name\\"] }}"
+                >
+                  <font-awesome-icon-stub
+                    icon="font"
+                    size="sm"
+                  />
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    name
+                  </span>
+                </span>
+              </div>
+              <span
+                class="_text_14xdy_100"
+              >
+                John
+              </span>
+              <!---->
+              <!---->
+              <!---->
+            </div>
+            <div
+              class="_item_14xdy_1"
+              style="transition-delay: 0.033s;"
+            >
+              <div
+                class="_pill_14xdy_51 _mappable_14xdy_70"
+                title="number"
+              >
+                <span
+                  class="_label_14xdy_89"
+                  data-depth="1"
+                  data-name="age"
+                  data-path="[\\"age\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"age\\"] }}"
+                >
+                  <font-awesome-icon-stub
+                    icon="hashtag"
+                    size="sm"
+                  />
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    age
+                  </span>
+                </span>
+              </div>
+              <span
+                class="_text_14xdy_100"
+              >
+                22
+              </span>
+              <!---->
+              <!---->
+              <!---->
+            </div>
+            <div
+              class="_item_14xdy_1"
+              style="transition-delay: 0.066s;"
+            >
+              <div
+                class="_pill_14xdy_51 _mappable_14xdy_70"
+                title="array"
+              >
+                <span
+                  class="_label_14xdy_89"
+                  data-depth="1"
+                  data-name="hobbies"
+                  data-path="[\\"hobbies\\"]"
+                  data-target="mappable"
+                  data-value="{{ $json[\\"hobbies\\"] }}"
+                >
+                  <font-awesome-icon-stub
+                    icon="list"
+                    size="sm"
+                  />
+                  <!---->
+                  <span
+                    class=""
+                  >
+                    hobbies
+                  </span>
+                </span>
+              </div>
+              <!---->
+              <input
+                checked="checked"
+                id="array-0-2"
+                type="checkbox"
+              />
+              <label
+                class="_toggle_14xdy_20"
+                for="array-0-2"
+              >
+                <font-awesome-icon-stub
+                  icon="angle-up"
+                />
+              </label>
+              <div
+                class="_sub_14xdy_14"
+              >
+                <div
+                  class="_item_14xdy_1"
+                  style="transition-delay: 0s;"
+                >
+                  <div
+                    class="_pill_14xdy_51 _mappable_14xdy_70"
+                    title="string"
+                  >
+                    <span
+                      class="_label_14xdy_89"
+                      data-depth="2"
+                      data-name="string[0]"
+                      data-path="[\\"hobbies\\"][0]"
+                      data-target="mappable"
+                      data-value="{{ $json[\\"hobbies\\"][0] }}"
+                    >
+                      <font-awesome-icon-stub
+                        icon="font"
+                        size="sm"
+                      />
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="_arrayIndex_14xdy_94"
+                      >
+                        [0]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="_text_14xdy_100"
+                  >
+                    surfing
+                  </span>
+                  <!---->
+                  <!---->
+                  <!---->
+                </div>
+                <div
+                  class="_item_14xdy_1"
+                  style="transition-delay: 0.033s;"
+                >
+                  <div
+                    class="_pill_14xdy_51 _mappable_14xdy_70"
+                    title="string"
+                  >
+                    <span
+                      class="_label_14xdy_89"
+                      data-depth="2"
+                      data-name="string[1]"
+                      data-path="[\\"hobbies\\"][1]"
+                      data-target="mappable"
+                      data-value="{{ $json[\\"hobbies\\"][1] }}"
+                    >
+                      <font-awesome-icon-stub
+                        icon="font"
+                        size="sm"
+                      />
+                      <span>
+                        hobbies
+                      </span>
+                      <span
+                        class="_arrayIndex_14xdy_94"
+                      >
+                        [1]
+                      </span>
+                    </span>
+                  </div>
+                  <span
+                    class="_text_14xdy_100"
+                  >
+                    traveling
+                  </span>
+                  <!---->
+                  <!---->
+                  <!---->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="teleporter hidden"
+        data-v-d4e6e290=""
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
+<div>
+  <div
+    class="_schemaWrapper_1mtap_1"
+  >
+    <div
+      class="n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12"
+    >
+      <span
+        class="_iconText_3egb8_28"
+      >
+        <span
+          class="n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5"
+        >
+          <font-awesome-icon-stub
+            class="_medium_1pnjy_9"
+            icon="info-circle"
+          />
+        </span>
+        <span>
+          No data to show - item(s) exist, but they’re empty
+        </span>
+      </span>
+    </div>
+  </div>
+</div>
+`;

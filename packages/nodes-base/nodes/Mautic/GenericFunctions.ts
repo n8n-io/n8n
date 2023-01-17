@@ -12,11 +12,10 @@ export async function mauticApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'credentials') as string;
 
@@ -24,7 +23,7 @@ export async function mauticApiRequest(
 		headers: {},
 		method,
 		qs: query,
-		uri: uri || `/api${endpoint}`,
+		uri: uri ?? `/api${endpoint}`,
 		body,
 		json: true,
 	};
@@ -70,10 +69,9 @@ export async function mauticApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -95,7 +93,6 @@ export async function mauticApiRequestAllItems(
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

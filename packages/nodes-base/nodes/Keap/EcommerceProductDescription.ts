@@ -80,9 +80,6 @@ export const ecommerceProductFields: INodeProperties[] = [
 			{
 				displayName: 'Product Description',
 				name: 'productDesc',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 			},

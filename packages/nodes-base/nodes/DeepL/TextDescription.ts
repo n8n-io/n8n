@@ -8,9 +8,6 @@ export const textOperations: INodeProperties[] = [
 		default: '',
 		description: 'Input text to translate',
 		required: true,
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		displayOptions: {
 			show: {
 				operation: ['translate'],

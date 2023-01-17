@@ -2,11 +2,11 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="$emit('return')">
+				<div :class="$style.returnButton" @click="$emit('return')" data-test-id="settings-back">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
-					<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+					<n8n-heading size="large" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 				</div>
 			</template>
 			<template #menuSuffix>
@@ -23,8 +23,8 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from './mixins/userHelpers';
-import { pushConnection } from "@/components/mixins/pushConnection";
+import { userHelpers } from '@/mixins/userHelpers';
+import { pushConnection } from '@/mixins/pushConnection';
 import { IFakeDoor } from '@/Interface';
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
@@ -33,30 +33,30 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
 
-export default mixins(
-	userHelpers,
-	pushConnection,
-).extend({
+export default mixins(userHelpers, pushConnection).extend({
 	name: 'SettingsSidebar',
 	computed: {
-		...mapStores(
-			useRootStore,
-			useSettingsStore,
-			useUIStore,
-		),
+		...mapStores(useRootStore, useSettingsStore, useUIStore),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.uiStore.getFakeDoorByLocation('settings');
 		},
 		sidebarMenuItems(): IMenuItem[] {
-
 			const menuItems: IMenuItem[] = [
+				{
+					id: 'settings-usage-and-plan',
+					icon: 'chart-bar',
+					label: this.$locale.baseText('settings.usageAndPlan.title'),
+					position: 'top',
+					available: this.canAccessUsageAndPlan(),
+					activateOnRouteNames: [VIEWS.USAGE],
+				},
 				{
 					id: 'settings-personal',
 					icon: 'user-circle',
 					label: this.$locale.baseText('settings.personal'),
 					position: 'top',
 					available: this.canAccessPersonalSettings(),
-					activateOnRouteNames: [ VIEWS.PERSONAL_SETTINGS ],
+					activateOnRouteNames: [VIEWS.PERSONAL_SETTINGS],
 				},
 				{
 					id: 'settings-users',
@@ -64,7 +64,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.users'),
 					position: 'top',
 					available: this.canAccessUsersSettings(),
-					activateOnRouteNames: [ VIEWS.USERS_SETTINGS ],
+					activateOnRouteNames: [VIEWS.USERS_SETTINGS],
 				},
 				{
 					id: 'settings-api',
@@ -72,7 +72,7 @@ export default mixins(
 					label: this.$locale.baseText('settings.n8napi'),
 					position: 'top',
 					available: this.canAccessApiSettings(),
-					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
+					activateOnRouteNames: [VIEWS.API_SETTINGS],
 				},
 			];
 
@@ -84,21 +84,28 @@ export default mixins(
 						label: this.$locale.baseText(item.featureName as BaseTextKey),
 						position: 'top',
 						available: true,
-						activateOnRoutePaths: [ `/settings/coming-soon/${item.id}` ],
+						activateOnRoutePaths: [`/settings/coming-soon/${item.id}`],
 					});
 				}
 			}
 
-			menuItems.push(
-				{
-					id: 'settings-community-nodes',
-					icon: 'cube',
-					label: this.$locale.baseText('settings.communityNodes'),
-					position: 'top',
-					available: this.canAccessCommunityNodes(),
-					activateOnRouteNames: [ VIEWS.COMMUNITY_NODES ],
-				},
-			);
+			menuItems.push({
+				id: 'settings-log-streaming',
+				icon: 'sign-in-alt',
+				label: this.$locale.baseText('settings.log-streaming'),
+				position: 'top',
+				available: this.canAccessLogStreamingSettings(),
+				activateOnRouteNames: [VIEWS.LOG_STREAMING_SETTINGS],
+			});
+
+			menuItems.push({
+				id: 'settings-community-nodes',
+				icon: 'cube',
+				label: this.$locale.baseText('settings.communityNodes'),
+				position: 'top',
+				available: this.canAccessCommunityNodes(),
+				activateOnRouteNames: [VIEWS.COMMUNITY_NODES],
+			});
 
 			return menuItems;
 		},
@@ -119,13 +126,19 @@ export default mixins(
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessLogStreamingSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS);
+		},
+		canAccessUsageAndPlan(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.USAGE);
+		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
 		},
-		async handleSelect (key: string) {
+		async handleSelect(key: string) {
 			switch (key) {
 				case 'settings-personal':
 					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
@@ -142,6 +155,12 @@ export default mixins(
 						this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
+				case 'settings-log-streaming':
+					if (this.$router.currentRoute.name !== VIEWS.LOG_STREAMING_SETTINGS) {
+						this.$router.push({ name: VIEWS.LOG_STREAMING_SETTINGS });
+					}
+					break;
+				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
@@ -149,6 +168,11 @@ export default mixins(
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
 						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
+					break;
+				case 'settings-usage-and-plan':
+					if (this.$router.currentRoute.name !== VIEWS.USAGE) {
+						this.$router.push({ name: VIEWS.USAGE });
 					}
 					break;
 				default:
@@ -160,7 +184,6 @@ export default mixins(
 </script>
 
 <style lang="scss" module>
-
 .container {
 	min-width: $sidebar-expanded-width;
 	height: 100vh;
@@ -168,7 +191,6 @@ export default mixins(
 	border-right: var(--border-base);
 	position: relative;
 	overflow: auto;
-
 }
 
 .returnButton {
@@ -180,6 +202,9 @@ export default mixins(
 }
 
 @media screen and (max-height: 420px) {
-	.updatesSubmenu, .versionContainer { display: none; }
+	.updatesSubmenu,
+	.versionContainer {
+		display: none;
+	}
 }
 </style>

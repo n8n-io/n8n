@@ -7,8 +7,11 @@ import {
 
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
+
 	displayName = 'Cortex API';
+
 	documentationUrl = 'cortex';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',

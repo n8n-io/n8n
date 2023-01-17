@@ -315,18 +315,22 @@ export class If implements INodeType {
 		let item: INodeExecutionData;
 		let combineOperation: string;
 
+		const isDateObject = (value: NodeParameterValue) =>
+			Object.prototype.toString.call(value) === '[object Date]';
+		const isDateInvalid = (value: NodeParameterValue) => value?.toString() === 'Invalid Date';
+
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
 			after: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			before: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || '').toString().includes((value2 || '').toString()),
+				(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				!(value1 || '').toString().includes((value2 || '').toString()),
+				!(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).endsWith(value2 as string),
 			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
@@ -334,56 +338,58 @@ export class If implements INodeType {
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) >= (value2 || 0),
+				(value1 ?? 0) >= (value2 ?? 0),
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) <= (value2 || 0),
+				(value1 ?? 0) <= (value2 ?? 0),
 			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).startsWith(value2 as string),
 			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				!(value1 as string).startsWith(value2 as string),
 			isEmpty: (value1: NodeParameterValue) =>
 				[undefined, null, '', NaN].includes(value1 as string) ||
-				(typeof value1 === 'object' && value1 !== null
+				(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 					? Object.entries(value1 as string).length === 0
-					: false),
+					: false) ||
+				(isDateObject(value1) && isDateInvalid(value1)),
 			isNotEmpty: (value1: NodeParameterValue) =>
 				!(
 					[undefined, null, '', NaN].includes(value1 as string) ||
-					(typeof value1 === 'object' && value1 !== null
+					(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 						? Object.entries(value1 as string).length === 0
-						: false)
+						: false) ||
+					(isDateObject(value1) && isDateInvalid(value1))
 				),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !!(value1 || '').toString().match(regex);
+				return !!(value1 ?? '').toString().match(regex);
 			},
 			notRegex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !(value1 || '').toString().match(regex);
+				return !(value1 ?? '').toString().match(regex);
 			},
 		};
 
@@ -450,12 +456,12 @@ export class If implements INodeType {
 						value2,
 					);
 
-					if (compareOperationResult === true && combineOperation === 'any') {
+					if (compareOperationResult && combineOperation === 'any') {
 						// If it passes and the operation is "any" we do not have to check any
 						// other ones as it should pass anyway. So go on with the next item.
 						returnDataTrue.push(item);
 						continue itemLoop;
-					} else if (compareOperationResult === false && combineOperation === 'all') {
+					} else if (!compareOperationResult && combineOperation === 'all') {
 						// If it fails and the operation is "all" we do not have to check any
 						// other ones as it should be not pass anyway. So go on with the next item.
 						returnDataFalse.push(item);

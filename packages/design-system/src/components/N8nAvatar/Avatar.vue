@@ -1,5 +1,5 @@
 <template>
-	<span :class="['n8n-avatar', $style.container]"	v-on="$listeners">
+	<span :class="['n8n-avatar', $style.container]" v-on="$listeners">
 		<avatar
 			v-if="firstName"
 			:size="getSize(size)"
@@ -7,19 +7,15 @@
 			variant="marble"
 			:colors="getColors(colors)"
 		/>
-		<div
-			v-else
-			:class="[$style.empty, $style[size]]"
-		>
-		</div>
-		<span v-if="firstName" :class="$style.initials">{{initials}}</span>
+		<div v-else :class="[$style.empty, $style[size]]"></div>
+		<span v-if="firstName" :class="$style.initials">{{ initials }}</span>
 	</span>
 </template>
 
 <script lang="ts">
 import Avatar from 'vue2-boring-avatars';
 
-const sizes: {[size: string]: number} = {
+const sizes: { [size: string]: number } = {
 	small: 28,
 	large: 48,
 	medium: 40,
@@ -41,7 +37,13 @@ export default Vue.extend({
 			default: 'medium',
 		},
 		colors: {
-			default: () => (['--color-primary', '--color-secondary', '--color-avatar-accent-1', '--color-avatar-accent-2', '--color-primary-tint-1']),
+			default: () => [
+				'--color-primary',
+				'--color-secondary',
+				'--color-avatar-accent-1',
+				'--color-avatar-accent-2',
+				'--color-primary-tint-1',
+			],
 		},
 	},
 	components: {
@@ -49,7 +51,10 @@ export default Vue.extend({
 	},
 	computed: {
 		initials() {
-			return (this.firstName ? this.firstName.charAt(0): '') + (this.lastName? this.lastName.charAt(0): '');
+			return (
+				(this.firstName ? this.firstName.charAt(0) : '') +
+				(this.lastName ? this.lastName.charAt(0) : '')
+			);
 		},
 	},
 	methods: {
@@ -75,7 +80,7 @@ export default Vue.extend({
 .empty {
 	border-radius: 50%;
 	background-color: var(--color-foreground-dark);
-	opacity: .3;
+	opacity: 0.3;
 }
 
 .initials {

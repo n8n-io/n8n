@@ -2,12 +2,13 @@ import { normalizeItems } from 'n8n-core';
 import { NodeVM, NodeVMOptions } from 'vm2';
 import { ValidationError } from './ValidationError';
 import { ExecutionError } from './ExecutionError';
-import { CodeNodeMode, isObject, SUPPORTED_ITEM_KEYS } from './utils';
+import { CodeNodeMode, isObject, REQUIRED_N8N_ITEM_KEYS } from './utils';
 
 import type { IExecuteFunctions, IWorkflowDataProxyData, WorkflowExecuteMode } from 'n8n-workflow';
 
 export class Sandbox extends NodeVM {
 	private jsCode = '';
+
 	private itemIndex: number | undefined = undefined;
 
 	constructor(
@@ -77,7 +78,7 @@ export class Sandbox extends NodeVM {
 			// anticipate user expecting `items` to pre-exist as in Function Item node
 			if (error.message === 'items is not defined' && !/(let|const|var) items =/.test(script)) {
 				const quoted = error.message.replace('items', '`items`');
-				error.message = quoted + '. Did you mean `$input.all()`?';
+				error.message = (quoted as string) + '. Did you mean `$input.all()`?';
 			}
 
 			throw new ExecutionError(error);
@@ -95,6 +96,17 @@ export class Sandbox extends NodeVM {
 		}
 
 		if (Array.isArray(executionResult)) {
+			/**
+			 * If at least one top-level key is an n8n item key (`json`, `binary`, etc.),
+			 * then require all item keys to be an n8n item key.
+			 *
+			 * If no top-level key is an n8n key, then skip this check, allowing non-n8n
+			 * item keys to be wrapped in `json` when normalizing items below.
+			 */
+			const mustHaveTopLevelN8nKey = executionResult.some((item) =>
+				Object.keys(item).find((key) => REQUIRED_N8N_ITEM_KEYS.has(key)),
+			);
+
 			for (const item of executionResult) {
 				if (item.json !== undefined && !isObject(item.json)) {
 					throw new ValidationError({
@@ -104,18 +116,9 @@ export class Sandbox extends NodeVM {
 					});
 				}
 
-				// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
-				// then validate all keys to be a supported item key, else allow user keys
-				// to be wrapped in `json` when normalizing items below.
-
-				if (
-					executionResult.some((item) =>
-						Object.keys(item).find((key) => SUPPORTED_ITEM_KEYS.has(key)),
-					)
-				) {
+				if (mustHaveTopLevelN8nKey) {
 					Object.keys(item).forEach((key) => {
-						if (SUPPORTED_ITEM_KEYS.has(key)) return;
-
+						if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 						throw new ValidationError({
 							message: `Unknown top-level item key: ${key}`,
 							description: 'Access the properties of an item under `.json`, e.g. `item.json`',
@@ -186,7 +189,7 @@ export class Sandbox extends NodeVM {
 			// anticipate user expecting `item` to pre-exist as in Function Item node
 			if (error.message === 'item is not defined' && !/(let|const|var) item =/.test(script)) {
 				const quoted = error.message.replace('item', '`item`');
-				error.message = quoted + '. Did you mean `$input.item.json`?';
+				error.message = (quoted as string) + '. Did you mean `$input.item.json`?';
 			}
 
 			throw new ExecutionError(error, this.itemIndex);
@@ -223,7 +226,7 @@ export class Sandbox extends NodeVM {
 		// directly on the item, when they intended to add it on the `json` property
 
 		Object.keys(executionResult).forEach((key) => {
-			if (SUPPORTED_ITEM_KEYS.has(key)) return;
+			if (REQUIRED_N8N_ITEM_KEYS.has(key)) return;
 
 			throw new ValidationError({
 				message: `Unknown top-level item key: ${key}`,
@@ -252,7 +255,7 @@ export class Sandbox extends NodeVM {
 export function getSandboxContext(this: IExecuteFunctions, index?: number) {
 	const sandboxContext: Record<string, unknown> & {
 		$item: (i: number) => IWorkflowDataProxyData;
-		$input: any; // tslint:disable-line: no-any
+		$input: any;
 	} = {
 		// from NodeExecuteFunctions
 		$getNodeParameter: this.getNodeParameter,

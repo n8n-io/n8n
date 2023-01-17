@@ -767,12 +767,8 @@ export const alertFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'alert',
-				],
+				operation: ['get'],
+				resource: ['alert'],
 			},
 		},
 		type: 'collection',

@@ -13,11 +13,18 @@ export class CompareDatasets implements INodeType {
 		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'main'],
-		inputNames: ['Input 1', 'Input 2'],
+		inputNames: ['Input A', 'Input B'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		outputNames: ['In 1 only', 'Same', 'Different', 'In 2 only'],
+		outputNames: ['In A only', 'Same', 'Different', 'In B only'],
 		properties: [
+			{
+				displayName:
+					'Items from different branches are paired together when the fields below match. If paired, the rest of the fields are compared to determine whether the items are the same or different',
+				name: 'infoBox',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Fields to Match',
 				name: 'mergeByFields',
@@ -33,7 +40,7 @@ export class CompareDatasets implements INodeType {
 						name: 'values',
 						values: [
 							{
-								displayName: 'Input 1 Field',
+								displayName: 'Input A Field',
 								name: 'field1',
 								type: 'string',
 								default: '',
@@ -42,7 +49,7 @@ export class CompareDatasets implements INodeType {
 								hint: ' Enter the field name as text',
 							},
 							{
-								displayName: 'Input 2 Field',
+								displayName: 'Input B Field',
 								name: 'field2',
 								type: 'string',
 								default: '',
@@ -61,11 +68,11 @@ export class CompareDatasets implements INodeType {
 				default: 'preferInput2',
 				options: [
 					{
-						name: 'Use Input 1 Version',
+						name: 'Use Input A Version',
 						value: 'preferInput1',
 					},
 					{
-						name: 'Use Input 2 Version',
+						name: 'Use Input B Version',
 						value: 'preferInput2',
 					},
 					{
@@ -87,11 +94,11 @@ export class CompareDatasets implements INodeType {
 				default: 'input1',
 				options: [
 					{
-						name: 'Input 1 Version',
+						name: 'Input A Version',
 						value: 'input1',
 					},
 					{
-						name: 'Input 2 Version',
+						name: 'Input B Version',
 						value: 'input2',
 					},
 				],
@@ -107,7 +114,7 @@ export class CompareDatasets implements INodeType {
 				type: 'string',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-				placeholder: 'e.d. id, country',
+				placeholder: 'e.g. id, country',
 				hint: 'Enter the names of the input fields as text, separated by commas',
 				displayOptions: {
 					show: {
@@ -122,6 +129,24 @@ export class CompareDatasets implements INodeType {
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Fields to Skip Comparing',
+						name: 'skipFields',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. updated_at, updated_by',
+						hint: 'Enter the field names as text, separated by commas',
+						description:
+							"Fields that shouldn't be included when checking whether two items are the same",
+					},
+					{
+						displayName: 'Fuzzy Compare',
+						name: 'fuzzyCompare',
+						type: 'boolean',
+						default: false,
+						description:
+							"Whether to tolerate small type differences when comparing fields. E.g. the number 3 and the string '3' are treated as the same.",
+					},
 					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
@@ -158,20 +183,20 @@ export class CompareDatasets implements INodeType {
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
 
-		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+		const options = this.getNodeParameter('options', 0, {});
 
 		const input1 = checkInput(
 			this.getInputData(0),
-			matchFields.map((pair) => pair.field1 as string),
+			matchFields.map((pair) => pair.field1),
 			(options.disableDotNotation as boolean) || false,
-			'Input 1',
+			'Input A',
 		);
 
 		const input2 = checkInput(
 			this.getInputData(1),
-			matchFields.map((pair) => pair.field2 as string),
+			matchFields.map((pair) => pair.field2),
 			(options.disableDotNotation as boolean) || false,
-			'Input 2',
+			'Input B',
 		);
 
 		const resolve = this.getNodeParameter('resolve', 0, '') as string;

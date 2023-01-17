@@ -5,7 +5,9 @@
 				:size="inputSize"
 				filterable
 				:value="displayValue"
-				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')
+				"
 				:title="displayTitle"
 				:disabled="isReadOnly"
 				ref="innerSelect"
@@ -13,12 +15,14 @@
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
+				data-test-id="credential-select"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
 					:value="credType.name"
 					:key="credType.name"
 					:label="credType.displayName"
+					data-test-id="credential-select-option"
 				>
 					<div class="list-option">
 						<div class="option-headline">
@@ -74,9 +78,7 @@ export default Vue.extend({
 		'displayTitle',
 	],
 	computed: {
-		...mapStores(
-			useCredentialsStore,
-		),
+		...mapStores(useCredentialsStore),
 		allCredentialTypes(): ICredentialType[] {
 			return this.credentialsStore.allCredentialTypes;
 		},
@@ -91,7 +93,7 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
 			if (select) {
 				select.focus();
 			}
@@ -107,7 +109,6 @@ export default Vue.extend({
 
 			for (const property of supported.has) {
 				if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-
 					// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
 					if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
 
@@ -117,9 +118,7 @@ export default Vue.extend({
 
 			if (
 				checkedCredType.extends &&
-				checkedCredType.extends.some(
-					(parentType: string) => supported.extends.includes(parentType),
-				)
+				checkedCredType.extends.some((parentType: string) => supported.extends.includes(parentType))
 			) {
 				return true;
 			}
@@ -136,23 +135,26 @@ export default Vue.extend({
 			return false;
 		},
 		getSupportedSets(credentialTypes: string[]) {
-			return credentialTypes.reduce<{ extends: string[]; has: string[] }>((acc, cur) => {
-				const _extends = cur.split('extends:');
+			return credentialTypes.reduce<{ extends: string[]; has: string[] }>(
+				(acc, cur) => {
+					const _extends = cur.split('extends:');
 
-				if (_extends.length === 2) {
-					acc.extends.push(_extends[1]);
+					if (_extends.length === 2) {
+						acc.extends.push(_extends[1]);
+						return acc;
+					}
+
+					const _has = cur.split('has:');
+
+					if (_has.length === 2) {
+						acc.has.push(_has[1]);
+						return acc;
+					}
+
 					return acc;
-				}
-
-				const _has = cur.split('has:');
-
-				if (_has.length === 2) {
-					acc.has.push(_has[1]);
-					return acc;
-				}
-
-				return acc;
-			}, { extends: [], has: [] });
+				},
+				{ extends: [], has: [] },
+			);
 		},
 	},
 });
@@ -163,5 +165,4 @@ export default Vue.extend({
 	display: flex;
 	align-items: center;
 }
-
 </style>

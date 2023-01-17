@@ -1,6 +1,6 @@
-@use "../common/var";
-@use "../mixins/mixins";
-@use "./picker-panel.scss";
+@use '../common/var';
+@use '../mixins/mixins';
+@use './picker-panel.scss';
 
 @include mixins.b(date-picker) {
 	width: 322px;

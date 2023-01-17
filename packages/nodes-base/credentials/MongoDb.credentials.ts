@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MongoDb implements ICredentialType {
 	name = 'mongoDb';
+
 	displayName = 'MongoDB';
+
 	documentationUrl = 'mongoDb';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Configuration Type',

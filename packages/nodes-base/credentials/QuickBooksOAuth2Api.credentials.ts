@@ -4,9 +4,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuickBooksOAuth2Api implements ICredentialType {
 	name = 'quickBooksOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'QuickBooks Online OAuth2 API';
+
 	documentationUrl = 'quickbooks';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

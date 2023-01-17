@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "checkbox";
-@use "tag";
-@use "./common/var";
+@use 'mixins/mixins';
+@use 'checkbox';
+@use 'tag';
+@use './common/var';
 
 @include mixins.b(table-column) {
 	@include mixins.m(selection) {

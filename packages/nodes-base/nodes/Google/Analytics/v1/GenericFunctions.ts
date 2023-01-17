@@ -67,20 +67,17 @@ export async function googleApiRequestAllItems(
 			(body.reportRequests as IDataObject[])[0]['pageToken'] =
 				responseData[propertyName][0].nextPageToken;
 		} else {
-			body.pageToken = responseData['nextPageToken'];
+			body.pageToken = responseData.nextPageToken;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
-		(responseData[propertyName] &&
-			responseData[propertyName][0].nextPageToken &&
-			responseData[propertyName][0].nextPageToken !== undefined)
+		(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
+		responseData[propertyName]?.[0].nextPageToken !== undefined
 	);
 
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function simplify(responseData: any | [any]) {
 	const response = [];
 	for (const {
@@ -115,7 +112,6 @@ export function simplify(responseData: any | [any]) {
 	return response;
 }
 
-// tslint:disable-next-line:no-any
 export function merge(responseData: [any]) {
 	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,

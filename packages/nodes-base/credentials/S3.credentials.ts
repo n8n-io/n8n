@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class S3 implements ICredentialType {
 	name = 's3';
+
 	displayName = 'S3';
+
 	documentationUrl = 's3';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'S3 Endpoint',

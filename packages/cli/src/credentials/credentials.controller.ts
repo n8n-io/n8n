@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
-import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
+import { deepCopy, INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
 import * as GenericHelpers from '@/GenericHelpers';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -11,7 +11,7 @@ import { getLogger } from '@/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
-import type { ICredentialsResponse } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import type { CredentialRequest } from '@/requests';
 
 export const credentialsController = express.Router();
@@ -35,14 +35,8 @@ credentialsController.use('/', EECredentialsController);
  */
 credentialsController.get(
 	'/',
-	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		const credentials = await CredentialsService.getAll(req.user);
-
-		return credentials.map((credential) => {
-			// eslint-disable-next-line no-param-reassign
-			credential.id = credential.id.toString();
-			return credential as ICredentialsResponse;
-		});
+	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsDb[]> => {
+		return CredentialsService.getAll(req.user, { roles: ['owner'] });
 	}),
 );
 
@@ -69,41 +63,34 @@ credentialsController.get(
  * GET /credentials/:id
  */
 credentialsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(async (req: CredentialRequest.Get) => {
 		const { id: credentialId } = req.params;
 		const includeDecryptedData = req.query.includeData === 'true';
 
-		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.ResponseError(`Credential ID must be a number.`, undefined, 400);
-		}
-
 		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);
 
 		if (!sharing) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`Credential with ID "${credentialId}" could not be found.`,
-				undefined,
-				404,
 			);
 		}
 
 		const { credentials: credential } = sharing;
 
-		if (!includeDecryptedData) {
-			const { id, data: _, ...rest } = credential;
+		const { data: _, ...rest } = credential;
 
-			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-			return { id: id.toString(), ...rest };
+		if (!includeDecryptedData) {
+			return { ...rest };
 		}
 
-		const { id, data: _, ...rest } = credential;
-
 		const key = await CredentialsService.getEncryptionKey();
-		const decryptedData = await CredentialsService.decrypt(key, credential);
+		const decryptedData = CredentialsService.redact(
+			await CredentialsService.decrypt(key, credential),
+			credential,
+		);
 
-		// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
-		return { id: id.toString(), data: decryptedData, ...rest };
+		return { data: decryptedData, ...rest };
 	}),
 );
 
@@ -115,10 +102,18 @@ credentialsController.get(
 credentialsController.post(
 	'/test',
 	ResponseHelper.send(async (req: CredentialRequest.Test): Promise<INodeCredentialTestResult> => {
-		const { credentials, nodeToTestWith } = req.body;
+		const { credentials } = req.body;
 
 		const encryptionKey = await CredentialsService.getEncryptionKey();
-		return CredentialsService.test(req.user, encryptionKey, credentials, nodeToTestWith);
+		const sharing = await CredentialsService.getSharing(req.user, credentials.id);
+
+		const mergedCredentials = deepCopy(credentials);
+		if (mergedCredentials.data && sharing?.credentials) {
+			const decryptedData = await CredentialsService.decrypt(encryptionKey, sharing.credentials);
+			mergedCredentials.data = CredentialsService.unredact(mergedCredentials.data, decryptedData);
+		}
+
+		return CredentialsService.test(req.user, encryptionKey, mergedCredentials);
 	}),
 );
 
@@ -132,15 +127,17 @@ credentialsController.post(
 
 		const key = await CredentialsService.getEncryptionKey();
 		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
-		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
+		const credential = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void InternalHooksManager.getInstance().onUserCreatedCredentials({
-			credential_type: rest.type,
-			credential_id: id.toString(),
+			user: req.user,
+			credential_name: newCredential.name,
+			credential_type: credential.type,
+			credential_id: credential.id,
 			public_api: false,
 		});
 
-		return { id: id.toString(), ...rest };
+		return credential;
 	}),
 );
 
@@ -148,8 +145,8 @@ credentialsController.post(
  * PATCH /credentials/:id
  */
 credentialsController.patch(
-	'/:id',
-	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsResponse> => {
+	'/:id(\\d+)',
+	ResponseHelper.send(async (req: CredentialRequest.Update): Promise<ICredentialsDb> => {
 		const { id: credentialId } = req.params;
 
 		const sharing = await CredentialsService.getSharing(req.user, credentialId);
@@ -159,10 +156,8 @@ credentialsController.patch(
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Credential with ID "${credentialId}" could not be found to be updated.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Credential to be updated not found. You can only update credentials owned by you',
 			);
 		}
 
@@ -182,23 +177,18 @@ credentialsController.patch(
 
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
-		if (responseData === undefined) {
-			throw new ResponseHelper.ResponseError(
+		if (responseData === null) {
+			throw new ResponseHelper.NotFoundError(
 				`Credential ID "${credentialId}" could not be found to be updated.`,
-				undefined,
-				404,
 			);
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
-		const { id, data: _, ...rest } = responseData;
+		const { data: _, ...rest } = responseData;
 
 		LoggerProxy.verbose('Credential updated', { credentialId });
 
-		return {
-			id: id.toString(),
-			...rest,
-		};
+		return { ...rest };
 	}),
 );
 
@@ -206,7 +196,7 @@ credentialsController.patch(
  * DELETE /credentials/:id
  */
 credentialsController.delete(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(async (req: CredentialRequest.Delete) => {
 		const { id: credentialId } = req.params;
 
@@ -217,10 +207,8 @@ credentialsController.delete(
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Credential with ID "${credentialId}" could not be found to be deleted.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Credential to be deleted not found. You can only removed credentials owned by you',
 			);
 		}
 

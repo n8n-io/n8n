@@ -218,9 +218,6 @@ export const goalKeyResultFields: INodeProperties[] = [
 				displayName: 'Note',
 				name: 'note',
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				default: '',
 			},
 			{

@@ -23,7 +23,9 @@ type EndpointGroup =
 	| 'credentials'
 	| 'workflows'
 	| 'publicApi'
-	| 'nodes';
+	| 'nodes'
+	| 'eventBus'
+	| 'license';
 
 export type CredentialPayload = {
 	name: string;

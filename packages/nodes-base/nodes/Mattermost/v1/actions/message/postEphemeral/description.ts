@@ -42,9 +42,6 @@ export const messagePostEphemeralDescription: MessageProperties = [
 		displayName: 'Message',
 		name: 'message',
 		type: 'string',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		default: '',
 		displayOptions: {
 			show: {

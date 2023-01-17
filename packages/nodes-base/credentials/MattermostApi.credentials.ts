@@ -7,8 +7,11 @@ import {
 
 export class MattermostApi implements ICredentialType {
 	name = 'mattermostApi';
+
 	displayName = 'Mattermost API';
+
 	documentationUrl = 'mattermost';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
@@ -24,6 +27,7 @@ export class MattermostApi implements ICredentialType {
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -32,6 +36,7 @@ export class MattermostApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}/api/v4',

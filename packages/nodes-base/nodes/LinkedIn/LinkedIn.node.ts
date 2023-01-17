@@ -72,10 +72,10 @@ export class LinkedIn implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
-		let body: any = {}; // tslint:disable-line:no-any
+		let body: any = {};
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -84,7 +84,7 @@ export class LinkedIn implements INodeType {
 						const text = this.getNodeParameter('text', i) as string;
 						const shareMediaCategory = this.getNodeParameter('shareMediaCategory', i) as string;
 						const postAs = this.getNodeParameter('postAs', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let authorUrn = '';
 						let visibility = 'PUBLIC';
@@ -146,7 +146,7 @@ export class LinkedIn implements INodeType {
 								});
 							}
 
-							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i) as string;
+							const propertyNameUpload = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
@@ -189,8 +189,6 @@ export class LinkedIn implements INodeType {
 								},
 							};
 						} else if (shareMediaCategory === 'ARTICLE') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-
 							if (additionalFields.description) {
 								description = additionalFields.description as string;
 							}
