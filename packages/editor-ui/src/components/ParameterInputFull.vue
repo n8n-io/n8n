@@ -223,14 +223,15 @@ export default mixins(showMessage).extend({
 			}
 		},
 		onDrop(data: string) {
-			if (!this.parameter.requiresDataPath) {
+			const useDataPath = !!this.parameter.requiresDataPath && data.startsWith('{{ $json');
+			if (!useDataPath) {
 				this.forceShowExpression = true;
 			}
 			setTimeout(() => {
 				if (this.node) {
 					const prevValue = this.isResourceLocator ? this.value.value : this.value;
 					let updatedValue: string;
-					if (this.parameter.requiresDataPath) {
+					if (useDataPath) {
 						const newValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
 						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
 							updatedValue = `${prevValue}, ${newValue}`;
