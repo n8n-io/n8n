@@ -416,9 +416,10 @@ function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGett
 function aggregateData(
 	data: IDataObject[],
 	fieldsToSummarize: Aggregations,
+	options: SummarizeOptions,
 	getValue: ValueGetterFn,
 ) {
-	return fieldsToSummarize.reduce((acc, aggregation) => {
+	const returnData = fieldsToSummarize.reduce((acc, aggregation) => {
 		acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`] = aggregate(
 			data,
 			aggregation,
@@ -426,6 +427,11 @@ function aggregateData(
 		);
 		return acc;
 	}, {} as IDataObject);
+	if (options.outputFormat === 'singleItem') {
+		return returnData;
+	} else {
+		return { ...returnData, pairedItems: data.map((item) => item._itemIndex as number) };
+	}
 }
 
 function splitData(
@@ -436,7 +442,7 @@ function splitData(
 	getValue: ValueGetterFn,
 ) {
 	if (!splitKeys || splitKeys.length === 0) {
-		return aggregateData(data, fieldsToSummarize, getValue);
+		return aggregateData(data, fieldsToSummarize, options, getValue);
 	}
 
 	const [firstSplitKey, ...restSplitKeys] = splitKeys;
@@ -503,7 +509,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[][]> {
-	const newItems = items.map(({ json }) => json);
+	const newItems = items.map(({ json }, i) => ({ ...json, _itemIndex: i }));
 
 	const options = this.getNodeParameter('options', 0, {}) as SummarizeOptions;
 
@@ -537,12 +543,25 @@ export async function execute(
 		getValue,
 	);
 
-	const result =
-		options.outputFormat === 'singleItem' || !fieldsToSplitBy.length
-			? aggregationResult
-			: aggregationToArray(aggregationResult, fieldsToSplitBy);
-
-	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(result));
-
-	return executionData;
+	if (options.outputFormat === 'singleItem' || !fieldsToSplitBy.length) {
+		const executionData: INodeExecutionData = {
+			json: aggregationResult,
+			pairedItem: newItems.map((_v, index) => ({
+				item: index,
+			})),
+		};
+		return this.prepareOutputData([executionData]);
+	} else {
+		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
+		const executionData = returnData.map((item) => {
+			const { pairedItems, ...json } = item;
+			return {
+				json,
+				pairedItem: ((item.pairedItems as number[]) || []).map((index: number) => ({
+					item: index,
+				})),
+			};
+		});
+		return this.prepareOutputData(executionData);
+	}
 }
