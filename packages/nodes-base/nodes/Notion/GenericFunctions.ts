@@ -289,10 +289,13 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-
-				relation: value.relationValue.reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-				}, []),
+				relation: value.relationValue
+					.filter((rv: string) => {
+						return rv && typeof rv === 'string';
+					})
+					.reduce((acc: [], cur: any) => {
+						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
+					}, []),
 			};
 			break;
 		case 'multi_select':
