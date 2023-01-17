@@ -2,8 +2,6 @@
 
 import Vue from 'vue';
 import Fragment from 'vue-fragment';
-import VueVirtualScroller from 'vue-virtual-scroller';
-import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import VueAgile from 'vue-agile';
 
 import 'regenerator-runtime/runtime';
@@ -15,7 +13,6 @@ import { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
 
 Vue.use(Fragment.Plugin);
-Vue.use(VueVirtualScroller);
 Vue.use(VueAgile);
 
 Vue.use(ElementUI);
