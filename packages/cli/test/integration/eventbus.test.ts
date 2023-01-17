@@ -123,12 +123,12 @@ afterAll(async () => {
 	await eventBus.close();
 });
 
-test.skip('should have a running logwriter process', () => {
+test('should have a running logwriter process', () => {
 	const thread = eventBus.logWriter.worker;
 	expect(thread).toBeDefined();
 });
 
-test.skip('should have logwriter log messages', async () => {
+test('should have logwriter log messages', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -141,27 +141,27 @@ test.skip('should have logwriter log messages', async () => {
 	});
 });
 
-test.skip('GET /eventbus/destination should fail due to missing authentication', async () => {
+test('GET /eventbus/destination should fail due to missing authentication', async () => {
 	const response = await unAuthOwnerAgent.get('/eventbus/destination');
 	expect(response.statusCode).toBe(401);
 });
 
-test.skip('POST /eventbus/destination create syslog destination', async () => {
+test('POST /eventbus/destination create syslog destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testSyslogDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('POST /eventbus/destination create sentry destination', async () => {
+test('POST /eventbus/destination create sentry destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testSentryDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('POST /eventbus/destination create webhook destination', async () => {
+test('POST /eventbus/destination create webhook destination', async () => {
 	const response = await authOwnerAgent.post('/eventbus/destination').send(testWebhookDestination);
 	expect(response.statusCode).toBe(200);
 });
 
-test.skip('GET /eventbus/destination all returned destinations should exist in eventbus', async () => {
+test('GET /eventbus/destination all returned destinations should exist in eventbus', async () => {
 	const response = await authOwnerAgent.get('/eventbus/destination');
 	expect(response.statusCode).toBe(200);
 
@@ -178,7 +178,7 @@ test.skip('GET /eventbus/destination all returned destinations should exist in e
 	}
 });
 
-test.skip('should send message to syslog ', async () => {
+test('should send message to syslog ', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
 	// await cleanLogs();
@@ -217,7 +217,7 @@ test.skip('should send message to syslog ', async () => {
 	});
 });
 
-test.skip('should confirm send message if there are no subscribers', async () => {
+test('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub',
 		id: uuid(),
@@ -256,7 +256,7 @@ test.skip('should confirm send message if there are no subscribers', async () =>
 	});
 });
 
-test.skip('should anonymize audit message to syslog ', async () => {
+test('should anonymize audit message to syslog ', async () => {
 	const testAuditMessage = new EventMessageAudit({
 		eventName: 'n8n.audit.user.updated',
 		payload: {
@@ -323,7 +323,7 @@ test.skip('should anonymize audit message to syslog ', async () => {
 	});
 });
 
-test.skip('should send message to webhook ', async () => {
+test('should send message to webhook ', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
 	// await cleanLogs();
@@ -356,7 +356,7 @@ test.skip('should send message to webhook ', async () => {
 	});
 });
 
-test.skip('should send message to sentry ', async () => {
+test('should send message to sentry ', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
 	// await cleanLogs();
@@ -395,7 +395,7 @@ test.skip('should send message to sentry ', async () => {
 	});
 });
 
-test.skip('DEL /eventbus/destination delete all destinations by id', async () => {
+test('DEL /eventbus/destination delete all destinations by id', async () => {
 	const existingDestinationIds = [...Object.keys(eventBus.destinations)];
 
 	await Promise.all(
