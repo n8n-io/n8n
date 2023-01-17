@@ -28,7 +28,7 @@ export async function getresponseApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.getresponse.com/v3${resource}`,
+		uri: uri ?? `https://api.getresponse.com/v3${resource}`,
 		json: true,
 	};
 	try {

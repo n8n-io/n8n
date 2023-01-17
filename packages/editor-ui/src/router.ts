@@ -113,23 +113,6 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/execution/:id',
-			name: VIEWS.EXECUTION,
-			components: {
-				default: NodeView,
-				header: MainHeader,
-				sidebar: MainSidebar,
-			},
-			meta: {
-				nodeView: true,
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-				},
-			},
-		},
-		{
 			path: '/templates/:id',
 			name: VIEWS.TEMPLATE,
 			components: {

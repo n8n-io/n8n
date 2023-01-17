@@ -37,7 +37,7 @@ export async function koBoToolboxApiRequest(
 		Object.assign(options, option);
 	}
 	if (options.url && !/^http(s)?:/.test(options.url)) {
-		options.url = credentials.URL + options.url;
+		options.url = (credentials.URL as string) + options.url;
 	}
 
 	let results = null;
@@ -63,12 +63,11 @@ export async function koBoToolboxApiRequest(
 export async function koBoToolboxRawRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	option: IHttpRequestOptions,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	if (option.url && !/^http(s)?:/.test(option.url)) {
-		option.url = credentials.URL + option.url;
+		option.url = (credentials.URL as string) + option.url;
 	}
 
 	return this.helpers.httpRequestWithAuthentication.call(this, 'koBoToolboxApi', option);
@@ -159,7 +158,7 @@ export function formatSubmission(
 			.split('/')
 			.map((k) => _.trim(k, ' _'))
 			.join('.');
-		const leafKey = sanitizedKey.split('.').pop() || '';
+		const leafKey = sanitizedKey.split('.').pop() ?? '';
 		let format = 'string';
 		if (_.some(numberMasks, (mask) => matchWildcard(leafKey, mask))) {
 			format = 'number';
@@ -205,7 +204,7 @@ export async function downloadAttachments(
 	const credentials = await this.getCredentials('koBoToolboxApi');
 
 	// Look for attachment links - there can be more than one
-	const attachmentList = (submission._attachments || submission.attachments) as any[]; // tslint:disable-line:no-any
+	const attachmentList = (submission._attachments ?? submission.attachments) as any[];
 
 	if (attachmentList?.length) {
 		for (const [index, attachment] of attachmentList.entries()) {
@@ -267,7 +266,7 @@ export async function downloadAttachments(
 				if ('question' === options.binaryNamingScheme && relatedQuestion) {
 					binaryName = relatedQuestion;
 				} else {
-					binaryName = `${options.dataPropertyAttachmentsPrefixName || 'attachment_'}${index}`;
+					binaryName = `${options.dataPropertyAttachmentsPrefixName ?? 'attachment_'}${index}`;
 				}
 
 				binaryItem.binary![binaryName] = await this.helpers.prepareBinaryData(

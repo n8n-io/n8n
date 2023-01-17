@@ -527,9 +527,9 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const executionDb = (await Db.collections.Execution.findOne(
-					executionId,
-				)) as IExecutionFlattedDb;
+				const executionDb = (await Db.collections.Execution.findOneBy({
+					id: executionId,
+				})) as IExecutionFlattedDb;
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 				const runData = {
 					data: fullExecutionData.data,

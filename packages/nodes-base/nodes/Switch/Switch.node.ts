@@ -532,13 +532,13 @@ export class Switch implements INodeType {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
 			after: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			before: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || '').toString().includes((value2 || '').toString()),
+				(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				!(value1 || '').toString().includes((value2 || '').toString()),
+				!(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).endsWith(value2 as string),
 			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
@@ -546,44 +546,44 @@ export class Switch implements INodeType {
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) >= (value2 || 0),
+				(value1 ?? 0) >= (value2 ?? 0),
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) <= (value2 || 0),
+				(value1 ?? 0) <= (value2 ?? 0),
 			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).startsWith(value2 as string),
 			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				!(value1 as string).startsWith(value2 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !!(value1 || '').toString().match(regex);
+				return !!(value1 ?? '').toString().match(regex);
 			},
 			notRegex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !(value1 || '').toString().match(regex);
+				return !(value1 ?? '').toString().match(regex);
 			},
 		};
 

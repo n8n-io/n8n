@@ -601,7 +601,7 @@ export class SendGrid implements INodeType {
 
 								attachmentsToSend.push({
 									content: dataBuffer.toString('base64'),
-									filename: binaryProperty.fileName || 'unknown',
+									filename: binaryProperty.fileName ?? 'unknown',
 									type: binaryProperty.mimeType,
 								});
 							}
