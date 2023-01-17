@@ -18,9 +18,7 @@ export function simplify(responseData: any | [any]) {
 			// Do not error if there is no data
 			continue;
 		}
-		const metrics = metricHeader.metricHeaderEntries.map(
-			(entry: { name: string }) => entry.name as string,
-		);
+		const metrics = metricHeader.metricHeaderEntries.map((entry: { name: string }) => entry.name);
 		for (const row of rows) {
 			const rowDimensions: IDataObject = {};
 			const rowMetrics: IDataObject = {};
@@ -88,7 +86,7 @@ export function simplifyGA4(response: IDataObject) {
 export function processFilters(expression: IDataObject): IDataObject[] {
 	const processedFilters: IDataObject[] = [];
 
-	Object.entries(expression as IDataObject).forEach((entry) => {
+	Object.entries(expression).forEach((entry) => {
 		const [filterType, filters] = entry;
 
 		(filters as IDataObject[]).forEach((filter) => {
@@ -242,8 +240,8 @@ export function checkDuplicates(
 export function sortLoadOptions(data: INodePropertyOptions[] | INodeListSearchItems[]) {
 	const returnData = [...data];
 	returnData.sort((a, b) => {
-		const aName = (a.name as string).toLowerCase();
-		const bName = (b.name as string).toLowerCase();
+		const aName = a.name.toLowerCase();
+		const bName = b.name.toLowerCase();
 		if (aName < bName) {
 			return -1;
 		}

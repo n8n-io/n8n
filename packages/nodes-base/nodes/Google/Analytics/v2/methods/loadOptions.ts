@@ -89,7 +89,7 @@ export async function getProperties(this: ILoadOptionsFunctions): Promise<INodeP
 			'',
 			{},
 			{ filter: `parent:${acount.name}` },
-			`https://analyticsadmin.googleapis.com/v1alpha/properties`,
+			'https://analyticsadmin.googleapis.com/v1alpha/properties',
 		);
 
 		if (properties && properties.length > 0) {

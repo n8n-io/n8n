@@ -122,8 +122,8 @@ export async function execute(
 	//https://developers.google.com/analytics/devguides/reporting/core/v4/rest/v4/userActivity/search
 	const viewId = this.getNodeParameter('viewId', index);
 	const userId = this.getNodeParameter('userId', index);
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', 0);
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	let responseData;
 
@@ -144,7 +144,7 @@ export async function execute(
 	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(this, 'sessions', method, endpoint, body);
 	} else {
-		body.pageSize = this.getNodeParameter('limit', 0) as number;
+		body.pageSize = this.getNodeParameter('limit', 0);
 		responseData = await googleApiRequest.call(this, method, endpoint, body);
 		responseData = responseData.sessions;
 	}

@@ -9,7 +9,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const resource = this.getNodeParameter<GoogleAnalytics>('resource', 0) as string;
-	const operation = this.getNodeParameter('operation', 0) as string;
+	const operation = this.getNodeParameter('operation', 0);
 
 	let responseData;
 

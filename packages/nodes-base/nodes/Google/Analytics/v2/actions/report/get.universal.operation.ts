@@ -593,11 +593,11 @@ export async function execute(
 	const viewId = this.getNodeParameter('viewId', index, undefined, {
 		extractValue: true,
 	}) as string;
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 	const dateRange = this.getNodeParameter('dateRange', index) as string;
 	const metricsUA = this.getNodeParameter('metricsUA', index) as IDataObject;
 	const dimensionsUA = this.getNodeParameter('dimensionsUA', index) as IDataObject;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const simple = this.getNodeParameter('simple', index) as boolean;
 
 	let responseData;
@@ -689,7 +689,7 @@ export async function execute(
 	const method = 'POST';
 	const endpoint = '/v4/reports:batchGet';
 
-	if (returnAll === true) {
+	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(
 			this,
 			'reports',
@@ -699,7 +699,7 @@ export async function execute(
 			qs,
 		);
 	} else {
-		body.pageSize = this.getNodeParameter('limit', 0) as number;
+		body.pageSize = this.getNodeParameter('limit', 0);
 		responseData = await googleApiRequest.call(
 			this,
 			method,
@@ -710,9 +710,9 @@ export async function execute(
 		responseData = responseData.reports;
 	}
 
-	if (simple === true) {
+	if (simple) {
 		responseData = simplify(responseData);
-	} else if (returnAll === true && responseData.length > 1) {
+	} else if (returnAll && responseData.length > 1) {
 		responseData = merge(responseData);
 	}
 

@@ -70,7 +70,7 @@ export const description: INodeProperties[] = [
 						},
 					},
 				],
-				url: `=https://analytics.google.com/analytics/web/#/p{{$value}}/`,
+				url: '=https://analytics.google.com/analytics/web/#/p{{$value}}/',
 			},
 		],
 		displayOptions: {
@@ -462,8 +462,8 @@ export async function execute(
 		extractValue: true,
 	}) as string;
 
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const returnAll = this.getNodeParameter('returnAll', 0);
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const dateRange = this.getNodeParameter('dateRange', index) as string;
 	const metricsGA4 = this.getNodeParameter('metricsGA4', index, {}) as IDataObject;
 	const dimensionsGA4 = this.getNodeParameter('dimensionsGA4', index, {}) as IDataObject;
@@ -600,14 +600,14 @@ export async function execute(
 	const method = 'POST';
 	const endpoint = `/v1beta/properties/${propertyId}:runReport`;
 
-	if (returnAll === true) {
+	if (returnAll) {
 		responseData = await googleApiRequestAllItems.call(this, '', method, endpoint, body, qs);
 	} else {
-		body.limit = this.getNodeParameter('limit', 0) as number;
+		body.limit = this.getNodeParameter('limit', 0);
 		responseData = [await googleApiRequest.call(this, method, endpoint, body, qs)];
 	}
 
-	if (responseData && responseData.length && simple === true) {
+	if (responseData?.length && simple) {
 		responseData = simplifyGA4(responseData[0]);
 	}
 

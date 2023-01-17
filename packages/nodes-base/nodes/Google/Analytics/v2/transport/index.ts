@@ -25,7 +25,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${baseURL}${endpoint}`,
+		uri: uri ?? `${baseURL}${endpoint}`,
 		json: true,
 	};
 
@@ -38,13 +38,12 @@ export async function googleApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
 	} catch (error) {
 		const errorData = (error.message || '').split(' - ')[1] as string;
 		if (errorData) {
 			const parsedError = JSON.parse(errorData.trim());
-			if (parsedError.error && parsedError.error.message) {
+			if (parsedError.error?.message) {
 				const [message, ...rest] = parsedError.error.message.split('\n');
 				const description = rest.join('\n');
 				const httpCode = parsedError.error.code;
@@ -89,17 +88,15 @@ export async function googleApiRequestAllItems(
 		do {
 			responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 			if (body.reportRequests && Array.isArray(body.reportRequests)) {
-				(body.reportRequests as IDataObject[])[0]['pageToken'] =
+				(body.reportRequests as IDataObject[])[0].pageToken =
 					responseData[propertyName][0].nextPageToken;
 			} else {
-				body.pageToken = responseData['nextPageToken'];
+				body.pageToken = responseData.nextPageToken;
 			}
 			returnData.push.apply(returnData, responseData[propertyName]);
 		} while (
-			(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
-			(responseData[propertyName] &&
-				responseData[propertyName][0].nextPageToken &&
-				responseData[propertyName][0].nextPageToken !== undefined)
+			(responseData.nextPageToken !== undefined && responseData.nextPageToken !== '') ||
+			responseData[propertyName]?.[0].nextPageToken !== undefined
 		);
 	}
 

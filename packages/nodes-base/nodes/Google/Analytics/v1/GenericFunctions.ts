@@ -21,7 +21,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `${baseURL}${endpoint}`,
+		uri: uri ?? `${baseURL}${endpoint}`,
 		json: true,
 	};
 
@@ -34,7 +34,6 @@ export async function googleApiRequest(
 		if (Object.keys(qs).length === 0) {
 			delete options.qs;
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
 	} catch (error) {
 		const errorData = (error.message || '').split(' - ')[1] as string;
@@ -64,7 +63,7 @@ export async function googleApiRequestAllItems(
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query, uri);
 		if (body.reportRequests && Array.isArray(body.reportRequests)) {
-			(body.reportRequests as IDataObject[])[0]['pageToken'] =
+			(body.reportRequests as IDataObject[])[0].pageToken =
 				responseData[propertyName][0].nextPageToken;
 		} else {
 			body.pageToken = responseData.nextPageToken;
@@ -88,9 +87,7 @@ export function simplify(responseData: any | [any]) {
 			// Do not error if there is no data
 			continue;
 		}
-		const metrics = metricHeader.metricHeaderEntries.map(
-			(entry: { name: string }) => entry.name as string,
-		);
+		const metrics = metricHeader.metricHeaderEntries.map((entry: { name: string }) => entry.name);
 		for (const row of rows) {
 			const data: IDataObject = {};
 			if (dimensions) {

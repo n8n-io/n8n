@@ -23,7 +23,7 @@ export async function searchProperties(
 			'',
 			{},
 			{ filter: `parent:${acount.name}` },
-			`https://analyticsadmin.googleapis.com/v1alpha/properties`,
+			'https://analyticsadmin.googleapis.com/v1alpha/properties',
 		);
 
 		if (properties && properties.length > 0) {
