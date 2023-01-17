@@ -9,6 +9,7 @@ import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
 import jsParser from 'prettier/parser-babel';
 
+import { html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
 import { bracketMatching, ensureSyntaxTree, foldGutter, indentOnInput } from '@codemirror/language';
@@ -30,7 +31,6 @@ import { htmlEditorEventBus } from '@/event-bus/html-editor-event-bus';
 import { expressionManager } from '@/mixins/expressionManager';
 import { theme } from './theme';
 import { nonTakenRanges } from './utils';
-import { html } from './custom-lang-html';
 import type { Range, Section } from './types';
 
 export default mixins(expressionManager).extend({
