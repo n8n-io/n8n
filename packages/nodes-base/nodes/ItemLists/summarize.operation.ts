@@ -543,7 +543,7 @@ export async function execute(
 		getValue,
 	);
 
-	if (options.outputFormat === 'singleItem' || !fieldsToSplitBy.length) {
+	if (options.outputFormat === 'singleItem') {
 		const executionData: INodeExecutionData = {
 			json: aggregationResult,
 			pairedItem: newItems.map((_v, index) => ({
@@ -552,12 +552,22 @@ export async function execute(
 		};
 		return this.prepareOutputData([executionData]);
 	} else {
+		if (!fieldsToSplitBy.length) {
+			const { pairedItems, ...json } = aggregationResult;
+			const executionData: INodeExecutionData = {
+				json,
+				pairedItem: ((pairedItems as number[]) || []).map((index: number) => ({
+					item: index,
+				})),
+			};
+			return this.prepareOutputData([executionData]);
+		}
 		const returnData = aggregationToArray(aggregationResult, fieldsToSplitBy);
 		const executionData = returnData.map((item) => {
 			const { pairedItems, ...json } = item;
 			return {
 				json,
-				pairedItem: ((item.pairedItems as number[]) || []).map((index: number) => ({
+				pairedItem: ((pairedItems as number[]) || []).map((index: number) => ({
 					item: index,
 				})),
 			};
