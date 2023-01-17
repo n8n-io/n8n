@@ -1,4 +1,4 @@
-name: End-to-End tests
+name: End-to-End tests for PRs
 run-name: E2E Tests on branch ${{ github.event.inputs.branch }}
 
 on:
@@ -26,7 +26,7 @@ jobs:
   runTests:
     name: 'Run E2E tests'
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'skip-e2e')!
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-e2e') }}
 
     timeout-minutes: 30
 
