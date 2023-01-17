@@ -232,7 +232,11 @@ export default mixins(showMessage).extend({
 					const prevValue = this.isResourceLocator ? this.value.value : this.value;
 					let updatedValue: string;
 					if (useDataPath) {
-						const newValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
+						let newValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
+						const isMultiPartPath = [...newValue.matchAll(new RegExp('\\"\]', 'g'))].length > 1;
+						if (!isMultiPartPath) {
+							newValue = newValue.replace('["', '').replace('"]', '');
+						}
 						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
 							updatedValue = `${prevValue}, ${newValue}`;
 						} else {
