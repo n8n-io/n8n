@@ -449,13 +449,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 					id: 'sharing',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
 					position: 'top',
-					available: this.selectedCredential !== '',
+					available: this.selectedCredential !== '' || this.credentialId !== '',
 				},
 				{
 					id: 'details',
 					label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
 					position: 'top',
-					available: this.selectedCredential !== '',
+					available: this.selectedCredential !== '' || this.credentialId !== '',
 				},
 			];
 		},
