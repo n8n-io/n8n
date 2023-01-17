@@ -322,13 +322,10 @@ class Server extends AbstractServer {
 
 	async configure(): Promise<void> {
 		const enableMetrics = config.getEnv('endpoints.metrics.enable');
-		let register: Registry;
 
 		if (enableMetrics) {
 			const prefix = config.getEnv('endpoints.metrics.prefix');
-			register = new promClient.Registry();
-			register.setDefaultLabels({ prefix });
-			promClient.collectDefaultMetrics({ register });
+			promClient.collectDefaultMetrics({ prefix });
 		}
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
@@ -595,8 +592,8 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		if (enableMetrics) {
 			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
-				const response = await register.metrics();
-				res.setHeader('Content-Type', register.contentType);
+				const response = await promClient.register.metrics();
+				res.setHeader('Content-Type', promClient.register.contentType);
 				ResponseHelper.sendSuccessResponse(res, response, true, 200);
 			});
 		}

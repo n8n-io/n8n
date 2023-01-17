@@ -6,7 +6,10 @@ import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventB
 import EventEmitter from 'events';
 import config from '@/config';
 import * as Db from '@/Db';
-import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers.ee';
+import {
+	messageEventBusDestinationFromDb,
+	sendPrometheusMetric,
+} from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
 import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import {
@@ -205,6 +208,8 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
+		await sendPrometheusMetric(msg);
+
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!
 		this.emit('message', msg);

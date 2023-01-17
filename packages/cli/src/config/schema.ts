@@ -581,6 +581,24 @@ export const schema = {
 				env: 'N8N_METRICS_PREFIX',
 				doc: 'An optional prefix for metric names. Default: n8n_',
 			},
+			forEachWorkflowId: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_FOREACH_WORKFLOW_ID',
+				doc: 'Whether to create a separate metric per workflow id. Default: false',
+			},
+			forEachNodeType: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_FOREACH_NODE_TYPE',
+				doc: 'Whether to create a separate metric per node type. Default: false',
+			},
+			forEachCredentialType: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_FOREACH_CREDENTIAL_TYPE',
+				doc: 'Whether to create a separate metric per credential type. Default: false',
+			},
 		},
 		rest: {
 			format: String,
