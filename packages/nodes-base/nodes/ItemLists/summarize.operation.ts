@@ -1,4 +1,5 @@
 import {
+	GenericValue,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -46,6 +47,11 @@ type SummarizeOptions = {
 	outputFormat?: 'separateItems' | 'singleItem';
 	skipEmptySplitFields?: boolean;
 };
+
+type ValueGetterFn = (
+	item: IDataObject,
+	field: string,
+) => IDataObject | IDataObject[] | GenericValue | GenericValue[];
 
 export const description: INodeProperties[] = [
 	{
@@ -321,10 +327,8 @@ function checkIfFieldExists(
 	this: IExecuteFunctions,
 	items: IDataObject[],
 	aggregations: Aggregations,
-	options: SummarizeOptions,
+	getValue: ValueGetterFn,
 ) {
-	const getValue = fieldValueGetter(options.disableDotNotation);
-
 	for (const aggregation of aggregations) {
 		if (aggregation.field === '') {
 			continue;
@@ -339,11 +343,9 @@ function checkIfFieldExists(
 	}
 }
 
-function aggregate(items: IDataObject[], entry: Aggregation, disableDotNotation?: boolean) {
+function aggregate(items: IDataObject[], entry: Aggregation, getValue: ValueGetterFn) {
 	const { aggregation, field } = entry;
 	let data = [...items];
-
-	const getValue = fieldValueGetter(disableDotNotation);
 
 	if (NUMERICAL_AGGREGATIONS.includes(aggregation)) {
 		data = data.filter(
@@ -414,13 +416,13 @@ function aggregate(items: IDataObject[], entry: Aggregation, disableDotNotation?
 function aggregateData(
 	data: IDataObject[],
 	fieldsToSummarize: Aggregations,
-	disableDotNotation?: boolean,
+	getValue: ValueGetterFn,
 ) {
 	return fieldsToSummarize.reduce((acc, aggregation) => {
 		acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`] = aggregate(
 			data,
 			aggregation,
-			disableDotNotation,
+			getValue,
 		);
 		return acc;
 	}, {} as IDataObject);
@@ -431,15 +433,20 @@ function splitData(
 	data: IDataObject[],
 	fieldsToSummarize: Aggregations,
 	options: SummarizeOptions,
+	getValue: ValueGetterFn,
 ) {
 	if (!splitKeys || splitKeys.length === 0) {
-		return aggregateData(data, fieldsToSummarize, options.disableDotNotation);
+		return aggregateData(data, fieldsToSummarize, getValue);
 	}
 
 	const [firstSplitKey, ...restSplitKeys] = splitKeys;
 
 	const groupedData = data.reduce((acc, item) => {
-		const keyValuee = item[firstSplitKey] as string;
+		let keyValuee = getValue(item, firstSplitKey) as string;
+
+		if (typeof keyValuee === 'object') {
+			keyValuee = JSON.stringify(keyValuee);
+		}
 
 		if (options.skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
 			return acc;
@@ -455,7 +462,7 @@ function splitData(
 
 	return Object.keys(groupedData).reduce((acc, key) => {
 		const value = groupedData[key] as IDataObject[];
-		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, options);
+		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, options, getValue);
 		return acc;
 	}, {} as IDataObject);
 }
@@ -518,9 +525,17 @@ export async function execute(
 		);
 	}
 
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize, options);
+	const getValue = fieldValueGetter(options.disableDotNotation);
 
-	const aggregationResult = splitData(fieldsToSplitBy, newItems, fieldsToSummarize, options);
+	checkIfFieldExists.call(this, newItems, fieldsToSummarize, getValue);
+
+	const aggregationResult = splitData(
+		fieldsToSplitBy,
+		newItems,
+		fieldsToSummarize,
+		options,
+		getValue,
+	);
 
 	const result =
 		options.outputFormat === 'singleItem' || !fieldsToSplitBy.length
