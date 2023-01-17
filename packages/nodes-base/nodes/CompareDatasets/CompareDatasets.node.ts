@@ -47,7 +47,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Input B Field',
@@ -57,7 +57,7 @@ export class CompareDatasets implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -140,6 +140,7 @@ export class CompareDatasets implements INodeType {
 						hint: 'Enter the field names as text, separated by commas',
 						description:
 							"Fields that shouldn't be included when checking whether two items are the same",
+						requiresDataPath: "multiple",
 					},
 					{
 						displayName: 'Fuzzy Compare',

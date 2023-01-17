@@ -231,8 +231,17 @@ export default mixins(showMessage).extend({
 					const prevValue = this.isResourceLocator ? this.value.value : this.value;
 					let updatedValue: string;
 					if (this.parameter.requiresDataPath) {
-						updatedValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
-					} else if (typeof prevValue === 'string' && prevValue.startsWith('=') && prevValue.length > 1) {
+						const newValue = data.replace('{{ $json', '').replace(new RegExp('}}$'), '').trim();
+						if (prevValue && this.parameter.requiresDataPath === 'multiple') {
+							updatedValue = `${prevValue}, ${newValue}`;
+						} else {
+							updatedValue = newValue;
+						}
+					} else if (
+						typeof prevValue === 'string' &&
+						prevValue.startsWith('=') &&
+						prevValue.length > 1
+					) {
 						updatedValue = `${prevValue} ${data}`;
 					} else {
 						updatedValue = `=${data}`;

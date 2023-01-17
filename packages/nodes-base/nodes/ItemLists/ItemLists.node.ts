@@ -189,7 +189,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -249,7 +249,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Rename Field',
@@ -340,7 +340,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -377,7 +377,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -449,7 +449,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -485,7 +485,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 						],
 					},
@@ -542,7 +542,7 @@ export class ItemLists implements INodeType {
 								// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 								placeholder: 'e.g. id',
 								hint: ' Enter the field name as text',
-								requiresDataPath: true,
+								requiresDataPath: 'single',
 							},
 							{
 								displayName: 'Order',

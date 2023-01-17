@@ -1039,7 +1039,7 @@ export interface INodeProperties {
 	>;
 	extractValue?: INodePropertyValueExtractor;
 	modes?: INodePropertyMode[];
-	requiresDataPath?: true;
+	requiresDataPath?: 'single' | 'multiple';
 }
 
 export interface INodePropertyModeTypeOptions {
