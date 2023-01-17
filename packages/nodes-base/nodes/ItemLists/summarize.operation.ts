@@ -6,6 +6,8 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
+import { get } from 'lodash';
+
 type AggregationType =
 	| 'append'
 	| 'average'
@@ -38,6 +40,12 @@ enum AggregationDisplayNames {
 }
 
 const NUMERICAL_AGGREGATIONS = ['average', 'max', 'min', 'sum'];
+
+type SummarizeOptions = {
+	disableDotNotation?: boolean;
+	outputFormat?: 'separateItems' | 'singleItem';
+	skipEmptySplitFields?: boolean;
+};
 
 export const description: INodeProperties[] = [
 	{
@@ -263,6 +271,14 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Disable Dot Notation',
+				name: 'disableDotNotation',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to disallow referencing child fields using `parent.child` in the field name',
+			},
+			{
 				displayName: 'Output Format',
 				name: 'outputFormat',
 				type: 'options',
@@ -289,16 +305,31 @@ export const description: INodeProperties[] = [
 	},
 ];
 
+function isEmpty<T>(value: T) {
+	return value === undefined || value === null || value === '';
+}
+
+const fieldValueGetter = (disableDotNotation?: boolean) => {
+	if (disableDotNotation) {
+		return (item: IDataObject, field: string) => item[field];
+	} else {
+		return (item: IDataObject, field: string) => get(item, field);
+	}
+};
+
 function checkIfFieldExists(
 	this: IExecuteFunctions,
 	items: IDataObject[],
 	aggregations: Aggregations,
+	options: SummarizeOptions,
 ) {
+	const getValue = fieldValueGetter(options.disableDotNotation);
+
 	for (const aggregation of aggregations) {
 		if (aggregation.field === '') {
 			continue;
 		}
-		const exist = items.some((item) => Object.keys(item).includes(aggregation.field));
+		const exist = items.some((item) => getValue(item, aggregation.field) !== undefined);
 		if (!exist) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -308,33 +339,33 @@ function checkIfFieldExists(
 	}
 }
 
-function isEmpty<T>(value: T) {
-	return value === undefined || value === null || value === '';
-}
-
-function aggregate(items: IDataObject[], entry: Aggregation) {
+function aggregate(items: IDataObject[], entry: Aggregation, disableDotNotation?: boolean) {
 	const { aggregation, field } = entry;
 	let data = [...items];
 
+	const getValue = fieldValueGetter(disableDotNotation);
+
 	if (NUMERICAL_AGGREGATIONS.includes(aggregation)) {
-		data = data.filter((item) => typeof item[field] === 'number' && !isEmpty(item[field]));
+		data = data.filter(
+			(item) => typeof getValue(item, field) === 'number' && !isEmpty(getValue(item, field)),
+		);
 	}
 
 	switch (aggregation) {
 		//combine operations
 		case 'append':
 			if (!entry.includeEmpty) {
-				data = data.filter((item) => !isEmpty(item[field]));
+				data = data.filter((item) => !isEmpty(getValue(item, field)));
 			}
-			return data.map((item) => item[field]);
+			return data.map((item) => getValue(item, field));
 		case 'concatenate':
 			const separateBy = entry.separateBy === 'other' ? entry.customSeparator : entry.separateBy;
 			if (!entry.includeEmpty) {
-				data = data.filter((item) => !isEmpty(item[field]));
+				data = data.filter((item) => !isEmpty(getValue(item, field)));
 			}
 			return data
 				.map((item) => {
-					let value = item[field];
+					let value = getValue(item, field);
 					if (typeof value === 'object') {
 						value = JSON.stringify(value);
 					}
@@ -350,38 +381,47 @@ function aggregate(items: IDataObject[], entry: Aggregation) {
 		case 'average':
 			return (
 				data.reduce((acc, item) => {
-					return acc + (item[field] as number);
+					return acc + (getValue(item, field) as number);
 				}, 0) / data.length
 			);
 		case 'sum':
 			return data.reduce((acc, item) => {
-				return acc + (item[field] as number);
+				return acc + (getValue(item, field) as number);
 			}, 0);
 		case 'min':
 			return Math.min(
 				...(data.map((item) => {
-					return item[field];
+					return getValue(item, field);
 				}) as number[]),
 			);
 		case 'max':
 			return Math.max(
 				...(data.map((item) => {
-					return item[field];
+					return getValue(item, field);
 				}) as number[]),
 			);
 
 		//count operations
 		case 'countUnique':
-			return new Set(data.map((item) => item[field]).filter((item) => !isEmpty(item))).size;
+			return new Set(data.map((item) => getValue(item, field)).filter((item) => !isEmpty(item)))
+				.size;
 		default:
 			//count by default
-			return data.filter((item) => !isEmpty(item[field])).length;
+			return data.filter((item) => !isEmpty(getValue(item, field))).length;
 	}
 }
 
-function aggregateData(data: IDataObject[], fieldsToSummarize: Aggregations) {
-	return fieldsToSummarize.reduce((acc, entry) => {
-		acc[`${AggregationDisplayNames[entry.aggregation]}${entry.field}`] = aggregate(data, entry);
+function aggregateData(
+	data: IDataObject[],
+	fieldsToSummarize: Aggregations,
+	disableDotNotation?: boolean,
+) {
+	return fieldsToSummarize.reduce((acc, aggregation) => {
+		acc[`${AggregationDisplayNames[aggregation.aggregation]}${aggregation.field}`] = aggregate(
+			data,
+			aggregation,
+			disableDotNotation,
+		);
 		return acc;
 	}, {} as IDataObject);
 }
@@ -390,10 +430,10 @@ function splitData(
 	splitKeys: string[],
 	data: IDataObject[],
 	fieldsToSummarize: Aggregations,
-	skipEmptySplitFields = false,
+	options: SummarizeOptions,
 ) {
 	if (!splitKeys || splitKeys.length === 0) {
-		return aggregateData(data, fieldsToSummarize);
+		return aggregateData(data, fieldsToSummarize, options.disableDotNotation);
 	}
 
 	const [firstSplitKey, ...restSplitKeys] = splitKeys;
@@ -401,7 +441,7 @@ function splitData(
 	const groupedData = data.reduce((acc, item) => {
 		const keyValuee = item[firstSplitKey] as string;
 
-		if (skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
+		if (options.skipEmptySplitFields && typeof keyValuee !== 'number' && !keyValuee) {
 			return acc;
 		}
 
@@ -415,7 +455,7 @@ function splitData(
 
 	return Object.keys(groupedData).reduce((acc, key) => {
 		const value = groupedData[key] as IDataObject[];
-		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, skipEmptySplitFields);
+		acc[key] = splitData(restSplitKeys, value, fieldsToSummarize, options);
 		return acc;
 	}, {} as IDataObject);
 }
@@ -458,13 +498,7 @@ export async function execute(
 ): Promise<INodeExecutionData[][]> {
 	const newItems = items.map(({ json }) => json);
 
-	const outputFormat = this.getNodeParameter('options.outputFormat', 0, 'separateItems') as string;
-
-	const skipEmptySplitFields = this.getNodeParameter(
-		'options.skipEmptySplitFields',
-		0,
-		false,
-	) as boolean;
+	const options = this.getNodeParameter('options', 0, {}) as SummarizeOptions;
 
 	const fieldsToSplitBy = (this.getNodeParameter('fieldsToSplitBy', 0, '') as string)
 		.split(',')
@@ -484,17 +518,12 @@ export async function execute(
 		);
 	}
 
-	checkIfFieldExists.call(this, newItems, fieldsToSummarize);
+	checkIfFieldExists.call(this, newItems, fieldsToSummarize, options);
 
-	const aggregationResult = splitData(
-		fieldsToSplitBy,
-		newItems,
-		fieldsToSummarize,
-		skipEmptySplitFields,
-	);
+	const aggregationResult = splitData(fieldsToSplitBy, newItems, fieldsToSummarize, options);
 
 	const result =
-		outputFormat === 'singleItem' || !fieldsToSplitBy.length
+		options.outputFormat === 'singleItem' || !fieldsToSplitBy.length
 			? aggregationResult
 			: aggregationToArray(aggregationResult, fieldsToSplitBy);
 
