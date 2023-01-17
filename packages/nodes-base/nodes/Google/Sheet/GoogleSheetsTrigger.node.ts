@@ -638,7 +638,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					"Edit access to the document is required for 'Row Update' or 'Row Added or Updated' as trigger, choose 'Row Added' as trigger in 'Trigger On' dropdown.",
+					"Edit access to the document is required for the 'Row Update' and 'Row Added or Updated' triggers. Request edit access to the document's owner or select the 'Row Added' trigger in the 'Trigger On' dropdown.",
 				);
 			}
 			if (
