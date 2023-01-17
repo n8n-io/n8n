@@ -29,20 +29,9 @@ export const register = () => {
 		},
 
 		updateNode: (ep: N8nPlusEndpoint) => {
-			const hasConnections = () => {
-				const connections = [
-					...ep.endpoint.connections,
-					...ep.params.connectedEndpoint.connections,
-				];
-				return connections.length > 0;
-			};
+			const ifNoConnections = ep.getConnections().length === 0;
 
-			ep.instance.setSuspendDrawing(true);
-
-			ep.setVisible(!ep.instance.isConnectionBeingDragged && !hasConnections());
-			setTimeout(() => ep.setIsVisible(!hasConnections()), 0);
-
-			ep.instance.setSuspendDrawing(false);
+			ep.setIsVisible(ifNoConnections);
 		},
 	});
 };

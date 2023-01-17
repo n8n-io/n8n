@@ -41,7 +41,7 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 	static type = 'N8nPlus';
 	type = N8nPlusEndpoint.type;
 
-	setupOverlays = () => {
+	setupOverlays() {
 		this.clearOverlays();
 		this.endpoint.instance.setSuspendDrawing(true);
 		this.stalkOverlay = this.endpoint.addOverlay({
@@ -67,74 +67,20 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 			},
 		});
 		this.endpoint.instance.setSuspendDrawing(false);
-	};
-	bindEvents = () => {
+	}
+	bindEvents() {
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.bind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.bind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
-	};
-	unbindEvents = () => {
+	}
+	unbindEvents() {
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOVER, this.setHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_MOUSEOUT, this.unsetHoverMessageVisible);
 		this.instance.unbind(EVENT_ENDPOINT_CLICK, this.fireClickEvent);
 		this.instance.unbind(EVENT_CONNECTION_ABORT, this.setStalkLabels);
-	};
-	fireClickEvent = (endpoint: Endpoint) => {
-		if (endpoint === this.endpoint) {
-			this.instance.fire('plusEndpointClick', this.endpoint);
-		}
-	};
-	setHoverMessageVisible = (endpoint: Endpoint) => {
-		if (endpoint === this.endpoint && this.messageOverlay) {
-			this.instance.addOverlayClass(this.messageOverlay, 'visible');
-		}
-	};
-	unsetHoverMessageVisible = (endpoint: Endpoint) => {
-		if (endpoint === this.endpoint && this.messageOverlay) {
-			this.instance.removeOverlayClass(this.messageOverlay, 'visible');
-		}
-	};
-	clearOverlays = () => {
-		Object.keys(this.endpoint.getOverlays()).forEach((key) => {
-			this.endpoint.removeOverlay(key);
-		});
-		this.stalkOverlay = null;
-		this.messageOverlay = null;
-	};
-	setOverlaysVisible = (visible: boolean) => {
-		Object.keys(this.endpoint.getOverlays()).forEach((overlay) => {
-			this.endpoint.getOverlays()[overlay].setVisible(visible);
-		});
-	};
-
-	setIsVisible = (visible: boolean) => {
-		Object.keys(this.endpoint.getOverlays()).forEach((overlay) => {
-			this.endpoint.getOverlays()[overlay].setVisible(visible);
-		});
-
-		this.setVisible(visible);
-
-		// Re-trigger the success state if label is set
-		if (visible && this.label) {
-			this.setSuccessOutput(this.label);
-		}
-	};
-
-	setSuccessOutput(label: string) {
-		this.endpoint.addClass('ep-success');
-		if (this.params.showOutputLabel) {
-			this.label = label;
-		}
 	}
-
-	clearSuccessOutput() {
-		this.endpoint.removeOverlay('successOutputOverlay');
-		this.endpoint.removeClass('ep-success');
-		this.label = '';
-	}
-
-	setStalkLabels() {
+	setStalkLabels = () => {
 		if (!this.endpoint) return;
 
 		const stalkOverlay = this.endpoint.getOverlay(PlusStalkOverlay);
@@ -151,6 +97,67 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 				stalkOverlay.canvas.setAttribute('data-label', this.label);
 			}
 		}
+	};
+	fireClickEvent = (endpoint: Endpoint) => {
+		if (endpoint === this.endpoint) {
+			this.instance.fire('plusEndpointClick', this.endpoint);
+		}
+	};
+	setHoverMessageVisible = (endpoint: Endpoint) => {
+		if (endpoint === this.endpoint && this.messageOverlay) {
+			this.instance.addOverlayClass(this.messageOverlay, 'visible');
+		}
+	};
+	unsetHoverMessageVisible = (endpoint: Endpoint) => {
+		if (endpoint === this.endpoint && this.messageOverlay) {
+			this.instance.removeOverlayClass(this.messageOverlay, 'visible');
+		}
+	};
+	clearOverlays() {
+		Object.keys(this.endpoint.getOverlays()).forEach((key) => {
+			this.endpoint.removeOverlay(key);
+		});
+		this.stalkOverlay = null;
+		this.messageOverlay = null;
+	}
+	getConnections() {
+		const connections = [
+			...this.endpoint.connections,
+			...this.params.connectedEndpoint.connections,
+		];
+
+		return connections;
+	}
+	setIsVisible(visible: boolean) {
+		this.instance.setSuspendDrawing(true);
+		Object.keys(this.endpoint.getOverlays()).forEach((overlay) => {
+			this.endpoint.getOverlays()[overlay].setVisible(visible);
+		});
+
+		this.setVisible(visible);
+
+		// Re-trigger the success state if label is set
+		if (visible && this.label) {
+			this.setSuccessOutput(this.label);
+		}
+		this.instance.setSuspendDrawing(false);
+	}
+
+	setSuccessOutput(label: string) {
+		this.endpoint.addClass('ep-success');
+		if (this.params.showOutputLabel) {
+			this.label = label;
+			this.setStalkLabels();
+		}
+	}
+
+	clearSuccessOutput() {
+		this.instance.setSuspendDrawing(true);
+		this.endpoint.removeOverlay('successOutputOverlay');
+		this.endpoint.removeClass('ep-success');
+		this.label = '';
+		this.setStalkLabels();
+		this.instance.setSuspendDrawing(false, true);
 	}
 }
 
@@ -169,8 +176,6 @@ export const N8nPlusEndpointHandler: EndpointHandler<N8nPlusEndpoint, ComputedN8
 		ep.h = h;
 
 		ep.addClass('plus-endpoint');
-		ep.setStalkLabels();
-
 		return [x, y, w, h, ep.params.dimensions];
 	},
 

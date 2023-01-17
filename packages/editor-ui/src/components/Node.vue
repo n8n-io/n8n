@@ -702,6 +702,7 @@ export default mixins(
 
 			.items-count {
 				font-size: var(--font-size-s);
+				padding: 0;
 			}
 		}
 
@@ -880,9 +881,9 @@ export default mixins(
 	--endpoint-size-small: 14px;
 	--endpoint-size-medium: 18px;
 	--stalk-size: 40px;
-	--stalk-success-size: 80px;
-	--stalk-long-size: 120px;
-	--plus-endpoint-box-size: 22px;
+	--stalk-success-size: 87px;
+	--stalk-long-size: 127px;
+	--plus-endpoint-box-size: 24px;
 	--plus-endpoint-box-size-small: 17px;
 }
 
@@ -902,13 +903,10 @@ export default mixins(
 	}
 }
 .plus-stalk {
-	width: var(--stalk-size);
+	width: calc(var(--stalk-size) + 2px);
 	border: 1px solid var(--color-foreground-dark);
-	margin-left: calc((var(--endpoint-size-medium) / 2) + (var(--stalk-size) / 2) + 0.5px);
+	margin-left: calc(var(--stalk-size) / 2);
 	z-index: 3;
-	&.small {
-		margin-left: calc((var(--endpoint-size-small) / 2) + (var(--stalk-size) / 2) + 0.5px);
-	}
 	&.ep-success {
 		border-color: var(--color-success-light);
 
@@ -919,7 +917,7 @@ export default mixins(
 			right: 0;
 			bottom: 100%;
 			margin: auto;
-			margin-bottom: 5px;
+			margin-bottom: 2px;
 			text-align: center;
 
 			line-height: 1.3em;
@@ -970,7 +968,7 @@ export default mixins(
 .plus-endpoint {
 	cursor: pointer;
 	z-index: 10;
-	margin-left: calc((var(--endpoint-size-medium)) + var(--stalk-size) + 3px);
+	margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size) / 2) - 1px);
 	g {
 		fill: var(--color-background-xlight);
 		pointer-events: none;
@@ -992,7 +990,7 @@ export default mixins(
 	}
 
 	&.small {
-		margin-left: calc((var(--endpoint-size-small)) + var(--stalk-size) + 2px);
+		margin-left: calc((var(--stalk-size) + var(--plus-endpoint-box-size-small) / 2));
 		g {
 			transform: scale(0.75);
 			transform-origin: center;
@@ -1029,7 +1027,7 @@ export default mixins(
 }
 
 .node-output-endpoint-label {
-	margin-left: calc((var(--endpoint-size-small) / 2) + (var(--stalk-size) / 2));
+	margin-left: calc(var(--endpoint-size-small) + var(--spacing-3xs));
 }
 .node-input-endpoint-label {
 	text-align: right;
@@ -1047,15 +1045,15 @@ export default mixins(
 	color: var(--color-text-light);
 	width: var(--hover-message-width);
 	margin-left: calc(
-		(var(--endpoint-size-medium) / 2) + (var(--hover-message-width) / 2) + var(--stalk-size) +
-			var(--plus-endpoint-box-size) + var(--spacing-3xs)
+		(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size) +
+			var(--spacing-2xs)
 	);
 	opacity: 0;
 	pointer-events: none;
 	&.small {
 		margin-left: calc(
-			(var(--endpoint-size-small) / 2) + (var(--hover-message-width) / 2) + var(--stalk-size) +
-				var(--plus-endpoint-box-size-small) + var(--spacing-3xs)
+			(var(--hover-message-width) / 2) + var(--stalk-size) + var(--plus-endpoint-box-size-small) +
+				var(--spacing-2xs)
 		);
 	}
 	&.visible {
