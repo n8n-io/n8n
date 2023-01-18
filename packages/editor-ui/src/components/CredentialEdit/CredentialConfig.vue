@@ -174,7 +174,12 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import { BUILTIN_CREDENTIALS_DOCS_URL, CREDENTIAL_EDIT_MODAL_KEY, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
+import {
+	BUILTIN_CREDENTIALS_DOCS_URL,
+	CREDENTIAL_EDIT_MODAL_KEY,
+	DOCS_DOMAIN,
+	EnterpriseEditionFeature,
+} from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

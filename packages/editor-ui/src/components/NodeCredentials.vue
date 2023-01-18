@@ -103,11 +103,10 @@ import {
 } from '@/Interface';
 import {
 	ICredentialType,
-	IDataObject,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeParameters,
-INodeTypeDescription,
+	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/mixins/genericHelpers';
@@ -129,7 +128,7 @@ import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
 	getNodeCredentialForAuthType,
-updateNodeAuthType,
+	updateNodeAuthType,
 } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
