@@ -42,7 +42,9 @@
 						size="small"
 					>
 						<n8n-option
-							v-for="item in getCredentialOptions(credentialTypeDescription.name)"
+							v-for="item in getCredentialOptions(
+								getAllRelatedCredentialTypes(credentialTypeDescription),
+							)"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id"
@@ -129,6 +131,7 @@ import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
 	getNodeCredentialForAuthType,
+	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
 } from '@/utils';
 
@@ -310,21 +313,28 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 	},
 
 	methods: {
-		getCredentialOptions(type: string): CredentialDropdownOption[] {
-			if (!this.showAll) {
-				return this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
-					...option,
-					typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
-				}));
+		getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
+			const isRequiredCredential = this.showMixedCredentials(credentialType);
+			if (isRequiredCredential) {
+				const mainAuthField = getMainAuthField(this.nodeType);
+				if (mainAuthField) {
+					const credentials = getAllNodeCredentialForAuthType(this.nodeType, mainAuthField.name);
+					return credentials.map((cred) => cred.name);
+				}
 			}
-
-			if (this.node) {
-				return this.credentialsStore.allUsableCredentialsForNode(this.node).map((cred) => ({
-					...cred,
-					typeDisplayName: this.credentialsStore.getCredentialTypeByName(cred.type).displayName,
-				}));
-			}
-			return [];
+			return [credentialType.name];
+		},
+		getCredentialOptions(types: string[]): CredentialDropdownOption[] {
+			let options: CredentialDropdownOption[] = [];
+			types.forEach((type) => {
+				options = options.concat(
+					this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
+						...option,
+						typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
+					})),
+				);
+			});
+			return options;
 		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {
@@ -506,7 +516,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				return false;
 			}
 			const { id } = this.node.credentials[credentialType];
-			const options = this.getCredentialOptions(credentialType);
+			const options = this.getCredentialOptions([credentialType]);
 
 			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},
@@ -523,6 +533,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			});
 			this.subscribedToCredentialType = credentialType;
 		},
+		// TODO: Maybe rename this to `isRequiredCredential`
 		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
 			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			const mainAuthField = nodeType ? getMainAuthField(nodeType) : null;

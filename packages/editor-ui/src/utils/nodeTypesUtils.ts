@@ -341,9 +341,7 @@ export const getNodeAuthOptions = (
 	return [];
 };
 
-// TODO: Need a better way to find which auth field is main
-// for now taking only the first one
-export const getMainAuthField = (nodeType?: INodeTypeDescription): INodeProperties | null => {
+export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
 	if (!nodeType) {
 		return null;
 	}
@@ -353,6 +351,21 @@ export const getMainAuthField = (nodeType?: INodeTypeDescription): INodeProperti
 		return authProps[0];
 	}
 	return null;
+};
+
+// TODO: Merge these two:
+export const getAllNodeCredentialForAuthType = (
+	nodeType: INodeTypeDescription | null,
+	authType: string,
+): INodeCredentialDescription[] => {
+	if (nodeType) {
+		return (
+			nodeType.credentials?.filter(
+				(cred) => cred.displayOptions?.show && authType in (cred.displayOptions.show || {}),
+			) || []
+		);
+	}
+	return [];
 };
 
 export const getNodeCredentialForAuthType = (
