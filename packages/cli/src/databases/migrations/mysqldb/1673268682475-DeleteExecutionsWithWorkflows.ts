@@ -10,14 +10,18 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}execution_entity\` MODIFY workflowId INT`);
 
-		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
-			SELECT id FROM \`${tablePrefix}execution_entity\`
+		const workflowIds: Array<{ workflowId: number }> = await queryRunner.query(`
+			SELECT workflowId FROM \`${tablePrefix}execution_entity\`
 		`);
 
 		await queryRunner.query(
 			`DELETE FROM \`${tablePrefix}execution_entity\`
 			 WHERE workflowId IS NOT NULL
-			 ${workflowIds.length ? `AND workflowId NOT IN (${workflowIds.map(({ id }) => id).join()})` : ''}`,
+			 ${
+					workflowIds.length
+						? `AND workflowId NOT IN (${workflowIds.map(({ workflowId }) => workflowId).join()})`
+						: ''
+				}`,
 		);
 
 		await queryRunner.query(
