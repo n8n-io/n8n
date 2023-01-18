@@ -73,9 +73,6 @@ export default mixins(Locale).extend({
 			this.$emit('expand', true);
 		},
 	},
-	beforeDestroy() {
-		this.$emit('expand', false);
-	},
 });
 </script>
 

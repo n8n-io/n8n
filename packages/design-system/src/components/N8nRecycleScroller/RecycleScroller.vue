@@ -1,5 +1,16 @@
 <script lang="ts">
-import { computed, defineComponent, onMounted, onBeforeMount, ref, PropType, nextTick } from 'vue';
+/* eslint-disable @typescript-eslint/no-use-before-define */
+
+import {
+	computed,
+	defineComponent,
+	onMounted,
+	onBeforeMount,
+	ref,
+	PropType,
+	nextTick,
+	watch,
+} from 'vue';
 
 export default defineComponent({
 	name: 'n8n-recycle-scroller',
@@ -18,7 +29,7 @@ export default defineComponent({
 		},
 		offset: {
 			type: Number,
-			default: 1,
+			default: 2,
 		},
 	},
 	setup(props) {
@@ -51,55 +62,6 @@ export default defineComponent({
 			}, {});
 		});
 
-		function initializeItemSizeCache() {
-			props.items.forEach((item) => {
-				itemSizeCache.value = {
-					...itemSizeCache.value,
-					[item[props.itemKey]]: props.itemSize,
-				};
-			});
-		}
-
-		async function onUpdateItemSize(item: { [key: string]: string }) {
-			await nextTick();
-
-			const itemId = item[props.itemKey];
-			const itemRef = itemRefs.value[itemId];
-			const previousSize = itemSizeCache.value[itemId];
-			const size = itemRef ? itemRef.offsetHeight : props.itemSize;
-			const difference = size - previousSize;
-
-			itemSizeCache.value = {
-				...itemSizeCache.value,
-				[item[props.itemKey]]: size,
-			};
-
-			if (wrapperRef.value) {
-				wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
-				scrollTop.value = wrapperRef.value.scrollTop;
-			}
-		}
-
-		/**
-		 * Event handlers
-		 */
-
-		function onWindowResize() {
-			if (wrapperRef.value) {
-				wrapperHeight.value = wrapperRef.value.offsetHeight;
-			}
-
-			windowHeight.value = window.innerHeight;
-		}
-
-		function onScroll() {
-			if (!wrapperRef.value) {
-				return;
-			}
-
-			scrollTop.value = wrapperRef.value.scrollTop;
-		}
-
 		/**
 		 * Indexes
 		 */
@@ -111,8 +73,9 @@ export default defineComponent({
 
 					return itemPosition >= scrollTop.value;
 				}) - 1;
+			const index = foundIndex - props.offset;
 
-			return foundIndex < 0 ? 0 : foundIndex;
+			return index < 0 ? 0 : index;
 		});
 
 		const endIndex = computed(() => {
@@ -122,36 +85,30 @@ export default defineComponent({
 
 				return itemPosition + itemSize >= scrollTop.value + wrapperHeight.value;
 			});
+			const index = foundIndex + props.offset;
 
-			return foundIndex === -1 ? props.items.length - 1 : foundIndex;
-		});
-
-		const startIndexWithOffset = computed(() => {
-			const extraOffset =
-				props.items.length - 1 - endIndex.value < props.offset
-					? endIndex.value + props.offset - props.items.length + 1
-					: 0;
-			const offset = props.offset + extraOffset;
-			const computedIndex = startIndex.value - offset;
-
-			return computedIndex < 0 ? 0 : computedIndex;
-		});
-
-		const endIndexWithOffset = computed(() => {
-			const extraOffset = startIndex.value < props.offset ? props.offset - startIndex.value : 0;
-			const offset = props.offset + extraOffset;
-			const computedIndex = endIndex.value + offset;
-
-			return computedIndex >= props.items.length - 1 ? props.items.length - 1 : computedIndex;
-		});
-
-		const maxVisibleItems = computed(() => {
-			return Math.ceil(wrapperHeight.value / props.itemSize) + 2 * props.offset;
+			return index === -1 ? props.items.length - 1 : index;
 		});
 
 		const visibleItems = computed(() => {
-			return props.items.slice(startIndexWithOffset.value, endIndexWithOffset.value + 1);
+			return props.items.slice(startIndex.value, endIndex.value + 1);
 		});
+
+		watch(
+			() => visibleItems.value,
+			(currentValue, previousValue) => {
+				const difference = currentValue.filter(
+					(currentItem) =>
+						!previousValue.find(
+							(previousItem) => previousItem[props.itemKey] === currentItem[props.itemKey],
+						),
+				);
+
+				if (difference.length > 0) {
+					updateItemSizeCache(difference);
+				}
+			},
+		);
 
 		/**
 		 * Computed sizes and styles
@@ -170,8 +127,8 @@ export default defineComponent({
 		}));
 
 		const itemsStyles = computed(() => {
-			const offset =
-				itemPositionCache.value[props.items[startIndexWithOffset.value][props.itemKey]];
+			const offset = itemPositionCache.value[props.items[startIndex.value][props.itemKey]];
+			console.log(props.items[startIndex.value][props.itemKey], offset);
 
 			return {
 				transform: `translateY(${offset}px)`,
@@ -189,17 +146,77 @@ export default defineComponent({
 		onMounted(() => {
 			if (wrapperRef.value) {
 				wrapperRef.value.addEventListener('scroll', onScroll);
+				updateItemSizeCache(visibleItems.value);
 			}
 
 			window.addEventListener('resize', onWindowResize);
 			onWindowResize();
 		});
 
+		/**
+		 * Event handlers
+		 */
+
+		function initializeItemSizeCache() {
+			props.items.forEach((item) => {
+				itemSizeCache.value = {
+					...itemSizeCache.value,
+					[item[props.itemKey]]: props.itemSize,
+				};
+			});
+		}
+
+		async function updateItemSizeCache(items: Array<Record<string, string>>) {
+			for (const item of items) {
+				await onUpdateItemSize(item);
+			}
+		}
+
+		async function onUpdateItemSize(item: { [key: string]: string }) {
+			await nextTick();
+
+			const itemId = item[props.itemKey];
+			const itemRef = itemRefs.value[itemId];
+			const previousSize = itemSizeCache.value[itemId];
+			const size = itemRef ? itemRef.offsetHeight : props.itemSize;
+			const difference = size - previousSize;
+
+			itemSizeCache.value = {
+				...itemSizeCache.value,
+				[item[props.itemKey]]: size,
+			};
+
+			if (wrapperRef.value && scrollTop.value) {
+				wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
+				scrollTop.value = wrapperRef.value.scrollTop;
+			}
+		}
+
+		function onWindowResize() {
+			if (wrapperRef.value) {
+				wrapperHeight.value = wrapperRef.value.offsetHeight;
+				nextTick(() => {
+					updateItemSizeCache(visibleItems.value);
+				});
+			}
+
+			windowHeight.value = window.innerHeight;
+		}
+
+		function onScroll() {
+			if (!wrapperRef.value) {
+				return;
+			}
+
+			scrollTop.value = wrapperRef.value.scrollTop;
+		}
+
 		return {
 			startIndex,
 			endIndex,
 			itemCount,
-			maxVisibleItems,
+			itemSizeCache,
+			itemPositionCache,
 			itemsVisible: visibleItems,
 			itemsStyles,
 			scrollerStyles,
