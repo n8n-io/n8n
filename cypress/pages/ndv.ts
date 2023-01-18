@@ -78,9 +78,10 @@ export class NDV extends BasePage {
 		executePrevious: () => {
 			this.getters.executePrevious().click();
 		},
-		mapDataFromHeader: (col: number, targetSelector: string) => {
+		mapDataFromHeader: (col: number, parameterName: string) => {
 			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
-			cy.drag(draggable, targetSelector);
+			const droppable = `[data-test-id="parameter-input-${parameterName}"] input`;
+			cy.drag(draggable, droppable);
 		},
 	};
 }

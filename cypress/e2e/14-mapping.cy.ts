@@ -4,7 +4,7 @@ const workflowPage = new WorkflowPage();
 const ndv = new NDV();
 const canvasNode = new CanvasNode();
 
-describe('Data pinning', () => {
+describe('Data mapping', () => {
 	before(() => {
 		cy.resetAll();
 		cy.skipSetup();
@@ -20,8 +20,13 @@ describe('Data pinning', () => {
 		});
 		canvasNode.actions.openNode('Set');
 		ndv.actions.executePrevious();
-		ndv.getters.inputDataContainer().get('table').should('be.visible');
+		ndv.getters.inputDataContainer().get('table', { timeout: 10000 }).should('exist');
 
-		ndv.getters.nodeParameters().find('input').click();
+		ndv.getters.nodeParameters().find('input[placeholder*="Add Value"]').click();
+		ndv.getters.nodeParameters().find('.el-select-dropdown__list li:nth-child(3)').should('have.text', 'String').click();
+		ndv.getters.parameterInput('name').should('have.length', 1).find('input').should('have.value', 'propertyName');
+		ndv.getters.parameterInput('value').should('have.length', 1).find('input').should('have.value', '');
+
+		ndv.actions.mapDataFromHeader(1, 'value');
 	});
 });
