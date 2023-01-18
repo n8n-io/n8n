@@ -76,9 +76,7 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 		const extensions = [
 			inputTheme({ isSingleLine: this.isSingleLine }),
 			Prec.highest(this.previewKeymap),
-			autocompletion({
-				aboveCursor: true,
-			}),
+			autocompletion(),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),

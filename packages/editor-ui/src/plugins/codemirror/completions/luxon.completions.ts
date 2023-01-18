@@ -44,7 +44,7 @@ function generateOptions(toResolve: string): Completion[] {
 }
 
 export const nowTodayOptions = () => {
-	const SKIP_SET = new Set(['constructor', 'get']);
+	const SKIP_SET = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
 	const entries = Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
 		.filter(([key]) => !SKIP_SET.has(key))
@@ -67,7 +67,7 @@ export const nowTodayOptions = () => {
 };
 
 export const dateTimeOptions = () => {
-	const SKIP_SET = new Set(['prototype', 'name', 'length']);
+	const SKIP_SET = new Set(['prototype', 'name', 'length', 'invalid']);
 
 	const keys = Object.keys(Object.getOwnPropertyDescriptors(DateTime))
 		.filter((key) => !SKIP_SET.has(key) && !key.includes('_'))

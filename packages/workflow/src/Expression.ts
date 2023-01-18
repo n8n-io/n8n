@@ -282,12 +282,12 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') {
-				throw new Error('This is an n8n prefix, please open completions', {
-					cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.N8N_PREFIX },
+				throw new Error('invalid syntax', {
+					cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.STANDALONE_PREFIX },
 				});
 			}
 
-			throw new Error('This is a function. Please add ()', {
+			throw new Error('this is a function, please add ()', {
 				cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.UNCALLED_FUNCTION },
 			});
 		} else if (typeof returnValue === 'string') {
@@ -342,7 +342,7 @@ export class Expression {
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (!output?.code) {
-					throw new ExpressionExtensionError('Failed to extend syntax');
+					throw new ExpressionExtensionError('invalid syntax');
 				}
 
 				let text = output.code;

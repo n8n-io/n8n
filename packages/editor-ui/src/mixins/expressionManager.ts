@@ -1,5 +1,8 @@
 import mixins from 'vue-typed-mixins';
-import { EXPRESSION_RESOLUTION_ERROR_CODES as ERROR_CODES } from 'n8n-workflow';
+import {
+	ExpressionExtensions,
+	EXPRESSION_RESOLUTION_ERROR_CODES as ERROR_CODES,
+} from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { ensureSyntaxTree } from '@codemirror/language';
 import { EditorState } from '@codemirror/state';
@@ -116,6 +119,14 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return delay;
 		},
 
+		expressionExtensions() {
+			return new Set(
+				ExpressionExtensions.reduce<string[]>((acc, cur) => {
+					return [...acc, ...Object.keys(cur.functions)];
+				}, []),
+			);
+		},
+
 		/**
 		 * Some segments are conditionally displayed, i.e. not displayed when they are
 		 * _part_ of the result, but displayed when they are the _entire_ result.
@@ -225,7 +236,7 @@ export const expressionManager = mixins(workflowHelpers).extend({
 				if (
 					this.isCursorAtCompletablePrefix &&
 					hasErrorCode(fullError) &&
-					fullError.cause.code === ERROR_CODES.N8N_PREFIX
+					fullError.cause.code === ERROR_CODES.STANDALONE_PREFIX
 				) {
 					fullError = new Error(i18n.expressionEditor.completablePrefix);
 					resolved = fullError.message;
@@ -259,6 +270,16 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			return this.toSegments(previewState, { isPreview: true });
 		},
 
+		isUncalledExpressionExtension(resolvable: string) {
+			const end = resolvable
+				.replace(/^{{|}}$/g, '')
+				.trim()
+				.split('.')
+				.pop();
+
+			return end && this.expressionExtensions.has(end);
+		},
+
 		resolve(resolvable: string, targetItem?: TargetItem) {
 			const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
 				resolved: undefined,
@@ -288,7 +309,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 			}
 
 			if (result.resolved === undefined) {
-				result.resolved = this.$locale.baseText('expressionModalInput.undefined');
+				result.resolved = this.isUncalledExpressionExtension(resolvable)
+					? this.$locale.baseText('expressionEditor.uncalledFunction')
+					: this.$locale.baseText('expressionModalInput.undefined');
+
 				result.error = true;
 			}
 

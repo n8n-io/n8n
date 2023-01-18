@@ -14,6 +14,10 @@ import type { Word } from '@/types/completions';
  * Completions from proxies to their content.
  */
 export function proxyCompletions(context: CompletionContext): CompletionResult | null {
+	// ----------------------------------
+	//        match before cursor
+	// ----------------------------------
+
 	const word = context.matchBefore(
 		/\$(input|\(.+\)|prevNode|parameter|json|execution|workflow)*(\.|\[)(\w|\W)*/,
 	);
@@ -22,9 +26,18 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	const toResolve = word.text.endsWith('.')
-		? word.text.slice(0, -1)
-		: word.text.split('.').slice(0, -1).join('.');
+	// ----------------------------------
+	//      find string to resolve
+	// ----------------------------------
+
+	const toResolve =
+		word.text.endsWith('.') || word.text.endsWith('json[')
+			? word.text.slice(0, -1) // $input. -> $input, or $input.item.json[ -> $input.item.json
+			: word.text.split('.').slice(0, -1).join('.'); // $input.item.json.ab -> $input.item.json
+
+	// ----------------------------------
+	//     resolve and get options
+	// ----------------------------------
 
 	let options: Completion[] = [];
 
@@ -33,18 +46,16 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 
 		if (!resolved || typeof resolved !== 'object' || Array.isArray(resolved)) return null;
 
-		// resolved to proxy
-
 		options = generateOptions(toResolve, resolved, word);
 	} catch (_) {
 		return null;
 	}
 
-	let userInputTail = '';
+	// ----------------------------------
+	//       filter by user input
+	// ----------------------------------
 
-	const delimiter = word.text.includes('json[') ? 'json[' : '.';
-
-	userInputTail = word.text.split(delimiter).pop() as string;
+	const userInputTail = word.text.includes('json[') ? '' : word.text.split('.').pop() ?? '';
 
 	if (userInputTail !== '') {
 		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
@@ -68,7 +79,7 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 	const BOOST_SET = new Set(['item', 'all', 'first', 'last']);
 
 	if (word.text.includes('json[')) {
-		return Object.keys(proxy.json as object)
+		return Object.keys(word.text === '$json[' ? proxy : (proxy.json as object))
 			.filter((key) => !SKIP_SET.has(key))
 			.map((key) => {
 				return {

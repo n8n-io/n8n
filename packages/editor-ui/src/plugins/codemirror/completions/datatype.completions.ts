@@ -7,6 +7,10 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
  * Completions from datatypes to native JS methods (pending) and expression extensions.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
+	// ----------------------------------
+	//        match before cursor
+	// ----------------------------------
+
 	const referenceRegex = /\$[\S]+\.(\w|\W)*/; // $input.item.json.name.
 	const numberRegex = /(\d+)\.?(\d*)\.(\w|\W)*/; // 123. or 123.4.
 	const stringRegex = /(".+"|('.+'))\.(\w|\W)*/; // 'abc'. or "abc".
@@ -31,17 +35,29 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// remove opening marker grabbed by objectRegex
+	// cleanup - remove opener grabbed by objectRegex
 	if (word.text.startsWith('{{')) word.text = word.text.replace(/^{{/, '');
 
-	const toResolve = word.text.endsWith('.')
-		? word.text.slice(0, -1)
-		: word.text.split('.').slice(0, -1).join('.');
+	// ----------------------------------
+	//      find string to resolve
+	// ----------------------------------
 
-	// n8n vars should not trigger datatype completions
+	const toResolve =
+		word.text.endsWith('.') || word.text.endsWith('json[')
+			? word.text.slice(0, -1)
+			: word.text.split('.').slice(0, -1).join('.');
+
+	// ----------------------------------
+	//         skip exceptions
+	// ----------------------------------
+
 	const SKIP_SET = new Set(['$execution', '$binary', '$itemIndex', '$now', '$today', '$runIndex']);
 
 	if (SKIP_SET.has(toResolve)) return null;
+
+	// ----------------------------------
+	//     resolve and get options
+	// ----------------------------------
 
 	let options: Completion[] = [];
 	let resolved: IDataObject | null;
@@ -59,30 +75,40 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} else if (typeof resolved === 'string') {
 		options = extensionOptions('String');
 	} else if (Array.isArray(resolved)) {
+		if (toResolve.endsWith('all()')) {
+			// exclude array proxy from array expression extensions
+			return null;
+		}
 		options = extensionOptions('Array');
 	} else if (resolved instanceof Date) {
 		options = extensionOptions('Date');
 	} else if (
 		typeof resolved === 'object' &&
+		// exclude object proxies from object expression extensions
 		!resolved.isProxy &&
 		!resolved.json &&
 		!toResolve.endsWith('json') &&
 		!toResolve.startsWith('{') &&
 		!toResolve.endsWith('}')
 	) {
-		/**
-		 * Object expression extensions are _only_ completed for
-		 * - bracketed object literals: `({}).`
-		 * - referenced objects: `$input.item.json.myObj.`
-		 */
-		options = extensionOptions('Object');
+		options = [
+			...Object.keys(resolved).map((key) => ({ label: key, type: 'keyword' })),
+			...extensionOptions('Object'),
+		];
+	} else if (word.text.endsWith('json[')) {
+		options = Object.keys(resolved).map((key) => {
+			return {
+				label: `'${key}']`,
+				type: 'keyword',
+			};
+		});
 	}
 
-	let userInputTail = '';
+	// ----------------------------------
+	//       filter by user input
+	// ----------------------------------
 
-	const delimiter = word.text.includes('.json[') ? 'json[' : '.';
-
-	userInputTail = word.text.split(delimiter).pop() as string;
+	const userInputTail = word.text.includes('json[') ? '' : word.text.split('.').pop() ?? '';
 
 	if (userInputTail !== '') {
 		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
@@ -106,8 +132,8 @@ const extensionOptions = (typeName: 'String' | 'Number' | 'Date' | 'Object' | 'A
 	if (!extensions) return [];
 
 	const options = Object.entries(extensions.functions)
-		.filter(([name, f]) => f.length === 1) // @TEMP Filter out functions needing args until documented
-		.sort((a, b) => a[0].localeCompare(a[0]))
+		.filter(([_, f]) => f.length === 1) // complete only argless functions until further notice
+		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([name, f]) => {
 			const option: Completion = {
 				label: name,
