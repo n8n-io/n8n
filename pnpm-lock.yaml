@@ -510,7 +510,6 @@ importers:
     specifiers:
       '@codemirror/autocomplete': ^6.4.0
       '@codemirror/commands': ^6.1.0
-      '@codemirror/lang-css': ^6.0.1
       '@codemirror/lang-javascript': ^6.1.2
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
@@ -590,7 +589,6 @@ importers:
     dependencies:
       '@codemirror/autocomplete': 6.4.0_wo7q3lvweq5evsu423o7qzum5i
       '@codemirror/commands': 6.1.2
-      '@codemirror/lang-css': 6.0.1_gu445lycfriim3kznnyeahleva
       '@codemirror/lang-javascript': 6.1.2
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0

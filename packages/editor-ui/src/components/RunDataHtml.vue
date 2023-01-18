@@ -22,7 +22,7 @@ export default {
 	},
 	methods: {
 		/**
-		 * Scope all CSS selectors to prevent user stylesheets leaking.
+		 * Scope all CSS selectors to prevent user stylesheets from leaking.
 		 */
 		scopeCss(str: string) {
 			const stylesheets = str.match(/<style>([\s\S]*?)<\/style>/g);

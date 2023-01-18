@@ -8,7 +8,6 @@ import prettier from 'prettier/standalone';
 import htmlParser from 'prettier/parser-html';
 import cssParser from 'prettier/parser-postcss';
 import jsParser from 'prettier/parser-babel';
-
 import { html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
@@ -19,7 +18,6 @@ import {
 	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
-	highlightSpecialChars,
 	keymap,
 	lineNumbers,
 	ViewUpdate,
@@ -46,13 +44,11 @@ export default mixins(expressionManager).extend({
 	},
 	data() {
 		return {
-			editor: null as EditorView | null,
+			editor: {} as EditorView,
 		};
 	},
 	computed: {
 		doc(): string {
-			if (!this.editor) return '';
-
 			return this.editor.state.doc.toString();
 		},
 
@@ -67,7 +63,6 @@ export default mixins(expressionManager).extend({
 				theme,
 				lineNumbers(),
 				highlightActiveLineGutter(),
-				highlightSpecialChars(),
 				history(),
 				foldGutter(),
 				dropCursor(),
@@ -75,9 +70,9 @@ export default mixins(expressionManager).extend({
 				highlightActiveLine(),
 				EditorState.readOnly.of(this.isReadOnly),
 				EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
-					if (!this.editor || !viewUpdate.docChanged) return;
+					if (!viewUpdate.docChanged) return;
 
-					highlighter.removeColor(this.editor, this.nonResolvableSegments);
+					highlighter.removeColor(this.editor, this.htmlSegments);
 					highlighter.addColor(this.editor, this.resolvableSegments);
 
 					this.$emit('valueChanged', this.doc);
@@ -86,8 +81,6 @@ export default mixins(expressionManager).extend({
 		},
 
 		sections(): Section[] {
-			if (!this.editor) return [];
-
 			const { state } = this.editor;
 
 			const fullTree = ensureSyntaxTree(this.editor.state, this.doc.length);
@@ -152,13 +145,14 @@ export default mixins(expressionManager).extend({
 		},
 
 		format() {
-			if (!this.editor) return;
-
 			const formatted = [];
 
 			for (const { kind, content } of this.sections) {
 				if (kind === 'style') {
-					const formattedStyle = prettier.format(content, { parser: 'css', plugins: [cssParser] });
+					const formattedStyle = prettier.format(content, {
+						parser: 'css',
+						plugins: [cssParser],
+					});
 
 					formatted.push(`<style>\n${formattedStyle}</style>`);
 				}
@@ -182,7 +176,10 @@ export default mixins(expressionManager).extend({
 
 					const { pre, rest } = match.groups;
 
-					const formattedRest = prettier.format(rest, { parser: 'html', plugins: [htmlParser] });
+					const formattedRest = prettier.format(rest, {
+						parser: 'html',
+						plugins: [htmlParser],
+					});
 
 					formatted.push(`${pre}\n${formattedRest}</html>`);
 				}

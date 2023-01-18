@@ -8,7 +8,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { placeholder } from './placeholder';
-import { getResolvables, getValue, makeEecutionData } from './utils';
+import { getResolvables, getValue, makeExecutionData } from './utils';
 import type { IValueData } from './types';
 
 export class Html implements INodeType {
@@ -259,10 +259,10 @@ export class Html implements INodeType {
 						html = html.replace(resolvable, this.evaluateExpression(resolvable, itemIndex) as any);
 					}
 
-					returnData.push(...makeEecutionData.call(this, html, itemIndex));
+					returnData.push(...makeExecutionData.call(this, html, itemIndex));
 				} else if (operation === 'extractHtmlContent') {
 					// ----------------------------------
-					//           extractHtml
+					//         extractHtmlContent
 					// ----------------------------------
 
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
@@ -349,7 +349,7 @@ export class Html implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push(...makeEecutionData.call(this, error.message, itemIndex));
+					returnData.push(...makeExecutionData.call(this, error.message, itemIndex));
 					continue;
 				}
 

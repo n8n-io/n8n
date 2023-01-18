@@ -31,7 +31,6 @@ export const theme = [
 			backgroundColor: 'var(--color-code-gutterBackground)',
 			color: 'var(--color-code-gutterForeground)',
 		},
-
 		'.cm-scroller': {
 			overflow: 'auto',
 			maxHeight: '400px',
