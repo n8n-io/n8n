@@ -1,0 +1,13 @@
+diff --git a/lib/sax.js b/lib/sax.js
+index 795d607ef630bb9a8919e8f8bc2ebcb85bc11f44..25c76018e7cbbf39a2f2e6b160bb1ca0b0cd01f9 100644
+--- a/lib/sax.js
++++ b/lib/sax.js
+@@ -160,7 +160,7 @@
+
+   var Stream
+   try {
+-    Stream = require('stream').Stream
++    Stream = require('node:stream').Stream
+   } catch (ex) {
+     Stream = function () {}
+   }

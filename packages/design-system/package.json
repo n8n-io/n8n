@@ -34,7 +34,7 @@
     "markdown-it-emoji": "^2.0.0",
     "markdown-it-link-attributes": "^4.0.0",
     "markdown-it-task-lists": "^2.1.1",
-    "vue": "^2.7",
+    "vue": "^2.7.14",
     "vue-typed-mixins": "^0.2.0",
     "xss": "^1.0.10"
   },
