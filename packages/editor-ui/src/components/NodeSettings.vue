@@ -18,6 +18,7 @@
 				<div v-if="isExecutable">
 					<NodeExecuteButton
 						v-if="!blockUI"
+						data-test-id="node-execute-button"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
