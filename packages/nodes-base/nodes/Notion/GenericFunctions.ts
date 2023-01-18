@@ -25,6 +25,17 @@ import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
 
+const uuidValidateWithoutDashes = (value: string) => {
+	if (!value || typeof value !== 'string') return false;
+	if (uuidValidate(value)) return true;
+	if (value.length !== 32) return false;
+	//prettier-ignore
+	const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+	return uuidValidate(strWithDashes);
+};
+
+export type SortData = { key: string; type: string; direction: string; timestamp: boolean };
+
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
 	2: '2021-08-16',
@@ -291,7 +302,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 				type: 'relation',
 				relation: value.relationValue
 					.filter((rv: string) => {
-						return rv && typeof rv === 'string';
+						return uuidValidateWithoutDashes(rv);
 					})
 					.reduce((acc: [], cur: any) => {
 						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
@@ -418,9 +429,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 		);
 }
 
-export function mapSorting(
-	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
-) {
+export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,

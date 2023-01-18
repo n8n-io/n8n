@@ -26,6 +26,7 @@ import {
 	notionApiRequest,
 	notionApiRequestAllItems,
 	simplifyObjects,
+	SortData,
 	validateJSON,
 } from '../GenericFunctions';
 
@@ -536,8 +537,7 @@ export class NotionV2 implements INodeType {
 						delete body.filter;
 					}
 					if (sort) {
-						//@ts-expect-error
-						body.sorts = mapSorting(sort);
+						body.sorts = mapSorting(sort as SortData[]);
 					}
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
