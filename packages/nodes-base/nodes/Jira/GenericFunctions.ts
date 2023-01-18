@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, INodeListSearchItems } from 'n8n-workflow';
+import { IDataObject, INodeListSearchItems, NodeApiError } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -56,8 +56,20 @@ export async function jiraSoftwareCloudApiRequest(
 	if (Object.keys(query || {}).length === 0) {
 		delete options.qs;
 	}
-
-	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	} catch (error) {
+		if (
+			error.description?.includes &&
+			error.description.includes("Field 'priority' cannot be set")
+		) {
+			throw new NodeApiError(this.getNode(), error, {
+				message:
+					"Field 'priority' cannot be set. You need to add the Priority field to your Jira Project's Issue Types.",
+			});
+		}
+		throw error;
+	}
 }
 
 export async function jiraSoftwareCloudApiRequestAllItems(
