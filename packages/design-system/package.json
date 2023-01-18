@@ -48,7 +48,7 @@
     "@storybook/addon-postcss": "^2.0.0",
     "@storybook/vue": "^6.5.15",
     "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/vue": "^6.6.1",
+    "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
     "@types/markdown-it-emoji": "^2.0.2",
     "@types/markdown-it-link-attributes": "^3.0.1",
