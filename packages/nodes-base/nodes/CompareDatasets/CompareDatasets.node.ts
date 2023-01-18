@@ -123,6 +123,7 @@ export class CompareDatasets implements INodeType {
 						resolve: ['mix'],
 					},
 				},
+				requiresDataPath: 'multiple',
 			},
 			{
 				displayName: 'Options',
@@ -140,7 +141,7 @@ export class CompareDatasets implements INodeType {
 						hint: 'Enter the field names as text, separated by commas',
 						description:
 							"Fields that shouldn't be included when checking whether two items are the same",
-						requiresDataPath: "multiple",
+						requiresDataPath: 'multiple',
 					},
 					{
 						displayName: 'Fuzzy Compare',
