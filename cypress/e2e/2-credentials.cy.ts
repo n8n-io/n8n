@@ -1,4 +1,5 @@
-import { NEW_NOTION_ACCOUNT_NAME } from './../constants';
+import { HTTP_REQUEST_NODE_TYPE } from './../../packages/editor-ui/src/constants';
+import { NEW_NOTION_ACCOUNT_NAME, NOTION_NODE_NAME, PIPEDRIVE_NODE_NAME, HTTP_REQUEST_NODE_NAME, NEW_QUERY_AUTH_ACCOUNT_NAME } from './../constants';
 import { visit } from 'recast';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD, GMAIL_NODE_NAME, NEW_GOOGLE_ACCOUNT_NAME, NEW_TRELLO_ACCOUNT_NAME, SCHEDULE_TRIGGER_NODE_NAME, TRELLO_NODE_NAME } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
@@ -101,14 +102,62 @@ describe('Credentials', () => {
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
 		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
-		credentialsModal.getters.credentialInputs().should('have.length', 2);
-		credentialsModal.getters.credentialInputs().first().type('test');
-		credentialsModal.getters.credentialInputs().last().type('test');
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.closeButton().click();
+		credentialsModal.actions.fillCredentialsForm();
 		cy.get('.el-message-box').find('button').contains('Close').click();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_GOOGLE_ACCOUNT_NAME);
 	})
+
+	it('should show multiple credential types in the same dropdown', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(GMAIL_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		// Add oAuth credentials
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
+		credentialsModal.getters.credentialAuthTypeRadioButtons().first().click();
+		credentialsModal.actions.fillCredentialsForm();
+		cy.get('.el-message-box').find('button').contains('Close').click();
+		workflowPage.getters.nodeCredentialsSelect().click();
+		// Add Service account credentials
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.getters.credentialsEditModal().should('be.visible');
+		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
+		credentialsModal.getters.credentialAuthTypeRadioButtons().last().click();
+		credentialsModal.actions.fillCredentialsForm();
+		// Both (+ the 'Create new' option) should be in the dropdown
+		workflowPage.getters.nodeCredentialsSelect().find('li').should('have.length.greaterThan', 3);
+	});
+
+	it('should correctly render required and optional credentials', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(PIPEDRIVE_NODE_NAME, true);
+		cy.get('body').type('{downArrow}');
+		cy.get('body').type('{enter}');
+		// Select incoming authentication
+		workflowPage.getters.ndvParameterInput('incomingAuthentication').should('exist');
+		workflowPage.getters.ndvParameterInput('incomingAuthentication').click();
+		workflowPage.getters.ndvParameterInput('incomingAuthentication').find('li').first().click();
+		// There should be two credential fields
+		workflowPage.getters.nodeCredentialsSelect().should('have.length', 2);
+
+		workflowPage.getters.nodeCredentialsSelect().first().click();
+		workflowPage.getters.nodeCredentialsSelect().first().find('li').last().click();
+		// This one should show auth type selector
+		credentialsModal.getters.credentialAuthTypeRadioButtons().should('have.length', 2);
+		cy.get('body').type('{esc}');
+
+		workflowPage.getters.nodeCredentialsSelect().last().click();
+		workflowPage.getters.nodeCredentialsSelect().last().find('li').last().click();
+		// This one should not show auth type selector
+		credentialsModal.getters.credentialAuthTypeRadioButtons().should('not.exist');
+		cy.get('body').type('{esc}');
+	});
 
 	it('should create credentials from NDV for node with no auth options', () => {
 		workflowPage.actions.visit();
@@ -119,13 +168,8 @@ describe('Credentials', () => {
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
-		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
-		credentialsModal.getters.credentialInputs().should('have.length', 2);
-		credentialsModal.getters.credentialInputs().first().type('test');
-		credentialsModal.getters.credentialInputs().last().type('test');
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.closeButton().click();
+		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_TRELLO_ACCOUNT_NAME);
 	});
 
@@ -133,17 +177,12 @@ describe('Credentials', () => {
 		workflowPage.actions.visit();
 		cy.waitForLoad();
 		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
-		workflowPage.actions.addNodeToCanvas('Notion');
+		workflowPage.actions.addNodeToCanvas(NOTION_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
-		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
-		credentialsModal.getters.credentialInputs().should('have.length', 1);
-		credentialsModal.getters.credentialInputs().first().type('test');
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.closeButton().click();
+		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_NOTION_ACCOUNT_NAME);
 
 		workflowPage.getters.nodeCredentialsEditButton().click();
@@ -163,13 +202,7 @@ describe('Credentials', () => {
 		cy.get('body').type('{enter}');
 		workflowPage.getters.nodeCredentialsSelect().click();
 		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
-		credentialsModal.getters.credentialsEditModal().should('be.visible');
-		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
-		credentialsModal.getters.credentialInputs().should('have.length', 2);
-		credentialsModal.getters.credentialInputs().first().type('test');
-		credentialsModal.getters.credentialInputs().last().type('test');
-		credentialsModal.getters.saveButton().click();
-		credentialsModal.getters.closeButton().click();
+		credentialsModal.actions.fillCredentialsForm();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_TRELLO_ACCOUNT_NAME);
 
 		workflowPage.getters.nodeCredentialsEditButton().click();
@@ -181,5 +214,27 @@ describe('Credentials', () => {
 		credentialsModal.getters.saveButton().click();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_CREDENTIAL_NAME);
+	});
+
+	it('should setup generic authentication for HTTP node', () => {
+		workflowPage.actions.visit();
+		cy.waitForLoad();
+		workflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
+		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
+		workflowPage.getters.canvasNodes().last().click();
+		cy.get('body').type('{enter}');
+		workflowPage.getters.ndvParameterInput('authentication').click();
+		workflowPage.getters.ndvParameterInput('authentication').find('li').should('have.length', 3);
+		workflowPage.getters.ndvParameterInput('authentication').find('li').last().click();
+		workflowPage.getters.ndvParameterInput('genericAuthType').should('exist');
+		workflowPage.getters.ndvParameterInput('genericAuthType').click();
+		workflowPage.getters.ndvParameterInput('genericAuthType').find('li').should('have.length.greaterThan', 0);
+		workflowPage.getters.ndvParameterInput('genericAuthType').find('li').last().click();
+
+		workflowPage.getters.nodeCredentialsSelect().should('exist');
+		workflowPage.getters.nodeCredentialsSelect().click();
+		workflowPage.getters.nodeCredentialsSelect().find('li').last().click();
+		credentialsModal.actions.fillCredentialsForm();
+		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_QUERY_AUTH_ACCOUNT_NAME);
 	});
 });

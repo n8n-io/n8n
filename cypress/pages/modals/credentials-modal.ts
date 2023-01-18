@@ -47,5 +47,14 @@ export class CredentialsModal extends BasePage {
 		close: () => {
 			this.getters.closeButton().click();
 		},
+		fillCredentialsForm: () => {
+			this.getters.credentialsEditModal().should('be.visible');
+			this.getters.credentialInputs().should('have.length.greaterThan', 0);
+			this.getters.credentialInputs().find('input[type=text], input[type=password]').each(($el) => {
+				cy.wrap($el).type('test');
+			});
+			this.getters.saveButton().click();
+			this.getters.closeButton().click();
+		}
 	};
 }

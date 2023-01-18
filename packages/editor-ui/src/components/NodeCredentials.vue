@@ -13,6 +13,7 @@
 				:set="(issues = getIssues(credentialTypeDescription.name))"
 				size="small"
 				color="text-dark"
+				data-test-id="credentials-label"
 			>
 				<div v-if="readonly || isReadOnly">
 					<n8n-input
