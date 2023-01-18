@@ -27,6 +27,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	const word = context.matchBefore(combinedRegex);
 
+	console.log('word', word);
+
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
@@ -105,12 +107,12 @@ const extensionOptions = (typeName: 'String' | 'Number' | 'Date' | 'Object' | 'A
 
 	if (!extensions) return [];
 
-	const options = Object.values(extensions.functions)
-		.filter((f) => f.length === 1) // @TEMP Filter out functions needing args until documented
-		.sort((a, b) => a.name.localeCompare(b.name))
-		.map((f) => {
+	const options = Object.entries(extensions.functions)
+		.filter(([name, f]) => f.length === 1) // @TEMP Filter out functions needing args until documented
+		.sort((a, b) => a[0].localeCompare(a[0]))
+		.map(([name, f]) => {
 			const option: Completion = {
-				label: f.name,
+				label: name,
 				type: 'function',
 			};
 
