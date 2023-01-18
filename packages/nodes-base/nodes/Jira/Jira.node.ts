@@ -221,7 +221,7 @@ export class Jira implements INodeType {
 						if (user.active) {
 							activeUsers.push({
 								name: user.displayName as string,
-								value: (user.accountId || user.name) as string,
+								value: (user.accountId ?? user.name) as string,
 							});
 						}
 						return activeUsers;
