@@ -207,20 +207,70 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async storeWorkflow(workflow: object, user: User) {
-		const newWorkflow = new WorkflowEntity();
+		let savedWorkflow;
 
+		const newWorkflow = new WorkflowEntity();
 		Object.assign(newWorkflow, workflow);
 
-		const savedWorkflow = await this.transactionManager.save<WorkflowEntity>(newWorkflow);
+		/**
+		 * The following code is a workaround for a bug in TypeORM which causes PostgreSQL inserts
+		 * into the workflow_entity table to apply the wrong id value.
+		 * Instead of the workflow id from the json definition, the nextval() of the table's sequence
+		 * is used.
+		 * This workaround sets the sequence value temporarily to the workflow id from the json definition.
+		 */
+		if (Db.getConnection().options.type === 'postgres') {
+			const newWorkflowIdAsInt = parseInt(newWorkflow.id);
+			let previousSequenceValue: number;
+			try {
+				const currvalResult = await Db.getConnection().query(
+					"SELECT currval('workflow_entity_id_seq');",
+				);
+				if (currvalResult && currvalResult.length > 0 && currvalResult[0].currval) {
+					previousSequenceValue = parseInt(currvalResult[0].currval);
+				} else {
+					previousSequenceValue = 1;
+				}
+			} catch (error) {
+				// "error currval of sequence "workflow_entity_id_seq" is not yet defined in this session"
+				// (happens if table is empty)
+				if (error.code === '55000') {
+					previousSequenceValue = 1;
+				} else {
+					throw error;
+				}
+			}
 
+			const setTemporarySequenceValueTo = newWorkflowIdAsInt > 1 ? newWorkflowIdAsInt : 1;
+
+			// set the current sequence value to the id of the workflow to be imported
+			await Db.getConnection().query(
+				`ALTER SEQUENCE workflow_entity_id_seq RESTART WITH ${setTemporarySequenceValueTo};`,
+			);
+
+			// we're not using the transactionManager here because it will hang at the inserts
+			await Db.collections.Workflow.upsert(newWorkflow, ['id']);
+			savedWorkflow = await Db.collections.Workflow.findOneBy({
+				id: newWorkflow.id,
+			});
+
+			const setSequenceValueTo = previousSequenceValue
+				? Math.max(previousSequenceValue + 1, newWorkflowIdAsInt)
+				: newWorkflowIdAsInt;
+
+			await Db.getConnection().query(
+				`SELECT setval('workflow_entity_id_seq', ${setSequenceValueTo});`,
+			);
+		} else {
+			// for other databases we can use the transactionManager
+			savedWorkflow = await this.transactionManager.save<WorkflowEntity>(newWorkflow);
+		}
 		const newSharedWorkflow = new SharedWorkflow();
-
 		Object.assign(newSharedWorkflow, {
 			workflow: savedWorkflow,
 			user,
 			role: this.ownerWorkflowRole,
 		});
-
 		await this.transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 	}
 
