@@ -1,3 +1,5 @@
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
 import {
 	CORE_NODES_CATEGORY,
@@ -21,6 +23,7 @@ import {
 	ITemplatesNode,
 	INodeItemProps,
 	NodeAuthenticationOption,
+	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 import {
 	IDataObject,
@@ -441,4 +444,25 @@ export const getCredentialsRelatedFields = (
 		});
 	}
 	return fields;
+};
+
+export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
+	if (node) {
+		const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+		if (nodeType) {
+			const nodeAuthField = getMainAuthField(nodeType);
+			if (nodeAuthField) {
+				const updateInformation = {
+					name: node.name,
+					properties: {
+						parameters: {
+							...node.parameters,
+							[nodeAuthField.name]: type,
+						},
+					} as IDataObject,
+				} as INodeUpdatePropertiesInformation;
+				useWorkflowsStore().updateNodeProperties(updateInformation);
+			}
+		}
+	}
 };

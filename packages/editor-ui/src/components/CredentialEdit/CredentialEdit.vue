@@ -155,6 +155,7 @@ import {
 	getNodeAuthOptions,
 	getNodeCredentialForAuthType,
 	getMainAuthField,
+updateNodeAuthType,
 } from '@/utils';
 
 interface NodeAccessMap {
@@ -1022,21 +1023,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 						{},
 					);
 					// Update current node auth type so credentials dropdown can be displayed properly
-					if (this.ndvStore.activeNode) {
-						const nodeAuthField = getMainAuthField(this.activeNodeType);
-						if (nodeAuthField) {
-							const updateInformation = {
-								name: this.ndvStore.activeNode.name,
-								properties: {
-									parameters: {
-										...this.ndvStore.activeNode.parameters,
-										[nodeAuthField.name]: type,
-									},
-								} as IDataObject,
-							} as INodeUpdatePropertiesInformation;
-							this.workflowsStore.updateNodeProperties(updateInformation);
-						}
-					}
+					updateNodeAuthType(this.ndvStore.activeNode, type);
 				}
 			}
 		},

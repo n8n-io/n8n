@@ -122,6 +122,7 @@ import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
 	getNodeCredentialForAuthType,
+updateNodeAuthType,
 } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
@@ -442,16 +443,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					);
 					const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
 					if (authOption) {
-						const updateInformation = {
-							name: this.node.name,
-							properties: {
-								parameters: {
-									...this.node.parameters,
-									[nodeAuthField.name]: authOption.value,
-								},
-							} as IDataObject,
-						} as INodeUpdatePropertiesInformation;
-						this.workflowsStore.updateNodeProperties(updateInformation);
+						updateNodeAuthType(this.node, authOption.value);
 					}
 				}
 			}
