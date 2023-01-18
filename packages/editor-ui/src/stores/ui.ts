@@ -67,6 +67,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				mode: '',
 				activeId: null,
+				showAuthOptions: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -292,6 +293,9 @@ export const useUIStore = defineStore(STORES.UI, {
 		setActiveId(name: string, id: string | null): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
+		setShowAuthOptions(name: string, show: boolean) {
+			Vue.set(this.modals[name], 'showAuthOptions', show);
+		},
 		setModalData(payload: { name: string; data: Record<string, unknown> }) {
 			Vue.set(this.modals[payload.name], 'data', payload.data);
 		},
@@ -350,13 +354,15 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		openNewCredential(type: string): void {
+		openNewCredential(type: string, showAuthOptions = false): void {
 			const ndvStore = useNDVStore();
 			let activeId: string | null = type;
 			if (ndvStore.activeNode) {
-				activeId = KEEP_AUTH_IN_NDV_FOR_NODES.includes(ndvStore.activeNode?.type) ? type : null;
+				// TODO: Should this be removed?
+				activeId = KEEP_AUTH_IN_NDV_FOR_NODES.includes(ndvStore.activeNode?.type) ? type : type;
 			}
 			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, activeId);
+			this.setShowAuthOptions(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},

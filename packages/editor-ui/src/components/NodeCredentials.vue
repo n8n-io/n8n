@@ -28,7 +28,14 @@
 				>
 					<n8n-select
 						:value="getSelectedId(credentialTypeDescription.name)"
-						@change="(value) => onCredentialSelected(credentialTypeDescription.name, value)"
+						@change="
+							(value) =>
+								onCredentialSelected(
+									credentialTypeDescription.name,
+									value,
+									showMixedCredentials(credentialTypeDescription),
+								)
+						"
 						@blur="$emit('blur', 'credentials')"
 						:placeholder="getSelectPlaceholder(credentialTypeDescription.name, issues)"
 						size="small"
@@ -370,7 +377,11 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			this.$emit('credentialSelected', updateInformation);
 		},
 
-		onCredentialSelected(credentialType: string, credentialId: string | null | undefined) {
+		onCredentialSelected(
+			credentialType: string,
+			credentialId: string | null | undefined,
+			mixedCredentialsField = false,
+		) {
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				// If new credential dialog is open, start listening for auth type change which should happen in the modal
 				// this will be handled in this component's watcher which will set subscribed credential accordingly
@@ -378,7 +389,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				this.subscribedToCredentialType = credentialType;
 			}
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.uiStore.openNewCredential(credentialType);
+				this.uiStore.openNewCredential(credentialType, mixedCredentialsField);
 				this.$telemetry.track('User opened Credential modal', {
 					credential_type: credentialType,
 					source: 'node',
@@ -512,16 +523,22 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			});
 			this.subscribedToCredentialType = credentialType;
 		},
-		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
-			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
 			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			const mainAuthField = nodeType ? getMainAuthField(nodeType) : null;
 			const mainAuthFieldName = mainAuthField ? mainAuthField.name : '';
 
-			if (
-				KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') ||
-				!(mainAuthFieldName in (credentialType.displayOptions?.show || {}))
-			) {
+			// This basically checks if this is the main (required) credential for the node
+			return (
+				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') &&
+				(mainAuthFieldName in (credentialType.displayOptions?.show || {}) ||
+					!credentialType.displayOptions)
+			);
+		},
+		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
+			const credentialTypeName = this.credentialTypeNames[credentialType.name];
+
+			if (!this.showMixedCredentials(credentialType)) {
 				return this.$locale.baseText('nodeCredentials.credentialFor', {
 					interpolate: {
 						credentialType: credentialTypeName,

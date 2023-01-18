@@ -154,8 +154,7 @@ import {
 	isValidCredentialResponse,
 	getNodeAuthOptions,
 	getNodeCredentialForAuthType,
-	getMainAuthField,
-updateNodeAuthType,
+	updateNodeAuthType,
 } from '@/utils';
 
 interface NodeAccessMap {
