@@ -278,6 +278,7 @@ export class ItemLists implements INodeType {
 								default: '',
 								description:
 									'The name of the field to put the aggregated data in. Leave blank to use the input field name.',
+								requiresDataPath: 'single',
 							},
 						],
 					},
