@@ -132,7 +132,7 @@ export class MicrosoftOutlook implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -146,11 +146,18 @@ export class MicrosoftOutlook implements INodeType {
 					try {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						responseData = await microsoftApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
-
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -183,17 +190,25 @@ export class MicrosoftOutlook implements INodeType {
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
 							const data = await downloadAttachments.call(this, responseData, prefix);
-							returnData.push.apply(returnData, data as unknown as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(data),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
 							returnData.push(responseData);
 						}
 
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
-							return [returnData as INodeExecutionData[]];
+							return [returnData];
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -221,7 +236,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -260,7 +279,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -290,11 +313,18 @@ export class MicrosoftOutlook implements INodeType {
 							'POST',
 							`/messages/${messageId}/send`,
 						);
-
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -358,7 +388,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -453,13 +487,25 @@ export class MicrosoftOutlook implements INodeType {
 						if (additionalFields.dataPropertyAttachmentsPrefixName) {
 							const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
 							const data = await downloadAttachments.call(this, responseData, prefix);
-							returnData.push.apply(returnData, data as unknown as IDataObject[]);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(data),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						} else {
-							returnData.push.apply(returnData, responseData);
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 						}
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -467,7 +513,7 @@ export class MicrosoftOutlook implements INodeType {
 				}
 
 				if (additionalFields.dataPropertyAttachmentsPrefixName) {
-					return [returnData as INodeExecutionData[]];
+					return [returnData];
 				}
 			}
 
@@ -486,10 +532,18 @@ export class MicrosoftOutlook implements INodeType {
 							`/messages/${messageId}/move`,
 							body,
 						);
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -537,10 +591,18 @@ export class MicrosoftOutlook implements INodeType {
 						};
 
 						responseData = await microsoftApiRequest.call(this, 'POST', '/sendMail', body, {});
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -648,10 +710,18 @@ export class MicrosoftOutlook implements INodeType {
 								{},
 							);
 						}
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -744,7 +814,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -784,10 +858,18 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -825,7 +907,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -842,10 +928,18 @@ export class MicrosoftOutlook implements INodeType {
 							'DELETE',
 							`/mailFolders/${folderId}`,
 						);
-						returnData.push({ success: true });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -876,7 +970,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -912,10 +1010,18 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -957,10 +1063,18 @@ export class MicrosoftOutlook implements INodeType {
 							);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -987,7 +1101,11 @@ export class MicrosoftOutlook implements INodeType {
 						returnData.push(responseData);
 					} catch (error) {
 						if (this.continueOnFail()) {
-							returnData.push({ error: error.message });
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
 							continue;
 						}
 						throw error;
@@ -1026,11 +1144,19 @@ export class MicrosoftOutlook implements INodeType {
 							responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
 							responseData = responseData.value;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 					}
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
 						continue;
 					}
 					throw error;
@@ -1044,7 +1170,7 @@ export class MicrosoftOutlook implements INodeType {
 		) {
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }
