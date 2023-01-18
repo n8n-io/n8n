@@ -22,10 +22,16 @@ export class NDV extends BasePage {
 		outputTableRows: () => this.getters.outputDataContainer().find('table tr'),
 		outputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
 		outputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
-		outputTbodyCell: (row: number, cell: number) => this.getters.outputTableRow(row).find('td').eq(cell),
+		outputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
+		inputTableRows: () => this.getters.outputDataContainer().find('table tr'),
+		inputTableHeaders: () => this.getters.outputDataContainer().find('table thead th'),
+		inputTableRow: (row: number) => this.getters.outputTableRows().eq(row),
+		inputTbodyCell: (row: number, col: number) => this.getters.outputTableRow(row).find('td').eq(col),
+		nodeParameters: () => cy.getByTestId('node-parameters'),
 		parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
 		nodeNameContainer: () => cy.getByTestId('node-title-container'),
 		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
+		executePrevious: () => cy.getByTestId('execute-previous-node'),
 	};
 
 	actions = {
@@ -68,6 +74,13 @@ export class NDV extends BasePage {
 				.type('{selectall}')
 				.type(newName);
 			cy.get('body').type('{enter}');
+		},
+		executePrevious: () => {
+			this.getters.executePrevious().click();
+		},
+		mapDataFromHeader: (col: number, targetSelector: string) => {
+			const draggable = `[data-test-id="ndv-input-panel"] [data-test-id="ndv-data-container"] table th:nth-child(${col})`;
+			cy.drag(draggable, targetSelector);
 		},
 	};
 }

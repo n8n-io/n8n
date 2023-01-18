@@ -173,17 +173,28 @@ Cypress.Commands.add('paste', { prevSubject: true }, (selector, pastePayload) =>
 	});
 });
 
-Cypress.Commands.add('drag', (selector, xDiff, yDiff) => {
+Cypress.Commands.add('drag', (selector, target: string | [number, number]) => {
+	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
+	let pageX, pageY: number;
+	if (typeof target === 'string') {
+		const droppable = Cypress.$(target)[0];
+		const coords = droppable.getBoundingClientRect();
+
+		pageX = coords.left + 10;
+		pageY = coords.top + 10; // A few extra pixels to get the ordering right
+	} else {
+		pageX = originalLocation.right + target[0];
+		pageY = originalLocation.top + target[1];
+	}
 	const element = cy.get(selector);
 	element.should('exist');
 
-	const originalLocation = Cypress.$(selector)[0].getBoundingClientRect();
 
 	element.trigger('mousedown');
 	element.trigger('mousemove', {
 		which: 1,
-		pageX: originalLocation.right + xDiff,
-		pageY: originalLocation.top + yDiff,
+		pageX,
+		pageY,
 		force: true,
 	});
 	element.trigger('mouseup');
