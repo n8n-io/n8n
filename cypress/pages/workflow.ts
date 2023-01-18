@@ -24,10 +24,6 @@ export class WorkflowPage extends BasePage {
 		canvasNodes: () => cy.getByTestId('canvas-node'),
 		canvasNodeByName: (nodeName: string) =>
 			this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
-		ndvParameterInput: (parameterName: string) =>
-			cy.getByTestId(`parameter-input-${parameterName}`),
-		ndvOutputPanel: () => cy.getByTestId('output-panel'),
-		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
 		successToast: () => cy.get('.el-notification .el-icon-success').parent(),
 		errorToast: () => cy.get('.el-notification .el-icon-error'),
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
@@ -45,8 +41,6 @@ export class WorkflowPage extends BasePage {
 		nodeEndpoints: () => cy.get('.jtk-endpoint-connected'),
 		disabledNodes: () => cy.get('.node-box.disabled'),
 		selectedNodes: () => this.getters.canvasNodes().filter('.jtk-drag-selected'),
-		nodeNameContainerNDV: () => cy.getByTestId('node-title-container'),
-		nodeRenameInput: () => cy.getByTestId('node-rename-input'),
 		// Workflow menu items
 		workflowMenuItemDuplicate: () => cy.getByTestId('workflow-menu-item-duplicate'),
 		workflowMenuItemDownload: () => cy.getByTestId('workflow-menu-item-download'),
@@ -100,7 +94,7 @@ export class WorkflowPage extends BasePage {
 
 			if (!preventNdvClose) cy.get('body').type('{esc}');
 		},
-		openNodeNdv: (nodeTypeName: string) => {
+		openNode: (nodeTypeName: string) => {
 			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
 		openExpressionEditorModal: () => {
@@ -110,19 +104,6 @@ export class WorkflowPage extends BasePage {
 		openInlineExpressionEditor: () => {
 			cy.contains('Expression').invoke('show').click();
 			this.getters.inlineExpressionEditorInput().click();
-		},
-		typeIntoParameterInput: (parameterName: string, content: string) => {
-			this.getters.ndvParameterInput(parameterName).type(content);
-		},
-		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
-			this.getters
-				.ndvParameterInput(parameterName)
-				.find('.option-headline')
-				.contains(content)
-				.click();
-		},
-		executeNodeFromNdv: () => {
-			cy.contains('Execute node').click();
 		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();
@@ -177,6 +158,9 @@ export class WorkflowPage extends BasePage {
 		},
 		hitPaste: () => {
 			cy.get('body').type(META_KEY, { delay: 500, release: false }).type('P');
+		},
+		executeWorkflow: () => {
+			this.getters.executeWorkflowButton().click();
 		},
 	};
 }
