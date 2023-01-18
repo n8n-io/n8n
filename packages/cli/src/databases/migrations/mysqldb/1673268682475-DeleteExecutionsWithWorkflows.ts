@@ -11,7 +11,7 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(`ALTER TABLE \`${tablePrefix}execution_entity\` MODIFY workflowId INT`);
 
 		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
-			SELECT id FROM \`${tablePrefix}execution_entity\`
+			SELECT id FROM \`${tablePrefix}workflow_entity\`
 		`);
 
 		await queryRunner.query(
