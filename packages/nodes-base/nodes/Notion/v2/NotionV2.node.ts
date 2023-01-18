@@ -458,7 +458,7 @@ export class NotionV2 implements INodeType {
 					if (propertiesValues.length !== 0) {
 						body.properties = Object.assign(
 							body.properties,
-							mapProperties(propertiesValues, timezone, 2) as IDataObject,
+							mapProperties.call(this, propertiesValues, timezone, 2) as IDataObject,
 						);
 					}
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
@@ -590,7 +590,7 @@ export class NotionV2 implements INodeType {
 						properties: {},
 					};
 					if (properties.length !== 0) {
-						body.properties = mapProperties(properties, timezone, 2) as IDataObject;
+						body.properties = mapProperties.call(this, properties, timezone, 2) as IDataObject;
 					}
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, body);
 					if (simple) {
