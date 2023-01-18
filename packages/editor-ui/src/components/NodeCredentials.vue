@@ -171,15 +171,13 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			}
 
 			after(async (result) => {
-				// await this.$nextTick();
 				if (listeningForActions.includes(name)) {
 					const current = this.selected[credentialType];
 					let credentialsOfType: ICredentialsResponse[] = [];
 					if (this.showAll) {
-						const activeNode = this.ndvStore.activeNode;
-						if (activeNode) {
+						if (this.node) {
 							credentialsOfType = [
-								...(this.credentialsStore.allUsableCredentialsForNode(activeNode) || []),
+								...(this.credentialsStore.allUsableCredentialsForNode(this.node) || []),
 							];
 						}
 					} else {
@@ -190,10 +188,9 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					switch (name) {
 						// new credential was added
 						case 'createNewCredential':
-							this.onCredentialSelected(
-								credentialType,
-								credentialsOfType[credentialsOfType.length - 1].id,
-							);
+							if (result) {
+								this.onCredentialSelected(credentialType, (result as ICredentialsResponse).id);
+							}
 							break;
 						case 'updateCredential':
 							const updatedCredential = result as ICredentialsResponse;
@@ -313,25 +310,11 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				}));
 			}
 
-			const activeNode = this.ndvStore.activeNode;
-			if (activeNode) {
-				const activeNodeType = this.nodeTypesStore.getNodeType(
-					activeNode.type,
-					activeNode.typeVersion,
-				);
-				if (activeNodeType && activeNodeType.credentials) {
-					let credTypes: CredentialDropdownOption[] = [];
-					activeNodeType.credentials.forEach((cred) => {
-						credTypes = credTypes.concat(
-							this.credentialsStore.allUsableCredentialsByType[cred.name].map((option: any) => ({
-								...option,
-								typeDisplayName: this.credentialsStore.getCredentialTypeByName(cred.name)
-									.displayName,
-							})),
-						);
-					});
-					return credTypes;
-				}
+			if (this.node) {
+				return this.credentialsStore.allUsableCredentialsForNode(this.node).map((cred) => ({
+					...cred,
+					typeDisplayName: this.credentialsStore.getCredentialTypeByName(cred.type).displayName,
+				}));
 			}
 			return [];
 		},

@@ -84,7 +84,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 						});
 					}
 				}
-				return credentials;
+				return credentials.sort((a, b) => {
+					const aDate = new Date(a.updatedAt);
+					const bDate = new Date(b.updatedAt);
+					return aDate.getTime() - bDate.getTime();
+				});
 			};
 		},
 		allUsableCredentialsByType(): { [type: string]: ICredentialsResponse[] } {
