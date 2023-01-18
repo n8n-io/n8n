@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-import config from '../../../../config';
+import config from '@/config';
 
 export class AddWorkflowVersion1664567980717 implements MigrationInterface {
 	name = 'AddWorkflowVersion1664567980717';

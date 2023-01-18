@@ -159,9 +159,6 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'Description of the user',
@@ -266,9 +263,6 @@ export const userFields: INodeProperties[] = [
 			{
 				displayName: 'Description',
 				name: 'description',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				type: 'string',
 				default: '',
 				description: 'Description of the user',

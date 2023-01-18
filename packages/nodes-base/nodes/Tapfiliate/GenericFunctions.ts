@@ -13,12 +13,11 @@ export async function tapfiliateApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('tapfiliateApi');
 
@@ -29,7 +28,7 @@ export async function tapfiliateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.tapfiliate.com/1.6${endpoint}`,
+		uri: uri ?? `https://api.tapfiliate.com/1.6${endpoint}`,
 		json: true,
 	};
 
@@ -41,7 +40,7 @@ export async function tapfiliateApiRequest(
 		Object.assign(options, option);
 	}
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -51,10 +50,9 @@ export async function tapfiliateApiRequestAllItems(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

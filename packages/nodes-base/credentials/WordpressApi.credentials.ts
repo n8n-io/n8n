@@ -7,8 +7,11 @@ import {
 
 export class WordpressApi implements ICredentialType {
 	name = 'wordpressApi';
+
 	displayName = 'Wordpress API';
+
 	documentationUrl = 'wordpress';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',
@@ -33,6 +36,7 @@ export class WordpressApi implements ICredentialType {
 			placeholder: 'https://example.com',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -42,6 +46,7 @@ export class WordpressApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials?.url}}/wp-json/wp/v2',

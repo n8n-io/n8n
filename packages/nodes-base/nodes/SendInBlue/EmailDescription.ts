@@ -1,4 +1,4 @@
-import { IExecuteSingleFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 import { SendInBlueNode } from './GenericFunctions';
 
 export const emailOperations: INodeProperties[] = [

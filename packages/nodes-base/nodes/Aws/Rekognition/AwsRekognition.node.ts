@@ -334,16 +334,15 @@ export class AwsRekognition implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'image') {
 					//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
 					if (operation === 'analyze') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let action = undefined;
 
@@ -357,7 +356,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'ModerationLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 						}
 
@@ -371,7 +370,7 @@ export class AwsRekognition implements INodeType {
 							// property = 'FaceDetails';
 
 							if (additionalFields.attributes) {
-								body['Attributes'] = additionalFields.attributes as string;
+								body.Attributes = additionalFields.attributes as string;
 							}
 						}
 
@@ -379,11 +378,11 @@ export class AwsRekognition implements INodeType {
 							action = 'RekognitionService.DetectLabels';
 
 							if (additionalFields.minConfidence) {
-								body['MinConfidence'] = additionalFields.minConfidence as number;
+								body.MinConfidence = additionalFields.minConfidence as number;
 							}
 
 							if (additionalFields.maxLabels) {
-								body['MaxLabels'] = additionalFields.maxLabels as number;
+								body.MaxLabels = additionalFields.maxLabels as number;
 							}
 						}
 
@@ -397,13 +396,13 @@ export class AwsRekognition implements INodeType {
 							body.Filters = {};
 
 							const box =
-								(((additionalFields.regionsOfInterestUi as IDataObject) || {})
-									.regionsOfInterestValues as IDataObject[]) || [];
+								((additionalFields.regionsOfInterestUi as IDataObject)
+									?.regionsOfInterestValues as IDataObject[]) || [];
 
 							if (box.length !== 0) {
 								//@ts-ignore
-								body.Filters.RegionsOfInterest = box.map((box: IDataObject) => {
-									return { BoundingBox: keysTPascalCase(box) };
+								body.Filters.RegionsOfInterest = box.map((entry: IDataObject) => {
+									return { BoundingBox: keysTPascalCase(entry) };
 								});
 							}
 
@@ -413,10 +412,10 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
-								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 
 								if (items[i].binary === undefined) {
 									throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {

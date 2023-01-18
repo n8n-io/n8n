@@ -13,6 +13,7 @@ export class Interval implements INodeType {
 		icon: 'fa:hourglass',
 		group: ['trigger', 'schedule'],
 		version: 1,
+		hidden: true,
 		description: 'Triggers the workflow in a given interval',
 		eventTriggerDescription: '',
 		activationMessage:

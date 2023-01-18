@@ -1,13 +1,14 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, InternalHooksManager, ResponseHelper } from '../..';
-import * as config from '../../../config';
-import { validateEntity } from '../../GenericHelpers';
-import { AuthenticatedRequest, OwnerRequest } from '../../requests';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import config from '@/config';
+import { validateEntity } from '@/GenericHelpers';
+import { AuthenticatedRequest, OwnerRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -30,7 +31,7 @@ export function ownerNamespace(this: N8nApp): void {
 						userId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			if (!email || !validator.isEmail(email)) {
@@ -38,7 +39,7 @@ export function ownerNamespace(this: N8nApp): void {
 					userId,
 					invalidEmail: email,
 				});
-				throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid email address');
 			}
 
 			const validPassword = validatePassword(password);
@@ -48,15 +49,12 @@ export function ownerNamespace(this: N8nApp): void {
 					'Request to claim instance ownership failed because of missing first name or last name in payload',
 					{ userId, payload: req.body },
 				);
-				throw new ResponseHelper.ResponseError(
-					'First and last names are mandatory',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('First and last names are mandatory');
 			}
 
-			let owner = await Db.collections.User.findOne(userId, {
+			let owner = await Db.collections.User.findOne({
 				relations: ['globalRole'],
+				where: { id: userId },
 			});
 
 			if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {
@@ -66,7 +64,7 @@ export function ownerNamespace(this: N8nApp): void {
 						userId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			owner = Object.assign(owner, {

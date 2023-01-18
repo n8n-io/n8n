@@ -4,4 +4,5 @@ export interface IPayment {
 	payment_type_id?: number;
 	transaction_reference?: string;
 	private_notes?: string;
+	client_id?: string;
 }

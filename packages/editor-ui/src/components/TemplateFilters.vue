@@ -13,9 +13,7 @@
 				/>
 			</li>
 			<li
-				v-for="category in collapsed
-					? sortedCategories.slice(0, expandLimit)
-					: sortedCategories"
+				v-for="category in collapsed ? sortedCategories.slice(0, expandLimit) : sortedCategories"
 				:key="category.id"
 				:class="$style.item"
 			>
@@ -39,7 +37,7 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import { ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 

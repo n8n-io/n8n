@@ -25,7 +25,7 @@ export interface IMembershipDto {
 
 export interface ITagDto {
 	id: string;
-	name: any; // tslint:disable-line:no-any
+	name: any;
 	workspaceId: string;
 	archived: boolean;
 }
@@ -34,7 +34,7 @@ export interface ITaskDto {
 	assigneeIds: object;
 	estimate: string;
 	id: string;
-	name: any; // tslint:disable-line:no-any
+	name: any;
 	workspaceId: string;
 	projectId: string;
 	'is-active': boolean;

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -6,7 +5,6 @@
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import express from 'express';
-import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import {
 	ExecutionError,
@@ -17,27 +15,16 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
-import config from '../config';
-
-// eslint-disable-next-line import/no-cycle
-import {
-	Db,
-	ICredentialsDb,
-	IExecutionDb,
-	IExecutionFlattedDb,
-	IPackageVersions,
-	IWorkflowDb,
-	ResponseHelper,
-} from '.';
+import config from '@/config';
+import * as Db from '@/Db';
+import { ICredentialsDb, IExecutionDb, IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { User } from './databases/entities/User';
-
-let versionCache: IPackageVersions | undefined;
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { TagEntity } from '@db/entities/TagEntity';
+import { User } from '@db/entities/User';
 
 /**
  * Returns the base URL n8n is reachable from
@@ -64,29 +51,7 @@ export function getSessionId(req: express.Request): string | undefined {
 }
 
 /**
- * Returns information which version of the packages are installed
- *
- */
-export async function getVersions(): Promise<IPackageVersions> {
-	if (versionCache !== undefined) {
-		return versionCache;
-	}
-
-	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8');
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const packageData = JSON.parse(packageFile);
-
-	versionCache = {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		cli: packageData.version,
-	};
-
-	return versionCache;
-}
-
-/**
  * Extracts configuration schema for key
- *
  */
 function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
 	const configKeyParts = configKey.split('.');
@@ -213,7 +178,7 @@ export async function validateEntity(
 		.join(' | ');
 
 	if (errorMessages) {
-		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
+		throw new ResponseHelper.BadRequestError(errorMessages);
 	}
 }
 

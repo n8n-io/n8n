@@ -6,7 +6,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
@@ -88,7 +87,7 @@ export class GitlabTrigger implements INodeType {
 			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
-			name: 'Gitlab Trigger',
+			name: 'GitLab Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -196,7 +195,7 @@ export class GitlabTrigger implements INodeType {
 				try {
 					await gitlabApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					if (error.cause.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -233,8 +232,8 @@ export class GitlabTrigger implements INodeType {
 
 				// gitlab set the push_events to true when the field it's not sent.
 				// set it to false when it's not picked by the user.
-				if (events['push_events'] === undefined) {
-					events['push_events'] = false;
+				if (events.push_events === undefined) {
+					events.push_events = false;
 				}
 
 				const path = `${owner}/${repository}`.replace(/\//g, '%2F');
@@ -263,7 +262,7 @@ export class GitlabTrigger implements INodeType {
 
 				const webhookData = this.getWorkflowStaticData('node');
 				webhookData.webhookId = responseData.id as string;
-				webhookData.webhookEvents = eventsArray as string[];
+				webhookData.webhookEvents = eventsArray;
 
 				return true;
 			},

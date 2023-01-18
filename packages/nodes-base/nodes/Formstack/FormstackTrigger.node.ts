@@ -2,13 +2,7 @@ import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	getFields,
-	getForms,
-	getSubmission,
-	IFormstackWebhookResponseBody,
-} from './GenericFunctions';
+import { apiRequest, getForms, IFormstackWebhookResponseBody } from './GenericFunctions';
 
 export class FormstackTrigger implements INodeType {
 	description: INodeTypeDescription = {

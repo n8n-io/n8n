@@ -243,7 +243,7 @@ export class FacebookTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const query = this.getQueryData() as IDataObject;
 		const res = this.getResponseObject();
 		const req = this.getRequestObject();
@@ -268,7 +268,6 @@ export class FacebookTrigger implements INodeType {
 		// validate signature if app secret is set
 		if (credentials.appSecret !== '') {
 			const computedSignature = createHmac('sha1', credentials.appSecret as string)
-				//@ts-ignore
 				.update(req.rawBody)
 				.digest('hex');
 			if (headerData['x-hub-signature'] !== `sha1=${computedSignature}`) {

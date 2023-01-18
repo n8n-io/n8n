@@ -8,18 +8,17 @@ export async function pushbulletApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
 	option = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.pushbullet.com/v2${path}`,
+		uri: uri ?? `https://api.pushbullet.com/v2${path}`,
 		json: true,
 	};
 	try {
@@ -41,10 +40,9 @@ export async function pushbulletApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

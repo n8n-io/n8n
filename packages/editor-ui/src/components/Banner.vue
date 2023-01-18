@@ -1,30 +1,16 @@
 <template>
-	<el-tag
-		:type="theme"
-		size="medium"
-		:disable-transitions="true"
-		:class="$style.container"
-	>
+	<el-tag :type="theme" size="medium" :disable-transitions="true" :class="$style.container">
 		<font-awesome-icon
-				:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
-				:class="theme === 'success' ? $style.icon : $style.dangerIcon"
+			:icon="theme === 'success' ? 'check-circle' : 'exclamation-triangle'"
+			:class="theme === 'success' ? $style.icon : $style.dangerIcon"
 		/>
-		<div
-			:class="$style.banner"
-		>
+		<div :class="$style.banner">
 			<div :class="$style.content">
 				<div>
-					<span
-						:class="theme === 'success' ? $style.message : $style.dangerMessage"
-					>
+					<span :class="theme === 'success' ? $style.message : $style.dangerMessage">
 						{{ message }}&nbsp;
 					</span>
-					<n8n-link
-						v-if="details && !expanded"
-						:bold="true"
-						size="small"
-						@click="expand"
-					>
+					<n8n-link v-if="details && !expanded" :bold="true" size="small" @click="expand">
 						<span :class="$style.moreDetails">More details</span>
 					</n8n-link>
 				</div>
@@ -43,7 +29,7 @@
 		</div>
 
 		<div v-if="expanded" :class="$style.details">
-			{{details}}
+			{{ details }}
 		</div>
 	</el-tag>
 </template>
@@ -61,8 +47,7 @@ export default Vue.extend({
 	props: {
 		theme: {
 			type: String,
-			validator: (value: string): boolean =>
-				['success', 'danger'].indexOf(value) !== -1,
+			validator: (value: string): boolean => ['success', 'danger'].indexOf(value) !== -1,
 		},
 		message: {
 			type: String,

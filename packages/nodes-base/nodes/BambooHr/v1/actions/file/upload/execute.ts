@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IBinaryData, IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
+import { IBinaryKeyData, IDataObject, NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 
@@ -19,7 +19,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		});
 	}
 
-	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index) as string;
+	const propertyNameUpload = this.getNodeParameter('binaryPropertyName', index);
 
 	if (items[index]!.binary![propertyNameUpload] === undefined) {
 		throw new NodeOperationError(
@@ -31,7 +31,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 
 	const item = items[index].binary as IBinaryKeyData;
 
-	const binaryData = item[propertyNameUpload] as IBinaryData;
+	const binaryData = item[propertyNameUpload];
 
 	const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(index, propertyNameUpload);
 
@@ -51,10 +51,12 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		resolveWithFullResponse: true,
 	};
 
-	Object.assign(body.formData, share ? { share: 'yes' } : { share: 'no' });
+	if (body.formData) {
+		Object.assign(body.formData, share ? { share: 'yes' } : { share: 'no' });
+	}
 
 	//endpoint
-	const endpoint = `files`;
+	const endpoint = 'files';
 	const { headers } = await apiRequest.call(this, requestMethod, endpoint, {}, {}, body);
 	return this.helpers.returnJsonArray({ fileId: headers.location.split('/').pop() });
 }

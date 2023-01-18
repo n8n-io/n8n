@@ -3,6 +3,7 @@ import { set } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -89,6 +90,18 @@ export class Crypto implements INodeType {
 						value: 'SHA256',
 					},
 					{
+						name: 'SHA3-256',
+						value: 'SHA3-256',
+					},
+					{
+						name: 'SHA3-384',
+						value: 'SHA3-384',
+					},
+					{
+						name: 'SHA3-512',
+						value: 'SHA3-512',
+					},
+					{
 						name: 'SHA384',
 						value: 'SHA384',
 					},
@@ -166,6 +179,18 @@ export class Crypto implements INodeType {
 					{
 						name: 'SHA256',
 						value: 'SHA256',
+					},
+					{
+						name: 'SHA3-256',
+						value: 'SHA3-256',
+					},
+					{
+						name: 'SHA3-384',
+						value: 'SHA3-384',
+					},
+					{
+						name: 'SHA3-512',
+						value: 'SHA3-512',
 					},
 					{
 						name: 'SHA384',
@@ -314,9 +339,6 @@ export class Crypto implements INodeType {
 					},
 				},
 				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				description: 'Private key to use when signing the string',
 				default: '',
 				required: true,
@@ -412,12 +434,12 @@ export class Crypto implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				item = items[i];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', i);
 				const value = this.getNodeParameter('value', i, '') as string;
 				let newValue;
 
 				if (action === 'generate') {
-					const encodingType = this.getNodeParameter('encodingType', i) as string;
+					const encodingType = this.getNodeParameter('encodingType', i);
 					if (encodingType === 'uuid') {
 						newValue = uuid();
 					} else {
@@ -450,7 +472,7 @@ export class Crypto implements INodeType {
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
 					const privateKey = this.getNodeParameter('privateKey', i) as string;
 					const sign = createSign(algorithm);
-					sign.write(value as string);
+					sign.write(value);
 					sign.end();
 					newValue = sign.sign(privateKey, encoding);
 				}
@@ -459,7 +481,7 @@ export class Crypto implements INodeType {
 				if (dataPropertyName.includes('.')) {
 					// Uses dot notation so copy all data
 					newItem = {
-						json: JSON.parse(JSON.stringify(item.json)),
+						json: deepCopy(item.json),
 						pairedItem: {
 							item: i,
 						},

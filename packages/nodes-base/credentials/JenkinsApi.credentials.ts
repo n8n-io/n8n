@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class JenkinsApi implements ICredentialType {
 	name = 'jenkinsApi';
+
 	displayName = 'Jenkins API';
+
 	documentationUrl = 'jenkins';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Jenking Username',
@@ -15,6 +18,7 @@ export class JenkinsApi implements ICredentialType {
 			displayName: 'Personal API Token',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

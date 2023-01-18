@@ -1,29 +1,35 @@
-import { ActiveExecutions, IWorkflowExecutionDataProcess, Db } from '../../src';
+import * as Db from '@/Db';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
-import { createDeferredPromise, IDeferredPromise, IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	IDeferredPromise,
+	IExecuteResponsePromiseData,
+	IRun,
+} from 'n8n-workflow';
+import { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-jest.mock('../../src/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Execution: {
-				save: jest.fn(async () => Promise.resolve({id: FAKE_EXECUTION_ID})),
+				save: jest.fn(async () => Promise.resolve({ id: FAKE_EXECUTION_ID })),
 				update: jest.fn(),
-			}
-		}
+			},
+		},
 	};
 });
 
 describe('ActiveExecutions', () => {
-
-	let activeExecutions: ActiveExecutions.ActiveExecutions;
+	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions.ActiveExecutions();
+		activeExecutions = new ActiveExecutions();
 	});
 
 	afterEach(() => {
@@ -46,7 +52,11 @@ describe('ActiveExecutions', () => {
 
 	test('Should update execution if add is called with execution ID', async () => {
 		const newExecution = mockExecutionData();
-		const executionId = await activeExecutions.add(newExecution, undefined, FAKE_SECOND_EXECUTION_ID);
+		const executionId = await activeExecutions.add(
+			newExecution,
+			undefined,
+			FAKE_SECOND_EXECUTION_ID,
+		);
 
 		expect(executionId).toBe(FAKE_SECOND_EXECUTION_ID);
 		expect(activeExecutions.getActiveExecutions().length).toBe(1);
@@ -67,7 +77,9 @@ describe('ActiveExecutions', () => {
 		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
 		const deferredPromise = mockCancelablePromise();
 
-		expect(() => activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, deferredPromise)).not.toThrow();
+		expect(() =>
+			activeExecutions.attachWorkflowExecution(FAKE_EXECUTION_ID, deferredPromise),
+		).not.toThrow();
 	});
 
 	test('Should attach and resolve response promise to existing execution', async () => {
@@ -75,7 +87,7 @@ describe('ActiveExecutions', () => {
 		await activeExecutions.add(newExecution, undefined, FAKE_EXECUTION_ID);
 		const deferredPromise = await mockDeferredPromise();
 		activeExecutions.attachResponsePromise(FAKE_EXECUTION_ID, deferredPromise);
-		const fakeResponse = {data: {resultData: {runData: {}}}};
+		const fakeResponse = { data: { resultData: { runData: {} } } };
 		activeExecutions.resolveResponsePromise(FAKE_EXECUTION_ID, fakeResponse);
 
 		expect(deferredPromise.promise()).resolves.toEqual(fakeResponse);
@@ -103,10 +115,8 @@ describe('ActiveExecutions', () => {
 		expect(postExecutePromise).resolves.toEqual(fakeOutput);
 	});
 
-	test('Should throw error when trying to create a promise with invalid execution', async() => {
-		expect(
-				activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)
-		).rejects.toThrow();
+	test('Should throw error when trying to create a promise with invalid execution', async () => {
+		expect(activeExecutions.getPostExecutePromise(FAKE_EXECUTION_ID)).rejects.toThrow();
 	});
 
 	test('Should call function to cancel execution when asked to stop', async () => {
@@ -120,7 +130,6 @@ describe('ActiveExecutions', () => {
 
 		expect(cancelExecution).toHaveBeenCalledTimes(1);
 	});
-
 });
 
 function mockExecutionData(): IWorkflowExecutionDataProcess {
@@ -132,18 +141,18 @@ function mockExecutionData(): IWorkflowExecutionDataProcess {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			nodes: [],
-			connections: {}
+			connections: {},
 		},
 		userId: uuid(),
-	}
+	};
 }
 
 function mockFullRunData(): IRun {
 	return {
 		data: {
 			resultData: {
-				runData: {}
-			}
+				runData: {},
+			},
 		},
 		mode: 'manual',
 		startedAt: new Date(),
@@ -159,4 +168,3 @@ function mockCancelablePromise(): PCancelable<IRun> {
 function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
 	return createDeferredPromise<IExecuteResponsePromiseData>();
 }
-

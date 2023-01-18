@@ -1,45 +1,91 @@
 /* eslint-disable import/no-mutable-exports */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
-import { UserSettings } from 'n8n-core';
 import {
-	Connection,
-	ConnectionOptions,
-	createConnection,
+	DataSource as Connection,
+	DataSourceOptions as ConnectionOptions,
 	EntityManager,
 	EntityTarget,
-	getRepository,
 	LoggerOptions,
+	ObjectLiteral,
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-import path from 'path';
-// eslint-disable-next-line import/no-cycle
-import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
+import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
 
-import config from '../config';
+import config from '@/config';
 
-// eslint-disable-next-line import/no-cycle
-import { entities } from './databases/entities';
-
-import { postgresMigrations } from './databases/migrations/postgresdb';
-import { mysqlMigrations } from './databases/migrations/mysqldb';
-import { sqliteMigrations } from './databases/migrations/sqlite';
+import { entities } from '@db/entities';
+import {
+	getMariaDBConnectionOptions,
+	getMysqlConnectionOptions,
+	getOptionOverrides,
+	getPostgresConnectionOptions,
+	getSqliteConnectionOptions,
+} from '@db/config';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-let connection: Connection;
+export let connection: Connection;
+
+export const getConnection = () => connection!;
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);
 }
 
-export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
-	return getRepository(entityClass, connection.name);
+export function linkRepository<Entity extends ObjectLiteral>(
+	entityClass: EntityTarget<Entity>,
+): Repository<Entity> {
+	return connection.getRepository(entityClass);
+}
+
+export async function getConnectionOptions(dbType: DatabaseType): Promise<ConnectionOptions> {
+	switch (dbType) {
+		case 'postgresdb':
+			const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
+			const sslCert = (await GenericHelpers.getConfigValue(
+				'database.postgresdb.ssl.cert',
+			)) as string;
+			const sslKey = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.key')) as string;
+			const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
+				'database.postgresdb.ssl.rejectUnauthorized',
+			)) as boolean;
+
+			let ssl: TlsOptions | undefined;
+			if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
+				ssl = {
+					ca: sslCa || undefined,
+					cert: sslCert || undefined,
+					key: sslKey || undefined,
+					rejectUnauthorized: sslRejectUnauthorized,
+				};
+			}
+
+			return {
+				...getPostgresConnectionOptions(),
+				...(await getOptionOverrides('postgresdb')),
+				ssl,
+			};
+
+		case 'mariadb':
+		case 'mysqldb':
+			return {
+				...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
+				...(await getOptionOverrides('mysqldb')),
+				timezone: 'Z', // set UTC as default
+			};
+
+		case 'sqlite':
+			return getSqliteConnectionOptions();
+
+		default:
+			throw new Error(`The database "${dbType}" is currently not supported!`);
+	}
 }
 
 export async function init(
@@ -48,87 +94,7 @@ export async function init(
 	if (isInitialized) return collections;
 
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-	const n8nFolder = UserSettings.getUserN8nFolderPath();
-
-	let connectionOptions: ConnectionOptions;
-
-	const entityPrefix = config.getEnv('database.tablePrefix');
-
-	if (testConnectionOptions) {
-		connectionOptions = testConnectionOptions;
-	} else {
-		switch (dbType) {
-			case 'postgresdb':
-				const sslCa = (await GenericHelpers.getConfigValue('database.postgresdb.ssl.ca')) as string;
-				const sslCert = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.cert',
-				)) as string;
-				const sslKey = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.key',
-				)) as string;
-				const sslRejectUnauthorized = (await GenericHelpers.getConfigValue(
-					'database.postgresdb.ssl.rejectUnauthorized',
-				)) as boolean;
-
-				let ssl: TlsOptions | undefined;
-				if (sslCa !== '' || sslCert !== '' || sslKey !== '' || !sslRejectUnauthorized) {
-					ssl = {
-						ca: sslCa || undefined,
-						cert: sslCert || undefined,
-						key: sslKey || undefined,
-						rejectUnauthorized: sslRejectUnauthorized,
-					};
-				}
-
-				connectionOptions = {
-					type: 'postgres',
-					entityPrefix,
-					database: (await GenericHelpers.getConfigValue('database.postgresdb.database')) as string,
-					host: (await GenericHelpers.getConfigValue('database.postgresdb.host')) as string,
-					password: (await GenericHelpers.getConfigValue('database.postgresdb.password')) as string,
-					port: (await GenericHelpers.getConfigValue('database.postgresdb.port')) as number,
-					username: (await GenericHelpers.getConfigValue('database.postgresdb.user')) as string,
-					schema: config.getEnv('database.postgresdb.schema'),
-					migrations: postgresMigrations,
-					migrationsRun: true,
-					migrationsTableName: `${entityPrefix}migrations`,
-					ssl,
-				};
-
-				break;
-
-			case 'mariadb':
-			case 'mysqldb':
-				connectionOptions = {
-					type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
-					database: (await GenericHelpers.getConfigValue('database.mysqldb.database')) as string,
-					entityPrefix,
-					host: (await GenericHelpers.getConfigValue('database.mysqldb.host')) as string,
-					password: (await GenericHelpers.getConfigValue('database.mysqldb.password')) as string,
-					port: (await GenericHelpers.getConfigValue('database.mysqldb.port')) as number,
-					username: (await GenericHelpers.getConfigValue('database.mysqldb.user')) as string,
-					migrations: mysqlMigrations,
-					migrationsRun: true,
-					migrationsTableName: `${entityPrefix}migrations`,
-					timezone: 'Z', // set UTC as default
-				};
-				break;
-
-			case 'sqlite':
-				connectionOptions = {
-					type: 'sqlite',
-					database: path.join(n8nFolder, 'database.sqlite'),
-					entityPrefix,
-					migrations: sqliteMigrations,
-					migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
-					migrationsTableName: `${entityPrefix}migrations`,
-				};
-				break;
-
-			default:
-				throw new Error(`The database "${dbType}" is currently not supported!`);
-		}
-	}
+	const connectionOptions = testConnectionOptions ?? (await getConnectionOptions(dbType));
 
 	let loggingOption: LoggerOptions = (await GenericHelpers.getConfigValue(
 		'database.logging.enabled',
@@ -146,16 +112,20 @@ export async function init(
 		}
 	}
 
+	const maxQueryExecutionTime = (await GenericHelpers.getConfigValue(
+		'database.logging.maxQueryExecutionTime',
+	)) as string;
+
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: loggingOption,
-		maxQueryExecutionTime: (await GenericHelpers.getConfigValue(
-			'database.logging.maxQueryExecutionTime',
-		)) as string,
+		maxQueryExecutionTime,
+		migrationsTransactionMode: 'each',
 	});
 
-	connection = await createConnection(connectionOptions);
+	connection = new Connection(connectionOptions);
+	await connection.initialize();
 
 	if (!testConnectionOptions && dbType === 'sqlite') {
 		// This specific migration changes database metadata.
@@ -163,6 +133,7 @@ export async function init(
 		// n8n knows it has changed. Happens only on sqlite.
 		let migrations = [];
 		try {
+			const entityPrefix = config.getEnv('database.tablePrefix');
 			migrations = await connection.query(
 				`SELECT id FROM ${entityPrefix}migrations where name = "MakeStoppedAtNullable1607431743769"`,
 			);
@@ -172,20 +143,22 @@ export async function init(
 
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
-		await connection.runMigrations({
-			transaction: 'none',
-		});
+		await connection.runMigrations();
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
-			await connection.close();
-			connection = await createConnection(connectionOptions);
+			await connection.destroy();
+			connection = new Connection(connectionOptions);
+			await connection.initialize();
 		}
 	}
 
+	// @ts-ignore
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
+	// @ts-ignore
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
+	// @ts-ignore
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
 
@@ -196,6 +169,9 @@ export async function init(
 	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
+
+	collections.EventDestinations = linkRepository(entities.EventDestinations);
 
 	isInitialized = true;
 

@@ -4,9 +4,13 @@ const scopes = ['full'];
 
 export class KeapOAuth2Api implements ICredentialType {
 	name = 'keapOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Keap OAuth2 API';
+
 	documentationUrl = 'keap';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

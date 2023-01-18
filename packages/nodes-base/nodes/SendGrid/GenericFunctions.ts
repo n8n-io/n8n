@@ -7,17 +7,16 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function sendGridApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const host = 'api.sendgrid.com/v3';
 
@@ -37,11 +36,7 @@ export async function sendGridApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 }
 
 export async function sendGridApiRequestAllItems(
@@ -49,10 +44,9 @@ export async function sendGridApiRequestAllItems(
 	endpoint: string,
 	method: string,
 	propertyName: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

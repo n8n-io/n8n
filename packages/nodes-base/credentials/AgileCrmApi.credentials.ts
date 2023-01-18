@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class AgileCrmApi implements ICredentialType {
 	name = 'agileCrmApi';
+
 	displayName = 'AgileCRM API';
+
 	documentationUrl = 'agileCrm';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Email',
@@ -16,6 +19,7 @@ export class AgileCrmApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ShopifyOAuth2Api implements ICredentialType {
 	name = 'shopifyOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Shopify OAuth2 API';
+
 	documentationUrl = 'shopify';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Shop Subdomain',

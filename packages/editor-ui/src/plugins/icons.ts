@@ -10,13 +10,16 @@ import {
 	faArrowLeft,
 	faArrowRight,
 	faAt,
+	faBan,
 	faBook,
 	faBoxOpen,
 	faBug,
-	faBan,
+	faCalculator,
 	faCalendar,
+	faChartBar,
 	faCheck,
 	faCheckCircle,
+	faCheckSquare,
 	faChevronDown,
 	faChevronUp,
 	faChevronLeft,
@@ -50,11 +53,16 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFlask,
 	faFolderOpen,
+	faFont,
 	faGlobeAmericas,
 	faGift,
+	faGlobe,
 	faGraduationCap,
 	faGripVertical,
+	faHandPointLeft,
+	faHashtag,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -64,8 +72,10 @@ import {
 	faInfoCircle,
 	faKey,
 	faLink,
+	faList,
 	faLightbulb,
 	faMapSigns,
+	faMousePointer,
 	faNetworkWired,
 	faPause,
 	faPauseCircle,
@@ -82,11 +92,13 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSatelliteDish,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
 	faSignInAlt,
+	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
 	faStop,
@@ -110,12 +122,11 @@ import {
 	faVideo,
 	faStickyNote as faSolidStickyNote,
 } from '@fortawesome/free-solid-svg-icons';
-import {
-	faStickyNote,
-} from '@fortawesome/free-regular-svg-icons';
+import { faStickyNote } from '@fortawesome/free-regular-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-function addIcon(icon: any) { // tslint:disable-line:no-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function addIcon(icon: any) {
 	library.add(icon as IconDefinition);
 }
 
@@ -131,9 +142,12 @@ addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
+addIcon(faCalculator);
 addIcon(faCalendar);
+addIcon(faChartBar);
 addIcon(faCheck);
 addIcon(faCheckCircle);
+addIcon(faCheckSquare);
 addIcon(faChevronLeft);
 addIcon(faChevronRight);
 addIcon(faChevronDown);
@@ -168,10 +182,15 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFlask);
 addIcon(faFolderOpen);
+addIcon(faFont);
 addIcon(faGift);
+addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
+addIcon(faHandPointLeft);
+addIcon(faHashtag);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);
@@ -181,8 +200,10 @@ addIcon(faInfo);
 addIcon(faInfoCircle);
 addIcon(faKey);
 addIcon(faLink);
+addIcon(faList);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
+addIcon(faMousePointer);
 addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);
@@ -199,11 +220,13 @@ addIcon(faQuestionCircle);
 addIcon(faRedo);
 addIcon(faRss);
 addIcon(faSave);
+addIcon(faSatelliteDish);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
 addIcon(faServer);
 addIcon(faSignInAlt);
+addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
@@ -229,4 +252,3 @@ addIcon(faUsers);
 addIcon(faVideo);
 
 Vue.component('font-awesome-icon', FontAwesomeIcon);
-

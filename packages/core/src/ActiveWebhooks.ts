@@ -6,8 +6,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import { NodeExecuteFunctions } from '.';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class ActiveWebhooks {
 	private workflowWebhooks: {

@@ -141,8 +141,8 @@ export class GoogleAnalytics implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let method = '';
 		const qs: IDataObject = {};
@@ -156,8 +156,8 @@ export class GoogleAnalytics implements INodeType {
 						method = 'POST';
 						endpoint = '/v4/reports:batchGet';
 						const viewId = this.getNodeParameter('viewId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const body: IData = {
@@ -215,7 +215,7 @@ export class GoogleAnalytics implements INodeType {
 							Object.assign(body, { hideTotals: additionalFields.hideTotals });
 						}
 
-						if (returnAll === true) {
+						if (returnAll) {
 							responseData = await googleApiRequestAllItems.call(
 								this,
 								'reports',
@@ -235,9 +235,9 @@ export class GoogleAnalytics implements INodeType {
 							responseData = responseData.reports;
 						}
 
-						if (simple === true) {
+						if (simple) {
 							responseData = simplify(responseData);
-						} else if (returnAll === true && responseData.length > 1) {
+						} else if (returnAll && responseData.length > 1) {
 							responseData = merge(responseData);
 						}
 					}
@@ -249,8 +249,8 @@ export class GoogleAnalytics implements INodeType {
 						endpoint = '/v4/userActivity:search';
 						const viewId = this.getNodeParameter('viewId', i);
 						const userId = this.getNodeParameter('userId', i);
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							viewId,
 							user: {
@@ -270,7 +270,7 @@ export class GoogleAnalytics implements INodeType {
 								body,
 							);
 						} else {
-							body.pageSize = this.getNodeParameter('limit', 0) as number;
+							body.pageSize = this.getNodeParameter('limit', 0);
 							responseData = await googleApiRequest.call(this, method, endpoint, body);
 							responseData = responseData.sessions;
 						}

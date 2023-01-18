@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
 import validator from 'validator';
+import { randomBytes } from 'crypto';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { randomBytes } from 'crypto';
-import { Db, InternalHooksManager, ResponseHelper } from '../..';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../UserManagementHelper';
-import type { AuthenticatedRequest, MeRequest } from '../../requests';
-import { validateEntity } from '../../GenericHelpers';
-import { User } from '../../databases/entities/User';
+import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { validateEntity } from '@/GenericHelpers';
+import { User } from '@db/entities/User';
 
 export function meNamespace(this: N8nApp): void {
 	/**
@@ -38,7 +39,7 @@ export function meNamespace(this: N8nApp): void {
 						userId: req.user.id,
 						payload: req.body,
 					});
-					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
+					throw new ResponseHelper.BadRequestError('Email is mandatory');
 				}
 
 				if (!validator.isEmail(email)) {
@@ -46,7 +47,7 @@ export function meNamespace(this: N8nApp): void {
 						userId: req.user.id,
 						invalidEmail: email,
 					});
-					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
+					throw new ResponseHelper.BadRequestError('Invalid email address');
 				}
 
 				const { email: currentEmail } = req.user;
@@ -64,7 +65,7 @@ export function meNamespace(this: N8nApp): void {
 
 				const updatedkeys = Object.keys(req.body);
 				void InternalHooksManager.getInstance().onUserUpdate({
-					user_id: req.user.id,
+					user,
 					fields_changed: updatedkeys,
 				});
 				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
@@ -83,20 +84,16 @@ export function meNamespace(this: N8nApp): void {
 			const { currentPassword, newPassword } = req.body;
 
 			if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-				throw new ResponseHelper.ResponseError('Invalid payload.', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload.');
 			}
 
 			if (!req.user.password) {
-				throw new ResponseHelper.ResponseError('Requesting user not set up.');
+				throw new ResponseHelper.BadRequestError('Requesting user not set up.');
 			}
 
 			const isCurrentPwCorrect = await compareHash(currentPassword, req.user.password);
 			if (!isCurrentPwCorrect) {
-				throw new ResponseHelper.ResponseError(
-					'Provided current password is incorrect.',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('Provided current password is incorrect.');
 			}
 
 			const validPassword = validatePassword(newPassword);
@@ -109,7 +106,7 @@ export function meNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: req.user.id,
+				user,
 				fields_changed: ['password'],
 			});
 
@@ -134,11 +131,7 @@ export function meNamespace(this: N8nApp): void {
 						userId: req.user.id,
 					},
 				);
-				throw new ResponseHelper.ResponseError(
-					'Personalization answers are mandatory',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('Personalization answers are mandatory');
 			}
 
 			await Db.collections.User.save({
@@ -169,12 +162,10 @@ export function meNamespace(this: N8nApp): void {
 				apiKey,
 			});
 
-			const telemetryData = {
-				user_id: req.user.id,
+			void InternalHooksManager.getInstance().onApiKeyCreated({
+				user: req.user,
 				public_api: false,
-			};
-
-			void InternalHooksManager.getInstance().onApiKeyCreated(telemetryData);
+			});
 
 			return { apiKey };
 		}),
@@ -190,12 +181,10 @@ export function meNamespace(this: N8nApp): void {
 				apiKey: null,
 			});
 
-			const telemetryData = {
-				user_id: req.user.id,
+			void InternalHooksManager.getInstance().onApiKeyDeleted({
+				user: req.user,
 				public_api: false,
-			};
-
-			void InternalHooksManager.getInstance().onApiKeyDeleted(telemetryData);
+			});
 
 			return { success: true };
 		}),

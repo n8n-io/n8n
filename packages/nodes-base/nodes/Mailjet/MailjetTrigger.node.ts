@@ -73,7 +73,7 @@ export class MailjetTrigger implements INodeType {
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
-				const endpoint = `/v3/rest/eventcallbackurl`;
+				const endpoint = '/v3/rest/eventcallbackurl';
 				const responseData = await mailjetApiRequest.call(this, 'GET', endpoint);
 
 				const event = this.getNodeParameter('event') as string;
@@ -119,7 +119,6 @@ export class MailjetTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {

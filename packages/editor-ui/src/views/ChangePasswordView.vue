@@ -10,15 +10,15 @@
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'ChangePasswordView',
 	components: {
 		AuthView,
@@ -29,6 +29,9 @@ export default mixins(
 			loading: false,
 			config: null as null | IFormBoxConfig,
 		};
+	},
+	computed: {
+		...mapStores(useUsersStore),
 	},
 	async mounted() {
 		this.config = {
@@ -43,7 +46,7 @@ export default mixins(
 						label: this.$locale.baseText('auth.newPassword'),
 						type: 'password',
 						required: true,
-						validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+						validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 						infoText: this.$locale.baseText('auth.defaultPasswordRequirements'),
 						autocomplete: 'new-password',
 						capitalize: true,
@@ -60,16 +63,21 @@ export default mixins(
 								validate: this.passwordsMatch,
 							},
 						},
-						validationRules: [{name: 'TWO_PASSWORDS_MATCH'}],
+						validationRules: [{ name: 'TWO_PASSWORDS_MATCH' }],
 						autocomplete: 'new-password',
 						capitalize: true,
 					},
 				},
 			],
 		};
-
-		const token = this.$route.query.token;
-		const userId = this.$route.query.userId;
+		const token =
+			!this.$route.query.token || typeof this.$route.query.token !== 'string'
+				? null
+				: this.$route.query.token;
+		const userId =
+			!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
+				? null
+				: this.$route.query.userId;
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
@@ -78,9 +86,12 @@ export default mixins(
 				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
 			}
 
-			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
+			await this.usersStore.validatePasswordToken({ token, userId });
 		} catch (e) {
-			this.$showMessage({title: this.$locale.baseText('auth.changePassword.tokenValidationError'), type: 'error'});
+			this.$showMessage({
+				title: this.$locale.baseText('auth.changePassword.tokenValidationError'),
+				type: 'error',
+			});
 		}
 	},
 	methods: {
@@ -97,7 +108,7 @@ export default mixins(
 
 			return false;
 		},
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			if (e.name === 'password') {
 				this.password = e.value;
 			}
@@ -105,17 +116,31 @@ export default mixins(
 		async onSubmit() {
 			try {
 				this.loading = true;
-				const token = this.$route.query.token;
-				const userId = this.$route.query.userId;
-				await this.$store.dispatch('users/changePassword', {token, userId, password: this.password});
+				const token =
+					!this.$route.query.token || typeof this.$route.query.token !== 'string'
+						? null
+						: this.$route.query.token;
+				const userId =
+					!this.$route.query.userId || typeof this.$route.query.userId !== 'string'
+						? null
+						: this.$route.query.userId;
 
-				this.$showMessage({
-					type: 'success',
-					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
-					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
-				});
+				if (token && userId) {
+					await this.usersStore.changePassword({ token, userId, password: this.password });
 
-				await this.$router.push({ name: VIEWS.SIGNIN });
+					this.$showMessage({
+						type: 'success',
+						title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
+						message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
+					});
+
+					await this.$router.push({ name: VIEWS.SIGNIN });
+				} else {
+					this.$showError(
+						new Error(this.$locale.baseText('auth.validation.missingParameters')),
+						this.$locale.baseText('auth.changePassword.error'),
+					);
+				}
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}

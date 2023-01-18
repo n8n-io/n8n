@@ -1,25 +1,16 @@
-import { exec as callbackExec } from 'child_process';
-import { promisify } from 'util';
-
 import { UserSettings } from 'n8n-core';
-import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
+import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
 
-import config from '../../../config';
-import { DatabaseType, Db, ICredentialsDb } from '../../../src';
-import { createCredentialsFromCredentialsEntity } from '../../../src/CredentialsHelper';
-import { entities } from '../../../src/databases/entities';
-import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
-import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
-import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
-import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
-import {
-	BOOTSTRAP_MYSQL_CONNECTION_NAME,
-	BOOTSTRAP_POSTGRES_CONNECTION_NAME,
-	DB_INITIALIZATION_TIMEOUT,
-	MAPPING_TABLES,
-	MAPPING_TABLES_TO_CLEAR,
-} from './constants';
+import config from '@/config';
+import * as Db from '@/Db';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { entities } from '@db/entities';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { mysqlMigrations } from '@db/migrations/mysqldb';
+import { postgresMigrations } from '@db/migrations/postgresdb';
+import { sqliteMigrations } from '@db/migrations/sqlite';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
+import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
 import {
 	randomApiKey,
 	randomCredentialPayload,
@@ -30,13 +21,13 @@ import {
 } from './random';
 import { categorize, getPostgresSchemaSection } from './utils';
 
-import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import type { Role } from '../../../src/databases/entities/Role';
-import { TagEntity } from '../../../src/databases/entities/TagEntity';
-import { User } from '../../../src/databases/entities/User';
-import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { Role } from '@db/entities/Role';
+import { TagEntity } from '@db/entities/TagEntity';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type {
 	CollectionName,
 	CredentialPayload,
@@ -44,34 +35,32 @@ import type {
 	InstalledPackagePayload,
 	MappingName,
 } from './types';
+import type { DatabaseType, ICredentialsDb } from '@/Interfaces';
 
-const exec = promisify(callbackExec);
+export type TestDBType = 'postgres' | 'mysql';
 
 /**
  * Initialize one test DB per suite run, with bootstrap connection if needed.
  */
 export async function init() {
+	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
 
 	if (dbType === 'sqlite') {
-		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
-
 		// no bootstrap connection required
 		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
-		await getConnection(testDbName).runMigrations({ transaction: 'none' });
+		await Db.getConnection().runMigrations({ transaction: 'none' });
 
 		return { testDbName };
 	}
 
 	if (dbType === 'postgresdb') {
-		jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
-
 		let bootstrapPostgres;
-		const pgOptions = getBootstrapPostgresOptions();
+		const pgOptions = getBootstrapDBOptions('postgres');
 
 		try {
-			bootstrapPostgres = await createConnection(pgOptions);
+			bootstrapPostgres = await new Connection(pgOptions).initialize();
 		} catch (error) {
 			const pgConfig = getPostgresSchemaSection();
 
@@ -91,35 +80,32 @@ export async function init() {
 			process.exit(1);
 		}
 
-		const testDbName = `pg_${randomString(6, 10)}_${Date.now()}_n8n_test`;
-		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName};`);
+		const testDbName = `postgres_${randomString(6, 10)}_${Date.now()}_n8n_test`;
+		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapPostgres.destroy();
 
-		try {
-			const schema = config.getEnv('database.postgresdb.schema');
-			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
-		} catch (error) {
-			if (error instanceof Error && error.message.includes('command not found')) {
-				console.error(
-					'psql command not found. Make sure psql is installed and added to your PATH.',
-				);
-			}
-			process.exit(1);
+		const dbOptions = getDBOptions('postgres', testDbName);
+
+		if (dbOptions.schema !== 'public') {
+			const { schema, migrations, ...options } = dbOptions;
+			const connection = await new Connection(options).initialize();
+			await connection.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+			await connection.destroy();
 		}
 
-		await Db.init(getPostgresOptions({ name: testDbName }));
+		await Db.init(dbOptions);
 
 		return { testDbName };
 	}
 
 	if (dbType === 'mysqldb') {
-		// initialization timeout in test/setup.ts
-
-		const bootstrapMysql = await createConnection(getBootstrapMySqlOptions());
+		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
 
 		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
-		await bootstrapMysql.query(`CREATE DATABASE ${testDbName};`);
+		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
+		await bootstrapMysql.destroy();
 
-		await Db.init(getMySqlOptions({ name: testDbName }));
+		await Db.init(getDBOptions('mysql', testDbName));
 
 		return { testDbName };
 	}
@@ -130,28 +116,8 @@ export async function init() {
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
-export async function terminate(testDbName: string) {
-	const dbType = config.getEnv('database.type');
-
-	if (dbType === 'sqlite') {
-		await getConnection(testDbName).close();
-	}
-
-	if (dbType === 'postgresdb') {
-		await getConnection(testDbName).close();
-
-		const bootstrapPostgres = getConnection(BOOTSTRAP_POSTGRES_CONNECTION_NAME);
-		await bootstrapPostgres.query(`DROP DATABASE ${testDbName}`);
-		await bootstrapPostgres.close();
-	}
-
-	if (dbType === 'mysqldb') {
-		await getConnection(testDbName).close();
-
-		const bootstrapMySql = getConnection(BOOTSTRAP_MYSQL_CONNECTION_NAME);
-		await bootstrapMySql.query(`DROP DATABASE ${testDbName}`);
-		await bootstrapMySql.close();
-	}
+export async function terminate() {
+	await Db.getConnection().destroy();
 }
 
 async function truncateMappingTables(
@@ -205,9 +171,9 @@ async function truncateMappingTables(
  * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(collections: Array<CollectionName>, testDbName: string) {
+export async function truncate(collections: Array<CollectionName>) {
 	const dbType = config.getEnv('database.type');
-	const testDb = getConnection(testDbName);
+	const testDb = Db.getConnection();
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
@@ -283,6 +249,8 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		Settings: 'settings',
 		InstalledPackages: 'installed_packages',
 		InstalledNodes: 'installed_nodes',
+		WorkflowStatistics: 'workflow_statistics',
+		EventDestinations: 'event_destinations',
 	}[sourceName];
 }
 
@@ -319,12 +287,12 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOne({ scope: 'credential', name: 'user' });
+	const role = await Db.collections.Role.findOneBy({ scope: 'credential', name: 'user' });
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
-			user,
-			credentials: credential,
-			role,
+			userId: user.id,
+			credentialsId: credential.id,
+			roleId: role?.id,
 		}),
 	);
 	return Db.collections.SharedCredentials.save(newSharedCredentials);
@@ -356,12 +324,16 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	return Db.collections.User.save(user);
 }
 
+export async function createOwner() {
+	return createUser({ globalRole: await getGlobalOwnerRole() });
+}
+
 export function createUserShell(globalRole: Role): Promise<User> {
 	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
 
-	const shell: Partial<User> = { globalRole };
+	const shell: Partial<User> = { globalRoleId: globalRole.id };
 
 	if (globalRole.name !== 'owner') {
 		shell.email = randomEmail();
@@ -433,28 +405,35 @@ export function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
 export function getGlobalMemberRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
 export function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
+export function getWorkflowEditorRole() {
+	return Db.collections.Role.findOneByOrFail({
+		name: 'editor',
+		scope: 'workflow',
+	});
+}
+
 export function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
@@ -496,7 +475,7 @@ export async function createExecution(
 		finished: finished ?? true,
 		mode: mode ?? 'manual',
 		startedAt: startedAt ?? new Date(),
-		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id.toString() }),
+		...(workflow !== undefined && { workflowData: workflow, workflowId: workflow.id }),
 		stoppedAt: stoppedAt ?? new Date(),
 		waitTill: waitTill ?? null,
 	});
@@ -602,6 +581,16 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 	return workflow;
 }
 
+export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
+	const role = await getWorkflowEditorRole();
+	const sharedWorkflows = users.map((user) => ({
+		user,
+		workflow,
+		role,
+	}));
+	return Db.collections.SharedWorkflow.save(sharedWorkflows);
+}
+
 /**
  * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
  * @param user user to assign the workflow to
@@ -648,6 +637,16 @@ export async function createWorkflowWithTrigger(
 }
 
 // ----------------------------------
+//        workflow sharing
+// ----------------------------------
+
+export async function getWorkflowSharing(workflow: WorkflowEntity) {
+	return Db.collections.SharedWorkflow.findBy({
+		workflowId: workflow.id,
+	});
+}
+
+// ----------------------------------
 //        connection options
 // ----------------------------------
 
@@ -668,100 +667,38 @@ export const getSqliteOptions = ({ name }: { name: string }): ConnectionOptions 
 	};
 };
 
-/**
- * Generate options for a bootstrap Postgres connection,
- * to create and drop test Postgres databases.
- */
-export const getBootstrapPostgresOptions = () => {
-	const username = config.getEnv('database.postgresdb.user');
-	const password = config.getEnv('database.postgresdb.password');
-	const host = config.getEnv('database.postgresdb.host');
-	const port = config.getEnv('database.postgresdb.port');
-	const schema = config.getEnv('database.postgresdb.schema');
-
-	return {
-		name: BOOTSTRAP_POSTGRES_CONNECTION_NAME,
-		type: 'postgres',
-		database: 'postgres', // pre-existing default database
-		host,
-		port,
-		username,
-		password,
-		schema,
-	} as const;
-};
-
-export const getPostgresOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.getEnv('database.postgresdb.user');
-	const password = config.getEnv('database.postgresdb.password');
-	const host = config.getEnv('database.postgresdb.host');
-	const port = config.getEnv('database.postgresdb.port');
-	const schema = config.getEnv('database.postgresdb.schema');
-
-	return {
-		name,
-		type: 'postgres',
-		database: name,
-		host,
-		port,
-		username,
-		password,
-		entityPrefix: '',
-		schema,
-		dropSchema: true,
-		migrations: postgresMigrations,
-		migrationsRun: true,
-		migrationsTableName: 'migrations',
-		entities: Object.values(entities),
-		synchronize: false,
-		logging: false,
-	};
-};
+const baseOptions = (type: TestDBType) => ({
+	host: config.getEnv(`database.${type}db.host`),
+	port: config.getEnv(`database.${type}db.port`),
+	username: config.getEnv(`database.${type}db.user`),
+	password: config.getEnv(`database.${type}db.password`),
+	schema: type === 'postgres' ? config.getEnv(`database.postgresdb.schema`) : undefined,
+});
 
 /**
- * Generate options for a bootstrap MySQL connection,
- * to create and drop test MySQL databases.
+ * Generate options for a bootstrap DB connection, to create and drop test databases.
  */
-export const getBootstrapMySqlOptions = (): ConnectionOptions => {
-	const username = config.getEnv('database.mysqldb.user');
-	const password = config.getEnv('database.mysqldb.password');
-	const host = config.getEnv('database.mysqldb.host');
-	const port = config.getEnv('database.mysqldb.port');
+export const getBootstrapDBOptions = (type: TestDBType) =>
+	({
+		type,
+		name: type,
+		database: type,
+		...baseOptions(type),
+	} as const);
 
-	return {
-		name: BOOTSTRAP_MYSQL_CONNECTION_NAME,
-		database: BOOTSTRAP_MYSQL_CONNECTION_NAME,
-		type: 'mysql',
-		host,
-		port,
-		username,
-		password,
-	};
-};
-
-/**
- * Generate options for a MySQL database connection,
- * one per test suite run.
- */
-export const getMySqlOptions = ({ name }: { name: string }): ConnectionOptions => {
-	const username = config.getEnv('database.mysqldb.user');
-	const password = config.getEnv('database.mysqldb.password');
-	const host = config.getEnv('database.mysqldb.host');
-	const port = config.getEnv('database.mysqldb.port');
-
-	return {
-		name,
-		database: name,
-		type: 'mysql',
-		host,
-		port,
-		username,
-		password,
-		migrations: mysqlMigrations,
-		migrationsTableName: 'migrations',
-		migrationsRun: true,
-	};
-};
+const getDBOptions = (type: TestDBType, name: string) => ({
+	type,
+	name,
+	database: name,
+	...baseOptions(type),
+	dropSchema: true,
+	migrations: type === 'postgres' ? postgresMigrations : mysqlMigrations,
+	migrationsRun: true,
+	migrationsTableName: 'migrations',
+	entities: Object.values(entities),
+	synchronize: false,
+	logging: false,
+});
 
 // ----------------------------------
 //            encryption

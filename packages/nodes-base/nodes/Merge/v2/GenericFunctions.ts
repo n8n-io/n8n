@@ -4,9 +4,10 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	IPairedItemData,
+	jsonParse,
 } from 'n8n-workflow';
 
-import { assign, assignWith, get, isEqual, merge, mergeWith } from 'lodash';
+import { assign, assignWith, get, isEqual, isNull, merge, mergeWith } from 'lodash';
 
 type PairToMatch = {
 	field1: string;
@@ -18,6 +19,7 @@ export type MatchFieldsOptions = {
 	outputDataFrom: MatchFieldsOutput;
 	multipleMatches: MultipleMatches;
 	disableDotNotation: boolean;
+	fuzzyCompare?: boolean;
 };
 
 export type ClashResolveOptions = {
@@ -35,6 +37,7 @@ type MultipleMatches = 'all' | 'first';
 export type MatchFieldsOutput = 'both' | 'input1' | 'input2';
 
 export type MatchFieldsJoinMode =
+	| 'keepEverything'
 	| 'keepMatches'
 	| 'keepNonMatches'
 	| 'enrichInput2'
@@ -44,6 +47,8 @@ type EntryMatches = {
 	entry: INodeExecutionData;
 	matches: INodeExecutionData[];
 };
+
+type CompareFunction = <T, U>(a: T, b: U) => boolean;
 
 export function addSuffixToEntriesKeys(data: INodeExecutionData[], suffix: string) {
 	return data.map((entry) => {
@@ -59,6 +64,7 @@ function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	return data.reduce((acc, entry2, i) => {
 		if (entry2 === undefined) return acc;
@@ -73,7 +79,7 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
 		}
@@ -89,6 +95,7 @@ function findFirstMatch(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
 	disableDotNotation: boolean,
+	isEntriesEqual: CompareFunction,
 ) {
 	const index = data.findIndex((entry2) => {
 		if (entry2 === undefined) return false;
@@ -103,7 +110,7 @@ function findFirstMatch(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (!isEqual(excpectedValue, entry2FieldValue)) {
+			if (!isEntriesEqual(excpectedValue, entry2FieldValue)) {
 				return false;
 			}
 		}
@@ -114,6 +121,93 @@ function findFirstMatch(
 
 	return [{ entry: data[index], index }];
 }
+
+const parseStringAndCompareToObject = (str: string, arr: IDataObject) => {
+	try {
+		const parsedArray = jsonParse(str);
+		return isEqual(parsedArray, arr);
+	} catch (error) {
+		return false;
+	}
+};
+
+function isFalsy<T>(value: T) {
+	if (isNull(value)) return true;
+	if (typeof value === 'string' && value === '') return true;
+	if (Array.isArray(value) && value.length === 0) return true;
+	return false;
+}
+
+const fuzzyCompare =
+	(options: IDataObject) =>
+	<T, U>(item1: T, item2: U) => {
+		//Fuzzy compare is disabled, so we do strict comparison
+		if (!options.fuzzyCompare) return isEqual(item1, item2);
+
+		//Both types are the same, so we do strict comparison
+		if (!isNull(item1) && !isNull(item2) && typeof item1 === typeof item2) {
+			return isEqual(item1, item2);
+		}
+
+		//Null, empty strings, empty arrays all treated as the same
+		if (isFalsy(item1) && isFalsy(item2)) return true;
+
+		//When a field is missing in one branch and isFalsy() in another, treat them as matching
+		if (isFalsy(item1) && item2 === undefined) return true;
+		if (item1 === undefined && isFalsy(item2)) return true;
+
+		//Compare numbers and strings representing that number
+		if (typeof item1 === 'number' && typeof item2 === 'string') {
+			return item1.toString() === item2;
+		}
+
+		if (typeof item1 === 'string' && typeof item2 === 'number') {
+			return item1 === item2.toString();
+		}
+
+		//Compare objects/arrays and their stringified version
+		if (!isNull(item1) && typeof item1 === 'object' && typeof item2 === 'string') {
+			return parseStringAndCompareToObject(item2, item1 as IDataObject);
+		}
+
+		if (!isNull(item2) && typeof item1 === 'string' && typeof item2 === 'object') {
+			return parseStringAndCompareToObject(item1, item2 as IDataObject);
+		}
+
+		//Compare booleans and strings representing the boolean (’true’, ‘True’, ‘TRUE’)
+		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
+			if (item1 === true && item2.toLocaleLowerCase() === 'true') return true;
+			if (item1 === false && item2.toLocaleLowerCase() === 'false') return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1.toLocaleLowerCase() === 'true') return true;
+			if (item2 === false && item1.toLocaleLowerCase() === 'false') return true;
+		}
+
+		//Compare booleans and the numbers/string 0 and 1
+		if (typeof item1 === 'boolean' && typeof item2 === 'number') {
+			if (item1 === true && item2 === 1) return true;
+			if (item1 === false && item2 === 0) return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'number') {
+			if (item2 === true && item1 === 1) return true;
+			if (item2 === false && item1 === 0) return true;
+		}
+
+		if (typeof item1 === 'boolean' && typeof item2 === 'string') {
+			if (item1 === true && item2 === '1') return true;
+			if (item1 === false && item2 === '0') return true;
+		}
+
+		if (typeof item2 === 'boolean' && typeof item1 === 'string') {
+			if (item2 === true && item1 === '1') return true;
+			if (item2 === false && item1 === '0') return true;
+		}
+
+		return isEqual(item1, item2);
+	};
 
 export function findMatches(
 	input1: INodeExecutionData[],
@@ -128,7 +222,8 @@ export function findMatches(
 		[data1, data2] = [data2, data1];
 	}
 
-	const disableDotNotation = (options.disableDotNotation as boolean) || false;
+	const isEntriesEqual = fuzzyCompare(options);
+	const disableDotNotation = options.disableDotNotation || false;
 	const multipleMatches = (options.multipleMatches as string) || 'all';
 
 	const filteredData = {
@@ -146,11 +241,11 @@ export function findMatches(
 		fieldsToMatch.forEach((matchCase) => {
 			let valueToCompare;
 			if (disableDotNotation) {
-				valueToCompare = entry1.json[matchCase.field1 as string];
+				valueToCompare = entry1.json[matchCase.field1];
 			} else {
-				valueToCompare = get(entry1.json, matchCase.field1 as string);
+				valueToCompare = get(entry1.json, matchCase.field1);
 			}
-			lookup[matchCase.field2 as string] = valueToCompare;
+			lookup[matchCase.field2] = valueToCompare;
 		});
 
 		for (const fieldValue of Object.values(lookup)) {
@@ -162,8 +257,8 @@ export function findMatches(
 
 		const foundedMatches =
 			multipleMatches === 'all'
-				? findAllMatches(data2, lookup, disableDotNotation)
-				: findFirstMatch(data2, lookup, disableDotNotation);
+				? findAllMatches(data2, lookup, disableDotNotation, isEntriesEqual)
+				: findFirstMatch(data2, lookup, disableDotNotation, isEntriesEqual);
 
 		const matches = foundedMatches.map((match) => match.entry) as INodeExecutionData[];
 		foundedMatches.map((match) => matchedInInput2.add(match.index as number));
@@ -202,6 +297,38 @@ export function findMatches(
 	return filteredData;
 }
 
+export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
+	const mergeMode = clashResolveOptions.mergeMode as string;
+
+	if (clashResolveOptions.overrideEmpty) {
+		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
+			if (srcValue === undefined || srcValue === null || srcValue === '') {
+				return targetValue;
+			}
+		}
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return mergeWith(targetCopy, ...source, customizer);
+			};
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return assignWith(targetCopy, ...source, customizer);
+			};
+		}
+	} else {
+		if (mergeMode === 'deepMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+		}
+		if (mergeMode === 'shallowMerge') {
+			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
+		}
+	}
+	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
+}
+
 export function mergeMatched(
 	matched: EntryMatches[],
 	clashResolveOptions: ClashResolveOptions,
@@ -229,10 +356,10 @@ export function mergeMatched(
 			[entry] = addSuffixToEntriesKeys([entry], suffix1);
 			matches = addSuffixToEntriesKeys(matches, suffix2);
 
-			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+			json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 			binary = mergeIntoSingleObject(
 				{ ...entry.binary },
-				...matches.map((match) => match.binary as IDataObject),
+				...matches.map((item) => item.binary as IDataObject),
 			);
 		} else {
 			let preferInput1 = 'preferInput1';
@@ -250,21 +377,21 @@ export function mergeMatched(
 				const [firstMatch, ...restMatches] = matches;
 				json = mergeIntoSingleObject(
 					{ ...firstMatch.json },
-					...restMatches.map((match) => match.json),
+					...restMatches.map((item) => item.json),
 					entry.json,
 				);
 				binary = mergeIntoSingleObject(
 					{ ...firstMatch.binary },
-					...restMatches.map((match) => match.binary as IDataObject),
+					...restMatches.map((item) => item.binary as IDataObject),
 					entry.binary as IDataObject,
 				);
 			}
 
 			if (resolveClash === preferInput2) {
-				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((match) => match.json));
+				json = mergeIntoSingleObject({ ...entry.json }, ...matches.map((item) => item.json));
 				binary = mergeIntoSingleObject(
 					{ ...entry.binary },
-					...matches.map((match) => match.binary as IDataObject),
+					...matches.map((item) => item.binary as IDataObject),
 				);
 			}
 		}
@@ -282,34 +409,6 @@ export function mergeMatched(
 	}
 
 	return returnData;
-}
-
-export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
-	const mergeMode = clashResolveOptions.mergeMode as string;
-
-	if (clashResolveOptions.overrideEmpty) {
-		function customizer(targetValue: GenericValue, srcValue: GenericValue) {
-			if (srcValue === undefined || srcValue === null || srcValue === '') {
-				return targetValue;
-			}
-		}
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) =>
-				mergeWith(target, ...source, customizer);
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) =>
-				assignWith(target, ...source, customizer);
-		}
-	} else {
-		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
-		}
-		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) => assign({}, target, ...source);
-		}
-	}
-	return (target: IDataObject, ...source: IDataObject[]) => merge({}, target, ...source);
 }
 
 export function checkMatchFieldsInput(data: IDataObject[]) {

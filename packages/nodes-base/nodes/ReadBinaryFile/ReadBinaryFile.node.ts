@@ -1,12 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
-
-import { readFile as fsReadFile } from 'fs/promises';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 export class ReadBinaryFile implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,23 +46,6 @@ export class ReadBinaryFile implements INodeType {
 		for (let itemIndex = 0; itemIndex < length; itemIndex++) {
 			try {
 				item = items[itemIndex];
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
-				const filePath = this.getNodeParameter('filePath', itemIndex) as string;
-
-				let data;
-				try {
-					data = (await fsReadFile(filePath)) as Buffer;
-				} catch (error) {
-					if (error.code === 'ENOENT') {
-						throw new NodeOperationError(
-							this.getNode(),
-							`The file "${filePath}" could not be found.`,
-						);
-					}
-
-					throw error;
-				}
-
 				const newItem: INodeExecutionData = {
 					json: item.json,
 					binary: {},
@@ -78,14 +54,17 @@ export class ReadBinaryFile implements INodeType {
 					},
 				};
 
-				if (item.binary !== undefined) {
+				if (item.binary !== undefined && newItem.binary) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
 					Object.assign(newItem.binary, item.binary);
 				}
 
-				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(data, filePath);
+				const filePath = this.getNodeParameter('filePath', itemIndex);
+				const stream = await this.helpers.createReadStream(filePath);
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
+				newItem.binary![dataPropertyName] = await this.helpers.prepareBinaryData(stream, filePath);
 				returnData.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {

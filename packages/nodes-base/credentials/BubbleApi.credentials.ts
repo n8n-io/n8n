@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BubbleApi implements ICredentialType {
 	name = 'bubbleApi';
+
 	displayName = 'Bubble API';
+
 	documentationUrl = 'bubble';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Token',

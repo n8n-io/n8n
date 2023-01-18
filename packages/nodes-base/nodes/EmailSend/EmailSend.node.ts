@@ -1,11 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { createTransport } from 'nodemailer';
 import SMTPTransport from 'nodemailer/lib/smtp-transport';
@@ -79,7 +73,6 @@ export class EmailSend implements INodeType {
 				name: 'text',
 				type: 'string',
 				typeOptions: {
-					alwaysOpenEditWindow: true,
 					rows: 5,
 				},
 				default: '',
@@ -117,6 +110,14 @@ export class EmailSend implements INodeType {
 						default: false,
 						description: 'Whether to connect even if SSL certificate validation is not possible',
 					},
+					{
+						displayName: 'Reply To',
+						name: 'replyTo',
+						type: 'string',
+						default: '',
+						placeholder: 'info@example.com',
+						description: 'The email address to send the reply to',
+					},
 				],
 			},
 		],
@@ -141,7 +142,7 @@ export class EmailSend implements INodeType {
 				const text = this.getNodeParameter('text', itemIndex) as string;
 				const html = this.getNodeParameter('html', itemIndex) as string;
 				const attachmentPropertyString = this.getNodeParameter('attachments', itemIndex) as string;
-				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+				const options = this.getNodeParameter('options', itemIndex, {});
 
 				const credentials = await this.getCredentials('smtp');
 
@@ -176,6 +177,7 @@ export class EmailSend implements INodeType {
 					subject,
 					text,
 					html,
+					replyTo: options.replyTo as string | undefined,
 				};
 
 				if (attachmentPropertyString && item.binary) {
@@ -191,7 +193,7 @@ export class EmailSend implements INodeType {
 							continue;
 						}
 						attachments.push({
-							filename: item.binary[propertyName].fileName || 'unknown',
+							filename: item.binary[propertyName].fileName ?? 'unknown',
 							content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
 						});
 					}

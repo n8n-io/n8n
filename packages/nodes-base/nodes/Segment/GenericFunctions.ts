@@ -6,7 +6,7 @@ import {
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function segmentApiRequest(
 	this:
@@ -17,11 +17,10 @@ export async function segmentApiRequest(
 		| IWebhookFunctions,
 	method: string,
 	resource: string,
-	body: any = {}, // tslint:disable-line:no-any
+	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
+	_option: IDataObject = {},
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -30,15 +29,11 @@ export async function segmentApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri || `https://api.segment.io/v1${resource}`,
+		uri: uri ?? `https://api.segment.io/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
 }

@@ -7,8 +7,11 @@ import {
 
 export class RocketchatApi implements ICredentialType {
 	name = 'rocketchatApi';
+
 	displayName = 'Rocket API';
+
 	documentationUrl = 'rocketchat';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'User ID',
@@ -30,6 +33,7 @@ export class RocketchatApi implements ICredentialType {
 			placeholder: 'https://n8n.rocket.chat',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -39,6 +43,7 @@ export class RocketchatApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.domain}}',

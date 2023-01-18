@@ -12,7 +12,7 @@ export async function updateContact(
 	const { address, customerId, email, name, notes, phone } = this.getNodeParameter(
 		'updateFields',
 		index,
-	) as IDataObject;
+	);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'PUT';
@@ -21,7 +21,7 @@ export async function updateContact(
 	let addressData = address as IDataObject;
 
 	if (addressData) {
-		addressData = addressData['addressFields'] as IDataObject;
+		addressData = addressData.addressFields as IDataObject;
 		addressData.address1 = addressData.address;
 	}
 
@@ -35,8 +35,7 @@ export async function updateContact(
 		phone,
 	};
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 
 	return this.helpers.returnJsonArray(responseData);
 }

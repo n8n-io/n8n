@@ -1,17 +1,10 @@
-/* eslint-disable import/no-cycle */
 import { Application } from 'express';
-import { JwtFromRequestFunction } from 'passport-jwt';
-import { ActiveWorkflowRunner } from '..';
-import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '../Interfaces';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '@/Interfaces';
 
 export interface JwtToken {
 	token: string;
 	expiresIn: number;
-}
-
-export interface JwtOptions {
-	secretOrKey: string;
-	jwtFromRequest: JwtFromRequestFunction;
 }
 
 export interface JwtPayload {
@@ -30,12 +23,12 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	inviteAcceptUrl?: string;
 }
 
 export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 	externalHooks: IExternalHooksClass;
-	defaultCredentialsName: string;
-	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+	activeWorkflowRunner: ActiveWorkflowRunner;
 }

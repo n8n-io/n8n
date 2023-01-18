@@ -1,18 +1,21 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 import { Response } from 'express';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import { In } from 'typeorm';
 import validator from 'validator';
 
-import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
-import { User } from '../../databases/entities/User';
-import { UserRequest } from '../../requests';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { ITelemetryUserDeletionData } from '@/Interfaces';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
+	addInviteLinktoUser,
+	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
 	isEmailSetUp,
@@ -21,8 +24,10 @@ import {
 	validatePassword,
 } from '../UserManagementHelper';
 
-import * as config from '../../../config';
+import config from '@/config';
 import { issueCookie } from '../auth/jwt';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { RoleService } from '@/role/role.service';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -31,46 +36,22 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.Invite) => {
-			if (config.getEnv('userManagement.emails.mode') === '') {
-				Logger.debug(
-					'Request to send email invite(s) to user(s) failed because emailing was not set up',
-				);
-				throw new ResponseHelper.ResponseError(
-					'Email sending must be set up in order to request a password reset email',
-					undefined,
-					500,
-				);
-			}
-
-			let mailer: UserManagementMailer.UserManagementMailer | undefined;
-			try {
-				mailer = await UserManagementMailer.getInstance();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(
-						`There is a problem with your SMTP setup! ${error.message}`,
-						undefined,
-						500,
-					);
-				}
-			}
+			const mailer = UserManagementMailer.getInstance();
 
 			// TODO: this should be checked in the middleware rather than here
 			if (isUserManagementDisabled()) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because user management is disabled',
 				);
-				throw new ResponseHelper.ResponseError('User management is disabled');
+				throw new ResponseHelper.BadRequestError('User management is disabled');
 			}
 
 			if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 				Logger.debug(
 					'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 				);
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'You must set up your own account before inviting others',
-					undefined,
-					400,
 				);
 			}
 
@@ -81,7 +62,7 @@ export function usersNamespace(this: N8nApp): void {
 						payload: req.body,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			if (!req.body.length) return [];
@@ -90,34 +71,28 @@ export function usersNamespace(this: N8nApp): void {
 			// Validate payload
 			req.body.forEach((invite) => {
 				if (typeof invite !== 'object' || !invite.email) {
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						'Request to send email invite(s) to user(s) failed because the payload is not an array shaped Array<{ email: string }>',
-						undefined,
-						400,
 					);
 				}
 
 				if (!validator.isEmail(invite.email)) {
 					Logger.debug('Invalid email in payload', { invalidEmail: invite.email });
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						`Request to send email invite(s) to user(s) failed because of an invalid email address: ${invite.email}`,
-						undefined,
-						400,
 					);
 				}
 				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+			const role = await Db.collections.Role.findOneBy({ scope: 'global', name: 'member' });
 
 			if (!role) {
 				Logger.error(
 					'Request to send email invite(s) to user(s) failed because no global member role was found in database',
 				);
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Members role not found in database - inconsistent state',
-					undefined,
-					500,
 				);
 			}
 
@@ -136,7 +111,7 @@ export function usersNamespace(this: N8nApp): void {
 			const usersToSetUp = Object.keys(createUsers).filter((email) => createUsers[email] === null);
 			const total = usersToSetUp.length;
 
-			Logger.debug(total > 1 ? `Creating ${total} user shells...` : `Creating 1 user shell...`);
+			Logger.debug(total > 1 ? `Creating ${total} user shells...` : 'Creating 1 user shell...');
 
 			try {
 				await Db.transaction(async (transactionManager) => {
@@ -152,19 +127,14 @@ export function usersNamespace(this: N8nApp): void {
 						}),
 					);
 				});
-
-				void InternalHooksManager.getInstance().onUserInvite({
-					user_id: req.user.id,
-					target_user_id: Object.values(createUsers) as string[],
-					public_api: false,
-				});
 			} catch (error) {
+				ErrorReporter.error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
-				throw new ResponseHelper.ResponseError('An error occurred during user creation');
+				throw new ResponseHelper.InternalServerError('An error occurred during user creation');
 			}
 
-			Logger.info('Created user shell(s) successfully', { userId: req.user.id });
-			Logger.verbose(total > 1 ? `${total} user shells created` : `1 user shell created`, {
+			Logger.debug('Created user shell(s) successfully', { userId: req.user.id });
+			Logger.verbose(total > 1 ? `${total} user shells created` : '1 user shell created', {
 				userShells: createUsers,
 			});
 
@@ -176,39 +146,61 @@ export function usersNamespace(this: N8nApp): void {
 
 			const emailingResults = await Promise.all(
 				usersPendingSetup.map(async ([email, id]) => {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${id}`;
-					const result = await mailer?.invite({
-						email,
-						inviteAcceptUrl,
-						domain: baseUrl,
-					});
-					const resp: { user: { id: string | null; email: string }; error?: string } = {
+					if (!id) {
+						// This should never happen since those are removed from the list before reaching this point
+						throw new ResponseHelper.InternalServerError(
+							'User ID is missing for user with email address',
+						);
+					}
+					const inviteAcceptUrl = generateUserInviteUrl(req.user.id, id);
+					const resp: {
+						user: { id: string | null; email: string; inviteAcceptUrl: string; emailSent: boolean };
+						error?: string;
+					} = {
 						user: {
 							id,
 							email,
+							inviteAcceptUrl,
+							emailSent: false,
 						},
 					};
-					if (result?.success) {
-						void InternalHooksManager.getInstance().onUserTransactionalEmail({
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							user_id: id!,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-					} else {
-						void InternalHooksManager.getInstance().onEmailFailed({
-							user_id: req.user.id,
-							message_type: 'New user invite',
-							public_api: false,
-						});
-						Logger.error('Failed to send email', {
-							userId: req.user.id,
+					try {
+						const result = await mailer.invite({
+							email,
 							inviteAcceptUrl,
 							domain: baseUrl,
-							email,
 						});
-						resp.error = `Email could not be sent`;
+						if (result.emailSent) {
+							resp.user.emailSent = true;
+							void InternalHooksManager.getInstance().onUserTransactionalEmail({
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								user_id: id,
+								message_type: 'New user invite',
+								public_api: false,
+							});
+						}
+
+						void InternalHooksManager.getInstance().onUserInvite({
+							user: req.user,
+							target_user_id: Object.values(createUsers) as string[],
+							public_api: false,
+							email_sent: result.emailSent,
+						});
+					} catch (error) {
+						if (error instanceof Error) {
+							void InternalHooksManager.getInstance().onEmailFailed({
+								user: req.user,
+								message_type: 'New user invite',
+								public_api: false,
+							});
+							Logger.error('Failed to send email', {
+								userId: req.user.id,
+								inviteAcceptUrl,
+								domain: baseUrl,
+								email,
+							});
+							resp.error = error.message;
+						}
 					}
 					return resp;
 				}),
@@ -219,7 +211,7 @@ export function usersNamespace(this: N8nApp): void {
 			Logger.debug(
 				usersPendingSetup.length > 1
 					? `Sent ${usersPendingSetup.length} invite emails successfully`
-					: `Sent 1 invite email successfully`,
+					: 'Sent 1 invite email successfully',
 				{ userShells: createUsers },
 			);
 
@@ -242,7 +234,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to resolve signup token failed because of missing user IDs in query string',
 					{ inviterId, inviteeId },
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			// Postgres validates UUID format
@@ -251,7 +243,7 @@ export function usersNamespace(this: N8nApp): void {
 					Logger.debug('Request to resolve signup token failed because of invalid user ID', {
 						userId,
 					});
-					throw new ResponseHelper.ResponseError('Invalid userId', undefined, 400);
+					throw new ResponseHelper.BadRequestError('Invalid userId');
 				}
 			}
 
@@ -262,7 +254,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to resolve signup token failed because the ID of the inviter and/or the ID of the invitee were not found in database',
 					{ inviterId, inviteeId },
 				);
-				throw new ResponseHelper.ResponseError('Invalid invite URL', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid invite URL');
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId);
@@ -272,10 +264,8 @@ export function usersNamespace(this: N8nApp): void {
 					inviterId,
 					inviteeId,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'The invitation was likely either deleted or already claimed',
-					undefined,
-					400,
 				);
 			}
 
@@ -288,11 +278,12 @@ export function usersNamespace(this: N8nApp): void {
 						inviterId: inviter?.id,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid request', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid request');
 			}
 
 			void InternalHooksManager.getInstance().onUserInviteEmailClick({
-				user_id: inviteeId,
+				inviter,
+				invitee,
 			});
 
 			const { firstName, lastName } = inviter;
@@ -318,7 +309,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to fill out a user shell failed because of missing properties in payload',
 					{ payload: req.body },
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload');
 			}
 
 			const validPassword = validatePassword(password);
@@ -336,7 +327,7 @@ export function usersNamespace(this: N8nApp): void {
 						inviteeId,
 					},
 				);
-				throw new ResponseHelper.ResponseError('Invalid payload or URL', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Invalid payload or URL');
 			}
 
 			const invitee = users.find((user) => user.id === inviteeId) as User;
@@ -346,11 +337,7 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to fill out a user shell failed because the invite had already been accepted',
 					{ inviteeId },
 				);
-				throw new ResponseHelper.ResponseError(
-					'This invite has been accepted already',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('This invite has been accepted already');
 			}
 
 			invitee.firstName = firstName;
@@ -362,7 +349,7 @@ export function usersNamespace(this: N8nApp): void {
 			await issueCookie(res, updatedUser);
 
 			void InternalHooksManager.getInstance().onUserSignup({
-				user_id: invitee.id,
+				user: updatedUser,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -374,10 +361,13 @@ export function usersNamespace(this: N8nApp): void {
 
 	this.app.get(
 		`/${this.restEndpoint}/users`,
-		ResponseHelper.send(async () => {
+		ResponseHelper.send(async (req: UserRequest.List) => {
 			const users = await Db.collections.User.find({ relations: ['globalRole'] });
 
-			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
+			return users.map(
+				(user): PublicUser =>
+					addInviteLinktoUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+			);
 		}),
 	);
 
@@ -395,16 +385,14 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to delete a user failed because it attempted to delete the requesting user',
 					{ userId: req.user.id },
 				);
-				throw new ResponseHelper.ResponseError('Cannot delete your own user', undefined, 400);
+				throw new ResponseHelper.BadRequestError('Cannot delete your own user');
 			}
 
 			const { transferId } = req.query;
 
 			if (transferId === idToDelete) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.BadRequestError(
 					'Request to delete a user failed because the user to delete and the transferee are the same user',
-					undefined,
-					400,
 				);
 			}
 
@@ -413,61 +401,12 @@ export function usersNamespace(this: N8nApp): void {
 			});
 
 			if (!users.length || (transferId && users.length !== 2)) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					'Request to delete a user failed because the ID of the user to delete and/or the ID of the transferee were not found in DB',
-					undefined,
-					404,
 				);
 			}
 
 			const userToDelete = users.find((user) => user.id === req.params.id) as User;
-
-			if (transferId) {
-				const transferee = users.find((user) => user.id === transferId);
-				await Db.transaction(async (transactionManager) => {
-					await transactionManager.update(
-						SharedWorkflow,
-						{ user: userToDelete },
-						{ user: transferee },
-					);
-					await transactionManager.update(
-						SharedCredentials,
-						{ user: userToDelete },
-						{ user: transferee },
-					);
-					await transactionManager.delete(User, { id: userToDelete.id });
-				});
-
-				return { success: true };
-			}
-
-			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-				Db.collections.SharedWorkflow.find({
-					relations: ['workflow'],
-					where: { user: userToDelete },
-				}),
-				Db.collections.SharedCredentials.find({
-					relations: ['credentials'],
-					where: { user: userToDelete },
-				}),
-			]);
-
-			await Db.transaction(async (transactionManager) => {
-				const ownedWorkflows = await Promise.all(
-					ownedSharedWorkflows.map(async ({ workflow }) => {
-						if (workflow.active) {
-							// deactivate before deleting
-							await this.activeWorkflowRunner.remove(workflow.id.toString());
-						}
-						return workflow;
-					}),
-				);
-				await transactionManager.remove(ownedWorkflows);
-				await transactionManager.remove(
-					ownedSharedCredentials.map(({ credentials }) => credentials),
-				);
-				await transactionManager.delete(User, { id: userToDelete.id });
-			});
 
 			const telemetryData: ITelemetryUserDeletionData = {
 				user_id: req.user.id,
@@ -481,10 +420,113 @@ export function usersNamespace(this: N8nApp): void {
 				telemetryData.migration_user_id = transferId;
 			}
 
-			void InternalHooksManager.getInstance().onUserDeletion(req.user.id, telemetryData, false);
+			const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
+				RoleService.get({ name: 'owner', scope: 'workflow' }),
+				RoleService.get({ name: 'owner', scope: 'credential' }),
+			]);
+
+			if (transferId) {
+				const transferee = users.find((user) => user.id === transferId);
+
+				await Db.transaction(async (transactionManager) => {
+					// Get all workflow ids belonging to user to delete
+					const sharedWorkflowIds = await transactionManager
+						.getRepository(SharedWorkflow)
+						.find({
+							select: ['workflowId'],
+							where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+						})
+						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedWorkflow, {
+						user: transferee,
+						workflowId: In(sharedWorkflowIds),
+					});
+
+					// Transfer ownership of owned workflows
+					await transactionManager.update(
+						SharedWorkflow,
+						{ user: userToDelete, role: workflowOwnerRole },
+						{ user: transferee },
+					);
+
+					// Now do the same for creds
+
+					// Get all workflow ids belonging to user to delete
+					const sharedCredentialIds = await transactionManager
+						.getRepository(SharedCredentials)
+						.find({
+							select: ['credentialsId'],
+							where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+						})
+						.then((sharedCredentials) =>
+							sharedCredentials.map(({ credentialsId }) => credentialsId),
+						);
+
+					// Prevents issues with unique key constraints since user being assigned
+					// workflows and credentials might be a sharee
+					await transactionManager.delete(SharedCredentials, {
+						user: transferee,
+						credentialsId: In(sharedCredentialIds),
+					});
+
+					// Transfer ownership of owned credentials
+					await transactionManager.update(
+						SharedCredentials,
+						{ user: userToDelete, role: credentialOwnerRole },
+						{ user: transferee },
+					);
+
+					// This will remove all shared workflows and credentials not owned
+					await transactionManager.delete(User, { id: userToDelete.id });
+				});
+
+				void InternalHooksManager.getInstance().onUserDeletion({
+					user: req.user,
+					telemetryData,
+					publicApi: false,
+				});
+				await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
+				return { success: true };
+			}
+
+			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
+				Db.collections.SharedWorkflow.find({
+					relations: ['workflow'],
+					where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
+				}),
+				Db.collections.SharedCredentials.find({
+					relations: ['credentials'],
+					where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
+				}),
+			]);
+
+			await Db.transaction(async (transactionManager) => {
+				const ownedWorkflows = await Promise.all(
+					ownedSharedWorkflows.map(async ({ workflow }) => {
+						if (workflow.active) {
+							// deactivate before deleting
+							await this.activeWorkflowRunner.remove(workflow.id);
+						}
+						return workflow;
+					}),
+				);
+				await transactionManager.remove(ownedWorkflows);
+				await transactionManager.remove(
+					ownedSharedCredentials.map(({ credentials }) => credentials),
+				);
+				await transactionManager.delete(User, { id: userToDelete.id });
+			});
+
+			void InternalHooksManager.getInstance().onUserDeletion({
+				user: req.user,
+				telemetryData,
+				publicApi: false,
+			});
 
 			await this.externalHooks.run('user.deleted', [sanitizeUser(userToDelete)]);
-
 			return { success: true };
 		}),
 	);
@@ -499,20 +541,18 @@ export function usersNamespace(this: N8nApp): void {
 
 			if (!isEmailSetUp()) {
 				Logger.error('Request to reinvite a user failed because email sending was not set up');
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Email sending must be set up in order to invite other users',
-					undefined,
-					500,
 				);
 			}
 
-			const reinvitee = await Db.collections.User.findOne({ id: idToReinvite });
+			const reinvitee = await Db.collections.User.findOneBy({ id: idToReinvite });
 
 			if (!reinvitee) {
 				Logger.debug(
 					'Request to reinvite a user failed because the ID of the reinvitee was not found in database',
 				);
-				throw new ResponseHelper.ResponseError('Could not find user', undefined, 404);
+				throw new ResponseHelper.NotFoundError('Could not find user');
 			}
 
 			if (reinvitee.password) {
@@ -520,34 +560,35 @@ export function usersNamespace(this: N8nApp): void {
 					'Request to reinvite a user failed because the invite had already been accepted',
 					{ userId: reinvitee.id },
 				);
-				throw new ResponseHelper.ResponseError(
-					'User has already accepted the invite',
-					undefined,
-					400,
-				);
+				throw new ResponseHelper.BadRequestError('User has already accepted the invite');
 			}
 
 			const baseUrl = getInstanceBaseUrl();
 			const inviteAcceptUrl = `${baseUrl}/signup?inviterId=${req.user.id}&inviteeId=${reinvitee.id}`;
 
-			let mailer: UserManagementMailer.UserManagementMailer | undefined;
+			const mailer = UserManagementMailer.getInstance();
 			try {
-				mailer = await UserManagementMailer.getInstance();
-			} catch (error) {
-				if (error instanceof Error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+				const result = await mailer.invite({
+					email: reinvitee.email,
+					inviteAcceptUrl,
+					domain: baseUrl,
+				});
+				if (result.emailSent) {
+					void InternalHooksManager.getInstance().onUserReinvite({
+						user: req.user,
+						target_user_id: reinvitee.id,
+						public_api: false,
+					});
+
+					void InternalHooksManager.getInstance().onUserTransactionalEmail({
+						user_id: reinvitee.id,
+						message_type: 'Resend invite',
+						public_api: false,
+					});
 				}
-			}
-
-			const result = await mailer?.invite({
-				email: reinvitee.email,
-				inviteAcceptUrl,
-				domain: baseUrl,
-			});
-
-			if (!result?.success) {
+			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: req.user.id,
+					user: reinvitee,
 					message_type: 'Resend invite',
 					public_api: false,
 				});
@@ -556,25 +597,8 @@ export function usersNamespace(this: N8nApp): void {
 					inviteAcceptUrl,
 					domain: baseUrl,
 				});
-				throw new ResponseHelper.ResponseError(
-					`Failed to send email to ${reinvitee.email}`,
-					undefined,
-					500,
-				);
+				throw new ResponseHelper.InternalServerError(`Failed to send email to ${reinvitee.email}`);
 			}
-
-			void InternalHooksManager.getInstance().onUserReinvite({
-				user_id: req.user.id,
-				target_user_id: reinvitee.id,
-				public_api: false,
-			});
-
-			void InternalHooksManager.getInstance().onUserTransactionalEmail({
-				user_id: reinvitee.id,
-				message_type: 'Resend invite',
-				public_api: false,
-			});
-
 			return { success: true };
 		}),
 	);

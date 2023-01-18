@@ -43,7 +43,7 @@ import {
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
-import type { Workflow } from '.';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -163,7 +163,7 @@ export class RoutingNode {
 							i,
 							runIndex,
 							executeData,
-							{ $credentials: credentials },
+							{ $credentials: credentials, $version: this.node.typeVersion },
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +179,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						executeData,
-						{ $credentials: credentials },
+						{ $credentials: credentials, $version: this.node.typeVersion },
 						true,
 					) as string | NodeParameterValue;
 
@@ -189,7 +189,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						'',
-						{ $credentials: credentials, $value: value },
+						{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(requestData, tempOptions);
@@ -241,7 +241,7 @@ export class RoutingNode {
 			merge(destinationOptions.options, sourceOptions.options);
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations) {
+			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
@@ -265,7 +265,6 @@ export class RoutingNode {
 		if (action.type === 'rootProperty') {
 			try {
 				return inputData.flatMap((item) => {
-					// let itemContent = item.json[action.properties.property];
 					let itemContent = get(item.json, action.properties.property);
 
 					if (!Array.isArray(itemContent)) {
@@ -277,13 +276,35 @@ export class RoutingNode {
 						};
 					});
 				});
-			} catch (e) {
-				throw new NodeOperationError(
-					this.node,
-					`The rootProperty "${action.properties.property}" could not be found on item.`,
-					{ runIndex, itemIndex },
-				);
+			} catch (error) {
+				throw new NodeOperationError(this.node, error, {
+					runIndex,
+					itemIndex,
+					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
+				});
 			}
+		}
+		if (action.type === 'filter') {
+			const passValue = action.properties.pass;
+
+			inputData = inputData.filter((item) => {
+				// If the value is an expression resolve it
+				return this.getParameterValue(
+					passValue,
+					itemIndex,
+					runIndex,
+					executeSingleFunctions.getExecuteData(),
+					{
+						$response: responseData,
+						$responseItem: item.json,
+						$value: parameterValue,
+						$version: this.node.typeVersion,
+					},
+					false,
+				) as boolean;
+			});
+
+			return inputData;
 		}
 		if (action.type === 'limit') {
 			const maxResults = this.getParameterValue(
@@ -291,7 +312,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -306,7 +327,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue },
+						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 						false,
 					) as IDataObject,
 				},
@@ -357,6 +378,7 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
+							$version: this.node.typeVersion,
 						},
 						true,
 					) as string;
@@ -369,7 +391,7 @@ export class RoutingNode {
 			return returnData;
 		}
 		if (action.type === 'binaryData') {
-			responseData.body = Buffer.from(responseData.body as string);
+			const body = (responseData.body = Buffer.from(responseData.body as string));
 			let { destinationProperty } = action.properties;
 
 			destinationProperty = this.getParameterValue(
@@ -377,11 +399,11 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue },
+				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
 				false,
 			) as string;
 
-			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(responseData.body);
+			const binaryData = await executeSingleFunctions.helpers.prepareBinaryData(body);
 
 			return inputData.map((item) => {
 				if (typeof item.json === 'string') {
@@ -830,7 +852,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue },
+					{ $value: optionValue, $version: this.node.typeVersion },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -854,6 +876,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
+						{ $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);

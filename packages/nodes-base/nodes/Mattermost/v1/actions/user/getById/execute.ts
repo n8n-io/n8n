@@ -11,8 +11,8 @@ export async function getById(
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';
 	const endpoint = 'users/ids';
-	const userIds = (this.getNodeParameter('userIds', index) as string).split(',') as string[];
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const userIds = (this.getNodeParameter('userIds', index) as string).split(',');
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const body = userIds;
 
 	if (additionalFields.since) {

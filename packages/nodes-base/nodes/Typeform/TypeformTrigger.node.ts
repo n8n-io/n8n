@@ -243,7 +243,7 @@ export class TypeformTrigger implements INodeType {
 		// Some fields contain lower level fields of which we are only interested of the values
 		const subvalueKeys = ['label', 'labels'];
 
-		if (simplifyAnswers === true) {
+		if (simplifyAnswers) {
 			// Convert the answers to simple key -> value pairs
 			const definition = (bodyData.form_response as IDataObject).definition as ITypeformDefinition;
 
@@ -268,7 +268,7 @@ export class TypeformTrigger implements INodeType {
 				convertedAnswers[defintitionsById[answer.field.id]] = value;
 			}
 
-			if (onlyAnswers === true) {
+			if (onlyAnswers) {
 				// Only the answers should be returned so do it directly
 				return {
 					workflowData: [this.helpers.returnJsonArray([convertedAnswers])],
@@ -280,7 +280,7 @@ export class TypeformTrigger implements INodeType {
 			}
 		}
 
-		if (onlyAnswers === true) {
+		if (onlyAnswers) {
 			// Return only the answer
 			return {
 				workflowData: [this.helpers.returnJsonArray([answers as unknown as IDataObject])],

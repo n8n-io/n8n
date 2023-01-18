@@ -1,3 +1,4 @@
+import { IDataObject } from 'n8n-workflow';
 import { IMembershipDto } from './CommonDtos';
 
 enum UserStatusEnum {
@@ -5,8 +6,6 @@ enum UserStatusEnum {
 	PENDING_EMAIL_VERIFICATION,
 	DELETED,
 }
-
-interface IUserSettingsDto {}
 
 export interface IUserDto {
 	activeWorkspace: string;
@@ -16,6 +15,6 @@ export interface IUserDto {
 	memberships: IMembershipDto[];
 	name: string;
 	profilePicture: string;
-	settings: IUserSettingsDto;
+	settings: IDataObject;
 	status: UserStatusEnum;
 }

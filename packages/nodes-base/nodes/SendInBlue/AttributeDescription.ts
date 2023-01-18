@@ -1,7 +1,6 @@
 import {
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	INodeExecutionData,
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';

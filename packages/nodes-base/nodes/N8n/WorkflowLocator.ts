@@ -1,5 +1,5 @@
 import { ILoadOptionsFunctions, INodeListSearchResult, INodeProperties } from 'n8n-workflow';
-import { apiRequest } from './GenericFunctions';
+import { apiRequestAllItems } from './GenericFunctions';
 
 type DataItemsResponse<T> = {
 	data: T[];
@@ -18,7 +18,7 @@ export async function searchWorkflows(
 	this: ILoadOptionsFunctions,
 	query?: string,
 ): Promise<INodeListSearchResult> {
-	const searchResults = (await apiRequest.call(
+	const searchResults = (await apiRequestAllItems.call(
 		this,
 		'GET',
 		'workflows',
@@ -27,7 +27,7 @@ export async function searchWorkflows(
 
 	// Map the workflows list against a simple name/id filter, and sort
 	// with the latest on top.
-	const workflows = (searchResults?.data as PartialWorkflow[])
+	const workflows = (searchResults as unknown as PartialWorkflow[])
 		.map((w: PartialWorkflow) => ({
 			name: `${w.name} (#${w.id})`,
 			value: w.id,

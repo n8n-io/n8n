@@ -8,11 +8,10 @@ export async function sendyApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('sendyApi');
 

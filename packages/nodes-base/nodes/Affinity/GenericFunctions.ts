@@ -2,24 +2,16 @@ import { OptionsWithUri } from 'request';
 
 import { BINARY_ENCODING, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function affinityApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('affinityApi');
 
@@ -35,7 +27,7 @@ export async function affinityApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `${endpoint}${resource}`,
+		uri: uri ?? `${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
@@ -46,7 +38,7 @@ export async function affinityApiRequest(
 	}
 	options = Object.assign({}, options, option);
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -57,10 +49,8 @@ export async function affinityApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

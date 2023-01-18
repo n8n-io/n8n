@@ -15,13 +15,12 @@ export async function keapApiRequest(
 	this: IWebhookFunctions | IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
@@ -30,7 +29,7 @@ export async function keapApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.infusionsoft.com/crm/rest/v1${resource}`,
+		uri: uri ?? `https://api.infusionsoft.com/crm/rest/v1${resource}`,
 		json: true,
 	};
 	try {
@@ -53,10 +52,9 @@ export async function keapApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

@@ -77,7 +77,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -95,7 +95,7 @@ export class SeaTable implements INodeType {
 					this,
 					{},
 					'GET',
-					`/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata`,
+					'/dtable-server/api/v1/dtables/{{dtable_uuid}}/metadata',
 				);
 				for (const table of tables) {
 					returnData.push({
@@ -136,8 +136,8 @@ export class SeaTable implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		let responseData;
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		const body: IDataObject = {};
 		const qs: IDataObject = {};
@@ -187,7 +187,7 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'POST',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 
@@ -286,13 +286,17 @@ export class SeaTable implements INodeType {
 
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
+						const endpoint = '/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/';
 						qs.table_name = tableName;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const options = this.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						Object.assign(qs, filters, options);
+
+						if (qs.convert_link_id === false) {
+							delete qs.convert_link_id;
+						}
 
 						if (returnAll) {
 							responseData = await setableApiRequestAllItems.call(
@@ -305,7 +309,7 @@ export class SeaTable implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}
@@ -339,7 +343,7 @@ export class SeaTable implements INodeType {
 					try {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
 						const rowId = this.getNodeParameter('rowId', i) as string;
-						const body: IDataObject = {
+						const requestBody: IDataObject = {
 							table_name: tableName,
 							row_id: rowId,
 						};
@@ -347,8 +351,8 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'DELETE',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
-							body,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
+							requestBody,
 							qs,
 						)) as IDataObject;
 
@@ -415,7 +419,7 @@ export class SeaTable implements INodeType {
 							this,
 							ctx,
 							'PUT',
-							`/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`,
+							'/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/',
 							body,
 						);
 

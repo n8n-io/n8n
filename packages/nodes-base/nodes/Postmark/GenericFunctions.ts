@@ -2,49 +2,38 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function postmarkApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('postmarkApi');
-
 	let options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
 			Accept: 'application/json',
-			'X-Postmark-Server-Token': credentials.serverToken,
 		},
 		method,
 		body,
 		uri: 'https://api.postmarkapp.com' + endpoint,
 		json: true,
 	};
-	if (body === {}) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 	options = Object.assign({}, options, option);
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'postmarkApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-// tslint:disable-next-line: no-any
 export function convertTriggerObjectToStringArray(webhookObject: any): string[] {
 	const triggers = webhookObject.Triggers;
 	const webhookEvents: string[] = [];

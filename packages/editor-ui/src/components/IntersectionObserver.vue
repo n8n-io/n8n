@@ -1,12 +1,10 @@
 <template>
 	<div ref="root">
 		<slot></slot>
-	</div>	
+	</div>
 </template>
 
-
 <script lang="ts">
-
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -29,7 +27,7 @@ export default Vue.extend({
 		};
 
 		const observer = new IntersectionObserver((entries) => {
-			entries.forEach(({target, isIntersecting}) => {
+			entries.forEach(({ target, isIntersecting }) => {
 				this.$emit('observed', {
 					el: target,
 					isIntersecting,

@@ -115,9 +115,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Experience Type',
@@ -378,9 +375,6 @@ export const webinarFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Experience Type',
@@ -453,9 +447,6 @@ export const webinarFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Name or topic of the webinar',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 			},
 			{
 				displayName: 'Timezone Name or ID',

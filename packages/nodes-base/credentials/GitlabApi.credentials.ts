@@ -7,8 +7,11 @@ import {
 
 export class GitlabApi implements ICredentialType {
 	name = 'gitlabApi';
+
 	displayName = 'GitLab API';
+
 	documentationUrl = 'gitlab';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Gitlab Server',
@@ -20,9 +23,11 @@ export class GitlabApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

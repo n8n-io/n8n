@@ -1,7 +1,9 @@
 <template>
 	<div @keydown.stop class="fixed-collection-parameter">
 		<div v-if="getProperties.length === 0" class="no-items-exist">
-			<n8n-text size="small">{{ $locale.baseText('fixedCollectionParameter.currentlyNoItemsExist') }}</n8n-text>
+			<n8n-text size="small">{{
+				$locale.baseText('fixedCollectionParameter.currentlyNoItemsExist')
+			}}</n8n-text>
 		</div>
 
 		<div
@@ -10,14 +12,15 @@
 			class="fixed-collection-parameter-property"
 		>
 			<n8n-input-label
-				v-if="property.displayName !== '' && (parameter.options && parameter.options.length !== 1)"
+				v-if="property.displayName !== '' && parameter.options && parameter.options.length !== 1"
 				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
+				color="text-dark"
 			/>
-			<div v-if="multipleValues === true">
+			<div v-if="multipleValues">
 				<div
-					v-for="(value, index) in values[property.name]"
+					v-for="(value, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>
@@ -38,7 +41,7 @@
 									@click="moveOptionUp(property.name, index)"
 								/>
 								<font-awesome-icon
-									v-if="index !== (values[property.name].length - 1)"
+									v-if="index !== mutableValues[property.name].length - 1"
 									icon="angle-down"
 									class="clickable"
 									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
@@ -51,6 +54,7 @@
 							:nodeValues="nodeValues"
 							:path="getPropertyPath(property.name, index)"
 							:hideDelete="true"
+							:isReadOnly="isReadOnly"
 							@valueChanged="valueChanged"
 						/>
 					</div>
@@ -70,6 +74,7 @@
 						:parameters="property.values"
 						:nodeValues="nodeValues"
 						:path="getPropertyPath(property.name)"
+						:isReadOnly="isReadOnly"
 						class="parameter-item"
 						@valueChanged="valueChanged"
 						:hideDelete="true"
@@ -107,179 +112,228 @@
 </template>
 
 <script lang="ts">
-import {
-	IUpdateInformation,
-} from '@/Interface';
+import Vue, { Component, PropType } from 'vue';
+import { IUpdateInformation } from '@/Interface';
 
 import {
 	INodeParameters,
+	INodeProperties,
 	INodePropertyCollection,
+	NodeParameterValue,
+	deepCopy,
+	isINodePropertyCollectionList,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-
-import mixins from 'vue-typed-mixins';
-import {Component} from "vue";
-
-export default mixins(genericHelpers)
-	.extend({
-		name: 'FixedCollectionParameter',
-		props: [
-			'nodeValues', // INodeParameters
-			'parameter', // INodeProperties
-			'path', // string
-			'values', // INodeParameters
-		],
-		components: {
-			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+export default Vue.extend({
+	name: 'FixedCollectionParameter',
+	props: {
+		nodeValues: {
+			type: Object as PropType<Record<string, INodeParameters[]>>,
+			required: true,
 		},
-		data() {
-			return {
-				selectedOption: undefined,
-			};
+		parameter: {
+			type: Object as PropType<INodeProperties>,
+			required: true,
+		},
+		path: {
+			type: String,
+			required: true,
+		},
+		values: {
+			type: Object as PropType<Record<string, INodeParameters[]>>,
+			default: () => ({}),
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	components: {
+		ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+	},
+	data() {
+		return {
+			selectedOption: undefined,
+			mutableValues: {} as Record<string, INodeParameters[]>,
+		};
+	},
+	watch: {
+		values: {
+			handler(newValues: Record<string, INodeParameters[]>) {
+				this.mutableValues = deepCopy(newValues);
+			},
+			deep: true,
+		},
+	},
+	created() {
+		this.mutableValues = deepCopy(this.values);
+	},
+	computed: {
+		getPlaceholderText(): string {
+			const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
+			return placeholder ? placeholder : this.$locale.baseText('fixedCollectionParameter.choose');
+		},
+		getProperties(): INodePropertyCollection[] {
+			const returnProperties = [];
+			let tempProperties;
+			for (const name of this.propertyNames) {
+				tempProperties = this.getOptionProperties(name);
+				if (tempProperties !== undefined) {
+					returnProperties.push(tempProperties);
+				}
+			}
+			return returnProperties;
+		},
+		multipleValues(): boolean {
+			return !!this.parameter.typeOptions?.multipleValues;
 		},
 
-		computed: {
-			getPlaceholderText(): string {
-				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
-				return placeholder ? placeholder : this.$locale.baseText('fixedCollectionParameter.choose');
-			},
-			getProperties(): INodePropertyCollection[] {
-				const returnProperties = [];
-				let tempProperties;
-				for (const name of this.propertyNames) {
-					tempProperties = this.getOptionProperties(name);
-					if (tempProperties !== undefined) {
-						returnProperties.push(tempProperties);
-					}
-				}
-				return returnProperties;
-			},
-			multipleValues(): boolean {
-				if (this.parameter.typeOptions !== undefined && this.parameter.typeOptions.multipleValues === true) {
-					return true;
-				}
-				return false;
-			},
+		parameterOptions(): INodePropertyCollection[] {
+			if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
+				return this.parameter.options;
+			}
 
-			parameterOptions(): INodePropertyCollection[] {
-				if (this.multipleValues === true) {
-					return this.parameter.options;
-				}
-
-				return (this.parameter.options as INodePropertyCollection[]).filter((option) => {
-					return !this.propertyNames.includes(option.name);
+			return (this.parameter.options as INodePropertyCollection[]).filter((option) => {
+				return !this.propertyNames.includes(option.name);
+			});
+		},
+		propertyNames(): string[] {
+			return Object.keys(this.mutableValues || {});
+		},
+		sortable(): boolean {
+			return !!this.parameter.typeOptions?.sortable;
+		},
+	},
+	methods: {
+		deleteOption(optionName: string, index?: number) {
+			const currentOptionsOfSameType = this.mutableValues[optionName];
+			if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
+				// it's not the only option of this type, so just remove it.
+				this.$emit('valueChanged', {
+					name: this.getPropertyPath(optionName, index),
+					value: undefined,
 				});
-			},
-			propertyNames(): string[] {
-				if (this.values) {
-					return Object.keys(this.values);
-				}
-				return [];
-			},
-			sortable(): string {
-				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
-			},
+			} else {
+				// it's the only option, so remove the whole type
+				this.$emit('valueChanged', {
+					name: this.getPropertyPath(optionName),
+					value: undefined,
+				});
+			}
 		},
-		methods: {
-			deleteOption(optionName: string, index?: number) {
-				const currentOptionsOfSameType = this.values[optionName];
-				if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
-					// it's not the only option of this type, so just remove it.
-					this.$emit('valueChanged', {
-						name: this.getPropertyPath(optionName, index),
-						value: undefined,
-					});
-				} else {
-					// it's the only option, so remove the whole type
-					this.$emit('valueChanged', {
-						name: this.getPropertyPath(optionName),
-						value: undefined,
-					});
-				}
-			},
-			getPropertyPath(name: string, index?: number) {
-				return `${this.path}.${name}` + (index !== undefined ? `[${index}]` : '');
-			},
-			getOptionProperties(optionName: string): INodePropertyCollection | undefined {
+		getPropertyPath(name: string, index?: number) {
+			return `${this.path}.${name}` + (index !== undefined ? `[${index}]` : '');
+		},
+		getOptionProperties(optionName: string): INodePropertyCollection | undefined {
+			if (isINodePropertyCollectionList(this.parameter.options)) {
 				for (const option of this.parameter.options) {
 					if (option.name === optionName) {
 						return option;
 					}
 				}
-
-				return undefined;
-			},
-			moveOptionDown(optionName: string, index: number) {
-				this.values[optionName].splice(index + 1, 0, this.values[optionName].splice(index, 1)[0]);
-
-				const parameterData = {
-					name: this.getPropertyPath(optionName),
-					value: this.values[optionName],
-				};
-
-				this.$emit('valueChanged', parameterData);
-			},
-			moveOptionUp(optionName: string, index: number) {
-				this.values[optionName].splice(index - 1, 0, this.values[optionName].splice(index, 1)[0]);
-
-				const parameterData = {
-					name: this.getPropertyPath(optionName),
-					value: this.values[optionName],
-				};
-
-				this.$emit('valueChanged', parameterData);
-			},
-			optionSelected(optionName: string) {
-				const option = this.getOptionProperties(optionName);
-				if (option === undefined) {
-					return;
-				}
-				const name = `${this.path}.${option.name}`;
-
-				const newParameterValue: INodeParameters = {};
-
-				for (const optionParameter of option.values) {
-					if (optionParameter.type === 'fixedCollection' && optionParameter.typeOptions !== undefined && optionParameter.typeOptions.multipleValues === true) {
-						newParameterValue[optionParameter.name] = {};
-					} else if (optionParameter.typeOptions !== undefined && optionParameter.typeOptions.multipleValues === true) {
-						// Multiple values are allowed so append option to array
-						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
-						if (Array.isArray(optionParameter.default)) {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
-						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
-						}
-					} else {
-						// Add a new option
-						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
-					}
-				}
-
-				let newValue;
-				if (this.multipleValues === true) {
-					newValue = get(this.nodeValues, name, []);
-
-					newValue.push(newParameterValue);
-				} else {
-					newValue = newParameterValue;
-				}
-
-				const parameterData = {
-					name,
-					value: newValue,
-				};
-
-				this.$emit('valueChanged', parameterData);
-				this.selectedOption = undefined;
-			},
-			valueChanged(parameterData: IUpdateInformation) {
-				this.$emit('valueChanged', parameterData);
-			},
+			}
+			return undefined;
 		},
-	});
+		moveOptionDown(optionName: string, index: number) {
+			if (Array.isArray(this.mutableValues[optionName])) {
+				this.mutableValues[optionName].splice(
+					index + 1,
+					0,
+					this.mutableValues[optionName].splice(index, 1)[0],
+				);
+			}
+
+			const parameterData = {
+				name: this.getPropertyPath(optionName),
+				value: this.mutableValues[optionName],
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		moveOptionUp(optionName: string, index: number) {
+			if (Array.isArray(this.mutableValues[optionName])) {
+				this.mutableValues?.[optionName].splice(
+					index - 1,
+					0,
+					this.mutableValues[optionName].splice(index, 1)[0],
+				);
+			}
+
+			const parameterData = {
+				name: this.getPropertyPath(optionName),
+				value: this.mutableValues[optionName],
+			};
+
+			this.$emit('valueChanged', parameterData);
+		},
+		optionSelected(optionName: string) {
+			const option = this.getOptionProperties(optionName);
+			if (option === undefined) {
+				return;
+			}
+			const name = `${this.path}.${option.name}`;
+
+			const newParameterValue: INodeParameters = {};
+
+			for (const optionParameter of option.values) {
+				if (
+					optionParameter.type === 'fixedCollection' &&
+					optionParameter.typeOptions !== undefined &&
+					optionParameter.typeOptions.multipleValues === true
+				) {
+					newParameterValue[optionParameter.name] = {};
+				} else if (
+					optionParameter.typeOptions !== undefined &&
+					optionParameter.typeOptions.multipleValues === true
+				) {
+					// Multiple values are allowed so append option to array
+					newParameterValue[optionParameter.name] = get(
+						this.nodeValues,
+						`${this.path}.${optionParameter.name}`,
+						[],
+					);
+					if (Array.isArray(optionParameter.default)) {
+						(newParameterValue[optionParameter.name] as INodeParameters[]).push(
+							...deepCopy(optionParameter.default as INodeParameters[]),
+						);
+					} else if (
+						optionParameter.default !== '' &&
+						typeof optionParameter.default !== 'object'
+					) {
+						(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(
+							deepCopy(optionParameter.default),
+						);
+					}
+				} else {
+					// Add a new option
+					newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
+				}
+			}
+
+			let newValue;
+			if (this.multipleValues) {
+				newValue = get(this.nodeValues, name, [] as INodeParameters[]);
+
+				newValue.push(newParameterValue);
+			} else {
+				newValue = newParameterValue;
+			}
+
+			const parameterData = {
+				name,
+				value: newValue,
+			};
+
+			this.$emit('valueChanged', parameterData);
+			this.selectedOption = undefined;
+		},
+		valueChanged(parameterData: IUpdateInformation) {
+			this.$emit('valueChanged', parameterData);
+		},
+	},
+});
 </script>
 
 <style scoped lang="scss">

@@ -182,7 +182,7 @@ export class LocalFileTrigger implements INodeType {
 		}
 
 		const watcher = watch(path, {
-			ignored: options.ignored,
+			ignored: options.ignored === '' ? undefined : options.ignored,
 			persistent: true,
 			ignoreInitial: true,
 			followSymlinks:
@@ -192,15 +192,15 @@ export class LocalFileTrigger implements INodeType {
 				: (options.depth as number),
 		});
 
-		const executeTrigger = (event: string, path: string) => {
-			this.emit([this.helpers.returnJsonArray([{ event, path }])]);
+		const executeTrigger = (event: string, pathString: string) => {
+			this.emit([this.helpers.returnJsonArray([{ event, path: pathString }])]);
 		};
 
 		for (const eventName of events) {
-			watcher.on(eventName, (path) => executeTrigger(eventName, path));
+			watcher.on(eventName, (pathString) => executeTrigger(eventName, pathString));
 		}
 
-		function closeFunction() {
+		async function closeFunction() {
 			return watcher.close();
 		}
 

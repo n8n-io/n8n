@@ -2,6 +2,7 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
 const userScopes = [
+	'channels:read',
 	'channels:write',
 	'chat:write',
 	'files:read',
@@ -22,9 +23,13 @@ const userScopes = [
 
 export class SlackOAuth2Api implements ICredentialType {
 	name = 'slackOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Slack OAuth2 API';
+
 	documentationUrl = 'slack';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

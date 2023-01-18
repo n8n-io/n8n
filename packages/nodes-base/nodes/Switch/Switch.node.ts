@@ -526,20 +526,19 @@ export class Switch implements INodeType {
 		let mode: string;
 		let outputIndex: number;
 		let ruleData: INodeParameters;
-		let value1: NodeParameterValue, value2: NodeParameterValue;
 
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
 		} = {
 			after: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			before: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			contains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || '').toString().includes((value2 || '').toString()),
+				(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			notContains: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				!(value1 || '').toString().includes((value2 || '').toString()),
+				!(value1 ?? '').toString().includes((value2 ?? '').toString()),
 			endsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).endsWith(value2 as string),
 			notEndsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
@@ -547,44 +546,44 @@ export class Switch implements INodeType {
 			equal: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 === value2,
 			notEqual: (value1: NodeParameterValue, value2: NodeParameterValue) => value1 !== value2,
 			larger: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) > (value2 || 0),
+				(value1 ?? 0) > (value2 ?? 0),
 			largerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) >= (value2 || 0),
+				(value1 ?? 0) >= (value2 ?? 0),
 			smaller: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) < (value2 || 0),
+				(value1 ?? 0) < (value2 ?? 0),
 			smallerEqual: (value1: NodeParameterValue, value2: NodeParameterValue) =>
-				(value1 || 0) <= (value2 || 0),
+				(value1 ?? 0) <= (value2 ?? 0),
 			startsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				(value1 as string).startsWith(value2 as string),
 			notStartsWith: (value1: NodeParameterValue, value2: NodeParameterValue) =>
 				!(value1 as string).startsWith(value2 as string),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !!(value1 || '').toString().match(regex);
+				return !!(value1 ?? '').toString().match(regex);
 			},
 			notRegex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
-				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
+				const regexMatch = (value2 ?? '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
 
 				let regex: RegExp;
 				if (!regexMatch) {
-					regex = new RegExp((value2 || '').toString());
+					regex = new RegExp((value2 ?? '').toString());
 				} else if (regexMatch.length === 1) {
 					regex = new RegExp(regexMatch[1]);
 				} else {
 					regex = new RegExp(regexMatch[1], regexMatch[2]);
 				}
 
-				return !(value1 || '').toString().match(regex);
+				return !(value1 ?? '').toString().match(regex);
 			},
 		};
 
@@ -637,7 +636,7 @@ export class Switch implements INodeType {
 
 					const dataType = this.getNodeParameter('dataType', 0) as string;
 
-					value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
+					let value1 = this.getNodeParameter('value1', itemIndex) as NodeParameterValue;
 					if (dataType === 'dateTime') {
 						value1 = convertDateTime(value1);
 					}
@@ -649,7 +648,7 @@ export class Switch implements INodeType {
 					) as INodeParameters[]) {
 						// Check if the values passes
 
-						value2 = ruleData.value2 as NodeParameterValue;
+						let value2 = ruleData.value2 as NodeParameterValue;
 						if (dataType === 'dateTime') {
 							value2 = convertDateTime(value2);
 						}
@@ -659,7 +658,7 @@ export class Switch implements INodeType {
 							value2,
 						);
 
-						if (compareOperationResult === true) {
+						if (compareOperationResult) {
 							// If rule matches add it to the correct output and continue with next item
 							checkIndexRange(ruleData.output as number);
 							returnData[ruleData.output as number].push(item);

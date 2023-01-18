@@ -16,7 +16,6 @@ export async function apiRequest(
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('stackbyApi');
 
@@ -28,7 +27,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://stackby.com/api/betav1${endpoint}`,
+		uri: uri ?? `https://stackby.com/api/betav1${endpoint}`,
 		json: true,
 	};
 
@@ -41,7 +40,7 @@ export async function apiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -59,7 +58,6 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	query.maxrecord = 100;
 

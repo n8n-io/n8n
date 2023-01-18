@@ -105,9 +105,6 @@ export const collectionFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				placeholder: '_id,name',
 				description: 'Comma-separated list of fields to get',
 			},

@@ -86,9 +86,6 @@ export const threadFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
 		required: true,
 		displayOptions: {
 			show: {

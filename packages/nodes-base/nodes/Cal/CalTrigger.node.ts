@@ -21,7 +21,6 @@ export class CalTrigger implements INodeType {
 		description: 'Handle Cal events via webhooks',
 		defaults: {
 			name: 'Cal Trigger',
-			color: '#888',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -96,7 +95,6 @@ export class CalTrigger implements INodeType {
 						description: 'Template to customize the webhook payload',
 						default: '',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 4,
 						},
 					},

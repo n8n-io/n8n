@@ -18,6 +18,15 @@ import { AddNodeIds1658930531669 } from './1658930531669-AddNodeIds';
 import { AddJsonKeyPinData1659888469333 } from './1659888469333-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 import { AddWorkflowVersion1664567980717 } from './1664567980717-AddWorkflowVersion';
+import { WorkflowStatistics1664196174000 } from './1664196174000-WorkflowStatistics';
+import { CreateWorkflowsEditorRole1663755770892 } from './1663755770892-CreateWorkflowsUserRole';
+import { CreateCredentialUsageTable1665484192211 } from './1665484192211-CreateCredentialUsageTable';
+import { RemoveCredentialUsageTable1665754637024 } from './1665754637024-RemoveCredentialUsageTable';
+import { AddWorkflowVersionIdColumn1669739707124 } from './1669739707124-AddWorkflowVersionIdColumn';
+import { AddTriggerCountColumn1669823906993 } from './1669823906993-AddTriggerCountColumn';
+import { RemoveWorkflowDataLoadedFlag1671726148419 } from './1671726148419-RemoveWorkflowDataLoadedFlag';
+import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -40,6 +49,15 @@ const sqliteMigrations = [
 	AddJsonKeyPinData1659888469333,
 	CreateCredentialsUserRole1660062385367,
 	AddWorkflowVersion1664567980717,
+	CreateWorkflowsEditorRole1663755770892,
+	CreateCredentialUsageTable1665484192211,
+	RemoveCredentialUsageTable1665754637024,
+	AddWorkflowVersionIdColumn1669739707124,
+	AddTriggerCountColumn1669823906993,
+	WorkflowStatistics1664196174000,
+	RemoveWorkflowDataLoadedFlag1671726148419,
+	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
 ];
 
 export { sqliteMigrations };

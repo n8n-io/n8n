@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class PushbulletOAuth2Api implements ICredentialType {
 	name = 'pushbulletOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Pushbullet OAuth2 API';
+
 	documentationUrl = 'pushbullet';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

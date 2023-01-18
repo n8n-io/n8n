@@ -1,6 +1,6 @@
 import { IWebhookFunctions } from 'n8n-core';
 
-import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 export class ChargebeeTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -222,7 +222,7 @@ export class ChargebeeTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		const bodyData = this.getBodyData() as IDataObject;
+		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 
 		const events = this.getNodeParameter('events', []) as string[];

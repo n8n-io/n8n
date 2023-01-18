@@ -7,13 +7,16 @@
 			<n8n-icon icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
-			<div  v-for="option in options"
+			<div
+				v-for="option in options"
 				:key="option.value"
 				:id="option.value"
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<div slot="content" v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)"></div>
+					<template #content>
+						<div v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+					</template>
 					<a
 						v-if="option.href"
 						target="_blank"
@@ -23,7 +26,9 @@
 					>
 						<div>
 							{{ option.label }}
-							<span :class="$style.external"><n8n-icon icon="external-link-alt" size="small" /></span>
+							<span :class="$style.external"
+								><n8n-icon icon="external-link-alt" size="small"
+							/></span>
 						</div>
 					</a>
 
@@ -56,8 +61,7 @@ export default Vue.extend({
 			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				// @ts-ignore
-				this.scrollPosition = event.srcElement.scrollLeft; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+				this.scrollPosition = (event.target as Element).scrollLeft;
 
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
@@ -87,10 +91,8 @@ export default Vue.extend({
 		};
 	},
 	props: {
-		value: {
-		},
-		options: {
-		},
+		value: {},
+		options: {},
 	},
 	methods: {
 		handleTooltipClick(tab: string, event: MouseEvent) {
@@ -106,7 +108,9 @@ export default Vue.extend({
 			this.scroll(50);
 		},
 		scroll(left: number) {
-			const container = this.$refs.tabs as (HTMLDivElement & { scrollBy: ScrollByFunction }) | undefined;
+			const container = this.$refs.tabs as
+				| (HTMLDivElement & { scrollBy: ScrollByFunction })
+				| undefined;
 			if (container) {
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
@@ -114,10 +118,12 @@ export default Vue.extend({
 	},
 });
 
-type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 'instant' | 'auto' }) => void;
-
+type ScrollByFunction = (arg: {
+	left: number;
+	top: number;
+	behavior: 'smooth' | 'instant' | 'auto';
+}) => void;
 </script>
-
 
 <style lang="scss" module>
 .container {
@@ -141,8 +147,8 @@ type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 
 	}
 
 	/* Hide scrollbar for IE, Edge and Firefox */
-	-ms-overflow-style: none;  /* IE and Edge */
-	scrollbar-width: none;  /* Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
 }
 
 .tab {
@@ -205,5 +211,4 @@ type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 
 	composes: button;
 	right: 0;
 }
-
 </style>

@@ -5,6 +5,7 @@
 		:required="parameter.required"
 		:showTooltip="focused"
 		:showOptions="menuExpanded"
+		:data-test-id="parameter.name"
 	>
 		<template #options>
 			<parameter-options
@@ -18,19 +19,18 @@
 			/>
 		</template>
 		<template>
-			<parameter-input
+			<parameter-input-wrapper
 				ref="param"
 				inputSize="large"
 				:parameter="parameter"
 				:value="value"
 				:path="parameter.name"
 				:hideIssues="true"
-				:displayOptions="true"
 				:documentationUrl="documentationUrl"
 				:errorHighlight="showRequiredErrors"
 				:isForCredential="true"
 				:eventSource="eventSource"
-				:isValueExpression="isValueExpression"
+				:hint="!showRequiredErrors ? hint : ''"
 				@focus="onFocus"
 				@blur="onBlur"
 				@textInput="valueChanged"
@@ -39,38 +39,42 @@
 			<div :class="$style.errors" v-if="showRequiredErrors">
 				<n8n-text color="danger" size="small">
 					{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-					<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
+					<n8n-link
+						v-if="documentationUrl"
+						:to="documentationUrl"
+						size="small"
+						:underline="true"
+						@click="onDocumentationUrlClick"
+					>
 						{{ $locale.baseText('parameterInputExpanded.openDocs') }}
 					</n8n-link>
 				</n8n-text>
 			</div>
-			<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 		</template>
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
-import ParameterInput from './ParameterInput.vue';
 import ParameterOptions from './ParameterOptions.vue';
-import InputHint from './ParameterInputHint.vue';
-import Vue from 'vue';
-import { isValueExpression } from './helpers';
+import Vue, { PropType } from 'vue';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import { isValueExpression } from '@/utils';
 import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default Vue.extend({
-	name: 'ParameterInputExpanded',
+	name: 'parameter-input-expanded',
 	components: {
-		ParameterInput,
-		InputHint,
 		ParameterOptions,
+		ParameterInputWrapper,
 	},
 	props: {
 		parameter: {
-			type: Object as () => INodeProperties,
+			type: Object as PropType<INodeProperties>,
 		},
-		value: {
-		},
+		value: {},
 		showValidationWarnings: {
 			type: Boolean,
 		},
@@ -89,6 +93,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(useWorkflowsStore),
 		showRequiredErrors(): boolean {
 			if (!this.$props.parameter.required) {
 				return false;
@@ -106,8 +111,18 @@ export default Vue.extend({
 
 			return false;
 		},
-		isValueExpression (): boolean {
-			return isValueExpression(this.parameter, this.value as string | INodeParameterResourceLocator);
+		hint(): string | null {
+			if (this.isValueExpression) {
+				return null;
+			}
+
+			return this.$locale.credText().hint(this.parameter);
+		},
+		isValueExpression(): boolean {
+			return isValueExpression(
+				this.parameter,
+				this.value as string | INodeParameterResourceLocator,
+			);
 		},
 	},
 	methods: {
@@ -121,7 +136,7 @@ export default Vue.extend({
 		onMenuExpanded(expanded: boolean) {
 			this.menuExpanded = expanded;
 		},
-		optionSelected (command: string) {
+		optionSelected(command: string) {
 			if (this.$refs.param) {
 				(this.$refs.param as Vue).$emit('optionSelected', command);
 			}
@@ -129,11 +144,11 @@ export default Vue.extend({
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);
 		},
-		onDocumentationUrlClick (): void {
+		onDocumentationUrlClick(): void {
 			this.$telemetry.track('User clicked credential modal docs link', {
 				docs_link: this.documentationUrl,
 				source: 'field',
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},
@@ -141,10 +156,10 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-	.errors {
-		margin-top: var(--spacing-2xs);
-	}
-	.hint {
-		margin-top: var(--spacing-4xs);
-	}
+.errors {
+	margin-top: var(--spacing-2xs);
+}
+.hint {
+	margin-top: var(--spacing-4xs);
+}
 </style>

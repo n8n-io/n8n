@@ -6,6 +6,7 @@
 		:autoComplete="autocomplete"
 		ref="innerInput"
 		v-on="$listeners"
+		:name="name"
 	>
 		<template #prepend>
 			<slot name="prepend" />
@@ -23,17 +24,16 @@
 </template>
 
 <script lang="ts">
-import ElInput from 'element-ui/lib/input';
+import { Input as ElInput } from 'element-ui';
 import Vue from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-input',
 	components: {
-		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElInput,
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>
@@ -64,6 +64,9 @@ export default Vue.extend({
 			type: Number,
 		},
 		title: {
+			type: String,
+		},
+		name: {
 			type: String,
 		},
 		autocomplete: {

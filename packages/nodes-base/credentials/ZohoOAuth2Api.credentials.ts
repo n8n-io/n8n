@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ZohoOAuth2Api implements ICredentialType {
 	name = 'zohoOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Zoho OAuth2 API';
+
 	documentationUrl = 'zoho';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

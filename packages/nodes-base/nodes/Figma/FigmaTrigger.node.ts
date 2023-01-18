@@ -127,7 +127,7 @@ export class FigmaTrigger implements INodeType {
 					team_id: teamId,
 					description: `n8n-webhook:${webhookUrl}`,
 					endpoint: webhookUrl,
-					passcode: randomBytes(10).toString('hex') as string,
+					passcode: randomBytes(10).toString('hex'),
 				};
 
 				const responseData = await figmaApiRequest.call(this, 'POST', endpoint, body);

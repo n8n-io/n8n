@@ -97,6 +97,7 @@ export class WiseTrigger implements INodeType {
 			},
 		},
 	};
+
 	// @ts-ignore
 	webhookMethods = {
 		default: {
@@ -130,7 +131,7 @@ export class WiseTrigger implements INodeType {
 				const event = this.getNodeParameter('event') as string;
 				const trigger = getTriggerName(event);
 				const body: IDataObject = {
-					name: `n8n Webhook`,
+					name: 'n8n Webhook',
 					trigger_on: trigger,
 					delivery: {
 						version: '2.0.0',
@@ -182,11 +183,10 @@ export class WiseTrigger implements INodeType {
 		const publicKey =
 			credentials.environment === 'test' ? testPublicKey : (livePublicKey as string);
 
-		//@ts-ignore
 		const sig = createVerify('RSA-SHA1').update(req.rawBody);
 		const verified = sig.verify(publicKey, signature, 'base64');
 
-		if (verified === false) {
+		if (!verified) {
 			return {};
 		}
 

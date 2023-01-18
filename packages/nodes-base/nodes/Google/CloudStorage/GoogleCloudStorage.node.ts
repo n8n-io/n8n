@@ -14,7 +14,6 @@ export class GoogleCloudStorage implements INodeType {
 		description: 'Use the Google Cloud Storage API',
 		defaults: {
 			name: 'Google Cloud Storage',
-			color: '#ff0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

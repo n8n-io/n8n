@@ -2,13 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -16,12 +10,11 @@ export async function pagerDutyApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
@@ -32,7 +25,7 @@ export async function pagerDutyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri || `https://api.pagerduty.com${resource}`,
+		uri: uri ?? `https://api.pagerduty.com${resource}`,
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',
@@ -52,11 +45,11 @@ export async function pagerDutyApiRequest(
 		if (authenticationMethod === 'apiToken') {
 			const credentials = await this.getCredentials('pagerDutyApi');
 
-			options.headers!['Authorization'] = `Token token=${credentials.apiToken}`;
+			options.headers.Authorization = `Token token=${credentials.apiToken}`;
 
-			return await this.helpers.request!(options);
+			return await this.helpers.request(options);
 		} else {
-			return await this.helpers.requestOAuth2!.call(this, 'pagerDutyOAuth2Api', options);
+			return await this.helpers.requestOAuth2.call(this, 'pagerDutyOAuth2Api', options);
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -68,10 +61,9 @@ export async function pagerDutyApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

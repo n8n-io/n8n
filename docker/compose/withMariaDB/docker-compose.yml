@@ -36,7 +36,7 @@ services:
     links:
       - db
     volumes:
-      - n8n_storage:/home/node/
+      - n8n_storage:/home/node/.n8n
     command: n8n start --tunnel
     depends_on:
       db:

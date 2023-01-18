@@ -15,7 +15,6 @@ export async function deleteCustomer(
 	const endpoint = `customers/${id}`;
 	const body = {} as IDataObject;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	return this.helpers.returnJsonArray(responseData);
 }

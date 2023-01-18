@@ -177,7 +177,7 @@ export class Stackby implements INodeType {
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 		if (operation === 'read') {
 			for (let i = 0; i < length; i++) {
 				try {
@@ -188,7 +188,7 @@ export class Stackby implements INodeType {
 					responseData = await apiRequest.call(this, 'GET', `/rowlist/${stackId}/${table}`, {}, qs);
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {
@@ -251,7 +251,6 @@ export class Stackby implements INodeType {
 					const columns = this.getNodeParameter('columns', i) as string;
 					const columnList = columns.split(',').map((column) => column.trim());
 
-					// tslint:disable-next-line: no-any
 					const record: { [key: string]: any } = {};
 					for (const column of columnList) {
 						if (items[i].json[column] === undefined) {
@@ -272,15 +271,15 @@ export class Stackby implements INodeType {
 					records[key].push({ field: record });
 				}
 
-				for (const key of Object.keys(records)) {
-					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${key}`, {
-						records: records[key],
+				for (const recordKey of Object.keys(records)) {
+					responseData = await apiRequest.call(this, 'POST', `/rowcreate/${recordKey}`, {
+						records: records[recordKey],
 					});
 				}
 
 				returnData.push.apply(
 					returnData,
-					// tslint:disable-next-line:no-any
+
 					responseData.map((data: any) => data.field),
 				);
 			} catch (error) {
@@ -301,15 +300,15 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 
-					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i, {});
 
 					if (additionalFields.view) {
 						qs.view = additionalFields.view;
 					}
 
-					if (returnAll === true) {
+					if (returnAll) {
 						responseData = await apiRequestAllItems.call(
 							this,
 							'GET',
@@ -318,7 +317,7 @@ export class Stackby implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+						qs.maxrecord = this.getNodeParameter('limit', 0);
 						responseData = await apiRequest.call(
 							this,
 							'GET',
@@ -330,7 +329,7 @@ export class Stackby implements INodeType {
 
 					returnData.push.apply(
 						returnData,
-						// tslint:disable-next-line:no-any
+
 						responseData.map((data: any) => data.field),
 					);
 				} catch (error) {

@@ -4,6 +4,7 @@ import {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
+	jsonParse,
 } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
@@ -69,21 +70,19 @@ export const questionsOperations: INodeProperties[] = [
 										binary: {},
 									};
 
-									if (items[i].binary !== undefined) {
+									if (items[i].binary !== undefined && newItem.binary) {
 										Object.assign(newItem.binary, items[i].binary);
 									}
 									items[i] = newItem;
 									if (this.getNode().parameters.format === 'json') {
-										items[i].json = JSON.parse(
-											items[i].json as unknown as string,
-										)[0] as unknown as IDataObject;
+										items[i].json = jsonParse<IDataObject[]>(items[i].json as unknown as string)[0];
 										console.log(items[i].json);
 										delete items[i].binary;
 									} else {
-										items[i].binary!['data'] = await this.helpers.prepareBinaryData(
+										items[i].binary!.data = await this.helpers.prepareBinaryData(
 											response.body as Buffer,
 											'data',
-											response.headers['content-type'],
+											response.headers['content-type'] as string,
 										);
 									}
 									result.push(items[i]);

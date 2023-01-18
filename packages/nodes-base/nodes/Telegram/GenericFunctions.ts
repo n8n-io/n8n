@@ -7,7 +7,7 @@ import {
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 // Interface in n8n
 export interface IMarkupKeyboard {
@@ -65,10 +65,10 @@ export interface IMarkupReplyKeyboardRemove {
  */
 export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
 	// Add the additional fields
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	Object.assign(body, additionalFields);
 
-	const operation = this.getNodeParameter('operation', index) as string;
+	const operation = this.getNodeParameter('operation', index);
 
 	// Add the reply markup
 	let replyMarkupOption = '';
@@ -146,11 +146,10 @@ export async function apiRequest(
 	body: IDataObject,
 	query?: IDataObject,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('telegramApi');
 
-	query = query || {};
+	query = query ?? {};
 
 	const options: OptionsWithUri = {
 		headers: {},
@@ -174,7 +173,7 @@ export async function apiRequest(
 	}
 
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

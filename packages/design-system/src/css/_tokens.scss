@@ -4,11 +4,7 @@
 	--color-primary-h: 6.9;
 	--color-primary-s: 100%;
 	--color-primary-l: 67.6%;
-	--color-primary: hsl(
-		var(--color-primary-h),
-		var(--color-primary-s),
-		var(--color-primary-l)
-	);
+	--color-primary: hsl(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l));
 
 	--color-primary-tint-1-l: 88%;
 	--color-primary-tint-1: hsl(
@@ -72,41 +68,38 @@
 		var(--color-secondary-l)
 	);
 
-	--color-secondary-tint-1-h: 247;
-	--color-secondary-tint-1-s: 49%;
 	--color-secondary-tint-1-l: 85%;
 	--color-secondary-tint-1: hsl(
-		var(--color-secondary-tint-1-h),
-		var(--color-secondary-tint-1-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-1-l)
 	);
 
-	--color-secondary-tint-2-h: 247;
-	--color-secondary-tint-2-s: 49%;
 	--color-secondary-tint-2-l: 92%;
 	--color-secondary-tint-2: hsl(
-		var(--color-secondary-tint-2-h),
-		var(--color-secondary-tint-2-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-2-l)
 	);
 
-	--color-secondary-tint-3-h: 247;
-	--color-secondary-tint-3-s: 49%;
 	--color-secondary-tint-3-l: 95%;
 	--color-secondary-tint-3: hsl(
-		var(--color-secondary-tint-3-h),
-		var(--color-secondary-tint-3-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-3-l)
+	);
+
+	--color-secondary-tint-4-l: 98%;
+	--color-secondary-tint-4: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-tint-4-l)
 	);
 
 	--color-success-h: 150.4;
 	--color-success-s: 60%;
 	--color-success-l: 40.4%;
-	--color-success: hsl(
-		var(--color-success-h),
-		var(--color-success-s),
-		var(--color-success-l)
-	);
+	--color-success: hsl(var(--color-success-h), var(--color-success-s), var(--color-success-l));
 
 	--color-success-tint-1-l: 90%;
 	--color-success-tint-1: hsl(
@@ -134,11 +127,7 @@
 	--color-warning-h: 36;
 	--color-warning-s: 77%;
 	--color-warning-l: 57%;
-	--color-warning: hsl(
-		var(--color-warning-h),
-		var(--color-warning-s),
-		var(--color-warning-l)
-	);
+	--color-warning: hsl(var(--color-warning-h), var(--color-warning-s), var(--color-warning-l));
 
 	--color-warning-tint-1-h: 35;
 	--color-warning-tint-1-s: 77%;
@@ -161,11 +150,7 @@
 	--color-danger-h: 355;
 	--color-danger-s: 83%;
 	--color-danger-l: 52%;
-	--color-danger: hsl(
-		var(--color-danger-h),
-		var(--color-danger-s),
-		var(--color-danger-l)
-	);
+	--color-danger: hsl(var(--color-danger-h), var(--color-danger-s), var(--color-danger-l));
 
 	--color-danger-tint-1-l: 93.9%;
 	--color-danger-tint-1: hsl(
@@ -183,33 +168,17 @@
 	--color-info-h: 220;
 	--color-info-s: 4%;
 	--color-info-l: 58%;
-	--color-info: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-l)
-	);
+	--color-info: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-l));
 
 	--color-info-tint-1-l: 88%;
-	--color-info-tint-1: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-tint-1-l)
-	);
+	--color-info-tint-1: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-1-l));
 	--color-info-tint-2-l: 96%;
-	--color-info-tint-2: hsl(
-		var(--color-info-h),
-		var(--color-info-s),
-		var(--color-info-tint-2-l)
-	);
+	--color-info-tint-2: hsl(var(--color-info-h), var(--color-info-s), var(--color-info-tint-2-l));
 
 	--color-grey-h: 228;
 	--color-grey-s: 10%;
 	--color-grey-l: 80%;
-	--color-grey: hsl(
-		var(--color-grey-h),
-		var(--color-grey-s),
-		var(--color-grey-l)
-  );
+	--color-grey: hsl(var(--color-grey-h), var(--color-grey-s), var(--color-grey-l));
 
 	--color-light-grey-h: 220;
 	--color-light-grey-s: 20%;
@@ -218,16 +187,12 @@
 		var(--color-light-grey-h),
 		var(--color-light-grey-s),
 		var(--color-light-grey-l)
-  );
+	);
 
 	--color-neutral-h: 228;
 	--color-neutral-s: 10%;
 	--color-neutral-l: 50%;
-	--color-neutral: hsl(
-		var(--color-neutral-h),
-		var(--color-neutral-s),
-		var(--color-neutral-l)
-  );
+	--color-neutral: hsl(var(--color-neutral-h), var(--color-neutral-s), var(--color-neutral-l));
 
 	--color-text-dark-h: 0;
 	--color-text-dark-s: 0%;
@@ -382,16 +347,16 @@
 		var(--color-canvas-background-l)
 	);
 
-	--color-json-default: #5045A1;
-	--color-json-null:  var(--color-danger);
+	--color-json-default: #5045a1;
+	--color-json-null: var(--color-danger);
 	--color-json-boolean: var(--color-success);
 	--color-json-number: var(--color-success);
-	--color-json-string: #5045A1;
+	--color-json-string: #5045a1;
 	--color-json-key: var(--color-text-dark);
 	--color-json-brackets: var(--color-text-dark);
 	--color-json-brackets-hover: #1890ff;
 	--color-json-line: #bfcbd9;
-	--color-json-highlight: #E2E5EE;
+	--color-json-highlight: #e2e5ee;
 
 	--color-sticky-default-background-h: 46;
 	--color-sticky-default-background-s: 100%;
@@ -411,10 +376,54 @@
 		var(--color-sticky-default-border-l)
 	);
 
+	--color-code-background: #ffffff;
+	--color-code-foreground: #4d4d4c;
+	--color-code-caret: #aeafad;
+	--color-code-selection: #d6d6d6;
+	--color-code-gutterBackground: #ffffff;
+	--color-code-gutterForeground: #4d4d4c80;
+	--color-code-lineHighlight: #efefef;
+	--color-code-tags-comment: #8e908c;
+	--color-code-tags-string: #718c00;
+	--color-code-tags-primitive: #f5871f;
+	--color-code-tags-keyword: #8959a8;
+	--color-code-tags-operator: #3e999f;
+	--color-code-tags-variable: #c82829;
+	--color-code-tags-definition: #4271ae;
+
+	--color-expression-editor-background: #fff;
+	--color-valid-resolvable-foreground: #29a568;
+	--color-valid-resolvable-background: #e1f3d8;
+	--color-invalid-resolvable-foreground: #f45959;
+	--color-invalid-resolvable-background: #fef0f0;
+	--color-expression-syntax-example: #f0f0f0;
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {
-		@each $shade in (50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950) {
+		@each $shade
+			in (
+				50,
+				100,
+				150,
+				200,
+				250,
+				300,
+				350,
+				400,
+				450,
+				500,
+				550,
+				600,
+				650,
+				700,
+				750,
+				800,
+				850,
+				900,
+				950
+			)
+		{
 			--color-#{$color}-#{$shade}-l: #{math.div($shade, 10)}#{'%'};
 			--color-#{$color}-#{$shade}: hsl(
 				var(--color-#{$color}-h),
@@ -433,8 +442,7 @@
 
 	--border-style-base: solid;
 	--border-width-base: 1px;
-	--border-base: var(--border-width-base) var(--border-style-base)
-		var(--color-foreground-base);
+	--border-base: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);
 
 	--font-size-3xs: 0.625rem;
 	--font-size-2xs: 0.75rem;
@@ -453,6 +461,7 @@
 	--font-weight-regular: 400;
 	--font-weight-bold: 600;
 	--font-family: 'Open Sans', sans-serif;
+	--font-family-monospace: Menlo, Consolas, 'DejaVu Sans Mono', monospace;
 
 	--spacing-5xs: 0.125rem;
 	--spacing-4xs: 0.25rem;
@@ -470,5 +479,5 @@
 }
 
 :root {
-  @include theme;
+	@include theme;
 }

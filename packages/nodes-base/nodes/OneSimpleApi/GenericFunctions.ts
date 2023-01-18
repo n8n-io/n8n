@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function oneSimpleApiRequest(
 	this: IExecuteFunctions,
@@ -21,7 +21,7 @@ export async function oneSimpleApiRequest(
 		body,
 		qs,
 		uri:
-			uri ||
+			uri ??
 			`https://onesimpleapi.com/api${resource}?token=${credentials.apiToken}&output=${outputFormat}`,
 		json: true,
 	};

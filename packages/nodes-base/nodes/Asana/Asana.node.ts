@@ -258,7 +258,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -742,7 +741,6 @@ export class Asana implements INodeType {
 						name: 'text',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -841,7 +839,6 @@ export class Asana implements INodeType {
 						name: 'notes',
 						type: 'string',
 						typeOptions: {
-							alwaysOpenEditWindow: true,
 							rows: 5,
 						},
 						default: '',
@@ -929,9 +926,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -947,9 +941,6 @@ export class Asana implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
 				displayOptions: {
 					show: {
 						operation: ['add'],
@@ -1869,7 +1860,7 @@ export class Asana implements INodeType {
 			// Get all users to display them to user so that they can be selected easily
 			// See: https://developers.asana.com/docs/get-multiple-users
 			async getUsers(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const endpoint = `/users`;
+				const endpoint = '/users';
 				const responseData = await asanaApiRequest.call(this, 'GET', endpoint, {});
 
 				if (responseData.data === undefined) {
@@ -1911,8 +1902,8 @@ export class Asana implements INodeType {
 		const returnData: IDataObject[] = [];
 		const timezone = this.getTimezone();
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let endpoint = '';
 		let requestMethod: IHttpRequestMethods = 'GET';
@@ -1953,9 +1944,9 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						const taskId = this.getNodeParameter('taskId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						requestMethod = 'GET';
 						endpoint = `/tasks/${taskId}/subtasks`;
@@ -1978,7 +1969,7 @@ export class Asana implements INodeType {
 						responseData = responseData.data;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as boolean;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -2009,7 +2000,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2021,7 +2012,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2031,11 +2022,11 @@ export class Asana implements INodeType {
 						//        task:getAll
 						// ----------------------------------
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/tasks`;
+						endpoint = '/tasks';
 
 						Object.assign(qs, filters);
 
@@ -2067,7 +2058,7 @@ export class Asana implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2097,7 +2088,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = ('/tasks/' + this.getNodeParameter('id', i)) as string;
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
@@ -2146,7 +2137,7 @@ export class Asana implements INodeType {
 
 						endpoint = `/tasks/${taskId}/stories`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 
@@ -2216,7 +2207,7 @@ export class Asana implements INodeType {
 
 						const taskId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						requestMethod = 'POST';
 
@@ -2281,7 +2272,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						//         project:create
 						// ----------------------------------
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const teamId = this.getNodeParameter('team', i);
 
 						// request parameters
@@ -2315,7 +2306,7 @@ export class Asana implements INodeType {
 
 						endpoint = `/projects/${projectId}`;
 
-						asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = { success: true };
 					}
@@ -2340,11 +2331,11 @@ export class Asana implements INodeType {
 						//        project:getAll
 						// ----------------------------------
 						const workspaceId = this.getNodeParameter('workspace', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
-						endpoint = `/projects`;
+						endpoint = '/projects';
 
 						if (additionalFields.team) {
 							qs.team = additionalFields.team;
@@ -2365,7 +2356,7 @@ export class Asana implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2378,7 +2369,7 @@ export class Asana implements INodeType {
 						//        project:update
 						// ----------------------------------
 						const projectId = this.getNodeParameter('id', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						// request parameters
 						requestMethod = 'PUT';
@@ -2410,10 +2401,9 @@ export class Asana implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					),
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

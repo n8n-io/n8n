@@ -22,9 +22,9 @@ export async function update(
 	const endpoint = `employees/${id}`;
 
 	//body parameters
-	body = this.getNodeParameter('updateFields', index) as IDataObject;
+	body = this.getNodeParameter('updateFields', index);
 
-	const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
+	const updateFields = this.getNodeParameter('updateFields', index);
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {

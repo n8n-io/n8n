@@ -4,9 +4,13 @@ const scopes = ['read', 'write'];
 
 export class ZendeskOAuth2Api implements ICredentialType {
 	name = 'zendeskOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Zendesk OAuth2 API';
+
 	documentationUrl = 'zendesk';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Subdomain',

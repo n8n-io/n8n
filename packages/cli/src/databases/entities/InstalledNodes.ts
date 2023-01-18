@@ -1,6 +1,5 @@
-/* eslint-disable import/no-cycle */
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
-import { InstalledPackages } from './InstalledPackages';
+import type { InstalledPackages } from './InstalledPackages';
 
 @Entity()
 export class InstalledNodes {
@@ -13,10 +12,7 @@ export class InstalledNodes {
 	@Column()
 	latestVersion: string;
 
-	@ManyToOne(
-		() => InstalledPackages,
-		(installedPackages: InstalledPackages) => installedPackages.installedNodes,
-	)
+	@ManyToOne('InstalledPackages', 'installedNodes')
 	@JoinColumn({ name: 'package', referencedColumnName: 'packageName' })
 	package: InstalledPackages;
 }

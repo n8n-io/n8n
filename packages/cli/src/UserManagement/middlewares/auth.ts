@@ -1,13 +1,12 @@
-/* eslint-disable import/no-cycle */
 import { Request, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import { Strategy } from 'passport-jwt';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { JwtPayload } from '../Interfaces';
-import type { AuthenticatedRequest } from '../../requests';
-import * as config from '../../../config';
-import { AUTH_COOKIE_NAME } from '../../constants';
+import type { AuthenticatedRequest } from '@/requests';
+import config from '@/config';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { issueCookie, resolveJwtContent } from '../auth/jwt';
 
 const jwtFromRequest = (req: Request) => {

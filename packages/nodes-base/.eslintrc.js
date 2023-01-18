@@ -1,64 +1,34 @@
+const { sharedOptions } = require('@n8n_io/eslint-config/shared');
+
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/base'],
-	parserOptions: {
-		project: ['./tsconfig.json'],
-	},
+	extends: ['@n8n_io/eslint-config/node'],
+
+	...sharedOptions(__dirname),
 
 	rules: {
 		// TODO: remove all the following rules
-		'eqeqeq': 'off',
+		eqeqeq: 'off',
 		'id-denylist': 'off',
 		'import/extensions': 'off',
 		'import/order': 'off',
-		'prefer-const': 'off',
 		'prefer-spread': 'off',
-		'prettier/prettier': 'off',
 		'import/no-extraneous-dependencies': 'off',
 
-		'@typescript-eslint/array-type': 'off',
-		'@typescript-eslint/await-thenable': 'off',
-		'@typescript-eslint/ban-types': 'off',
-		'@typescript-eslint/default-param-last': 'off',
-		'@typescript-eslint/dot-notation': 'off',
-		'@typescript-eslint/lines-between-class-members': 'off',
-		'@typescript-eslint/member-delimiter-style': 'off',
-		'@typescript-eslint/naming-convention': [
-			'error',
-			{ selector: 'memberLike', format: null },
-		],
-		'@typescript-eslint/no-duplicate-imports': 'off',
-		'@typescript-eslint/no-empty-interface': 'off',
-		'@typescript-eslint/no-explicit-any': 'off',
-		'@typescript-eslint/no-floating-promises': 'off',
-		'@typescript-eslint/no-for-in-array': 'off',
-		'@typescript-eslint/no-invalid-void-type': 'off',
-		'@typescript-eslint/no-loop-func': 'off',
-		'@typescript-eslint/no-non-null-assertion': 'off',
-		'@typescript-eslint/no-shadow': 'off',
-		'@typescript-eslint/no-this-alias': 'off',
-		'@typescript-eslint/no-throw-literal': 'off',
-		'@typescript-eslint/no-unnecessary-type-assertion': 'off',
-		'@typescript-eslint/no-unnecessary-boolean-literal-compare': 'off',
-		'@typescript-eslint/no-unnecessary-qualifier': 'off',
-		'@typescript-eslint/no-unsafe-argument': 'off',
-		'@typescript-eslint/no-unsafe-assignment': 'off',
-		'@typescript-eslint/no-unsafe-call': 'off',
-		'@typescript-eslint/no-unsafe-member-access': 'off',
-		'@typescript-eslint/no-unsafe-return': 'off',
-		'@typescript-eslint/no-unused-expressions': 'off',
-		'@typescript-eslint/no-unused-vars': 'off',
-		'@typescript-eslint/no-use-before-define': 'off',
-		'@typescript-eslint/no-var-requires': 'off',
-		'@typescript-eslint/prefer-nullish-coalescing': 'off',
-		'@typescript-eslint/prefer-optional-chain': 'off',
-		'@typescript-eslint/promise-function-async': 'off',
-		'@typescript-eslint/restrict-plus-operands': 'off',
-		'@typescript-eslint/restrict-template-expressions': 'off',
-		'@typescript-eslint/return-await': 'off',
+		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
+		'@typescript-eslint/no-explicit-any': 'off', //812 warnings, better to fix in separate PR
+		'@typescript-eslint/no-non-null-assertion': 'off', //665 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-argument': 'off', //1538 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-assignment': 'off', //7084 problems, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-call': 'off', //541 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-member-access': 'off', //4591 errors, better to fix in separate PR
+		'@typescript-eslint/no-unsafe-return': 'off', //438 errors, better to fix in separate PR
+		'@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true }],
+		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 
 	overrides: [
@@ -68,9 +38,11 @@ module.exports = {
 			rules: {
 				'n8n-nodes-base/cred-class-field-authenticate-type-assertion': 'error',
 				'n8n-nodes-base/cred-class-field-display-name-missing-oauth2': 'error',
+				'n8n-nodes-base/cred-class-field-display-name-miscased': 'error',
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
+				'n8n-nodes-base/cred-class-field-unobscured-sensitive-input': 'error',
 				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
 				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
@@ -87,6 +59,8 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
+				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
+				'n8n-nodes-base/node-class-description-name-miscased': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
@@ -146,6 +120,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-wrong-for-update-fields': 'error',
 				'n8n-nodes-base/node-param-min-value-wrong-for-limit': 'error',
 				'n8n-nodes-base/node-param-multi-options-type-unsorted-items': 'error',
+				'n8n-nodes-base/node-param-name-untrimmed': 'error',
 				'n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-operation-option-description-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-operation-option-without-action': 'error',
@@ -167,4 +142,4 @@ module.exports = {
 			},
 		},
 	],
- };
+};

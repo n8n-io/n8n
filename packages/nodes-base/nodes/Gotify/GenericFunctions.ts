@@ -8,12 +8,11 @@ export async function gotifyApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	path: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
-	option = {},
-	// tslint:disable-next-line:no-any
+	_option = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
 
@@ -25,7 +24,7 @@ export async function gotifyApiRequest(
 		},
 		body,
 		qs,
-		uri: uri || `${credentials.url}${path}`,
+		uri: uri ?? `${credentials.url}${path}`,
 		json: true,
 	};
 	try {
@@ -45,10 +44,9 @@ export async function gotifyApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

@@ -2,8 +2,9 @@
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
 import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
-import config from '../../../config';
-import { getLogger } from '../../Logger';
+import config from '@/config';
+import { getLogger } from '@/Logger';
+import { inTest } from '@/constants';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
 
@@ -37,10 +38,7 @@ export function loadSurveyFromDisk(): string | null {
 
 let logFinishTimeout: NodeJS.Timeout;
 
-export function logMigrationStart(
-	migrationName: string,
-	disableLogging = process.env.NODE_ENV === 'test',
-): void {
+export function logMigrationStart(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
 
 	if (!logFinishTimeout) {
@@ -52,10 +50,7 @@ export function logMigrationStart(
 	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(
-	migrationName: string,
-	disableLogging = process.env.NODE_ENV === 'test',
-): void {
+export function logMigrationEnd(migrationName: string, disableLogging = inTest): void {
 	if (disableLogging) return;
 
 	getLogger().debug(`Finished migration ${migrationName}`);
@@ -65,7 +60,7 @@ export function logMigrationEnd(
 	}, 100);
 }
 
-export function batchQuery(query: string, limit: number, offset = 0): string {
+function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}

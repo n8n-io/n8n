@@ -1,5 +1,5 @@
 <template>
-	<div :class="[$style.wrapper, !sidebarMenuCollapsed && $style.expandedSidebar]">
+	<div :class="[$style.wrapper, !this.uiStore.sidebarMenuCollapsed && $style.expandedSidebar]">
 		<div :class="$style.container">
 			<aside :class="$style.aside" v-if="$slots.aside">
 				<slot name="aside" />
@@ -12,6 +12,8 @@
 </template>
 
 <script lang="ts">
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -22,9 +24,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		sidebarMenuCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
-		},
+		...mapStores(useUIStore),
 	},
 });
 </script>

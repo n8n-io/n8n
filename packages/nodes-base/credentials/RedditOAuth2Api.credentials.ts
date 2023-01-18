@@ -6,9 +6,13 @@ const scopes = ['identity', 'edit', 'history', 'mysubreddits', 'read', 'save', '
 
 export class RedditOAuth2Api implements ICredentialType {
 	name = 'redditOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Reddit OAuth2 API';
+
 	documentationUrl = 'reddit';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

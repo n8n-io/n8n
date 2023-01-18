@@ -15,7 +15,6 @@ export async function getAlert(
 	const endpoint = `rmm_alerts/${id}`;
 	const body = {} as IDataObject;
 
-	let responseData;
-	responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
+	const responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 	return this.helpers.returnJsonArray(responseData.rmm_alert);
 }

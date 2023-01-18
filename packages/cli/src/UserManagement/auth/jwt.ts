@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 
 import jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
-import { Db } from '../..';
-import { AUTH_COOKIE_NAME } from '../../constants';
+import * as Db from '@/Db';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { JwtPayload, JwtToken } from '../Interfaces';
-import { User } from '../../databases/entities/User';
-import * as config from '../../../config';
+import { User } from '@db/entities/User';
+import config from '@/config';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -28,6 +27,7 @@ export function issueJWT(user: User): JwtToken {
 
 	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
+		algorithm: 'HS256',
 	});
 
 	return {
@@ -37,7 +37,8 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOne(jwtPayload.id, {
+	const user = await Db.collections.User.findOne({
+		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
@@ -57,11 +58,17 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret')) as JwtPayload;
+	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+		algorithms: ['HS256'],
+	}) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }
 
 export async function issueCookie(res: Response, user: User): Promise<void> {
 	const userData = issueJWT(user);
-	res.cookie(AUTH_COOKIE_NAME, userData.token, { maxAge: userData.expiresIn, httpOnly: true });
+	res.cookie(AUTH_COOKIE_NAME, userData.token, {
+		maxAge: userData.expiresIn,
+		httpOnly: true,
+		sameSite: 'lax',
+	});
 }

@@ -74,10 +74,9 @@ export class Segment implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		for (let i = 0; i < length; i++) {
 			try {
@@ -106,7 +105,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -236,7 +235,7 @@ export class Segment implements INodeType {
 							integrations: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -371,7 +370,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}
@@ -503,7 +502,7 @@ export class Segment implements INodeType {
 							properties: {},
 						};
 						if (userId) {
-							body.userId = userId as string;
+							body.userId = userId;
 						} else {
 							body.anonymousId = uuid();
 						}

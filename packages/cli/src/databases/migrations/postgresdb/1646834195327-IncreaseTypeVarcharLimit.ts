@@ -1,9 +1,6 @@
-import {
-	MigrationInterface,
-	QueryRunner,
-} from 'typeorm';
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class IncreaseTypeVarcharLimit1646834195327 implements MigrationInterface {
 	name = 'IncreaseTypeVarcharLimit1646834195327';
@@ -17,7 +14,9 @@ export class IncreaseTypeVarcharLimit1646834195327 implements MigrationInterface
 
 		await queryRunner.query(`SET search_path TO ${schema};`);
 
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}credentials_entity ALTER COLUMN "type" TYPE VARCHAR(128)`);
+		await queryRunner.query(
+			`ALTER TABLE ${tablePrefix}credentials_entity ALTER COLUMN "type" TYPE VARCHAR(128)`,
+		);
 	}
 
 	async down(queryRunner: QueryRunner): Promise<void> {}

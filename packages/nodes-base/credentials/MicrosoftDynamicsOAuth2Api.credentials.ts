@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class MicrosoftDynamicsOAuth2Api implements ICredentialType {
 	name = 'microsoftDynamicsOAuth2Api';
+
 	extends = ['microsoftOAuth2Api'];
+
 	displayName = 'Microsoft Dynamics OAuth2 API';
+
 	documentationUrl = 'microsoft';
+
 	properties: INodeProperties[] = [
 		//	https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-permissions-and-consent
 		{

@@ -7,8 +7,7 @@ import {
 	LoggerProxy,
 	Workflow,
 } from 'n8n-workflow';
-
-import { WorkflowExecute } from '../src';
+import { WorkflowExecute } from '@/WorkflowExecute';
 
 import * as Helpers from './Helpers';
 

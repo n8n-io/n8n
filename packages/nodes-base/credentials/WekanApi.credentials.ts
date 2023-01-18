@@ -9,8 +9,11 @@ import {
 
 export class WekanApi implements ICredentialType {
 	name = 'wekanApi';
+
 	displayName = 'Wekan API';
+
 	documentationUrl = 'wekan';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Username',

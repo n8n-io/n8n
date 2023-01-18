@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BoxOAuth2Api implements ICredentialType {
 	name = 'boxOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Box OAuth2 API';
+
 	documentationUrl = 'box';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

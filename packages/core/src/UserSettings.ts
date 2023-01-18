@@ -5,20 +5,18 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
-// eslint-disable-next-line import/no-cycle
+import { promisify } from 'util';
+import { deepCopy } from 'n8n-workflow';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	DOWNLOADED_NODES_SUBDIRECTORY,
-	IUserSettings,
 	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
-} from '.';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { promisify } = require('util');
+} from './Constants';
+import type { IUserSettings } from './Interfaces';
 
 const fsAccess = promisify(fs.access);
 const fsReadFile = promisify(fs.readFile);
@@ -74,7 +72,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 
 export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
 	}
 
 	const userSettings = await getUserSettings();
@@ -173,7 +171,7 @@ export async function writeUserSettings(
 	}
 
 	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
-	settingsCache = JSON.parse(JSON.stringify(userSettings));
+	settingsCache = deepCopy(userSettings);
 
 	return userSettings;
 }
@@ -231,14 +229,7 @@ export function getUserSettingsPath(): string {
  *
  */
 export function getUserN8nFolderPath(): string {
-	let userFolder;
-	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
-		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE] as string;
-	} else {
-		userFolder = getUserHome();
-	}
-
-	return path.join(userFolder, USER_SETTINGS_SUBFOLDER);
+	return path.join(getUserHome(), USER_SETTINGS_SUBFOLDER);
 }
 
 /**
@@ -255,7 +246,7 @@ export function getUserN8nFolderCustomExtensionPath(): string {
  * have been downloaded
  *
  */
-export function getUserN8nFolderDowloadedNodesPath(): string {
+export function getUserN8nFolderDownloadedNodesPath(): string {
 	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 
@@ -266,16 +257,19 @@ export function getUserN8nFolderDowloadedNodesPath(): string {
  *
  */
 export function getUserHome(): string {
-	let variableName = 'HOME';
-	if (process.platform === 'win32') {
-		variableName = 'USERPROFILE';
-	}
+	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
+		return process.env[USER_FOLDER_ENV_OVERWRITE];
+	} else {
+		let variableName = 'HOME';
+		if (process.platform === 'win32') {
+			variableName = 'USERPROFILE';
+		}
 
-	if (process.env[variableName] === undefined) {
-		// If for some reason the variable does not exist
-		// fall back to current folder
-		return process.cwd();
+		if (process.env[variableName] === undefined) {
+			// If for some reason the variable does not exist
+			// fall back to current folder
+			return process.cwd();
+		}
+		return process.env[variableName] as string;
 	}
-
-	return process.env[variableName] as string;
 }

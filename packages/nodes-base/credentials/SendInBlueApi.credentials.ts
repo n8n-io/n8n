@@ -7,16 +7,21 @@ import {
 
 export class SendInBlueApi implements ICredentialType {
 	name = 'sendInBlueApi';
+
 	displayName = 'SendInBlue';
-	documentationUrl = 'sendInBlueApi';
+
+	documentationUrl = 'sendinblue';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -25,6 +30,7 @@ export class SendInBlueApi implements ICredentialType {
 			},
 		},
 	};
+
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.sendinblue.com/v3',

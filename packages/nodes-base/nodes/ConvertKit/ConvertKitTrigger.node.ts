@@ -274,27 +274,27 @@ export class ConvertKitTrigger implements INodeType {
 
 				if (event === 'subscriber.form_subscribe') {
 					//@ts-ignore
-					body.event['form_id'] = this.getNodeParameter('formId', 0);
+					body.event.form_id = this.getNodeParameter('formId', 0);
 				}
 
 				if (event === 'subscriber.course_subscribe' || event === 'subscriber.course_complete') {
 					//@ts-ignore
-					body.event['sequence_id'] = this.getNodeParameter('courseId', 0);
+					body.event.sequence_id = this.getNodeParameter('courseId', 0);
 				}
 
 				if (event === 'subscriber.link_click') {
 					//@ts-ignore
-					body.event['initiator_value'] = this.getNodeParameter('link', 0);
+					body.event.initiator_value = this.getNodeParameter('link', 0);
 				}
 
 				if (event === 'subscriber.product_purchase') {
 					//@ts-ignore
-					body.event['product_id'] = this.getNodeParameter('productId', 0);
+					body.event.product_id = this.getNodeParameter('productId', 0);
 				}
 
 				if (event === 'subscriber.tag_add' || event === 'subscriber.tag_remove') {
 					//@ts-ignore
-					body.event['tag_id'] = this.getNodeParameter('tagId', 0);
+					body.event.tag_id = this.getNodeParameter('tagId', 0);
 				}
 
 				const webhook = await convertKitApiRequest.call(this, 'POST', endpoint, body);

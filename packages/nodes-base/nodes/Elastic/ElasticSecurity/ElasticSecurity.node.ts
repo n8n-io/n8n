@@ -166,8 +166,8 @@ export class ElasticSecurity implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		const resource = this.getNodeParameter('resource', 0) as string;
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const resource = this.getNodeParameter('resource', 0);
+		const operation = this.getNodeParameter('operation', 0);
 
 		let responseData;
 
@@ -252,7 +252,7 @@ export class ElasticSecurity implements INodeType {
 						const {
 							syncAlerts, // ignored because already set
 							...rest
-						} = this.getNodeParameter('additionalFields', i) as IDataObject;
+						} = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(rest).length) {
 							Object.assign(body, rest);
@@ -322,7 +322,7 @@ export class ElasticSecurity implements INodeType {
 						const caseId = this.getNodeParameter('caseId', i);
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (!Object.keys(updateFields).length) {
 							throwOnEmptyUpdate.call(this, resource);
@@ -442,19 +442,19 @@ export class ElasticSecurity implements INodeType {
 
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
-							owner: additionalFields.owner || 'securitySolution',
+							owner: additionalFields.owner ?? 'securitySolution',
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);
 						const endpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'POST', endpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}
@@ -516,7 +516,7 @@ export class ElasticSecurity implements INodeType {
 						const patchEndpoint = `/cases/${caseId}/comments`;
 						responseData = await elasticSecurityApiRequest.call(this, 'PATCH', patchEndpoint, body);
 
-						if (simple === true) {
+						if (simple) {
 							const { comments } = responseData;
 							responseData = comments[comments.length - 1];
 						}

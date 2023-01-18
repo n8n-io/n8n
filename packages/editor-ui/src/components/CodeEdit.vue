@@ -4,18 +4,25 @@
 		append-to-body
 		:close-on-click-modal="false"
 		width="80%"
-		:title="`${$locale.baseText('codeEdit.edit')} ${$locale.nodeText().inputLabelDisplayName(parameter, path)}`"
+		:title="`${$locale.baseText('codeEdit.edit')} ${$locale
+			.nodeText()
+			.inputLabelDisplayName(parameter, path)}`"
 		:before-close="closeDialog"
 	>
 		<div class="text-editor-wrapper ignore-key-press">
-			<code-editor :value="value" :autocomplete="loadAutocompleteData" :readonly="readonly" @input="$emit('valueChanged', $event)" />
+			<code-editor
+				:value="value"
+				:autocomplete="loadAutocompleteData"
+				:readonly="readonly"
+				@input="$emit('valueChanged', $event)"
+			/>
 		</div>
 	</el-dialog>
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { IExecutionResponse, INodeUi } from '@/Interface';
@@ -28,20 +35,22 @@ import {
 	WorkflowDataProxy,
 } from 'n8n-workflow';
 
-import {
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/constants';
+import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import { CodeEditor } from './forms';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
-export default mixins(
-	genericHelpers,
-	workflowHelpers,
-).extend({
+export default mixins(genericHelpers, workflowHelpers).extend({
 	name: 'CodeEdit',
 	components: {
 		CodeEditor,
 	},
 	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value', 'readonly'],
+	computed: {
+		...mapStores(useNDVStore, useRootStore, useWorkflowsStore),
+	},
 	methods: {
 		loadAutocompleteData(): string[] {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
@@ -50,16 +59,19 @@ export default mixins(
 				const mode = 'manual';
 				let runIndex = 0;
 
-				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
+				const executedWorkflow = this.workflowsStore.getWorkflowExecution;
 				const workflow = this.getCurrentWorkflow();
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.ndvStore.activeNode;
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
-				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]) || {
+				const nodeConnection = workflow.getNodeConnectionIndexes(
+					activeNode!.name,
+					parentNode[0],
+				) || {
 					sourceIndex: 0,
 					destinationIndex: 0,
 				};
 
-				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+				const executionData = this.workflowsStore.getWorkflowExecution;
 
 				let runExecutionData: IRunExecutionData;
 				if (!executionData || !executionData.data) {
@@ -75,7 +87,13 @@ export default mixins(
 					}
 				}
 
-				const connectionInputData = this.connectionInputData(parentNode, activeNode!.name, inputName, runIndex, nodeConnection);
+				const connectionInputData = this.connectionInputData(
+					parentNode,
+					activeNode!.name,
+					inputName,
+					runIndex,
+					nodeConnection,
+				);
 
 				const additionalProxyKeys: IWorkflowDataProxyAdditionalKeys = {
 					$execution: {
@@ -89,15 +107,26 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, this.$store.getters.timezone, additionalProxyKeys);
+				const dataProxy = new WorkflowDataProxy(
+					workflow,
+					runExecutionData,
+					runIndex,
+					itemIndex,
+					activeNode!.name,
+					connectionInputData || [],
+					{},
+					mode,
+					this.rootStore.timezone,
+					additionalProxyKeys,
+				);
 				const proxy = dataProxy.getDataProxy();
 
 				const autoCompleteItems = [
-					`function $evaluateExpression(expression: string, itemIndex?: number): any {};`,
-					`function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};`,
-					`function getWorkflowStaticData(type: string): {};`,
-					`function $item(itemIndex: number, runIndex?: number): {};`,
-					`function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};`,
+					'function $evaluateExpression(expression: string, itemIndex?: number): any {};',
+					'function getNodeParameter(parameterName: string, itemIndex: number, fallbackValue?: any): any {};',
+					'function getWorkflowStaticData(type: string): {};',
+					'function $item(itemIndex: number, runIndex?: number): {};',
+					'function $items(nodeName?: string, outputIndex?: number, runIndex?: number): {};',
 				];
 
 				const baseKeys = [
@@ -115,13 +144,7 @@ export default mixins(
 					'Interval',
 				];
 
-				const functionItemKeys = [
-					'$json',
-					'$binary',
-					'$position',
-					'$thisItem',
-					'$thisItemIndex',
-				];
+				const functionItemKeys = ['$json', '$binary', '$position', '$thisItem', '$thisItemIndex'];
 
 				const additionalKeys: string[] = [];
 				if (this.codeAutocomplete === 'functionItem') {
@@ -131,13 +154,15 @@ export default mixins(
 				if (executedWorkflow && connectionInputData && connectionInputData.length) {
 					baseKeys.push(...additionalKeys);
 				} else {
-					additionalKeys.forEach(key => {
+					additionalKeys.forEach((key) => {
 						autoCompleteItems.push(`const ${key} = {}`);
 					});
 				}
 
 				for (const key of baseKeys) {
-					autoCompleteItems.push(`const ${key} = ${JSON.stringify(this.createSimpleRepresentation(proxy[key]))}`);
+					autoCompleteItems.push(
+						`const ${key} = ${JSON.stringify(this.createSimpleRepresentation(proxy[key]))}`,
+					);
 				}
 
 				// Add the nodes and their simplified data
@@ -148,32 +173,44 @@ export default mixins(
 					// To not load to much data create a simple representation.
 					nodes[nodeName] = {
 						json: {} as IDataObject,
-						parameter: this.createSimpleRepresentation(proxy.$node[nodeName].parameter) as IDataObject,
+						parameter: this.createSimpleRepresentation(
+							proxy.$node[nodeName].parameter,
+						) as IDataObject,
 					};
 
 					try {
-						nodes[nodeName]!.json = this.createSimpleRepresentation(proxy.$node[nodeName].json) as IDataObject;
-						nodes[nodeName]!.context = this.createSimpleRepresentation(proxy.$node[nodeName].context) as IDataObject;
+						nodes[nodeName]!.json = this.createSimpleRepresentation(
+							proxy.$node[nodeName].json,
+						) as IDataObject;
+						nodes[nodeName]!.context = this.createSimpleRepresentation(
+							proxy.$node[nodeName].context,
+						) as IDataObject;
 						nodes[nodeName]!.runIndex = proxy.$node[nodeName].runIndex;
 						if (Object.keys(proxy.$node[nodeName].binary).length) {
-							nodes[nodeName]!.binary = this.createSimpleRepresentation(proxy.$node[nodeName].binary) as IBinaryKeyData;
+							nodes[nodeName]!.binary = this.createSimpleRepresentation(
+								proxy.$node[nodeName].binary,
+							) as IBinaryKeyData;
 						}
-					} catch(error) {}
+					} catch (error) {}
 				}
 				autoCompleteItems.push(`const $node = ${JSON.stringify(nodes)}`);
-				autoCompleteItems.push(`function $jmespath(jsonDoc: object, query: string): {};`);
+				autoCompleteItems.push('function $jmespath(jsonDoc: object, query: string): {};');
 
 				if (this.codeAutocomplete === 'function') {
 					if (connectionInputData) {
-						autoCompleteItems.push(`const items = ${JSON.stringify(this.createSimpleRepresentation(connectionInputData))}`);
+						autoCompleteItems.push(
+							`const items = ${JSON.stringify(
+								this.createSimpleRepresentation(connectionInputData),
+							)}`,
+						);
 					} else {
-						autoCompleteItems.push(`const items: {json: {[key: string]: any}}[] = []`);
+						autoCompleteItems.push('const items: {json: {[key: string]: any}}[] = []');
 					}
 				} else if (this.codeAutocomplete === 'functionItem') {
 					if (connectionInputData) {
-						autoCompleteItems.push(`const item = $json`);
+						autoCompleteItems.push('const item = $json');
 					} else {
-						autoCompleteItems.push(`const item: {[key: string]: any} = {}`);
+						autoCompleteItems.push('const item: {[key: string]: any} = {}');
 					}
 				}
 
@@ -189,7 +226,29 @@ export default mixins(
 			return false;
 		},
 
-		createSimpleRepresentation(inputData: object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[]): object | null | undefined | boolean | string | number | boolean[] | string[] | number[] | object[] {
+		createSimpleRepresentation(
+			inputData:
+				| object
+				| null
+				| undefined
+				| boolean
+				| string
+				| number
+				| boolean[]
+				| string[]
+				| number[]
+				| object[],
+		):
+			| object
+			| null
+			| undefined
+			| boolean
+			| string
+			| number
+			| boolean[]
+			| string[]
+			| number[]
+			| object[] {
 			if (inputData === null || inputData === undefined) {
 				return inputData;
 			} else if (typeof inputData === 'string') {
@@ -199,10 +258,10 @@ export default mixins(
 			} else if (typeof inputData === 'number') {
 				return 1;
 			} else if (Array.isArray(inputData)) {
-				return inputData.map(value => this.createSimpleRepresentation(value));
+				return inputData.map((value) => this.createSimpleRepresentation(value));
 			} else if (typeof inputData === 'object') {
 				const returnData: { [key: string]: object } = {};
-				Object.keys(inputData).forEach(key => {
+				Object.keys(inputData).forEach((key) => {
 					// @ts-ignore
 					returnData[key] = this.createSimpleRepresentation(inputData[key]);
 				});

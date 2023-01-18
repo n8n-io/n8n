@@ -8,12 +8,11 @@ export async function xeroApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
@@ -22,7 +21,7 @@ export async function xeroApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://api.xero.com/api.xro/2.0${resource}`,
+		uri: uri ?? `https://api.xero.com/api.xro/2.0${resource}`,
 		json: true,
 	};
 	try {
@@ -48,10 +47,9 @@ export async function xeroApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 

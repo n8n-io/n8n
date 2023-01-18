@@ -7,16 +7,21 @@ import {
 
 export class ClickUpApi implements ICredentialType {
 	name = 'clickUpApi';
+
 	displayName = 'ClickUp API';
+
 	documentationUrl = 'clickUp';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {

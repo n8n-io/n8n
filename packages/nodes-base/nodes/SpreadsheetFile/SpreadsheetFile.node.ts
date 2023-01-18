@@ -296,7 +296,7 @@ export class SpreadsheetFile implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		const operation = this.getNodeParameter('operation', 0) as string;
+		const operation = this.getNodeParameter('operation', 0);
 
 		const newItems: INodeExecutionData[] = [];
 
@@ -308,8 +308,8 @@ export class SpreadsheetFile implements INodeType {
 				try {
 					item = items[i];
 
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
+					const options = this.getNodeParameter('options', i, {});
 
 					if (item.binary === undefined || item.binary[binaryPropertyName] === undefined) {
 						// Property did not get found on item
@@ -413,9 +413,9 @@ export class SpreadsheetFile implements INodeType {
 		} else if (operation === 'toFile') {
 			try {
 				// Write the workflow data to spreadsheet file
-				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
+				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 				const fileFormat = this.getNodeParameter('fileFormat', 0) as string;
-				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				const options = this.getNodeParameter('options', 0, {});
 				const sheetToJsonOptions: JSON2SheetOpts = {};
 				if (options.headerRow === false) {
 					sheetToJsonOptions.skipHeader = true;

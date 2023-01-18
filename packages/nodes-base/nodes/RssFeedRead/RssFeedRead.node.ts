@@ -10,6 +10,17 @@ import {
 import Parser from 'rss-parser';
 import { URL } from 'url';
 
+// Utility function
+
+function validateURL(url: string) {
+	try {
+		const _parseUrl = new URL(url);
+		return true;
+	} catch (err) {
+		return false;
+	}
+}
+
 export class RssFeedRead implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'RSS Read',
@@ -19,7 +30,7 @@ export class RssFeedRead implements INodeType {
 		version: 1,
 		description: 'Reads data from an RSS Feed',
 		defaults: {
-			name: 'RSS Feed Read',
+			name: 'RSS Read',
 			color: '#b02020',
 		},
 		inputs: ['main'],
@@ -81,16 +92,5 @@ export class RssFeedRead implements INodeType {
 			}
 			throw error;
 		}
-	}
-}
-
-// Utility function
-
-function validateURL(url: string) {
-	try {
-		const parseUrl = new URL(url);
-		return true;
-	} catch (err) {
-		return false;
 	}
 }

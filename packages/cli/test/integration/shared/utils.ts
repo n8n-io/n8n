@@ -4,16 +4,17 @@ import { existsSync } from 'fs';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import { set } from 'lodash';
+import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
+	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypeData,
-	INodeTypes,
+	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -21,35 +22,35 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { v4 as uuid } from 'uuid';
 
-import config from '../../../config';
-import {
-	ActiveWorkflowRunner,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	InternalHooksManager,
-	NodeTypes,
-} from '../../../src';
-import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { nodesController } from '../../../src/api/nodes.api';
-import { workflowsController } from '../../../src/api/workflows.api';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
-import { credentialsController } from '../../../src/credentials/credentials.controller';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import type { User } from '../../../src/databases/entities/User';
-import { getLogger } from '../../../src/Logger';
-import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import config from '@/config';
+import * as Db from '@/Db';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialTypes } from '@/CredentialTypes';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
+import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
+import { nodesController } from '@/api/nodes.api';
+import { workflowsController } from '@/workflows/workflows.controller';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
+import { credentialsController } from '@/credentials/credentials.controller';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { User } from '@db/entities/User';
+import { getLogger } from '@/Logger';
+import { loadPublicApiVersions } from '@/PublicApi/';
+import { issueJWT } from '@/UserManagement/auth/jwt';
+import { addRoutes as authMiddleware } from '@/UserManagement/routes';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -65,6 +66,17 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { licenseController } from '@/license/license.controller';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+
+const loadNodesAndCredentials: INodesAndCredentials = {
+	loaded: { nodes: {}, credentials: {} },
+	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
+};
+
+const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
+CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -115,6 +127,8 @@ export async function initTestServer({
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
+			license: { controller: licenseController, path: 'license' },
+			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 			publicApi: apiRouters,
 		};
 
@@ -148,9 +162,7 @@ export async function initTestServer({
  * Pre-requisite: Mock the telemetry module before calling.
  */
 export function initTestTelemetry() {
-	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
-
-	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
+	void InternalHooksManager.init('test-instance-id', mockNodeTypes);
 }
 
 /**
@@ -161,7 +173,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'license', 'eventBus'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -194,18 +206,21 @@ export function gitHubCredentialType(): ICredentialType {
 				name: 'server',
 				type: 'string',
 				default: 'https://api.github.com',
+				required: true,
 				description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
 			},
 			{
 				displayName: 'User',
 				name: 'user',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 			{
 				displayName: 'Access Token',
 				name: 'accessToken',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 		],
@@ -216,20 +231,19 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	const credentialTypes = CredentialTypes();
-	await credentialTypes.init({
+	loadNodesAndCredentials.loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
-	});
+	};
 }
 
 /**
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	const types: INodeTypeData = {
+	loadNodesAndCredentials.loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -523,8 +537,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-
-	await NodeTypes().init(types);
 }
 
 /**
@@ -634,7 +646,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -698,3 +710,42 @@ export const emptyPackage = () => {
 
 	return Promise.resolve(installedPackage);
 };
+
+// ----------------------------------
+//           workflow
+// ----------------------------------
+
+export function makeWorkflow(options?: {
+	withPinData: boolean;
+	withCredential?: { id: string; name: string };
+}) {
+	const workflow = new WorkflowEntity();
+
+	const node: INode = {
+		id: uuid(),
+		name: 'Cron',
+		type: 'n8n-nodes-base.cron',
+		parameters: {},
+		typeVersion: 1,
+		position: [740, 240],
+	};
+
+	if (options?.withCredential) {
+		node.credentials = {
+			spotifyApi: options.withCredential,
+		};
+	}
+
+	workflow.name = 'My Workflow';
+	workflow.active = false;
+	workflow.connections = {};
+	workflow.nodes = [node];
+
+	if (options?.withPinData) {
+		workflow.pinData = MOCK_PINDATA;
+	}
+
+	return workflow;
+}
+
+export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };

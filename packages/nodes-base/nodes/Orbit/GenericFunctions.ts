@@ -7,7 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 import { IRelation } from './Interfaces';
 
@@ -15,12 +15,11 @@ export async function orbitApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	try {
 		const credentials = await this.getCredentials('orbitApi');
@@ -31,55 +30,16 @@ export async function orbitApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri || `https://app.orbit.love/api/v1${resource}`,
+			uri: uri ?? `https://app.orbit.love/api/v1${resource}`,
 			json: true,
 		};
 
 		options = Object.assign({}, options, option);
 
-		return await this.helpers.request!(options);
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
-}
-
-/**
- * Make an API request to paginated flow endpoint
- * and return all results
- */
-export async function orbitApiRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
-	propertyName: string,
-	method: string,
-	resource: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
-	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const returnData: IDataObject[] = [];
-
-	let responseData;
-	query.page = 1;
-
-	do {
-		responseData = await orbitApiRequest.call(this, method, resource, body, query);
-		returnData.push.apply(returnData, responseData[propertyName]);
-
-		if (query.resolveIdentities === true) {
-			resolveIdentities(responseData);
-		}
-
-		if (query.resolveMember === true) {
-			resolveMember(responseData);
-		}
-
-		query.page++;
-		if (query.limit && returnData.length >= query.limit) {
-			return returnData;
-		}
-	} while (responseData.data.length !== 0);
-	return returnData;
 }
 
 export function resolveIdentities(responseData: IRelation) {
@@ -117,4 +77,42 @@ export function resolveMember(responseData: IRelation) {
 			//@ts-ignore
 			members[responseData.data[i].relationships.member.data.id];
 	}
+}
+
+/**
+ * Make an API request to paginated flow endpoint
+ * and return all results
+ */
+export async function orbitApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	resource: string,
+
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	const returnData: IDataObject[] = [];
+
+	let responseData;
+	query.page = 1;
+
+	do {
+		responseData = await orbitApiRequest.call(this, method, resource, body, query);
+		returnData.push.apply(returnData, responseData[propertyName]);
+
+		if (query.resolveIdentities === true) {
+			resolveIdentities(responseData);
+		}
+
+		if (query.resolveMember === true) {
+			resolveMember(responseData);
+		}
+
+		query.page++;
+		if (query.limit && returnData.length >= query.limit) {
+			return returnData;
+		}
+	} while (responseData.data.length !== 0);
+	return returnData;
 }

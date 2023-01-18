@@ -2,8 +2,11 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class QuickBaseApi implements ICredentialType {
 	name = 'quickbaseApi';
+
 	displayName = 'Quick Base API';
+
 	documentationUrl = 'quickbase';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Hostname',

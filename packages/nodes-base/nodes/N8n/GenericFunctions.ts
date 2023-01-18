@@ -24,8 +24,8 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-): Promise<unknown> {
-	query = query || {};
+): Promise<any> {
+	query = query ?? {};
 
 	type N8nApiCredentials = {
 		apiKey: string;
@@ -39,7 +39,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		uri: `${baseUrl}/${endpoint}`,
+		uri: `${baseUrl.replace(new RegExp('/$'), '')}/${endpoint}`,
 		json: true,
 	};
 
@@ -51,6 +51,29 @@ export async function apiRequest(
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+): Promise<any> {
+	query = query ?? {};
+	const returnData: IDataObject[] = [];
+
+	let nextCursor: string | undefined = undefined;
+	let responseData;
+
+	do {
+		query.cursor = nextCursor;
+		query.limit = 100;
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		returnData.push.apply(returnData, responseData.data);
+		nextCursor = responseData.nextCursor as string | undefined;
+	} while (nextCursor);
+	return returnData;
 }
 
 /**
@@ -81,6 +104,14 @@ export const getCursorPaginator = () => {
 		let nextCursor: string | undefined = undefined;
 		const returnAll = this.getNodeParameter('returnAll', true) as boolean;
 
+		const extractItems = (page: INodeExecutionData) => {
+			const items = page.json.data as IDataObject[];
+			if (items) {
+				// Extract the items themselves
+				executions = executions.concat(items.map((item) => ({ json: item })));
+			}
+		};
+
 		do {
 			requestOptions.options.qs.cursor = nextCursor;
 			responseData = await this.makeRoutingRequest(requestOptions);
@@ -89,13 +120,7 @@ export const getCursorPaginator = () => {
 			const lastItem = responseData[responseData.length - 1].json;
 			nextCursor = lastItem.nextCursor as string | undefined;
 
-			responseData.forEach((page) => {
-				const items = page.json.data as IDataObject[];
-				if (items) {
-					// Extract the items themselves
-					executions = executions.concat(items.map((item) => ({ json: item })));
-				}
-			});
+			responseData.forEach(extractItems);
 
 			// If we don't return all, just return the first page
 		} while (returnAll && nextCursor);
@@ -141,7 +166,9 @@ export const parseAndSetBodyJson = (
 		} catch (err) {
 			throw new NodeOperationError(
 				this.getNode(),
-				`The '${parameterName}' property must be valid JSON, but cannot be parsed: ${err}`,
+				new Error(`The '${parameterName}' property must be valid JSON, but cannot be parsed`, {
+					cause: err,
+				}),
 			);
 		}
 		return requestOptions;
@@ -163,11 +190,11 @@ export const prepareWorkflowCreateBody: PreSendAction = async function (
 	const body = requestOptions.body as IDataObject;
 	const newBody: IDataObject = {};
 
-	newBody.name = body.name || 'My workflow';
-	newBody.nodes = body.nodes || [];
-	newBody.settings = body.settings || {};
-	newBody.connections = body.connections || {};
-	newBody.staticData = body.staticData || null;
+	newBody.name = body.name ?? 'My workflow';
+	newBody.nodes = body.nodes ?? [];
+	newBody.settings = body.settings ?? {};
+	newBody.connections = body.connections ?? {};
+	newBody.staticData = body.staticData ?? null;
 
 	requestOptions.body = newBody;
 

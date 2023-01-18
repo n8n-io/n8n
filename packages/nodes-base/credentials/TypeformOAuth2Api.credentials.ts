@@ -4,9 +4,13 @@ const scopes = ['webhooks:write', 'webhooks:read', 'forms:read'];
 
 export class TypeformOAuth2Api implements ICredentialType {
 	name = 'typeformOAuth2Api';
+
 	extends = ['oAuth2Api'];
+
 	displayName = 'Typeform OAuth2 API';
+
 	documentationUrl = 'typeform';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Grant Type',

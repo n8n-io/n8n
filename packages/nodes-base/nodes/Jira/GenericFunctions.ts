@@ -7,24 +7,17 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
 	option: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
@@ -47,7 +40,7 @@ export async function jiraSoftwareCloudApiRequest(
 		},
 		method,
 		qs: query,
-		uri: uri || `${domain}/rest${endpoint}`,
+		uri: uri ?? `${domain}/rest${endpoint}`,
 		body,
 		json: true,
 	};
@@ -64,11 +57,7 @@ export async function jiraSoftwareCloudApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function jiraSoftwareCloudApiRequestAllItems(
@@ -76,10 +65,9 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-	// tslint:disable-next-line:no-any
+
 	body: any = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];
 
@@ -93,14 +81,16 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	do {
 		responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, method, body, query);
 		returnData.push.apply(returnData, responseData[propertyName]);
-		query.startAt = responseData.startAt + responseData.maxResults;
-		body.startAt = responseData.startAt + responseData.maxResults;
-	} while (responseData.startAt + responseData.maxResults < responseData.total);
+		query.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+		body.startAt = (responseData.startAt as number) + (responseData.maxResults as number);
+	} while (
+		(responseData.startAt as number) + (responseData.maxResults as number) <
+		responseData.total
+	);
 
 	return returnData;
 }
 
-// tslint:disable-next-line:no-any
 export function validateJSON(json: string | undefined): any {
 	let result;
 	try {

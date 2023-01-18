@@ -2,9 +2,13 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OAuth1Api implements ICredentialType {
 	name = 'oAuth1Api';
+
 	displayName = 'OAuth1 API';
+
 	documentationUrl = 'httpRequest';
+
 	genericAuth = true;
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Authorization URL',

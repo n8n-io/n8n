@@ -1,20 +1,11 @@
 <template>
-	<div
-		:class="['n8n-form-box', $style.container]"
-	>
-		<div
-			v-if="title"
-			:class="$style.heading"
-		>
-			<n8n-heading
-				size="xlarge"
-			>
-			{{title}}
+	<div :class="['n8n-form-box', $style.container]">
+		<div v-if="title" :class="$style.heading">
+			<n8n-heading size="xlarge">
+				{{ title }}
 			</n8n-heading>
 		</div>
-		<div
-			:class="$style.inputsContainer"
-		>
+		<div :class="$style.inputsContainer">
 			<n8n-form-inputs
 				:inputs="inputs"
 				:eventBus="formBus"
@@ -24,16 +15,9 @@
 			/>
 		</div>
 		<div :class="$style.buttonsContainer" v-if="secondaryButtonText || buttonText">
-			<span
-				v-if="secondaryButtonText"
-				:class="$style.secondaryButtonContainer"
-			>
-				<n8n-link
-					size="medium"
-					theme="text"
-					@click="onSecondaryButtonClick"
-				>
-					{{secondaryButtonText}}
+			<span v-if="secondaryButtonText" :class="$style.secondaryButtonContainer">
+				<n8n-link size="medium" theme="text" @click="onSecondaryButtonClick">
+					{{ secondaryButtonText }}
 				</n8n-link>
 			</span>
 			<n8n-button
@@ -45,11 +29,8 @@
 			/>
 		</div>
 		<div :class="$style.actionContainer">
-			<n8n-link
-				v-if="redirectText && redirectLink"
-				:to="redirectLink"
-			>
-				{{redirectText}}
+			<n8n-link v-if="redirectText && redirectLink" :to="redirectLink">
+				{{ redirectText }}
 			</n8n-link>
 		</div>
 	</div>
@@ -103,10 +84,10 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		onInput(e: {name: string, value: string}) {
+		onInput(e: { name: string; value: string }) {
 			this.$emit('input', e);
 		},
-		onSubmit(e: {[key: string]: string}) {
+		onSubmit(e: { [key: string]: string }) {
 			this.$emit('submit', e);
 		},
 		onButtonClick() {

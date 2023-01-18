@@ -8,12 +8,12 @@ import {
 	deleteExecution,
 	getExecutionsCount,
 } from './executions.service';
-import { ActiveExecutions } from '../../../..';
+import * as ActiveExecutions from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooksManager } from '../../../../InternalHooksManager';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export = {
 	deleteExecution: [
@@ -36,7 +36,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id.toString());
+			await BinaryDataManager.getInstance().deleteBinaryDataByExecutionId(execution.id);
 
 			await deleteExecution(execution);
 
@@ -97,7 +97,7 @@ export = {
 			// get running workflows so we exclude them from the result
 			const runningExecutionsIds = ActiveExecutions.getInstance()
 				.getActiveExecutions()
-				.map(({ id }) => Number(id));
+				.map(({ id }) => id);
 
 			const filters = {
 				status,
@@ -110,7 +110,7 @@ export = {
 
 			const executions = await getExecutions(filters);
 
-			const newLastId = !executions.length ? 0 : (executions.slice(-1)[0].id as number);
+			const newLastId = !executions.length ? '0' : executions.slice(-1)[0].id;
 
 			filters.lastId = newLastId;
 

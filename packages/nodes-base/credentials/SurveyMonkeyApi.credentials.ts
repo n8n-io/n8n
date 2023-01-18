@@ -2,13 +2,17 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class SurveyMonkeyApi implements ICredentialType {
 	name = 'surveyMonkeyApi';
+
 	displayName = 'SurveyMonkey API';
+
 	documentationUrl = 'surveyMonkey';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: `The access token must have the following scopes:
 			<ul>

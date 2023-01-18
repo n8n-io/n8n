@@ -4,28 +4,35 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
 
-import { Db, ExternalHooks, IExternalHooksClass, ITagWithCountDb, ResponseHelper } from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { validateEntity } from '../GenericHelpers';
-import { TagEntity } from '../databases/entities/TagEntity';
-import { TagsRequest } from '../requests';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
+import config from '@/config';
+import * as TagHelpers from '@/TagHelpers';
+import { validateEntity } from '@/GenericHelpers';
+import { TagEntity } from '@db/entities/TagEntity';
+import { TagsRequest } from '@/requests';
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 
 export const tagsController = express.Router();
 
+const workflowsEnabledMiddleware: express.RequestHandler = (req, res, next) => {
+	if (config.getEnv('workflowTagsDisabled')) {
+		throw new ResponseHelper.BadRequestError('Workflow tags are disabled');
+	}
+	next();
+};
+
 // Retrieves all tags, with or without usage count
 tagsController.get(
 	'/',
+	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity[] | ITagWithCountDb[]> => {
-		if (config.getEnv('workflowTagsDisabled')) {
-			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-		}
 		if (req.query.withUsageCount === 'true') {
 			const tablePrefix = config.getEnv('database.tablePrefix');
 			return TagHelpers.getTagsWithCountDb(tablePrefix);
@@ -38,10 +45,8 @@ tagsController.get(
 // Creates a tag
 tagsController.post(
 	'/',
+	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity | void> => {
-		if (config.getEnv('workflowTagsDisabled')) {
-			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-		}
 		const newTag = new TagEntity();
 		newTag.name = req.body.name.trim();
 
@@ -58,12 +63,9 @@ tagsController.post(
 
 // Updates a tag
 tagsController.patch(
-	'/:id',
+	'/:id(\\d+)',
+	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: express.Request): Promise<TagEntity | void> => {
-		if (config.getEnv('workflowTagsDisabled')) {
-			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-		}
-
 		const { name } = req.body;
 		const { id } = req.params;
 
@@ -84,23 +86,19 @@ tagsController.patch(
 );
 
 tagsController.delete(
-	'/:id',
+	'/:id(\\d+)',
+	workflowsEnabledMiddleware,
 	ResponseHelper.send(async (req: TagsRequest.Delete): Promise<boolean> => {
-		if (config.getEnv('workflowTagsDisabled')) {
-			throw new ResponseHelper.ResponseError('Workflow tags are disabled');
-		}
 		if (
 			config.getEnv('userManagement.isInstanceOwnerSetUp') === true &&
 			req.user.globalRole.name !== 'owner'
 		) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.UnauthorizedError(
 				'You are not allowed to perform this action',
-				undefined,
-				403,
 				'Only owners can remove tags',
 			);
 		}
-		const id = Number(req.params.id);
+		const id = req.params.id;
 
 		await externalHooks.run('tag.beforeDelete', [id]);
 

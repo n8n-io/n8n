@@ -11,23 +11,19 @@ import {
 	hasPackageLoaded,
 	removePackageFromMissingList,
 	isNpmError,
-} from '../../src/CommunityNodes/helpers';
-import { findInstalledPackage, isPackageInstalled } from '../../src/CommunityNodes/packageModel';
-import { LoadNodesAndCredentials } from '../../src/LoadNodesAndCredentials';
-import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
+} from '@/CommunityNodes/helpers';
+import { findInstalledPackage, isPackageInstalled } from '@/CommunityNodes/packageModel';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
 
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import type { AuthAgent } from './shared/types';
-import type { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
-jest.mock('../../src/telemetry');
-
-jest.mock('../../src/Push');
-
-jest.mock('../../src/CommunityNodes/helpers', () => {
+jest.mock('@/CommunityNodes/helpers', () => {
 	return {
-		...jest.requireActual('../../src/CommunityNodes/helpers'),
+		...jest.requireActual('@/CommunityNodes/helpers'),
 		checkNpmPackageStatus: jest.fn(),
 		executeCommand: jest.fn(),
 		hasPackageLoaded: jest.fn(),
@@ -36,9 +32,9 @@ jest.mock('../../src/CommunityNodes/helpers', () => {
 	};
 });
 
-jest.mock('../../src/CommunityNodes/packageModel', () => {
+jest.mock('@/CommunityNodes/packageModel', () => {
 	return {
-		...jest.requireActual('../../src/CommunityNodes/packageModel'),
+		...jest.requireActual('@/CommunityNodes/packageModel'),
 		isPackageInstalled: jest.fn(),
 		findInstalledPackage: jest.fn(),
 	};
@@ -47,14 +43,12 @@ jest.mock('../../src/CommunityNodes/packageModel', () => {
 const mockedEmptyPackage = mocked(utils.emptyPackage);
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
@@ -66,14 +60,14 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User'], testDbName);
+	await testDb.truncate(['InstalledNodes', 'InstalledPackages', 'User']);
 
 	mocked(executeCommand).mockReset();
 	mocked(findInstalledPackage).mockReset();
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 /**

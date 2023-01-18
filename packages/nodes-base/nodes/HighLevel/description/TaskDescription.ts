@@ -1,6 +1,10 @@
 import { INodeProperties } from 'n8n-workflow';
 
-import { dueDatePreSendAction, taskPostReceiceAction, taskUpdatePreSendAction } from '../GenericFunctions';
+import {
+	dueDatePreSendAction,
+	taskPostReceiceAction,
+	taskUpdatePreSendAction,
+} from '../GenericFunctions';
 
 export const taskOperations: INodeProperties[] = [
 	{

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
-// eslint-disable-next-line import/no-cycle
-import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
+import * as Db from '@/Db';
+import { IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 
-import config from '../config';
+import config from '@/config';
 
 class ExternalHooksClass implements IExternalHooksClass {
 	externalHooks: {
@@ -50,8 +50,11 @@ class ExternalHooksClass implements IExternalHooksClass {
 					const hookFile = require(hookFilePath) as IExternalHooksFileData;
 					this.loadHooks(hookFile);
 				} catch (error) {
-					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
-					throw new Error(`Problem loading external hook file "${hookFilePath}": ${error.message}`);
+					throw new Error(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/restrict-template-expressions
+						`Problem loading external hook file "${hookFilePath}": ${error.message}`,
+						{ cause: error as Error },
+					);
 				}
 			}
 		}

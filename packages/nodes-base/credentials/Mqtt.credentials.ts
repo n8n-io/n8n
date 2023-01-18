@@ -2,8 +2,11 @@ import { ICredentialType, IDisplayOptions, INodeProperties } from 'n8n-workflow'
 
 export class Mqtt implements ICredentialType {
 	name = 'mqtt';
+
 	displayName = 'MQTT';
+
 	documentationUrl = 'mqtt';
+
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Protocol',

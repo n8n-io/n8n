@@ -10,8 +10,6 @@ import {
 
 import mqtt from 'mqtt';
 
-import { IClientOptions, ISubscriptionMap } from 'mqtt';
-
 export class MqttTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'MQTT Trigger',
@@ -99,8 +97,8 @@ export class MqttTrigger implements INodeType {
 
 		let client: mqtt.MqttClient;
 
-		if (ssl === false) {
-			const clientOptions: IClientOptions = {
+		if (!ssl) {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -113,7 +111,7 @@ export class MqttTrigger implements INodeType {
 
 			client = mqtt.connect(brokerUrl, clientOptions);
 		} else {
-			const clientOptions: IClientOptions = {
+			const clientOptions: mqtt.IClientOptions = {
 				port,
 				clean,
 				clientId,
@@ -130,25 +128,22 @@ export class MqttTrigger implements INodeType {
 			client = mqtt.connect(brokerUrl, clientOptions);
 		}
 
-		const self = this;
-
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as ISubscriptionMap, (err, granted) => {
+					client.subscribe(topicsQoS as mqtt.ISubscriptionMap, (err, _granted) => {
 						if (err) {
 							reject(err);
 						}
 						client.on('message', (topic: string, message: Buffer | string) => {
-							// tslint:disable-line:no-any
 							let result: IDataObject = {};
 
-							message = message.toString() as string;
+							message = message.toString();
 
 							if (options.jsonParseBody) {
 								try {
 									message = JSON.parse(message.toString());
-								} catch (err) {}
+								} catch (error) {}
 							}
 
 							result.message = message;
@@ -158,7 +153,7 @@ export class MqttTrigger implements INodeType {
 								//@ts-ignore
 								result = [message as string];
 							}
-							self.emit([self.helpers.returnJsonArray(result)]);
+							this.emit([this.helpers.returnJsonArray(result)]);
 							resolve(true);
 						});
 					});
@@ -168,10 +163,10 @@ export class MqttTrigger implements INodeType {
 					reject(error);
 				});
 			});
-		}
+		};
 
 		if (this.getMode() === 'trigger') {
-			manualTriggerFunction();
+			await manualTriggerFunction();
 		}
 
 		async function closeFunction() {

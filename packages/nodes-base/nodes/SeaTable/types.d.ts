@@ -44,9 +44,9 @@ type TInheritColumnKey =
 type TColumnValue = undefined | boolean | number | string | string[] | null;
 type TColumnKey = TInheritColumnKey | string;
 
-export type TDtableMetadataTables = ReadonlyArray<IDtableMetadataTable>;
-export type TDtableMetadataColumns = ReadonlyArray<IDtableMetadataColumn>;
-export type TDtableViewColumns = ReadonlyArray<TDtableViewColumn>;
+export type TDtableMetadataTables = readonly IDtableMetadataTable[];
+export type TDtableMetadataColumns = readonly IDtableMetadataColumn[];
+export type TDtableViewColumns = readonly TDtableViewColumn[];
 
 // ----------------------------------
 //         api
