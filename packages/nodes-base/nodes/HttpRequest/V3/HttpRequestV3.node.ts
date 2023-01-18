@@ -1123,6 +1123,8 @@ export class HttpRequestV3 implements INodeType {
 						}
 
 						requestOptions.body = jsonParse(jsonBodyParameter);
+					} else {
+						requestOptions.body = jsonBodyParameter;
 					}
 				} else if (specifyBody === 'string') {
 					//form urlencoded
