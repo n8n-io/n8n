@@ -27,8 +27,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	const word = context.matchBefore(combinedRegex);
 
-	console.log('word', word);
-
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
@@ -82,7 +80,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	let userInputTail = '';
 
-	const delimiter = word.text.includes('json[') ? 'json[' : '.';
+	const delimiter = word.text.includes('.json[') ? 'json[' : '.';
 
 	userInputTail = word.text.split(delimiter).pop() as string;
 
