@@ -170,12 +170,23 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				return;
 			}
 
-			after((result) => {
-				const credentialsOfType = [
-					...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
-				];
-				const current = this.selected[credentialType];
+			after(async (result) => {
+				// await this.$nextTick();
 				if (listeningForActions.includes(name)) {
+					const current = this.selected[credentialType];
+					let credentialsOfType: ICredentialsResponse[] = [];
+					if (this.showAll) {
+						const activeNode = this.ndvStore.activeNode;
+						if (activeNode) {
+							credentialsOfType = [
+								...(this.credentialsStore.allUsableCredentialsForNode(activeNode) || []),
+							];
+						}
+					} else {
+						credentialsOfType = [
+							...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+						];
+					}
 					switch (name) {
 						// new credential was added
 						case 'createNewCredential':
@@ -296,7 +307,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 	methods: {
 		getCredentialOptions(type: string): CredentialDropdownOption[] {
 			if (!this.showAll) {
-				return this.credentialsStore.allUsableCredentialsByType[type].map((option) => ({
+				return this.credentialsStore.allUsableCredentialsByType[type].map((option: any) => ({
 					...option,
 					typeDisplayName: this.credentialsStore.getCredentialTypeByName(type).displayName,
 				}));
@@ -312,7 +323,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					let credTypes: CredentialDropdownOption[] = [];
 					activeNodeType.credentials.forEach((cred) => {
 						credTypes = credTypes.concat(
-							this.credentialsStore.allUsableCredentialsByType[cred.name].map((option) => ({
+							this.credentialsStore.allUsableCredentialsByType[cred.name].map((option: any) => ({
 								...option,
 								typeDisplayName: this.credentialsStore.getCredentialTypeByName(cred.name)
 									.displayName,
