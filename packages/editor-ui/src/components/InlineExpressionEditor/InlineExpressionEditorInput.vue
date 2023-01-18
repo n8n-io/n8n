@@ -22,7 +22,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
-import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
+// import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import { completionManager } from '@/mixins/completionManager';
 
 export default mixins(completionManager, expressionManager, workflowHelpers).extend({
@@ -94,13 +94,13 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 
 				const completion = selectedCompletion(this.editor.state);
 
-				if (completion) {
-					const previewSegments = this.toPreviewSegments(completion, this.editor.state);
+				// if (completion) {
+				// 	const previewSegments = this.toPreviewSegments(completion, this.editor.state);
 
-					completionPreviewEventBus.$emit('preview-completion', previewSegments);
+				// 	completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
-					return;
-				}
+				// 	return;
+				// }
 
 				if (!viewUpdate.docChanged) return;
 

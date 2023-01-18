@@ -195,31 +195,32 @@ export const expressionManager = mixins(workflowHelpers).extend({
 					return acc.push({ kind: 'plaintext', from, to, plaintext: text }), acc;
 				}
 
+				// eslint-disable-next-line prefer-const
 				let { resolved, error, fullError } = this.resolve(text, this.hoveringItem);
 
 				/**
 				 * If this is a preview of an uncalled function, call it and display it
 				 * with a hint `[if called:] [result]` if the call succeeds
 				 */
-				if (
-					isPreview &&
-					hasErrorCode(fullError) &&
-					fullError.cause.code === ERROR_CODES.UNCALLED_FUNCTION
-				) {
-					const textWithCall = text.replace(/\s{1}}}$/, '() }}'); // @TODO: Improve this replacement
-					const resultWithCall = this.resolve(textWithCall, this.hoveringItem);
+				// if (
+				// 	isPreview &&
+				// 	hasErrorCode(fullError) &&
+				// 	fullError.cause.code === ERROR_CODES.UNCALLED_FUNCTION
+				// ) {
+				// 	const textWithCall = text.replace(/\s{1}}}$/, '() }}'); // @TODO: Improve this replacement
+				// 	const resultWithCall = this.resolve(textWithCall, this.hoveringItem);
 
-					const hint = this.$locale.baseText('expressionEditor.previewHint');
+				// 	const hint = this.$locale.baseText('expressionEditor.previewHint');
 
-					if (!resultWithCall.error) {
-						resolved = [hint, resultWithCall.resolved].join(' ');
-						error = false;
-						fullError = null;
-					} else {
-						fullError = new Error(i18n.expressionEditor.previewUnavailable);
-						resolved = fullError.message;
-					}
-				}
+				// 	if (!resultWithCall.error) {
+				// 		resolved = [hint, resultWithCall.resolved].join(' ');
+				// 		error = false;
+				// 		fullError = null;
+				// 	} else {
+				// 		fullError = new Error(i18n.expressionEditor.previewUnavailable);
+				// 		resolved = fullError.message;
+				// 	}
+				// }
 
 				if (
 					this.isCursorAtCompletablePrefix &&

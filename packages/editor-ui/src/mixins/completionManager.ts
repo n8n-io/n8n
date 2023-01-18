@@ -7,7 +7,7 @@ import {
 	selectedCompletionIndex,
 } from '@codemirror/autocomplete';
 
-import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
+// import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import { expressionManager } from './expressionManager';
 
 import type { Extension } from '@codemirror/state';
@@ -55,34 +55,34 @@ export const completionManager = mixins(expressionManager).extend({
 						return false;
 					},
 				},
-				{
-					key: 'ArrowUp',
-					run: (view) => {
-						const completion = this.getCompletion('previous');
+				// {
+				// 	key: 'ArrowUp',
+				// 	run: (view) => {
+				// 		const completion = this.getCompletion('previous');
 
-						if (completion === null) return false;
+				// 		if (completion === null) return false;
 
-						const previewSegments = this.toPreviewSegments(completion, view.state);
+				// 		const previewSegments = this.toPreviewSegments(completion, view.state);
 
-						completionPreviewEventBus.$emit('preview-completion', previewSegments);
+				// 		completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
-						return false;
-					},
-				},
-				{
-					key: 'ArrowDown',
-					run: (view) => {
-						const completion = this.getCompletion('next');
+				// 		return false;
+				// 	},
+				// },
+				// {
+				// 	key: 'ArrowDown',
+				// 	run: (view) => {
+				// 		const completion = this.getCompletion('next');
 
-						if (completion === null) return false;
+				// 		if (completion === null) return false;
 
-						const previewSegments = this.toPreviewSegments(completion, view.state);
+				// 		const previewSegments = this.toPreviewSegments(completion, view.state);
 
-						completionPreviewEventBus.$emit('preview-completion', previewSegments);
+				// 		completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
-						return false;
-					},
-				},
+				// 		return false;
+				// 	},
+				// },
 			]);
 		},
 	},

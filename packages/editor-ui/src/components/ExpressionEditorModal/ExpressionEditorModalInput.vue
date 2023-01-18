@@ -17,7 +17,7 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 import { forceParse } from '@/utils/forceParse';
 import { autocompletion, selectedCompletion } from '@codemirror/autocomplete';
-import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
+// import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import type { IVariableItemSelected } from '@/Interface';
 
 export default mixins(expressionManager, completionManager, workflowHelpers).extend({
@@ -54,15 +54,15 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor) return;
 
-				const completion = selectedCompletion(this.editor.state);
+				// const completion = selectedCompletion(this.editor.state);
 
-				if (completion) {
-					const previewSegments = this.toPreviewSegments(completion, this.editor.state);
+				// if (completion) {
+				// 	const previewSegments = this.toPreviewSegments(completion, this.editor.state);
 
-					completionPreviewEventBus.$emit('preview-completion', previewSegments);
+				// 	completionPreviewEventBus.$emit('preview-completion', previewSegments);
 
-					return;
-				}
+				// 	return;
+				// }
 
 				if (!viewUpdate.docChanged) return;
 

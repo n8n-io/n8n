@@ -12,7 +12,7 @@ const cssClasses = {
 	invalidResolvable: 'cm-invalid-resolvable',
 	brokenResolvable: 'cm-broken-resolvable',
 	plaintext: 'cm-plaintext',
-	previewHint: 'cm-preview-hint',
+	// previewHint: 'cm-preview-hint',
 };
 
 const resolvablesTheme = EditorView.theme({
@@ -24,15 +24,15 @@ const resolvablesTheme = EditorView.theme({
 		color: 'var(--color-invalid-resolvable-foreground)',
 		backgroundColor: 'var(--color-invalid-resolvable-background)',
 	},
-	['.' + cssClasses.previewHint]: {
-		fontWeight: 'bold',
-	},
+	// ['.' + cssClasses.previewHint]: {
+	// 	fontWeight: 'bold',
+	// },
 });
 
 const marks = {
 	valid: Decoration.mark({ class: cssClasses.validResolvable }),
 	invalid: Decoration.mark({ class: cssClasses.invalidResolvable }),
-	previewHint: Decoration.mark({ class: cssClasses.previewHint }),
+	// previewHint: Decoration.mark({ class: cssClasses.previewHint }),
 };
 
 const coloringStateEffects = {
@@ -76,7 +76,7 @@ const coloringStateField = StateField.define<DecorationSet>({
 
 				const payload = [decoration.range(txEffect.value.from, txEffect.value.to)];
 
-				stylePreviewHint(transaction, txEffect, payload);
+				// stylePreviewHint(transaction, txEffect, payload);
 
 				if (txEffect.value.from === 0 && txEffect.value.to === 0) continue;
 
@@ -88,26 +88,26 @@ const coloringStateField = StateField.define<DecorationSet>({
 	},
 });
 
-function stylePreviewHint(
-	transaction: Transaction,
-	txEffect: StateEffect<ColoringStateEffect.Value>,
-	payload: Array<Range<Decoration>>,
-) {
-	if (txEffect.value.error) return;
+// function stylePreviewHint(
+// 	transaction: Transaction,
+// 	txEffect: StateEffect<ColoringStateEffect.Value>,
+// 	payload: Array<Range<Decoration>>,
+// ) {
+// 	if (txEffect.value.error) return;
 
-	const validResolvableText = transaction.state.doc
-		.slice(txEffect.value.from, txEffect.value.to)
-		.toString();
+// 	const validResolvableText = transaction.state.doc
+// 		.slice(txEffect.value.from, txEffect.value.to)
+// 		.toString();
 
-	if (validResolvableText.startsWith(i18n.expressionEditor.previewHint)) {
-		payload.push(
-			marks.previewHint.range(
-				txEffect.value.from,
-				txEffect.value.from + i18n.expressionEditor.previewHint.length,
-			),
-		);
-	}
-}
+// 	if (validResolvableText.startsWith(i18n.expressionEditor.previewHint)) {
+// 		payload.push(
+// 			marks.previewHint.range(
+// 				txEffect.value.from,
+// 				txEffect.value.from + i18n.expressionEditor.previewHint.length,
+// 			),
+// 		);
+// 	}
+// }
 
 function addColor(view: EditorView, segments: Array<Resolvable | Resolved>) {
 	const effects: Array<StateEffect<unknown>> = segments.map(({ from, to, kind, error }) =>
