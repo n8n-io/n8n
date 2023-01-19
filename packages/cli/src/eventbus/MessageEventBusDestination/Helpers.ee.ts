@@ -1,17 +1,17 @@
 /* eslint-disable import/no-cycle */
+import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
+import { promClient } from '@/metrics';
 import {
 	EventMessageTypeNames,
 	LoggerProxy,
 	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
-import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
+import config from '../../config';
+import type { EventMessageTypes } from '../EventMessageClasses';
 import type { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry.ee';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog.ee';
 import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationWebhook.ee';
-import type { EventMessageTypes } from '../EventMessageClasses';
-import promClient from 'prom-client';
-import config from '../../config';
 
 export function messageEventBusDestinationFromDb(
 	dbData: EventDestinations,
@@ -53,26 +53,28 @@ function getLabelsForEvent(event: EventMessageTypes): Record<string, string> {
 			if (event.eventName.startsWith('n8n.audit.user.credentials')) {
 				return config.getEnv('endpoints.metrics.includeCredentialTypeLabel')
 					? {
-							credentialType: getLabelValueForCredential(event.payload.credentialType ?? 'unknown'),
+							credential_type: getLabelValueForCredential(
+								event.payload.credentialType ?? 'unknown',
+							),
 					  }
 					: {};
 			}
 
 			if (event.eventName.startsWith('n8n.audit.workflow')) {
 				return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
-					? { workflowId: event.payload.workflowId?.toString() ?? 'unknown' }
+					? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 					: {};
 			}
 			break;
 
 		case EventMessageTypeNames.node:
 			return config.getEnv('endpoints.metrics.includeNodeTypeLabel')
-				? { nodeType: getLabelValueForNode(event.payload.nodeType ?? 'unknown') }
+				? { node_type: getLabelValueForNode(event.payload.nodeType ?? 'unknown') }
 				: {};
 
 		case EventMessageTypeNames.workflow:
 			return config.getEnv('endpoints.metrics.includeWorkflowIdLabel')
-				? { workflowId: event.payload.workflowId?.toString() ?? 'unknown' }
+				? { workflow_id: event.payload.workflowId?.toString() ?? 'unknown' }
 				: {};
 	}
 
@@ -84,14 +86,14 @@ function getCounterSingletonForEvent(event: EventMessageTypes) {
 		const metricName = getMetricNameForEvent(event);
 
 		if (!promClient.validateMetricName(metricName)) {
-			LoggerProxy.debug(`Invalid metric name: ${metricName}`);
+			LoggerProxy.debug(`Invalid metric name: ${metricName}. Ignoring it!`);
 			prometheusCounters[event.eventName] = null;
 			return null;
 		}
 
 		const counter = new promClient.Counter({
 			name: metricName,
-			help: `n8n event ${event.eventName}`,
+			help: `Total number of ${event.eventName} events.`,
 			labelNames: Object.keys(getLabelsForEvent(event)),
 		});
 

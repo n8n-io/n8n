@@ -160,6 +160,7 @@ importers:
       dotenv: ^8.0.0
       express: ^4.16.4
       express-openapi-validator: ^4.13.6
+      express-prom-bundle: ^6.6.0
       fast-glob: ^3.2.5
       flatted: ^3.2.4
       google-timezones-json: ^1.0.2
@@ -252,6 +253,7 @@ importers:
       dotenv: 8.6.0
       express: 4.18.2
       express-openapi-validator: 4.13.8
+      express-prom-bundle: 6.6.0_prom-client@13.2.0
       fast-glob: 3.2.12
       flatted: 3.2.7
       google-timezones-json: 1.0.2
@@ -11561,6 +11563,17 @@ packages:
       path-to-regexp: 6.2.1
     dev: false
 
+  /express-prom-bundle/6.6.0_prom-client@13.2.0:
+    resolution: {integrity: sha512-tZh2P2p5a8/yxQ5VbRav011Poa4R0mHqdFwn9Swe/obXDe5F0jY9wtRAfNYnqk4LXY7akyvR/nrvAHxQPWUjsQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      prom-client: '>=12.0.0'
+    dependencies:
+      on-finished: 2.4.1
+      prom-client: 13.2.0
+      url-value-parser: 2.2.0
+    dev: false
+
   /express/4.18.2:
     resolution: {integrity: sha512-5/PsL6iGPdfQ/lKM1UuielYgv3BUoJfz1aUwU9vHZ+J7gyvwdQXFEBIEIaxeGf0GIcreATNyBExtalisDbuMqQ==}
     engines: {node: '>= 0.10.0'}
@@ -21273,6 +21286,11 @@ packages:
     dependencies:
       querystringify: 2.2.0
       requires-port: 1.0.0
+
+  /url-value-parser/2.2.0:
+    resolution: {integrity: sha512-yIQdxJpgkPamPPAPuGdS7Q548rLhny42tg8d4vyTNzFqvOnwqrgHXvgehT09U7fwrzxi3RxCiXjoNUNnNOlQ8A==}
+    engines: {node: '>=6.0.0'}
+    dev: false
 
   /url/0.10.3:
     resolution: {integrity: sha512-hzSUW2q06EqL1gKM/a+obYHLIO6ct2hwPuviqTTOcfFVc61UbfJ2Q32+uGL/HCPxKqrdGB5QUwIe7UqlDgwsOQ==}
