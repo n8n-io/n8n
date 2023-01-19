@@ -11,14 +11,6 @@ import { objectExtensions } from './ObjectExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
-function isBlank(value: unknown) {
-	return value === null || value === undefined || !value;
-}
-
-function isPresent(value: unknown) {
-	return !isBlank(value);
-}
-
 const EXTENSION_OBJECTS = [
 	arrayExtensions,
 	dateExtensions,
@@ -27,12 +19,6 @@ const EXTENSION_OBJECTS = [
 	stringExtensions,
 ];
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-const genericExtensions: Record<string, Function> = {
-	isBlank,
-	isPresent,
-};
-
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
 		...Object.keys(stringExtensions.functions),
@@ -40,7 +26,6 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(dateExtensions.functions),
 		...Object.keys(arrayExtensions.functions),
 		...Object.keys(objectExtensions.functions),
-		...Object.keys(genericExtensions),
 		'$if',
 	]),
 );
@@ -235,9 +220,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 			// eslint-disable-next-line
 			return inputAny[functionName](...args);
 		}
-
-		// Use a generic version if available
-		foundFunction = genericExtensions[functionName];
 	}
 
 	// No type specific or generic function found. Check to see if
