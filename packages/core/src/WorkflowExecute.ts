@@ -1237,7 +1237,7 @@ export class WorkflowExecute {
 						this.runExecutionData,
 					]);
 
-					let nodeNames: string[] = Object.keys(
+					let waitingNodes: string[] = Object.keys(
 						this.runExecutionData.executionData!.waitingExecution,
 					);
 
@@ -1245,14 +1245,14 @@ export class WorkflowExecute {
 					//       look what implications will be
 					if (
 						this.runExecutionData.executionData!.nodeExecutionStack.length === 0 &&
-						nodeNames.length
+						waitingNodes.length
 					) {
 						// There are no more nodes in the execution stack. Check if there are
 						// waiting nodes that do not require data on all inputs and execute them,
 						// one by one.
 
-						for (let i = 0; i < nodeNames.length; i++) {
-							const nodeName = nodeNames[i];
+						for (let i = 0; i < waitingNodes.length; i++) {
+							const nodeName = waitingNodes[i];
 
 							const checkNode = workflow.getNode(nodeName);
 							if (!checkNode) {
@@ -1285,8 +1285,8 @@ export class WorkflowExecute {
 
 							// Check if input nodes (of same run) got already executed
 							// eslint-disable-next-line @typescript-eslint/no-loop-func
-							const found = parentNodes.some((value) => nodeNames.includes(value));
-							if (found) {
+							const parentIsWaiting = parentNodes.some((value) => waitingNodes.includes(value));
+							if (parentIsWaiting) {
 								// Execute node later as one of its dependencies is still outstanding
 								continue;
 							}
@@ -1337,7 +1337,7 @@ export class WorkflowExecute {
 								break;
 							} else {
 								// Node to add did not get found, rather an empty one removed so continue with search
-								nodeNames = Object.keys(this.runExecutionData.executionData!.waitingExecution);
+								waitingNodes = Object.keys(this.runExecutionData.executionData!.waitingExecution);
 								// Set counter to start again from the beginning. Set it to -1 as it auto increments
 								// after run. So only like that will we end up again ot 0.
 								i = -1;
