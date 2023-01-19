@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 // import { createHash } from 'crypto';
+import { titleCase } from 'title-case';
 import * as ExpressionError from '../ExpressionError';
 import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
@@ -189,10 +190,6 @@ function replaceSpecialChars(value: string) {
 	return transliterate(value, { unknown: '?' });
 }
 
-function toTitleCase(value: string) {
-	return value.replace(/\w\S*/g, (v) => v.charAt(0).toLocaleUpperCase() + v.slice(1));
-}
-
 function toSentenceCase(value: string) {
 	let current = value.slice();
 	let buffer = '';
@@ -270,7 +267,7 @@ export const stringExtensions: ExtensionMap = {
 		toWholeNumber: toInt,
 		toSentenceCase,
 		toSnakeCase,
-		toTitleCase,
+		toTitleCase: titleCase,
 		urlDecode,
 		urlEncode,
 		quote,

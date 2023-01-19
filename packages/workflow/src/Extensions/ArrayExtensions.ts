@@ -199,8 +199,9 @@ export function average(value: unknown[]) {
 }
 
 function compact(value: unknown[]): unknown[] {
+	console.log('value[4]', value[4]);
 	return value
-		.filter((v) => v !== null && v !== undefined)
+		.filter((v) => v !== null && v !== undefined && v !== 'nil' && v !== '')
 		.map((v) => {
 			if (typeof v === 'object' && v !== null) {
 				return oCompact(v);

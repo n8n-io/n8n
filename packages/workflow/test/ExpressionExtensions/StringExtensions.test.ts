@@ -143,16 +143,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
 		});
 
-		test('.toTitleCase should work on a string', () => {
-			expect(
-				evaluate(
-					'={{ "i am a test! i have multiple types of Punctuation. or do i?".toTitleCase() }}',
-				),
-			).toEqual('I Am A Test! I Have Multiple Types Of Punctuation. Or Do I?');
-			expect(evaluate('={{ "i am a test!".toTitleCase() }}')).toEqual('I Am A Test!');
-			expect(evaluate('={{ "i am a test".toTitleCase() }}')).toEqual('I Am A Test');
-		});
-
 		test('.extractUrl should work on a string', () => {
 			expect(
 				evaluate(

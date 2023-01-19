@@ -905,6 +905,7 @@ importers:
       lodash.set: ^4.3.2
       luxon: ~2.3.0
       recast: ^0.21.5
+      title-case: ^3.0.3
       transliteration: ^2.3.5
       xml2js: ^0.4.23
     dependencies:
@@ -918,6 +919,7 @@ importers:
       lodash.set: 4.3.2
       luxon: 2.3.2
       recast: 0.21.5
+      title-case: 3.0.3
       transliteration: 2.3.5
       xml2js: 0.4.23
     devDependencies:
@@ -20433,7 +20435,6 @@ packages:
     resolution: {integrity: sha512-e1zGYRvbffpcHIrnuqT0Dh+gEJtDaxDSoG4JAIpq4oDFyooziLBIiYQv0GBT4FUAnUop5uZ1hiIAj7oAF6sOCA==}
     dependencies:
       tslib: 2.4.0
-    dev: true
 
   /tlds/1.231.0:
     resolution: {integrity: sha512-L7UQwueHSkGxZHQBXHVmXW64oi+uqNtzFt2x6Ssk7NVnpIbw16CRs4eb/jmKOZ9t2JnqZ/b3Cfvo97lnXqKrhw==}
