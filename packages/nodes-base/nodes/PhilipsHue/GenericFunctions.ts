@@ -21,7 +21,7 @@ export async function philipsHueApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.meethue.com/route${resource}`,
+		uri: uri || `https://api.meethue.com/route${resource}`,
 		json: true,
 	};
 	try {

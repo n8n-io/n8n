@@ -30,7 +30,7 @@ export async function gumroadApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.gumroad.com/v2${resource}`,
+		uri: uri || `https://api.gumroad.com/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

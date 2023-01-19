@@ -25,7 +25,7 @@ export async function deepLApiRequest(
 		method,
 		form: body,
 		qs,
-		uri: uri ?? `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
+		uri: uri || `${credentials.apiPlan === 'pro' ? proApiEndpoint : freeApiEndpoint}${resource}`,
 		json: true,
 	};
 

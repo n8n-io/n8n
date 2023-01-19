@@ -32,7 +32,7 @@ export async function travisciApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.travis-ci.com${resource}`,
+		uri: uri || `https://api.travis-ci.com${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

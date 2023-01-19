@@ -23,7 +23,7 @@ export async function convertKitApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.convertkit.com/v3${endpoint}`,
+		uri: uri || `https://api.convertkit.com/v3${endpoint}`,
 		json: true,
 	};
 

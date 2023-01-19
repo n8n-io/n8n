@@ -29,7 +29,7 @@ export async function demioApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://my.demio.com/api/v1${resource}`,
+			uri: uri || `https://my.demio.com/api/v1${resource}`,
 			json: true,
 		};
 
