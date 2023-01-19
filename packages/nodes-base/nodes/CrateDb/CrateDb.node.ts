@@ -312,7 +312,7 @@ export class CrateDb implements INodeType {
 			// ----------------------------------
 
 			const additionalFields = this.getNodeParameter('additionalFields', 0);
-			const mode = additionalFields.mode ?? ('multiple' as string);
+			const mode = additionalFields.mode || ('multiple' as string);
 
 			if (mode === 'independently') {
 				const updateItems = await pgUpdate(

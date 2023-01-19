@@ -158,7 +158,7 @@ export class NotionTrigger implements INodeType {
 		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
-		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];
+		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) || [];
 
 		const sortProperty = event === 'pageAddedToDatabase' ? 'created_time' : 'last_edited_time';
 

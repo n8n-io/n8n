@@ -1369,7 +1369,7 @@ export class Freshservice implements INodeType {
 						requesterGroup: 'requester_group',
 						software: 'application',
 					};
-					responseData = responseData[special[resource]] ?? responseData[resource];
+					responseData = responseData[special[resource]] || responseData[resource];
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

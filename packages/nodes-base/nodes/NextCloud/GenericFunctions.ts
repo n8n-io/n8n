@@ -31,7 +31,7 @@ export async function nextCloudApiRequest(
 		headers,
 		method,
 		body,
-		qs: query ?? {},
+		qs: query || {},
 		uri: '',
 		json: false,
 	};

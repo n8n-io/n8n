@@ -233,7 +233,7 @@ export async function handleBinaryData(
 	const endpoint = `/v3/company/${companyId}/${resource}/${resourceId}/pdf`;
 	const data = await quickBooksApiRequest.call(this, 'GET', endpoint, {}, {}, { encoding: null });
 
-	items[i].binary = items[i].binary ?? {};
+	items[i].binary = items[i].binary || {};
 	items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(data);
 	items[i].binary![binaryProperty].fileName = fileName;
 	items[i].binary![binaryProperty].fileExtension = 'pdf';

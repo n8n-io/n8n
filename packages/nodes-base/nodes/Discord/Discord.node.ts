@@ -240,7 +240,7 @@ export class Discord implements INodeType {
 					// remaining requests 0
 					// https://discord.com/developers/docs/topics/rate-limits
 					if (!+remainingRatelimit) {
-						await sleep(resetAfter ?? 1000);
+						await sleep(resetAfter || 1000);
 					}
 
 					break;

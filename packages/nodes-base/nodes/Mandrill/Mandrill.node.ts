@@ -855,7 +855,7 @@ export class Mandrill implements INodeType {
 								attachmentsBinary = _.map(attachmentsUi.attachmentsBinary, (o: IDataObject) => {
 									if (items[i].binary!.hasOwnProperty(o.property as string)) {
 										const aux: IDataObject = {};
-										aux.name = items[i].binary![o.property as string].fileName ?? 'unknown';
+										aux.name = items[i].binary![o.property as string].fileName || 'unknown';
 										aux.content = items[i].binary![o.property as string].data;
 										aux.type = items[i].binary![o.property as string].mimeType;
 										return aux;

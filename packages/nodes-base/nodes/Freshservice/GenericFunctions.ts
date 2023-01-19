@@ -206,7 +206,7 @@ export function validateUpdateFields(
 		throw new NodeOperationError(
 			this.getNode(),
 			`Please enter at least one field to update for the ${
-				twoWordResources[resource] ?? resource
+				twoWordResources[resource] || resource
 			}.`,
 		);
 	}

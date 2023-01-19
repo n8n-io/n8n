@@ -359,7 +359,7 @@ export class FreshworksCrm implements INodeType {
 							{ type: string; contactId: string; userId: string },
 						];
 
-						const timezone = additionalFields.time_zone ?? defaultTimezone;
+						const timezone = additionalFields.time_zone || defaultTimezone;
 
 						let allDay = false;
 
@@ -453,7 +453,7 @@ export class FreshworksCrm implements INodeType {
 						const body = {} as IDataObject;
 						const { from_date, end_date, ...rest } = updateFields;
 
-						const timezone = rest.time_zone ?? defaultTimezone;
+						const timezone = rest.time_zone || defaultTimezone;
 
 						if (from_date) {
 							body.from_date = tz(from_date, timezone).format();

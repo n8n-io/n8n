@@ -254,7 +254,7 @@ export class Wise implements INodeType {
 							});
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-							items[i].binary = items[i].binary ?? {};
+							items[i].binary = items[i].binary || {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
 								data,
 								this.getNodeParameter('fileName', i) as string,
@@ -482,7 +482,7 @@ export class Wise implements INodeType {
 							);
 							const binaryProperty = this.getNodeParameter('binaryProperty', i);
 
-							items[i].binary = items[i].binary ?? {};
+							items[i].binary = items[i].binary || {};
 							items[i].binary![binaryProperty] = await this.helpers.prepareBinaryData(
 								data,
 								this.getNodeParameter('fileName', i) as string,

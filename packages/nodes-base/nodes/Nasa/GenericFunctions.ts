@@ -19,7 +19,7 @@ export async function nasaApiRequest(
 	const options: OptionsWithUri = {
 		method,
 		qs,
-		uri: uri ?? `https://api.nasa.gov${endpoint}`,
+		uri: uri || `https://api.nasa.gov${endpoint}`,
 		json: true,
 	};
 

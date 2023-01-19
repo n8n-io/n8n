@@ -7,7 +7,7 @@ const data = [
 		id: '23423532',
 		name: 'Jay Gatsby',
 		email: 'gatsby@west-egg.com',
-		notes: 'Keeps asking about a green light??',
+		notes: 'Keeps asking about a green light||',
 		country: 'US',
 		created: '1925-04-10',
 	},

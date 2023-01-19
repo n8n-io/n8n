@@ -23,7 +23,7 @@ export async function homeAssistantApiRequest(
 		qs,
 		body,
 		uri:
-			uri ??
+			uri ||
 			`${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${
 				credentials.port
 			}/api${resource}`,
@@ -79,7 +79,7 @@ export async function getHomeAssistantServices(
 		for (const domainService of domainServices) {
 			for (const [serviceID, value] of Object.entries(domainService.services)) {
 				const serviceProperties = value as IDataObject;
-				const serviceName = serviceProperties.description ?? serviceID;
+				const serviceName = serviceProperties.description || serviceID;
 				returnData.push({
 					name: serviceName as string,
 					value: serviceID,

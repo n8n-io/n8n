@@ -292,8 +292,8 @@ export class ElasticSecurity implements INodeType {
 						};
 						const sortOptions = this.getNodeParameter('sortOptions', i) as IDataObject;
 
-						qs.sortField = sortOptions.sortField ?? 'createdAt';
-						qs.sortOrder = sortOptions.sortOrder ?? 'asc';
+						qs.sortField = sortOptions.sortField || 'createdAt';
+						qs.sortOrder = sortOptions.sortOrder || 'asc';
 
 						if (status) {
 							qs.status = status;
@@ -447,7 +447,7 @@ export class ElasticSecurity implements INodeType {
 						const body = {
 							comment: this.getNodeParameter('comment', i),
 							type: 'user',
-							owner: additionalFields.owner ?? 'securitySolution',
+							owner: additionalFields.owner || 'securitySolution',
 						} as IDataObject;
 
 						const caseId = this.getNodeParameter('caseId', i);

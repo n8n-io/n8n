@@ -66,7 +66,7 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
 	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
-		acc[cur.field] = acc[cur.field] ?? [];
+		acc[cur.field] = acc[cur.field] || [];
 		const values = isNaN(Number(cur.values)) ? cur.values : Number(cur.values);
 		acc[cur.field].push(values);
 		return acc;

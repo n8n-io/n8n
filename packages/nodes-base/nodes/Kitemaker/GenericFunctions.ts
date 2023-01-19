@@ -71,6 +71,6 @@ export function createLoadOptions(
 	return resources.map((option) => {
 		if (option.username) return { name: option.username, value: option.id };
 		if (option.title) return { name: option.title, value: option.id };
-		return { name: option.name ?? 'Unnamed', value: option.id };
+		return { name: option.name || 'Unnamed', value: option.id };
 	});
 }

@@ -72,7 +72,7 @@ export async function handleListing(
 	qs.perPage = 25; // max
 	qs.page = 1;
 
-	const returnAll = options?.returnAll ?? (this.getNodeParameter('returnAll', 0, false) as boolean);
+	const returnAll = options?.returnAll || (this.getNodeParameter('returnAll', 0, false) as boolean);
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	const itemsKey = toItemsKey(endpoint);
@@ -100,7 +100,7 @@ export async function handleListing(
 // ----------------------------------------
 
 export const extractId = (response: LinksFieldContainer) => {
-	return response._links.self.href.split('/').pop() ?? 'No ID';
+	return response._links.self.href.split('/').pop() || 'No ID';
 };
 
 export const makeOsdiLink = (personId: string) => {
@@ -279,7 +279,7 @@ const simplifyPersonResponse = (response: PersonResponse) => {
 		...{
 			postal_address: {
 				...(postalAddress && omit(postalAddress[0], 'address_lines')),
-				address_lines: postalAddress[0].address_lines ?? '',
+				address_lines: postalAddress[0].address_lines || '',
 			},
 		},
 		language_spoken: response.languages_spoken[0],

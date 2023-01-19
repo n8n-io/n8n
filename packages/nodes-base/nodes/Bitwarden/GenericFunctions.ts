@@ -138,7 +138,7 @@ export async function loadResource(this: ILoadOptionsFunctions, resource: string
 
 	data.forEach(({ id, name, externalId }: { id: string; name: string; externalId?: string }) => {
 		returnData.push({
-			name: externalId ?? name ?? id,
+			name: externalId || name || id,
 			value: id,
 		});
 	});

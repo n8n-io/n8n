@@ -112,7 +112,7 @@ export namespace SendInBlueNode {
 						itemIndex,
 						mimeType,
 						fileExtension!,
-						fileName ?? item.binary!.data.fileName!,
+						fileName || item.binary!.data.fileName!,
 					);
 
 					attachment.push({ content, name });
