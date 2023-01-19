@@ -25,7 +25,7 @@ export async function googleApiRequest(
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
-		uri: uri ?? `https://firestore.googleapis.com/v1/projects${resource}`,
+		uri: uri || `https://firestore.googleapis.com/v1/projects${resource}`,
 		json: true,
 	};
 	try {

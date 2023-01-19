@@ -29,7 +29,7 @@ export async function keapApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.infusionsoft.com/crm/rest/v1${resource}`,
+		uri: uri || `https://api.infusionsoft.com/crm/rest/v1${resource}`,
 		json: true,
 	};
 	try {

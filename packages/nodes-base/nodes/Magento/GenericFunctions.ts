@@ -28,7 +28,7 @@ export async function magentoApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `${credentials.host}${resource}`,
+		uri: uri || `${credentials.host}${resource}`,
 		json: true,
 	};
 

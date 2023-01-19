@@ -23,7 +23,7 @@ export async function hunterApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.hunter.io/v2${resource}`,
+		uri: uri || `https://api.hunter.io/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

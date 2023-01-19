@@ -49,7 +49,7 @@ export async function zohoApiRequest(
 		},
 		method,
 		qs,
-		uri: uri ?? `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
+		uri: uri || `${oauthTokenData.api_domain}/crm/v2${endpoint}`,
 		json: true,
 	};
 

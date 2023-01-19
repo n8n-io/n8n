@@ -49,7 +49,7 @@ export async function apiRequest(
 		json: true,
 	};
 
-	query = query ?? {};
+	query = query || {};
 
 	try {
 		if (authenticationMethod === 'accessToken') {

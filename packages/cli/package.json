@@ -136,6 +136,7 @@
     "dotenv": "^8.0.0",
     "express": "^4.16.4",
     "express-openapi-validator": "^4.13.6",
+    "express-prom-bundle": "^6.6.0",
     "fast-glob": "^3.2.5",
     "flatted": "^3.2.4",
     "google-timezones-json": "^1.0.2",
