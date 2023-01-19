@@ -54,18 +54,6 @@ function encrypt(value: string, extraArgs?: unknown): string {
 	// return createHash(format).update(value.toString()).digest('hex');
 }
 
-function getOnlyFirstCharacters(value: string, extraArgs: number[]): string {
-	const [end] = extraArgs;
-
-	if (typeof end !== 'number') {
-		throw new ExpressionError.ExpressionExtensionError(
-			'getOnlyFirstCharacters() requires a argument',
-		);
-	}
-
-	return value.slice(0, end);
-}
-
 function isEmpty(value: string): boolean {
 	return value === '';
 }
@@ -118,10 +106,6 @@ function removeMarkdown(value: string): string {
 		return value;
 	}
 	return output;
-}
-
-function sayHi(value: string) {
-	return `hi ${value}`;
 }
 
 function stripTags(value: string): string {
@@ -256,9 +240,7 @@ export const stringExtensions: ExtensionMap = {
 	functions: {
 		encrypt,
 		hash: encrypt,
-		getOnlyFirstCharacters,
 		removeMarkdown,
-		sayHi,
 		stripTags,
 		toDate,
 		toDecimalNumber: toFloat,

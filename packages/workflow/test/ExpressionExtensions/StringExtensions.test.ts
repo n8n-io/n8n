@@ -16,28 +16,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
-		test('.getOnlyFirstCharacters() should work correctly on a string', () => {
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(5)}}')).toEqual('myNew');
-
-			expect(evaluate('={{"myNewField".getOnlyFirstCharacters(10)}}')).toEqual('myNewField');
-
-			expect(
-				evaluate('={{"myNewField".getOnlyFirstCharacters(5).length >= "myNewField".length}}'),
-			).toEqual(false);
-
-			expect(evaluate('={{DateTime.now().toLocaleString().getOnlyFirstCharacters(2)}}')).toEqual(
-				stringExtensions.functions.getOnlyFirstCharacters(
-					// @ts-ignore
-					dateExtensions.functions.toLocaleString(new Date(), []),
-					[2],
-				),
-			);
-		});
-
-		test('.sayHi() should work correctly on a string', () => {
-			expect(evaluate('={{ "abc".sayHi() }}')).toEqual('hi abc');
-		});
-
 		test('.encrypt() should work correctly on a string', () => {
 			expect(evaluate('={{ "12345".encrypt("sha256") }}')).toEqual(
 				stringExtensions.functions.encrypt('12345', ['sha256']),
