@@ -8,8 +8,8 @@ import { evaluate } from './Helpers';
 
 describe('Expression Extension Transforms', () => {
 	describe('extend() transform', () => {
-		test('Basic transform with .isBlank', () => {
-			expect(extendTransform('"".isBlank()')!.code).toEqual('extend("", "isBlank", [])');
+		test('Basic transform with .isEmpty', () => {
+			expect(extendTransform('"".isEmpty()')!.code).toEqual('extend("", "isEmpty", [])');
 		});
 
 		test('Chained transform with .sayHi.getOnlyFirstCharacters', () => {

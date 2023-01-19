@@ -7,12 +7,6 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Number Data Transformation Functions', () => {
-		test('.isPresent() should work correctly on a number', () => {
-			expect(evaluate('={{ Number(100).isPresent() }}')).toEqual(
-				numberExtensions.functions.isPresent(100),
-			);
-		});
-
 		test('.format() should work correctly on a number', () => {
 			expect(evaluate('={{ Number(100).format() }}')).toEqual(
 				numberExtensions.functions.format(100, []),

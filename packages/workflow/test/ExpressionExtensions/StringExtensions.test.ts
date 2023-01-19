@@ -8,12 +8,12 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('String Data Transformation Functions', () => {
-		test('.isBlank() should work correctly on a string that is not empty', () => {
-			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(false);
+		test('.isEmpty() should work correctly on a string that is not empty', () => {
+			expect(evaluate('={{"NotBlank".isEmpty()}}')).toEqual(false);
 		});
 
-		test('.isBlank() should work correctly on a string that is empty', () => {
-			expect(evaluate('={{"".isBlank()}}')).toEqual(true);
+		test('.isEmpty() should work correctly on a string that is empty', () => {
+			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
 		test('.getOnlyFirstCharacters() should work correctly on a string', () => {

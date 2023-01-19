@@ -65,12 +65,12 @@ function getOnlyFirstCharacters(value: string, extraArgs: number[]): string {
 	return value.slice(0, end);
 }
 
-function isBlank(value: string): boolean {
+function isEmpty(value: string): boolean {
 	return value === '';
 }
 
-function isPresent(value: string): boolean {
-	return !isBlank(value);
+function isNotEmpty(value: string): boolean {
+	return !isEmpty(value);
 }
 
 function length(value: string): number {
@@ -185,7 +185,7 @@ function isEmail(value: string) {
 	return EMAIL_REGEXP.test(value);
 }
 
-function stripSpecialChars(value: string) {
+function replaceSpecialChars(value: string) {
 	return transliterate(value, { unknown: '?' });
 }
 
@@ -274,15 +274,15 @@ export const stringExtensions: ExtensionMap = {
 		urlDecode,
 		urlEncode,
 		quote,
-		stripSpecialChars,
+		replaceSpecialChars,
 		length,
 		isDomain,
 		isEmail,
 		isNumeric,
 		isUrl,
 		isURL: isUrl,
-		isBlank,
-		isPresent,
+		isEmpty,
+		isNotEmpty,
 		extractEmail,
 		extractDomain,
 		extractUrl,

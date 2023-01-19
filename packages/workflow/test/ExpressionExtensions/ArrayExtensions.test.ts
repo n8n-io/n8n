@@ -10,8 +10,8 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ [1,2,3].randomItem() }}')).not.toBeUndefined();
 		});
 
-		test('.isPresent() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2,3, "imhere"].isPresent() }}')).toEqual(true);
+		test('.isNotEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [1,2,3, "imhere"].isNotEmpty() }}')).toEqual(true);
 		});
 
 		test('.pluck() should work correctly on an array', () => {
@@ -42,12 +42,12 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.isBlank() should work correctly on an array', () => {
-			expect(evaluate('={{ [].isBlank() }}')).toEqual(true);
+		test('.isEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [].isEmpty() }}')).toEqual(true);
 		});
 
-		test('.isBlank() should work correctly on an array', () => {
-			expect(evaluate('={{ [1].isBlank() }}')).toEqual(false);
+		test('.isEmpty() should work correctly on an array', () => {
+			expect(evaluate('={{ [1].isEmpty() }}')).toEqual(false);
 		});
 
 		test('.length() should work correctly on an array', () => {

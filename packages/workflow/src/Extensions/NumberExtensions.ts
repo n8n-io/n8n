@@ -13,14 +13,6 @@ function format(value: number, extraArgs: unknown[]): string {
 	return new Intl.NumberFormat(locales, config).format(value);
 }
 
-function isBlank(value: number): boolean {
-	return typeof value !== 'number';
-}
-
-function isPresent(value: number): boolean {
-	return !isBlank(value);
-}
-
 function isEven(value: number) {
 	return value % 2 === 0;
 }
@@ -49,7 +41,6 @@ export const numberExtensions: ExtensionMap = {
 		floor,
 		format,
 		round,
-		isPresent,
 		isEven,
 		isOdd,
 	},

@@ -87,11 +87,11 @@ function first(value: unknown[]): unknown {
 	return value[0];
 }
 
-function isBlank(value: unknown[]): boolean {
+function isEmpty(value: unknown[]): boolean {
 	return value.length === 0;
 }
 
-function isPresent(value: unknown[]): boolean {
+function isNotEmpty(value: unknown[]): boolean {
 	return value.length > 0;
 }
 
@@ -348,7 +348,7 @@ export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
 		count: length,
-		duplicates: unique,
+		removeDuplicates: unique,
 		first,
 		last,
 		length,
@@ -360,8 +360,8 @@ export const arrayExtensions: ExtensionMap = {
 		min,
 		max,
 		average,
-		isPresent,
-		isBlank,
+		isNotEmpty,
+		isEmpty,
 		compact,
 		smartJoin,
 		chunk,
