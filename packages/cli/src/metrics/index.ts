@@ -32,7 +32,7 @@ function setupN8nVersionMetric() {
 
 		versionGauge.set(
 			{
-				version: n8nVersion.version,
+				version: 'v' + n8nVersion.version,
 				major: n8nVersion.major,
 				minor: n8nVersion.minor,
 				patch: n8nVersion.patch,
