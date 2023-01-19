@@ -1090,7 +1090,7 @@ export interface IModalState {
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-	showAuthOptions?: boolean;
+	requiredCredentials?: boolean;
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';

@@ -73,7 +73,7 @@
 						:credentialPermissions="credentialPermissions"
 						:mode="mode"
 						:selectedCredential="selectedCredential"
-						:showCredentialOptions="showCredentialOptions"
+						:requiredCredentials="requiredCredentials"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
@@ -206,12 +206,12 @@ export default mixins(showMessage, nodeHelpers).extend({
 			isRetesting: false,
 			EnterpriseEditionFeature,
 			selectedCredential: '',
-			showCredentialOptions: false,
+			requiredCredentials: false, // Are credentials required or optional for the node
 		};
 	},
 	async mounted() {
-		this.showCredentialOptions =
-			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthOptions === true;
+		this.requiredCredentials =
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].requiredCredentials === true;
 
 		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: { name: string }) => {
 			if (this.mode === 'new') {

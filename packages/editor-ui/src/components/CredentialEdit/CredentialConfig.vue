@@ -245,7 +245,7 @@ export default mixins(restApi).extend({
 			type: String,
 			required: true,
 		},
-		showCredentialOptions: {
+		requiredCredentials: {
 			type: Boolean,
 		},
 	},
@@ -311,7 +311,7 @@ export default mixins(restApi).extend({
 		},
 		filteredNodeAuthOptions(): NodeAuthenticationOption[] {
 			return this.nodeAuthOptions.filter(
-				(option) => this.showCredentialOptions && this.shouldShowAuthOption(option),
+				(option) => this.requiredCredentials && this.shouldShowAuthOption(option),
 			);
 		},
 		appName(): string {
