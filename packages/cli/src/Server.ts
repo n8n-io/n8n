@@ -73,7 +73,6 @@ import jwt from 'jsonwebtoken';
 import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
-import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
@@ -154,6 +153,7 @@ import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
 import { initEvents } from './events';
 import { AbstractServer } from './AbstractServer';
+import { configureMetrics } from './metrics';
 
 const exec = promisify(callbackExec);
 
@@ -321,12 +321,7 @@ class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		const enableMetrics = config.getEnv('endpoints.metrics.enable');
-
-		if (enableMetrics) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
-			promClient.collectDefaultMetrics({ prefix });
-		}
+		configureMetrics(this.app);
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
@@ -585,17 +580,6 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
-
-		// ----------------------------------------
-		// Metrics
-		// ----------------------------------------
-		if (enableMetrics) {
-			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
-				const response = await promClient.register.metrics();
-				res.setHeader('Content-Type', promClient.register.contentType);
-				ResponseHelper.sendSuccessResponse(res, response, true, 200);
-			});
 		}
 
 		// ----------------------------------------

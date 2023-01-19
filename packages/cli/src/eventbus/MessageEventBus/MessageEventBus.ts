@@ -8,7 +8,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import {
 	messageEventBusDestinationFromDb,
-	sendPrometheusMetric,
+	incrementPrometheusMetric,
 } from '../MessageEventBusDestination/Helpers.ee';
 import uniqby from 'lodash.uniqby';
 import { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
@@ -208,7 +208,9 @@ class MessageEventBus extends EventEmitter {
 	}
 
 	private async emitMessage(msg: EventMessageTypes) {
-		await sendPrometheusMetric(msg);
+		if (config.getEnv('endpoints.metrics.enable')) {
+			await incrementPrometheusMetric(msg);
+		}
 
 		// generic emit for external modules to capture events
 		// this is for internal use ONLY and not for use with custom destinations!

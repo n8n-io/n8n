@@ -573,7 +573,7 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_METRICS',
-				doc: 'Enable metrics endpoint',
+				doc: 'Enable /metrics endpoint. Default: false',
 			},
 			prefix: {
 				format: String,
@@ -581,23 +581,53 @@ export const schema = {
 				env: 'N8N_METRICS_PREFIX',
 				doc: 'An optional prefix for metric names. Default: n8n_',
 			},
-			forEachWorkflowId: {
+			includeDefaultMetrics: {
 				format: Boolean,
-				default: false,
-				env: 'N8N_METRICS_FOREACH_WORKFLOW_ID',
-				doc: 'Whether to create a separate metric per workflow id. Default: false',
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
+				doc: 'Whether to expose default system and node.js metrics. Default: true',
 			},
-			forEachNodeType: {
+			includeWorkflowIdLabel: {
 				format: Boolean,
 				default: false,
-				env: 'N8N_METRICS_FOREACH_NODE_TYPE',
-				doc: 'Whether to create a separate metric per node type. Default: false',
+				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
+				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
 			},
-			forEachCredentialType: {
+			includeNodeTypeLabel: {
 				format: Boolean,
 				default: false,
-				env: 'N8N_METRICS_FOREACH_CREDENTIAL_TYPE',
-				doc: 'Whether to create a separate metric per credential type. Default: false',
+				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
+				doc: 'Whether to include a label for the node type on node metrics. Default: false',
+			},
+			includeCredentialTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
+				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
+			},
+			includeApiEndpoints: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
+				doc: 'Whether to expose metrics for API endpoints. Default: false',
+			},
+			includeApiPathLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
+				doc: 'Whether to include a label for the path of API invocations. Default: false',
+			},
+			includeApiMethodLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
+				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
+			},
+			includeApiStatusCodeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
+				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
 			},
 		},
 		rest: {
