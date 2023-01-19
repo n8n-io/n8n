@@ -15,7 +15,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	const numberRegex = /(\d+)\.?(\d*)\.(\w|\W)*/; // 123. or 123.4.
 	const stringRegex = /(".+"|('.+'))\.(\w|\W)*/; // 'abc'. or "abc".
 	const arrayRegex = /(\[.+\])\.(\w|\W)*/; // [1, 2, 3].
-	const objectRegex = /(\{.*\})\.(\w|\W)*/; // ({}).
+	const objectRegex = /\(\{.*\}\)\.(\w|\W)*/; // ({}).
 	const dateRegex = /\(?new Date\(\(?.*?\)\)?\.(\w|\W)*/; // new Date(). or (new Date()).
 
 	const combinedRegex = new RegExp(
