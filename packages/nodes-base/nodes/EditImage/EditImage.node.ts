@@ -1239,7 +1239,7 @@ export class EditImage implements INodeType {
 						// Combine the lines to a single string
 						const renderText = lines.join('\n');
 
-						const font = options.font ?? operationData.font;
+						const font = options.font || operationData.font;
 
 						if (font && font !== 'default') {
 							gmInstance = gmInstance!.font(font as string);

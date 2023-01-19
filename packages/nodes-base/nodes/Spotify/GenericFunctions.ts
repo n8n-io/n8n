@@ -26,7 +26,7 @@ export async function spotifyApiRequest(
 			Accept: ' application/json',
 		},
 		qs: query,
-		uri: uri ?? `https://api.spotify.com/v1${endpoint}`,
+		uri: uri || `https://api.spotify.com/v1${endpoint}`,
 		json: true,
 	};
 

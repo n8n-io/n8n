@@ -26,7 +26,7 @@ export async function harvestApiRequest(
 		},
 		method,
 		body,
-		uri: uri ?? `https://api.harvestapp.com/v2/${path}`,
+		uri: uri || `https://api.harvestapp.com/v2/${path}`,
 		qs,
 		json: true,
 	};

@@ -15,7 +15,7 @@ export async function apiRequest(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 
 	const options: OptionsWithUri = {
 		method,

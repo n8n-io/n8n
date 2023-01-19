@@ -34,7 +34,7 @@ export async function sentryIoApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://sentry.io${resource}`,
+		uri: uri || `https://sentry.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

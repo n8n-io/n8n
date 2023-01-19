@@ -244,7 +244,7 @@ export class GetResponse implements INodeType {
 						}
 
 						if (qs.sortBy) {
-							qs[`sort[${qs.sortBy}]`] = qs.sortOrder ?? 'ASC';
+							qs[`sort[${qs.sortBy}]`] = qs.sortOrder || 'ASC';
 						}
 
 						if (qs.exactMatch === true) {
