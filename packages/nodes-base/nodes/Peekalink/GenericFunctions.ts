@@ -28,7 +28,7 @@ export async function peekalinkApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://api.peekalink.io${resource}`,
+			uri: uri || `https://api.peekalink.io${resource}`,
 			json: true,
 		};
 

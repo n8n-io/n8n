@@ -25,7 +25,7 @@ export async function apiRequest(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 
 	type N8nApiCredentials = {
 		apiKey: string;
@@ -60,7 +60,7 @@ export async function apiRequestAllItems(
 	body: object,
 	query?: IDataObject,
 ): Promise<any> {
-	query = query ?? {};
+	query = query || {};
 	const returnData: IDataObject[] = [];
 
 	let nextCursor: string | undefined = undefined;
@@ -190,11 +190,11 @@ export const prepareWorkflowCreateBody: PreSendAction = async function (
 	const body = requestOptions.body as IDataObject;
 	const newBody: IDataObject = {};
 
-	newBody.name = body.name ?? 'My workflow';
-	newBody.nodes = body.nodes ?? [];
-	newBody.settings = body.settings ?? {};
-	newBody.connections = body.connections ?? {};
-	newBody.staticData = body.staticData ?? null;
+	newBody.name = body.name || 'My workflow';
+	newBody.nodes = body.nodes || [];
+	newBody.settings = body.settings || {};
+	newBody.connections = body.connections || {};
+	newBody.staticData = body.staticData || null;
 
 	requestOptions.body = newBody;
 

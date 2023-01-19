@@ -28,7 +28,7 @@ export async function brandfetchApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://api.brandfetch.io/v1${resource}`,
+			uri: uri || `https://api.brandfetch.io/v1${resource}`,
 			json: true,
 		};
 
