@@ -197,7 +197,7 @@ export class NotionTrigger implements INodeType {
 			`/databases/${databaseId}/query`,
 			body,
 			{},
-			'',
+			undefined,
 			option,
 		);
 
@@ -220,7 +220,7 @@ export class NotionTrigger implements INodeType {
 					`/databases/${databaseId}/query`,
 					body,
 					{},
-					'',
+					undefined,
 					option,
 				);
 				records.push(...results);
