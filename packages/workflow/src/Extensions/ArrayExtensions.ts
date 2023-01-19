@@ -327,7 +327,7 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'difference requires 1 argument that is an array. e.g. .difference([1, 2, 3, 4])',
+			'intersection requires 1 argument that is an array. e.g. .intersection([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];

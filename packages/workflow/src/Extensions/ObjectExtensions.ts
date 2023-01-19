@@ -40,7 +40,7 @@ function removeField(value: object, extraArgs: string[]): object {
 function removeFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
 	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of removeFieldsContaining must be an string');
+		throw new ExpressionExtensionError('argument of removeFieldsContaining must be a string');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
@@ -55,7 +55,7 @@ function removeFieldsContaining(value: object, extraArgs: string[]): object {
 function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
 	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of keepFieldsContaining must be an string');
+		throw new ExpressionExtensionError('argument of keepFieldsContaining must be a string');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
