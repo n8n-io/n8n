@@ -12,12 +12,13 @@ export class Merge extends VersionedNodeType {
 			group: ['transform'],
 			subtitle: '={{$parameter["mode"]}}',
 			description: 'Merges data of multiple streams once data from both is available',
-			defaultVersion: 2,
+			defaultVersion: 3,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new MergeV1(baseDescription),
 			2: new MergeV2(baseDescription),
+			3: new MergeV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

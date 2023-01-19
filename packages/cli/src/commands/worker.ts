@@ -181,7 +181,6 @@ export class Worker extends Command {
 
 		const workflow = new Workflow({
 			id: currentExecutionDb.workflowData.id as string,
-			version: currentExecutionDb.workflowData.version as number,
 			name: currentExecutionDb.workflowData.name,
 			nodes: currentExecutionDb.workflowData.nodes,
 			connections: currentExecutionDb.workflowData.connections,

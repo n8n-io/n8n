@@ -134,7 +134,6 @@ class WorkflowRunnerProcess {
 
 		this.workflow = new Workflow({
 			id: this.data.workflowData.id,
-			version: this.data.workflowData.version,
 			name: this.data.workflowData.name,
 			nodes: this.data.workflowData.nodes,
 			connections: this.data.workflowData.connections,

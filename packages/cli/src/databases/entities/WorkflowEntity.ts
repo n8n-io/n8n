@@ -35,9 +35,6 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@PrimaryColumn({ transformer: idStringifier })
 	id: string;
 
-	@Column()
-	version: number;
-
 	// TODO: Add XSS check
 	@Index({ unique: true })
 	@Length(1, 128, {

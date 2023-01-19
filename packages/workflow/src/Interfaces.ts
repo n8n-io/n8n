@@ -1366,6 +1366,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	activationMessage?: string;
 	inputs: string[];
 	allInputsRequired?: string | boolean;
+	forceInputNodeExecution?: string | boolean;
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];
@@ -1598,7 +1599,6 @@ export interface IWaitingForExecutionSource {
 
 export interface IWorkflowBase {
 	id?: string;
-	version?: number;
 	name: string;
 	active: boolean;
 	createdAt: Date;

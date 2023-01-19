@@ -33,7 +33,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'merge',
 	icon: 'fa:code-branch',
 	group: ['transform'],
-	version: 2,
+	version: [2, 3],
 	subtitle: '={{$parameter["mode"]}}',
 	description: 'Merges data of multiple streams once data from both is available',
 	defaults: {
@@ -43,8 +43,9 @@ const versionDescription: INodeTypeDescription = {
 	// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 	inputs: ['main', 'main'],
 	outputs: ['main'],
-	allInputsRequired: '={{$parameter["mode"] === "chooseBranch"}}',
 	inputNames: ['Input 1', 'Input 2'],
+	allInputsRequired: '={{$parameter["mode"] === "chooseBranch"}}',
+	forceInputNodeExecution: '={{ $version === 2 }}',
 	properties: [
 		{
 			displayName: 'Mode',

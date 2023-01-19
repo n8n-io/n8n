@@ -85,8 +85,6 @@ export class Workflow {
 
 	pinData?: IPinData;
 
-	version: number;
-
 	// constructor(id: string | undefined, nodes: INode[], connections: IConnections, active: boolean, nodeTypes: INodeTypes, staticData?: IDataObject, settings?: IWorkflowSettings) {
 	constructor(parameters: {
 		id?: string;
@@ -98,13 +96,11 @@ export class Workflow {
 		staticData?: IDataObject;
 		settings?: IWorkflowSettings;
 		pinData?: IPinData;
-		version?: number;
 	}) {
 		this.id = parameters.id;
 		this.name = parameters.name;
 		this.nodeTypes = parameters.nodeTypes;
 		this.pinData = parameters.pinData;
-		this.version = parameters.version || 1;
 
 		// Save nodes in workflow as object to be able to get the
 		// nodes easily by its name.
@@ -1194,12 +1190,26 @@ export class Workflow {
 				connectionInputData = inputData.main[0] as INodeExecutionData[];
 			}
 
-			if (this.version === 2) {
-				// For workflow version 2 we use the data of the first input that has data
-				for (const mainData of inputData.main) {
-					if (mainData?.length) {
-						connectionInputData = mainData;
-						break;
+			let forceInputNodeExecution = nodeType.description.forceInputNodeExecution;
+			if (forceInputNodeExecution !== undefined) {
+				if (typeof forceInputNodeExecution === 'string') {
+					forceInputNodeExecution = !!this.expression.getSimpleParameterValue(
+						node,
+						forceInputNodeExecution,
+						mode,
+						additionalData.timezone,
+						{ $version: node.typeVersion },
+					);
+				}
+
+				if (!forceInputNodeExecution) {
+					// If the nodes do not get force executed data of some inputs may be missing
+					// for that reason do we use the data of the first one that contains any
+					for (const mainData of inputData.main) {
+						if (mainData?.length) {
+							connectionInputData = mainData;
+							break;
+						}
 					}
 				}
 			}

@@ -417,7 +417,8 @@ class NodeTypesClass implements INodeTypes {
 					name: 'merge',
 					icon: 'fa:clone',
 					group: ['transform'],
-					version: 1,
+					version: [1, 2],
+					forceInputNodeExecution: '={{ $version === 1 }}',
 					description: 'Merges data of multiple streams once data of both is available',
 					defaults: {
 						name: 'Merge',

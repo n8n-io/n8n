@@ -220,7 +220,6 @@ export class WorkflowRunner {
 
 		const workflow = new Workflow({
 			id: workflowId,
-			version: data.workflowData.version,
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,

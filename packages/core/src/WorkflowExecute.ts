@@ -19,7 +19,6 @@ import {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
-	INodeType,
 	IPinData,
 	IRun,
 	IRunData,
@@ -137,6 +136,26 @@ export class WorkflowExecute {
 		};
 
 		return this.processRunExecutionData(workflow);
+	}
+
+	forceInputNodeExecution(workflow: Workflow, node: INode): boolean {
+		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+		// Check if the incoming nodes should be forced to execute
+		let forceInputNodeExecution = nodeType.description.forceInputNodeExecution;
+		if (forceInputNodeExecution !== undefined) {
+			if (typeof forceInputNodeExecution === 'string') {
+				forceInputNodeExecution = !!workflow.expression.getSimpleParameterValue(
+					node,
+					forceInputNodeExecution,
+					this.mode,
+					this.additionalData.timezone,
+					{ $version: node.typeVersion },
+				);
+			}
+			return forceInputNodeExecution as boolean;
+		}
+		return true;
 	}
 
 	/**
@@ -485,6 +504,10 @@ export class WorkflowExecute {
 				// checked. So we have to go through all the inputs and check if they
 				// are already on the list to be processed.
 				// If that is not the case add it.
+
+				const node = workflow.getNode(connectionData.node);
+				const forceInputNodeExecution = this.forceInputNodeExecution(workflow, node!);
+
 				for (
 					let inputIndex = 0;
 					inputIndex < workflow.connectionsByDestinationNode[connectionData.node].main.length;
@@ -533,8 +556,9 @@ export class WorkflowExecute {
 							continue;
 						}
 
-						if (workflow.version === 2) {
-							// Workflows with version 2 do not automatically go back and add nodes of inputs
+						if (!forceInputNodeExecution) {
+							// Do not automatically follow all incoming nodes and force them
+							// to execute
 							continue;
 						}
 
@@ -847,6 +871,8 @@ export class WorkflowExecute {
 						continue;
 					}
 
+					const node = workflow.getNode(executionNode.name);
+
 					// Check if all the data which is needed to run the node is available
 					if (workflow.connectionsByDestinationNode.hasOwnProperty(executionNode.name)) {
 						// Check if the node has incoming connections
@@ -879,7 +905,7 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								if (workflow.version === 1) {
+								if (this.forceInputNodeExecution(workflow, node!)) {
 									// Check if it has the data for all the inputs
 									// The most nodes just have one but merge node for example has two and data
 									// of both inputs has to be available to be able to process the node.
@@ -956,7 +982,7 @@ export class WorkflowExecute {
 								);
 								nodeSuccessData = runNodeData.data;
 
-								if (workflow.version === 2 && nodeSuccessData) {
+								if (!this.forceInputNodeExecution(workflow, node!) && nodeSuccessData) {
 									nodeSuccessData = NodeHelpers.cleanupNodeData(nodeSuccessData);
 								}
 
@@ -1215,33 +1241,34 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.waitingExecution,
 					);
 
+					// TODO: here was before a version 2 check, now it executes always
+					//       look what implications will be
 					if (
-						workflow.version === 2 &&
 						this.runExecutionData.executionData!.nodeExecutionStack.length === 0 &&
 						nodeNames.length
 					) {
-						// There are no more nodes in the execution stack. So would normally stop now.
-						// For workflows of version 2, go however through and execute the waiting nodes
-						// with one missing input, one by one.
+						// There are no more nodes in the execution stack. Check if there are
+						// waiting nodes that do not require data on all inputs and execute them,
+						// one by one.
 
 						for (let i = 0; i < nodeNames.length; i++) {
 							const nodeName = nodeNames[i];
 
-							const node = workflow.getNode(nodeName);
-							if (!node) {
+							const checkNode = workflow.getNode(nodeName);
+							if (!checkNode) {
 								continue;
 							}
 							const nodeType = workflow.nodeTypes.getByNameAndVersion(
-								node.type,
-								node.typeVersion,
-							) as INodeType;
+								checkNode.type,
+								checkNode.typeVersion,
+							);
 
 							// Check if the node is only allowed execute if both inputs received data
 							let allInputsRequired = nodeType.description.allInputsRequired;
 							if (allInputsRequired !== undefined) {
 								if (typeof allInputsRequired === 'string') {
 									allInputsRequired = !!workflow.expression.getSimpleParameterValue(
-										node,
+										checkNode,
 										allInputsRequired,
 										this.mode,
 										this.additionalData.timezone,
