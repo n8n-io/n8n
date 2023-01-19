@@ -176,25 +176,44 @@ $loading-overlay-background-color: rgba(255, 255, 255, 0);
 /**
  * Colors
  */
-
-.secondary {
-	--button-color: var(--color-primary);
+.button {
+	--button-color: var(--color-text-xlight);
 	--button-border-color: var(--color-primary);
-	--button-background-color: var(--color-background-xlight);
+	--button-background-color: var(--color-primary);
 
-	--button-active-background-color: var(--color-primary-tint-2);
-	--button-active-color: var(--color-primary);
-	--button-active-border-color: var(--color-primary);
+	--button-active-color: var(--color-text-xlight);
+	--button-active-border-color: var(--color-primary-shade-1);
+	--button-active-background-color: var(--color-primary-shade-1);
 
-	--button-hover-background-color: var(--color-primary-tint-3);
-	--button-hover-color: var(--color-primary);
-	--button-hover-border-color: var(--color-primary);
+	--button-hover-color: var(--color-text-xlight);
+	--button-hover-border-color: var(--color-primary-shade-1);
+	--button-hover-background-color: var(--color-primary-shade-1);
 
 	--button-focus-outline-color: var(--color-primary-tint-1);
 
+	--button-disabled-color: var(--color-text-xlight);
+	--button-disabled-border-color: var(--color-primary-tint-1);
+	--button-disabled-background-color: var(--color-primary-tint-1);
+}
+
+.secondary {
+	--button-color: var(--color-text-dark);
+	--button-border-color: var(--color-foreground-xdark);
+	--button-background-color: var(--color-background-xlight);
+
+	--button-active-color: var(--color-primary);
+	--button-active-border-color: var(--color-primary);
+	--button-active-background-color: var(--color-primary-tint-2);
+
+	--button-hover-color: var(--color-text-dark);
+	--button-hover-border-color: var(--color-foreground-xdark);
+	--button-hover-background-color: var(--color-background-base);
+
+	--button-focus-outline-color: var(--color-foreground-base);
+
 	--button-disabled-color: var(--color-foreground-dark);
-	--button-disabled-background-color: var(--color-background-xlight);
 	--button-disabled-border-color: var(--color-foreground-dark);
+	--button-disabled-background-color: var(--color-background-xlight);
 }
 
 .tertiary {
