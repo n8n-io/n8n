@@ -90,7 +90,7 @@ export function executeErrorWorkflow(
 	if (executionId !== undefined) {
 		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
 			workflowData.id
-		}/execution/${executionId}`;
+		}/executions/${executionId}`;
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
