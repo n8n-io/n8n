@@ -156,7 +156,7 @@ export class Mailgun implements INodeType {
 						attachments.push({
 							value: binaryDataBuffer,
 							options: {
-								filename: item.binary[propertyName].fileName ?? 'unknown',
+								filename: item.binary[propertyName].fileName || 'unknown',
 							},
 						});
 					}

@@ -34,7 +34,7 @@ export async function salesmateApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://apis.salesmate.io${resource}`,
+		uri: uri || `https://apis.salesmate.io${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

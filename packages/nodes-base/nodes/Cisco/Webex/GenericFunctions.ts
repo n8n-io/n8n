@@ -28,7 +28,7 @@ export async function webexApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://webexapis.com/v1${resource}`,
+		uri: uri || `https://webexapis.com/v1${resource}`,
 		json: true,
 	};
 	try {

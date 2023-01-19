@@ -44,7 +44,7 @@ export async function awsApiRequest(
 	const endpoint = new URL(getEndpointForService(service, credentials) + path);
 
 	// Sign AWS API request with the user credentials
-	const signOpts = { headers: headers ?? {}, host: endpoint.host, method, path, body } as Request;
+	const signOpts = { headers: headers || {}, host: endpoint.host, method, path, body } as Request;
 	const securityHeaders = {
 		accessKeyId: `${credentials.accessKeyId}`.trim(),
 		secretAccessKey: `${credentials.secretAccessKey}`.trim(),

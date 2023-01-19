@@ -104,7 +104,7 @@ export async function salesforceApiRequest(
 			const options = getOptions.call(
 				this,
 				method,
-				uri ?? endpoint,
+				uri || endpoint,
 				body,
 				qs,
 				instance_url as string,
@@ -125,7 +125,7 @@ export async function salesforceApiRequest(
 			const options = getOptions.call(
 				this,
 				method,
-				uri ?? endpoint,
+				uri || endpoint,
 				body,
 				qs,
 				credentials.oauthTokenData.instance_url,
