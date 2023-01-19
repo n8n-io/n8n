@@ -14,7 +14,7 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 		? word.text.slice(0, -1)
 		: word.text.split('.').slice(0, -1).join('.');
 
-	let options = generateOptions(toResolve);
+	let options = getLuxonOptions(toResolve);
 
 	const userInputTail = word.text.split('.').pop();
 
@@ -36,7 +36,7 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 	};
 }
 
-function generateOptions(toResolve: string): Completion[] {
+function getLuxonOptions(toResolve: string): Completion[] {
 	if (toResolve === '$now' || toResolve === '$today') return nowTodayOptions();
 	if (toResolve === 'DateTime') return dateTimeOptions();
 
@@ -74,7 +74,7 @@ export const dateTimeOptions = () => {
 		.sort((a, b) => a.localeCompare(b));
 
 	return keys.map((key) => {
-		const option: Completion = { label: key, type: 'function' };
+		const option: Completion = { label: key + '()', type: 'function' };
 		const info = i18n.luxonStatic[key];
 
 		if (info) option.info = info;

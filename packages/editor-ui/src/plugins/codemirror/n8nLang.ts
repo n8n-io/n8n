@@ -7,9 +7,10 @@ import { ifIn } from '@codemirror/autocomplete';
 import { proxyCompletions } from './completions/proxy.completions';
 import { rootCompletions } from './completions/root.completions';
 import { luxonCompletions } from './completions/luxon.completions';
-import { alphaCompletions } from './completions/alpha.completions';
+import { globalCompletions } from './completions/global.completions';
 import { datatypeCompletions } from './completions/datatype.completions';
 import { blankCompletions } from './completions/blank.completions';
+import { jsonBracketCompletions } from './completions/jsonBracket.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -27,10 +28,11 @@ export function n8nLang() {
 	const options = [
 		blankCompletions, // from `{{ | }}`
 		rootCompletions, // from `$`
-		proxyCompletions, // from `$var.`
+		proxyCompletions, // from `$input.`, `$(...)`, etc.
 		datatypeCompletions, // from primitives `'abc'.` and from references `$json.name.`
-		alphaCompletions, // from alphabetic chars: `D`
+		globalCompletions, // for global var: `D` -> `DateTime`
 		luxonCompletions, // from luxon vars: `DateTime.`, `$now.`, `$today.`
+		jsonBracketCompletions, // from `json[`
 	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 
 	return new LanguageSupport(n8nLanguage, [

@@ -3,9 +3,9 @@ import { longestCommonPrefix } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions from alphabetic char, e.g. `D` -> `DateTime`.
+ * Completions for global vars, e.g. `D` -> `DateTime`.
  */
-export function alphaCompletions(context: CompletionContext): CompletionResult | null {
+export function globalCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/(\s+)D[ateTim]*/);
 
 	if (!word) return null;

@@ -49,9 +49,11 @@ export function generateOptions() {
 	const options: Completion[] = rootKeys
 		.filter((key) => !SKIP_SET.has(key))
 		.map((key) => {
+			const isFunction = ['$jmespath'].includes(key);
+
 			const option: Completion = {
-				label: key,
-				type: key === '$jmespath' ? 'function' : 'keyword', // @TODO: Extract $jmespath to constant set
+				label: isFunction ? key + '()' : key,
+				type: isFunction ? 'function' : 'keyword',
 			};
 
 			const info = i18n.rootVars[key];

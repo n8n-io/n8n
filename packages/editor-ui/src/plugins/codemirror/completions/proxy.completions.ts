@@ -19,7 +19,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 	// ----------------------------------
 
 	const word = context.matchBefore(
-		/\$(input|\(.+\)|prevNode|parameter|json|execution|workflow)*(\.|\[)(\w|\W)*/,
+		/\$(input|\(.+\)|prevNode|parameter|json|execution|workflow)*\.([^{\s])*/,
 	);
 
 	if (!word) return null;
@@ -30,10 +30,9 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 	//      find string to resolve
 	// ----------------------------------
 
-	const toResolve =
-		word.text.endsWith('.') || word.text.endsWith('json[')
-			? word.text.slice(0, -1) // $input. -> $input, or $input.item.json[ -> $input.item.json
-			: word.text.split('.').slice(0, -1).join('.'); // $input.item.json.ab -> $input.item.json
+	const toResolve = word.text.endsWith('.')
+		? word.text.slice(0, -1)
+		: word.text.split('.').slice(0, -1).join('.');
 
 	// ----------------------------------
 	//     resolve and get options
@@ -55,7 +54,7 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 	//       filter by user input
 	// ----------------------------------
 
-	const userInputTail = word.text.includes('json[') ? '' : word.text.split('.').pop() ?? '';
+	const userInputTail = word.text.split('.').pop() ?? '';
 
 	if (userInputTail !== '') {
 		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
@@ -74,20 +73,8 @@ export function proxyCompletions(context: CompletionContext): CompletionResult |
 }
 
 function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Completion[] {
-	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
-
 	const BOOST_SET = new Set(['item', 'all', 'first', 'last']);
-
-	if (word.text.includes('json[')) {
-		return Object.keys(word.text === '$json[' ? proxy : (proxy.json as object))
-			.filter((key) => !SKIP_SET.has(key))
-			.map((key) => {
-				return {
-					label: `'${key}']`,
-					type: 'keyword',
-				};
-			});
-	}
+	const SKIP_SET = new Set(['__ob__', 'pairedItem']);
 
 	if (isSplitInBatchesAbsent()) SKIP_SET.add('context');
 
@@ -99,9 +86,7 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 
 	return (Reflect.ownKeys(proxy) as string[])
 		.filter((key) => {
-			if (word.text.endsWith('json.')) return !SKIP_SET.has(key) && isAllowedInDotNotation(key);
-
-			return !SKIP_SET.has(key);
+			return !SKIP_SET.has(key) && isAllowedInDotNotation(key);
 		})
 		.sort((a, b) => {
 			if (BOOST_SET.has(a)) return -1;
@@ -115,7 +100,7 @@ function generateOptions(toResolve: string, proxy: IDataObject, word: Word): Com
 			const isFunction = typeof proxy[key] === 'function';
 
 			const option: Completion = {
-				label: key,
+				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 			};
 
