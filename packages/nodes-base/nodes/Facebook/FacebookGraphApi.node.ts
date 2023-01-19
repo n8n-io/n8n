@@ -421,7 +421,7 @@ export class FacebookGraphApi implements INodeType {
 				if (error.response !== undefined) {
 					// Since this is a Graph API node and we already know the request was
 					// not successful, we'll go straight to the error details.
-					const graphApiErrors = error.response.body?.error || {};
+					const graphApiErrors = error.response.body?.error ?? {};
 
 					errorItem = {
 						statusCode: error.statusCode,

@@ -23,7 +23,7 @@ export async function homeAssistantApiRequest(
 		qs,
 		body,
 		uri:
-			uri ||
+			uri ??
 			`${credentials.ssl === true ? 'https' : 'http'}://${credentials.host}:${
 				credentials.port
 			}/api${resource}`,

@@ -292,8 +292,8 @@ export class ElasticSecurity implements INodeType {
 						};
 						const sortOptions = this.getNodeParameter('sortOptions', i) as IDataObject;
 
-						qs.sortField = sortOptions.sortField || 'createdAt';
-						qs.sortOrder = sortOptions.sortOrder || 'asc';
+						qs.sortField = sortOptions.sortField ?? 'createdAt';
+						qs.sortOrder = sortOptions.sortOrder ?? 'asc';
 
 						if (status) {
 							qs.status = status;

@@ -106,7 +106,7 @@ export async function pgQuery(
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode || 'multiple') as string);
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries))).flat(1);
 	} else if (mode === 'transaction') {
@@ -181,7 +181,7 @@ export async function pgQueryV2(
 		allQueries.push(queryFormat);
 	}
 
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode || 'multiple') as string);
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 	if (mode === 'multiple') {
 		return (await db.multi(pgp.helpers.concat(allQueries)))
 			.map((result, i) => {
@@ -276,7 +276,7 @@ export async function pgInsert(
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode || 'multiple') as string);
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if (mode === 'multiple') {
@@ -364,7 +364,7 @@ export async function pgInsertV2(
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const mode = overrideMode ? overrideMode : ((additionalFields.mode || 'multiple') as string);
+	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 	if (mode === 'multiple') {
@@ -480,7 +480,7 @@ export async function pgUpdate(
 	});
 
 	const additionalFields = getNodeParam('additionalFields', 0) as IDataObject;
-	const mode = additionalFields.mode || ('multiple' as string);
+	const mode = additionalFields.mode ?? ('multiple' as string);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
@@ -605,7 +605,7 @@ export async function pgUpdateV2(
 	});
 
 	const additionalFields = this.getNodeParameter('additionalFields', 0);
-	const mode = additionalFields.mode || ('multiple' as string);
+	const mode = additionalFields.mode ?? ('multiple' as string);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 

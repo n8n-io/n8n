@@ -268,7 +268,7 @@ export function getSandboxContext(this: IExecuteFunctions, index?: number) {
 	};
 
 	// $node, $items(), $parameter, $json, $env, etc.
-	Object.assign(sandboxContext, sandboxContext.$item(index || 0));
+	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
 
 	return sandboxContext;
 }

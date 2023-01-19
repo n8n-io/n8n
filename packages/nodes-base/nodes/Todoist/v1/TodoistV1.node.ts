@@ -617,7 +617,7 @@ export class TodoistV1 implements INodeType {
 				) as IDataObject;
 
 				const projectId =
-					(options.projectId as number) ||
+					(options.projectId as number) ??
 					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 				if (projectId) {
 					const qs: IDataObject = { project_id: projectId };
@@ -648,7 +648,7 @@ export class TodoistV1 implements INodeType {
 				) as IDataObject;
 
 				const projectId =
-					(options.projectId as number) ||
+					(options.projectId as number) ??
 					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 
 				const sectionId =

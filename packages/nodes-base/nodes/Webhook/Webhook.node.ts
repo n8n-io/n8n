@@ -486,7 +486,7 @@ export class Webhook implements INodeType {
 			}
 		}
 
-		const mimeType = headers['content-type'] || 'application/json';
+		const mimeType = headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
 			const form = new formidable.IncomingForm({ multiples: true });
 
