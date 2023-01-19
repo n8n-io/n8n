@@ -337,7 +337,6 @@ export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodePr
 	if (!nodeType) {
 		return null;
 	}
-	// Simpler version, in case we want to use only field name
 	return nodeType.properties.find((prop) => prop.name === MAIN_AUTH_FIELD_NAME) || null;
 };
 
