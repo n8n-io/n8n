@@ -53,7 +53,7 @@ export async function notionApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://api.notion.com/v1${resource}`,
+			uri: uri || `https://api.notion.com/v1${resource}`,
 			json: true,
 		};
 		options = Object.assign({}, options, option);
@@ -505,13 +505,13 @@ function simplifyProperty(property: any) {
 		}
 	} else if (['multi_select'].includes(property.type)) {
 		if (Array.isArray(property[type])) {
-			result = property[type].map((e: IDataObject) => e.name ?? {});
+			result = property[type].map((e: IDataObject) => e.name || {});
 		} else {
-			result = property[type].options.map((e: IDataObject) => e.name ?? {});
+			result = property[type].options.map((e: IDataObject) => e.name || {});
 		}
 	} else if (['relation'].includes(property.type)) {
 		if (Array.isArray(property[type])) {
-			result = property[type].map((e: IDataObject) => e.id ?? {});
+			result = property[type].map((e: IDataObject) => e.id || {});
 		} else {
 			result = property[type].database_id;
 		}
