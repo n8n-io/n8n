@@ -177,7 +177,7 @@ export const descriptions: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '[0-9]{2,}',
+							regex: '((gid=)?[0-9]{1,})',
 							errorMessage: 'Not a valid Sheet ID',
 						},
 					},

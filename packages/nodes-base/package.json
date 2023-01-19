@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "0.209.1",
+  "version": "0.209.2",
   "description": "Base nodes of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -129,6 +129,7 @@
       "dist/credentials/GoogleOAuth2Api.credentials.js",
       "dist/credentials/GooglePerspectiveOAuth2Api.credentials.js",
       "dist/credentials/GoogleSheetsOAuth2Api.credentials.js",
+      "dist/credentials/GoogleSheetsTriggerOAuth2Api.credentials.js",
       "dist/credentials/GoogleSlidesOAuth2Api.credentials.js",
       "dist/credentials/GoogleTasksOAuth2Api.credentials.js",
       "dist/credentials/GoogleTranslateOAuth2Api.credentials.js",
@@ -481,6 +482,7 @@
       "dist/nodes/Google/GSuiteAdmin/GSuiteAdmin.node.js",
       "dist/nodes/Google/Perspective/GooglePerspective.node.js",
       "dist/nodes/Google/Sheet/GoogleSheets.node.js",
+      "dist/nodes/Google/Sheet/GoogleSheetsTrigger.node.js",
       "dist/nodes/Google/Slides/GoogleSlides.node.js",
       "dist/nodes/Google/Task/GoogleTasks.node.js",
       "dist/nodes/Google/Translate/GoogleTranslate.node.js",
