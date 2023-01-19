@@ -205,13 +205,6 @@ export const restApi = Vue.extend({
 				// Binary data
 				getBinaryUrl: (dataPath, mode): string =>
 					self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}?mode=${mode}`,
-
-				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
-					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution/' + id);
-				},
-				recoverExecutionDataFromEvents: (id: string): Promise<IRunExecutionData | undefined> => {
-					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution-recover/' + id);
-				},
 			};
 		},
 	},

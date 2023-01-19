@@ -32,6 +32,7 @@ import {
 } from 'n8n-workflow';
 import { User } from '../databases/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
+import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 
 export const eventBusRouter = express.Router();
 
@@ -119,7 +120,7 @@ eventBusRouter.get(
 			const messages = await eventBus.getEventsByExecutionId(req.params.id, logHistory);
 			if (messages.length > 0) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const recoverResult = await eventBus.recoverExecutionDataFromEventLogMessages(
+				const recoverResult = await recoverExecutionDataFromEventLogMessages(
 					req.params.id,
 					messages,
 					applyToDb,

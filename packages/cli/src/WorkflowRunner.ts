@@ -52,6 +52,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { eventBus } from './eventbus';
+import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -111,7 +112,7 @@ export class WorkflowRunner {
 			const eventLogMessages = await eventBus.getEventsByExecutionId(executionId);
 			// Attempt to recover more better runData from these messages (but don't update the execution db entry yet)
 			if (eventLogMessages.length > 0) {
-				const eventLogExecutionData = await eventBus.recoverExecutionDataFromEventLogMessages(
+				const eventLogExecutionData = await recoverExecutionDataFromEventLogMessages(
 					executionId,
 					eventLogMessages,
 					false,
