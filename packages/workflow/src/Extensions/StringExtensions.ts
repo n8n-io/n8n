@@ -34,9 +34,6 @@ const URL_REGEXP =
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
 
-const TRUE_VALUES = ['true', '1', 't', 'yes', 'y'];
-const FALSE_VALUES = ['false', '0', 'f', 'no', 'n'];
-
 function encrypt(value: string, extraArgs?: unknown): string {
 	const [format = 'MD5'] = extraArgs as string[];
 	if (format.toLowerCase() === 'base64') {
@@ -166,14 +163,6 @@ function quote(value: string, extraArgs: string[]) {
 		.replace(new RegExp(`\\${quoteChar}`, 'g'), `\\${quoteChar}`)}${quoteChar}`;
 }
 
-function isTrue(value: string) {
-	return TRUE_VALUES.includes(value.toLowerCase());
-}
-
-function isFalse(value: string) {
-	return FALSE_VALUES.includes(value.toLowerCase());
-}
-
 function isNumeric(value: string) {
 	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
 }
@@ -274,7 +263,6 @@ export const stringExtensions: ExtensionMap = {
 		removeMarkdown,
 		sayHi,
 		stripTags,
-		toBoolean: isTrue,
 		toDate,
 		toDecimalNumber: toFloat,
 		toFloat,
@@ -290,9 +278,6 @@ export const stringExtensions: ExtensionMap = {
 		length,
 		isDomain,
 		isEmail,
-		isTrue,
-		isFalse,
-		isNotTrue: isFalse,
 		isNumeric,
 		isUrl,
 		isURL: isUrl,

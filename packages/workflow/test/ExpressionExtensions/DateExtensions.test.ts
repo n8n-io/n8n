@@ -14,11 +14,6 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.toTimeFromNow() should work correctly on a date', () => {
-			const JUST_NOW_STRING_RESULT = 'just now';
-			expect(evaluate('={{DateTime.now().toTimeFromNow()}}')).toEqual(JUST_NOW_STRING_RESULT);
-		});
-
 		test('.beginningOf("week") should work correctly on a date', () => {
 			expect(evaluate('={{(new Date).beginningOf("week")}}')).toEqual(
 				dateExtensions.functions.beginningOf(new Date(), ['week']),

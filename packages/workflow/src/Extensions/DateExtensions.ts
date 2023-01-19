@@ -4,7 +4,6 @@ import {
 	DateTime,
 	DateTimeFormatOptions,
 	DateTimeUnit,
-	Duration,
 	DurationLike,
 	DurationObjectUnits,
 	LocaleOptions,
@@ -200,62 +199,6 @@ function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
 }
 
-function toTimeFromNow(date: Date): string {
-	let diffObj: Duration;
-	if (isDateTime(date)) {
-		diffObj = date.diffNow();
-	} else {
-		diffObj = DateTime.fromJSDate(date).diffNow();
-	}
-
-	const as = (unit: DurationUnit) => {
-		return Math.round(Math.abs(diffObj.as(unit)));
-	};
-
-	if (as('years')) {
-		return `${as('years')} years ago`;
-	}
-	if (as('months')) {
-		return `${as('months')} months ago`;
-	}
-	if (as('weeks')) {
-		return `${as('weeks')} weeks ago`;
-	}
-	if (as('days')) {
-		return `${as('days')} days ago`;
-	}
-	if (as('hours')) {
-		return `${as('hours')} hours ago`;
-	}
-	if (as('minutes')) {
-		return `${as('minutes')} minutes ago`;
-	}
-	if (as('seconds') && as('seconds') > 10) {
-		return `${as('seconds')} seconds ago`;
-	}
-	return 'just now';
-}
-
-function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
-	const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
-	const diffDate = new Date(diff);
-	if (isDateTime(date)) {
-		return date.diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-	}
-	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
-}
-
-function toDate(date: Date | DateTime) {
-	if (isDateTime(date)) {
-		return date.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-	}
-	let datetime = DateTime.fromJSDate(date);
-	if (date.getTimezoneOffset() === 0) {
-		datetime = datetime.setZone('UTC');
-	}
-	return datetime.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
-}
-
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
 	functions: {
@@ -268,10 +211,7 @@ export const dateExtensions: ExtensionMap = {
 		isWeekend,
 		minus,
 		plus,
-		toTimeFromNow,
-		timeTo,
 		format,
 		toLocaleString,
-		toDate,
 	},
 };

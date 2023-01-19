@@ -7,14 +7,6 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Number Data Transformation Functions', () => {
-		test('.random() should work correctly on a number', () => {
-			expect(evaluate('={{ Number(100).random() }}')).not.toBeUndefined();
-		});
-
-		test('.isBlank() should work correctly on a number', () => {
-			expect(evaluate('={{ Number(100).isBlank() }}')).toEqual(false);
-		});
-
 		test('.isPresent() should work correctly on a number', () => {
 			expect(evaluate('={{ Number(100).isPresent() }}')).toEqual(
 				numberExtensions.functions.isPresent(100),
@@ -46,18 +38,6 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ (1.3333333).round(0) }}')).toEqual(1);
 			expect(evaluate('={{ (1.5001).round(0) }}')).toEqual(2);
 			expect(evaluate('={{ (NaN).round(3) }}')).toBeNaN();
-		});
-
-		test('.isTrue() should work on a number', () => {
-			expect(evaluate('={{ (1).isTrue() }}')).toEqual(true);
-			expect(evaluate('={{ (0).isTrue() }}')).toEqual(false);
-			expect(evaluate('={{ (NaN).isTrue() }}')).toEqual(false);
-		});
-
-		test('.isFalse() should work on a number', () => {
-			expect(evaluate('={{ (1).isFalse() }}')).toEqual(false);
-			expect(evaluate('={{ (0).isFalse() }}')).toEqual(true);
-			expect(evaluate('={{ (NaN).isFalse() }}')).toEqual(false);
 		});
 
 		test('.isOdd() should work on a number', () => {

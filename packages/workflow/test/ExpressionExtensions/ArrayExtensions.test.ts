@@ -6,10 +6,6 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
-		test('.random() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2,3].random() }}')).not.toBeUndefined();
-		});
-
 		test('.randomItem() alias should work correctly on an array', () => {
 			expect(evaluate('={{ [1,2,3].randomItem() }}')).not.toBeUndefined();
 		});
@@ -72,12 +68,6 @@ describe('Data Transformation Functions', () => {
 
 		test('.first() should work correctly on an array', () => {
 			expect(evaluate('={{ ["repeat","repeat","a","b","c"].first() }}')).toEqual('repeat');
-		});
-
-		test('.filter() should work correctly on an array', () => {
-			expect(evaluate('={{ ["repeat","repeat","a","b","c"].filter("repeat") }}')).toEqual(
-				expect.arrayContaining(['repeat', 'repeat']),
-			);
 		});
 
 		test('.merge() should work correctly on an array', () => {
@@ -180,19 +170,6 @@ describe('Data Transformation Functions', () => {
 				[11, 12, 13, 14, 15],
 				[16, 17, 18, 19, 20],
 			]);
-		});
-
-		test('.filter() should work on a list of strings', () => {
-			expect(
-				evaluate(
-					'={{ ["i am a test string", "i should be kept", "i should be removed test"].filter("test", "remove") }}',
-				),
-			).toEqual(['i should be kept']);
-			expect(
-				evaluate(
-					'={{ ["i am a test string", "i should be kept test", "i should be removed"].filter("test") }}',
-				),
-			).toEqual(['i am a test string', 'i should be kept test']);
 		});
 	});
 });

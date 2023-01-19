@@ -21,18 +21,6 @@ function isPresent(value: number): boolean {
 	return !isBlank(value);
 }
 
-function random(value: number): number {
-	return Math.floor(Math.random() * value);
-}
-
-function isTrue(value: number) {
-	return value === 1;
-}
-
-function isFalse(value: number) {
-	return value === 0;
-}
-
 function isEven(value: number) {
 	return value % 2 === 0;
 }
@@ -60,13 +48,8 @@ export const numberExtensions: ExtensionMap = {
 		ceil,
 		floor,
 		format,
-		random,
 		round,
-		isBlank,
 		isPresent,
-		isTrue,
-		isNotTrue: isFalse,
-		isFalse,
 		isEven,
 		isOdd,
 	},

@@ -92,48 +92,6 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.toBoolean should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".toBoolean() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".toBoolean() }}')).toEqual(false);
-		});
-
-		test('.isTrue should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(true);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isTrue() }}`)).toEqual(false);
-			}
-
-			expect(evaluate('={{ "maybe".isTrue() }}')).toEqual(false);
-		});
-
-		test('.isFalse should work correctly on a string', () => {
-			const validTrue = ['y', 'yes', 't', 'true', '1', 'YES'];
-			for (const v of validTrue) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(false);
-			}
-
-			const validFalse = ['n', 'no', 'f', 'false', '0', 'NO'];
-			for (const v of validFalse) {
-				expect(evaluate(`={{ "${v}".isFalse() }}`)).toEqual(true);
-			}
-
-			expect(evaluate('={{ "maybe".isFalse() }}')).toEqual(false);
-		});
-
 		test('.toFloat should work correctly on a string', () => {
 			expect(evaluate('={{ "1.1".toFloat() }}')).toEqual(1.1);
 			expect(evaluate('={{ "1.1".toDecimalNumber() }}')).toEqual(1.1);
