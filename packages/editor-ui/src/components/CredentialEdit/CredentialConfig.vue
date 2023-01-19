@@ -245,13 +245,15 @@ export default mixins(restApi).extend({
 			type: String,
 			required: true,
 		},
+		showCredentialOptions: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
 			EnterpriseEditionFeature,
 			selectedCredentialType: '',
 			authRelatedFieldsValues: {} as { [key: string]: NodeParameterValue },
-			showCredentialOptions: false,
 		};
 	},
 	async beforeMount() {
@@ -271,9 +273,6 @@ export default mixins(restApi).extend({
 		);
 	},
 	mounted() {
-		this.showCredentialOptions =
-			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthOptions === true;
-
 		// Select auth type radio button based on the selected credential type and it's display options
 		if ((this.selectedCredentialType || this.credentialType) && this.activeNodeType?.credentials) {
 			const credentialsForType =

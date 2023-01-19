@@ -73,6 +73,7 @@
 						:credentialPermissions="credentialPermissions"
 						:mode="mode"
 						:selectedCredential="selectedCredential"
+						:showCredentialOptions="showCredentialOptions"
 						@change="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
@@ -205,9 +206,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 			isRetesting: false,
 			EnterpriseEditionFeature,
 			selectedCredential: '',
+			showCredentialOptions: false,
 		};
 	},
 	async mounted() {
+		this.showCredentialOptions =
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthOptions === true;
+
 		this.nodeAccess = this.nodesWithAccess.reduce((accu: NodeAccessMap, node: { name: string }) => {
 			if (this.mode === 'new') {
 				accu[node.name] = { nodeType: node.name }; // enable all nodes by default
@@ -289,21 +294,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 			// If there is already selected type, use it
 			if (this.selectedCredential !== '') {
 				return this.credentialsStore.getCredentialTypeByName(this.selectedCredential);
-			}
-
-			// Otherwise, use credential type that corresponds to the first auth option in the node definition
-			const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
-			// But only if there is zero or one auth options available
-			if (nodeAuthOptions.length < 2 && this.activeNodeType?.credentials) {
-				if (nodeAuthOptions.length > 0) {
-					return getNodeCredentialForSelectedAuthType(
-						this.activeNodeType,
-						nodeAuthOptions[0].value,
-					);
-				} else {
-					return this.activeNodeType.credentials[0];
+			} else if (this.showCredentialOptions) {
+				// Otherwise, use credential type that corresponds to the first auth option in the node definition
+				const nodeAuthOptions = getNodeAuthOptions(this.activeNodeType);
+				// But only if there is zero or one auth options available
+				if (nodeAuthOptions.length < 2 && this.activeNodeType?.credentials) {
+					if (nodeAuthOptions.length > 0) {
+						return getNodeCredentialForSelectedAuthType(
+							this.activeNodeType,
+							nodeAuthOptions[0].value,
+						);
+					} else {
+						return this.activeNodeType.credentials[0];
+					}
 				}
 			}
+
 			return null;
 		},
 		currentUser(): IUser | null {

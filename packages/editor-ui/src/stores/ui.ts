@@ -355,13 +355,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
 		openNewCredential(type: string, showAuthOptions = false): void {
-			const ndvStore = useNDVStore();
-			let activeId: string | null = type;
-			if (ndvStore.activeNode) {
-				// TODO: Should this be removed?
-				activeId = KEEP_AUTH_IN_NDV_FOR_NODES.includes(ndvStore.activeNode?.type) ? type : type;
-			}
-			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, activeId);
+			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 			this.setShowAuthOptions(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
