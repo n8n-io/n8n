@@ -12,11 +12,6 @@ overrides:
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
 
-patchedDependencies:
-  sax@1.2.4:
-    hash: rzq4yduhjogvdrq2i6uogmfkme
-    path: patches/sax@1.2.4.patch
-
 importers:
 
   .:
@@ -567,6 +562,7 @@ importers:
       prismjs: ^1.17.1
       sass: ^1.55.0
       sass-loader: ^10.1.1
+      stream-browserify: ^3.0.0
       string-template-parser: ^1.2.6
       timeago.js: ^4.0.2
       uuid: ^8.3.2
@@ -625,6 +621,7 @@ importers:
       normalize-wheel: 1.0.1
       pinia: 2.0.23_vj744rb3neneiaeb3oalctaenu
       prismjs: 1.29.0
+      stream-browserify: 3.0.0
       timeago.js: 4.0.2
       uuid: 8.3.2
       v-click-outside: 3.2.0
@@ -19340,10 +19337,9 @@ packages:
     resolution: {integrity: sha512-8I2a3LovHTOpm7NV5yOyO8IHqgVsfK4+UuySrXU8YXkSRX7k6hCV9b3HrkKCr3nMpgj+0bmocaJJWpvp1oc7ZA==}
     dev: false
 
-  /sax/1.2.4_rzq4yduhjogvdrq2i6uogmfkme:
+  /sax/1.2.4:
     resolution: {integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==}
     dev: false
-    patched: true
 
   /saxes/6.0.0:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
@@ -20168,6 +20164,13 @@ packages:
       inherits: 2.0.4
       readable-stream: 2.3.7
     dev: true
+
+  /stream-browserify/3.0.0:
+    resolution: {integrity: sha512-H73RAHsVBapbim0tU2JwwOiXUj+fikfiaoYAKHF3VJfA0pe2BCzkhAHBlLG6REzE+2WNZcxOXjK7lkso+9euLA==}
+    dependencies:
+      inherits: 2.0.4
+      readable-stream: 3.6.0
+    dev: false
 
   /stream-combiner/0.0.4:
     resolution: {integrity: sha512-rT00SPnTVyRsaSz5zgSPma/aHSOic5U1prhYdRy5HS2kTZviFpmDgzilbtsJsxiroqACmayynDN/9VzIbX5DOw==}
@@ -23158,7 +23161,7 @@ packages:
   /xml2js/0.4.19:
     resolution: {integrity: sha512-esZnJZJOiJR9wWKMyuvSE1y6Dq5LCuJanqhxslH2bxM6duahNZ+HMpCLhBQGZkbX6xRf8x1Y2eJlgt2q3qo49Q==}
     dependencies:
-      sax: 1.2.4_rzq4yduhjogvdrq2i6uogmfkme
+      sax: 1.2.4
       xmlbuilder: 9.0.7
     dev: false
 
@@ -23166,7 +23169,7 @@ packages:
     resolution: {integrity: sha512-ySPiMjM0+pLDftHgXY4By0uswI3SPKLDw/i3UXbnO8M/p28zqexCUoPmQFrYD+/1BzhGJSs2i1ERWKJAtiLrug==}
     engines: {node: '>=4.0.0'}
     dependencies:
-      sax: 1.2.4_rzq4yduhjogvdrq2i6uogmfkme
+      sax: 1.2.4
       xmlbuilder: 11.0.1
     dev: false
 

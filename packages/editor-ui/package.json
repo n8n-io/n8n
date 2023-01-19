@@ -62,6 +62,7 @@
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.0.22",
     "prismjs": "^1.17.1",
+    "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
     "uuid": "^8.3.2",
     "v-click-outside": "^3.1.2",
