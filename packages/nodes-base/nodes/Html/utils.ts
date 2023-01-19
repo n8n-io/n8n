@@ -1,11 +1,5 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import type { IValueData, Cheerio } from './types';
-
-export function makeExecutionData(this: IExecuteFunctions, html: string, itemIndex: number) {
-	return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray({ html }), {
-		itemData: { item: itemIndex },
-	});
-}
 
 /**
  * @TECH_DEBT Explore replacing with handlebars
