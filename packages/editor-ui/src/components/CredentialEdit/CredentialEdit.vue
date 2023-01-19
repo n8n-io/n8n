@@ -153,7 +153,7 @@ import { useCredentialsStore } from '@/stores/credentials';
 import {
 	isValidCredentialResponse,
 	getNodeAuthOptions,
-	getNodeCredentialForAuthType,
+	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
 } from '@/utils';
 
@@ -296,7 +296,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 			// But only if there is zero or one auth options available
 			if (nodeAuthOptions.length < 2 && this.activeNodeType?.credentials) {
 				if (nodeAuthOptions.length > 0) {
-					return getNodeCredentialForAuthType(this.activeNodeType, nodeAuthOptions[0].value);
+					return getNodeCredentialForSelectedAuthType(
+						this.activeNodeType,
+						nodeAuthOptions[0].value,
+					);
 				} else {
 					return this.activeNodeType.credentials[0];
 				}
@@ -992,7 +995,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		onAuthTypeChanged(type: string): void {
 			if (this.activeNodeType?.credentials) {
-				const credentialsForType = getNodeCredentialForAuthType(this.activeNodeType, type);
+				const credentialsForType = getNodeCredentialForSelectedAuthType(this.activeNodeType, type);
 				if (credentialsForType) {
 					this.selectedCredential = credentialsForType.name;
 					if (this.credentialType) {

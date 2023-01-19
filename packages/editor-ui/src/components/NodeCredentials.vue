@@ -130,9 +130,10 @@ import { KEEP_AUTH_IN_NDV_FOR_NODES } from '@/constants';
 import {
 	getAuthTypeForNodeCredential,
 	getMainAuthField,
-	getNodeCredentialForAuthType,
+	getNodeCredentialForSelectedAuthType,
 	getAllNodeCredentialForAuthType,
 	updateNodeAuthType,
+	isRequiredCredential,
 } from '@/utils';
 
 interface CredentialDropdownOption extends ICredentialsResponse {
@@ -246,7 +247,10 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 						const newAuth = newValue[authField.name];
 
 						if (newAuth) {
-							const credentialType = getNodeCredentialForAuthType(nodeType, newAuth.toString());
+							const credentialType = getNodeCredentialForSelectedAuthType(
+								nodeType,
+								newAuth.toString(),
+							);
 							if (credentialType) {
 								this.subscribedToCredentialType = credentialType.name;
 							}
@@ -533,18 +537,11 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			});
 			this.subscribedToCredentialType = credentialType;
 		},
-		// TODO: Maybe rename this to `isRequiredCredential`
 		showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
 			const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
-			const mainAuthField = nodeType ? getMainAuthField(nodeType) : null;
-			const mainAuthFieldName = mainAuthField ? mainAuthField.name : '';
+			const isRequired = isRequiredCredential(nodeType, credentialType);
 
-			// This basically checks if this is the main (required) credential for the node
-			return (
-				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') &&
-				(mainAuthFieldName in (credentialType.displayOptions?.show || {}) ||
-					!credentialType.displayOptions)
-			);
+			return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node.type || '') && isRequired;
 		},
 		getCredentialsFieldLabel(credentialType: INodeCredentialDescription): string {
 			const credentialTypeName = this.credentialTypeNames[credentialType.name];

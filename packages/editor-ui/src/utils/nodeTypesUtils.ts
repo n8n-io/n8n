@@ -1,3 +1,4 @@
+import { MAIN_AUTH_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
@@ -313,6 +314,33 @@ export const hasOnlyListMode = (parameter: INodeProperties): boolean => {
 	);
 };
 
+// A credential type is considered required if it has no dependencies
+// or if it's only dependency is the main authentication fields
+export const isRequiredCredential = (
+	nodeType: INodeTypeDescription | null,
+	credential: INodeCredentialDescription,
+): boolean => {
+	if (!credential.displayOptions || !credential.displayOptions.show) {
+		return true;
+	}
+	const mainAuthField = getMainAuthField(nodeType);
+	if (mainAuthField) {
+		return mainAuthField.name in credential.displayOptions.show;
+	}
+	return false;
+};
+
+// Main authentication field for node is the field named 'authentication'
+// For now, almost all nodes follow this rule but there is nothing that prevents
+// node creators from naming it differently
+export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
+	if (!nodeType) {
+		return null;
+	}
+	// Simpler version, in case we want to use only field name
+	return nodeType.properties.find((prop) => prop.name === MAIN_AUTH_FIELD_NAME) || null;
+};
+
 // Gets all authentication types that a given node type supports
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
@@ -341,19 +369,6 @@ export const getNodeAuthOptions = (
 	return [];
 };
 
-export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
-	if (!nodeType) {
-		return null;
-	}
-	const authProps = getNodeAuthFields(nodeType);
-	// Resource is not an auth field but some nodes use it to filter credentials
-	if (authProps.length > 0 && authProps[0].name !== 'resource') {
-		return authProps[0];
-	}
-	return null;
-};
-
-// TODO: Merge these two:
 export const getAllNodeCredentialForAuthType = (
 	nodeType: INodeTypeDescription | null,
 	authType: string,
@@ -368,7 +383,7 @@ export const getAllNodeCredentialForAuthType = (
 	return [];
 };
 
-export const getNodeCredentialForAuthType = (
+export const getNodeCredentialForSelectedAuthType = (
 	nodeType: INodeTypeDescription,
 	authType: string,
 ): INodeCredentialDescription | null => {
