@@ -335,7 +335,7 @@ export class GraphQL implements INodeType {
 				const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
 				const { parameter }: { parameter?: Array<{ name: string; value: string }> } =
 					this.getNodeParameter('headerParametersUi', itemIndex, {}) as IDataObject;
-				const headerParameters = (parameter ?? []).reduce(
+				const headerParameters = (parameter || []).reduce(
 					(result, item) => ({
 						...result,
 						[item.name]: item.value,

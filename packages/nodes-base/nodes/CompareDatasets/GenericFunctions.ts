@@ -47,14 +47,14 @@ function compareItems(
 	differentKeys.forEach((key) => {
 		switch (resolve) {
 			case 'preferInput1':
-				different[key] = item1.json[key] ?? null;
+				different[key] = item1.json[key] || null;
 				break;
 			case 'preferInput2':
-				different[key] = item2.json[key] ?? null;
+				different[key] = item2.json[key] || null;
 				break;
 			default:
-				const input1 = item1.json[key] ?? null;
-				const input2 = item2.json[key] ?? null;
+				const input1 = item1.json[key] || null;
+				const input2 = item2.json[key] || null;
 				if (skipFields.includes(key)) {
 					skipped[key] = { input1, input2 };
 				} else {
@@ -89,7 +89,7 @@ function combineItems(
 		if (disableDotNotation) {
 			entry.json[field] = match.json[field];
 		} else {
-			const value = get(match.json, field) ?? null;
+			const value = get(match.json, field) || null;
 			set(entry, `json.${field}`, value);
 		}
 	});

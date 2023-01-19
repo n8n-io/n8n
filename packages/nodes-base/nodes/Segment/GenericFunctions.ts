@@ -29,7 +29,7 @@ export async function segmentApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.segment.io/v1${resource}`,
+		uri: uri || `https://api.segment.io/v1${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {
