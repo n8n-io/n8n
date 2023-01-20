@@ -39,7 +39,7 @@ export async function mailjetApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.mailjet.com${path}`,
+		uri: uri || `https://api.mailjet.com${path}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

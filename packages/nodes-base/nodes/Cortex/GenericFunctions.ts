@@ -27,7 +27,7 @@ export async function cortexApiRequest(
 		headers: {},
 		method,
 		qs: query,
-		uri: uri ?? `${credentials.host}/api${resource}`,
+		uri: uri || `${credentials.host}/api${resource}`,
 		body,
 		json: true,
 	};

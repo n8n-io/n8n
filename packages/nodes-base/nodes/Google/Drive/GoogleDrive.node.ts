@@ -2652,7 +2652,7 @@ export class GoogleDrive implements INodeType {
 						const body = {
 							name,
 							mimeType: 'application/vnd.google-apps.folder',
-							parents: options.parents ?? [],
+							parents: options.parents || [],
 						};
 
 						const qs = {
