@@ -22,6 +22,7 @@ type DurationUnit =
 	| 'years';
 type DatePart =
 	| 'day'
+	| 'week'
 	| 'month'
 	| 'year'
 	| 'hour'
@@ -102,7 +103,7 @@ function endOfMonth(date: Date | DateTime): Date {
 }
 
 function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Date {
-	const [part] = extraArgs;
+	let [part] = extraArgs;
 	let date = inputDate;
 	if (isDateTime(date)) {
 		date = date.toJSDate();
@@ -114,6 +115,10 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 			firstDayOfTheYear.getTime() +
 			(firstDayOfTheYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
+	}
+
+	if (part === 'week') {
+		part = 'weekNumber';
 	}
 
 	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
