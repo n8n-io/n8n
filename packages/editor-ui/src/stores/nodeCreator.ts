@@ -166,9 +166,11 @@ function recommendedCategory(
 				i18n.baseText('nodeCreator.actionsCategory.recommended'),
 			),
 			actionKey: categoryItem.value as string,
-			displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
-				interpolate: { event: startCase(categoryItem.name) },
-			}),
+			displayName:
+				categoryItem.action ??
+				i18n.baseText('nodeCreator.actionsCategory.onEvent', {
+					interpolate: { event: startCase(categoryItem.name) },
+				}),
 			description: categoryItem.description || '',
 			displayOptions: matchedProperty.displayOptions,
 			values: {

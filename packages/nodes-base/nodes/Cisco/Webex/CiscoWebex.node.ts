@@ -513,7 +513,7 @@ export class CiscoWebex implements INodeType {
 		// 	if (operation === 'download') {
 		// 		for (let i = 0; i < items.length; i++) {
 		// 			const transcriptId = this.getNodeParameter('transcriptId', i) as string;
-		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+		// 			const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 		// 			const meetingId = this.getNodeParameter('meetingId', i) as string;
 		// 			const options = this.getNodeParameter('options', i);
 

@@ -16,9 +16,6 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<n8n-text size="medium">
-					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
-				</n8n-text>
 				<executions-info-accordion />
 			</div>
 		</div>

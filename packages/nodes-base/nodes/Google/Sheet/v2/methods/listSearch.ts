@@ -24,7 +24,7 @@ export async function spreadSheetsSearch(
 		q: query.join(' and '),
 		pageToken: (paginationToken as string) || undefined,
 		fields: 'nextPageToken, files(id, name, webViewLink)',
-		orderBy: 'name_natural',
+		orderBy: 'modifiedByMeTime desc,name_natural',
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
 	};

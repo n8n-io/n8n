@@ -1,4 +1,4 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IPollFunctions, NodeOperationError } from 'n8n-workflow';
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
@@ -17,9 +17,12 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 export class GoogleSheet {
 	id: string;
 
-	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
+	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
-	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
+	constructor(
+		spreadsheetId: string,
+		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
 	}
@@ -582,6 +585,7 @@ export class GoogleSheet {
 				}
 			}
 		}
+
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
@@ -617,7 +621,13 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.convertSheetDataArrayToObjectArray(removeEmptyColumns(returnData), 1, keys, true);
+		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
+		return this.convertSheetDataArrayToObjectArray(
+			dataWithoutEmptyColumns,
+			1,
+			dataWithoutEmptyColumns[0] as string[],
+			true,
+		);
 	}
 
 	private async convertObjectArrayToSheetDataArray(

@@ -1,12 +1,12 @@
 // Vitest Snapshot v1
 
 exports[`N8NActionBox > should render correctly 1`] = `
-"<div data-test-id=\\"action-box\\" class=\\"n8n-action-box _container_pvdcm_1\\">
-  <div class=\\"_emoji_pvdcm_16\\"> 😿 </div>
-  <div class=\\"_heading_pvdcm_20\\">
+"<div data-test-id=\\"action-box\\" class=\\"n8n-action-box _container_\\">
+  <div class=\\"_emoji_\\"> 😿 </div>
+  <div class=\\"_heading_\\">
     <n8n-heading-stub tag=\\"span\\" size=\\"xlarge\\" align=\\"center\\">Headline you need to know</n8n-heading-stub>
   </div>
-  <div class=\\"_description_pvdcm_24\\">
+  <div class=\\"_description_\\">
     <n8n-text-stub size=\\"medium\\" color=\\"text-base\\" tag=\\"span\\"><span>Long description that you should know something is the way it is because of how it is. </span></n8n-text-stub>
   </div>
   <n8n-button-stub label=\\"Do something\\" type=\\"primary\\" size=\\"large\\"></n8n-button-stub>

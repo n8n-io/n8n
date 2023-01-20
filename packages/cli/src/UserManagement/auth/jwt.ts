@@ -27,6 +27,7 @@ export function issueJWT(user: User): JwtToken {
 
 	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
+		algorithm: 'HS256',
 	});
 
 	return {
@@ -36,7 +37,8 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOne(jwtPayload.id, {
+	const user = await Db.collections.User.findOne({
+		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
@@ -56,7 +58,9 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret')) as JwtPayload;
+	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+		algorithms: ['HS256'],
+	}) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }
 

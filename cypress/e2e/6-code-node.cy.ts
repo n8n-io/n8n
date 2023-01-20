@@ -1,6 +1,8 @@
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV } from '../pages/ndv';
 
 const WorkflowPage = new WorkflowPageClass();
+const ndv = new NDV();
 
 describe('Code node', () => {
 	beforeEach(() => {
@@ -12,9 +14,9 @@ describe('Code node', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNodeNdv('Code');
+		WorkflowPage.actions.openNode('Code');
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
 		WorkflowPage.getters.successToast().contains('Node executed successfully');
 	});
@@ -23,11 +25,11 @@ describe('Code node', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
-		WorkflowPage.actions.openNodeNdv('Code');
-		WorkflowPage.getters.ndvParameterInput('mode').click();
-		WorkflowPage.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
+		WorkflowPage.actions.openNode('Code');
+		ndv.getters.parameterInput('mode').click();
+		ndv.actions.selectOptionInParameterDropdown('mode', 'Run Once for Each Item');
 
-		WorkflowPage.actions.executeNodeFromNdv();
+		ndv.actions.execute();
 
 		WorkflowPage.getters.successToast().contains('Node executed successfully');
 	});

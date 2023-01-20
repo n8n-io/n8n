@@ -1,11 +1,22 @@
-import { closeBrackets, insertBracket } from '@codemirror/autocomplete';
+import { closeBrackets, completionStatus, insertBracket } from '@codemirror/autocomplete';
 import { codePointAt, codePointSize, Extension } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
-const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
+const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 	if (view.composing || view.state.readOnly) return false;
 
+	// customization: do not autoclose tokens while autocompletion is active
+	if (completionStatus(view.state) !== null) return false;
+
 	const selection = view.state.selection.main;
+
+	// customization: do not autoclose square brackets prior to `.json`
+	if (
+		insert === '[' &&
+		view.state.doc.toString().slice(selection.from - '.json'.length, selection.to) === '.json'
+	) {
+		return false;
+	}
 
 	if (
 		insert.length > 2 ||
@@ -22,13 +33,9 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 
 	view.dispatch(transaction);
 
-	/**
-	 * Customizations to inject whitespace and braces for setup and completion
-	 */
+	// customization: inject whitespace and second brace for brace completion: {| } -> {{ | }}
 
 	const cursor = view.state.selection.main.head;
-
-	// inject whitespace and second brace for brace completion: {| } -> {{ | }}
 
 	const isBraceCompletion =
 		view.state.sliceDoc(cursor - 2, cursor) === '{{' &&
@@ -43,7 +50,7 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 		return true;
 	}
 
-	// inject whitespace for brace setup: empty -> {| }
+	// customization: inject whitespace for brace setup: empty -> {| }
 
 	const isBraceSetup =
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
@@ -55,7 +62,7 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 		return true;
 	}
 
-	// inject whitespace for brace completion from selection: {{abc|}} -> {{ abc| }}
+	// customization: inject whitespace for brace completion from selection: {{abc|}} -> {{ abc| }}
 
 	const [range] = view.state.selection.ranges;
 
@@ -78,6 +85,12 @@ const inputHandler = EditorView.inputHandler.of((view, from, to, insert) => {
 const [_, bracketState] = closeBrackets() as readonly Extension[];
 
 /**
- * CodeMirror plugin to handle double braces `{{ }}` for resolvables in n8n expressions.
+ * CodeMirror plugin for (inline and modal) expression editor:
+ *
+ * - prevent token autoclosing during autocompletion (exception: `{`),
+ * - prevent square bracket autoclosing prior to `.json`
+ * - inject whitespace and braces for resolvables
+ *
+ * Other than segments marked `customization`, this is a copy of the [original](https://github.com/codemirror/closebrackets/blob/0a56edfaf2c6d97bc5e88f272de0985b4f41e37a/src/closebrackets.ts#L79).
  */
-export const doubleBraceHandler = () => [inputHandler, bracketState];
+export const expressionInputHandler = () => [handler, bracketState];
