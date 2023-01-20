@@ -1,9 +1,16 @@
 import { i18n } from '@/plugins/i18n';
-import { autocompletableNodeNames, receivesNoBinaryData, longestCommonPrefix } from './utils';
+import {
+	autocompletableNodeNames,
+	receivesNoBinaryData,
+	longestCommonPrefix,
+	bringForward,
+} from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
  * Completions offered at the dollar position: `$`
+ *
+ * Negative charset `[^.}]` ensures match stays within resolvable boundaries.
  */
 export function dollarCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/\$\w*[^.}]*/);
@@ -14,9 +21,13 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 	let options = generateDollarOptions();
 
-	const { text: userInput } = word;
+	const userInput = word.text;
 
-	if (userInput !== '' && userInput !== '$') {
+	/**
+	 * If user typed anything after `$`, narrow down options based on
+	 * left-to-right match of options to user input.
+	 */
+	if (userInput !== '$') {
 		options = options.filter((o) => o.label.startsWith(userInput) && userInput !== o.label);
 	}
 
@@ -24,6 +35,10 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 		from: word.to - userInput.length,
 		options,
 		filter: false,
+
+		/**
+		 * Compute underline range based on left-to-right match.
+		 */
 		getMatch(completion: Completion) {
 			const lcp = longestCommonPrefix([userInput, completion.label]);
 
@@ -33,23 +48,18 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 }
 
 export function generateDollarOptions() {
-	const BOOST_SET = new Set(['$input', '$json']); // @TODO: Refactor boosting
-	const SKIP_SET = new Set();
+	const BOOST = ['$input', '$json'];
+	const SKIP = new Set();
+	const FUNCTIONS = ['$jmespath'];
 
-	if (receivesNoBinaryData()) SKIP_SET.add('$binary');
+	if (receivesNoBinaryData()) SKIP.add('$binary');
 
-	// @TODO: Add $parameter to i18n and remove here
-	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => {
-		if (BOOST_SET.has(a)) return -1;
-		if (BOOST_SET.has(b)) return 1;
+	const keys = Object.keys(i18n.rootVars).sort((a, b) => a.localeCompare(b));
 
-		return a.localeCompare(b);
-	});
-
-	const options: Completion[] = rootKeys
-		.filter((key) => !SKIP_SET.has(key))
+	const options = bringForward(keys, BOOST)
+		.filter((key) => !SKIP.has(key))
 		.map((key) => {
-			const isFunction = ['$jmespath'].includes(key);
+			const isFunction = FUNCTIONS.includes(key);
 
 			const option: Completion = {
 				label: isFunction ? key + '()' : key,

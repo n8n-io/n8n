@@ -334,6 +334,7 @@ export class I18nClass {
 		$json: this.baseText('codeNodeEditor.completer.json'),
 		$itemIndex: this.baseText('codeNodeEditor.completer.$itemIndex'),
 		$now: this.baseText('codeNodeEditor.completer.$now'),
+		$parameter: this.baseText('codeNodeEditor.completer.$parameter'),
 		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
 		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
 		$today: this.baseText('codeNodeEditor.completer.$today'),

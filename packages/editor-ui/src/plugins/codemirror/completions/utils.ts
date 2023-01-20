@@ -24,6 +24,22 @@ export const longestCommonPrefix = (strings: string[]) => {
 };
 
 /**
+ * Move selected elements to the start of an array, in order.
+ * Selected elements are assumed to be in the array.
+ */
+export function bringForward(array: string[], selected: string[]) {
+	const copy = [...array];
+
+	[...selected].reverse().forEach((s) => {
+		const index = copy.indexOf(s);
+
+		if (index !== -1) copy.unshift(copy.splice(index, 1)[0]);
+	});
+
+	return copy;
+}
+
+/**
  * Whether a string may be used as a key in object dot notation access.
  */
 export const isAllowedInDotNotation = (str: string) => {

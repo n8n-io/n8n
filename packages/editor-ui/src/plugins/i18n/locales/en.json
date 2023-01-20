@@ -123,6 +123,7 @@
 	"codeNodeEditor.completer.$itemIndex": "The position of the current item in the list of items",
 	"codeNodeEditor.completer.$jmespath": "Evaluate a JMESPath expression",
 	"codeNodeEditor.completer.$now": "The current timestamp (as a Luxon object)",
+	"codeNodeEditor.completer.$parameter": "The parameters of the current node",
 	"codeNodeEditor.completer.$prevNode": "The node providing the input data for this run",
 	"codeNodeEditor.completer.$prevNode.name": "The name of the node providing the input data for this run",
 	"codeNodeEditor.completer.$prevNode.outputIndex": "The output connector of the node providing input data for this run",
