@@ -10,7 +10,7 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		// @ts-ignore
 		baseUrl: import.meta.env.VUE_APP_URL_BASE_API
 			? import.meta.env.VUE_APP_URL_BASE_API
-			: window.BASE_PATH === '/%BASE_PATH%/'
+			: window.BASE_PATH === '/{{BASE_PATH}}/'
 			? '/'
 			: window.BASE_PATH,
 		defaultLocale: 'en',
