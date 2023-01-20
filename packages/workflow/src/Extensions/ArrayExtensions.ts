@@ -149,7 +149,15 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 	}, []);
 }
 
+const ensureNumberArray = (arr: unknown[]) => {
+	if (arr.some((i) => typeof i !== 'number')) {
+		throw new ExpressionExtensionError('all array elements must be of type number');
+	}
+};
+
 function sum(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return value.reduce((p: number, c: unknown) => {
 		if (typeof c === 'string') {
 			return p + parseFloat(c);
@@ -162,6 +170,8 @@ function sum(value: unknown[]): number {
 }
 
 function min(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return Math.min(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -176,6 +186,8 @@ function min(value: unknown[]): number {
 }
 
 function max(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return Math.max(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -190,6 +202,8 @@ function max(value: unknown[]): number {
 }
 
 export function average(value: unknown[]) {
+	ensureNumberArray(value);
+
 	// This would usually be NaN but I don't think users
 	// will expect that
 	if (value.length === 0) {
