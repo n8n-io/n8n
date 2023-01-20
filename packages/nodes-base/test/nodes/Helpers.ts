@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import { Credentials } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -175,4 +176,8 @@ export function getResultNodeData(result: IRun, testData: WorkflowTestData) {
 			resultData,
 		};
 	});
+}
+
+export function readJsonFileSync(path: string) {
+	return JSON.parse(readFileSync(path, 'utf-8'));
 }

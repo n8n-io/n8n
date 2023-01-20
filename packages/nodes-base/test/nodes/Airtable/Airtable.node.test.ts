@@ -2,7 +2,6 @@ import { INodeType } from 'n8n-workflow';
 import { executeWorkflow } from '../ExecuteWorkflow';
 import * as Helpers from '../Helpers';
 import { WorkflowTestData } from '../types';
-import { readFileSync } from 'fs';
 import nock from 'nock';
 
 import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
@@ -35,7 +34,7 @@ describe('Execute Airtable Node', () => {
 		{
 			description: 'List Airtable Records',
 			input: {
-				workflowData: JSON.parse(readFileSync('test/nodes/Airtable/workflow.json', 'utf-8')),
+				workflowData: Helpers.readJsonFileSync('test/nodes/Airtable/workflow.json'),
 			},
 			output: {
 				nodeData: {

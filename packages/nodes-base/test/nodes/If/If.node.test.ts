@@ -1,7 +1,6 @@
 import { INodeType } from 'n8n-workflow';
 import * as Helpers from '../Helpers';
 import { WorkflowTestData } from '../types';
-import { readFileSync } from 'fs';
 
 import { ManualTrigger } from '../../../nodes/ManualTrigger/ManualTrigger.node';
 import { Set } from '../../../nodes/Set/Set.node';
@@ -16,7 +15,7 @@ describe('Execute If Node', () => {
 		{
 			description: 'should execute IF node true/false boolean',
 			input: {
-				workflowData: JSON.parse(readFileSync('test/nodes/If/workflow.json', 'utf-8')),
+				workflowData: Helpers.readJsonFileSync('test/nodes/If/workflow.json'),
 			},
 			output: {
 				nodeData: {
