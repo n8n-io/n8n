@@ -135,7 +135,7 @@ export default mixins(showMessage).extend({
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.credentialsStore.getCredentialOwnerName(`${this.credentialId}`);
+			return this.credentialsStore.getCredentialOwnerNameById(`${this.credentialId}`);
 		},
 	},
 	methods: {
