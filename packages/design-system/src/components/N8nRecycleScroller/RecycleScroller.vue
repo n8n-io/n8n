@@ -165,30 +165,30 @@ export default defineComponent({
 			});
 		}
 
-		async function updateItemSizeCache(items: Array<Record<string, string>>) {
+		function updateItemSizeCache(items: Array<Record<string, string>>) {
 			for (const item of items) {
-				await onUpdateItemSize(item);
+				onUpdateItemSize(item);
 			}
 		}
 
-		async function onUpdateItemSize(item: { [key: string]: string }) {
-			await nextTick();
+		function onUpdateItemSize(item: { [key: string]: string }) {
+			nextTick(() => {
+				const itemId = item[props.itemKey];
+				const itemRef = itemRefs.value[itemId];
+				const previousSize = itemSizeCache.value[itemId];
+				const size = itemRef ? itemRef.offsetHeight : props.itemSize;
+				const difference = size - previousSize;
 
-			const itemId = item[props.itemKey];
-			const itemRef = itemRefs.value[itemId];
-			const previousSize = itemSizeCache.value[itemId];
-			const size = itemRef ? itemRef.offsetHeight : props.itemSize;
-			const difference = size - previousSize;
+				itemSizeCache.value = {
+					...itemSizeCache.value,
+					[item[props.itemKey]]: size,
+				};
 
-			itemSizeCache.value = {
-				...itemSizeCache.value,
-				[item[props.itemKey]]: size,
-			};
-
-			if (wrapperRef.value && scrollTop.value) {
-				wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
-				scrollTop.value = wrapperRef.value.scrollTop;
-			}
+				if (wrapperRef.value && scrollTop.value) {
+					wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
+					scrollTop.value = wrapperRef.value.scrollTop;
+				}
+			});
 		}
 
 		function onWindowResize() {
