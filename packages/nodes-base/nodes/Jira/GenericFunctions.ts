@@ -40,7 +40,7 @@ export async function jiraSoftwareCloudApiRequest(
 		},
 		method,
 		qs: query,
-		uri: uri ?? `${domain}/rest${endpoint}`,
+		uri: uri || `${domain}/rest${endpoint}`,
 		body,
 		json: true,
 	};

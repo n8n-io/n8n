@@ -19,7 +19,7 @@ export async function codaApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://coda.io/apis/v1${resource}`,
+		uri: uri || `https://coda.io/apis/v1${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

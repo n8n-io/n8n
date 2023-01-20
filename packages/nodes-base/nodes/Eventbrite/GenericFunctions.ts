@@ -30,7 +30,7 @@ export async function eventbriteApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://www.eventbriteapi.com/v3${resource}`,
+		uri: uri || `https://www.eventbriteapi.com/v3${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

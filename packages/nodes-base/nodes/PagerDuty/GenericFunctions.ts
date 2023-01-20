@@ -25,7 +25,7 @@ export async function pagerDutyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `https://api.pagerduty.com${resource}`,
+		uri: uri || `https://api.pagerduty.com${resource}`,
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',

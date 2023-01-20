@@ -13,7 +13,7 @@ export async function apiRequest(
 ): Promise<any> {
 	const credentials = await this.getCredentials('wekanApi');
 
-	query = query ?? {};
+	query = query || {};
 
 	const options: OptionsWithUri = {
 		headers: {

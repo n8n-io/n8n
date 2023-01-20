@@ -90,7 +90,6 @@ import { useSettingsStore } from '../stores/settings';
 import { useUIStore } from '../stores/ui';
 import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
 import Vue from 'vue';
-import { restApi } from '../mixins/restApi';
 import {
 	deepCopy,
 	defaultMessageEventBusDestinationOptions,
@@ -99,7 +98,7 @@ import {
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 
-export default mixins(restApi).extend({
+export default mixins().extend({
 	name: 'SettingsLogStreamingView',
 	props: {},
 	components: {
@@ -125,7 +124,7 @@ export default mixins(restApi).extend({
 		this.uiStore.nodeViewInitialized = false;
 
 		// fetch Destination data from the backend
-		await this.getDestinationDataFromREST();
+		await this.getDestinationDataFromBackend();
 
 		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
 		this.logStreamingStore.$onAction(({ name, after }) => {
@@ -174,18 +173,18 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		async getDestinationDataFromREST(): Promise<any> {
+		async getDestinationDataFromBackend(): Promise<void> {
 			this.logStreamingStore.clearEventNames();
 			this.logStreamingStore.clearDestinationItemTrees();
 			this.allDestinations = [];
-			const eventNamesData = await this.restApi().makeRestApiRequest('get', '/eventbus/eventnames');
+			const eventNamesData = await this.logStreamingStore.fetchEventNames();
 			if (eventNamesData) {
 				for (const eventName of eventNamesData) {
 					this.logStreamingStore.addEventName(eventName);
 				}
 			}
 			const destinationData: MessageEventBusDestinationOptions[] =
-				await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
+				await this.logStreamingStore.fetchDestinations();
 			if (destinationData) {
 				for (const destination of destinationData) {
 					this.logStreamingStore.addDestination(destination);
@@ -218,11 +217,7 @@ export default mixins(restApi).extend({
 		},
 		async onRemove(destinationId?: string) {
 			if (!destinationId) return;
-			await this.restApi().makeRestApiRequest(
-				'DELETE',
-				`/eventbus/destination?id=${destinationId}`,
-			);
-			this.logStreamingStore.removeDestination(destinationId);
+			await this.logStreamingStore.deleteDestination(destinationId);
 			const foundNode = this.workflowsStore.getNodeByName(destinationId);
 			if (foundNode) {
 				this.workflowsStore.removeNode(foundNode);
