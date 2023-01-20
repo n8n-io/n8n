@@ -113,7 +113,13 @@ function stripTags(value: string): string {
 }
 
 function toDate(value: string): Date {
-	return new Date(value.toString());
+	const date = new Date(value.toString());
+
+	if (date.toString() === 'Invalid Date') {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to date');
+	}
+
+	return date;
 }
 
 function urlDecode(value: string, extraArgs: boolean[]): string {
@@ -134,11 +140,23 @@ function urlEncode(value: string, extraArgs: boolean[]): string {
 
 function toInt(value: string, extraArgs: Array<number | undefined>) {
 	const [radix] = extraArgs;
-	return parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
+	const int = parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
+
+	if (isNaN(int)) {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to int');
+	}
+
+	return int;
 }
 
 function toFloat(value: string) {
-	return parseFloat(value.replace(CURRENCY_REGEXP, ''));
+	const float = parseFloat(value.replace(CURRENCY_REGEXP, ''));
+
+	if (isNaN(float)) {
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to float');
+	}
+
+	return float;
 }
 
 function quote(value: string, extraArgs: string[]) {
