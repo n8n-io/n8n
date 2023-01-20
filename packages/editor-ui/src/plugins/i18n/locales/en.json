@@ -780,7 +780,6 @@
 	"nodeSettings.waitBetweenTries.description": "How long to wait between each attempt (in milliseconds)",
 	"nodeSettings.waitBetweenTries.displayName": "Wait Between Tries (ms)",
 	"nodeSettings.hasForeignCredential": "To edit this node, either:<br/>a) Ask {owner} to share the credential with you, or<br/>b) Duplicate the node and add your own credential",
-	"nodeSettings.hasForeignCredential.fallback": "the credential owner",
 	"nodeView.addNode": "Add node",
 	"nodeView.addATriggerNodeFirst": "Add a <a data-action='showNodeCreator'>Trigger Node</a> first",
 	"nodeView.addOrEnableTriggerNode": "<a data-action='showNodeCreator'>Add</a> or enable a Trigger node to execute the workflow",
