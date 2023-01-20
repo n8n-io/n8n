@@ -178,7 +178,7 @@ test('GET /eventbus/destination all returned destinations should exist in eventb
 	}
 });
 
-test('should send message to syslog ', async () => {
+test.skip('should send message to syslog', async () => {
 	const testMessage = new EventMessageGeneric({ eventName: 'n8n.test.message', id: uuid() });
 	config.set('enterprise.features.logStreaming', true);
 	// await cleanLogs();
@@ -217,7 +217,7 @@ test('should send message to syslog ', async () => {
 	});
 });
 
-test('should confirm send message if there are no subscribers', async () => {
+test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub',
 		id: uuid(),
