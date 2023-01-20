@@ -309,19 +309,6 @@ export class Expression {
 			) {
 				throw new Error('invalid syntax');
 			}
-
-			if (
-				typeof process === 'undefined' &&
-				error instanceof Error &&
-				error.name === 'TypeError' &&
-				error.message.endsWith('is not a function')
-			) {
-				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
-
-				if (!match?.groups?.msg) return null;
-
-				throw new Error(match.groups.msg);
-			}
 		}
 		return null;
 	}
