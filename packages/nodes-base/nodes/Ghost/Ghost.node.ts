@@ -291,7 +291,7 @@ export class Ghost implements INodeType {
 							const post: IDataObject = {};
 
 							if (contentFormat === 'html') {
-								post.html = updateFields.content ?? '';
+								post.html = updateFields.content || '';
 								qs.source = 'html';
 								delete updateFields.content;
 							} else {

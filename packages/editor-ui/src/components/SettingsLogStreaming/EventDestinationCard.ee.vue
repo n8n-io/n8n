@@ -51,7 +51,6 @@ import mixins from 'vue-typed-mixins';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import { useLogStreamingStore } from '../../stores/logStreamingStore';
-import { restApi } from '@/mixins/restApi';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import {
@@ -59,7 +58,6 @@ import {
 	defaultMessageEventBusDestinationOptions,
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
-import { saveDestinationToDb } from './Helpers.ee';
 import { BaseTextKey } from '../../plugins/i18n';
 
 export const DESTINATION_LIST_ITEM_ACTIONS = {
@@ -67,7 +65,7 @@ export const DESTINATION_LIST_ITEM_ACTIONS = {
 	DELETE: 'delete',
 };
 
-export default mixins(showMessage, restApi).extend({
+export default mixins(showMessage).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
@@ -142,7 +140,7 @@ export default mixins(showMessage, restApi).extend({
 			this.saveDestination();
 		},
 		async saveDestination() {
-			await saveDestinationToDb(this.restApi(), this.nodeParameters);
+			await this.logStreamingStore.saveDestination(this.nodeParameters);
 		},
 		async onAction(action: string) {
 			if (action === DESTINATION_LIST_ITEM_ACTIONS.OPEN) {

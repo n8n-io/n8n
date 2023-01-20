@@ -31,7 +31,7 @@ async function getAccessToken(
 	const signature = jwt.sign(
 		{
 			iss: credentials.email,
-			sub: credentials.delegatedEmail ?? credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
@@ -86,7 +86,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://www.googleapis.com/books/${resource}`,
+		uri: uri || `https://www.googleapis.com/books/${resource}`,
 		json: true,
 	};
 	try {

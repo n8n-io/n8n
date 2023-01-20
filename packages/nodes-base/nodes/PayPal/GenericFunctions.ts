@@ -75,8 +75,8 @@ export async function payPalApiRequest(
 	const options = {
 		headers: headerWithAuthentication,
 		method,
-		qs: query ?? {},
-		uri: uri ?? `${env}/v1${endpoint}`,
+		qs: query || {},
+		uri: uri || `${env}/v1${endpoint}`,
 		body,
 		json: true,
 	};

@@ -29,6 +29,7 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off', //1152 errors, better to fix in separate PR
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 	},
 
 	overrides: [
