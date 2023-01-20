@@ -143,7 +143,7 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 	const int = parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
 
 	if (isNaN(int)) {
-		throw new ExpressionError.ExpressionExtensionError('cannot convert to int');
+		throw new ExpressionError.ExpressionExtensionError('cannot convert to integer');
 	}
 
 	return int;
