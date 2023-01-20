@@ -5,7 +5,7 @@ import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { ifIn } from '@codemirror/autocomplete';
 
 import { proxyCompletions } from './completions/proxy.completions';
-import { rootCompletions } from './completions/root.completions';
+import { dollarCompletions } from './completions/dollar.completions';
 import { luxonCompletions } from './completions/luxon.completions';
 import { alphaCompletions } from './completions/alpha.completions';
 import { datatypeCompletions } from './completions/datatype.completions';
@@ -26,8 +26,8 @@ const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 
 export function n8nLang() {
 	const options = [
-		blankCompletions, // from `{{ | }}`
-		rootCompletions, // from `$`
+		blankCompletions,
+		dollarCompletions,
 		proxyCompletions, // from `$input.`, `$(...)`, etc.
 		datatypeCompletions, // from primitives `'abc'.` and from references `$json.name.`
 		alphaCompletions, // for global var: `D` -> `DateTime`

@@ -3,16 +3,16 @@ import { autocompletableNodeNames, receivesNoBinaryData, longestCommonPrefix } f
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions from `$` to proxies.
+ * Completions offered at the dollar position: `$`
  */
-export function rootCompletions(context: CompletionContext): CompletionResult | null {
+export function dollarCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/\$\w*[^.}]*/);
 
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = generateOptions();
+	let options = generateDollarOptions();
 
 	const { text: userInput } = word;
 
@@ -32,7 +32,7 @@ export function rootCompletions(context: CompletionContext): CompletionResult | 
 	};
 }
 
-export function generateOptions() {
+export function generateDollarOptions() {
 	const BOOST_SET = new Set(['$input', '$json']); // @TODO: Refactor boosting
 	const SKIP_SET = new Set();
 

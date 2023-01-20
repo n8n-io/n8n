@@ -1,4 +1,4 @@
-import { rootCompletions } from '../root.completions';
+import { dollarCompletions } from '../dollar.completions';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 import { setActivePinia } from 'pinia';
@@ -15,7 +15,7 @@ test('should return completion options: $', () => {
 	const position = doc.indexOf('$') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
 
-	const result = rootCompletions(context);
+	const result = dollarCompletions(context);
 
 	if (!result) throw new Error('Expected dollar-sign completion options');
 
@@ -55,7 +55,7 @@ test('should return completion options: $(', () => {
 	const position = doc.indexOf('(') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
 
-	const result = rootCompletions(context);
+	const result = dollarCompletions(context);
 
 	if (!result) throw new Error('Expected dollar-sign-selector completion options');
 
@@ -74,7 +74,7 @@ test('should not return completion options for regular strings', () => {
 	const position = doc.indexOf('o') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
 
-	const result = rootCompletions(context);
+	const result = dollarCompletions(context);
 
 	expect(result).toBeNull();
 });
