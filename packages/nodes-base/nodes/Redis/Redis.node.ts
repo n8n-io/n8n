@@ -506,9 +506,8 @@ export class Redis implements INodeType {
 				}
 				try {
 					const client = redis.createClient(redisOptions);
-					// tslint:disable-next-line: no-any
 
-					const _data = await new Promise((resolve, reject): any => {
+					await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
 							client.ping('ping', (error, pong) => {
 								if (error) reject(error);

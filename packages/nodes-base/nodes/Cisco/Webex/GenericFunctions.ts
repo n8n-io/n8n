@@ -128,6 +128,12 @@ export function mapResource(event: string) {
 	)[event];
 }
 
+function removeEmptyProperties(rest: { [key: string]: any }) {
+	return Object.keys(rest)
+		.filter((k) => rest[k] !== '')
+		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
+}
+
 export function getAttachemnts(attachements: IDataObject[]) {
 	const _attachments: IDataObject[] = [];
 	for (const attachment of attachements) {
@@ -619,12 +625,6 @@ export function getInputTextProperties(): INodeProperties[] {
 			description: 'The initial value for this field',
 		},
 	];
-}
-
-function removeEmptyProperties(rest: { [key: string]: any }) {
-	return Object.keys(rest)
-		.filter((k) => rest[k] !== '')
-		.reduce((a, k) => ({ ...a, [k]: rest[k] }), {});
 }
 
 export function getAutomaticSecret(credentials: ICredentialDataDecryptedObject) {

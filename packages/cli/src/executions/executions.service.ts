@@ -12,7 +12,7 @@ import {
 	jsonParse,
 	Workflow,
 } from 'n8n-workflow';
-import { FindConditions, FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import { FindOperator, FindOptionsWhere, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@/databases/entities/User';
@@ -200,7 +200,7 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindConditions<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -370,7 +370,9 @@ export class ExecutionsService {
 			// Loads the currently saved workflow to execute instead of the
 			// one saved at the time of the execution.
 			const workflowId = fullExecutionData.workflowData.id as string;
-			const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
+			const workflowData = (await Db.collections.Workflow.findOneBy({
+				id: workflowId,
+			})) as IWorkflowBase;
 
 			if (workflowData === undefined) {
 				throw new Error(
@@ -453,7 +455,7 @@ export class ExecutionsService {
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
-		const where: FindConditions<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const where: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
 
 		if (deleteBefore) {
 			// delete executions by date, if user may access the underlying workflows

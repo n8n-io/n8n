@@ -260,7 +260,7 @@ export default mixins(
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.quickstart'),
 							type: 'link',
 							properties: {
-								href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
+								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
 								newWindow: true,
 							},
 						},
@@ -290,7 +290,7 @@ export default mixins(
 							label: this.$locale.baseText('mainSidebar.helpMenuItems.course'),
 							type: 'link',
 							properties: {
-								href: 'https://www.youtube.com/watch?v=RpjQTGKm-ok',
+								href: 'https://www.youtube.com/watch?v=1MwSoB0gnM4',
 								newWindow: true,
 							},
 						},

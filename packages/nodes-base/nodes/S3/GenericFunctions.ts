@@ -17,6 +17,12 @@ import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { URL } from 'url';
 
+function queryToString(params: IDataObject) {
+	return Object.keys(params)
+		.map((key) => key + '=' + (params[key] as string))
+		.join('&');
+}
+
 export async function s3ApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	bucket: string,
@@ -205,10 +211,4 @@ export async function s3ApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }

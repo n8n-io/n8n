@@ -491,7 +491,7 @@ export async function pgUpdate(
 	const returning = generateReturning(pgp, getNodeParam('returnFields', 0) as string);
 	if (mode === 'multiple') {
 		const query =
-			pgp.helpers.update(updateItems, cs) +
+			(pgp.helpers.update(updateItems, cs) as string) +
 			' WHERE ' +
 			updateKeys
 				.map((entry) => {
@@ -515,7 +515,9 @@ export async function pgUpdate(
 						Array.prototype.push.apply(
 							result,
 							await t.any(
-								pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+								(pgp.helpers.update(itemCopy, cs) as string) +
+									pgp.as.format(where, itemCopy) +
+									returning,
 							),
 						);
 					} catch (err) {
@@ -539,7 +541,9 @@ export async function pgUpdate(
 						Array.prototype.push.apply(
 							result,
 							await t.any(
-								pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+								(pgp.helpers.update(itemCopy, cs) as string) +
+									pgp.as.format(where, itemCopy) +
+									returning,
 							),
 						);
 					} catch (err) {
@@ -612,7 +616,7 @@ export async function pgUpdateV2(
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
 	if (mode === 'multiple') {
 		const query =
-			pgp.helpers.update(updateItems, cs) +
+			(pgp.helpers.update(updateItems, cs) as string) +
 			' WHERE ' +
 			updateKeys
 				.map((entry) => {
@@ -635,7 +639,9 @@ export async function pgUpdateV2(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const transactionResult = await t.any(
-							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+							(pgp.helpers.update(itemCopy, cs) as string) +
+								pgp.as.format(where, itemCopy) +
+								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(transactionResult),
@@ -661,7 +667,9 @@ export async function pgUpdateV2(
 					const itemCopy = getItemCopy(items[i], columnNames, guardedColumns);
 					try {
 						const independentResult = await t.any(
-							pgp.helpers.update(itemCopy, cs) + pgp.as.format(where, itemCopy) + returning,
+							(pgp.helpers.update(itemCopy, cs) as string) +
+								pgp.as.format(where, itemCopy) +
+								returning,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(independentResult),

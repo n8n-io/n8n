@@ -12,7 +12,7 @@ describe('Inline expression editor', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
-		WorkflowPage.actions.openNodeNdv('Hacker News');
+		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openInlineExpressionEditor();
 	});
 
