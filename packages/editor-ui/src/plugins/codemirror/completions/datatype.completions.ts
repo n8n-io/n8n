@@ -138,7 +138,8 @@ const extensionOptions = (typeName: 'String' | 'Number' | 'Date' | 'Object' | 'A
 				type: 'function',
 			};
 
-			if (f.description) option.info = f.description;
+			// @TODO
+			// if (f.description) option.info = f.description;
 
 			return option;
 		});

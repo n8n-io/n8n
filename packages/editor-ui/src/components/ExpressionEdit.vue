@@ -91,7 +91,6 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
-import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 
 import type { Segment } from '@/types/expressions';
 
@@ -111,19 +110,10 @@ export default mixins(externalHooks, genericHelpers, debounceHelper).extend({
 			expressionsDocsUrl: EXPRESSIONS_DOCS_URL,
 		};
 	},
-	mounted() {
-		completionPreviewEventBus.$on('preview-completion', this.previewSegments);
-	},
-	destroyed() {
-		completionPreviewEventBus.$off('preview-completion', this.previewSegments);
-	},
 	computed: {
 		...mapStores(useNDVStore, useWorkflowsStore),
 	},
 	methods: {
-		previewSegments(previewSegments: Segment[]) {
-			this.segments = previewSegments;
-		},
 		valueChanged({ value, segments }: { value: string; segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
 			this.segments = segments;

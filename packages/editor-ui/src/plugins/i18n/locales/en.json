@@ -497,7 +497,6 @@
 	"expressionEdit.expression": "Expression",
 	"expressionEdit.resultOfItem1": "Result of item 1",
 	"expressionEdit.variableSelector": "Variable Selector",
-	"expressionEditor.completablePrefix": "['$' is a prefix, press ctrl+space for autocomplete options]",
 	"expressionEditor.uncalledFunction": "[this is a function, please add ()]",
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.undefined": "[undefined]",

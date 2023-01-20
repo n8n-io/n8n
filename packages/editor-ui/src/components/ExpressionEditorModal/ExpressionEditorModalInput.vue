@@ -16,8 +16,8 @@ import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 import { forceParse } from '@/utils/forceParse';
-import { autocompletion, selectedCompletion } from '@codemirror/autocomplete';
-// import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
+import { autocompletion } from '@codemirror/autocomplete';
+
 import type { IVariableItemSelected } from '@/Interface';
 
 export default mixins(expressionManager, completionManager, workflowHelpers).extend({
@@ -41,10 +41,8 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 	mounted() {
 		const extensions = [
 			inputTheme(),
+			autocompletion(),
 			Prec.highest(this.previewKeymap),
-			autocompletion({
-				aboveCursor: true,
-			}),
 			n8nLang(),
 			history(),
 			expressionInputHandler(),
@@ -52,26 +50,14 @@ export default mixins(expressionManager, completionManager, workflowHelpers).ext
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.domEventHandlers({ scroll: forceParse }),
 			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor) return;
-
-				// const completion = selectedCompletion(this.editor.state);
-
-				// if (completion) {
-				// 	const previewSegments = this.toPreviewSegments(completion, this.editor.state);
-
-				// 	completionPreviewEventBus.$emit('preview-completion', previewSegments);
-
-				// 	return;
-				// }
-
-				if (!viewUpdate.docChanged) return;
+				if (!this.editor || !viewUpdate.docChanged) return;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
 				try {
 					this.trackCompletion(viewUpdate, this.path);
-				} catch (_) {}
+				} catch {}
 
 				setTimeout(() => this.editor?.focus()); // prevent blur on paste
 

@@ -1,5 +1,5 @@
 import { i18n } from '@/plugins/i18n';
-import { autocompletableNodeNames, inputHasNoBinaryData, longestCommonPrefix } from './utils';
+import { autocompletableNodeNames, receivesNoBinaryData, longestCommonPrefix } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
@@ -33,10 +33,10 @@ export function rootCompletions(context: CompletionContext): CompletionResult | 
 }
 
 export function generateOptions() {
-	const BOOST_SET = new Set(['$input', '$json']);
+	const BOOST_SET = new Set(['$input', '$json']); // @TODO: Refactor boosting
 	const SKIP_SET = new Set();
 
-	if (inputHasNoBinaryData()) SKIP_SET.add('$binary');
+	if (receivesNoBinaryData()) SKIP_SET.add('$binary');
 
 	// @TODO: Add $parameter to i18n and remove here
 	const rootKeys = [...Object.keys(i18n.rootVars), '$parameter'].sort((a, b) => {

@@ -13,7 +13,7 @@ import { mapStores } from 'pinia';
 import { EditorView } from '@codemirror/view';
 import { EditorState, Prec } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-import { autocompletion, selectedCompletion } from '@codemirror/autocomplete';
+import { autocompletion } from '@codemirror/autocomplete';
 
 import { useNDVStore } from '@/stores/ndv';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -22,7 +22,6 @@ import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
 import { inputTheme } from './theme';
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
-// import { completionPreviewEventBus } from '@/event-bus/completion-preview-event-bus';
 import { completionManager } from '@/mixins/completionManager';
 
 export default mixins(completionManager, expressionManager, workflowHelpers).extend({
@@ -43,22 +42,29 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 			type: String,
 		},
 	},
-
 	watch: {
 		value(newValue) {
 			const isInternalChange = newValue === this.editor?.state.doc.toString();
 
 			if (isInternalChange) return;
 
-			// on external change (e.g. from expression modal or mapping drop), dispatch to update
+			// manual update on external change, e.g. from expression modal or mapping drop
 
 			this.editor?.dispatch({
-				changes: { from: 0, to: this.editor?.state.doc.length, insert: newValue },
+				changes: {
+					from: 0,
+					to: this.editor?.state.doc.length,
+					insert: newValue,
+				},
 			});
 		},
 		ndvInputData() {
 			this.editor?.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.value },
+				changes: {
+					from: 0,
+					to: this.editor.state.doc.length,
+					insert: this.value,
+				},
 			});
 
 			setTimeout(() => {
@@ -88,26 +94,14 @@ export default mixins(completionManager, expressionManager, workflowHelpers).ext
 				},
 			}),
 			EditorView.updateListener.of((viewUpdate) => {
-				if (!this.editor) return;
-
-				const completion = selectedCompletion(this.editor.state);
-
-				// if (completion) {
-				// 	const previewSegments = this.toPreviewSegments(completion, this.editor.state);
-
-				// 	completionPreviewEventBus.$emit('preview-completion', previewSegments);
-
-				// 	return;
-				// }
-
-				if (!viewUpdate.docChanged) return;
+				if (!this.editor || !viewUpdate.docChanged) return;
 
 				highlighter.removeColor(this.editor, this.plaintextSegments);
 				highlighter.addColor(this.editor, this.resolvableSegments);
 
 				try {
 					this.trackCompletion(viewUpdate, this.path);
-				} catch (_) {}
+				} catch {}
 
 				this.$emit('change', {
 					value: this.unresolvedExpression,

@@ -35,7 +35,7 @@ export const isAllowedInDotNotation = (str: string) => {
 export const isSplitInBatchesAbsent = () =>
 	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
-export const inputHasNoBinaryData = () => resolveParameter('={{ $binary }}')?.data === undefined;
+export const receivesNoBinaryData = () => resolveParameter('={{ $binary }}')?.data === undefined;
 
 export function hasNoParams(toResolve: string) {
 	const PSEUDO_PARAMS = ['notice']; // not proper params, no user input allowed

@@ -28,7 +28,6 @@ import {
 } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
 import { extendedFunctions } from './Extensions/ExtendedFunctions';
-import { EXPRESSION_RESOLUTION_ERROR_CODES } from './ErrorCodes';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -281,15 +280,8 @@ export class Expression {
 		const extendedExpression = this.extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') {
-				throw new Error('invalid syntax', {
-					cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.STANDALONE_PREFIX },
-				});
-			}
-
-			throw new Error('this is a function, please add ()', {
-				cause: { code: EXPRESSION_RESOLUTION_ERROR_CODES.UNCALLED_FUNCTION },
-			});
+			if (returnValue.name === '$') throw new Error('invalid syntax');
+			throw new Error('This is a function. Please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
