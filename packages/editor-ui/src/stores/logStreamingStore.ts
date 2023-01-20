@@ -61,7 +61,6 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 		},
 		updateDestination(destination: MessageEventBusDestinationOptions) {
 			if (destination.id && destination.id in this.items) {
-				console.log(destination);
 				this.$patch((state) => {
 					if (destination.id && destination.id in this.items) {
 						state.items[destination.id].destination = destination;
