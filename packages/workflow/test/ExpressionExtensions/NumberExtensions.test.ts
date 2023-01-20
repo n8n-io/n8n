@@ -77,8 +77,8 @@ describe('Data Transformation Functions', () => {
 
 	describe('Multiple expressions', () => {
 		test('Basic multiple expressions', () => {
-			expect(evaluate('={{ "abc def".toSnakeCase() }} you have ${{ (100).format() }}.')).toEqual(
-				'abc_def you have $100.',
+			expect(evaluate('={{ "Test".sayHi() }} you have ${{ (100).format() }}.')).toEqual(
+				'hi Test you have $100.',
 			);
 		});
 	});
