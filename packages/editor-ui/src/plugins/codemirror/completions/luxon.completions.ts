@@ -3,58 +3,58 @@ import { longestCommonPrefix } from './utils';
 import { DateTime } from 'luxon';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
+/**
+ * Completions offered at the end position of a Luxon entity.
+ *
+ * - `DateTime.`
+ * - `$now.`
+ * - `$today.`
+ */
 export function luxonCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/(DateTime|\$(now|today)*)\.(\w|\.|\(|\))*/); //
+	const word = context.matchBefore(/(DateTime|\$now|\$today)+\.[^}]*/);
 
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	const toResolve = word.text.endsWith('.')
-		? word.text.slice(0, -1)
-		: word.text.split('.').slice(0, -1).join('.');
+	const [base, tail] = splitBaseTail(word.text);
 
-	let options = getLuxonOptions(toResolve);
+	let options = base === 'DateTime' ? dateTimeOptions() : nowTodayOptions();
 
-	const userInputTail = word.text.split('.').pop();
-
-	if (userInputTail === undefined) return null;
-
-	if (userInputTail !== '') {
-		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
+	/**
+	 * If user typed anything after `.`, narrow down options based on
+	 * left-to-right match of options to user input.
+	 */
+	if (tail !== '') {
+		options = options.filter((o) => o.label.startsWith(tail) && tail !== o.label);
 	}
 
 	return {
-		from: word.to - userInputTail.length,
+		from: word.to - tail.length,
 		options,
 		filter: false,
 		getMatch(completion: Completion) {
-			const lcp = longestCommonPrefix([userInputTail, completion.label]);
+			const lcp = longestCommonPrefix([tail, completion.label]);
 
 			return [0, lcp.length];
 		},
 	};
 }
 
-function getLuxonOptions(toResolve: string): Completion[] {
-	if (toResolve === '$now' || toResolve === '$today') return nowTodayOptions();
-	if (toResolve === 'DateTime') return dateTimeOptions();
-
-	return [];
-}
-
 export const nowTodayOptions = () => {
-	const SKIP_SET = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
+	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
 
-	const entries = Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
-		.filter(([key]) => !SKIP_SET.has(key))
+	const map = Object.getOwnPropertyDescriptors(DateTime.prototype);
+
+	const entries = Object.entries(map)
+		.filter(([key]) => !SKIP.has(key))
 		.sort(([a], [b]) => a.localeCompare(b));
 
 	return entries.map(([key, descriptor]) => {
 		const isFunction = typeof descriptor.value === 'function';
 
 		const option: Completion = {
-			label: key,
+			label: isFunction ? key + '()' : key,
 			type: isFunction ? 'function' : 'keyword',
 		};
 
@@ -67,10 +67,12 @@ export const nowTodayOptions = () => {
 };
 
 export const dateTimeOptions = () => {
-	const SKIP_SET = new Set(['prototype', 'name', 'length', 'invalid']);
+	const SKIP = new Set(['prototype', 'name', 'length', 'invalid']);
 
-	const keys = Object.keys(Object.getOwnPropertyDescriptors(DateTime))
-		.filter((key) => !SKIP_SET.has(key) && !key.includes('_'))
+	const map = Object.getOwnPropertyDescriptors(DateTime);
+
+	const keys = Object.keys(map)
+		.filter((key) => !SKIP.has(key) && !key.includes('_'))
 		.sort((a, b) => a.localeCompare(b));
 
 	return keys.map((key) => {
@@ -82,3 +84,19 @@ export const dateTimeOptions = () => {
 		return option;
 	});
 };
+
+/**
+ * Split user input into base (Luxon entity) and tail (trailing section for filtering).
+ *
+ * ```
+ * DateTime. -> ['DateTime', '']
+ * DateTime.fr -> ['DateTime', 'fr']
+ * ```
+ */
+function splitBaseTail(userInput: string): [string, string] {
+	const parts = userInput.split('.');
+
+	const [tail, ...base] = parts.reverse();
+
+	return [base.join('.'), tail];
+}

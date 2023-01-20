@@ -10,16 +10,16 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 /**
  * Completions offered at the dollar position: `$`
  *
- * Negative charset `[^.}]` ensures match stays within resolvable boundaries.
+ * Negative charset `[^}]` ensures match stays within resolvable boundaries.
  */
 export function dollarCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/\$\w*[^.}]*/);
+	const word = context.matchBefore(/\$\w*[^}]*/);
 
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = generateDollarOptions();
+	let options = dollarOptions();
 
 	const userInput = word.text;
 
@@ -47,7 +47,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function generateDollarOptions() {
+export function dollarOptions() {
 	const BOOST = ['$input', '$json'];
 	const SKIP = new Set();
 	const FUNCTIONS = ['$jmespath'];

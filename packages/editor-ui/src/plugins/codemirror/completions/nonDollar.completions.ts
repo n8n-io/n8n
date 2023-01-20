@@ -15,14 +15,17 @@ export function nonDollarCompletions(context: CompletionContext): CompletionResu
 
 	const userInput = word.text.trim();
 
+	const options = [
+		{
+			label: 'DateTime',
+			type: 'keyword',
+			info: i18n.rootVars.DateTime,
+		},
+	].filter((o) => o.label.startsWith(userInput) && userInput !== o.label);
+
 	return {
 		from: word.to - userInput.length,
-		options: [
-			{
-				label: 'DateTime',
-				type: 'keyword',
-				info: i18n.rootVars.DateTime,
-			},
-		],
+		filter: false,
+		options,
 	};
 }

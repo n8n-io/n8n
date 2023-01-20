@@ -4,7 +4,7 @@ import type { IDataObject } from 'n8n-workflow';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions from `$json[` and `.json[` to their keys.
+ * Completions offered at these positions: `$json[` and `.json[`
  */
 export function jsonBracketCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/\$[\S]*json\[.*/);
@@ -25,7 +25,7 @@ export function jsonBracketCompletions(context: CompletionContext): CompletionRe
 
 	if (resolved === null) return null;
 
-	let options = getJsonBracketOptions(resolved);
+	let options = jsonBracketOptions(resolved);
 
 	const delimiter = word.text.startsWith('$json') ? '$json[' : '.json[';
 
@@ -47,7 +47,7 @@ export function jsonBracketCompletions(context: CompletionContext): CompletionRe
 	};
 }
 
-function getJsonBracketOptions(resolved: IDataObject) {
+function jsonBracketOptions(resolved: IDataObject) {
 	return Object.keys(resolved).map((key) => {
 		return {
 			label: `'${key}']`,

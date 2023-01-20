@@ -1,4 +1,4 @@
-import { generateDollarOptions } from './dollar.completions';
+import { dollarOptions } from './dollar.completions';
 import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
@@ -15,7 +15,7 @@ export function blankCompletions(context: CompletionContext): CompletionResult |
 
 	return {
 		from: word.to,
-		options: generateDollarOptions(),
+		options: dollarOptions(),
 		filter: false,
 	};
 }
