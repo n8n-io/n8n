@@ -1,4 +1,4 @@
-import { globalCompletions } from '../global.completions';
+import { alphaCompletions } from '../alpha.completions';
 import { CompletionContext } from '@codemirror/autocomplete';
 import { EditorState } from '@codemirror/state';
 
@@ -9,7 +9,7 @@ test('should return alphabetic char completion options: D', () => {
 	const position = doc.indexOf('D') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
 
-	const result = globalCompletions(context);
+	const result = alphaCompletions(context);
 
 	if (!result) throw new Error('Expected D completion options');
 
@@ -24,7 +24,7 @@ test('should not return alphabetic char completion options: $input.D', () => {
 	const position = doc.indexOf('D') + 1;
 	const context = new CompletionContext(EditorState.create({ doc }), position, EXPLICIT);
 
-	const result = globalCompletions(context);
+	const result = alphaCompletions(context);
 
 	expect(result).toBeNull();
 });

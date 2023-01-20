@@ -5,7 +5,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 /**
  * Completions for global vars, e.g. `D` -> `DateTime`.
  */
-export function globalCompletions(context: CompletionContext): CompletionResult | null {
+export function alphaCompletions(context: CompletionContext): CompletionResult | null {
 	const word = context.matchBefore(/(\s+)D[ateTim]*/);
 
 	if (!word) return null;
