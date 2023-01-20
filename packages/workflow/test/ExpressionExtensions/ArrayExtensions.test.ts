@@ -105,26 +105,22 @@ describe('Data Transformation Functions', () => {
 
 		test('.sum() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].sum() }}')).toEqual(21);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].sum() }}')).toEqual(21);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].sum() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].sum() }}')).toThrow();
 		});
 
 		test('.average() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].average() }}')).toEqual(3.5);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].average() }}')).toEqual(3.5);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].average() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].average() }}')).toThrow();
 		});
 
 		test('.min() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].min() }}')).toEqual(1);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].min() }}')).toEqual(1);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].min() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].min() }}')).toThrow();
 		});
 
 		test('.max() should work on an array of numbers', () => {
 			expect(evaluate('={{ [1, 2, 3, 4, 5, 6].max() }}')).toEqual(6);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, 6].max() }}')).toEqual(6);
-			expect(evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toBeNaN();
+			expect(() => evaluate('={{ ["1", 2, 3, 4, 5, "bad"].max() }}')).toThrow();
 		});
 
 		test('.union() should work on an array of objects', () => {
