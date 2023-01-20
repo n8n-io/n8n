@@ -281,6 +281,10 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === '$') throw new Error('invalid syntax');
+
+			if (returnValue.name === 'DateTime')
+				throw new Error('this is a DateTime, please access its methods');
+
 			throw new Error('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;

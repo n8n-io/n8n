@@ -9,6 +9,7 @@ export function autocompletableNodeNames() {
 		.map((node) => node.name);
 }
 
+// @TODO: Refactor to take two args
 export const longestCommonPrefix = (strings: string[]) => {
 	if (strings.length === 0) return '';
 
