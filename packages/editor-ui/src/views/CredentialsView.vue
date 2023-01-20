@@ -11,7 +11,7 @@
 		@update:filters="filters = $event"
 	>
 		<template #default="{ data }">
-			<credential-card class="mb-2xs" :data="data" />
+			<credential-card data-test-id="resources-list-item" class="mb-2xs" :data="data" />
 		</template>
 		<template #filters="{ setKeyValue }">
 			<div class="mb-s">

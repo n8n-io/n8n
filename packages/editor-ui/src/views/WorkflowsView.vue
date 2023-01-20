@@ -24,6 +24,7 @@
 		</template>
 		<template #default="{ data, updateItemSize }">
 			<workflow-card
+				data-test-id="resources-list-item"
 				class="mb-2xs"
 				:data="data"
 				@expand:tags="updateItemSize(data)"
