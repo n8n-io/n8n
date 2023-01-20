@@ -21,7 +21,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://analyticsreporting.googleapis.com${endpoint}`,
+		uri: uri || `${baseURL}${endpoint}`,
 		json: true,
 	};
 
