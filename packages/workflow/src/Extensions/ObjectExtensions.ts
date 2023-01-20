@@ -21,6 +21,10 @@ function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
 }
 
+function isNotEmpty(value: object): boolean {
+	return !isEmpty(value);
+}
+
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
 	return name in value;
@@ -93,6 +97,7 @@ export const objectExtensions: ExtensionMap = {
 	typeName: 'Object',
 	functions: {
 		isEmpty,
+		isNotEmpty,
 		merge,
 		hasField,
 		removeField,
