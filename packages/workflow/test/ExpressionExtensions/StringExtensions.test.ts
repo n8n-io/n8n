@@ -16,17 +16,17 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{"".isEmpty()}}')).toEqual(true);
 		});
 
-		test('.encrypt() should work correctly on a string', () => {
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['sha256']),
+		test('.hash() should work correctly on a string', () => {
+			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['sha256']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("sha256") }}')).not.toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("sha256") }}')).not.toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
-			expect(evaluate('={{ "12345".encrypt("MD5") }}')).toEqual(
-				stringExtensions.functions.encrypt('12345', ['MD5']),
+			expect(evaluate('={{ "12345".hash("MD5") }}')).toEqual(
+				stringExtensions.functions.hash('12345', ['MD5']),
 			);
 
 			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(
