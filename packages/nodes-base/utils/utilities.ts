@@ -14,6 +14,8 @@
  * // => [['a', 'b', 'c'], ['d']]
  */
 
+import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+
 export function chunk(array: any[], size = 1) {
 	const length = array == null ? 0 : array.length;
 	if (!length || size < 1) {
@@ -54,4 +56,13 @@ export function flatten(nestedArray: any[][]) {
 	})(nestedArray);
 
 	return result;
+}
+
+export function setDisplayOptions(displayOptions: IDisplayOptions, properties: INodeProperties[]) {
+	return properties.map((nodeProperty) => {
+		return {
+			...nodeProperty,
+			displayOptions,
+		};
+	});
 }
