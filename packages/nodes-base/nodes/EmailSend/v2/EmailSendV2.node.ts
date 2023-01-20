@@ -10,14 +10,14 @@ import {
 
 import * as send from './send.operation';
 
+// eslint-disable-next-line n8n-nodes-base/node-class-description-missing-subtitle
 const versionDescription: INodeTypeDescription = {
 	displayName: 'Send Email',
 	name: 'emailSend',
 	icon: 'fa:envelope',
 	group: ['output'],
 	version: 2,
-	subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-	description: 'Sends an Email',
+	description: 'Sends an email using SMTP protocol',
 	defaults: {
 		name: 'Send Email',
 		color: '#00bb88',
@@ -72,12 +72,10 @@ export class EmailSendV2 implements INodeType {
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const operation = this.getNodeParameter('operation', 0);
 		let returnData: INodeExecutionData[][] = [];
 
-		if (operation === 'send') {
-			returnData = await send.execute.call(this);
-		}
+		returnData = await send.execute.call(this);
+
 		return returnData;
 	}
 }
