@@ -7,23 +7,21 @@ import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['owner'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('user-management:reset should reset DB to default user state', async () => {
@@ -31,7 +29,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 
 	await Reset.run();
 
-	const user = await Db.collections.User.findOne({ globalRole: globalOwnerRole });
+	const user = await Db.collections.User.findOneBy({ globalRoleId: globalOwnerRole.id });
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

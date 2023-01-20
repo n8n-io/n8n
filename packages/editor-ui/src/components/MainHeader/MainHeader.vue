@@ -2,10 +2,9 @@
 	<div>
 		<div :class="{ 'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed }">
 			<div v-show="!hideMenuBar" class="top-menu">
-				<ExecutionDetails v-if="isExecutionPage" />
-				<WorkflowDetails v-else />
+				<WorkflowDetails />
 				<tab-bar
-					v-if="onWorkflowPage && !isExecutionPage"
+					v-if="onWorkflowPage"
 					:items="tabBarItems"
 					:activeTab="activeHeaderTab"
 					@select="onTabSelected"
@@ -19,7 +18,6 @@
 import mixins from 'vue-typed-mixins';
 import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
-import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import {
 	MAIN_HEADER_TABS,
@@ -38,7 +36,6 @@ export default mixins(pushConnection, workflowHelpers).extend({
 	name: 'MainHeader',
 	components: {
 		WorkflowDetails,
-		ExecutionDetails,
 		TabBar,
 	},
 	data() {
@@ -55,9 +52,6 @@ export default mixins(pushConnection, workflowHelpers).extend({
 				{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.editor') },
 				{ value: MAIN_HEADER_TABS.EXECUTIONS, label: this.$locale.baseText('generic.executions') },
 			];
-		},
-		isExecutionPage(): boolean {
-			return this.$route.name === VIEWS.EXECUTION;
 		},
 		activeNode(): INodeUi | null {
 			return this.ndvStore.activeNode;

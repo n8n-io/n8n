@@ -74,11 +74,11 @@ export class User extends AbstractEntity implements IUser {
 	})
 	settings: IUserSettings | null;
 
-	@ManyToOne('Role', 'globalForUsers', {
-		cascade: true,
-		nullable: false,
-	})
+	@ManyToOne('Role', 'globalForUsers', { nullable: false })
 	globalRole: Role;
+
+	@Column()
+	globalRoleId: string;
 
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];

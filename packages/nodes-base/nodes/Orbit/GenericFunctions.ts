@@ -42,6 +42,43 @@ export async function orbitApiRequest(
 	}
 }
 
+export function resolveIdentities(responseData: IRelation) {
+	const identities: IDataObject = {};
+	for (const data of responseData.included) {
+		identities[data.id as string] = data;
+	}
+
+	if (!Array.isArray(responseData.data)) {
+		responseData.data = [responseData.data];
+	}
+
+	for (let i = 0; i < responseData.data.length; i++) {
+		for (let y = 0; y < responseData.data[i].relationships.identities.data.length; y++) {
+			//@ts-ignore
+			responseData.data[i].relationships.identities.data[y] =
+				identities[responseData.data[i].relationships.identities.data[y].id];
+		}
+	}
+}
+
+export function resolveMember(responseData: IRelation) {
+	const members: IDataObject = {};
+	for (const data of responseData.included) {
+		members[data.id as string] = data;
+	}
+
+	if (!Array.isArray(responseData.data)) {
+		responseData.data = [responseData.data];
+	}
+
+	for (let i = 0; i < responseData.data.length; i++) {
+		//@ts-ignore
+		responseData.data[i].relationships.member.data =
+			//@ts-ignore
+			members[responseData.data[i].relationships.member.data.id];
+	}
+}
+
 /**
  * Make an API request to paginated flow endpoint
  * and return all results
@@ -78,41 +115,4 @@ export async function orbitApiRequestAllItems(
 		}
 	} while (responseData.data.length !== 0);
 	return returnData;
-}
-
-export function resolveIdentities(responseData: IRelation) {
-	const identities: IDataObject = {};
-	for (const data of responseData.included) {
-		identities[data.id as string] = data;
-	}
-
-	if (!Array.isArray(responseData.data)) {
-		responseData.data = [responseData.data];
-	}
-
-	for (let i = 0; i < responseData.data.length; i++) {
-		for (let y = 0; y < responseData.data[i].relationships.identities.data.length; y++) {
-			//@ts-ignore
-			responseData.data[i].relationships.identities.data[y] =
-				identities[responseData.data[i].relationships.identities.data[y].id];
-		}
-	}
-}
-
-export function resolveMember(responseData: IRelation) {
-	const members: IDataObject = {};
-	for (const data of responseData.included) {
-		members[data.id as string] = data;
-	}
-
-	if (!Array.isArray(responseData.data)) {
-		responseData.data = [responseData.data];
-	}
-
-	for (let i = 0; i < responseData.data.length; i++) {
-		//@ts-ignore
-		responseData.data[i].relationships.member.data =
-			//@ts-ignore
-			members[responseData.data[i].relationships.member.data.id];
-	}
 }
