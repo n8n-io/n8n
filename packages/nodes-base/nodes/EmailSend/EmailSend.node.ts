@@ -153,7 +153,6 @@ export class EmailSend implements INodeType {
 				};
 
 				if (credentials.user || credentials.password) {
-					// @ts-ignore
 					connectionOptions.auth = {
 						user: credentials.user as string,
 						pass: credentials.password as string,
@@ -169,7 +168,7 @@ export class EmailSend implements INodeType {
 				const transporter = createTransport(connectionOptions);
 
 				// setup email data with unicode symbols
-				const mailOptions = {
+				const mailOptions: IDataObject = {
 					from: fromEmail,
 					to: toEmail,
 					cc: ccEmail,
@@ -199,7 +198,6 @@ export class EmailSend implements INodeType {
 					}
 
 					if (attachments.length) {
-						// @ts-ignore
 						mailOptions.attachments = attachments;
 					}
 				}
