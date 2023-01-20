@@ -18,6 +18,7 @@ import {
 	LoggerProxy,
 	ErrorReporterProxy as ErrorReporter,
 	sleep,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -215,6 +216,13 @@ export class Worker extends Command {
 				success: true,
 			};
 		}
+
+		additionalData.hooks.hookFunctions.statusChange = [
+			async (executionId: string, changedStatus: ExecutionStatus): Promise<void> => {
+				// this.activeExecutions.setStatus(executionId, changedStatus);
+				// TODO: HOW?
+			},
+		];
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {

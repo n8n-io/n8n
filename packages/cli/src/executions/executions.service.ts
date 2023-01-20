@@ -21,6 +21,7 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IExecutionsSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -253,7 +254,7 @@ export class ExecutionsService {
 			req.user,
 		);
 
-		const formattedExecutions = executions.map((execution) => {
+		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
 			return {
 				id: execution.id,
 				finished: execution.finished,
@@ -265,6 +266,7 @@ export class ExecutionsService {
 				stoppedAt: execution.stoppedAt,
 				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
+				status: execution.status,
 			};
 		});
 

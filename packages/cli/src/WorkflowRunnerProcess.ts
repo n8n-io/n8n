@@ -12,6 +12,7 @@ import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } fro
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
+	ExecutionStatus,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
@@ -176,6 +177,9 @@ class WorkflowRunnerProcess {
 
 		additionalData.executionId = inputData.executionId;
 
+		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+			executionId: inputData.executionId,
+		});
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		additionalData.sendMessageToUI = async (source: string, message: any) => {
 			if (workflowRunner.data!.executionMode !== 'manual') {
@@ -482,6 +486,7 @@ process.on('message', async (message: IProcessMessage) => {
 						: ('own' as WorkflowExecuteMode),
 					startedAt: workflowRunner.startedAt,
 					stoppedAt: new Date(),
+					status: 'canceled',
 				};
 
 				// eslint-disable-next-line @typescript-eslint/no-floating-promises

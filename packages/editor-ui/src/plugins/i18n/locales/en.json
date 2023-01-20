@@ -433,6 +433,7 @@
 	"executionsList.confirmMessage.headline": "Delete Executions?",
 	"executionsList.confirmMessage.message": "Are you sure that you want to delete the {numSelected} selected execution(s)?",
 	"executionsList.clearSelection": "Clear selection",
+	"executionsList.crashed": "Crashed",
 	"executionsList.error": "Failed",
 	"executionsList.filters": "Filters",
 	"executionsList.loadMore": "Load More",

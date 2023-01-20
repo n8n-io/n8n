@@ -37,6 +37,7 @@ import {
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { LessThanOrEqual } from 'typeorm';
@@ -302,6 +303,8 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
+
+				await Db.collections.Execution.update(this.executionId, { status: 'running' });
 				const pushInstance = Push.getInstance();
 				pushInstance.send(
 					'executionStarted',
@@ -447,6 +450,8 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 					// Set last executed node so that it may resume on failure
 					fullExecutionData.data.resultData.lastNodeExecuted = nodeName;
 
+					fullExecutionData.status = 'running';
+
 					const flattenedExecutionData = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 					await Db.collections.Execution.update(
@@ -587,6 +592,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
 						waitTill: fullRunData.waitTill,
+						status: fullRunData.status,
 					};
 
 					if (this.retryOf !== undefined) {
@@ -717,6 +723,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						stoppedAt: fullRunData.stoppedAt,
 						workflowData: this.workflowData,
 						waitTill: fullRunData.data.waitTill,
+						status: workflowDidSucceed ? 'success' : 'failed',
 					};
 
 					if (this.retryOf !== undefined) {
@@ -982,6 +989,7 @@ async function executeWorkflow(
 			mode: 'integrated',
 			startedAt: new Date(),
 			stoppedAt: new Date(),
+			status: 'error',
 		};
 		// When failing, we might not have finished the execution
 		// Therefore, database might not contain finished errors.
@@ -993,6 +1001,7 @@ async function executeWorkflow(
 			finished: fullRunData.finished ? fullRunData.finished : false,
 			startedAt: fullRunData.startedAt,
 			stoppedAt: fullRunData.stoppedAt,
+			status: fullRunData.status,
 			workflowData,
 		};
 		if (workflowData.id) {
@@ -1028,6 +1037,13 @@ async function executeWorkflow(
 		...error,
 		stack: error!.stack,
 	};
+}
+
+export function setExecutionStatus(status: ExecutionStatus) {
+	if (this.executionId === undefined) {
+		return;
+	}
+	ActiveExecutions.getInstance().setStatus(this.executionId, status);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1082,6 +1098,7 @@ export async function getBase(
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		setExecutionStatus,
 	};
 }
 

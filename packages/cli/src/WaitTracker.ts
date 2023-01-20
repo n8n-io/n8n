@@ -129,7 +129,10 @@ export class WaitTrackerClass {
 
 		await Db.collections.Execution.update(
 			executionId,
-			ResponseHelper.flattenExecutionData(fullExecutionData),
+			ResponseHelper.flattenExecutionData({
+				...fullExecutionData,
+				status: 'canceled', // or 'failed' or 'stopped'?
+			}),
 		);
 
 		return {

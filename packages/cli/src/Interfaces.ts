@@ -19,6 +19,7 @@ import type {
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { WorkflowExecute } from 'n8n-core';
@@ -146,6 +147,7 @@ export interface IExecutionBase {
 	finished: boolean;
 	retryOf?: string; // If it is a retry, the id of the execution it is a retry of.
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
+	status: ExecutionStatus;
 }
 
 // Data in regular format with references
@@ -181,6 +183,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	data: string;
 	waitTill?: Date | null;
 	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	status: ExecutionStatus;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -226,6 +229,7 @@ export interface IExecutionsSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	status?: ExecutionStatus;
 }
 
 export interface IExecutionsCurrentSummary {
@@ -234,6 +238,7 @@ export interface IExecutionsCurrentSummary {
 	startedAt: Date;
 	mode: WorkflowExecuteMode;
 	workflowId: string;
+	status?: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {
@@ -249,6 +254,7 @@ export interface IExecutingWorkflowData {
 	postExecutePromises: Array<IDeferredPromise<IRun | undefined>>;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
 	workflowExecution?: PCancelable<IRun>;
+	status: ExecutionStatus;
 }
 
 export interface IExternalHooks {

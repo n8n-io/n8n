@@ -45,8 +45,6 @@ interface INodeSpecialCase {
 	keepOnlyProperties?: string[];
 }
 
-type ExecutionStatus = 'success' | 'error' | 'warning' | 'running';
-
 declare module 'json-diff' {
 	interface IDiffOptions {
 		keysOnly?: boolean;

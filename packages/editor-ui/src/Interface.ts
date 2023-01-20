@@ -37,7 +37,7 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
-	IAbstractEventMessage,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
@@ -472,6 +472,7 @@ export interface IExecutionsSummary {
 	stoppedAt?: Date;
 	workflowId: string;
 	workflowName?: string;
+	status?: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {

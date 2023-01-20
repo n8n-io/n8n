@@ -16,6 +16,7 @@ import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
+	ExecutionStatus,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
@@ -53,6 +54,7 @@ import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 import { eventBus } from './eventbus';
 import { recoverExecutionDataFromEventLogMessages } from './eventbus/MessageEventBus/recoverEvents';
+import { parse } from 'flatted';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -101,6 +103,7 @@ export class WorkflowRunner {
 			mode: executionMode,
 			startedAt,
 			stoppedAt: new Date(),
+			status: 'error',
 		};
 
 		// The following will attempt to recover runData from event logs
@@ -119,8 +122,17 @@ export class WorkflowRunner {
 				);
 				if (eventLogExecutionData) {
 					fullRunData.data.resultData.runData = eventLogExecutionData.resultData.runData;
+					fullRunData.status = 'crashed';
 				}
 			}
+
+			const executionFlattedData = await Db.collections.Execution.findOneBy({ id: executionId });
+
+			void InternalHooksManager.getInstance().onWorkflowCrashed(
+				executionId,
+				executionMode,
+				executionFlattedData?.workflowData,
+			);
 		} catch {
 			// Ignore errors
 		}
@@ -307,6 +319,10 @@ export class WorkflowRunner {
 				},
 			];
 
+			additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+				executionId,
+			});
+
 			additionalData.sendMessageToUI = WorkflowExecuteAdditionalData.sendMessageToUI.bind({
 				sessionId: data.sessionId,
 			});
@@ -374,6 +390,7 @@ export class WorkflowRunner {
 					if (workflowExecution.isCanceled) {
 						fullRunData.finished = false;
 					}
+					fullRunData.status = this.activeExecutions.getStatus(executionId);
 					this.activeExecutions.remove(executionId, fullRunData);
 				})
 				.catch((error) => {
@@ -728,7 +745,7 @@ export class WorkflowRunner {
 				}
 
 				// eslint-disable-next-line @typescript-eslint/await-thenable
-				await this.activeExecutions.remove(message.data.executionId, message.data.result);
+				this.activeExecutions.remove(message.data.executionId, message.data.result);
 			}
 		});
 
@@ -772,7 +789,7 @@ export class WorkflowRunner {
 				// Instead of pending forever as executing when it
 				// actually isn't anymore.
 				// eslint-disable-next-line @typescript-eslint/await-thenable, no-await-in-loop
-				await this.activeExecutions.remove(executionId);
+				this.activeExecutions.remove(executionId);
 			}
 
 			clearTimeout(executionTimeout);

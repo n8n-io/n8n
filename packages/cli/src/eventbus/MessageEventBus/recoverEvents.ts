@@ -35,7 +35,9 @@ export async function recoverExecutionDataFromEventLogMessages(
 					runData: {},
 				};
 			} else {
-				executionData.resultData.runData = {};
+				if (!executionData.resultData.runData) {
+					executionData.resultData.runData = {};
+				}
 			}
 			nodeNames = executionEntry.workflowData.nodes.map((n) => n.name);
 		}
@@ -80,7 +82,10 @@ export async function recoverExecutionDataFromEventLogMessages(
 			executionData.resultData.runData[nodeName] = [iRunData];
 		}
 		if (applyToDb) {
-			await Db.collections.Execution.update(executionId, { data: stringify(executionData) });
+			await Db.collections.Execution.update(executionId, {
+				data: stringify(executionData),
+				status: 'crashed',
+			});
 		}
 		return executionData;
 	}

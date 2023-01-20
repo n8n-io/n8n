@@ -270,14 +270,12 @@ import {
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { ExecutionStatus, IDataObject } from 'n8n-workflow';
 import { range as _range } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
-
-type ExecutionStatus = 'failed' | 'success' | 'waiting' | 'running' | 'unknown';
 
 export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, showMessage).extend(
 	{
@@ -340,6 +338,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						name: this.$locale.baseText('executionsList.error'),
 					},
 					{
+						id: 'crashed',
+						name: this.$locale.baseText('executionsList.crashed'),
+					},
+					{
 						id: 'running',
 						name: this.$locale.baseText('executionsList.running'),
 					},
@@ -362,7 +364,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (['ALL', 'running'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
-				if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
+				if (['ALL', 'error', 'crashed', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
 
@@ -399,7 +401,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				}
 				if (this.filter.status === 'waiting') {
 					filter.waitTill = true;
-				} else if (['error', 'success'].includes(this.filter.status)) {
+				} else if (['error', 'crashed', 'success'].includes(this.filter.status)) {
 					filter.finished = this.filter.status === 'success';
 				}
 				return filter;
@@ -794,6 +796,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				this.isDataLoading = false;
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
+				if (execution.status) return execution.status;
 				let status: ExecutionStatus = 'unknown';
 				if (execution.waitTill) {
 					status = 'waiting';
@@ -823,6 +826,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					text = this.$locale.baseText('executionsList.succeeded');
 				} else if (status === 'failed') {
 					text = this.$locale.baseText('executionsList.error');
+				} else if (status === 'crashed') {
+					text = this.$locale.baseText('executionsList.crashed');
 				} else {
 					text = this.$locale.baseText('executionsList.unknown');
 				}
@@ -841,6 +846,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					path = 'executionsList.statusText';
 				} else if (status === 'failed') {
 					path = 'executionsList.statusText';
+				} else if (status === 'crashed') {
+					path = 'executionsList.crashed';
 				} else {
 					path = 'executionsList.statusUnknown';
 				}
@@ -986,6 +993,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		color: var(--color-danger);
 	}
 
+	.crashed & {
+		color: var(--color-danger);
+	}
+
 	.waiting & {
 		color: var(--color-secondary);
 	}
@@ -1092,6 +1103,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 		}
 
 		&.failed td:first-child::before {
+			background: var(--color-danger);
+		}
+
+		&.crashed td:first-child::before {
 			background: var(--color-danger);
 		}
 

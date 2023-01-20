@@ -256,6 +256,7 @@ export async function createErrorExecution(
 		workflowData,
 		workflowId: workflow.id,
 		stoppedAt: new Date(),
+		status: 'new',
 	};
 
 	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);

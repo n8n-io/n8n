@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
 	createDeferredPromise,
+	ExecutionStatus,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
@@ -16,7 +17,7 @@ import type { ChildProcess } from 'child_process';
 import { stringify } from 'flatted';
 import PCancelable from 'p-cancelable';
 import * as Db from '@/Db';
-import {
+import type {
 	IExecutingWorkflowData,
 	IExecutionDb,
 	IExecutionFlattedDb,
@@ -40,6 +41,7 @@ export class ActiveExecutions {
 		process?: ChildProcess,
 		executionId?: string,
 	): Promise<string> {
+		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		if (executionId === undefined) {
 			// Is a new execution so save in DB
 
@@ -49,6 +51,7 @@ export class ActiveExecutions {
 				finished: false,
 				startedAt: new Date(),
 				workflowData: executionData.workflowData,
+				status: executionStatus,
 			};
 
 			if (executionData.retryOf !== undefined) {
@@ -63,32 +66,37 @@ export class ActiveExecutions {
 			const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
 
 			const executionResult = await Db.collections.Execution.save(execution as IExecutionFlattedDb);
+			// TODO: what is going on here?
 			executionId =
 				typeof executionResult.id === 'object'
 					? // @ts-ignore
 					  executionResult.id!.toString()
 					: executionResult.id + '';
+			if (executionId === undefined) {
+				throw new Error('There was an issue assigning an execution id to the execution');
+			}
+			executionStatus = 'running';
 		} else {
 			// Is an existing execution we want to finish so update in DB
 
-			const execution = {
+			const execution: Pick<IExecutionFlattedDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 				id: executionId,
 				data: stringify(executionData.executionData!),
 				waitTill: null,
+				status: executionStatus,
 			};
 
 			await Db.collections.Execution.update(executionId, execution);
 		}
 
-		// @ts-ignore
 		this.activeExecutions[executionId] = {
 			executionData,
 			process,
 			startedAt: new Date(),
 			postExecutePromises: [],
+			status: executionStatus,
 		};
 
-		// @ts-ignore
 		return executionId;
 	}
 
@@ -219,10 +227,27 @@ export class ActiveExecutions {
 				startedAt: data.startedAt,
 				mode: data.executionData.executionMode,
 				workflowId: data.executionData.workflowData.id! as string,
+				status: data.status,
 			});
 		}
 
 		return returnData;
+	}
+
+	setStatus(executionId: string, status: ExecutionStatus): void {
+		if (this.activeExecutions[executionId] === undefined) {
+			throw new Error(`There is no active execution with id "${executionId}".`);
+		}
+
+		this.activeExecutions[executionId].status = status;
+	}
+
+	getStatus(executionId: string): ExecutionStatus {
+		if (this.activeExecutions[executionId] === undefined) {
+			return 'unknown';
+		}
+
+		return this.activeExecutions[executionId].status;
 	}
 }
 

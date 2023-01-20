@@ -4,12 +4,14 @@
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
+	ExecutionStatus,
 	INodesGraphResult,
 	INodeTypes,
 	IRun,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
 	TelemetryHelpers,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { get as pslGet } from 'psl';
 import {
@@ -25,6 +27,7 @@ import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
 import { N8N_VERSION } from '@/constants';
+import * as Db from '@/Db';
 
 function userToPayload(user: User): {
 	userId: string;
@@ -218,6 +221,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		data: IWorkflowExecutionDataProcess,
 	): Promise<void> {
 		void Promise.all([
+			Db.collections.Execution.update(executionId, { status: 'running' }),
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.started',
 				payload: {
@@ -226,6 +230,25 @@ export class InternalHooksClass implements IInternalHooksClass {
 					workflowId: data.workflowData.id?.toString(),
 					isManual: data.executionMode === 'manual',
 					workflowName: data.workflowData.name,
+				},
+			}),
+		]);
+	}
+
+	async onWorkflowCrashed(
+		executionId: string,
+		executionMode: WorkflowExecuteMode,
+		workflowData?: IWorkflowBase,
+	): Promise<void> {
+		void Promise.all([
+			Db.collections.Execution.update(executionId, { status: 'crashed' }),
+			eventBus.sendWorkflowEvent({
+				eventName: 'n8n.workflow.crashed',
+				payload: {
+					executionId,
+					isManual: executionMode === 'manual',
+					workflowId: workflowData?.id?.toString(),
+					workflowName: workflowData?.name,
 				},
 			}),
 		]);
@@ -360,6 +383,15 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 			}
 		}
+
+		let executionStatus: ExecutionStatus = properties.success ? 'success' : 'failed';
+		if (runData?.status === 'waiting') executionStatus = 'waiting';
+
+		promises.push(
+			Db.collections.Execution.update(executionId, {
+				status: executionStatus,
+			}) as unknown as Promise<void>,
+		);
 
 		promises.push(
 			properties.success
