@@ -903,42 +903,39 @@ export class Jira implements INodeType {
 					if (!jsonActive) {
 						const notificationRecipientsValues = (
 							this.getNodeParameter('notificationRecipientsUi', i) as IDataObject
-						).notificationRecipientsValues as IDataObject[];
+						).notificationRecipientsValues as IDataObject;
 						const notificationRecipients: INotificationRecipients = {};
 						if (notificationRecipientsValues) {
-							// @ts-ignore
 							if (notificationRecipientsValues.reporter) {
-								// @ts-ignore
 								notificationRecipients.reporter = notificationRecipientsValues.reporter as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.assignee) {
-								// @ts-ignore
 								notificationRecipients.assignee = notificationRecipientsValues.assignee as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.assignee) {
-								// @ts-ignore
 								notificationRecipients.watchers = notificationRecipientsValues.watchers as boolean;
 							}
-							// @ts-ignore
+
 							if (notificationRecipientsValues.voters) {
-								// @ts-ignore
 								notificationRecipients.watchers = notificationRecipientsValues.voters as boolean;
 							}
-							// @ts-ignore
-							if (notificationRecipientsValues.users.length > 0) {
-								// @ts-ignore
-								notificationRecipients.users = notificationRecipientsValues.users.map((user) => {
+
+							if (((notificationRecipientsValues.users as IDataObject[]) || []).length > 0) {
+								notificationRecipients.users = (
+									notificationRecipientsValues.users as IDataObject[]
+								).map((user) => {
 									return {
 										accountId: user,
 									};
 								});
 							}
-							// @ts-ignore
-							if (notificationRecipientsValues.groups.length > 0) {
-								// @ts-ignore
-								notificationRecipients.groups = notificationRecipientsValues.groups.map((group) => {
+
+							if (((notificationRecipientsValues.groups as IDataObject[]) || []).length > 0) {
+								notificationRecipients.groups = (
+									notificationRecipientsValues.groups as IDataObject[]
+								).map((group) => {
 									return {
 										name: group,
 									};
@@ -948,18 +945,20 @@ export class Jira implements INodeType {
 						body.to = notificationRecipients;
 						const notificationRecipientsRestrictionsValues = (
 							this.getNodeParameter('notificationRecipientsRestrictionsUi', i) as IDataObject
-						).notificationRecipientsRestrictionsValues as IDataObject[];
+						).notificationRecipientsRestrictionsValues as IDataObject;
 						const notificationRecipientsRestrictions: NotificationRecipientsRestrictions = {};
 						if (notificationRecipientsRestrictionsValues) {
-							// @ts-ignore
-							if (notificationRecipientsRestrictionsValues.groups.length > 0) {
-								notificationRecipientsRestrictions.groups =
-									// @ts-ignore
-									notificationRecipientsRestrictionsValues.groups.map((group) => {
-										return {
-											name: group,
-										};
-									});
+							if (
+								((notificationRecipientsRestrictionsValues.groups as IDataObject[]) || []).length >
+								0
+							) {
+								notificationRecipientsRestrictions.groups = (
+									notificationRecipientsRestrictionsValues.groups as IDataObject[]
+								).map((group) => {
+									return {
+										name: group,
+									};
+								});
 							}
 						}
 						body.restrict = notificationRecipientsRestrictions;
@@ -1153,18 +1152,16 @@ export class Jira implements INodeType {
 							'GET',
 							{},
 							{},
-							// @ts-ignore
-							attachment?.json.content,
+							attachment?.json.content as string,
 							{ json: false, encoding: null },
 						);
-						//@ts-ignore
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer,
-							// @ts-ignore
-							attachment.json.filename,
-							// @ts-ignore
-							attachment.json.mimeType,
-						);
+
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}
@@ -1200,25 +1197,21 @@ export class Jira implements INodeType {
 					const binaryPropertyName = this.getNodeParameter('binaryProperty', 0);
 					for (const [index, attachment] of returnData.entries()) {
 						returnData[index].binary = {};
-						//@ts-ignore
 						const buffer = await jiraSoftwareCloudApiRequest.call(
 							this,
 							'',
 							'GET',
 							{},
 							{},
-							// @ts-ignore
-							attachment.json.content,
+							attachment.json.content as string,
 							{ json: false, encoding: null },
 						);
-						//@ts-ignore
-						returnData[index].binary[binaryPropertyName] = await this.helpers.prepareBinaryData(
-							buffer,
-							// @ts-ignore
-							attachment.json.filename,
-							// @ts-ignore
-							attachment.json.mimeType,
-						);
+						(returnData[index].binary as IBinaryKeyData)[binaryPropertyName] =
+							await this.helpers.prepareBinaryData(
+								buffer,
+								attachment.json.filename as string,
+								attachment.json.mimeType as string,
+							);
 					}
 				}
 			}

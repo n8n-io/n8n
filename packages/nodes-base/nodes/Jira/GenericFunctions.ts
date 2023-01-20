@@ -13,7 +13,6 @@ export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	endpoint: string,
 	method: string,
-
 	body: any = {},
 	query?: IDataObject,
 	uri?: string,
@@ -77,7 +76,6 @@ export async function jiraSoftwareCloudApiRequestAllItems(
 	propertyName: string,
 	endpoint: string,
 	method: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {
