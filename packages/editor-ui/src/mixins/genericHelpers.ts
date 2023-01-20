@@ -36,8 +36,11 @@ export const genericHelpers = mixins(showMessage).extend({
 
 			return `${minutesPassed}:${secondsLeft}${this.$locale.baseText('genericHelpers.minShort')}`;
 		},
-		convertToDisplayDate(epochTime: number): { date: string; time: string } {
-			const formattedDate = dateformat(epochTime, 'd mmm, yyyy#HH:MM:ss');
+		convertToDisplayDate(fullDate: Date | string | number): { date: string; time: string } {
+			const mask = `d mmm${
+				new Date(fullDate).getFullYear() === new Date().getFullYear() ? '' : ', yyyy'
+			}#HH:MM:ss`;
+			const formattedDate = dateformat(fullDate, mask);
 			const [date, time] = formattedDate.split('#');
 			return { date, time };
 		},

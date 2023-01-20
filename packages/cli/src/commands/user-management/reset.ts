@@ -9,23 +9,23 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
+		const ownerWorkflowRole = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'workflow',
 		});
 
-		const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
+		const ownerCredentialRole = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'credential',
 		});
 
 		await Db.collections.SharedWorkflow.update(
-			{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
+			{ userId: Not(owner.id), roleId: ownerWorkflowRole.id },
 			{ user: owner },
 		);
 
 		await Db.collections.SharedCredentials.update(
-			{ user: { id: Not(owner.id) }, role: ownerCredentialRole },
+			{ userId: Not(owner.id), roleId: ownerCredentialRole.id },
 			{ user: owner },
 		);
 

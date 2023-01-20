@@ -1,8 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-const pdf = require('pdf-parse');
+import pdf from 'pdf-parse';
 
 export class ReadPDF implements INodeType {
 	description: INodeTypeDescription = {
@@ -50,7 +50,8 @@ export class ReadPDF implements INodeType {
 				const binaryData = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 				returnData.push({
 					binary: item.binary,
-					json: await pdf(binaryData),
+
+					json: (await pdf(binaryData)) as unknown as IDataObject,
 				});
 			} catch (error) {
 				if (this.continueOnFail()) {

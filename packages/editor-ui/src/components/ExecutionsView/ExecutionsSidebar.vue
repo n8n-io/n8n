@@ -66,6 +66,11 @@
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
+			<div v-if="executions.length === 0 && statusFilterApplied" :class="$style.noResultsContainer">
+				<n8n-text color="text-base" size="medium" align="center">
+					{{ $locale.baseText('executionsLandingPage.noResults') }}
+				</n8n-text>
+			</div>
 			<execution-card
 				v-else
 				v-for="execution in executions"
@@ -224,7 +229,7 @@ export default Vue.extend({
 
 			// Find out how many execution card can fit into list
 			// and load more if needed
-			if (sidebarContainer && currentExecutionCard) {
+			if (sidebarContainer && currentExecutionCard?.length) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;
 				const listCapacity = Math.ceil(sidebarContainer.clientHeight / cardElement.clientHeight);
 
@@ -239,7 +244,11 @@ export default Vue.extend({
 				`execution-${this.workflowsStore.activeWorkflowExecution?.id}`
 			] as Vue[];
 
-			if (executionsList && currentExecutionCard && this.workflowsStore.activeWorkflowExecution) {
+			if (
+				executionsList &&
+				currentExecutionCard?.length &&
+				this.workflowsStore.activeWorkflowExecution
+			) {
 				const cardElement = currentExecutionCard[0].$el as HTMLElement;
 				const cardRect = cardElement.getBoundingClientRect();
 				const LIST_HEADER_OFFSET = 200;
@@ -315,5 +324,11 @@ export default Vue.extend({
 		background-color: var(--color-background-light);
 		margin-top: 0 !important;
 	}
+}
+
+.noResultsContainer {
+	width: 100%;
+	margin-top: var(--spacing-2xl);
+	text-align: center;
 }
 </style>

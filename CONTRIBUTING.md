@@ -60,9 +60,23 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Node.js
 
-We suggest using [Node.js](https://nodejs.org/en/) version 16.9 or newer for development purposes.
+[Node.js](https://nodejs.org/en/) version 16.9 or newer is required for development purposes.
 
-After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`, and [pnpm](https://pnpm.io/) with `corepack prepare pnpm --activate`.
+#### pnpm
+
+[pnpm](https://pnpm.io/) version 7.18 or newer is required for development purposes. We recommend installing it with [corepack](#corepack).
+
+##### pnpm workspaces
+
+n8n is split up in different modules which are all in a single mono repository.
+To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
+This automatically sets up file-links between modules which depend on each other.
+
+#### corepack
+
+We recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`. 
+
+With Node.js v16.17 or newer, you can install the latest version of pnpm: `corepack prepare pnpm@latest --activate`. If you use an older version install at least version 7.18 of pnpm via:  `corepack prepare pnpm@7.18.0 --activate`.
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
@@ -90,11 +104,9 @@ Windows:
 npm add -g windows-build-tools
 ```
 
-#### pnpm workspaces
+MacOS:
 
-n8n is split up in different modules which are all in a single mono repository.
-To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
-This automatically sets up file-links between modules which depend on each other.
+No additional packages required.
 
 ### Actual n8n setup
 

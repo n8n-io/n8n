@@ -15,6 +15,7 @@ import {
 	INodeProperties,
 	IPollFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
@@ -24,6 +25,22 @@ import { filters } from './Filters';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+
+function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
+	if (!value || typeof value !== 'string') return false;
+	if (uuidValidate(value)) return true;
+	if (value.length == 32) {
+		//prettier-ignore
+		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+		if (uuidValidate(strWithDashes)) return true;
+	}
+	throw new NodeOperationError(
+		this.getNode(),
+		`The relation id "${value}" is not a valid uuid with optional dashes.`,
+	);
+}
+
+export type SortData = { key: string; type: string; direction: string; timestamp: boolean };
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
@@ -254,7 +271,20 @@ export function formatBlocks(blocks: IDataObject[]) {
 	return results;
 }
 
-function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
+function getDateFormat(includeTime: boolean) {
+	if (!includeTime) {
+		return 'yyyy-MM-DD';
+	}
+	return '';
+}
+
+function getPropertyKeyValue(
+	this: IExecuteFunctions,
+	value: any,
+	type: string,
+	timezone: string,
+	version = 1,
+) {
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result: IDataObject = {};
@@ -282,10 +312,13 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-
-				relation: value.relationValue.reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-				}, []),
+				relation: value.relationValue
+					.filter((rv: string) => {
+						return uuidValidateWithoutDashes.call(this, rv);
+					})
+					.reduce((acc: [], cur: any) => {
+						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
+					}, []),
 			};
 			break;
 		case 'multi_select':
@@ -296,7 +329,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 					? multiSelectValue
 					: multiSelectValue.split(',').map((v: string) => v.trim())
 				)
-					// tslint:disable-next-line: no-any
 					.filter((entry: any) => entry !== null)
 					.map((option: string) => (!uuidValidate(option) ? { name: option } : { id: option })),
 			};
@@ -378,13 +410,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 	return result;
 }
 
-function getDateFormat(includeTime: boolean) {
-	if (!includeTime) {
-		return 'yyyy-MM-DD';
-	}
-	return '';
-}
-
 function getNameAndType(key: string) {
 	const [name, type] = key.split('|');
 	return {
@@ -393,7 +418,12 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
+export function mapProperties(
+	this: IExecuteFunctions,
+	properties: IDataObject[],
+	timezone: string,
+	version = 1,
+) {
 	return properties
 		.filter(
 			(property): property is Record<string, { key: string; [k: string]: any }> =>
@@ -403,7 +433,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 			(property) =>
 				[
 					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue(property, property.key.split('|')[1], timezone, version),
+					getPropertyKeyValue.call(this, property, property.key.split('|')[1], timezone, version),
 				] as const,
 		)
 		.filter(([, value]) => value)
@@ -416,9 +446,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 		);
 }
 
-export function mapSorting(
-	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
-) {
+export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
@@ -428,7 +456,6 @@ export function mapSorting(
 }
 
 export function mapFilters(filtersList: IDataObject[], timezone: string) {
-	// tslint:disable-next-line: no-any
 	return filtersList.reduce((obj, value: { [key: string]: any }) => {
 		let key = getNameAndType(value.key).type;
 
@@ -546,6 +573,21 @@ export function simplifyProperties(properties: any) {
 		results[`${key}`] = simplifyProperty(properties[key]);
 	}
 	return results;
+}
+
+export function getPropertyTitle(properties: { [key: string]: any }) {
+	return (
+		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
+			?.plain_text || ''
+	);
+}
+
+function prepend(stringKey: string, properties: { [key: string]: any }) {
+	for (const key of Object.keys(properties)) {
+		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
+		delete properties[key];
+	}
+	return properties;
 }
 
 export function simplifyObjects(objects: any, download = false, version = 2) {
@@ -734,7 +776,7 @@ export function getConditions() {
 }
 
 // prettier-ignore
-export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> { // tslint:disable-line:no-any
+export async function downloadFiles(this: IExecuteFunctions | IPollFunctions, records: [{ properties: { [key: string]: any | { id: string; type: string; files: [{ external: { url: string } } | { file: { url: string } }] } } }]): Promise<INodeExecutionData[]> {
 
 	const elements: INodeExecutionData[] = [];
 	for (const record of records) {
@@ -786,21 +828,6 @@ export function extractDatabaseId(database: string) {
 	} else {
 		return database;
 	}
-}
-
-function prepend(stringKey: string, properties: { [key: string]: any }) {
-	for (const key of Object.keys(properties)) {
-		properties[`${stringKey}_${snakeCase(key)}`] = properties[key];
-		delete properties[key];
-	}
-	return properties;
-}
-
-export function getPropertyTitle(properties: { [key: string]: any }) {
-	return (
-		Object.values(properties).filter((property) => property.type === 'title')[0].title[0]
-			?.plain_text || ''
-	);
 }
 
 export function getSearchFilters(resource: string) {
