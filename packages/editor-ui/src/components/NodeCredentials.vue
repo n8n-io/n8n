@@ -109,6 +109,7 @@ import {
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
 	INodeParameters,
+	INodeProperties,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
@@ -242,9 +243,8 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 				const nodeType = this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 				// Only do this for active node and if it's listening for auth change
 				if (isActive && nodeType && this.listeningForAuthChange) {
-					const authField = getMainAuthField(nodeType);
-					if (authField && oldValue && newValue) {
-						const newAuth = newValue[authField.name];
+					if (this.mainNodeAuthField && oldValue && newValue) {
+						const newAuth = newValue[this.mainNodeAuthField.name];
 
 						if (newAuth) {
 							const credentialType = getNodeCredentialForSelectedAuthType(
@@ -314,15 +314,20 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		nodeType(): INodeTypeDescription | null {
 			return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 		},
+		mainNodeAuthField(): INodeProperties | null {
+			return getMainAuthField(this.nodeType);
+		},
 	},
 
 	methods: {
 		getAllRelatedCredentialTypes(credentialType: INodeCredentialDescription): string[] {
 			const isRequiredCredential = this.showMixedCredentials(credentialType);
 			if (isRequiredCredential) {
-				const mainAuthField = getMainAuthField(this.nodeType);
-				if (mainAuthField) {
-					const credentials = getAllNodeCredentialForAuthType(this.nodeType, mainAuthField.name);
+				if (this.mainNodeAuthField) {
+					const credentials = getAllNodeCredentialForAuthType(
+						this.nodeType,
+						this.mainNodeAuthField.name,
+					);
 					return credentials.map((cred) => cred.name);
 				}
 			}
@@ -461,8 +466,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 
 			// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
 			if (this.showAll) {
-				const nodeAuthField = getMainAuthField(this.nodeType || undefined);
-				if (nodeAuthField) {
+				if (this.mainNodeAuthField) {
 					const nodeCredentialDescription = this.nodeType?.credentials?.find(
 						(cred) => cred.name === selectedCredentialsType,
 					);

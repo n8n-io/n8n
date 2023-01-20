@@ -1,4 +1,4 @@
-import { MAIN_AUTH_FIELD_NAME } from './../constants';
+import { MAIN_AUTH_FIELD_NAME, NODE_RESOURCE_FIELD_NAME } from './../constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from './../stores/nodeTypes';
 import { INodeCredentialDescription } from './../../../workflow/src/Interfaces';
@@ -330,14 +330,47 @@ export const isRequiredCredential = (
 	return false;
 };
 
-// Main authentication field for node is the field named 'authentication'
-// For now, almost all nodes follow this rule but there is nothing that prevents
-// node creators from naming it differently
+// Finds the main authentication filed for the node type
+// It's the field that node's required credential depend on
 export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodeProperties | null => {
 	if (!nodeType) {
 		return null;
 	}
-	return nodeType.properties.find((prop) => prop.name === MAIN_AUTH_FIELD_NAME) || null;
+	const credentialDependencies = getNodeAuthFields(nodeType);
+	const authenticationField =
+		credentialDependencies.find((prop) => prop.name === MAIN_AUTH_FIELD_NAME) || null;
+	// If there is a field name `authentication`, use it
+	// Otherwise, try to find alternative main auth field
+	return authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+};
+
+// A field is considered main auth filed if:
+// 1. It is a credential dependency
+// 2. If all of it's possible values are used in credential's display options
+const findAlternativeAuthField = (
+	nodeType: INodeTypeDescription,
+	fields: INodeProperties[],
+): INodeProperties | null => {
+	const dependentAuthFieldValues: { [fieldName: string]: string[] } = {};
+	nodeType.credentials?.forEach((cred) => {
+		if (cred.displayOptions && cred.displayOptions.show) {
+			for (const fieldName in cred.displayOptions.show) {
+				dependentAuthFieldValues[fieldName] = (dependentAuthFieldValues[fieldName] || []).concat(
+					(cred.displayOptions.show[fieldName] || []).map((val) => (val ? val.toString() : '')),
+				);
+			}
+		}
+	});
+	const alternativeAuthField = fields.find((field) => {
+		let required = true;
+		field.options?.forEach((option) => {
+			if (!dependentAuthFieldValues[field.name].includes(option.value)) {
+				required = false;
+			}
+		});
+		return required;
+	});
+	return alternativeAuthField || null;
 };
 
 // Gets all authentication types that a given node type supports
