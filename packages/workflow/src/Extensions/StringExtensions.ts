@@ -35,17 +35,17 @@ const URL_REGEXP =
 const CHAR_TEST_REGEXP = /\p{L}/u;
 const PUNC_TEST_REGEXP = /[!?.]/;
 
-function encrypt(value: string, extraArgs?: unknown): string {
-	const [format = 'MD5'] = extraArgs as string[];
-	if (format.toLowerCase() === 'base64') {
+function hash(value: string, extraArgs?: unknown): string {
+	const [algorithm = 'MD5'] = extraArgs as string[];
+	if (algorithm.toLowerCase() === 'base64') {
 		// We're using a library instead of btoa because btoa only
 		// works on ASCII
 		return encode(value);
 	}
-	const hashFunction = hashFunctions[format.toLowerCase()];
+	const hashFunction = hashFunctions[algorithm.toLowerCase()];
 	if (!hashFunction) {
 		throw new ExpressionError.ExpressionExtensionError(
-			`Unknown encrypt type ${format}. Available types are: ${Object.keys(hashFunctions)
+			`Unknown algorithm ${algorithm}. Available algorithms are: ${Object.keys(hashFunctions)
 				.map((s) => s.toUpperCase())
 				.join(', ')}, and Base64.`,
 		);
@@ -238,8 +238,7 @@ function extractUrl(value: string) {
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
-		encrypt,
-		hash: encrypt,
+		hash,
 		removeMarkdown,
 		stripTags,
 		toDate,
