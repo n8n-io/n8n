@@ -15,6 +15,7 @@ import {
 	INodeProperties,
 	IPollFunctions,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { camelCase, capitalCase, snakeCase } from 'change-case';
@@ -24,6 +25,22 @@ import { filters } from './Filters';
 import moment from 'moment-timezone';
 
 import { validate as uuidValidate } from 'uuid';
+
+function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
+	if (!value || typeof value !== 'string') return false;
+	if (uuidValidate(value)) return true;
+	if (value.length == 32) {
+		//prettier-ignore
+		const strWithDashes = `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20)}`;
+		if (uuidValidate(strWithDashes)) return true;
+	}
+	throw new NodeOperationError(
+		this.getNode(),
+		`The relation id "${value}" is not a valid uuid with optional dashes.`,
+	);
+}
+
+export type SortData = { key: string; type: string; direction: string; timestamp: boolean };
 
 const apiVersion: { [key: number]: string } = {
 	1: '2021-05-13',
@@ -261,7 +278,13 @@ function getDateFormat(includeTime: boolean) {
 	return '';
 }
 
-function getPropertyKeyValue(value: any, type: string, timezone: string, version = 1) {
+function getPropertyKeyValue(
+	this: IExecuteFunctions,
+	value: any,
+	type: string,
+	timezone: string,
+	version = 1,
+) {
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
 	let result: IDataObject = {};
@@ -289,10 +312,13 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 		case 'relation':
 			result = {
 				type: 'relation',
-
-				relation: value.relationValue.reduce((acc: [], cur: any) => {
-					return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-				}, []),
+				relation: value.relationValue
+					.filter((rv: string) => {
+						return uuidValidateWithoutDashes.call(this, rv);
+					})
+					.reduce((acc: [], cur: any) => {
+						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
+					}, []),
 			};
 			break;
 		case 'multi_select':
@@ -392,7 +418,12 @@ function getNameAndType(key: string) {
 	};
 }
 
-export function mapProperties(properties: IDataObject[], timezone: string, version = 1) {
+export function mapProperties(
+	this: IExecuteFunctions,
+	properties: IDataObject[],
+	timezone: string,
+	version = 1,
+) {
 	return properties
 		.filter(
 			(property): property is Record<string, { key: string; [k: string]: any }> =>
@@ -402,7 +433,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 			(property) =>
 				[
 					`${property.key.split('|')[0]}`,
-					getPropertyKeyValue(property, property.key.split('|')[1], timezone, version),
+					getPropertyKeyValue.call(this, property, property.key.split('|')[1], timezone, version),
 				] as const,
 		)
 		.filter(([, value]) => value)
@@ -415,9 +446,7 @@ export function mapProperties(properties: IDataObject[], timezone: string, versi
 		);
 }
 
-export function mapSorting(
-	data: [{ key: string; type: string; direction: string; timestamp: boolean }],
-) {
+export function mapSorting(data: SortData[]) {
 	return data.map((sort) => {
 		return {
 			direction: sort.direction,
