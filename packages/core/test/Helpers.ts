@@ -419,6 +419,7 @@ class NodeTypesClass implements INodeTypes {
 					group: ['transform'],
 					version: [1, 2],
 					forceInputNodeExecution: '={{ $version === 1 }}',
+					requiredInputs: '={{ $version === 2 ? 1 : [0, 1] }}',
 					description: 'Merges data of multiple streams once data of both is available',
 					defaults: {
 						name: 'Merge',

@@ -1371,6 +1371,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	inputs: string[];
 	allInputsRequired?: string | boolean;
 	forceInputNodeExecution?: string | boolean;
+	requiredInputs?: string | number[] | number;
 	inputNames?: string[];
 	outputs: string[];
 	outputNames?: string[];

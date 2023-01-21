@@ -1241,8 +1241,6 @@ export class WorkflowExecute {
 						this.runExecutionData.executionData!.waitingExecution,
 					);
 
-					// TODO: here was before a version 2 check, now it executes always
-					//       look what implications will be
 					if (
 						this.runExecutionData.executionData!.nodeExecutionStack.length === 0 &&
 						waitingNodes.length
@@ -1264,19 +1262,26 @@ export class WorkflowExecute {
 							);
 
 							// Check if the node is only allowed execute if both inputs received data
-							let allInputsRequired = nodeType.description.allInputsRequired;
-							if (allInputsRequired !== undefined) {
-								if (typeof allInputsRequired === 'string') {
-									allInputsRequired = !!workflow.expression.getSimpleParameterValue(
+							let requiredInputs = nodeType.description.requiredInputs;
+							if (requiredInputs !== undefined) {
+								if (typeof requiredInputs === 'string') {
+									requiredInputs = workflow.expression.getSimpleParameterValue(
 										checkNode,
-										allInputsRequired,
+										requiredInputs,
 										this.mode,
 										this.additionalData.timezone,
-										{},
-									);
+										{ $version: checkNode.typeVersion },
+										undefined,
+										[],
+									) as number[];
 								}
 
-								if (allInputsRequired) {
+								if (
+									(Array.isArray(requiredInputs) &&
+										requiredInputs.length === nodeType.description.inputs.length) ||
+									requiredInputs === nodeType.description.inputs.length
+								) {
+									// All inputs are required, but not all have data so do not continue
 									continue;
 								}
 							}
@@ -1295,7 +1300,40 @@ export class WorkflowExecute {
 								this.runExecutionData.executionData!.waitingExecution[nodeName],
 							).sort();
 
+							// The run-index of the earliest outstanding one
 							const firstRunIndex = parseInt(runIndexes[0]);
+
+							// Find all the inputs which received any kind of data, even if it was an empty
+							// array as this shows that the parent nodes executed but they did not have any
+							// data to pass on.
+							const inputsWithData = this.runExecutionData
+								.executionData!.waitingExecution[nodeName][firstRunIndex].main.map((data, index) =>
+									data === null ? null : index,
+								)
+								.filter((data) => data !== null);
+
+							if (requiredInputs !== undefined) {
+								// Certain inputs are required that the node can execute
+
+								if (Array.isArray(requiredInputs)) {
+									// Specific inputs are required (array of input indexes)
+									let inputDataMissing = false;
+									for (const requiredInput of requiredInputs) {
+										if (!inputsWithData.includes(requiredInput as number)) {
+											inputDataMissing = true;
+											break;
+										}
+									}
+									if (inputDataMissing) {
+										continue;
+									}
+								} else {
+									// A certain amout of inputs are required (amount of inputs)
+									if (inputsWithData.length < requiredInputs) {
+										continue;
+									}
+								}
+							}
 
 							const taskDataMain = this.runExecutionData.executionData!.waitingExecution[nodeName][
 								firstRunIndex
