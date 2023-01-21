@@ -982,7 +982,7 @@ export class WorkflowExecute {
 								);
 								nodeSuccessData = runNodeData.data;
 
-								if (!this.forceInputNodeExecution(workflow, node!) && nodeSuccessData) {
+								if (nodeSuccessData) {
 									nodeSuccessData = NodeHelpers.cleanupNodeData(nodeSuccessData);
 								}
 

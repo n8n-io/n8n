@@ -610,93 +610,92 @@ describe('WorkflowExecute', () => {
 					},
 				},
 			},
-			// // {
-			// // 	description: 'should convert objects to JSON (version 2)',
-			// // 	input: {
-			// // 		workflowData: {
-			// // 			version: 2,
-			// // 			nodes: [
-			// // 				{
-			// // 					parameters: {},
-			// // 					id: '2e4b3455-5cfc-421a-8b32-d5e424c86158',
-			// // 					name: 'Start',
-			// // 					type: 'n8n-nodes-base.start',
-			// // 					typeVersion: 1,
-			// // 					position: [160, 220],
-			// // 				},
-			// // 				{
-			// // 					parameters: {
-			// // 						values: {
-			// // 							string: [
-			// // 								{
-			// // 									name: 'date',
-			// // 									value: "={{ new Date('2022-02-02') }}",
-			// // 								},
-			// // 							],
-			// // 						},
-			// // 						options: {},
-			// // 					},
-			// // 					id: '0475b589-cbe7-4bb5-88e6-137c1fe9c7b1',
-			// // 					name: 'Set',
-			// // 					type: 'n8n-nodes-base.set',
-			// // 					typeVersion: 1,
-			// // 					position: [380, 220],
-			// // 				},
-			// // 				{
-			// // 					parameters: {},
-			// // 					id: 'e8535c7e-6512-4aeb-ab9d-cafeeff0c468',
-			// // 					name: 'NoOp',
-			// // 					type: 'n8n-nodes-base.noOp',
-			// // 					typeVersion: 1,
-			// // 					position: [600, 220],
-			// // 				},
-			// // 			],
-			// // 			connections: {
-			// // 				Start: {
-			// // 					main: [
-			// // 						[
-			// // 							{
-			// // 								node: 'Set',
-			// // 								type: 'main',
-			// // 								index: 0,
-			// // 							},
-			// // 						],
-			// // 					],
-			// // 				},
-			// // 				Set: {
-			// // 					main: [
-			// // 						[
-			// // 							{
-			// // 								node: 'NoOp',
-			// // 								type: 'main',
-			// // 								index: 0,
-			// // 							},
-			// // 						],
-			// // 					],
-			// // 				},
-			// // 			},
-			// // 		},
-			// // 	},
-			// // 	output: {
-			// // 		nodeExecutionOrder: ['Start', 'Set', 'NoOp'],
-			// // 		nodeData: {
-			// // 			Set: [
-			// // 				[
-			// // 					{
-			// // 						date: '2022-02-02T00:00:00.000Z',
-			// // 					},
-			// // 				],
-			// // 			],
-			// // 			NoOp: [
-			// // 				[
-			// // 					{
-			// // 						date: '2022-02-02T00:00:00.000Z',
-			// // 					},
-			// // 				],
-			// // 			],
-			// // 		},
-			// // 	},
-			// // },
+			{
+				description: 'should convert objects to JSON (version 2)',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '2e4b3455-5cfc-421a-8b32-d5e424c86158',
+								name: 'Start',
+								type: 'n8n-nodes-base.start',
+								typeVersion: 1,
+								position: [160, 220],
+							},
+							{
+								parameters: {
+									values: {
+										string: [
+											{
+												name: 'date',
+												value: "={{ new Date('2022-02-02') }}",
+											},
+										],
+									},
+									options: {},
+								},
+								id: '0475b589-cbe7-4bb5-88e6-137c1fe9c7b1',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [380, 220],
+							},
+							{
+								parameters: {},
+								id: 'e8535c7e-6512-4aeb-ab9d-cafeeff0c468',
+								name: 'NoOp',
+								type: 'n8n-nodes-base.noOp',
+								typeVersion: 1,
+								position: [600, 220],
+							},
+						],
+						connections: {
+							Start: {
+								main: [
+									[
+										{
+											node: 'Set',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+							Set: {
+								main: [
+									[
+										{
+											node: 'NoOp',
+											type: 'main',
+											index: 0,
+										},
+									],
+								],
+							},
+						},
+					},
+				},
+				output: {
+					nodeExecutionOrder: ['Start', 'Set', 'NoOp'],
+					nodeData: {
+						Set: [
+							[
+								{
+									date: '2022-02-02T00:00:00.000Z',
+								},
+							],
+						],
+						NoOp: [
+							[
+								{
+									date: '2022-02-02T00:00:00.000Z',
+								},
+							],
+						],
+					},
+				},
+			},
 			{
 				description: 'should run basic two node workflow',
 				input: {
