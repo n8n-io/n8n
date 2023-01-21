@@ -1347,7 +1347,8 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = jsonParse(Buffer.from(response.body).toString());
+					const data = Buffer.from(response.body).toString();
+					response.body = !data ? undefined : jsonParse(data);
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
