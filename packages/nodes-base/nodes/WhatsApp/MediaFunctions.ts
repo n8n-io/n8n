@@ -35,7 +35,7 @@ export async function setupUpload(
 	const data = new FormData();
 	data.append('file', buffer, {
 		contentType: mimeType,
-		filename: mediaFileName ?? binaryFileName,
+		filename: mediaFileName || binaryFileName,
 	});
 	data.append('messaging_product', 'whatsapp');
 

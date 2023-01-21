@@ -28,7 +28,7 @@ export async function circleciApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://circleci.com/api/v2${resource}`,
+		uri: uri || `https://circleci.com/api/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

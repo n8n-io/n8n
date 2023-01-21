@@ -678,7 +678,7 @@ export class GmailV2 implements INodeType {
 						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
 						const options = this.getNodeParameter('options', i);
-						const onlyMessages = options.returnOnlyMessages ?? false;
+						const onlyMessages = options.returnOnlyMessages || false;
 						const qs: IDataObject = {};
 
 						const simple = this.getNodeParameter('simple', i) as boolean;

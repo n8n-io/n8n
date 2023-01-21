@@ -1132,6 +1132,10 @@ export interface IParameterDependencies {
 	[key: string]: string[];
 }
 
+export type IParameterLabel = {
+	size?: 'small' | 'medium';
+};
+
 export interface IPollResponse {
 	closeFunction?: () => Promise<void>;
 }

@@ -1854,7 +1854,7 @@ export class Salesforce implements INodeType {
 							const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
 							body.entity_content.PathOnClient = `${title}.${
-								additionalFields.fileExtension ?? binaryData.fileExtension
+								additionalFields.fileExtension || binaryData.fileExtension
 							}`;
 							data = {
 								entity_content: {

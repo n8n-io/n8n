@@ -16,7 +16,7 @@ async function getToken(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 	credentials: IFormIoCredentials,
 ) {
-	const base = credentials.domain ?? 'https://formio.form.io';
+	const base = credentials.domain || 'https://formio.form.io';
 	const options = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export async function formIoApiRequest(
 
 	const token = await getToken.call(this, credentials);
 
-	const base = credentials.domain ?? 'https://api.form.io';
+	const base = credentials.domain || 'https://api.form.io';
 
 	const options = {
 		headers: {
