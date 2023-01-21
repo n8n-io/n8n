@@ -1369,8 +1369,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	eventTriggerDescription?: string;
 	activationMessage?: string;
 	inputs: string[];
-	allInputsRequired?: string | boolean;
-	forceInputNodeExecution?: string | boolean;
+	forceInputNodeExecution?: string | boolean; // TODO: This option should be deprecated after a while
 	requiredInputs?: string | number[] | number;
 	inputNames?: string[];
 	outputs: string[];

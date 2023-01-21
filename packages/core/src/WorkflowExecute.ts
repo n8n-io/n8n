@@ -1277,7 +1277,8 @@ export class WorkflowExecute {
 								}
 
 								if (
-									(Array.isArray(requiredInputs) &&
+									(requiredInputs !== undefined &&
+										Array.isArray(requiredInputs) &&
 										requiredInputs.length === nodeType.description.inputs.length) ||
 									requiredInputs === nodeType.description.inputs.length
 								) {
