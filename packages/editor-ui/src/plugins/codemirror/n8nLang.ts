@@ -4,13 +4,12 @@ import { parseMixed } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { ifIn } from '@codemirror/autocomplete';
 
-import { proxyCompletions } from './completions/proxy.completions';
+import { blankCompletions } from './completions/blank.completions';
+import { bracketAccessCompletions } from './completions/bracketAccess.completions';
+import { datatypeCompletions } from './completions/datatype.completions';
 import { dollarCompletions } from './completions/dollar.completions';
 import { luxonCompletions } from './completions/luxon.completions';
 import { nonDollarCompletions } from './completions/nonDollar.completions';
-import { datatypeCompletions } from './completions/datatype.completions';
-import { blankCompletions } from './completions/blank.completions';
-import { jsonBracketCompletions } from './completions/jsonBracket.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
 	wrap: parseMixed((node) => {
@@ -27,12 +26,11 @@ const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJsParser });
 export function n8nLang() {
 	const options = [
 		blankCompletions,
+		bracketAccessCompletions,
+		datatypeCompletions,
 		dollarCompletions,
+		luxonCompletions,
 		nonDollarCompletions,
-		proxyCompletions, // from `$input.`, `$(...)`, etc.
-		datatypeCompletions, // from primitives `'abc'.` and from references `$json.name.`
-		luxonCompletions, // from luxon vars: `DateTime.`, `$now.`, `$today.`
-		jsonBracketCompletions, // from `json[`
 	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 
 	return new LanguageSupport(n8nLanguage, [

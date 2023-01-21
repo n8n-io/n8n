@@ -1,31 +1,37 @@
 import { ExpressionExtensions, IDataObject } from 'n8n-workflow';
+import { i18n } from '@/plugins/i18n';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-import { isAllowedInDotNotation, longestCommonPrefix } from './utils';
+import {
+	bringToStart,
+	hasNoParams,
+	prefixMatch,
+	isAllowedInDotNotation,
+	isSplitInBatchesAbsent,
+	longestCommonPrefix,
+	splitBaseTail,
+	isPseudoParam,
+} from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions from datatypes to expression extensions.
+ * Completions offered for values based on their datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
-	// ----------------------------------
-	//        match before cursor
-	// ----------------------------------
-
-	const referenceRegex = /\$[\S]+\.([^{\s])*/; // $input.
-	const numberRegex = /(\d+)\.?(\d*)\.([^{\s])*/; // 123. or 123.4.
-	const stringRegex = /(".+"|('.+'))\.([^{\s])*/; // 'abc'. or "abc".
-	const arrayRegex = /(\[.+\])\.([^{\s])*/; // [1, 2, 3].
-	const objectRegex = /\(\{.*\}\)\.([^{\s])*/; // ({}).
-	const dateRegex = /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/; // new Date(). or (new Date()).
+	const reference = /\$[\S]+\.([^{\s])*/; // $input.
+	const numberLiteral = /\((\d+)\.?(\d*)\)\.([^{\s])*/; // (123). or (123.4).
+	const stringLiteral = /(".+"|('.+'))\.([^{\s])*/; // 'abc'. or "abc".
+	const dateLiteral = /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/; // new Date(). or (new Date()).
+	const arrayLiteral = /(\[.+\])\.([^{\s])*/; // [1, 2, 3].
+	const objectLiteral = /\(\{.*\}\)\.([^{\s])*/; // ({}).
 
 	const combinedRegex = new RegExp(
 		[
-			referenceRegex.source,
-			numberRegex.source,
-			stringRegex.source,
-			arrayRegex.source,
-			objectRegex.source,
-			dateRegex.source,
+			reference.source,
+			numberLiteral.source,
+			stringLiteral.source,
+			dateLiteral.source,
+			arrayLiteral.source,
+			objectLiteral.source,
 		].join('|'),
 	);
 
@@ -35,114 +41,135 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	// ----------------------------------
-	//      find string to resolve
-	// ----------------------------------
+	const skipDatatypeCompletions = ['$now.', '$today.'];
 
-	const toResolve = word.text.endsWith('.')
-		? word.text.slice(0, -1)
-		: word.text.split('.').slice(0, -1).join('.');
+	if (skipDatatypeCompletions.includes(word.text)) return null;
 
-	const SKIP_SET = new Set(['$execution', '$binary', '$itemIndex', '$now', '$today', '$runIndex']);
-
-	if (SKIP_SET.has(toResolve)) return null;
-
-	// ----------------------------------
-	//     resolve and get options
-	// ----------------------------------
+	const [base, tail] = splitBaseTail(word.text);
 
 	let resolved: IDataObject | null;
 
 	try {
-		resolved = resolveParameter(`={{ ${toResolve} }}`);
+		resolved = resolveParameter(`={{ ${base} }}`);
 	} catch (_) {
 		return null;
 	}
 
 	if (resolved === null) return null;
 
-	let options = getDatatypeOptions(resolved, toResolve);
+	let options: Completion[] = [];
+
+	try {
+		options = datatypeOptions(resolved, base);
+	} catch (_) {
+		return null;
+	}
 
 	if (options.length === 0) return null;
 
-	// ----------------------------------
-	//       filter by user input
-	// ----------------------------------
-
-	const userInputTail = word.text.split('.').pop() ?? '';
-
-	if (userInputTail !== '') {
-		options = options.filter((o) => o.label.startsWith(userInputTail) && userInputTail !== o.label);
+	if (tail !== '') {
+		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
 	return {
-		from: word.to - userInputTail.length,
+		from: word.to - tail.length,
 		options,
 		filter: false,
 		getMatch(completion: Completion) {
-			const lcp = longestCommonPrefix([userInputTail, completion.label]);
+			const lcp = longestCommonPrefix(tail, completion.label);
 
 			return [0, lcp.length];
 		},
 	};
 }
 
-function getDatatypeOptions(resolved: IDataObject, toResolve: string) {
-	if (typeof resolved === 'number') return extensionOptions('Number');
+function datatypeOptions(resolved: IDataObject, toResolve: string) {
+	if (typeof resolved === 'number') return extensions('number');
 
-	if (typeof resolved === 'string') return extensionOptions('String');
+	if (typeof resolved === 'string') return extensions('string');
 
-	if (resolved instanceof Date) return extensionOptions('Date');
+	if (resolved instanceof Date) return extensions('date');
 
 	if (Array.isArray(resolved)) {
-		const isProxy = toResolve.endsWith('all()');
+		if (toResolve.endsWith('all()')) return [];
 
-		if (isProxy) return [];
-
-		return extensionOptions('Array');
+		return extensions('array');
 	}
 
 	if (typeof resolved === 'object') {
-		const isProxy =
+		const BOOST = ['item', 'all', 'first', 'last'];
+		const SKIP = new Set(['__ob__', 'pairedItem']);
+
+		if (isSplitInBatchesAbsent()) SKIP.add('context');
+
+		const name = toResolve.startsWith('$(') ? '$()' : toResolve;
+
+		if (['$input', '$()'].includes(name) && hasNoParams(toResolve)) SKIP.add('params');
+
+		const rawKeys =
+			name === '$()' ? (Reflect.ownKeys(resolved) as string[]) : Object.keys(resolved);
+
+		const keys = bringToStart(rawKeys, BOOST)
+			.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
+			.map((key) => {
+				ensureKeyCanBeResolved(resolved, key);
+
+				const isFunction = typeof resolved[key] === 'function';
+
+				const option: Completion = {
+					label: isFunction ? key + '()' : key,
+					type: isFunction ? 'function' : 'keyword',
+				};
+
+				const infoKey = [name, key].join('.');
+				const info = i18n.proxyVars[infoKey];
+
+				if (info) option.info = info;
+
+				return option;
+			});
+
+		const skipObjectExtensions =
 			resolved.isProxy ||
 			resolved.json ||
-			toResolve.endsWith('json') ||
-			toResolve.startsWith('{') ||
-			toResolve.endsWith('}');
+			/json('])?$/.test(toResolve) ||
+			toResolve === '$execution' ||
+			toResolve.endsWith('params');
 
-		if (isProxy) return [];
+		if (skipObjectExtensions) return keys;
 
-		// @TODO: completions for bracket-notation chain e.g. $json['obj']['my Key']
-
-		const keys = Object.keys(resolved)
-			.filter((key) => isAllowedInDotNotation(key))
-			.map((key) => ({ label: key, type: 'keyword' }));
-
-		return [...keys, ...extensionOptions('Object')];
+		return [...keys, ...extensions('object')];
 	}
 
 	return [];
 }
 
-const extensionOptions = (typeName: 'String' | 'Number' | 'Date' | 'Object' | 'Array') => {
-	const extensions = ExpressionExtensions.find((ee) => ee.typeName === typeName);
+const extensions = (typeName: 'number' | 'string' | 'date' | 'array' | 'object') => {
+	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];
 
-	const options = Object.entries(extensions.functions)
-		.filter(([_, fn]) => fn.length === 1) // complete only argless functions for now
+	return Object.entries(extensions.functions)
+		.filter(([_, fn]) => fn.length === 1) // @TODO: Remove in next phase
 		.sort((a, b) => a[0].localeCompare(b[0]))
-		.map(([name, f]) => {
+		.map(([name, fn]) => {
 			const option: Completion = {
 				label: name + '()',
 				type: 'function',
 			};
 
 			// @TODO
-			// if (f.description) option.info = f.description;
+			// if (fn.description) option.info = f.description;
 
 			return option;
 		});
-
-	return options;
 };
+
+function ensureKeyCanBeResolved(obj: IDataObject, key: string) {
+	try {
+		obj[key];
+	} catch (error) {
+		// e.g. attempting to access non-parent node with `$()`
+		throw new Error('Cannot generate options', { cause: error });
+	}
+}

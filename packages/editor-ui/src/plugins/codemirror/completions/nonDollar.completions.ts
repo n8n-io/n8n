@@ -1,5 +1,6 @@
 import { i18n } from '@/plugins/i18n';
 import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { prefixMatch } from './utils';
 
 /**
  * Completions offered at the base position for any char other than `$`.
@@ -7,7 +8,7 @@ import type { CompletionContext, CompletionResult } from '@codemirror/autocomple
  * Currently only `D` for `DateTime`.
  */
 export function nonDollarCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/(\s+)D[ateTim]*/); // loose charset but covered by CodeMirror's filter
+	const word = context.matchBefore(/(\s+)D[ateTim]*/); // loose charset but covered by filter
 
 	if (!word) return null;
 
@@ -21,7 +22,7 @@ export function nonDollarCompletions(context: CompletionContext): CompletionResu
 			type: 'keyword',
 			info: i18n.rootVars.DateTime,
 		},
-	].filter((o) => o.label.startsWith(userInput) && userInput !== o.label);
+	].filter((o) => prefixMatch(o.label, userInput));
 
 	return {
 		from: word.to - userInput.length,
