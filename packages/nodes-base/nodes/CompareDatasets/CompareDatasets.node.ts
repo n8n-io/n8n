@@ -8,9 +8,12 @@ export class CompareDatasets implements INodeType {
 		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
 		description: 'Compare two inputs for changes',
 		defaults: { name: 'Compare Datasets' },
+		forceInputNodeExecution: '={{ $version === 1 }}',
+		// TODO: Check and test how node should behave, is data from only one input OK?
+		requiredInputs: '={{ $version === 1 ? undefined : [0, 1] }}',
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'main'],
 		inputNames: ['Input A', 'Input B'],

@@ -30,7 +30,7 @@ describe('WorkflowExecute', () => {
 		}> = [
 			{
 				description:
-					'should run complicated multi node workflow where multiple Merge-Node have missing data and complex depdency structure (Old Merge-Node behavior - Force execution)',
+					'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure (Old Merge-Node behavior - forceInputNodeExecution=true)',
 				input: {
 					workflowData: {
 						nodes: [
@@ -64,7 +64,7 @@ describe('WorkflowExecute', () => {
 								id: '429d1a51-65f0-4701-af76-b73611774952',
 								name: 'Merge3',
 								type: 'n8n-nodes-base.merge',
-								typeVersion: 2,
+								typeVersion: 1,
 								position: [1100, 1060],
 							},
 							{
@@ -591,7 +591,7 @@ describe('WorkflowExecute', () => {
 			},
 			{
 				description:
-					'should run complicated multi node workflow where multiple Merge-Node have missing data and complex depdency structure (New Merge-Node behavior - No force execution)',
+					'should run complicated multi node workflow where multiple Merge-Node have missing data and complex dependency structure (New Merge-Node behavior - forceInputNodeExecution=false)',
 				input: {
 					workflowData: {
 						nodes: [
@@ -946,9 +946,9 @@ describe('WorkflowExecute', () => {
 						'IF1',
 						'IF2',
 						'IF3',
-						'Merge2',
 						'IF4',
 						'Merge1',
+						'Merge2',
 						'Merge4',
 						'Merge5',
 						'Merge6',

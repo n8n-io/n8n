@@ -155,7 +155,7 @@ export class WorkflowExecute {
 			}
 			return forceInputNodeExecution as boolean;
 		}
-		return true;
+		return false;
 	}
 
 	/**
@@ -1208,9 +1208,16 @@ export class WorkflowExecute {
 										);
 									}
 
+									const connectionDestinationNode = workflow.getNode(connectionData.node);
+									const forceInputNodeExecution = this.forceInputNodeExecution(
+										workflow,
+										connectionDestinationNode!,
+									);
+
 									if (
 										nodeSuccessData![outputIndex] &&
-										(nodeSuccessData![outputIndex].length !== 0 || connectionData.index > 0)
+										(nodeSuccessData![outputIndex].length !== 0 ||
+											(connectionData.index > 0 && forceInputNodeExecution))
 									) {
 										// Add the node only if it did execute or if connected to second "optional" input
 										this.addNodeToBeExecuted(
