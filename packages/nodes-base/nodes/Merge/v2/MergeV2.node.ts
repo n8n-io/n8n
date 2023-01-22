@@ -47,7 +47,7 @@ const versionDescription: INodeTypeDescription = {
 	// If the node is of version 2 or if mode is chooseBranch data from both branches is required
 	// to continue, else data from any input suffices
 	requiredInputs:
-		'={{ $version === 2 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : [1]) }}',
+		'={{ $version === 2 ? undefined : ($parameter["mode"] === "chooseBranch" ? [0, 1] : 1) }}',
 	forceInputNodeExecution: '={{ $version === 2 }}',
 	properties: [
 		{
