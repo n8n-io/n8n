@@ -3695,7 +3695,9 @@ export default mixins(
 					source: node.id,
 				}) as Connection[];
 
+				this.instance.setSuspendDrawing(true);
 				connections.forEach(NodeViewUtils.resetConnection);
+				this.instance.setSuspendDrawing(false, true);
 			});
 		},
 		onToggleNodeCreator({
