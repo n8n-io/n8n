@@ -1931,6 +1931,7 @@ export default mixins(
 			}
 
 			await this.addNodes([newNodeData], undefined, trackHistory);
+			this.workflowsStore.setNodePristine(newNodeData.name, true);
 
 			this.uiStore.stateIsDirty = true;
 

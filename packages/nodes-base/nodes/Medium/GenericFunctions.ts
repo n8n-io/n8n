@@ -28,7 +28,7 @@ export async function mediumApiRequest(
 			'Accept-Charset': 'utf-8',
 		},
 		qs: query,
-		uri: uri ?? `https://api.medium.com/v1${endpoint}`,
+		uri: uri || `https://api.medium.com/v1${endpoint}`,
 		body,
 		json: true,
 	};

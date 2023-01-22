@@ -1,3 +1,5 @@
+import { IDataObject } from 'n8n-workflow';
+
 export interface IData {
 	viewId: string;
 	dimensions?: IDimension[];
@@ -6,6 +8,7 @@ export interface IData {
 	};
 	pageSize?: number;
 	metrics?: IMetric[];
+	dateRanges?: IDataObject[];
 }
 
 export interface IDimension {

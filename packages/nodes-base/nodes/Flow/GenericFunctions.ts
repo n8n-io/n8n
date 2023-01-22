@@ -24,7 +24,7 @@ export async function flowApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://api.getflow.com/v2${resource}`,
+		uri: uri || `https://api.getflow.com/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

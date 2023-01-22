@@ -54,7 +54,7 @@ export class ErrorTrigger implements INodeType {
 			items[0].json = {
 				execution: {
 					id,
-					url: `${urlParts.join('/')}/${id}`,
+					url: `${urlParts.join('/')}/workflow/1/${id}`,
 					retryOf: '34',
 					error: {
 						message: 'Example Error Message',

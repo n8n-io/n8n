@@ -124,9 +124,9 @@ export async function execute(
 
 	const range = getRangeString(sheetName, dataLocationOnSheetOptions);
 
-	const valueRenderMode = (outputFormattingOption.general ??
+	const valueRenderMode = (outputFormattingOption.general ||
 		'UNFORMATTED_VALUE') as ValueRenderOption;
-	const dateTimeRenderOption = (outputFormattingOption.date ?? 'FORMATTED_STRING') as string;
+	const dateTimeRenderOption = (outputFormattingOption.date || 'FORMATTED_STRING') as string;
 
 	const sheetData = (await sheet.getData(
 		range,
