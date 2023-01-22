@@ -1,6 +1,5 @@
 import {
 	CORE_NODES_CATEGORY,
-	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -117,14 +116,12 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
-		RECOMMENDED_CATEGORY,
 	];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
 	return [
-		RECOMMENDED_CATEGORY,
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		PERSONALIZED_CATEGORY,

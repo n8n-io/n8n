@@ -5,7 +5,7 @@
 			<div :class="$style.title">
 				{{ $locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`) }}
 			</div>
-			<div v-if="item.properties.description" :class="$style.description">
+			<div :class="$style.description">
 				{{ $locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`) }}
 			</div>
 		</div>

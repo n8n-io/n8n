@@ -42,7 +42,7 @@ const customNodeActionsParsers: {
 			(categoryItem): INodeActionTypeDescription => ({
 				...getNodeTypeBase(
 					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: categoryItem.value as string,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
@@ -56,10 +56,14 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterSinglePlaceholderAction(actions: INodeActionTypeDescription[]) {
+function filterSinglePlaceholderAction(
+	actions: INodeActionTypeDescription[],
+	isTriggerRoot: boolean,
+) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
+			if (!isTriggerRoot && isPlaceholderTriggerAction) return false;
 			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
 		},
 	);
@@ -120,9 +124,7 @@ function operationsCategory(
 	return items;
 }
 
-function recommendedCategory(
-	nodeTypeDescription: INodeTypeDescription,
-): INodeActionTypeDescription[] {
+function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
@@ -138,7 +140,7 @@ function recommendedCategory(
 			{
 				...getNodeTypeBase(
 					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
@@ -163,7 +165,7 @@ function recommendedCategory(
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
 			...getNodeTypeBase(
 				nodeTypeDescription,
-				i18n.baseText('nodeCreator.actionsCategory.recommended'),
+				i18n.baseText('nodeCreator.actionsCategory.triggers'),
 			),
 			actionKey: categoryItem.value as string,
 			displayName:
@@ -298,7 +300,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				if (isCoreNode) return node;
 
 				node.actions.push(
-					...recommendedCategory(node),
+					...triggersCategory(node),
 					...operationsCategory(node),
 					...resourceCategories(node),
 				);
@@ -337,9 +339,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					return acc;
 				}, {});
 
+			const isTriggerRoot = this.selectedType === TRIGGER_NODE_FILTER;
+			console.log('🚀 ~ file: nodeCreator.ts:339 ~ mergedAppNodes ~ isTriggerRoot', isTriggerRoot);
 			const filteredNodes = Object.values(mergedNodes).map((node) => ({
 				...node,
-				actions: filterSinglePlaceholderAction(node.actions || []),
+				actions: filterSinglePlaceholderAction(node.actions || [], isTriggerRoot),
 			}));
 
 			return filteredNodes;

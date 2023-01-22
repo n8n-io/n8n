@@ -162,19 +162,19 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	flatten?: boolean;
-	filterByType?: boolean;
+	filterByType?: boolean; // Delete?
 	showSubcategoryIcon?: boolean;
 	alwaysShowSearch?: boolean;
 	expandAllCategories?: boolean;
-	enableGlobalCategoriesCounter?: boolean;
+	enableGlobalCategoriesCounter?: boolean; // Delete?
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
 	searchItems?: INodeCreateElement[];
-	excludedSubcategories?: string[];
+	excludedSubcategories?: string[]; // Delete?
 	firstLevelItems?: INodeCreateElement[];
-	initialActiveCategories?: string[];
-	initialActiveIndex?: number;
+	initialActiveCategories?: string[]; // Delete?
+	initialActiveIndex?: number; // Delete?
 	categorizedItems: INodeCreateElement[];
 	allItems: INodeCreateElement[];
 	categoriesWithNodes: ICategoriesWithNodes;
@@ -311,7 +311,7 @@ const categorized = computed<INodeCreateElement[]>(() => {
 			return accu;
 		}
 
-		if (!matchesSelectType(el, nodeCreatorStore.selectedType)) {
+		if (props.filterByType && !matchesSelectType(el, nodeCreatorStore.selectedType)) {
 			return accu;
 		}
 
@@ -344,6 +344,7 @@ const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 	return nodes.filter((el: INodeCreateElement) =>
 		matchesSelectType(el, nodeCreatorStore.selectedType),
 	);
+	// return nodes;
 });
 
 const renderedItems = computed<INodeCreateElement[]>(() => {

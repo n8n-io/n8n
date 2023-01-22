@@ -186,6 +186,7 @@ import {
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
 	POSTHOG_ASSUMPTION_TEST,
+	REGULAR_NODE_FILTER,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -3688,7 +3689,9 @@ export default mixins(
 			if (createNodeActive === this.createNodeActive) return;
 
 			// Default to the trigger tab in node creator if there's no trigger node yet
-			if (!this.containsTrigger) this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
+			this.nodeCreatorStore.setSelectedType(
+				this.containsTrigger ? REGULAR_NODE_FILTER : TRIGGER_NODE_FILTER,
+			);
 
 			this.createNodeActive = createNodeActive;
 
