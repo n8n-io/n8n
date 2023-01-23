@@ -1,12 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
 	name = 'DeleteExecutionsWithWorkflows1673268682475';
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity
@@ -38,7 +37,7 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 		await queryRunner.query(
 			`ALTER TABLE ${tablePrefix}execution_entity
 			 DROP CONSTRAINT "FK_${tablePrefix}execution_entity_workflowId"`,
