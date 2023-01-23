@@ -1,6 +1,8 @@
 import { Expression, INodeExecutionData, Workflow } from '../../src';
 import * as Helpers from '../Helpers';
 
+export const TEST_TIMEZONE = 'America/New_York';
+
 export const nodeTypes = Helpers.NodeTypes();
 export const workflow = new Workflow({
 	nodes: [
@@ -28,7 +30,7 @@ export const evaluate = (value: string, values?: INodeExecutionData[]) =>
 		'node',
 		values ?? [],
 		'manual',
-		'America/New_York',
+		TEST_TIMEZONE,
 		{},
 	);
 
