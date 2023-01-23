@@ -70,6 +70,12 @@ export function passwordResetNamespace(this: N8nApp): void {
 				return;
 			}
 
+			if (isLdapEnabled() && ldapIdentity) {
+				throw new ResponseHelper.UnprocessableRequestError(
+					'forgotPassword.ldapUserPasswordResetUnavailable',
+				);
+			}
+
 			user.resetPasswordToken = uuid();
 
 			const { id, firstName, lastName, resetPasswordToken } = user;
@@ -91,7 +97,6 @@ export function passwordResetNamespace(this: N8nApp): void {
 					lastName,
 					passwordResetUrl: url.toString(),
 					domain: baseUrl,
-					isLdapUser: isLdapEnabled() && !!ldapIdentity,
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({

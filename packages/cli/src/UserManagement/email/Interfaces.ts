@@ -18,7 +18,6 @@ export type PasswordResetData = {
 	lastName?: string;
 	passwordResetUrl: string;
 	domain: string;
-	isLdapUser: boolean;
 };
 
 export type SendEmailResult = {

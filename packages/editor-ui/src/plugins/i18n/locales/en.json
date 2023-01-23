@@ -527,6 +527,7 @@
 	"forgotPassword.recoveryEmailSent": "Recovery email sent",
 	"forgotPassword.returnToSignIn": "Back to sign in",
 	"forgotPassword.sendingEmailError": "Problem sending email",
+	"forgotPassword.ldapUserPasswordResetUnavailable": "Please contact your LDAP administrator to reset your password",
 	"forgotPassword.smtpErrorContactAdministrator": "Please contact your administrator (problem with your SMTP setup)",
 	"forms.resourceFiltersDropdown.filters": "Filters",
 	"forms.resourceFiltersDropdown.ownedBy": "Owned by",
