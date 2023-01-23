@@ -1,8 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-export class CreateLdapEntities1670333612644 implements MigrationInterface {
-	name = 'CreateLdapEntities1670333612644';
+
+export class CreateLdapEntities1674509946020 implements MigrationInterface {
+	name = 'CreateLdapEntities1674509946020';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
@@ -14,8 +15,8 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 		);
 
 		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS "${tablePrefix}auth_identity" (
-				"userId" VARCHAR(36) REFERENCES ${tablePrefix}user (id),
+			`CREATE TABLE IF NOT EXISTS ${tablePrefix}auth_identity (
+				"userId" uuid REFERENCES ${tablePrefix}user (id),
 				"providerId" VARCHAR(60) NOT NULL,
 				"providerType" VARCHAR(20) NOT NULL,
 				"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -25,15 +26,15 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 		);
 
 		await queryRunner.query(`
-			INSERT INTO "${tablePrefix}settings" (key, value, loadOnStartup)
+			INSERT INTO ${tablePrefix}settings (key, value, "loadOnStartup")
 			VALUES ('${LDAP_FEATURE_NAME}', '${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)}', true)
 		`);
 
 		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ldap_sync_history" (
-				"id" INTEGER PRIMARY KEY AUTOINCREMENT,
-				"startedAt" DATETIME NOT NULL,
-				"endedAt" DATETIME NOT NULL,
+			`CREATE TABLE IF NOT EXISTS ${tablePrefix}ldap_sync_history (
+				"id" serial NOT NULL PRIMARY KEY,
+				"startedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"endedAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				"created" INTEGER NOT NULL,
 				"updated" INTEGER NOT NULL,
 				"disabled" INTEGER NOT NULL,

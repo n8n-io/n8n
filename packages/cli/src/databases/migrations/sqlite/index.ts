@@ -26,7 +26,7 @@ import { AddTriggerCountColumn1669823906993 } from './1669823906993-AddTriggerCo
 import { RemoveWorkflowDataLoadedFlag1671726148419 } from './1671726148419-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
 import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
-import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities';
+import { CreateLdapEntities1674509946020 } from './1674509946020-CreateLdapEntities';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -57,7 +57,7 @@ const sqliteMigrations = [
 	RemoveWorkflowDataLoadedFlag1671726148419,
 	MessageEventBusDestinations1671535397530,
 	DeleteExecutionsWithWorkflows1673268682475,
-	CreateLdapEntities1670333612644,
+	CreateLdapEntities1674509946020,
 ];
 
 export { sqliteMigrations };
