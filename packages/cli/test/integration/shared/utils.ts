@@ -71,6 +71,7 @@ import {
 	UsersController,
 } from '@/controllers';
 import { setupAuthMiddlewares } from '@/middlewares';
+import * as testDb from '../shared/testDb';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
@@ -88,12 +89,13 @@ CredentialTypes(loadNodesAndCredentials);
  * @param endpointGroups Groups of endpoints to apply to test server.
  */
 export async function initTestServer({
-	applyAuth,
+	applyAuth = true,
 	endpointGroups,
 }: {
-	applyAuth: boolean;
+	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
 }) {
+	await testDb.init();
 	const testServer = {
 		app: express(),
 		restEndpoint: REST_PATH_SEGMENT,

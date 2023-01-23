@@ -81,11 +81,10 @@ async function confirmIdSent(id: string) {
 }
 
 beforeAll(async () => {
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
+
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	app = await utils.initTestServer({ endpointGroups: ['eventBus'], applyAuth: true });
 
 	unAuthOwnerAgent = utils.createAgent(app, {
 		apiPath: 'internal',

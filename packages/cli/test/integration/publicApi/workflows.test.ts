@@ -17,7 +17,6 @@ let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	await testDb.init();
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =

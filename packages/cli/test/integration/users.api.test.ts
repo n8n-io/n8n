@@ -32,8 +32,7 @@ let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	await testDb.init();
-	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['users'] });
 
 	const [
 		fetchedGlobalOwnerRole,

@@ -18,7 +18,6 @@ let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 
 beforeAll(async () => {
-	await testDb.init();
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 
 	utils.initConfigFile();

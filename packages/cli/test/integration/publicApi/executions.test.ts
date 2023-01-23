@@ -13,7 +13,6 @@ let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	await testDb.init();
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();

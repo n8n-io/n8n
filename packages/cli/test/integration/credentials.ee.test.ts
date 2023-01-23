@@ -22,11 +22,7 @@ let authAgent: AuthAgent;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	await testDb.init();
-	app = await utils.initTestServer({
-		endpointGroups: ['credentials'],
-		applyAuth: true,
-	});
+	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
 	utils.initConfigFile();
 

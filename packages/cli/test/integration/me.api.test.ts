@@ -23,8 +23,7 @@ let globalMemberRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	await testDb.init();
-	app = await utils.initTestServer({ endpointGroups: ['me'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['me'] });
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
