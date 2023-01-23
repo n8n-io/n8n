@@ -48,7 +48,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
-	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes(m));
+	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes('.' + m + '('));
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
