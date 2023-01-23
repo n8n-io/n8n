@@ -422,7 +422,7 @@ export class RoutingNode {
 		return [];
 	}
 
-	async postProcessReponseData(
+	async postProcessResponseData(
 		executeSingleFunctions: IExecuteSingleFunctions,
 		responseData: IN8nHttpFullResponse,
 		requestData: DeclarativeRestApiSettings.ResultOptions,
@@ -517,7 +517,7 @@ export class RoutingNode {
 					credentialType,
 					credentialsDecrypted,
 				).then(async (data) =>
-					this.postProcessReponseData(
+					this.postProcessResponseData(
 						executeSingleFunctions,
 						data,
 						requestData,
@@ -579,7 +579,7 @@ export class RoutingNode {
 
 						additionalKeys.$response = tempResponseData;
 
-						tempResponseItems = await this.postProcessReponseData(
+						tempResponseItems = await this.postProcessResponseData(
 							executeSingleFunctions,
 							tempResponseData,
 							requestData,
@@ -627,7 +627,7 @@ export class RoutingNode {
 							credentialType,
 							credentialsDecrypted,
 						).then(async (data) =>
-							this.postProcessReponseData(
+							this.postProcessResponseData(
 								executeSingleFunctions,
 								data,
 								requestData,
@@ -672,7 +672,13 @@ export class RoutingNode {
 				credentialType,
 				credentialsDecrypted,
 			).then(async (data) =>
-				this.postProcessReponseData(executeSingleFunctions, data, requestData, itemIndex, runIndex),
+				this.postProcessResponseData(
+					executeSingleFunctions,
+					data,
+					requestData,
+					itemIndex,
+					runIndex,
+				),
 			);
 		}
 		return responseData;
