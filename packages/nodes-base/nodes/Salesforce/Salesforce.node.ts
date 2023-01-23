@@ -1083,6 +1083,9 @@ export class Salesforce implements INodeType {
 							Company: company,
 							LastName: lastname,
 						};
+						if (additionalFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
+						}
 						if (additionalFields.email !== undefined) {
 							body.Email = additionalFields.email as string;
 						}
@@ -1186,6 +1189,9 @@ export class Salesforce implements INodeType {
 								'You must add at least one update field',
 								{ itemIndex: i },
 							);
+						}
+						if (updateFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
 						}
 						if (updateFields.lastname !== undefined) {
 							body.LastName = updateFields.lastname as string;
