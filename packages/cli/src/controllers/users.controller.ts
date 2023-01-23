@@ -23,6 +23,7 @@ import type { UserRequest } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Role } from '@db/entities/Role';
 import type {
+	IDatabaseCollections,
 	IExternalHooksClass,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
@@ -32,18 +33,57 @@ import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 @RestController('/users')
 export class UsersController {
-	constructor(
-		private config: Config,
-		private mailer: UserManagementMailer,
-		private externalHooks: IExternalHooksClass,
-		private internalHooks: IInternalHooksClass,
-		private userRepository: Repository<User>,
-		private roleRepository: Repository<Role>,
-		private sharedCredentialsRepository: Repository<SharedCredentials>,
-		private sharedWorkflowRepository: Repository<SharedWorkflow>,
-		private activeWorkflowRunner: ActiveWorkflowRunner,
-		private logger: ILogger,
-	) {}
+	private config: Config;
+
+	private logger: ILogger;
+
+	private externalHooks: IExternalHooksClass;
+
+	private internalHooks: IInternalHooksClass;
+
+	private userRepository: Repository<User>;
+
+	private roleRepository: Repository<Role>;
+
+	private sharedCredentialsRepository: Repository<SharedCredentials>;
+
+	private sharedWorkflowRepository: Repository<SharedWorkflow>;
+
+	private activeWorkflowRunner: ActiveWorkflowRunner;
+
+	private mailer: UserManagementMailer;
+
+	constructor({
+		config,
+		logger,
+		externalHooks,
+		internalHooks,
+		repositories,
+		activeWorkflowRunner,
+		mailer,
+	}: {
+		config: Config;
+		logger: ILogger;
+		externalHooks: IExternalHooksClass;
+		internalHooks: IInternalHooksClass;
+		repositories: Pick<
+			IDatabaseCollections,
+			'User' | 'Role' | 'SharedCredentials' | 'SharedWorkflow'
+		>;
+		activeWorkflowRunner: ActiveWorkflowRunner;
+		mailer: UserManagementMailer;
+	}) {
+		this.config = config;
+		this.logger = logger;
+		this.externalHooks = externalHooks;
+		this.internalHooks = internalHooks;
+		this.userRepository = repositories.User;
+		this.roleRepository = repositories.Role;
+		this.sharedCredentialsRepository = repositories.SharedCredentials;
+		this.sharedWorkflowRepository = repositories.SharedWorkflow;
+		this.activeWorkflowRunner = activeWorkflowRunner;
+		this.mailer = mailer;
+	}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).

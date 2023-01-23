@@ -15,18 +15,40 @@ import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import type { User } from '@db/entities/User';
 import type { PasswordResetRequest } from '@/requests';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/UserManagement/auth/jwt';
 
 @RestController()
 export class PasswordResetController {
-	constructor(
-		private config: Config,
-		private externalHooks: IExternalHooksClass,
-		private internalHooks: IInternalHooksClass,
-		private userRepository: Repository<User>,
-		private logger: ILogger,
-	) {}
+	private readonly config: Config;
+
+	private readonly logger: ILogger;
+
+	private readonly externalHooks: IExternalHooksClass;
+
+	private readonly internalHooks: IInternalHooksClass;
+
+	private readonly userRepository: Repository<User>;
+
+	constructor({
+		config,
+		logger,
+		externalHooks,
+		internalHooks,
+		repositories,
+	}: {
+		config: Config;
+		logger: ILogger;
+		externalHooks: IExternalHooksClass;
+		internalHooks: IInternalHooksClass;
+		repositories: Pick<IDatabaseCollections, 'User'>;
+	}) {
+		this.config = config;
+		this.logger = logger;
+		this.externalHooks = externalHooks;
+		this.internalHooks = internalHooks;
+		this.userRepository = repositories.User;
+	}
 
 	/**
 	 * Send a password reset email.

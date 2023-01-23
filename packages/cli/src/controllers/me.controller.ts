@@ -15,17 +15,35 @@ import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
 import type { PublicUser } from '@/UserManagement/Interfaces';
-import type { IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { randomBytes } from 'crypto';
 
 @RestController('/me')
 export class MeController {
-	constructor(
-		private externalHooks: IExternalHooksClass,
-		private internalHooks: IInternalHooksClass,
-		private userRepository: Repository<User>,
-		private logger: ILogger,
-	) {}
+	private readonly logger: ILogger;
+
+	private readonly externalHooks: IExternalHooksClass;
+
+	private readonly internalHooks: IInternalHooksClass;
+
+	private readonly userRepository: Repository<User>;
+
+	constructor({
+		logger,
+		externalHooks,
+		internalHooks,
+		repositories,
+	}: {
+		logger: ILogger;
+		externalHooks: IExternalHooksClass;
+		internalHooks: IInternalHooksClass;
+		repositories: Pick<IDatabaseCollections, 'User'>;
+	}) {
+		this.logger = logger;
+		this.externalHooks = externalHooks;
+		this.internalHooks = internalHooks;
+		this.userRepository = repositories.User;
+	}
 
 	/**
 	 * Return the logged-in user.

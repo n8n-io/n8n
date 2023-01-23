@@ -11,16 +11,34 @@ import type { LoginRequest, UserRequest } from '@/requests';
 import type { PublicUser } from '@/UserManagement/Interfaces';
 import { In, Repository } from 'typeorm';
 import type { Config } from '@/config';
-import type { IInternalHooksClass } from '@/Interfaces';
+import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 
 @RestController()
 export class AuthController {
-	constructor(
-		private config: Config,
-		private internalHooks: IInternalHooksClass,
-		private userRepository: Repository<User>,
-		private logger: ILogger,
-	) {}
+	private readonly config: Config;
+
+	private readonly logger: ILogger;
+
+	private readonly internalHooks: IInternalHooksClass;
+
+	private readonly userRepository: Repository<User>;
+
+	constructor({
+		config,
+		logger,
+		internalHooks,
+		repositories,
+	}: {
+		config: Config;
+		logger: ILogger;
+		internalHooks: IInternalHooksClass;
+		repositories: Pick<IDatabaseCollections, 'User'>;
+	}) {
+		this.config = config;
+		this.logger = logger;
+		this.internalHooks = internalHooks;
+		this.userRepository = repositories.User;
+	}
 
 	/**
 	 * Log in a user.

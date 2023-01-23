@@ -160,8 +160,7 @@ export async function initTestServer({
 		const externalHooks = ExternalHooks();
 		const internalHooks = InternalHooksManager.getInstance();
 		const mailer = UserManagementMailer.getInstance();
-		const settingsRepository = Db.collections.Settings;
-		const userRepository = Db.collections.User;
+		const repositories = Db.collections;
 
 		for (const group of functionEndpoints) {
 			switch (group) {
@@ -169,52 +168,49 @@ export async function initTestServer({
 					registerController(
 						testServer.app,
 						config,
-						new AuthController(config, internalHooks, userRepository, logger),
+						new AuthController({ config, logger, internalHooks, repositories }),
 					);
 					break;
 				case 'me':
 					registerController(
 						testServer.app,
 						config,
-						new MeController(externalHooks, internalHooks, userRepository, logger),
+						new MeController({ logger, externalHooks, internalHooks, repositories }),
 					);
 					break;
 				case 'passwordReset':
 					registerController(
 						testServer.app,
 						config,
-						new PasswordResetController(
+						new PasswordResetController({
 							config,
+							logger,
 							externalHooks,
 							internalHooks,
-							userRepository,
-							logger,
-						),
+							repositories,
+						}),
 					);
 					break;
 				case 'owner':
 					registerController(
 						testServer.app,
 						config,
-						new OwnerController(config, internalHooks, settingsRepository, userRepository, logger),
+						new OwnerController({ config, logger, internalHooks, repositories }),
 					);
 					break;
 				case 'users':
 					registerController(
 						testServer.app,
 						config,
-						new UsersController(
+						new UsersController({
 							config,
 							mailer,
 							externalHooks,
 							internalHooks,
-							userRepository,
-							Db.collections.Role,
-							Db.collections.SharedCredentials,
-							Db.collections.SharedWorkflow,
-							ActiveWorkflowRunner.getInstance(),
+							repositories,
+							activeWorkflowRunner: ActiveWorkflowRunner.getInstance(),
 							logger,
-						),
+						}),
 					);
 			}
 		}

@@ -13,19 +13,39 @@ import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
 import type { OwnerRequest } from '@/requests';
-import type { IInternalHooksClass } from '@/Interfaces';
+import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import type { Settings } from '@/databases/entities/Settings';
 import type { User } from '@/databases/entities/User';
 
 @RestController('/owner')
 export class OwnerController {
-	constructor(
-		private config: Config,
-		private internalHooks: IInternalHooksClass,
-		private settingsRepository: Repository<Settings>,
-		private userRepository: Repository<User>,
-		private logger: ILogger,
-	) {}
+	private readonly config: Config;
+
+	private readonly logger: ILogger;
+
+	private readonly internalHooks: IInternalHooksClass;
+
+	private readonly userRepository: Repository<User>;
+
+	private readonly settingsRepository: Repository<Settings>;
+
+	constructor({
+		config,
+		logger,
+		internalHooks,
+		repositories,
+	}: {
+		config: Config;
+		logger: ILogger;
+		internalHooks: IInternalHooksClass;
+		repositories: Pick<IDatabaseCollections, 'User' | 'Settings'>;
+	}) {
+		this.config = config;
+		this.logger = logger;
+		this.internalHooks = internalHooks;
+		this.userRepository = repositories.User;
+		this.settingsRepository = repositories.Settings;
+	}
 
 	/**
 	 * Promote a shell into the owner of the n8n instance,
