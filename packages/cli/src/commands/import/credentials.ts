@@ -7,15 +7,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
-
 import { Credentials, UserSettings } from 'n8n-core';
-
 import { LoggerProxy } from 'n8n-workflow';
-
 import fs from 'fs';
 import glob from 'fast-glob';
 import type { EntityManager } from 'typeorm';
 import { getLogger } from '@/Logger';
+import config from '@/config';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -177,6 +175,11 @@ export class ImportCredentialsCommand extends Command {
 			},
 			['credentialsId', 'userId'],
 		);
+		if (config.getEnv('database.type') === 'postgresdb') {
+			await this.transactionManager.query(
+				"SELECT setval('credentials_entity_id_seq', (SELECT MAX(id) from credentials_entity))",
+			);
+		}
 	}
 
 	private async getOwner() {

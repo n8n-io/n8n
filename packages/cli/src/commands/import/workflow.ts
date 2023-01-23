@@ -17,6 +17,7 @@ import { UserSettings } from 'n8n-core';
 import type { EntityManager } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import { getLogger } from '@/Logger';
+import config from '@/config';
 import * as Db from '@/Db';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -218,6 +219,11 @@ export class ImportWorkflowsCommand extends Command {
 			},
 			['workflowId', 'userId'],
 		);
+		if (config.getEnv('database.type') === 'postgresdb') {
+			await this.transactionManager.query(
+				"SELECT setval('workflow_entity_id_seq', (SELECT MAX(id) from workflow_entity))",
+			);
+		}
 	}
 
 	private async getOwner() {
