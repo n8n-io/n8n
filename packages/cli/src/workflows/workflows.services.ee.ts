@@ -74,13 +74,12 @@ export class EEWorkflowsService extends WorkflowsService {
 			if (user.isPending) {
 				return acc;
 			}
-			acc.push(
-				Db.collections.SharedWorkflow.create({
-					workflow,
-					user,
-					role,
-				}),
-			);
+			const entity: Partial<SharedWorkflow> = {
+				workflowId: workflow.id,
+				userId: user.id,
+				roleId: role?.id,
+			};
+			acc.push(Db.collections.SharedWorkflow.create(entity));
 			return acc;
 		}, []);
 

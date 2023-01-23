@@ -1,5 +1,5 @@
 import { UserSettings } from 'n8n-core';
-import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
+import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -54,7 +54,7 @@ export async function init() {
 		// no bootstrap connection required
 		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
 		await Db.init(getSqliteOptions({ name: testDbName }));
-		await getConnection(testDbName).runMigrations({ transaction: 'none' });
+		await Db.getConnection().runMigrations({ transaction: 'none' });
 
 		return { testDbName };
 	}
@@ -64,7 +64,7 @@ export async function init() {
 		const pgOptions = getBootstrapDBOptions('postgres');
 
 		try {
-			bootstrapPostgres = await createConnection(pgOptions);
+			bootstrapPostgres = await new Connection(pgOptions).initialize();
 		} catch (error) {
 			const pgConfig = getPostgresSchemaSection();
 
@@ -86,15 +86,15 @@ export async function init() {
 
 		const testDbName = `postgres_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
-		await bootstrapPostgres.close();
+		await bootstrapPostgres.destroy();
 
 		const dbOptions = getDBOptions('postgres', testDbName);
 
 		if (dbOptions.schema !== 'public') {
 			const { schema, migrations, ...options } = dbOptions;
-			const connection = await createConnection(options);
+			const connection = await new Connection(options).initialize();
 			await connection.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
-			await connection.close();
+			await connection.destroy();
 		}
 
 		await Db.init(dbOptions);
@@ -103,11 +103,11 @@ export async function init() {
 	}
 
 	if (dbType === 'mysqldb') {
-		const bootstrapMysql = await createConnection(getBootstrapDBOptions('mysql'));
+		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
 
 		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
-		await bootstrapMysql.close();
+		await bootstrapMysql.destroy();
 
 		await Db.init(getDBOptions('mysql', testDbName));
 
@@ -120,8 +120,8 @@ export async function init() {
 /**
  * Drop test DB, closing bootstrap connection if existing.
  */
-export async function terminate(testDbName: string) {
-	await getConnection(testDbName).close();
+export async function terminate() {
+	await Db.getConnection().destroy();
 }
 
 async function truncateMappingTables(
@@ -175,9 +175,9 @@ async function truncateMappingTables(
  * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(collections: Array<CollectionName>, testDbName: string) {
+export async function truncate(collections: Array<CollectionName>) {
 	const dbType = config.getEnv('database.type');
-	const testDb = getConnection(testDbName);
+	const testDb = Db.getConnection();
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
@@ -294,12 +294,12 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOne({ scope: 'credential', name: 'user' });
+	const role = await Db.collections.Role.findOneBy({ scope: 'credential', name: 'user' });
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
-			user,
-			credentials: credential,
-			role,
+			userId: user.id,
+			credentialsId: credential.id,
+			roleId: role?.id,
 		}),
 	);
 	return Db.collections.SharedCredentials.save(newSharedCredentials);
@@ -349,7 +349,7 @@ export function createUserShell(globalRole: Role): Promise<User> {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
 
-	const shell: Partial<User> = { globalRole };
+	const shell: Partial<User> = { globalRoleId: globalRole.id };
 
 	if (globalRole.name !== 'owner') {
 		shell.email = randomEmail();
@@ -421,35 +421,35 @@ export function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
 export function getGlobalMemberRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
 export function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
 export function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'editor',
 		scope: 'workflow',
 	});
 }
 
 export function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
+	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
@@ -657,10 +657,8 @@ export async function createWorkflowWithTrigger(
 // ----------------------------------
 
 export async function getWorkflowSharing(workflow: WorkflowEntity) {
-	return Db.collections.SharedWorkflow.find({
-		where: {
-			workflow,
-		},
+	return Db.collections.SharedWorkflow.findBy({
+		workflowId: workflow.id,
 	});
 }
 

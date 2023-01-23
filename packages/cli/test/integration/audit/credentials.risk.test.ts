@@ -6,19 +6,16 @@ import { CREDENTIALS_REPORT } from '@/audit/constants';
 import { getRiskSection } from './utils';
 import * as testDb from '../shared/testDb';
 
-let testDbName = '';
-
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['Workflow', 'Credentials', 'Execution'], testDbName);
+	await testDb.truncate(['Workflow', 'Credentials', 'Execution']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('should report credentials not in any use', async () => {

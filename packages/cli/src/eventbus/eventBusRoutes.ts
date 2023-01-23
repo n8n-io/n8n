@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
-import { ResponseHelper } from '..';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
@@ -32,6 +31,8 @@ import {
 	MessageEventBusDestinationOptions,
 } from 'n8n-workflow';
 import { User } from '../databases/entities/User';
+import * as ResponseHelper from '@/ResponseHelper';
+import { EventMessageNode, EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 
 export const eventBusRouter = express.Router();
 
@@ -55,17 +56,14 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationWebhookOptions => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationWebhookOptions;
 	if (!o) return false;
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	return o.url !== undefined;
 };
 
 const isMessageEventBusDestinationOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationOptions => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationOptions;
 	if (!o) return false;
 	return o.__type !== undefined;
@@ -83,11 +81,27 @@ eventBusRouter.get(
 					return eventBus.getEventsSent();
 				case 'unsent':
 					return eventBus.getEventsUnsent();
+				case 'unfinished':
+					return eventBus.getUnfinishedExecutions();
 				case 'all':
 				default:
+					return eventBus.getEventsAll();
 			}
 		}
-		return eventBus.getEvents();
+		return eventBus.getEventsAll();
+	}),
+);
+
+eventBusRouter.get(
+	'/execution/:id',
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (req.params?.id) {
+			let logHistory;
+			if (req.query?.logHistory) {
+				logHistory = parseInt(req.query.logHistory as string, 10);
+			}
+			return eventBus.getEventsByExecutionId(req.params.id, logHistory);
+		}
 	}),
 );
 
@@ -102,6 +116,9 @@ eventBusRouter.post(
 					break;
 				case EventMessageTypeNames.audit:
 					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
+					break;
+				case EventMessageTypeNames.node:
+					msg = new EventMessageNode(req.body as EventMessageNodeOptions);
 					break;
 				case EventMessageTypeNames.generic:
 				default:
@@ -122,23 +139,20 @@ eventBusRouter.post(
 
 eventBusRouter.get(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		let result = [];
 		if (isWithIdString(req.query)) {
 			result = await eventBus.findDestination(req.query.id);
 		} else {
 			result = await eventBus.findDestination();
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return result;
 	}),
 );
 
 eventBusRouter.post(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}
@@ -179,8 +193,7 @@ eventBusRouter.post(
 
 eventBusRouter.get(
 	'/testmessage',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		let result = false;
 		if (isWithIdString(req.query)) {
 			result = await eventBus.testDestination(req.query.id);
@@ -191,8 +204,7 @@ eventBusRouter.get(
 
 eventBusRouter.delete(
 	'/destination',
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (!req.user || (req.user as User).globalRole.name !== 'owner') {
 			throw new ResponseHelper.UnauthorizedError('Invalid request');
 		}

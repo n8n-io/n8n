@@ -296,8 +296,7 @@ export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.r
 export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
-	EXECUTION = 'ExecutionById',
-	EXECUTIONS = 'ExecutionList',
+	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
@@ -320,6 +319,7 @@ export enum VIEWS {
 	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
+	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
@@ -454,3 +454,5 @@ export const N8N_SALES_EMAIL = 'sales@n8n.io';
 export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';

@@ -184,6 +184,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflow: IWorkflowBase,
 		nodeName: string,
 	): Promise<void> {
+		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
 		void eventBus.sendNodeEvent({
 			eventName: 'n8n.node.started',
 			payload: {
@@ -191,6 +192,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				nodeName,
 				workflowId: workflow.id?.toString(),
 				workflowName: workflow.name,
+				nodeType: nodeInWorkflow?.type,
 			},
 		});
 	}
@@ -200,6 +202,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflow: IWorkflowBase,
 		nodeName: string,
 	): Promise<void> {
+		const nodeInWorkflow = workflow.nodes.find((node) => node.name === nodeName);
 		void eventBus.sendNodeEvent({
 			eventName: 'n8n.node.finished',
 			payload: {
@@ -207,6 +210,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				nodeName,
 				workflowId: workflow.id?.toString(),
 				workflowName: workflow.name,
+				nodeType: nodeInWorkflow?.type,
 			},
 		});
 	}

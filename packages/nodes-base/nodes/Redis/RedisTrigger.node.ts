@@ -88,9 +88,7 @@ export class RedisTrigger implements INodeType {
 
 		const client = redis.createClient(redisOptions);
 
-		const self = this;
-
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
 					for (const channel of channels) {
@@ -104,12 +102,12 @@ export class RedisTrigger implements INodeType {
 						}
 
 						if (options.onlyMessage) {
-							self.emit([self.helpers.returnJsonArray({ message })]);
+							this.emit([this.helpers.returnJsonArray({ message })]);
 							resolve(true);
 							return;
 						}
 
-						self.emit([self.helpers.returnJsonArray({ channel, message })]);
+						this.emit([this.helpers.returnJsonArray({ channel, message })]);
 						resolve(true);
 					});
 				});
@@ -118,7 +116,7 @@ export class RedisTrigger implements INodeType {
 					reject(error);
 				});
 			});
-		}
+		};
 
 		if (this.getMode() === 'trigger') {
 			await manualTriggerFunction();

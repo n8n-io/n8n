@@ -28,6 +28,7 @@ import { AddWorkflowVersionIdColumn1669739707125 } from './1669739707125-AddWork
 import { AddTriggerCountColumn1669823906994 } from './1669823906994-AddTriggerCountColumn';
 import { RemoveWorkflowDataLoadedFlag1671726148420 } from './1671726148420-RemoveWorkflowDataLoadedFlag';
 import { MessageEventBusDestinations1671535397530 } from './1671535397530-MessageEventBusDestinations';
+import { DeleteExecutionsWithWorkflows1673268682475 } from './1673268682475-DeleteExecutionsWithWorkflows';
 import { CreateLdapEntities1670333612644 } from './1670333612644-CreateLdapEntities';
 
 export const mysqlMigrations = [
@@ -61,5 +62,6 @@ export const mysqlMigrations = [
 	AddTriggerCountColumn1669823906994,
 	RemoveWorkflowDataLoadedFlag1671726148420,
 	MessageEventBusDestinations1671535397530,
+	DeleteExecutionsWithWorkflows1673268682475,
 	CreateLdapEntities1670333612644,
 ];

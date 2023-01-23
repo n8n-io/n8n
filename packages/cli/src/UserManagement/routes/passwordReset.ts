@@ -142,7 +142,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),

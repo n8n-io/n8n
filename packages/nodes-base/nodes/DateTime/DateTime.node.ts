@@ -14,6 +14,37 @@ import { set } from 'lodash';
 
 import moment from 'moment-timezone';
 
+function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
+	const date = moment(value, fromFormat, true);
+	if (moment(date).isValid()) return date;
+
+	throw new NodeOperationError(
+		this.getNode(),
+		'Date input cannot be parsed. Please recheck the value and the "From Format" field.',
+	);
+}
+
+function getIsoValue(this: IExecuteFunctions, value: string) {
+	try {
+		return new Date(value).toISOString(); // may throw due to unpredictable input
+	} catch (error) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Unrecognized date input. Please specify a format in the "From Format" field.',
+		);
+	}
+}
+
+function parseDateByDefault(this: IExecuteFunctions, value: string) {
+	const isoValue = getIsoValue.call(this, value);
+	if (moment(isoValue).isValid()) return moment(isoValue);
+
+	throw new NodeOperationError(
+		this.getNode(),
+		'Unrecognized date input. Please specify a format in the "From Format" field.',
+	);
+}
+
 export class DateTime implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Date & Time',
@@ -515,36 +546,5 @@ export class DateTime implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
-	}
-}
-
-function parseDateByFormat(this: IExecuteFunctions, value: string, fromFormat: string) {
-	const date = moment(value, fromFormat, true);
-	if (moment(date).isValid()) return date;
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Date input cannot be parsed. Please recheck the value and the "From Format" field.',
-	);
-}
-
-function parseDateByDefault(this: IExecuteFunctions, value: string) {
-	const isoValue = getIsoValue.call(this, value);
-	if (moment(isoValue).isValid()) return moment(isoValue);
-
-	throw new NodeOperationError(
-		this.getNode(),
-		'Unrecognized date input. Please specify a format in the "From Format" field.',
-	);
-}
-
-function getIsoValue(this: IExecuteFunctions, value: string) {
-	try {
-		return new Date(value).toISOString(); // may throw due to unpredictable input
-	} catch (error) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Unrecognized date input. Please specify a format in the "From Format" field.',
-		);
 	}
 }

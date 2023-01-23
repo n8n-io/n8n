@@ -82,7 +82,7 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			try {
-				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
+				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'], where: {} });
 			} catch (error) {
 				throw new ResponseHelper.InternalServerError(
 					'No users found in database - did you wipe the users table? Create at least one user.',

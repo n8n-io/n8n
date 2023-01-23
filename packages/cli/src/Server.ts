@@ -73,7 +73,6 @@ import jwt from 'jsonwebtoken';
 import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
-import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 
 import config from '@/config';
@@ -156,6 +155,7 @@ import { initEvents } from './events';
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
+import { configureMetrics } from './metrics';
 
 const exec = promisify(callbackExec);
 
@@ -336,15 +336,7 @@ class Server extends AbstractServer {
 	}
 
 	async configure(): Promise<void> {
-		const enableMetrics = config.getEnv('endpoints.metrics.enable');
-		let register: Registry;
-
-		if (enableMetrics) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
-			register = new promClient.Registry();
-			register.setDefaultLabels({ prefix });
-			promClient.collectDefaultMetrics({ register });
-		}
+		configureMetrics(this.app);
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
@@ -603,17 +595,6 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
-
-		// ----------------------------------------
-		// Metrics
-		// ----------------------------------------
-		if (enableMetrics) {
-			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
-				const response = await register.metrics();
-				res.setHeader('Content-Type', register.contentType);
-				ResponseHelper.sendSuccessResponse(res, response, true, 200);
-			});
 		}
 
 		// ----------------------------------------
@@ -1268,9 +1249,9 @@ class Server extends AbstractServer {
 						await queue.stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution.findOne(
-						req.params.id,
-					)) as IExecutionFlattedDb;
+					const executionDb = (await Db.collections.Execution.findOneBy({
+						id: req.params.id,
+					})) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
@@ -1475,9 +1456,10 @@ export async function start(): Promise<void> {
 	// Set up event handling
 	initEvents();
 
-	const workflow = await Db.collections.Workflow!.findOne({
+	const workflow = await Db.collections.Workflow.findOne({
 		select: ['createdAt'],
 		order: { createdAt: 'ASC' },
+		where: {},
 	});
 	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
 }

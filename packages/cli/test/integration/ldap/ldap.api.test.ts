@@ -17,15 +17,13 @@ jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
-let testDbName = '';
 let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
+	await testDb.init();
 	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
@@ -43,19 +41,16 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(
-		[
-			'User',
-			'AuthIdentity',
-			'SharedCredentials',
-			'SharedWorkflow',
-			'Workflow',
-			'Credentials',
-			'FeatureConfig',
-			'LdapSyncHistory',
-		],
-		testDbName,
-	);
+	await testDb.truncate([
+		'User',
+		'AuthIdentity',
+		'SharedCredentials',
+		'SharedWorkflow',
+		'Workflow',
+		'Credentials',
+		'FeatureConfig',
+		'LdapSyncHistory',
+	]);
 
 	jest.mock('@/telemetry');
 
@@ -66,7 +61,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('Member role should not be able to access ldap routes', async () => {
@@ -205,7 +200,7 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -263,7 +258,7 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -314,7 +309,7 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -366,7 +361,7 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -434,7 +429,7 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -499,7 +494,7 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneOrFail();
+	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -769,7 +764,7 @@ test('PUT /ldap/config should apply "Convert all LDAP users to email users" stra
 		.put('/ldap/config')
 		.send({ ...configuration, loginEnabled: false });
 
-	const emailUser = await Db.collections.User.findOneOrFail(member.id);
+	const emailUser = await Db.collections.User.findOneByOrFail({ id: member.id });
 	const localLdapIdentities = await getLdapIdentities();
 
 	expect(emailUser.email).toBe(member.email);

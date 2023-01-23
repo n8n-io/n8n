@@ -8,10 +8,10 @@ export const handleEmailLogin = async (
 	email: string,
 	password: string,
 ): Promise<User | undefined> => {
-	const user = await Db.collections.User.findOne(
-		{ email },
-		{ relations: ['globalRole', 'authIdentities'] },
-	);
+	const user = await Db.collections.User.findOne({
+		where: { email },
+		relations: ['globalRole', 'authIdentities'],
+	});
 
 	if (user?.password && (await compareHash(password, user.password))) {
 		return user;

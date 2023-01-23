@@ -85,7 +85,7 @@ export const randomPassword = (): string => {
  * to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
-	return Db.collections.Role.findOneOrFail({ scope: 'global', name: 'member' });
+	return Db.collections.Role.findOneByOrFail({ scope: 'global', name: 'member' });
 };
 
 /**
@@ -131,7 +131,7 @@ export const decryptPassword = async (password: string): Promise<string> => {
  * form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
-	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
+	const configuration = await Db.collections.FeatureConfig.findOneByOrFail({
 		name: LDAP_FEATURE_NAME,
 	});
 	const configurationData = configuration.data as LdapConfig;
@@ -322,20 +322,21 @@ export const findAndAuthenticateLdapUser = async (
  */
 export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
-): Promise<AuthIdentity | undefined> => {
-	return Db.collections.AuthIdentity.findOne(
-		{
+): Promise<AuthIdentity | null> => {
+	return Db.collections.AuthIdentity.findOne({
+		relations: ['user', 'user.globalRole'],
+		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
 		},
-		{
-			relations: ['user', 'user.globalRole'],
-		},
-	);
+	});
 };
 
-export const getUserByEmail = async (email: string): Promise<User | undefined> => {
-	return Db.collections.User.findOne({ email }, { relations: ['globalRole'] });
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+	return Db.collections.User.findOne({
+		where: { email },
+		relations: ['globalRole'],
+	});
 };
 
 /**
@@ -423,7 +424,9 @@ export const processUsers = async (
 				return transactionManager.save(authIdentity);
 			}),
 			...toUpdateUsers.map(async ([ldapId, user]) => {
-				const authIdentity = await transactionManager.findOne(AuthIdentity, { providerId: ldapId });
+				const authIdentity = await transactionManager.findOneBy(AuthIdentity, {
+					providerId: ldapId,
+				});
 				if (authIdentity?.userId) {
 					await transactionManager.update(
 						User,
@@ -433,7 +436,9 @@ export const processUsers = async (
 				}
 			}),
 			...toDisableUsers.map(async (ldapId) => {
-				const authIdentity = await transactionManager.findOne(AuthIdentity, { providerId: ldapId });
+				const authIdentity = await transactionManager.findOneBy(AuthIdentity, {
+					providerId: ldapId,
+				});
 				if (authIdentity?.userId) {
 					await transactionManager.update(User, { id: authIdentity?.userId }, { disabled: true });
 					await transactionManager.delete(AuthIdentity, { userId: authIdentity?.userId });

@@ -19,14 +19,6 @@ const fieldCache: {
 	[key: string]: IDataObject[];
 } = {};
 
-export async function getFields(this: IExecuteFunctions, listId: string) {
-	if (fieldCache[listId]) {
-		return fieldCache[listId];
-	}
-	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
-	return fieldCache[listId];
-}
-
 export async function egoiApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -59,6 +51,14 @@ export async function egoiApiRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
+}
+
+export async function getFields(this: IExecuteFunctions, listId: string) {
+	if (fieldCache[listId]) {
+		return fieldCache[listId];
+	}
+	fieldCache[listId] = await egoiApiRequest.call(this, 'GET', `/lists/${listId}/fields`);
+	return fieldCache[listId];
 }
 
 export async function egoiApiRequestAllItems(
