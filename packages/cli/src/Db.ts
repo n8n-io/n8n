@@ -153,7 +153,7 @@ export async function init(
 
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
-		await connection.runMigrations();
+		await connection.runMigrations({ transaction: 'each' });
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
@@ -162,7 +162,7 @@ export async function init(
 			await connection.initialize();
 		}
 	} else {
-		await connection.runMigrations();
+		await connection.runMigrations({ transaction: 'each' });
 	}
 
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
