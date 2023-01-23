@@ -1,4 +1,3 @@
-import type { Application } from 'express';
 import config from '@/config';
 import { ErrorReporterProxy } from 'n8n-workflow';
 
@@ -43,12 +42,4 @@ export const initErrorHandling = async () => {
 	});
 
 	initialized = true;
-};
-
-export const setupErrorMiddleware = async (app: Application) => {
-	const {
-		Handlers: { requestHandler, errorHandler },
-	} = await import('@sentry/node');
-	app.use(requestHandler());
-	app.use(errorHandler());
 };

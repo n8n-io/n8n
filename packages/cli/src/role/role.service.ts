@@ -1,14 +1,14 @@
-import { EntityManager } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
 import * as Db from '@/Db';
 import { Role } from '@db/entities/Role';
 
 export class RoleService {
-	static async get(role: Partial<Role>): Promise<Role | undefined> {
-		return Db.collections.Role.findOne(role);
+	static async get(role: FindOptionsWhere<Role>): Promise<Role | null> {
+		return Db.collections.Role.findOneBy(role);
 	}
 
-	static async trxGet(transaction: EntityManager, role: Partial<Role>) {
-		return transaction.findOne(Role, role);
+	static async trxGet(transaction: EntityManager, role: FindOptionsWhere<Role>) {
+		return transaction.findOneBy(Role, role);
 	}
 
 	static async getUserRoleForWorkflow(userId: string, workflowId: string) {

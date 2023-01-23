@@ -18,6 +18,7 @@ import {
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
@@ -118,6 +119,10 @@ export const useUIStore = defineStore(STORES.UI, {
 				curlCommand: '',
 				httpNodeParameters: '',
 			},
+			[LOG_STREAM_MODAL_KEY]: {
+				open: false,
+				data: undefined,
+			},
 		},
 		modalStack: [],
 		sidebarMenuCollapsed: true,
@@ -133,16 +138,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				actionBoxTitle: 'fakeDoor.settings.environments.actionBox.title',
 				actionBoxDescription: 'fakeDoor.settings.environments.actionBox.description',
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=environments',
-				uiLocations: ['settings'],
-			},
-			{
-				id: FAKE_DOOR_FEATURES.LOGGING,
-				featureName: 'fakeDoor.settings.logging.name',
-				icon: 'sign-in-alt',
-				infoText: 'fakeDoor.settings.logging.infoText',
-				actionBoxTitle: 'fakeDoor.settings.logging.actionBox.title',
-				actionBoxDescription: 'fakeDoor.settings.logging.actionBox.description',
-				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=logging',
 				uiLocations: ['settings'],
 			},
 			{
@@ -259,7 +254,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			return [
 				VIEWS.NEW_WORKFLOW.toString(),
 				VIEWS.WORKFLOW.toString(),
-				VIEWS.EXECUTION.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 			].includes(this.currentView);
 		},
 		isActionActive() {

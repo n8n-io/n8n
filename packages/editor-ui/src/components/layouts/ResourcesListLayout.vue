@@ -108,6 +108,8 @@
 					</div>
 				</template>
 
+				<slot name="callout"></slot>
+
 				<div v-show="hasFilters" class="mt-xs">
 					<n8n-info-tip :bold="false">
 						{{ $locale.baseText(`${resourceKey}.filters.active`) }}

@@ -9,6 +9,8 @@ import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 
+import type { Risk } from '@/audit/types';
+
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 
 export type AuthlessRequest<
@@ -161,4 +163,16 @@ export interface IJsonSchema {
 	properties: { [key: string]: { type: string } };
 	allOf?: IDependency[];
 	required: string[];
+}
+
+// ----------------------------------
+//           /audit
+// ----------------------------------
+
+export declare namespace AuditRequest {
+	type Generate = AuthenticatedRequest<
+		{},
+		{},
+		{ additionalOptions?: { categories?: Risk.Category[]; daysAbandonedWorkflow?: number } }
+	>;
 }

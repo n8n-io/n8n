@@ -152,7 +152,6 @@ export class AmqpTrigger implements INodeType {
 		const container = create_container();
 
 		let lastMsgId: string | number | Buffer | undefined = undefined;
-		const self = this;
 
 		container.on('receiver_open', (context: EventContext) => {
 			context.receiver?.add_credit(pullMessagesNumber);
@@ -197,7 +196,7 @@ export class AmqpTrigger implements INodeType {
 				data = data.body;
 			}
 
-			self.emit([self.helpers.returnJsonArray([data as any])]);
+			this.emit([this.helpers.returnJsonArray([data as any])]);
 
 			if (!context.receiver?.has_credit()) {
 				setTimeout(() => {
@@ -247,7 +246,7 @@ export class AmqpTrigger implements INodeType {
 		// workflow manually.
 		// for AMQP it doesn't make much sense to wait here but
 		// for a new user who doesn't know how this works, it's better to wait and show a respective info message
-		async function manualTriggerFunction() {
+		const manualTriggerFunction = async () => {
 			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
 					reject(
@@ -262,15 +261,15 @@ export class AmqpTrigger implements INodeType {
 					// otherwise we emit all properties and their content
 					const message = context.message as Message;
 					if (Object.keys(message)[0] === 'body' && Object.keys(message).length === 1) {
-						self.emit([self.helpers.returnJsonArray([message.body])]);
+						this.emit([this.helpers.returnJsonArray([message.body])]);
 					} else {
-						self.emit([self.helpers.returnJsonArray([message as any])]);
+						this.emit([this.helpers.returnJsonArray([message as any])]);
 					}
 					clearTimeout(timeoutHandler);
 					resolve(true);
 				});
 			});
-		}
+		};
 
 		return {
 			closeFunction,

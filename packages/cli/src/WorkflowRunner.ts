@@ -149,6 +149,8 @@ export class WorkflowRunner {
 			executionId = await this.runSubprocess(data, loadStaticData, executionId, responsePromise);
 		}
 
+		void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId, data);
+
 		const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 
 		const externalHooks = ExternalHooks();
@@ -525,9 +527,9 @@ export class WorkflowRunner {
 					reject(error);
 				}
 
-				const executionDb = (await Db.collections.Execution.findOne(
-					executionId,
-				)) as IExecutionFlattedDb;
+				const executionDb = (await Db.collections.Execution.findOneBy({
+					id: executionId,
+				})) as IExecutionFlattedDb;
 				const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 				const runData = {
 					data: fullExecutionData.data,

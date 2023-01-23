@@ -142,19 +142,6 @@ export const databaseFields: INodeProperties[] = [
 	/*                                database:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName:
-			'In Notion, make sure you <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api#add-connections-to-pages" target="_blank">share your database with your integration</a> . Otherwise it won\'t be accessible, or listed here.',
-		name: 'notionNotice',
-		type: 'notice',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['database'],
-				operation: ['getAll'],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',

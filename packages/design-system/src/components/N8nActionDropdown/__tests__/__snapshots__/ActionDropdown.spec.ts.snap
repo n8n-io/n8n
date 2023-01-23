@@ -3,7 +3,7 @@
 exports[`components > N8nActionDropdown > should render custom styling correctly 1`] = `
 "<div class=\\"action-dropdown-container\\">
   <el-dropdown-stub trigger=\\"click\\" size=\\"\\" hideonclick=\\"true\\" placement=\\"bottom\\" visiblearrow=\\"true\\" showtimeout=\\"250\\" hidetimeout=\\"150\\" tabindex=\\"0\\">
-    <div class=\\"_activator_lf4ng_1\\">
+    <div class=\\"_activator_\\">
       <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
     </div>
   </el-dropdown-stub>
@@ -13,7 +13,7 @@ exports[`components > N8nActionDropdown > should render custom styling correctly
 exports[`components > N8nActionDropdown > should render default styling correctly 1`] = `
 "<div class=\\"action-dropdown-container\\">
   <el-dropdown-stub trigger=\\"click\\" size=\\"\\" hideonclick=\\"true\\" placement=\\"bottom\\" visiblearrow=\\"true\\" showtimeout=\\"250\\" hidetimeout=\\"150\\" tabindex=\\"0\\">
-    <div class=\\"_activator_lf4ng_1\\">
+    <div class=\\"_activator_\\">
       <n8n-icon-stub icon=\\"ellipsis-v\\" size=\\"medium\\"></n8n-icon-stub>
     </div>
   </el-dropdown-stub>

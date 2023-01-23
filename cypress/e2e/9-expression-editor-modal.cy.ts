@@ -4,7 +4,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Expression editor modal', () => {
 	before(() => {
-		cy.task('reset');
+		cy.resetAll();
 		cy.skipSetup();
 	});
 
@@ -12,7 +12,7 @@ describe('Expression editor modal', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Hacker News');
-		WorkflowPage.actions.openNodeNdv('Hacker News');
+		WorkflowPage.actions.openNode('Hacker News');
 		WorkflowPage.actions.openExpressionEditorModal();
 	});
 

@@ -1,10 +1,11 @@
+import { createReadStream } from 'fs';
 import fs from 'fs/promises';
-import { jsonParse } from 'n8n-workflow';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 import type { Readable } from 'stream';
+import { BinaryMetadata, jsonParse } from 'n8n-workflow';
 
-import { BinaryMetadata, IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
+import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 
 const PREFIX_METAFILE = 'binarymeta';
 const PREFIX_PERSISTED_METAFILE = 'persistedmeta';
@@ -72,6 +73,10 @@ export class BinaryDataFileSystem implements IBinaryDataManager {
 		await this.addBinaryIdToPersistMeta(executionId, binaryDataId);
 		await this.saveToLocalStorage(binaryData, binaryDataId);
 		return binaryDataId;
+	}
+
+	getBinaryStream(identifier: string, chunkSize?: number): Readable {
+		return createReadStream(this.getBinaryPath(identifier), { highWaterMark: chunkSize });
 	}
 
 	async retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer> {

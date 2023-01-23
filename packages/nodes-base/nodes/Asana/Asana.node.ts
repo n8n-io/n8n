@@ -2000,7 +2000,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'DELETE';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2012,7 +2012,7 @@ export class Asana implements INodeType {
 
 						requestMethod = 'GET';
 
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2088,7 +2088,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'PUT';
-						endpoint = '/tasks/' + this.getNodeParameter('id', i);
+						endpoint = '/tasks/' + (this.getNodeParameter('id', i) as string);
 
 						const otherProperties = this.getNodeParameter('otherProperties', i) as IDataObject;
 						Object.assign(body, otherProperties);
