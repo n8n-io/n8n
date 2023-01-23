@@ -22,7 +22,7 @@ export async function uptimeRobotApiRequest(
 			api_key: credentials.apiKey,
 			...body,
 		},
-		uri: uri ?? `https://api.uptimerobot.com/v2${resource}`,
+		uri: uri || `https://api.uptimerobot.com/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

@@ -144,7 +144,7 @@ export class GoogleCalendar implements INodeType {
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const outputFormat = options.outputFormat ?? 'availability';
+						const outputFormat = options.outputFormat || 'availability';
 						const tz = this.getNodeParameter('options.timezone', i, '', {
 							extractValue: true,
 						}) as string;

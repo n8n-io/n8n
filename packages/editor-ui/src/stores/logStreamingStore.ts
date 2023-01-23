@@ -1,5 +1,13 @@
 import { deepCopy, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { defineStore } from 'pinia';
+import {
+	deleteDestinationFromDb,
+	getDestinationsFromBackend,
+	getEventNamesFromBackend,
+	saveDestinationToDb,
+	sendTestMessageToDestination,
+} from '../api/eventbus.ee';
+import { useRootStore } from './n8nRootStore';
 
 export interface EventSelectionItem {
 	selected: boolean;
@@ -8,18 +16,19 @@ export interface EventSelectionItem {
 	label: string;
 }
 
-export interface EventSelectionGroup extends EventSelectionItem {
+interface EventSelectionGroup extends EventSelectionItem {
 	children: EventSelectionItem[];
 }
 
-export interface TreeAndSelectionStoreItem {
+interface DestinationStoreItem {
 	destination: MessageEventBusDestinationOptions;
 	selectedEvents: Set<string>;
 	eventGroups: EventSelectionGroup[];
+	isNew: boolean;
 }
 
 export interface DestinationSettingsStore {
-	[key: string]: TreeAndSelectionStoreItem;
+	[key: string]: DestinationStoreItem;
 }
 
 export const useLogStreamingStore = defineStore('logStreaming', {
@@ -51,13 +60,15 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 			return destinations;
 		},
 		updateDestination(destination: MessageEventBusDestinationOptions) {
-			this.$patch((state) => {
-				if (destination.id && destination.id in this.items) {
-					state.items[destination.id].destination = destination;
-				}
-				// to trigger refresh
-				state.items = deepCopy(state.items);
-			});
+			if (destination.id && destination.id in this.items) {
+				this.$patch((state) => {
+					if (destination.id && destination.id in this.items) {
+						state.items[destination.id].destination = destination;
+					}
+					// to trigger refresh
+					state.items = deepCopy(state.items);
+				});
+			}
 		},
 		removeDestination(destinationId: string) {
 			if (!destinationId) return;
@@ -159,7 +170,8 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 						destination,
 						selectedEvents: new Set<string>(),
 						eventGroups: [],
-					} as TreeAndSelectionStoreItem;
+						isNew: false,
+					} as DestinationStoreItem;
 				}
 				this.items[destination.id]?.selectedEvents?.clear();
 				if (destination.subscribedEvents) {
@@ -172,6 +184,44 @@ export const useLogStreamingStore = defineStore('logStreaming', {
 					this.items[destination.id]?.selectedEvents,
 				);
 			}
+		},
+		async saveDestination(destination: MessageEventBusDestinationOptions): Promise<boolean> {
+			if (destination.id) {
+				const rootStore = useRootStore();
+				const selectedEvents = this.getSelectedEvents(destination.id);
+				try {
+					await saveDestinationToDb(rootStore.getRestApiContext, destination, selectedEvents);
+					this.updateDestination(destination);
+					return true;
+				} catch (e) {
+					return false;
+				}
+			}
+			return false;
+		},
+		async sendTestMessage(destination: MessageEventBusDestinationOptions) {
+			if (destination.id) {
+				const rootStore = useRootStore();
+				const testResult = await sendTestMessageToDestination(
+					rootStore.getRestApiContext,
+					destination,
+				);
+				return testResult;
+			}
+			return false;
+		},
+		async fetchEventNames(): Promise<string[]> {
+			const rootStore = useRootStore();
+			return getEventNamesFromBackend(rootStore.getRestApiContext);
+		},
+		async fetchDestinations(): Promise<MessageEventBusDestinationOptions[]> {
+			const rootStore = useRootStore();
+			return getDestinationsFromBackend(rootStore.getRestApiContext);
+		},
+		async deleteDestination(destinationId: string) {
+			const rootStore = useRootStore();
+			await deleteDestinationFromDb(rootStore.getRestApiContext, destinationId);
+			this.removeDestination(destinationId);
 		},
 	},
 });

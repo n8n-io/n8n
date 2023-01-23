@@ -35,6 +35,11 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userEmail?: string;
 	firstName?: string;
 	lastName?: string;
+	credentialName?: string;
+	credentialType?: string;
+	credentialId?: string;
+	workflowId?: string;
+	workflowName?: string;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

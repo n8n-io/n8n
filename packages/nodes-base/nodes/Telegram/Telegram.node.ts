@@ -1977,7 +1977,7 @@ export class Telegram implements INodeType {
 						);
 					}
 
-					body.disable_notification = body.disable_notification?.toString() ?? 'false';
+					body.disable_notification = body.disable_notification?.toString() || 'false';
 
 					const formData = {
 						...body,
