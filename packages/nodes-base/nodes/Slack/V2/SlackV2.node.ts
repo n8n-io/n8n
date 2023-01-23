@@ -907,7 +907,7 @@ export class SlackV2 implements INodeType {
 						}
 						qs = {
 							query,
-							sort: sort !== 'relevance' ? 'timestamp' : undefined,
+							sort: sort === 'relevance' ? 'score' : 'timestamp',
 							sort_dir: sort === 'asc' ? 'asc' : 'desc',
 						};
 						if (returnAll) {
