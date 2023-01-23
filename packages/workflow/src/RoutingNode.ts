@@ -422,28 +422,13 @@ export class RoutingNode {
 		return [];
 	}
 
-	async rawRoutingRequest(
+	async postProcessReponseData(
 		executeSingleFunctions: IExecuteSingleFunctions,
+		responseData: IN8nHttpFullResponse,
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		itemIndex: number,
 		runIndex: number,
-		credentialType?: string,
-		credentialsDecrypted?: ICredentialsDecrypted,
 	): Promise<INodeExecutionData[]> {
-		let responseData: IN8nHttpFullResponse;
-		requestData.options.returnFullResponse = true;
-		if (credentialType) {
-			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
-				executeSingleFunctions,
-				credentialType,
-				requestData.options as IHttpRequestOptions,
-				{ credentialsDecrypted },
-			)) as IN8nHttpFullResponse;
-		} else {
-			responseData = (await executeSingleFunctions.helpers.httpRequest(
-				requestData.options as IHttpRequestOptions,
-			)) as IN8nHttpFullResponse;
-		}
 		let returnData: INodeExecutionData[] = [
 			{
 				json: responseData.body as IDataObject,
@@ -482,6 +467,30 @@ export class RoutingNode {
 		return returnData;
 	}
 
+	async rawRoutingRequest(
+		executeSingleFunctions: IExecuteSingleFunctions,
+		requestData: DeclarativeRestApiSettings.ResultOptions,
+		credentialType?: string,
+		credentialsDecrypted?: ICredentialsDecrypted,
+	): Promise<IN8nHttpFullResponse> {
+		let responseData: IN8nHttpFullResponse;
+		requestData.options.returnFullResponse = true;
+		if (credentialType) {
+			responseData = (await executeSingleFunctions.helpers.httpRequestWithAuthentication.call(
+				executeSingleFunctions,
+				credentialType,
+				requestData.options as IHttpRequestOptions,
+				{ credentialsDecrypted },
+			)) as IN8nHttpFullResponse;
+		} else {
+			responseData = (await executeSingleFunctions.helpers.httpRequest(
+				requestData.options as IHttpRequestOptions,
+			)) as IN8nHttpFullResponse;
+		}
+
+		return responseData;
+	}
+
 	async makeRoutingRequest(
 		requestData: DeclarativeRestApiSettings.ResultOptions,
 		executeSingleFunctions: IExecuteSingleFunctions,
@@ -505,10 +514,16 @@ export class RoutingNode {
 				return this.rawRoutingRequest(
 					executeSingleFunctions,
 					requestOptions,
-					itemIndex,
-					runIndex,
 					credentialType,
 					credentialsDecrypted,
+				).then(async (data) =>
+					this.postProcessReponseData(
+						executeSingleFunctions,
+						data,
+						requestData,
+						itemIndex,
+						runIndex,
+					),
 				);
 			},
 		};
@@ -531,15 +546,14 @@ export class RoutingNode {
 
 				// Different predefined pagination types
 				if (requestOperations.pagination.type === 'generic') {
-					const { properties } = requestOperations.pagination;
-
-					let tempResponseData: INodeExecutionData[];
+					let tempResponseData: IN8nHttpFullResponse;
+					let tempResponseItems: INodeExecutionData[];
 					let makeAdditionalRequest: boolean;
 					let paginateRequestData: IHttpRequestOptions;
 
 					const additionalKeys = {
 						$request: requestData.options,
-						$response: {} as IDataObject,
+						$response: {} as IN8nHttpFullResponse,
 						$version: this.node.typeVersion,
 					};
 
@@ -559,36 +573,21 @@ export class RoutingNode {
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
 							{ ...requestData, options: { ...requestData.options, ...paginateRequestData } },
-							itemIndex,
-							runIndex,
 							credentialType,
 							credentialsDecrypted,
 						);
 
-						if (tempResponseData.length) {
-							additionalKeys.$response = tempResponseData[0].json;
-						}
+						additionalKeys.$response = tempResponseData;
 
-						if (properties.rootProperty) {
-							const tempResponseValue = get(tempResponseData[0].json, properties.rootProperty) as
-								| IDataObject[]
-								| undefined;
-							if (tempResponseValue === undefined) {
-								throw new NodeOperationError(
-									this.node,
-									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
-									{ runIndex, itemIndex },
-								);
-							}
+						tempResponseItems = await this.postProcessReponseData(
+							executeSingleFunctions,
+							tempResponseData,
+							requestData,
+							itemIndex,
+							runIndex,
+						);
 
-							tempResponseData = tempResponseValue.map((item) => {
-								return {
-									json: item,
-								};
-							});
-						}
-
-						responseData.push(...tempResponseData);
+						responseData.push(...tempResponseItems);
 
 						makeAdditionalRequest = this.getParameterValue(
 							requestOperations.pagination.properties.continue,
@@ -625,10 +624,16 @@ export class RoutingNode {
 						tempResponseData = await this.rawRoutingRequest(
 							executeSingleFunctions,
 							requestData,
-							itemIndex,
-							runIndex,
 							credentialType,
 							credentialsDecrypted,
+						).then(async (data) =>
+							this.postProcessReponseData(
+								executeSingleFunctions,
+								data,
+								requestData,
+								itemIndex,
+								runIndex,
+							),
 						);
 
 						(requestData.options[optionsType] as IDataObject)[properties.offsetParameter] =
@@ -664,10 +669,10 @@ export class RoutingNode {
 			responseData = await this.rawRoutingRequest(
 				executeSingleFunctions,
 				requestData,
-				itemIndex,
-				runIndex,
 				credentialType,
 				credentialsDecrypted,
+			).then(async (data) =>
+				this.postProcessReponseData(executeSingleFunctions, data, requestData, itemIndex, runIndex),
 			);
 		}
 		return responseData;

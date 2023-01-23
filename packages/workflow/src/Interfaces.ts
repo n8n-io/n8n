@@ -548,7 +548,6 @@ export interface IN8nRequestOperationPaginationGeneric extends IN8nRequestOperat
 	type: 'generic';
 	properties: {
 		continue: boolean | string;
-		rootProperty?: string;
 		request: IRequestOptionsSimplifiedAuth;
 	};
 }
