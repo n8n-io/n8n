@@ -34,7 +34,7 @@ import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 const emptyBuffer = Buffer.alloc(0);
 
 export abstract class AbstractServer {
-	protected app: express.Application;
+	protected app: expressWs.Application;
 
 	protected externalHooks: IExternalHooksClass;
 
@@ -59,7 +59,7 @@ export abstract class AbstractServer {
 	abstract configure(): Promise<void>;
 
 	constructor() {
-		this.app = express();
+		this.app = express() as unknown as expressWs.Application;
 		this.app.disable('x-powered-by');
 
 		this.protocol = config.getEnv('protocol');
