@@ -16,7 +16,7 @@ export class Reset extends BaseCommand {
 
 		await Db.collections.LdapSyncHistory.delete({});
 
-		await Db.collections.FeatureConfig.delete({ name: LDAP_FEATURE_NAME });
+		await Db.collections.Settings.delete({ key: LDAP_FEATURE_NAME });
 
 		this.logger.info('Successfully reset the database to default ldap state.');
 	}

@@ -4,7 +4,7 @@
 
 import { LdapConfig } from './types';
 
-export const LDAP_FEATURE_NAME = 'ldap';
+export const LDAP_FEATURE_NAME = 'features.ldap';
 
 export const LDAP_ENABLED = 'enterprise.features.ldap';
 

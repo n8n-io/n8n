@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateLdapEntities1670333612644 implements MigrationInterface {
@@ -25,18 +25,9 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 			);`,
 		);
 
-		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS ${tablePrefix}feature_config (
-				"name" TEXT PRIMARY KEY,
-				"data" json NOT NULL DEFAULT '{}'::json
-			);`,
-		);
-
 		await queryRunner.query(`
-				INSERT INTO ${tablePrefix}feature_config (name, data) VALUES (
-					'ldap',
-					'${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)}'
-				)
+			INSERT INTO ${tablePrefix}settings (key, value, "loadOnStartup")
+			VALUES ('${LDAP_FEATURE_NAME}', '${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)}', true)
 		`);
 
 		await queryRunner.query(
@@ -60,7 +51,6 @@ export class CreateLdapEntities1670333612644 implements MigrationInterface {
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
-		await queryRunner.query(`DROP TABLE ${tablePrefix}feature_config`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}auth_identity`);
 		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN disabled`);
 	}

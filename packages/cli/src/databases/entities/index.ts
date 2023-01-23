@@ -14,7 +14,6 @@ import { InstalledPackages } from './InstalledPackages';
 import { InstalledNodes } from './InstalledNodes';
 import { WorkflowStatistics } from './WorkflowStatistics';
 import { EventDestinations } from './MessageEventBusDestinationEntity';
-import { FeatureConfig } from './FeatureConfig';
 import { LdapSyncHistory } from './LdapSyncHistory';
 
 export const entities = {
@@ -33,6 +32,5 @@ export const entities = {
 	InstalledNodes,
 	WorkflowStatistics,
 	EventDestinations,
-	FeatureConfig,
 	LdapSyncHistory,
 };

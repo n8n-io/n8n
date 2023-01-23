@@ -42,14 +42,14 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate([
-		'User',
 		'AuthIdentity',
+		'LdapSyncHistory',
 		'SharedCredentials',
+		'Credentials',
 		'SharedWorkflow',
 		'Workflow',
-		'Credentials',
-		'FeatureConfig',
-		'LdapSyncHistory',
+		'Settings',
+		'User',
 	]);
 
 	jest.mock('@/telemetry');

@@ -40,6 +40,7 @@ import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants'
 import { LdapConfig } from '@/Ldap/types';
 import type { DatabaseType, ICredentialsDb } from '@/Interfaces';
 import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { jsonParse } from 'n8n-workflow';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -244,7 +245,6 @@ function toTableName(sourceName: CollectionName | MappingName) {
 		AuthIdentity: 'auth_identity',
 		Credentials: 'credentials_entity',
 		Execution: 'execution_entity',
-		FeatureConfig: 'feature_config',
 		InstalledNodes: 'installed_nodes',
 		InstalledPackages: 'installed_packages',
 		LdapSyncHistory: 'ldap_sync_history',
@@ -731,13 +731,16 @@ async function encryptCredentialData(credential: CredentialsEntity) {
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
 
-export async function createLdapDefaultConfig(attributes: Partial<LdapConfig> = {}) {
-	const { data: ldapConfig } = await Db.collections.FeatureConfig.save({
-		name: LDAP_FEATURE_NAME,
-		data: {
+export async function createLdapDefaultConfig(
+	attributes: Partial<LdapConfig> = {},
+): Promise<LdapConfig> {
+	const { value: ldapConfig } = await Db.collections.Settings.save({
+		key: LDAP_FEATURE_NAME,
+		value: JSON.stringify({
 			...LDAP_DEFAULT_CONFIGURATION,
 			...attributes,
-		},
+		}),
+		loadOnStartup: true,
 	});
-	return ldapConfig;
+	return jsonParse(ldapConfig);
 }

@@ -29,7 +29,6 @@ import type { FindOperator, Repository } from 'typeorm';
 import type { ChildProcess } from 'child_process';
 
 import type { AuthIdentity, AuthProviderType } from '@db/entities/AuthIdentity';
-import type { FeatureConfig } from '@db/entities/FeatureConfig';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { LdapSyncHistory } from '@db/entities/LdapSyncHistory';
@@ -81,7 +80,6 @@ export interface IDatabaseCollections {
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
-	FeatureConfig: Repository<FeatureConfig>;
 	LdapSyncHistory: Repository<LdapSyncHistory>;
 	EventDestinations: Repository<EventDestinations>;
 }

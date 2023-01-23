@@ -25,7 +25,7 @@ import {
 } from './constants';
 import type { LdapConfig } from './types';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { getLicense } from '@/License';
 import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 
@@ -131,10 +131,10 @@ export const decryptPassword = async (password: string): Promise<string> => {
  * form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
-	const configuration = await Db.collections.FeatureConfig.findOneByOrFail({
-		name: LDAP_FEATURE_NAME,
+	const configuration = await Db.collections.Settings.findOneByOrFail({
+		key: LDAP_FEATURE_NAME,
 	});
-	const configurationData = configuration.data as LdapConfig;
+	const configurationData = jsonParse<LdapConfig>(configuration.value);
 	configurationData.bindingAdminPassword = await decryptPassword(
 		configurationData.bindingAdminPassword,
 	);
@@ -196,7 +196,10 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 		}
 	}
 
-	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
+	await Db.collections.Settings.update(
+		{ key: LDAP_FEATURE_NAME },
+		{ value: JSON.stringify(config), loadOnStartup: true },
+	);
 	setGlobalLdapConfigVariables(config);
 };
 /**
