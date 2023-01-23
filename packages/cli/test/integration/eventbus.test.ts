@@ -367,7 +367,7 @@ test('should send message to sentry ', async () => {
 
 	sentryDestination.enable();
 
-	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient, 'captureMessage');
+	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
 		eventBus.confirmSent(testMessage, {
 			id: sentryDestination.id,
