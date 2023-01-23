@@ -473,6 +473,11 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 					const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
 					if (authOption) {
 						updateNodeAuthType(this.node, authOption.value);
+						const parameterData = {
+							name: `parameters.${this.mainNodeAuthField.name}`,
+							value: authOption.value,
+						};
+						this.$emit('valueChanged', parameterData);
 					}
 				}
 			}
