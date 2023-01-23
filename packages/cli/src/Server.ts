@@ -534,24 +534,35 @@ class Server extends AbstractServer {
 
 		// Get push connections
 		const push = Push.getInstance();
-		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
+		this.app.ws(`/${this.restEndpoint}/push`, async (ws, req) => {
+			ws.send('connected to n8n :)');
+
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
-				next(new Error('The query parameter "sessionId" is missing!'));
+				ws.send('400 - The query parameter "sessionId" is missing!');
+				ws.close();
 				return;
 			}
 
+			// Handle authentication
 			if (isUserManagementEnabled()) {
 				try {
 					const authCookie = req.cookies?.[AUTH_COOKIE_NAME] ?? '';
 					await resolveJwt(authCookie);
 				} catch (error) {
-					res.status(401).send('Unauthorized');
+					ws.send('401 Unauthorized :(');
+					ws.close();
 					return;
 				}
 			}
 
-			push.add(sessionId as string, req, res);
+			// Add the connection to the push service
+			try {
+				await push.add(ws, sessionId as string);
+			} catch (error) {
+				ws.send('500 - Internal Server Error');
+				ws.close();
+			}
 		});
 
 		// Make sure that Vue history mode works properly

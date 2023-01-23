@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import type { Url } from 'url';
 import express from 'express';
+import expressWs from 'express-ws';
 import bodyParser from 'body-parser';
 import bodyParserXml from 'body-parser-xml';
 import compression from 'compression';
@@ -76,8 +77,11 @@ export abstract class AbstractServer {
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 	}
 
-	private async setupCommonMiddlewares() {
+	private async setupCommonMiddlewares(server: Server) {
 		const { app } = this;
+
+		// Apply websocket middleware
+		this.app = expressWs(this.app, server).app;
 
 		// Augment errors sent to Sentry
 		const {
@@ -424,7 +428,7 @@ export abstract class AbstractServer {
 
 		await new Promise<void>((resolve) => server.listen(PORT, ADDRESS, () => resolve()));
 
-		await this.setupCommonMiddlewares();
+		await this.setupCommonMiddlewares(server);
 		if (inDevelopment) {
 			this.setupDevMiddlewares();
 		}
