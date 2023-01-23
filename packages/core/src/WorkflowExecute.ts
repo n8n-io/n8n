@@ -691,6 +691,8 @@ export class WorkflowExecute {
 
 		const startedAt = new Date();
 
+		this.status = 'running';
+
 		const startNode = this.runExecutionData.executionData!.nodeExecutionStack[0].node.name;
 
 		let destinationNode: string | undefined;

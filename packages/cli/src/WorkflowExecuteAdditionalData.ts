@@ -1045,8 +1045,10 @@ async function executeWorkflow(
 
 export function setExecutionStatus(status: ExecutionStatus) {
 	if (this.executionId === undefined) {
+		Logger.debug(`Setting execution status "${status}" failed because executionId is undefined`);
 		return;
 	}
+	Logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
 	ActiveExecutions.getInstance().setStatus(this.executionId, status);
 }
 

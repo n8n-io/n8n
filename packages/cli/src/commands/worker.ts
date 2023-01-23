@@ -18,6 +18,7 @@ import {
 	LoggerProxy,
 	ErrorReporterProxy as ErrorReporter,
 	sleep,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -228,10 +229,10 @@ export class Worker extends Command {
 
 		additionalData.executionId = executionId;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
-			executionId,
-		});
+		additionalData.setExecutionStatus = (status: ExecutionStatus) => {
+			// Can't set the status directly in the queued worker, but it will happen in InternalHook.onWorkflowPostExecute
+			LoggerProxy.debug(`Queued worker execution status for ${executionId} is "${status}"`);
+		};
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
@@ -329,7 +330,6 @@ export class Worker extends Command {
 				Worker.jobQueue.on('global:progress', (jobId, progress) => {
 					// Progress of a job got updated which does get used
 					// to communicate that a job got canceled.
-
 					if (progress === -1) {
 						// Job has to get canceled
 						if (Worker.runningJobs[jobId] !== undefined) {
