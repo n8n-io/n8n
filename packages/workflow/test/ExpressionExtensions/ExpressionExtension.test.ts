@@ -95,7 +95,7 @@ describe('tmpl Expression Parser', () => {
 			);
 		});
 
-		test('Escaped closinging bracket', () => {
+		test('Escaped closing bracket', () => {
 			expect(joinExpression(splitExpression('test {{ code.test("\\}}") }}'))).toEqual(
 				'test {{ code.test("\\}}") }}',
 			);
@@ -108,6 +108,23 @@ describe('tmpl Expression Parser', () => {
 
 			expect(extendTransform('Math.floor([1, 2, 3, 4].length + 10)')?.code).toBe(
 				'extend(Math, "floor", [[1, 2, 3, 4].length + 10])',
+			);
+		});
+	});
+
+	describe('Test newer ES syntax', () => {
+		test('Optional chaining parses', () => {
+			expect(extendTransform('$json.something?.test')?.code).toBe('$json.something?.test');
+			expect(extendTransform('$json.something?.test.isBlank()')?.code.slice(0, -1)).toBe(
+				'$json.something?.test === undefined ? undefined : extend($json.something?.test, "isBlank", [])',
+			);
+			expect(extendTransform('$json.something?.test.isBlank()?.somethingElse')?.code).toBe(
+				'($json.something?.test === undefined ? undefined : extend($json.something?.test, "isBlank", []))?.somethingElse',
+			);
+			expect(
+				extendTransform('$json.something?.test.isBlank()?.somethingElse.isBlank()')?.code,
+			).toBe(
+				'(($json.something?.test === undefined ? : undefined extend($json.something?.test, "isBlank", []))?.somethingElse === undefined ? undefined : extend(($json.something?.test !== undefined ? extend($json.something?.test, "isBlank", []))?.somethingElse, "isBlank", []))',
 			);
 		});
 	});

@@ -2,6 +2,8 @@
 import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
 import { parse, visit, types, print } from 'recast';
+import { getOption } from 'recast/lib/util';
+import { parse as esprimaParse } from 'esprima-next';
 
 import { arrayExtensions } from './ArrayExtensions';
 import { dateExtensions } from './DateExtensions';
@@ -74,6 +76,50 @@ export const hasNativeMethod = (method: string): boolean => {
 	});
 };
 
+// /**
+//  * recast's types aren't great and we need to use a lot of anys
+//  */
+
+// // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// const findParent = <T>(path: T, matcher: (path: T) => boolean): T | undefined => {
+// 	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// 	// @ts-ignore
+// 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+// 	let parent = path.parentPath;
+// 	while (parent) {
+// 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+// 		if (matcher(parent)) {
+// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+// 			return parent;
+// 		}
+// 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+// 		parent = parent.parentPath;
+// 	}
+// 	return;
+// };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseWithEsprimaNext(source: string, options?: any): any {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+	const ast = esprimaParse(source, {
+		loc: true,
+		locations: true,
+		comment: true,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		range: getOption(options, 'range', false),
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		tolerant: getOption(options, 'tolerant', true),
+		tokens: true,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		jsx: getOption(options, 'jsx', false),
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		sourceType: getOption(options, 'sourceType', 'module'),
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	} as any);
+
+	return ast;
+}
+
 /**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
@@ -89,7 +135,15 @@ export const hasNativeMethod = (method: string): boolean => {
 export const extendTransform = (expression: string): { code: string } | undefined => {
 	try {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const ast = parse(expression);
+		const ast = parse(expression, { parser: { parse: parseWithEsprimaNext } });
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		visit(ast, {
+			visitChainExpression(path) {
+				this.traverse(path);
+				console.log(path);
+			},
+		});
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {
