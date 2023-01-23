@@ -18,7 +18,6 @@ import {
 	LoggerProxy,
 	ErrorReporterProxy as ErrorReporter,
 	sleep,
-	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
@@ -217,13 +216,6 @@ export class Worker extends Command {
 			};
 		}
 
-		additionalData.hooks.hookFunctions.statusChange = [
-			async (executionId: string, changedStatus: ExecutionStatus): Promise<void> => {
-				// this.activeExecutions.setStatus(executionId, changedStatus);
-				// TODO: HOW?
-			},
-		];
-
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
 				const progress: Queue.WebhookResponse = {
@@ -235,6 +227,11 @@ export class Worker extends Command {
 		];
 
 		additionalData.executionId = executionId;
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		additionalData.setExecutionStatus = WorkflowExecuteAdditionalData.setExecutionStatus.bind({
+			executionId,
+		});
 
 		let workflowExecute: WorkflowExecute;
 		let workflowRun: PCancelable<IRun>;
