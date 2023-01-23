@@ -185,6 +185,7 @@ export interface IRequestOptionsSimplifiedAuth {
 	body?: IDataObject;
 	headers?: IDataObject;
 	qs?: IDataObject;
+	url?: string;
 	skipSslCertificateValidation?: boolean | string;
 }
 
