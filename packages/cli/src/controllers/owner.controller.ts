@@ -64,8 +64,9 @@ export class OwnerController {
 			throw new BadRequestError('First and last names are mandatory');
 		}
 
-		let owner = await this.userRepository.findOne(userId, {
+		let owner = await this.userRepository.findOne({
 			relations: ['globalRole'],
+			where: { id: userId },
 		});
 
 		if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {

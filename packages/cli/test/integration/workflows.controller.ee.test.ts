@@ -14,7 +14,6 @@ import { randomCredentialPayload } from './shared/random';
 import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
@@ -25,8 +24,7 @@ let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 	app = await utils.initTestServer({
 		endpointGroups: ['workflows'],
 		applyAuth: true,
@@ -50,11 +48,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('Router should switch dynamically', async () => {

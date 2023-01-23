@@ -95,7 +95,7 @@ export class UsersController {
 			createUsers[invite.email.toLowerCase()] = null;
 		});
 
-		const role = await this.roleRepository.findOne({ scope: 'global', name: 'member' });
+		const role = await this.roleRepository.findOneBy({ scope: 'global', name: 'member' });
 
 		if (!role) {
 			this.logger.error(
@@ -343,8 +343,8 @@ export class UsersController {
 		}
 
 		const [workflowOwnerRole, credentialOwnerRole] = await Promise.all([
-			this.roleRepository.findOne({ name: 'owner', scope: 'workflow' }),
-			this.roleRepository.findOne({ name: 'owner', scope: 'credential' }),
+			this.roleRepository.findOneBy({ name: 'owner', scope: 'workflow' }),
+			this.roleRepository.findOneBy({ name: 'owner', scope: 'credential' }),
 		]);
 
 		if (transferId) {
@@ -356,7 +356,7 @@ export class UsersController {
 					.getRepository(SharedWorkflow)
 					.find({
 						select: ['workflowId'],
-						where: { userId: userToDelete.id, role: workflowOwnerRole },
+						where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 					})
 					.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -381,7 +381,7 @@ export class UsersController {
 					.getRepository(SharedCredentials)
 					.find({
 						select: ['credentialsId'],
-						where: { user: userToDelete, role: credentialOwnerRole },
+						where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 					})
 					.then((sharedCredentials) => sharedCredentials.map(({ credentialsId }) => credentialsId));
 
@@ -415,11 +415,11 @@ export class UsersController {
 		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 			this.sharedWorkflowRepository.find({
 				relations: ['workflow'],
-				where: { user: userToDelete, role: workflowOwnerRole },
+				where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 			}),
 			this.sharedCredentialsRepository.find({
 				relations: ['credentials'],
-				where: { user: userToDelete, role: credentialOwnerRole },
+				where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 			}),
 		]);
 
@@ -460,7 +460,7 @@ export class UsersController {
 			throw new InternalServerError('Email sending must be set up in order to invite other users');
 		}
 
-		const reinvitee = await this.userRepository.findOne({ id: idToReinvite });
+		const reinvitee = await this.userRepository.findOneBy({ id: idToReinvite });
 		if (!reinvitee) {
 			this.logger.debug(
 				'Request to reinvite a user failed because the ID of the reinvitee was not found in database',

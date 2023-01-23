@@ -21,7 +21,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://people.googleapis.com/v1${resource}`,
+		uri: uri || `https://people.googleapis.com/v1${resource}`,
 		json: true,
 	};
 	try {

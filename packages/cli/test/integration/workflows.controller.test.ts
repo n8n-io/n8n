@@ -9,15 +9,13 @@ import type { IPinData } from 'n8n-workflow';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 
 // mock whether sharing is enabled or not
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(false);
 
 beforeAll(async () => {
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 	app = await utils.initTestServer({
 		endpointGroups: ['workflows'],
 		applyAuth: true,
@@ -27,11 +25,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'SharedWorkflow']);
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /workflows should store pin data for node in workflow', async () => {

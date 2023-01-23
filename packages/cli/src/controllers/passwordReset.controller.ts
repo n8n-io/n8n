@@ -61,7 +61,7 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOne({ email, password: Not(IsNull()) });
+		const user = await this.userRepository.findOneBy({ email, password: Not(IsNull()) });
 
 		if (!user?.password) {
 			this.logger.debug(
@@ -135,7 +135,7 @@ export class PasswordResetController {
 		// Timestamp is saved in seconds
 		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-		const user = await this.userRepository.findOne({
+		const user = await this.userRepository.findOneBy({
 			id,
 			resetPasswordToken,
 			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -179,7 +179,7 @@ export class PasswordResetController {
 		// Timestamp is saved in seconds
 		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-		const user = await this.userRepository.findOne({
+		const user = await this.userRepository.findOneBy({
 			id: userId,
 			resetPasswordToken,
 			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),

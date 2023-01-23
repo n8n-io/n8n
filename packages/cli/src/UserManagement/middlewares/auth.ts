@@ -102,12 +102,10 @@ export const setupAuthMiddlewares = (
 
 		// skip authentication if user management is disabled
 		if (isUserManagementDisabled()) {
-			req.user = await userRepository.findOneOrFail(
-				{},
-				{
-					relations: ['globalRole'],
-				},
-			);
+			req.user = await userRepository.findOneOrFail({
+				relations: ['globalRole'],
+				where: {},
+			});
 			return next();
 		}
 

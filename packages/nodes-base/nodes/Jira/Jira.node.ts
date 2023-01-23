@@ -286,7 +286,7 @@ export class Jira implements INodeType {
 						if (user.active) {
 							activeUsers.push({
 								name: user.displayName as string,
-								value: (user.accountId ?? user.name) as string,
+								value: (user.accountId || user.name) as string,
 							});
 						}
 						return activeUsers;
@@ -684,7 +684,7 @@ export class Jira implements INodeType {
 						qs.expand = additionalFields.expand as string;
 					}
 					if (simplifyOutput) {
-						qs.expand = `${qs.expand ?? ''},names`;
+						qs.expand = `${qs.expand || ''},names`;
 					}
 					if (additionalFields.properties) {
 						qs.properties = additionalFields.properties as string;
@@ -702,7 +702,7 @@ export class Jira implements INodeType {
 
 					if (simplifyOutput) {
 						// Use rendered fields if requested and available
-						qs.expand = qs.expand ?? '';
+						qs.expand = qs.expand || '';
 						if (
 							(qs.expand as string).toLowerCase().indexOf('renderedfields') !== -1 &&
 							responseData.renderedFields &&

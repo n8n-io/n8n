@@ -37,14 +37,12 @@ export class AuthController {
 			throw new Error('Password is required to log in');
 		}
 
-		let user: User | undefined;
+		let user: User | null;
 		try {
-			user = await this.userRepository.findOne(
-				{ email },
-				{
-					relations: ['globalRole'],
-				},
-			);
+			user = await this.userRepository.findOne({
+				where: { email },
+				relations: ['globalRole'],
+			});
 		} catch (error) {
 			throw new Error('Unable to access database.');
 		}
@@ -83,7 +81,10 @@ export class AuthController {
 		}
 
 		try {
-			user = await this.userRepository.findOneOrFail({ relations: ['globalRole'] });
+			user = await this.userRepository.findOneOrFail({
+				relations: ['globalRole'],
+				where: {},
+			});
 		} catch (error) {
 			throw new InternalServerError(
 				'No users found in database - did you wipe the users table? Create at least one user.',

@@ -1,3 +1,56 @@
+# [0.212.0](https://github.com/n8n-io/n8n/compare/n8n@0.211.2...n8n@0.212.0) (2023-01-19)
+
+
+### Bug Fixes
+
+* **core:** Revert rule @typescript-eslint/prefer-nullish-coalescing ([e667df7](https://github.com/n8n-io/n8n/commit/e667df783c8c396fc40ff14de704b1e0def4a699))
+* **editor:** Allow special chars in node selector completion ([#5196](https://github.com/n8n-io/n8n/issues/5196)) ([b718464](https://github.com/n8n-io/n8n/commit/b718464b1f28e52ffb0b12e4b927d8fe3678d02a))
+* **GitLab Node:** Update credential test endpoint ([#5166](https://github.com/n8n-io/n8n/issues/5166)) ([e275306](https://github.com/n8n-io/n8n/commit/e275306c64a410c154e586532e35d25a583f75b4))
+* **Gmail Trigger Node:** Filter by labels not working ([#5173](https://github.com/n8n-io/n8n/issues/5173)) ([026f3a5](https://github.com/n8n-io/n8n/commit/026f3a532d30dcf79b76c9f9cff709e6af0eb9ee))
+* **HTTP Request Node:** Bug - node requires string instead of json ([8f49f49](https://github.com/n8n-io/n8n/commit/8f49f494ae66ce933f0fce3c3b43ce99baa1b728))
+* **HTTP Request Node:** Response format to text is ignored for JSON responses ([8dbe615](https://github.com/n8n-io/n8n/commit/8dbe6159d04c963e7858d31d64721ddc0911ea36))
+
+
+### Features
+
+* **core:** Add Prometheus metrics for n8n events and api invocations (experimental) ([#5177](https://github.com/n8n-io/n8n/issues/5177)) ([9b032d6](https://github.com/n8n-io/n8n/commit/9b032d68bc8a7a45aae73e9442315e872902d50a)), closes [#5187](https://github.com/n8n-io/n8n/issues/5187)
+* **Item Lists Node:** Table tranformation ([5426690](https://github.com/n8n-io/n8n/commit/5426690791ead70085681ef31f229fbe15c7d656))
+
+
+
+## [0.211.2](https://github.com/n8n-io/n8n/compare/n8n@0.211.1...n8n@0.211.2) (2023-01-17)
+
+
+### Bug Fixes
+
+* **core:** Restore community nodes installation ([#5180](https://github.com/n8n-io/n8n/issues/5180)) ([c0268f5](https://github.com/n8n-io/n8n/commit/c0268f572fed4953354123da90f780612c7651ee))
+
+
+### Features
+
+* (Google Sheets Trigger Node): Trigger for Google Sheets ([e839a81](https://github.com/n8n-io/n8n/commit/e839a81cc5f31eb622915749f9e598f248e407d7))
+
+
+
+## [0.211.1](https://github.com/n8n-io/n8n/compare/n8n@0.211.0...n8n@0.211.1) (2023-01-16)
+
+
+### Bug Fixes
+
+* Build `cli` to fix Postgres and MySQL test runs ([#5171](https://github.com/n8n-io/n8n/issues/5171)) ([a0c5232](https://github.com/n8n-io/n8n/commit/a0c5232aa53b13e581b5da4b6f984f5d7893fe33))
+* Extend date functions clobbering plus/minus ([#5170](https://github.com/n8n-io/n8n/issues/5170)) ([f634f0d](https://github.com/n8n-io/n8n/commit/f634f0dc59389a8c7ecd4154d2cf9af495b129aa))
+* Extension deep compare not quite working for some primitives ([#5172](https://github.com/n8n-io/n8n/issues/5172)) ([98017dc](https://github.com/n8n-io/n8n/commit/98017dc36f3e2fc3d2a5178fb7259205504e5582))
+* Upgrade `jsonwebtoken` to address CVE-2022-23540 ([#5116](https://github.com/n8n-io/n8n/issues/5116)) ([97969fc](https://github.com/n8n-io/n8n/commit/97969fc81581379d2a3c49d839206cc9b9e05d9d))
+
+
+### Features
+
+* **editor:** Supress validation errors for freshly added nodes ([#5149](https://github.com/n8n-io/n8n/issues/5149)) ([582865c](https://github.com/n8n-io/n8n/commit/582865c7e9eff99eabb36636ca7af2d2b2e76af8))
+* **Google Ads Node:** Update api version to v11 ([#4427](https://github.com/n8n-io/n8n/issues/4427)) ([dfff982](https://github.com/n8n-io/n8n/commit/dfff982662b7cee5c0203764a59d2355a02a9030))
+* **Google Drive Trigger Node:** Use resource locator component ([#5148](https://github.com/n8n-io/n8n/issues/5148)) ([9958c32](https://github.com/n8n-io/n8n/commit/9958c324dbf88f25efd34433ce51af9e3aa44ae3))
+
+
+
 # [0.211.0](https://github.com/n8n-io/n8n/compare/n8n@0.210.2...n8n@0.211.0) (2023-01-13)
 
 

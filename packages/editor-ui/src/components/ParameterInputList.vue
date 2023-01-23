@@ -93,11 +93,13 @@
 
 				<parameter-input-full
 					:parameter="parameter"
+					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
 					:value="getParameterValue(nodeValues, parameter.name, path)"
 					:displayOptions="true"
 					:path="getPath(parameter.name)"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
+					@blur="onParameterBlur(parameter.name)"
 				/>
 			</div>
 		</div>
@@ -108,13 +110,7 @@
 </template>
 
 <script lang="ts">
-import {
-	deepCopy,
-	INodeParameters,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValue,
-} from 'n8n-workflow';
+import { deepCopy, INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -126,8 +122,8 @@ import ImportParameter from '@/components/ImportParameter.vue';
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { Component } from 'vue';
-import { mapState, mapStores } from 'pinia';
+import { Component, PropType } from 'vue';
+import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 
@@ -140,14 +136,36 @@ export default mixins(workflowHelpers).extend({
 		CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
 		ImportParameter,
 	},
-	props: [
-		'nodeValues', // INodeParameters
-		'parameters', // INodeProperties
-		'path', // string
-		'hideDelete', // boolean
-		'indent',
-		'isReadOnly',
-	],
+	props: {
+		nodeValues: {
+			type: Object as PropType<INodeParameters>,
+			required: true,
+		},
+		parameters: {
+			type: Array as PropType<INodeProperties[]>,
+			required: true,
+		},
+		path: {
+			type: String,
+			default: '',
+		},
+		hideDelete: {
+			type: Boolean,
+			default: false,
+		},
+		indent: {
+			type: Boolean,
+			default: false,
+		},
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+		hiddenIssuesInputs: {
+			type: Array as PropType<string[]>,
+			default: () => [],
+		},
+	},
 	computed: {
 		...mapStores(useNodeTypesStore, useNDVStore),
 		nodeTypeVersion(): number | null {
@@ -187,6 +205,9 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
+		onParameterBlur(parameterName: string) {
+			this.$emit('parameterBlur', parameterName);
+		},
 		getCredentialsDependencies() {
 			const dependencies = new Set();
 			const nodeType = this.nodeTypesStore.getNodeType(

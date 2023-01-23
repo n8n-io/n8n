@@ -9,7 +9,7 @@ import * as Db from '@/Db';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
-import { DeleteResult, InsertResult } from 'typeorm';
+import type { DeleteResult, InsertResult } from 'typeorm';
 
 export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
