@@ -6,7 +6,7 @@ import { evaluate } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Array Data Transformation Functions', () => {
-		test('.randomItem() alias should work correctly on an array', () => {
+		test('.randomItem() should work correctly on an array', () => {
 			expect(evaluate('={{ [1,2,3].randomItem() }}')).not.toBeUndefined();
 		});
 
