@@ -171,7 +171,7 @@ importers:
       jsonschema: ^1.4.1
       jsonwebtoken: 9.0.0
       jwks-rsa: ~1.12.1
-      ldapts: ^4.0.0
+      ldapts: ^4.2.2
       localtunnel: ^2.0.0
       lodash.get: ^4.4.2
       lodash.intersection: ^4.4.0
@@ -265,7 +265,7 @@ importers:
       jsonschema: 1.4.1
       jsonwebtoken: 9.0.0
       jwks-rsa: 1.12.3
-      ldapts: 4.2.1
+      ldapts: 4.2.2
       localtunnel: 2.0.2
       lodash.get: 4.4.2
       lodash.intersection: 4.4.0
@@ -6348,6 +6348,11 @@ packages:
 
   /@types/uuid/8.3.4:
     resolution: {integrity: sha512-c/I8ZRb51j+pYGAu5CrFMRxqZ2ke4y2grEBO5AUjgSkSk+qT2Ea+OdWElz/OiMf5MNpn2b17kuVBwZLQJXzihw==}
+    dev: true
+
+  /@types/uuid/9.0.0:
+    resolution: {integrity: sha512-kr90f+ERiQtKWMz5rP32ltJ/BtULDI5RVO0uavn1HQUOwjx0R1h0rnDYNL0CepF1zL5bSY6FISAfd9tOdDhU5Q==}
+    dev: false
 
   /@types/validator/13.7.10:
     resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
@@ -14983,13 +14988,13 @@ packages:
       invert-kv: 1.0.0
     dev: true
 
-  /ldapts/4.2.1:
-    resolution: {integrity: sha512-moyNiBwSl0ctuVTlW8elDuPYFwWemG+WbIGMDtwV/aezLDQ7U3tinsEH3P49EB7afjHeb1/UX2vaAGm25Z1Nqg==}
+  /ldapts/4.2.2:
+    resolution: {integrity: sha512-UHe7BtEhPUFHZZ6XHnRvLHWQrftTap3PgGU0nOLtrFeigZvfpXSsqJ8C9uXNouDV+iDHqoWwplS0eHoDu/GIEQ==}
     engines: {node: '>=14'}
     dependencies:
       '@types/asn1': 0.2.0
       '@types/node': 16.11.65
-      '@types/uuid': 8.3.4
+      '@types/uuid': 9.0.0
       asn1: 0.2.6
       debug: 4.3.4
       strict-event-emitter-types: 2.0.0
