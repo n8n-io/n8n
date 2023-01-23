@@ -11,6 +11,11 @@ export type EventNamesNodeType = typeof eventNamesNode[number];
 // --------------------------------------
 export interface EventPayloadNode extends AbstractEventPayload {
 	msg?: string;
+	executionId: string;
+	nodeName: string;
+	workflowId?: string;
+	workflowName: string;
+	nodeType?: string;
 }
 
 export interface EventMessageNodeOptions extends AbstractEventMessageOptions {

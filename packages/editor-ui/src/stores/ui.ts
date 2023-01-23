@@ -254,7 +254,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			return [
 				VIEWS.NEW_WORKFLOW.toString(),
 				VIEWS.WORKFLOW.toString(),
-				VIEWS.EXECUTION.toString(),
+				VIEWS.WORKFLOW_EXECUTIONS.toString(),
 			].includes(this.currentView);
 		},
 		isActionActive() {

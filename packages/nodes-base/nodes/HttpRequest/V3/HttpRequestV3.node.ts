@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -21,6 +22,13 @@ import {
 	replaceNullValues,
 	sanitizeUiMessage,
 } from '../GenericFunctions';
+
+function toText<T>(data: T) {
+	if (typeof data === 'object' && data !== null) {
+		return JSON.stringify(data);
+	}
+	return data;
+}
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -1101,19 +1109,23 @@ export class HttpRequestV3 implements INodeType {
 					);
 				} else if (specifyBody === 'json') {
 					// body is specified using JSON
-					try {
-						JSON.parse(jsonBodyParameter);
-					} catch (_) {
-						throw new NodeOperationError(
-							this.getNode(),
-							'JSON parameter need to be an valid JSON',
-							{
-								runIndex: itemIndex,
-							},
-						);
-					}
+					if (typeof jsonBodyParameter !== 'object' && jsonBodyParameter !== null) {
+						try {
+							JSON.parse(jsonBodyParameter);
+						} catch (_) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'JSON parameter need to be an valid JSON',
+								{
+									runIndex: itemIndex,
+								},
+							);
+						}
 
-					requestOptions.body = jsonParse(jsonBodyParameter);
+						requestOptions.body = jsonParse(jsonBodyParameter);
+					} else {
+						requestOptions.body = jsonBodyParameter;
+					}
 				} else if (specifyBody === 'string') {
 					//form urlencoded
 					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
@@ -1289,12 +1301,10 @@ export class HttpRequestV3 implements INodeType {
 			}
 		}
 
-		// @ts-ignore
 		const promisesResponses = await Promise.allSettled(requestPromises);
 
 		let response: any;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			// @ts-ignore
 			response = promisesResponses.shift();
 
 			if (response!.status !== 'fulfilled') {
@@ -1374,8 +1384,7 @@ export class HttpRequestV3 implements INodeType {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.
-					// @ts-ignore
-					Object.assign(newItem.binary, items[itemIndex].binary);
+					Object.assign(newItem.binary as IBinaryKeyData, items[itemIndex].binary);
 				}
 
 				const fileName = url.split('/').pop();
@@ -1415,7 +1424,7 @@ export class HttpRequestV3 implements INodeType {
 					const returnItem: IDataObject = {};
 					for (const property of fullReponseProperties) {
 						if (property === 'body') {
-							returnItem[outputPropertyName] = response![property];
+							returnItem[outputPropertyName] = toText(response![property]);
 							continue;
 						}
 
@@ -1430,7 +1439,7 @@ export class HttpRequestV3 implements INodeType {
 				} else {
 					returnItems.push({
 						json: {
-							[outputPropertyName]: response,
+							[outputPropertyName]: toText(response),
 						},
 						pairedItem: {
 							item: itemIndex,

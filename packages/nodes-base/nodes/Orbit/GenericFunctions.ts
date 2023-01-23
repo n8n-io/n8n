@@ -30,7 +30,7 @@ export async function orbitApiRequest(
 			method,
 			qs,
 			body,
-			uri: uri ?? `https://app.orbit.love/api/v1${resource}`,
+			uri: uri || `https://app.orbit.love/api/v1${resource}`,
 			json: true,
 		};
 

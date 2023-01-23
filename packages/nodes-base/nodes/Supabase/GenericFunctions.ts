@@ -43,7 +43,7 @@ export async function supabaseApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `${credentials.host}/rest/v1${resource}`,
+		uri: uri || `${credentials.host}/rest/v1${resource}`,
 		json: true,
 	};
 	try {

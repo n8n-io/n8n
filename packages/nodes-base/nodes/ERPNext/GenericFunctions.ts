@@ -30,7 +30,7 @@ export async function erpNextApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `${baseUrl}${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 		rejectUnauthorized: !credentials.allowUnauthorizedCerts,
 	};
