@@ -24,7 +24,7 @@ export async function slackApiRequest(
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
 	let options: OptionsWithUri = {
 		method,
-		headers: headers ?? {
+		headers: headers || {
 			'Content-Type': 'application/json; charset=utf-8',
 		},
 		body,

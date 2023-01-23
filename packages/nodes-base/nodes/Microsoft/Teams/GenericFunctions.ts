@@ -21,7 +21,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://graph.microsoft.com${resource}`,
+		uri: uri || `https://graph.microsoft.com${resource}`,
 		json: true,
 	};
 	try {

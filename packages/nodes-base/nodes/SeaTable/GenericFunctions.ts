@@ -65,7 +65,7 @@ function endpointCtxExpr(ctx: ICtx, endpoint: string): string {
 	return endpoint.replace(
 		/({{ *(access_token|dtable_uuid|server) *}})/g,
 		(match: string, expr: string, name: TEndpointVariableName) => {
-			return endpointVariables[name] ?? match;
+			return endpointVariables[name] || match;
 		},
 	);
 }
@@ -94,7 +94,7 @@ export async function seaTableApiRequest(
 		method,
 		qs,
 		body,
-		uri: url ?? `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
+		uri: url || `${resolveBaseUri(ctx)}${endpointCtxExpr(ctx, endpoint)}`,
 		json: true,
 	};
 

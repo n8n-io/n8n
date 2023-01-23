@@ -22,7 +22,7 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://graph.microsoft.com/v1.0/me${resource}`,
+		uri: uri || `https://graph.microsoft.com/v1.0/me${resource}`,
 	};
 	try {
 		Object.assign(options, option);

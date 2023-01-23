@@ -37,7 +37,7 @@ export async function onfleetApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://onfleet.com/api/v2/${resource}`,
+		uri: uri || `https://onfleet.com/api/v2/${resource}`,
 		json: true,
 	};
 	try {

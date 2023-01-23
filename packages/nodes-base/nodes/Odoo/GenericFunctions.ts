@@ -236,7 +236,7 @@ export async function odooGet(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					[+itemsID] || [],
-					fieldsToReturn ?? [],
+					fieldsToReturn || [],
 				],
 			},
 			id: Math.floor(Math.random() * 100),
@@ -275,7 +275,7 @@ export async function odooGetAll(
 					mapOdooResources[resource] || resource,
 					mapOperationToJSONRPC[operation],
 					(filters && processFilters(filters)) || [],
-					fieldsToReturn ?? [],
+					fieldsToReturn || [],
 					0, // offset
 					limit,
 				],

@@ -320,7 +320,7 @@ export class HubspotTrigger implements INodeType {
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
 					targetUrl: webhookUrl,
-					maxConcurrentRequests: additionalFields.maxConcurrentRequests ?? 5,
+					maxConcurrentRequests: additionalFields.maxConcurrentRequests || 5,
 				};
 
 				await hubspotApiRequest.call(this, 'PUT', endpoint, body);
