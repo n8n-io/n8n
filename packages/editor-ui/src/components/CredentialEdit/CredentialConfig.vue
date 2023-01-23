@@ -63,7 +63,7 @@
 			</n8n-notice>
 
 			<div
-				v-if="mode === 'new' && nodeAuthOptions.length > 0"
+				v-if="isNewCredential && nodeAuthOptions.length > 0"
 				:class="$style.authTypeContainer"
 				data-test-id="node-auth-type-selector"
 			>
@@ -395,6 +395,9 @@ export default mixins(restApi).extend({
 		},
 		isMissingCredentials(): boolean {
 			return this.selectedCredentialType !== '' && this.credentialType === null;
+		},
+		isNewCredential(): boolean {
+			return this.mode === 'new' && !this.credentialId;
 		},
 	},
 	methods: {
