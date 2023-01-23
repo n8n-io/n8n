@@ -53,6 +53,7 @@ const DURATION_MAP: Record<string, DurationUnit> = {
 
 const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
 	days: 'day',
+	week: 'weekNumber',
 	months: 'month',
 	years: 'year',
 	hours: 'hour',
@@ -115,10 +116,6 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 			firstDayOfTheYear.getTime() +
 			(firstDayOfTheYear.getTimezoneOffset() - date.getTimezoneOffset()) * 60 * 1000;
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
-	}
-
-	if (part === 'week') {
-		part = 'weekNumber';
 	}
 
 	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
