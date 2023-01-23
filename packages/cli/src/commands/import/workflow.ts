@@ -22,6 +22,7 @@ import { getLogger } from '@/Logger';
 import * as Db from '@/Db';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ExistingWorkflowEntity } from "@db/entities/ExistingWorkflowEntity";
 import { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
 import { setTagsForImport } from '@/TagHelpers';
@@ -207,11 +208,14 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async storeWorkflow(workflow: object, user: User) {
-		const newWorkflow = new WorkflowEntity();
+		const existingId = Object.keys(workflow).includes("id");
+		const newWorkflow = existingId ? new ExistingWorkflowEntity() : new WorkflowEntity();
 
 		Object.assign(newWorkflow, workflow);
 
-		const savedWorkflow = await this.transactionManager.save<WorkflowEntity>(newWorkflow);
+		const savedWorkflow = existingId ?
+			await this.transactionManager.save<ExistingWorkflowEntity>(newWorkflow) :
+			await this.transactionManager.save<WorkflowEntity>(newWorkflow);
 
 		const newSharedWorkflow = new SharedWorkflow();
 
