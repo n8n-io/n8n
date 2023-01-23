@@ -2,16 +2,16 @@
  * @jest-environment jsdom
  */
 
-import { extend } from '@/Extensions';
-import { dateExtensions } from '@/Extensions/DateExtensions';
-import { evaluate, getLocalISOString } from './Helpers';
+import { DateTime } from 'luxon';
+import { evaluate, getLocalISOString, TEST_TIMEZONE } from './Helpers';
 
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
 		test('.isWeekend() should work correctly on a date', () => {
-			expect(evaluate('={{DateTime.now().isWeekend()}}')).toEqual(
-				extend(new Date(), 'isWeekend', []),
-			);
+			expect(evaluate('={{ DateTime.local(2023, 1, 20).isWeekend() }}')).toBe(false);
+			expect(evaluate('={{ DateTime.local(2023, 1, 21).isWeekend() }}')).toBe(true);
+			expect(evaluate('={{ DateTime.local(2023, 1, 22).isWeekend() }}')).toBe(true);
+			expect(evaluate('={{ DateTime.local(2023, 1, 23).isWeekend() }}')).toBe(false);
 		});
 
 		test('.toTimeFromNow() should work correctly on a date', () => {
@@ -20,29 +20,24 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.beginningOf("week") should work correctly on a date', () => {
-			expect(evaluate('={{(new Date).beginningOf("week")}}')).toEqual(
-				dateExtensions.functions.beginningOf(new Date(), ['week']),
+			expect(evaluate('={{ DateTime.local(2023, 1, 20).beginningOf("week") }}')).toEqual(
+				DateTime.local(2023, 1, 16, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});
 
 		test('.endOfMonth() should work correctly on a date', () => {
-			expect(evaluate('={{ DateTime.now().endOfMonth() }}')).toEqual(
-				dateExtensions.functions.endOfMonth(new Date()),
+			expect(evaluate('={{ DateTime.local(2023, 1, 16).endOfMonth() }}')).toEqual(
+				DateTime.local(2023, 1, 31, 23, 59, 59, 999, { zone: TEST_TIMEZONE }).toJSDate(),
 			);
 		});
 
 		test('.extract("day") should work correctly on a date', () => {
-			expect(evaluate('={{ DateTime.now().extract("day") }}')).toEqual(
-				dateExtensions.functions.extract(new Date(), ['day']),
-			);
+			expect(evaluate('={{ DateTime.local(2023, 1, 20).extract("day") }}')).toEqual(20);
 		});
 
 		test('.format("yyyy LLL dd") should work correctly on a date', () => {
-			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).toEqual(
-				dateExtensions.functions.format(new Date(), ['yyyy LLL dd']),
-			);
-			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).not.toEqual(
-				dateExtensions.functions.format(new Date(), ["HH 'hours and' mm 'minutes'"]),
+			expect(evaluate('={{ DateTime.local(2023, 1, 16).format("yyyy LLL dd") }}')).toEqual(
+				'2023 Jan 16',
 			);
 		});
 
