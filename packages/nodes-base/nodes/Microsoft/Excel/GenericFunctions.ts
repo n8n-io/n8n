@@ -6,7 +6,6 @@ export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
@@ -26,7 +25,6 @@ export async function microsoftApiRequest(
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'microsoftExcelOAuth2Api', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -38,7 +36,6 @@ export async function microsoftApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

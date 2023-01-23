@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { workbookRLC } from './CommonDescription';
 
 export const workbookOperations: INodeProperties[] = [
 	{
@@ -34,22 +35,13 @@ export const workbookFields: INodeProperties[] = [
 	/*                                 workbook:addWorksheet                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['addWorksheet'],
 				resource: ['workbook'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Additional Fields',

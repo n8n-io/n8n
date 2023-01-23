@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { workbookRLC } from './CommonDescription';
 
 export const worksheetOperations: INodeProperties[] = [
 	{
@@ -34,21 +35,13 @@ export const worksheetFields: INodeProperties[] = [
 	/*                                 worksheet:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
 				resource: ['worksheet'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -107,22 +100,13 @@ export const worksheetFields: INodeProperties[] = [
 	/*                                 worksheet:getContent                       */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['getContent'],
 				resource: ['worksheet'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Worksheet Name or ID',
@@ -133,7 +117,7 @@ export const worksheetFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook'],
+			loadOptionsDependsOn: ['workbook.value'],
 		},
 		displayOptions: {
 			show: {

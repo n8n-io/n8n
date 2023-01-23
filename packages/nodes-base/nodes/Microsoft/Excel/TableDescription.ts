@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { workbookRLC } from './CommonDescription';
 
 export const tableOperations: INodeProperties[] = [
 	{
@@ -46,21 +47,13 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:addRow                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['addRow'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Worksheet Name or ID',
@@ -71,7 +64,7 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook'],
+			loadOptionsDependsOn: ['workbook.value'],
 		},
 		displayOptions: {
 			show: {
@@ -130,21 +123,13 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:getRows                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['getRows'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Worksheet Name or ID',
@@ -155,7 +140,7 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook'],
+			loadOptionsDependsOn: ['workbook.value'],
 		},
 		displayOptions: {
 			show: {
@@ -270,21 +255,13 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:getColumns                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['getColumns'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Worksheet Name or ID',
@@ -295,7 +272,7 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook'],
+			loadOptionsDependsOn: ['workbook.value'],
 		},
 		displayOptions: {
 			show: {
@@ -410,22 +387,13 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:lookup                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Workbook Name or ID',
-		name: 'workbook',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getWorkbooks',
-		},
+		...workbookRLC,
 		displayOptions: {
 			show: {
 				operation: ['lookup'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Worksheet Name or ID',
@@ -436,7 +404,7 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook'],
+			loadOptionsDependsOn: ['workbook.value'],
 		},
 		displayOptions: {
 			show: {

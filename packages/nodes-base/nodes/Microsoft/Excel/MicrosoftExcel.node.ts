@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -24,7 +25,7 @@ import { tableFields, tableOperations } from './TableDescription';
 
 export class MicrosoftExcel implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft Excel',
+		displayName: 'Microsoft Excel 365',
 		name: 'microsoftExcel',
 		icon: 'file:excel.svg',
 		group: ['input'],
@@ -43,6 +44,13 @@ export class MicrosoftExcel implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'This node connects to the Microsoft 365 cloud platform. Use the \'spreadsheet\' node to manipulate spreadsheet files directly (.xls, .csv etc.). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">example</a>',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -79,36 +87,55 @@ export class MicrosoftExcel implements INodeType {
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the workbooks to display them to user so that he can
-			// select them easily
-			async getWorkbooks(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const qs: IDataObject = {
-					select: 'id,name',
-				};
-				const returnData: INodePropertyOptions[] = [];
-				const workbooks = await microsoftApiRequestAllItems.call(
-					this,
-					'value',
-					'GET',
-					"/drive/root/search(q='.xlsx')",
-					{},
-					qs,
-				);
-				for (const workbook of workbooks) {
-					const workbookName = workbook.name;
-					const workbookId = workbook.id;
-					returnData.push({
-						name: workbookName,
-						value: workbookId,
-					});
+		listSearch: {
+			async searchWorkbooks(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const q = filter ? encodeURI(`.xlsx AND ${filter}`) : '.xlsx';
+
+				let response: IDataObject = {};
+
+				if (paginationToken) {
+					response = await microsoftApiRequest.call(
+						this,
+						'GET',
+						'',
+						undefined,
+						undefined,
+						paginationToken, // paginationToken contains the full URL
+					);
+				} else {
+					response = await microsoftApiRequest.call(
+						this,
+						'GET',
+						`/drive/root/search(q='${q}')`,
+						undefined,
+						{
+							select: 'id,name,webUrl',
+							$top: 100,
+						},
+					);
 				}
-				return returnData;
+
+				return {
+					results: (response.value as IDataObject[]).map((workbook: IDataObject) => ({
+						name: (workbook.name as string).replace('.xlsx', ''),
+						value: workbook.id as string,
+						url: workbook.webUrl as string,
+					})),
+					paginationToken: response['@odata.nextLink'],
+				};
 			},
+		},
+		loadOptions: {
 			// Get all the worksheets to display them to user so that he can
 			// select them easily
 			async getworksheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workbookId = this.getCurrentNodeParameter('workbook');
+				const workbookId = this.getNodeParameter('workbook', undefined, {
+					extractValue: true,
+				}) as string;
 				const qs: IDataObject = {
 					select: 'id,name',
 				};
@@ -134,7 +161,9 @@ export class MicrosoftExcel implements INodeType {
 			// Get all the tables to display them to user so that he can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workbookId = this.getCurrentNodeParameter('workbook');
+				const workbookId = this.getNodeParameter('workbook', undefined, {
+					extractValue: true,
+				}) as string;
 				const worksheetId = this.getCurrentNodeParameter('worksheet');
 				const qs: IDataObject = {
 					select: 'id,name',
@@ -177,7 +206,9 @@ export class MicrosoftExcel implements INodeType {
 				try {
 					// TODO: At some point it should be possible to use item dependent parameters.
 					//       Is however important to then not make one separate request each.
-					const workbookId = this.getNodeParameter('workbook', 0) as string;
+					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
+						extractValue: true,
+					}) as string;
 					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
 					const tableId = this.getNodeParameter('table', 0) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', 0);
@@ -257,7 +288,9 @@ export class MicrosoftExcel implements INodeType {
 				for (let i = 0; i < length; i++) {
 					try {
 						qs = {};
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -319,7 +352,9 @@ export class MicrosoftExcel implements INodeType {
 				for (let i = 0; i < length; i++) {
 					qs = {};
 					try {
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -363,8 +398,8 @@ export class MicrosoftExcel implements INodeType {
 								{},
 								columnsQs,
 							);
-							//@ts-ignore
-							columns = columns.map((column) => column.name);
+
+							columns = (columns as IDataObject[]).map((column) => column.name);
 							for (let index = 0; index < responseData.length; index++) {
 								const object: IDataObject = {};
 								for (let y = 0; y < columns.length; y++) {
@@ -403,7 +438,9 @@ export class MicrosoftExcel implements INodeType {
 				for (let i = 0; i < length; i++) {
 					qs = {};
 					try {
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
@@ -487,7 +524,11 @@ export class MicrosoftExcel implements INodeType {
 				try {
 					//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
 					if (operation === 'addWorksheet') {
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						// const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (additionalFields.name) {
@@ -581,7 +622,9 @@ export class MicrosoftExcel implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
 						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
 							qs.$select = filters.fields;
@@ -609,7 +652,9 @@ export class MicrosoftExcel implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
 					if (operation === 'getContent') {
-						const workbookId = this.getNodeParameter('workbook', i) as string;
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const range = this.getNodeParameter('range', i) as string;
 						const rawData = this.getNodeParameter('rawData', i);
