@@ -12,7 +12,6 @@ import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } fro
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
-	ExecutionStatus,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,

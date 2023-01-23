@@ -241,7 +241,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		workflowData?: IWorkflowBase,
 	): Promise<void> {
 		void Promise.all([
-			Db.collections.Execution.update(executionId, { status: 'crashed' }),
+			// Db.collections.Execution.update(executionId, { status: 'crashed' }),
 			eventBus.sendWorkflowEvent({
 				eventName: 'n8n.workflow.crashed',
 				payload: {

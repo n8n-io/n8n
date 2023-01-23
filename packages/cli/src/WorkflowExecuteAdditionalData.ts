@@ -303,8 +303,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 				if (this.sessionId === undefined) {
 					return;
 				}
-
-				await Db.collections.Execution.update(this.executionId, { status: 'running' });
+				// await Db.collections.Execution.update(this.executionId, { status: 'running' });
 				const pushInstance = Push.getInstance();
 				pushInstance.send(
 					'executionStarted',
@@ -1020,7 +1019,12 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(
+		executionId,
+		workflowData,
+		data,
+		additionalData.userId,
+	);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully

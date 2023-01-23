@@ -126,12 +126,12 @@ export class WaitTrackerClass {
 
 		fullExecutionData.stoppedAt = new Date();
 		fullExecutionData.waitTill = undefined;
+		fullExecutionData.status = 'canceled';
 
 		await Db.collections.Execution.update(
 			executionId,
 			ResponseHelper.flattenExecutionData({
 				...fullExecutionData,
-				status: 'canceled', // or 'failed' or 'stopped'?
 			}),
 		);
 
