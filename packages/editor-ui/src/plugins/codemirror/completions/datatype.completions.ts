@@ -14,7 +14,7 @@ import {
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions offered for values based on their datatype.
+ * Resolution-based completions offered according to datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
 	const reference = /\$[\S]+\.([^{\s])*/; // $input.
@@ -144,7 +144,7 @@ function datatypeOptions(resolved: IDataObject, toResolve: string) {
 	return [];
 }
 
-const extensions = (typeName: 'number' | 'string' | 'date' | 'array' | 'object') => {
+export const extensions = (typeName: 'number' | 'string' | 'date' | 'array' | 'object') => {
 	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];

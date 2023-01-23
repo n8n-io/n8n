@@ -4,8 +4,7 @@ import type { IDataObject } from 'n8n-workflow';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 /**
- * Completions offered at the start of bracket access notation,
- * including keys for objects and indices for arrays and strings.
+ * Resolution-based completions offered at the start of bracket access notation.
  *
  * - `$json[`
  * - `$input.item.json[`
@@ -43,6 +42,8 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	if (tail !== '') {
 		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
+
+	if (options.length === 0) return null;
 
 	return {
 		from: word.to - tail.length,

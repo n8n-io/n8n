@@ -31,6 +31,8 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 		options = options.filter((o) => prefixMatch(o.label, userInput));
 	}
 
+	if (options.length === 0) return null;
+
 	return {
 		from: word.to - userInput.length,
 		options,

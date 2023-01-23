@@ -25,6 +25,8 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 		options = options.filter((o) => prefixMatch(o.label, tail));
 	}
 
+	if (options.length === 0) return null;
+
 	return {
 		from: word.to - tail.length,
 		options,
