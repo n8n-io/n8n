@@ -32,3 +32,35 @@ export const workbookRLC: INodeProperties = {
 		},
 	],
 };
+
+export const worksheetRLC: INodeProperties = {
+	displayName: 'Worksheet',
+	name: 'worksheet',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getWorksheetsList',
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '[a-zA-Z0-9\\-_]{2,}',
+						errorMessage: 'Not a valid Worksheet ID',
+					},
+				},
+			],
+		},
+	],
+};

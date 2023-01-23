@@ -128,43 +128,45 @@ export class MicrosoftExcel implements INodeType {
 					paginationToken: response['@odata.nextLink'],
 				};
 			},
-		},
-		loadOptions: {
-			// Get all the worksheets to display them to user so that he can
-			// select them easily
-			async getworksheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workbookId = this.getNodeParameter('workbook', undefined, {
-					extractValue: true,
-				}) as string;
-				const qs: IDataObject = {
-					select: 'id,name',
-				};
-				const returnData: INodePropertyOptions[] = [];
-				const worksheets = await microsoftApiRequestAllItems.call(
+
+			async getWorksheetsList(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
+				const workbookId = workbookRLC.value as string;
+				const workbookURL = workbookRLC.cachedResultUrl as string;
+
+				let response: IDataObject = {};
+
+				response = await microsoftApiRequest.call(
 					this,
-					'value',
 					'GET',
 					`/drive/items/${workbookId}/workbook/worksheets`,
-					{},
-					qs,
+					undefined,
+					{
+						select: 'id,name',
+					},
 				);
-				for (const worksheet of worksheets) {
-					const worksheetName = worksheet.name;
-					const worksheetId = worksheet.id;
-					returnData.push({
-						name: worksheetName,
-						value: worksheetId,
-					});
-				}
-				return returnData;
+
+				return {
+					results: (response.value as IDataObject[]).map((worksheet: IDataObject) => ({
+						name: worksheet.name as string,
+						value: worksheet.id as string,
+						url: `${workbookURL}&activeCell=${encodeURIComponent(worksheet.name as string)}!A1`,
+					})),
+				};
 			},
+		},
+		loadOptions: {
 			// Get all the tables to display them to user so that he can
 			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getNodeParameter('workbook', undefined, {
 					extractValue: true,
 				}) as string;
-				const worksheetId = this.getCurrentNodeParameter('worksheet');
+
+				const worksheetId = this.getNodeParameter('worksheet', undefined, {
+					extractValue: true,
+				}) as string;
+
 				const qs: IDataObject = {
 					select: 'id,name',
 				};
@@ -209,7 +211,11 @@ export class MicrosoftExcel implements INodeType {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 						extractValue: true,
 					}) as string;
-					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
+
+					const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
+						extractValue: true,
+					}) as string;
+
 					const tableId = this.getNodeParameter('table', 0) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', 0);
 					const body: IDataObject = {};
@@ -291,7 +297,11 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const rawData = this.getNodeParameter('rawData', i);
@@ -355,7 +365,11 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const tableId = this.getNodeParameter('table', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const rawData = this.getNodeParameter('rawData', i);
@@ -441,7 +455,11 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const tableId = this.getNodeParameter('table', i) as string;
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
@@ -629,6 +647,7 @@ export class MicrosoftExcel implements INodeType {
 						if (filters.fields) {
 							qs.$select = filters.fields;
 						}
+
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
@@ -649,15 +668,26 @@ export class MicrosoftExcel implements INodeType {
 							);
 							responseData = responseData.value;
 						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
 					}
 					//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
 					if (operation === 'getContent') {
 						const workbookId = this.getNodeParameter('workbook', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const worksheetId = this.getNodeParameter('worksheet', i) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const range = this.getNodeParameter('range', i) as string;
 						const rawData = this.getNodeParameter('rawData', i);
+
 						if (rawData) {
 							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {

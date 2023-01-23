@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { workbookRLC } from './CommonDescription';
+import { workbookRLC, worksheetRLC } from './CommonDescription';
 
 export const tableOperations: INodeProperties[] = [
 	{
@@ -56,23 +56,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Worksheet Name or ID',
-		name: 'worksheet',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook.value'],
-		},
+		...worksheetRLC,
 		displayOptions: {
 			show: {
 				operation: ['addRow'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -132,23 +122,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Worksheet Name or ID',
-		name: 'worksheet',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook.value'],
-		},
+		...worksheetRLC,
 		displayOptions: {
 			show: {
 				operation: ['getRows'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -264,23 +244,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Worksheet Name or ID',
-		name: 'worksheet',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook.value'],
-		},
+		...worksheetRLC,
 		displayOptions: {
 			show: {
 				operation: ['getColumns'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Table Name or ID',
@@ -396,23 +366,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Worksheet Name or ID',
-		name: 'worksheet',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: ['workbook.value'],
-		},
+		...worksheetRLC,
 		displayOptions: {
 			show: {
 				operation: ['lookup'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Table Name or ID',
