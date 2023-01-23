@@ -25,7 +25,7 @@ import {
 	sendSuccessResponse,
 	ServiceUnavailableError,
 } from '@/ResponseHelper';
-import { corsMiddleware } from '@/middlewares/cors';
+import { corsMiddleware } from '@/middlewares';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitingWebhooks } from '@/WaitingWebhooks';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';

@@ -16,7 +16,7 @@ import type { Config } from '@/config';
 import type { User } from '@db/entities/User';
 import type { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
-import { issueCookie } from '@/UserManagement/auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 
 @RestController()
 export class PasswordResetController {

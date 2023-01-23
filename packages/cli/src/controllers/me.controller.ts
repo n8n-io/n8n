@@ -9,13 +9,17 @@ import {
 import { BadRequestError } from '@/ResponseHelper';
 import { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
-import { issueCookie } from '@/UserManagement/auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 import type { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
-import type { PublicUser } from '@/UserManagement/Interfaces';
-import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
+import type {
+	PublicUser,
+	IDatabaseCollections,
+	IExternalHooksClass,
+	IInternalHooksClass,
+} from '@/Interfaces';
 import { randomBytes } from 'crypto';
 
 @RestController('/me')

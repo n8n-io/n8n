@@ -15,7 +15,7 @@ import {
 	sanitizeUser,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie } from '@/UserManagement/auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
 import type { Response } from 'express';
 import type { Config } from '@/config';
@@ -23,12 +23,12 @@ import type { UserRequest } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Role } from '@db/entities/Role';
 import type {
+	PublicUser,
 	IDatabaseCollections,
 	IExternalHooksClass,
 	IInternalHooksClass,
 	ITelemetryUserDeletionData,
 } from '@/Interfaces';
-import type { PublicUser } from '@/UserManagement/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 @RestController('/users')

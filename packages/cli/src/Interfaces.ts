@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import type { Application } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -21,9 +22,11 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { WorkflowExecute } from 'n8n-core';
+import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-import PCancelable from 'p-cancelable';
+import type { WorkflowExecute } from 'n8n-core';
+
+import type PCancelable from 'p-cancelable';
 import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
@@ -823,4 +826,35 @@ export interface ILicenseReadResponse {
 
 export interface ILicensePostResponse extends ILicenseReadResponse {
 	managementToken: string;
+}
+
+export interface JwtToken {
+	token: string;
+	expiresIn: number;
+}
+
+export interface JwtPayload {
+	id: string;
+	email: string | null;
+	password: string | null;
+}
+
+export interface PublicUser {
+	id: string;
+	email?: string;
+	firstName?: string;
+	lastName?: string;
+	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
+	password?: string;
+	passwordResetToken?: string;
+	createdAt: Date;
+	isPending: boolean;
+	inviteAcceptUrl?: string;
+}
+
+export interface N8nApp {
+	app: Application;
+	restEndpoint: string;
+	externalHooks: IExternalHooksClass;
+	activeWorkflowRunner: ActiveWorkflowRunner;
 }

@@ -22,7 +22,6 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -44,7 +43,7 @@ import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { User } from '@db/entities/User';
 import { getLogger } from '@/Logger';
 import { loadPublicApiVersions } from '@/PublicApi/';
-import { issueJWT } from '@/UserManagement/auth/jwt';
+import { issueJWT } from '@/auth/jwt';
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 import {
 	AUTHLESS_ENDPOINTS,
@@ -71,7 +70,7 @@ import {
 	PasswordResetController,
 	UsersController,
 } from '@/controllers';
-import { setupAuthMiddlewares } from '@/UserManagement/middlewares';
+import { setupAuthMiddlewares } from '@/middlewares';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },

@@ -2,16 +2,15 @@ import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
 import { compareHash, sanitizeUser } from '@/UserManagement/UserManagementHelper';
-import { issueCookie, resolveJwt } from '@/UserManagement/auth/jwt';
+import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
 import type { LoginRequest, UserRequest } from '@/requests';
-import type { PublicUser } from '@/UserManagement/Interfaces';
 import { In, Repository } from 'typeorm';
 import type { Config } from '@/config';
-import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 
 @RestController()
 export class AuthController {

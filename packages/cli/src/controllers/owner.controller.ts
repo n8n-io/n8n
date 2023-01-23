@@ -7,7 +7,7 @@ import {
 	sanitizeUser,
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
-import { issueCookie } from '@/UserManagement/auth/jwt';
+import { issueCookie } from '@/auth/jwt';
 import type { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
