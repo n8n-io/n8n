@@ -207,6 +207,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			EnterpriseEditionFeature,
 			selectedCredential: '',
 			requiredCredentials: false, // Are credentials required or optional for the node
+			hasUserSpecifiedName: false,
 		};
 	},
 	async mounted() {
@@ -666,6 +667,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		onNameEdit(text: string) {
 			this.hasUnsavedChanges = true;
+			this.hasUserSpecifiedName = true;
 			this.credentialName = text;
 		},
 
@@ -999,7 +1001,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			window.addEventListener('message', receiveMessage, false);
 		},
-		onAuthTypeChanged(type: string): void {
+		async onAuthTypeChanged(type: string): Promise<void> {
 			if (this.activeNodeType?.credentials) {
 				const credentialsForType = getNodeCredentialForSelectedAuthType(this.activeNodeType, type);
 				if (credentialsForType) {
@@ -1032,6 +1034,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 					);
 					// Update current node auth type so credentials dropdown can be displayed properly
 					updateNodeAuthType(this.ndvStore.activeNode, type);
+					// Also update credential name but only if the default name is still used
+					if (this.hasUnsavedChanges && !this.hasUserSpecifiedName) {
+						const newDefaultName = await this.credentialsStore.getNewCredentialName({
+							credentialTypeName: this.getDefaultCredentialTypeName(),
+						});
+						this.credentialName = newDefaultName;
+					}
 				}
 			}
 		},
