@@ -110,6 +110,7 @@ importers:
       '@types/convict': ^4.2.1
       '@types/cookie-parser': ^1.4.2
       '@types/express': ^4.17.6
+      '@types/express-ws': ^3.0.1
       '@types/json-diff': ^0.5.1
       '@types/jsonwebtoken': ^9.0.0
       '@types/localtunnel': ^1.9.0
@@ -161,6 +162,7 @@ importers:
       express: ^4.16.4
       express-openapi-validator: ^4.13.6
       express-prom-bundle: ^6.6.0
+      express-ws: ^5.0.2
       fast-glob: ^3.2.5
       flatted: ^3.2.4
       google-timezones-json: ^1.0.2
@@ -212,7 +214,6 @@ importers:
       shelljs: ^0.8.5
       source-map-support: ^0.5.21
       sqlite3: ^5.1.4
-      sse-channel: ^4.0.0
       supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
       syslog-client: ^1.1.1
@@ -224,6 +225,7 @@ importers:
       uuid: ^8.3.2
       validator: 13.7.0
       winston: ^3.3.3
+      ws: ^8.11.0
       yamljs: ^0.3.0
     dependencies:
       '@n8n_io/license-sdk': 1.8.0
@@ -233,6 +235,7 @@ importers:
       '@rudderstack/rudder-sdk-node': 1.0.6
       '@sentry/integrations': 7.28.1
       '@sentry/node': 7.28.1
+      '@types/express-ws': 3.0.1
       axios: 0.21.4
       basic-auth: 2.0.1
       bcryptjs: 2.4.3
@@ -254,6 +257,7 @@ importers:
       express: 4.18.2
       express-openapi-validator: 4.13.8
       express-prom-bundle: 6.6.0_prom-client@13.2.0
+      express-ws: 5.0.2_express@4.18.2
       fast-glob: 3.2.12
       flatted: 3.2.7
       google-timezones-json: 1.0.2
@@ -303,7 +307,6 @@ importers:
       shelljs: 0.8.5
       source-map-support: 0.5.21
       sqlite3: 5.1.4
-      sse-channel: 4.0.0
       swagger-ui-express: 4.5.0_express@4.18.2
       syslog-client: 1.1.1
       tslib: 1.14.1
@@ -311,6 +314,7 @@ importers:
       uuid: 8.3.2
       validator: 13.7.0
       winston: 3.8.2
+      ws: 8.12.0
       yamljs: 0.3.0
     devDependencies:
       '@apidevtools/swagger-cli': 4.0.0
@@ -5715,6 +5719,14 @@ packages:
       '@types/express': 4.17.14
     dev: false
 
+  /@types/express-ws/3.0.1:
+    resolution: {integrity: sha512-VguRXzcpPBF0IggIGpUoM65cZJDfMQxoc6dKoCz1yLzcwcXW7ft60yhq3ygKhyEhEIQFtLrWjyz4AJ1qjmzCFw==}
+    dependencies:
+      '@types/express': 4.17.14
+      '@types/express-serve-static-core': 4.17.31
+      '@types/ws': 8.5.4
+    dev: false
+
   /@types/express/4.17.14:
     resolution: {integrity: sha512-TEbt+vaPFQ+xpxFLFssxUDXj5cWCxZJjIcB7Yg0k0GMHGtgtQgpvx/MUQUeAkNbA9AAGrwkAsoeItdTgS7FMyg==}
     dependencies:
@@ -6376,6 +6388,12 @@ packages:
     dependencies:
       '@types/node': 16.11.65
       '@types/webidl-conversions': 7.0.0
+    dev: false
+
+  /@types/ws/8.5.4:
+    resolution: {integrity: sha512-zdQDHKUgcX/zBc4GrwsE/7dVdAD8JR4EuiAXiiUhhfyIJXXb2+PrGshFyeXWQPMmmZ2XxgaqclgpIC7eTXc1mg==}
+    dependencies:
+      '@types/node': 16.11.65
     dev: false
 
   /@types/xml2js/0.4.11:
@@ -11572,6 +11590,19 @@ packages:
       on-finished: 2.4.1
       prom-client: 13.2.0
       url-value-parser: 2.2.0
+    dev: false
+
+  /express-ws/5.0.2_express@4.18.2:
+    resolution: {integrity: sha512-0uvmuk61O9HXgLhGl3QhNSEtRsQevtmbL94/eILaliEADZBHZOQUAiHFrGPrgsjikohyrmSG5g+sCfASTt0lkQ==}
+    engines: {node: '>=4.5.0'}
+    peerDependencies:
+      express: ^4.0.0 || ^5.0.0-alpha.1
+    dependencies:
+      express: 4.18.2
+      ws: 7.5.9
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
     dev: false
 
   /express/4.18.2:
@@ -19613,10 +19644,6 @@ packages:
     engines: {node: '>= 0.6'}
     dev: false
 
-  /sse-channel/4.0.0:
-    resolution: {integrity: sha512-I539Tc0gyDTQ2QCSg4v78Flxo/UbqR9x7JoyPcqaPtwo+qzeOw/fF+aPSbk0xTvBQAAAZk7Dlkc8K1bum5GUnw==}
-    dev: false
-
   /ssf/0.11.2:
     resolution: {integrity: sha512-+idbmIXoYET47hH+d7dfm2epdOMUDjqcB4648sTZ+t2JwoyBFL/insLfB/racrDmsKB3diwsDA696pZMieAC5g==}
     engines: {node: '>=0.8'}
@@ -22455,6 +22482,19 @@ packages:
     peerDependencies:
       bufferutil: ^4.0.1
       utf-8-validate: ^5.0.2
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+    dev: false
+
+  /ws/8.12.0:
+    resolution: {integrity: sha512-kU62emKIdKVeEIOIKVegvqpXMSTAMLJozpHZaJNDYqBjzlSYXQGviYwN1osDLJ9av68qHd4a2oSjd7yD4pacig==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
     peerDependenciesMeta:
       bufferutil:
         optional: true
