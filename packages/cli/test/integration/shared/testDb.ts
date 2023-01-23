@@ -693,7 +693,7 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 	...baseOptions(type),
 	dropSchema: true,
 	migrations: type === 'postgres' ? postgresMigrations : mysqlMigrations,
-	migrationsRun: true,
+	migrationsRun: false,
 	migrationsTableName: 'migrations',
 	entities: Object.values(entities),
 	synchronize: false,
