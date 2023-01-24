@@ -239,9 +239,6 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 			return inputAny[functionName](...args);
 		}
 
-		console.log('genericExtensions', genericExtensions);
-		console.log('functionName', functionName);
-
 		// Use a generic version if available
 		foundFunction = genericExtensions[functionName];
 	}
