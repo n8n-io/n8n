@@ -100,9 +100,9 @@ test('should not report webhooks having basic or header auth', async () => {
 	await Promise.all(promises);
 
 	const testAudit = await audit(['instance']);
+	if (Array.isArray(testAudit)) fail('audit is empty');
 
-	const report = testAudit?.[toReportTitle('instance')];
-
+	const report = testAudit[toReportTitle('instance')];
 	if (!report) {
 		fail('Expected test audit to have instance risk report');
 	}
@@ -160,9 +160,9 @@ test('should not report webhooks validated by direct children', async () => {
 	await Promise.all(promises);
 
 	const testAudit = await audit(['instance']);
+	if (Array.isArray(testAudit)) fail('audit is empty');
 
-	const report = testAudit?.[toReportTitle('instance')];
-
+	const report = testAudit[toReportTitle('instance')];
 	if (!report) {
 		fail('Expected test audit to have instance risk report');
 	}
@@ -176,8 +176,9 @@ test('should not report non-webhook node', async () => {
 	await saveManualTriggerWorkflow();
 
 	const testAudit = await audit(['instance']);
+	if (Array.isArray(testAudit)) fail('audit is empty');
 
-	const report = testAudit?.[toReportTitle('instance')];
+	const report = testAudit[toReportTitle('instance')];
 
 	if (!report) {
 		fail('Expected test audit to have instance risk report');
@@ -210,9 +211,9 @@ test('should report outdated instance when outdated', async () => {
 
 test('should not report outdated instance when up to date', async () => {
 	const testAudit = await audit(['instance']);
+	if (Array.isArray(testAudit)) fail('audit is empty');
 
-	const report = testAudit?.[toReportTitle('instance')];
-
+	const report = testAudit[toReportTitle('instance')];
 	if (!report) {
 		fail('Expected test audit to have instance risk report');
 	}

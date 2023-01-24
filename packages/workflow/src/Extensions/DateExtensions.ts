@@ -143,7 +143,10 @@ function isBetween(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return secondDate > date && date > firstDate;
 }
 
-function isDst(date: Date): boolean {
+function isDst(date: Date | DateTime): boolean {
+	if (isDateTime(date)) {
+		return date.isInDST;
+	}
 	return DateTime.fromJSDate(date).isInDST;
 }
 
@@ -158,10 +161,13 @@ function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
-function isWeekend(date: Date): boolean {
+function isWeekend(date: Date | DateTime): boolean {
 	enum DAYS {
 		saturday = 6,
 		sunday = 7,
+	}
+	if (isDateTime(date)) {
+		return [DAYS.saturday, DAYS.sunday].includes(date.weekday);
 	}
 	return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
 }
