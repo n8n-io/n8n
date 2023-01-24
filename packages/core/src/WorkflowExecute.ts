@@ -153,7 +153,7 @@ export class WorkflowExecute {
 					{ $version: node.typeVersion },
 				);
 			}
-			return forceInputNodeExecution as boolean;
+			return forceInputNodeExecution;
 		}
 		return false;
 	}
@@ -1327,7 +1327,7 @@ export class WorkflowExecute {
 									// Specific inputs are required (array of input indexes)
 									let inputDataMissing = false;
 									for (const requiredInput of requiredInputs) {
-										if (!inputsWithData.includes(requiredInput as number)) {
+										if (!inputsWithData.includes(requiredInput)) {
 											inputDataMissing = true;
 											break;
 										}
