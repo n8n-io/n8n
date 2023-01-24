@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CommunityNodes1652254514002 implements MigrationInterface {
 	name = 'CommunityNodes1652254514002';
@@ -8,11 +7,7 @@ export class CommunityNodes1652254514002 implements MigrationInterface {
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
 
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
 			`CREATE TABLE ${tablePrefix}installed_packages (` +
@@ -40,7 +35,7 @@ export class CommunityNodes1652254514002 implements MigrationInterface {
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.get('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE "${tablePrefix}installed_nodes"`);
 		await queryRunner.query(`DROP TABLE "${tablePrefix}installed_packages"`);
 	}
