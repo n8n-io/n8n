@@ -33,7 +33,7 @@ export const theme = [
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
-			maxHeight: '400px',
+			maxHeight: '350px',
 		},
 	}),
 	syntaxHighlighting(

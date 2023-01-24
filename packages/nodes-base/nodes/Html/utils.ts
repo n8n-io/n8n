@@ -5,23 +5,16 @@ import type { IValueData, Cheerio } from './types';
  * @TECH_DEBT Explore replacing with handlebars
  */
 export function getResolvables(html: string) {
+	if (!html) return [];
+
 	const resolvables = [];
+	const resolvableRegex = /({{[\s\S]*?}})/g;
 
-	for (let i = 0; i < html.length; i++) {
-		if (html[i] === '{' && html[i + 1] === '{') {
-			const startIndex = i;
-			let endIndex = -1;
+	let match;
 
-			i += 2;
-
-			while (html[i] !== '}' && html[i + 1] !== '}') {
-				i++;
-			}
-
-			i += 3;
-			endIndex = i;
-
-			resolvables.push(html.slice(startIndex, endIndex));
+	while ((match = resolvableRegex.exec(html)) !== null) {
+		if (match[1]) {
+			resolvables.push(match[1]);
 		}
 	}
 
