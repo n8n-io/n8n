@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import { Client, Entry, ClientOptions } from 'ldapts';
+import { Client, Entry as LdapUser, ClientOptions } from 'ldapts';
 import type { LdapConfig } from './types';
 import { formatUrl, getMappingAttributes } from './helpers';
 import { BINARY_AD_ATTRIBUTES } from './constants';
@@ -66,7 +66,7 @@ export class LdapService {
 	 * Search the LDAP server using the administrator binding
 	 * (if any, else a anonymous binding will be attempted)
 	 */
-	async searchWithAdminBinding(filter: string): Promise<Entry[]> {
+	async searchWithAdminBinding(filter: string): Promise<LdapUser[]> {
 		await this.bindAdmin();
 		if (this.client) {
 			const { searchEntries } = await this.client.search(this._config.baseDn, {

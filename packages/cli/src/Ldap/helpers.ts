@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 import { AES, enc } from 'crypto-js';
-import { Entry } from 'ldapts';
+import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
@@ -130,7 +130,7 @@ export const setGlobalLdapConfigVariables = (ldapConfig: LdapConfig): void => {
 	setLdapLoginLabel(ldapConfig.loginLabel);
 };
 
-const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
+const resolveEntryBinaryAttributes = (entry: LdapUser): LdapUser => {
 	Object.entries(entry)
 		.filter(([k]) => BINARY_AD_ATTRIBUTES.includes(k))
 		.forEach(([k]) => {
@@ -139,7 +139,7 @@ const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
 	return entry;
 };
 
-export const resolveBinaryAttributes = (entries: Entry[]): void => {
+export const resolveBinaryAttributes = (entries: LdapUser[]): void => {
 	entries.forEach((entry) => resolveEntryBinaryAttributes(entry));
 };
 
@@ -224,13 +224,13 @@ export const findAndAuthenticateLdapUser = async (
 	password: string,
 	loginIdAttribute: string,
 	userFilter: string,
-): Promise<Entry | undefined> => {
+): Promise<LdapUser | undefined> => {
 	const ldapService = LdapManager.getInstance().service;
 
 	// Search for the user with the administrator binding using the
 	// the Login ID attribute and whatever was inputted in the UI's
 	// email input.
-	let searchResult: Entry[] = [];
+	let searchResult: LdapUser[] = [];
 
 	try {
 		searchResult = await ldapService.searchWithAdminBinding(
@@ -304,7 +304,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
  * e.g. mail => email | uid => ldapId
  */
 export const mapLdapAttributesToUser = (
-	ldapUser: Entry,
+	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
 ): [AuthIdentity['providerId'], Pick<User, 'email' | 'firstName' | 'lastName'>] => {
 	return [
@@ -344,7 +344,7 @@ export const getLdapUsers = async (): Promise<User[]> => {
  * Map a LDAP user to database user
  */
 export const mapLdapUserToDbUser = (
-	ldapUser: Entry,
+	ldapUser: LdapUser,
 	ldapConfig: LdapConfig,
 	role?: Role,
 ): [string, User] => {

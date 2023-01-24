@@ -1,4 +1,4 @@
-import { Entry as LDAPUser } from 'ldapts';
+import type { Entry as LdapUser } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 import { LdapService } from './LdapService.ee';
@@ -72,7 +72,7 @@ export class LdapSync {
 	async run(mode: RunningMode): Promise<void> {
 		Logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
 
-		let adUsers: LDAPUser[] = [];
+		let adUsers: LdapUser[] = [];
 
 		try {
 			adUsers = await this._ldapService.searchWithAdminBinding(
@@ -166,7 +166,7 @@ export class LdapSync {
 	 * Get all the user that will be changed (created, updated, disabled), in the database
 	 */
 	private getUsersToProcess(
-		adUsers: LDAPUser[],
+		adUsers: LdapUser[],
 		localAdUsers: string[],
 		role: Role,
 	): {
@@ -185,7 +185,7 @@ export class LdapSync {
 	 * Get users in LDAP that are not in the database yet
 	 */
 	private getUsersToCreate(
-		remoteAdUsers: LDAPUser[],
+		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
 		role: Role,
 	): Array<[string, User]> {
@@ -198,7 +198,7 @@ export class LdapSync {
 	 * Get users in LDAP that are already in the database
 	 */
 	private getUsersToUpdate(
-		remoteAdUsers: LDAPUser[],
+		remoteAdUsers: LdapUser[],
 		localLdapIds: string[],
 	): Array<[string, User]> {
 		return remoteAdUsers
@@ -209,7 +209,7 @@ export class LdapSync {
 	/**
 	 * Get users that are in the database but not in the LDAP server
 	 */
-	private getUsersToDisable(remoteAdUsers: LDAPUser[], localLdapIds: string[]): string[] {
+	private getUsersToDisable(remoteAdUsers: LdapUser[], localLdapIds: string[]): string[] {
 		const remoteAdUserIds = remoteAdUsers.map((adUser) => adUser[this._config.ldapIdAttribute]);
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}

@@ -10,10 +10,7 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { categorize, getPostgresSchemaSection } from './utils';
-
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
@@ -28,12 +25,11 @@ import type {
 	InstalledPackagePayload,
 	MappingName,
 } from './types';
+import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
+import { categorize, getPostgresSchemaSection } from './utils';
 
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME } from '@/Ldap/constants';
-import { LdapConfig } from '@/Ldap/types';
 import type { DatabaseType, ICredentialsDb } from '@/Interfaces';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
-import { jsonParse } from 'n8n-workflow';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -691,18 +687,4 @@ async function encryptCredentialData(credential: CredentialsEntity) {
 	coreCredential.setData(credential.data, encryptionKey);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
-}
-
-export async function createLdapDefaultConfig(
-	attributes: Partial<LdapConfig> = {},
-): Promise<LdapConfig> {
-	const { value: ldapConfig } = await Db.collections.Settings.save({
-		key: LDAP_FEATURE_NAME,
-		value: JSON.stringify({
-			...LDAP_DEFAULT_CONFIGURATION,
-			...attributes,
-		}),
-		loadOnStartup: true,
-	});
-	return jsonParse(ldapConfig);
 }
