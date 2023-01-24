@@ -345,7 +345,11 @@ export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodePr
 		) || null;
 	// If there is a field name `authentication`, use it
 	// Otherwise, try to find alternative main auth field
-	return authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+	const mainAuthFiled =
+		authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
+	// Main authentication field has to be required
+	const isFieldRequired = mainAuthFiled ? isNodeParameterRequired(nodeType, mainAuthFiled) : false;
+	return mainAuthFiled && isFieldRequired ? mainAuthFiled : null;
 };
 
 // A field is considered main auth filed if:
@@ -530,4 +534,26 @@ export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
 			useWorkflowsStore().updateNodeProperties(updateInformation);
 		}
 	}
+};
+
+export const isNodeParameterRequired = (
+	nodeType: INodeTypeDescription,
+	parameter: INodeProperties,
+): boolean => {
+	if (!parameter.displayOptions || !parameter.displayOptions.show) {
+		return true;
+	}
+	// If parameter itself contains 'none'?
+	// Walk through dependencies and check if all their values are used in displayOptions
+	Object.keys(parameter.displayOptions.show).forEach((name) => {
+		const relatedField = nodeType.properties.find((prop) => {
+			prop.name === name;
+		});
+		if (relatedField && !isNodeParameterRequired(nodeType, relatedField)) {
+			return false;
+		} else {
+			return true;
+		}
+	});
+	return true;
 };
