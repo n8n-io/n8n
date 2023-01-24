@@ -34,7 +34,7 @@ export class MicrosoftExcel implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Microsoft Excel API',
 		defaults: {
-			name: 'Microsoft Excel',
+			name: 'Microsoft Excel 365',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -47,7 +47,7 @@ export class MicrosoftExcel implements INodeType {
 		properties: [
 			{
 				displayName:
-					'This node connects to the Microsoft 365 cloud platform. Use the \'spreadsheet\' node to manipulate spreadsheet files directly (.xls, .csv etc.). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">example</a>',
+					'This node connects to the Microsoft 365 cloud platform. Use the \'Spreadsheet File\' node to manipulate spreadsheet files directly (.xls, .csv etc.). <a href="/templates/890" target="_blank">example</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
