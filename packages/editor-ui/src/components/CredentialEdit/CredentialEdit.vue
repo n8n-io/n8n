@@ -234,7 +234,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 			await this.loadCurrentCredential();
 		}
 
-		this.resetCredentialData();
+		if (this.credentialType) {
+			for (const property of this.credentialType.properties) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				}
+			}
+		}
 
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
@@ -1031,12 +1040,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return;
 			}
 			for (const property of this.credentialType.properties) {
-				if (
-					!this.credentialData.hasOwnProperty(property.name) &&
-					!this.credentialType.__overwrittenProperties?.includes(property.name)
-				) {
-					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
-				}
+				Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 			}
 		},
 	},
