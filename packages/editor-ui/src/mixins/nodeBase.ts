@@ -128,6 +128,9 @@ export const nodeBase = mixins(deviceSupportHelpers).extend({
 				// 	this.instance.makeTarget(this.nodeId, newEndpointData);
 				// }
 			});
+			if (nodeTypeData.inputs.length === 0) {
+				this.instance.manage(this.$refs[this.data.name] as Element);
+			}
 		},
 		__addOutputEndpoints(node: INodeUi, nodeTypeData: INodeTypeDescription) {
 			let index;

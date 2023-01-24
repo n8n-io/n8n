@@ -1,5 +1,11 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
+	<div
+		class="sticky-wrapper"
+		:id="nodeId"
+		:ref="data.name"
+		:style="stickyPosition"
+		:data-name="data.name"
+	>
 		<div
 			:class="{
 				'sticky-default': true,
@@ -11,8 +17,6 @@
 			<div class="select-sticky-background" v-show="isSelected" />
 			<div
 				class="sticky-box"
-				:data-name="data.name"
-				:ref="data.name"
 				@click.left="mouseLeftClick"
 				v-touch:start="touchStart"
 				v-touch:end="touchEnd"
@@ -248,7 +252,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 
 	.sticky-default {
-		position: absolute;
 
 		.sticky-box {
 			width: 100%;

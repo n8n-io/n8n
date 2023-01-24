@@ -12,7 +12,6 @@ import { START_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import type {
 	BeforeStartEventParams,
 	BrowserJsPlumbInstance,
-	DragStartEventParams,
 	DragStopEventParams,
 } from '@jsplumb/browser-ui';
 import { newInstance } from '@jsplumb/browser-ui';
@@ -142,6 +141,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	function initInstance(container: Element) {
+		// Make sure to clean-up previous instance if it exists
+		if (instance.value) {
+			instance.value.destroy();
+			instance.value.reset();
+			instance.value = undefined;
+		}
+
 		instance.value = newInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,

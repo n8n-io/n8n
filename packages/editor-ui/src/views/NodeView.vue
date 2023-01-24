@@ -610,8 +610,8 @@ export default mixins(
 			workflowData: null as INewWorkflowData | null,
 			activeConnection: null as null | Connection,
 			isProductionExecutionPreview: false,
-			enterTimer: undefined as undefined | Timeout,
-			exitTimer: undefined as undefined | Timeout,
+			enterTimer: undefined as undefined | number,
+			exitTimer: undefined as undefined | number,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -3535,7 +3535,6 @@ export default mixins(
 						// Ignore all errors
 					});
 			}
-
 			this.workflowsStore.removeAllConnections({ setStateDirty: false });
 			this.workflowsStore.removeAllNodes({ setStateDirty: false, removePinData: true });
 
@@ -3952,6 +3951,7 @@ export default mixins(
 	destroyed() {
 		this.resetWorkspace();
 		this.instance.unbind();
+		this.instance.destroy();
 		this.uiStore.stateIsDirty = false;
 		window.removeEventListener('message', this.onPostMessageReceived);
 		this.$root.$off('newWorkflow', this.newWorkflow);
