@@ -3,7 +3,7 @@ import { NEW_NOTION_ACCOUNT_NAME, NOTION_NODE_NAME, PIPEDRIVE_NODE_NAME, HTTP_RE
 import { visit } from 'recast';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD, GMAIL_NODE_NAME, NEW_GOOGLE_ACCOUNT_NAME, NEW_TRELLO_ACCOUNT_NAME, SCHEDULE_TRIGGER_NODE_NAME, TRELLO_NODE_NAME } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
-import { CredentialsPage, CredentialsModal, WorkflowPage } from '../pages';
+import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
 
 const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -12,6 +12,7 @@ const lastName = randLastName();
 const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 const workflowPage = new WorkflowPage();
+const nodeDetailsView = new NDV();
 
 const NEW_CREDENTIAL_NAME = 'Something else';
 
@@ -140,9 +141,9 @@ describe('Credentials', () => {
 		cy.get('body').type('{downArrow}');
 		cy.get('body').type('{enter}');
 		// Select incoming authentication
-		workflowPage.getters.ndvParameterInput('incomingAuthentication').should('exist');
-		workflowPage.getters.ndvParameterInput('incomingAuthentication').click();
-		workflowPage.getters.ndvParameterInput('incomingAuthentication').find('li').first().click();
+		nodeDetailsView.getters.parameterInput('incomingAuthentication').should('exist');
+		nodeDetailsView.getters.parameterInput('incomingAuthentication').click();
+		nodeDetailsView.getters.parameterInput('incomingAuthentication').find('li').first().click();
 		// There should be two credential fields
 		workflowPage.getters.nodeCredentialsSelect().should('have.length', 2);
 
@@ -155,8 +156,7 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsSelect().last().click();
 		workflowPage.getters.nodeCredentialsSelect().last().find('li').last().click();
 		// This one should not show auth type selector
-		credentialsModal.getters.credentialAuthTypeRadioButtons().should('not.exist');
-		cy.get('body').type('{esc}');
+		credentialsModal.getters.credentialsAuthTypeSelector().should('not.exist');
 	});
 
 	it('should create credentials from NDV for node with no auth options', () => {
@@ -208,9 +208,7 @@ describe('Credentials', () => {
 		workflowPage.getters.nodeCredentialsEditButton().click();
 		credentialsModal.getters.credentialsEditModal().should('be.visible');
 		credentialsModal.getters.name().click();
-		credentialsModal.getters.nameInput().type('{selectall}');
-		credentialsModal.getters.nameInput().type(NEW_CREDENTIAL_NAME);
-		credentialsModal.getters.nameInput().type('{enter}');
+		credentialsModal.actions.renameCredential(NEW_CREDENTIAL_NAME);
 		credentialsModal.getters.saveButton().click();
 		credentialsModal.getters.closeButton().click();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_CREDENTIAL_NAME);
@@ -223,13 +221,13 @@ describe('Credentials', () => {
 		workflowPage.actions.addNodeToCanvas(HTTP_REQUEST_NODE_NAME);
 		workflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
-		workflowPage.getters.ndvParameterInput('authentication').click();
-		workflowPage.getters.ndvParameterInput('authentication').find('li').should('have.length', 3);
-		workflowPage.getters.ndvParameterInput('authentication').find('li').last().click();
-		workflowPage.getters.ndvParameterInput('genericAuthType').should('exist');
-		workflowPage.getters.ndvParameterInput('genericAuthType').click();
-		workflowPage.getters.ndvParameterInput('genericAuthType').find('li').should('have.length.greaterThan', 0);
-		workflowPage.getters.ndvParameterInput('genericAuthType').find('li').last().click();
+		nodeDetailsView.getters.parameterInput('authentication').click();
+		nodeDetailsView.getters.parameterInput('authentication').find('li').should('have.length', 3);
+		nodeDetailsView.getters.parameterInput('authentication').find('li').last().click();
+		nodeDetailsView.getters.parameterInput('genericAuthType').should('exist');
+		nodeDetailsView.getters.parameterInput('genericAuthType').click();
+		nodeDetailsView.getters.parameterInput('genericAuthType').find('li').should('have.length.greaterThan', 0);
+		nodeDetailsView.getters.parameterInput('genericAuthType').find('li').last().click();
 
 		workflowPage.getters.nodeCredentialsSelect().should('exist');
 		workflowPage.getters.nodeCredentialsSelect().click();

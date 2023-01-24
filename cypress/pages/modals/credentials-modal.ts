@@ -54,6 +54,11 @@ export class CredentialsModal extends BasePage {
 			});
 			this.getters.saveButton().click();
 			this.getters.closeButton().click();
+		},
+		renameCredential: (newName: string) => {
+			this.getters.nameInput().type('{selectall}');
+			this.getters.nameInput().type(newName);
+			this.getters.nameInput().type('{enter}');
 		}
 	};
 }
