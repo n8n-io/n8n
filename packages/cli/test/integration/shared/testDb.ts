@@ -45,14 +45,11 @@ export type TestDBType = 'postgres' | 'mysql';
 export async function init() {
 	jest.setTimeout(DB_INITIALIZATION_TIMEOUT);
 	const dbType = config.getEnv('database.type');
+	const testDbName = `n8n_test_${randomString(6, 10)}_${Date.now()}`;
 
 	if (dbType === 'sqlite') {
 		// no bootstrap connection required
-		const testDbName = `n8n_test_sqlite_${randomString(6, 10)}_${Date.now()}`;
-		await Db.init(getSqliteOptions({ name: testDbName }));
-		await Db.getConnection().runMigrations({ transaction: 'none' });
-
-		return { testDbName };
+		return Db.init(getSqliteOptions({ name: testDbName }));
 	}
 
 	if (dbType === 'postgresdb') {
@@ -80,34 +77,18 @@ export async function init() {
 			process.exit(1);
 		}
 
-		const testDbName = `postgres_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapPostgres.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapPostgres.destroy();
 
-		const dbOptions = getDBOptions('postgres', testDbName);
-
-		if (dbOptions.schema !== 'public') {
-			const { schema, migrations, ...options } = dbOptions;
-			const connection = await new Connection(options).initialize();
-			await connection.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
-			await connection.destroy();
-		}
-
-		await Db.init(dbOptions);
-
-		return { testDbName };
+		return Db.init(getDBOptions('postgres', testDbName));
 	}
 
 	if (dbType === 'mysqldb') {
 		const bootstrapMysql = await new Connection(getBootstrapDBOptions('mysql')).initialize();
-
-		const testDbName = `mysql_${randomString(6, 10)}_${Date.now()}_n8n_test`;
 		await bootstrapMysql.query(`CREATE DATABASE ${testDbName}`);
 		await bootstrapMysql.destroy();
 
-		await Db.init(getDBOptions('mysql', testDbName));
-
-		return { testDbName };
+		return Db.init(getDBOptions('mysql', testDbName));
 	}
 
 	throw new Error(`Unrecognized DB type: ${dbType}`);
@@ -693,7 +674,7 @@ const getDBOptions = (type: TestDBType, name: string) => ({
 	...baseOptions(type),
 	dropSchema: true,
 	migrations: type === 'postgres' ? postgresMigrations : mysqlMigrations,
-	migrationsRun: true,
+	migrationsRun: false,
 	migrationsTableName: 'migrations',
 	entities: Object.values(entities),
 	synchronize: false,
