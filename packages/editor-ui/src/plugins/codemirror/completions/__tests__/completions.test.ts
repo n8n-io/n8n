@@ -13,26 +13,28 @@ import {
 import * as utils from '@/plugins/codemirror/completions/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
 import { extensions } from '../datatype.completions';
+import { mock } from './mock';
 
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
-	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true);
+	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
+	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
 });
 
 describe('Top-level completions', () => {
-	test('should return blank completions for: {{ | }}', async () => {
+	test('should return blank completions for: {{ | }}', () => {
 		expect(completions('{{ | }}')).toHaveLength(dollarOptions().length);
 	});
 
-	test('should return non-dollar completions for: {{ D| }}', async () => {
-		expect(completions('{{ D| }}')).toHaveLength(1);
+	test('should return non-dollar completions for: {{ D| }}', () => {
+		expect(completions('{{ D| }}')).toHaveLength(1); // DateTime
 	});
 
-	test('should return dollar completions for: {{ $| }}', async () => {
+	test('should return dollar completions for: {{ $| }}', () => {
 		expect(completions('{{ $| }}')).toHaveLength(dollarOptions().length);
 	});
 
-	test('should return node selector completions for: {{ $(| }}', async () => {
+	test('should return node selector completions for: {{ $(| }}', () => {
 		const nodes = [
 			{
 				id: uuidv4(),
@@ -58,52 +60,150 @@ describe('Top-level completions', () => {
 	});
 });
 
-describe('Luxon completions', () => {
-	test('should return Luxon completions for: {{ DateTime.| }}', async () => {
+describe('Luxon method completions', () => {
+	test('should return static method completions for: {{ DateTime.| }}', () => {
 		expect(completions('{{ DateTime.| }}')).toHaveLength(dateTimeOptions().length);
 	});
 
-	test('should return Luxon completions for: {{ $now.| }}', async () => {
+	test('should return instance method completions for: {{ $now.| }}', () => {
 		expect(completions('{{ $now.| }}')).toHaveLength(nowTodayOptions().length);
 	});
 
-	test('should return Luxon completions for: {{ $today.| }}', async () => {
+	test('should return instance method completions for: {{ $today.| }}', () => {
 		expect(completions('{{ $today.| }}')).toHaveLength(nowTodayOptions().length);
 	});
 });
 
 describe('Resolution-based completions', () => {
-	test('should return string completions', () => {
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
+	describe('literals', () => {
+		test('should return completions for string literal', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
 
-		expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
+			expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
+		});
+
+		test('should return completions for number literal', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
+
+			expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
+		});
+
+		test('should return completions for array literal', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
+
+			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
+		});
+
+		test('should return completions for object literal', () => {
+			const object = { a: 1 };
+
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(object);
+
+			expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
+				Object.keys(object).length + extensions('object').length,
+			);
+		});
 	});
 
-	test('should return number completions', () => {
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
+	describe('references', () => {
+		test('should return completions for: {{ $input.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.inputProxy);
 
-		expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
-	});
+			expect(completions('{{ $input.| }}')).toHaveLength(Reflect.ownKeys(mock.inputProxy).length);
+		});
 
-	test('should return array completions', () => {
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
+		test("should return completions for: {{ $('nodeName').| }}", () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.nodeSelectorProxy);
 
-		expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
-	});
+			expect(completions('{{ $nodeName.| }}')).toHaveLength(
+				Reflect.ownKeys(mock.nodeSelectorProxy).length,
+			);
+		});
 
-	test('should return object completions', () => {
-		const object = { a: 1 };
+		['{{ $input.item.| }}', '{{ $input.first().| }}', '{{ $input.last().| }}'].forEach(
+			(expression) => {
+				test(`should return completions for: ${expression}`, () => {
+					vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item);
 
-		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(object);
-
-		expect(completions('{{ ({ a: 1 }).| }}')).toHaveLength(
-			Object.keys(object).length + extensions('object').length,
+					expect(completions(expression)).toHaveLength(1); // json
+				});
+			},
 		);
+
+		test('should return no completions for: {{ $input.all().| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue([mock.item]);
+
+			expect(completions('{{ $input.all().| }}')).toBeNull();
+		});
+
+		[
+			'{{ $input.item.| }}',
+			'{{ $input.first().| }}',
+			'{{ $input.last().| }}',
+			'{{ $input.all()[0].| }}',
+		].forEach((expression) => {
+			test(`should return completions for: ${expression}`, () => {
+				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json);
+
+				expect(completions(expression)).toHaveLength(Object.keys(mock.item.json).length);
+			});
+		});
+
+		test('should return completions for: {{ $input.item.json.str.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.str);
+
+			expect(completions('{{ $input.item.json.str.| }}')).toHaveLength(extensions('string').length);
+		});
+
+		test('should return completions for: {{ $input.item.json.num.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.num);
+
+			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(extensions('number').length);
+		});
+
+		test('should return completions for: {{ $input.item.json.arr.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.arr);
+
+			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(extensions('array').length);
+		});
+
+		test('should return completions for: {{ $input.item.json.obj.| }}', () => {
+			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.obj);
+
+			expect(completions('{{ $input.item.json.obj.| }}')).toHaveLength(
+				Object.keys(mock.item.json.obj).length + extensions('object').length,
+			);
+		});
+	});
+
+	describe('bracket access', () => {
+		['{{ $input.item.json[| }}', '{{ $json[| }}'].forEach((expression) => {
+			test(`should return completions for: ${expression}`, () => {
+				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json);
+
+				const found = completions(expression);
+
+				if (!found) throw new Error('Expected bracket access completions');
+
+				expect(found).toHaveLength(Object.keys(mock.item.json).length);
+				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
+			});
+		});
+
+		["{{ $input.item.json['obj'][| }}", "{{ $json['obj'][| }}"].forEach((expression) => {
+			test(`should return completions for: ${expression}`, () => {
+				vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.obj);
+
+				const found = completions(expression);
+
+				if (!found) throw new Error('Expected bracket access completions');
+
+				expect(found).toHaveLength(Object.keys(mock.item.json.obj).length);
+				expect(found.map((c) => c.label).every((l) => l.endsWith(']')));
+			});
+		});
 	});
 });
-
-// @TODO Test datatype completions for references
-// @TODO Test bracketAccess completions
 
 function completions(docWithCursor: string) {
 	const cursorPosition = docWithCursor.indexOf('|');

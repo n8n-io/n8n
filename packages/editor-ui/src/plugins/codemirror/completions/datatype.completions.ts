@@ -12,6 +12,7 @@ import {
 	isPseudoParam,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type { Resolved } from './types';
 
 /**
  * Resolution-based completions offered according to datatype.
@@ -47,7 +48,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	const [base, tail] = splitBaseTail(word.text);
 
-	let resolved: IDataObject | null;
+	let resolved: Resolved;
 
 	try {
 		resolved = resolveParameter(`={{ ${base} }}`);
@@ -62,6 +63,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	try {
 		options = datatypeOptions(resolved, base);
 	} catch (_) {
+		console.log('_', _);
 		return null;
 	}
 
@@ -83,7 +85,9 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function datatypeOptions(resolved: IDataObject, toResolve: string) {
+function datatypeOptions(resolved: Resolved, toResolve: string) {
+	if (resolved === null) return [];
+
 	if (typeof resolved === 'number') return extensions('number');
 
 	if (typeof resolved === 'string') return extensions('string');
@@ -107,7 +111,9 @@ function datatypeOptions(resolved: IDataObject, toResolve: string) {
 		if (['$input', '$()'].includes(name) && hasNoParams(toResolve)) SKIP.add('params');
 
 		const rawKeys =
-			name === '$()' ? (Reflect.ownKeys(resolved) as string[]) : Object.keys(resolved);
+			name === '$()' || resolved.isMockProxy
+				? (Reflect.ownKeys(resolved) as string[])
+				: Object.keys(resolved);
 
 		const keys = bringToStart(rawKeys, BOOST)
 			.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
@@ -134,7 +140,9 @@ function datatypeOptions(resolved: IDataObject, toResolve: string) {
 			resolved.json ||
 			/json('])?$/.test(toResolve) ||
 			toResolve === '$execution' ||
-			toResolve.endsWith('params');
+			toResolve.endsWith('params') ||
+			resolved.isMockProxy ||
+			resolved.__isMockObject;
 
 		if (skipObjectExtensions) return keys;
 
