@@ -24,6 +24,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	const dateLiteral = /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/; // new Date(). or (new Date()).
 	const arrayLiteral = /(\[.+\])\.([^{\s])*/; // [1, 2, 3].
 	const objectLiteral = /\(\{.*\}\)\.([^{\s])*/; // ({}).
+	const mathGlobal = /Math\.([^{\s])*/; // Math.
 
 	const combinedRegex = new RegExp(
 		[
@@ -33,6 +34,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 			dateLiteral.source,
 			arrayLiteral.source,
 			objectLiteral.source,
+			mathGlobal.source,
 		].join('|'),
 	);
 
@@ -63,7 +65,6 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	try {
 		options = datatypeOptions(resolved, base);
 	} catch (_) {
-		console.log('_', _);
 		return null;
 	}
 
@@ -110,10 +111,15 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 
 		if (['$input', '$()'].includes(name) && hasNoParams(toResolve)) SKIP.add('params');
 
-		const rawKeys =
-			name === '$()' || resolved.isMockProxy
-				? (Reflect.ownKeys(resolved) as string[])
-				: Object.keys(resolved);
+		let rawKeys = Object.keys(resolved);
+
+		if (name === '$()' || resolved.isMockProxy) {
+			rawKeys = Reflect.ownKeys(resolved) as string[];
+		}
+
+		if (toResolve === 'Math') {
+			rawKeys = Object.keys(Object.getOwnPropertyDescriptors(Math));
+		}
 
 		const keys = bringToStart(rawKeys, BOOST)
 			.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))

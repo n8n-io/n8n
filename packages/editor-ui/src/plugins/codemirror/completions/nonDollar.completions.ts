@@ -5,10 +5,15 @@ import { prefixMatch } from './utils';
 /**
  * Completions offered at the base position for any char other than `$`.
  *
- * Currently only `D` for `DateTime`.
+ * Currently only `D...` for `DateTime` and `M...` for `Math`
  */
 export function nonDollarCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/(\s+)D[ateTim]*/); // loose charset but covered by filter
+	const dateTime = /(\s+)D[ateTim]*/;
+	const math = /(\s+)M[ath]*/;
+
+	const combinedRegex = new RegExp([dateTime.source, math.source].join('|'));
+
+	const word = context.matchBefore(combinedRegex);
 
 	if (!word) return null;
 
@@ -16,13 +21,20 @@ export function nonDollarCompletions(context: CompletionContext): CompletionResu
 
 	const userInput = word.text.trim();
 
-	const options = [
+	const nonDollarOptions = [
 		{
 			label: 'DateTime',
 			type: 'keyword',
 			info: i18n.rootVars.DateTime,
 		},
-	].filter((o) => prefixMatch(o.label, userInput));
+		{
+			label: 'Math',
+			type: 'keyword',
+			info: i18n.rootVars.DateTime,
+		},
+	];
+
+	const options = nonDollarOptions.filter((o) => prefixMatch(o.label, userInput));
 
 	return {
 		from: word.to - userInput.length,
