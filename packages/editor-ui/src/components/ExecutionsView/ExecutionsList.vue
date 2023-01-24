@@ -84,13 +84,12 @@ export default mixins(
 	computed: {
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
-			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent =
 				this.filterApplied &&
 				(this.executions as IExecutionsSummary[]).find(
 					(ex) => ex.id === this.activeExecution.id,
 				) === undefined;
-			return this.loading || nothingToShow || activeNotPresent;
+			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
@@ -393,9 +392,7 @@ export default mixins(
 				return [];
 			}
 			try {
-				const executions: IExecutionsSummary[] =
-					await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
-				return executions;
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
 				return [];

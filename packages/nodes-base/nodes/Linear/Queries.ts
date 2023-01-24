@@ -93,34 +93,30 @@ export const query = {
 				}`;
 	},
 	getIssue() {
-		return `query Issue ($issueId: ID){
-			issues(filter: { 
-				id: { eq: $issueId }
-			}) {
-				nodes {
+		return `query Issue($issueId: String!) {
+			issue(id: $issueId) {
+				id,
+				title,
+				priority,
+				archivedAt,
+				assignee {
 					id,
-					title,
-					priority
-					archivedAt
-					assignee {
-						id
-						displayName
-					}
-					state {
-						id
-						name
-					}
-					createdAt
-					creator {
-						id
-						displayName
-					}
-					description
-					dueDate
-					cycle {
-						id
-						name
-					}
+					displayName
+				}
+				state {
+					id
+					name
+				}
+				createdAt
+				creator {
+					id
+					displayName
+				}
+				description
+				dueDate
+				cycle {
+					id
+					name
 				}
 			}
 		}`;
@@ -129,7 +125,7 @@ export const query = {
 		return `query Issue ($first: Int){
 					issues (first: $first){
 						nodes {
-						id, 
+						id,
 						title,
 						priority
 						archivedAt

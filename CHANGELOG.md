@@ -1,3 +1,26 @@
+## [0.212.1](https://github.com/n8n-io/n8n/compare/n8n@0.212.0...n8n@0.212.1) (2023-01-23)
+
+
+### Bug Fixes
+
+* Add schema to postgres migrations (hotfix) ([#5218](https://github.com/n8n-io/n8n/issues/5218)) ([c5245dd](https://github.com/n8n-io/n8n/commit/c5245dd387f8829210a922223e46df7f275e79ca))
+* **core:** Fix execute-once incoming data handling ([#5211](https://github.com/n8n-io/n8n/issues/5211)) ([3ea83d8](https://github.com/n8n-io/n8n/commit/3ea83d872ee2f8326fc9cb898fdb05bbe3b827bf))
+* **core:** Fix expression extension misdetection ([#5219](https://github.com/n8n-io/n8n/issues/5219)) ([0b123ce](https://github.com/n8n-io/n8n/commit/0b123ce05e14a996f74ed4fe16008edca836d099))
+* **core:** Fix onWorkflowPostExecute not being called ([#5224](https://github.com/n8n-io/n8n/issues/5224)) ([4f89fb4](https://github.com/n8n-io/n8n/commit/4f89fb4d4d663a0a39081ceda9d6e88e6c605859))
+* **core:** Fix url in error handelling for the error Trigger ([#5201](https://github.com/n8n-io/n8n/issues/5201)) ([6e39175](https://github.com/n8n-io/n8n/commit/6e391755e47efc8a10529b24dee5e90c466b20b9))
+* **core:** Make pindata with webhook responding on last node manual-only ([#5223](https://github.com/n8n-io/n8n/issues/5223)) ([fcbf4fd](https://github.com/n8n-io/n8n/commit/fcbf4fd587c0c8721f58b09edc68fe140acaf9f6))
+* **editor:** Making parameter input components label configurable ([#5195](https://github.com/n8n-io/n8n/issues/5195)) ([9ce526e](https://github.com/n8n-io/n8n/commit/9ce526e784a6e61ed0f5b0a9ddb9d4ea21584ab2))
+* **editor:** Remove infinite loading in not found workflow level execution ([#5174](https://github.com/n8n-io/n8n/issues/5174)) ([96dddf1](https://github.com/n8n-io/n8n/commit/96dddf12e1561935fa191e55baa950c207796e83))
+* **Linear Node:** Fix issue with single item not being returned ([#5193](https://github.com/n8n-io/n8n/issues/5193)) ([e810966](https://github.com/n8n-io/n8n/commit/e810966a3b00e7a581120df2b22d71026e9ba4cb))
+* **Notion (Beta) Node:** Fix create database page fails if relation param is empty/undefined ([#5182](https://github.com/n8n-io/n8n/issues/5182)) ([11da863](https://github.com/n8n-io/n8n/commit/11da863a2104259248b67edfff7bee3e18b3789a))
+
+
+### Features
+
+* **Google Analytics Node:** Overhaul for google analytics node ([736e700](https://github.com/n8n-io/n8n/commit/736e700902d333df55abff86c15c688de15c9bde))
+
+
+
 # [0.212.0](https://github.com/n8n-io/n8n/compare/n8n@0.211.2...n8n@0.212.0) (2023-01-19)
 
 
