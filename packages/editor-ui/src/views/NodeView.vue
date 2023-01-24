@@ -2104,7 +2104,7 @@ export default mixins(
 				this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true });
 			};
 
-			this.instance?.bind(EVENT_CONNECTION_ABORT, (connection: Connection) => {
+			this.instance.bind(EVENT_CONNECTION_ABORT, (connection: Connection) => {
 				try {
 					if (this.dropPrevented) {
 						this.dropPrevented = false;
@@ -2139,7 +2139,7 @@ export default mixins(
 				}
 			});
 
-			this.instance?.bind(INTERCEPT_BEFORE_DROP, (info: BeforeDropParams) => {
+			this.instance.bind(INTERCEPT_BEFORE_DROP, (info: BeforeDropParams) => {
 				try {
 					const sourceInfo = info.connection.endpoints[0].parameters;
 					const targetInfo = info.dropEndpoint.parameters;
@@ -2163,7 +2163,7 @@ export default mixins(
 				}
 			});
 
-			this.instance?.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
+			this.instance.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
 				try {
 					const sourceInfo = info.sourceEndpoint.parameters;
 					const targetInfo = info.targetEndpoint.parameters;
@@ -2288,7 +2288,7 @@ export default mixins(
 				}
 			});
 
-			this.instance?.bind(EVENT_CONNECTION_MOVED, (info: ConnectionMovedParams) => {
+			this.instance.bind(EVENT_CONNECTION_MOVED, (info: ConnectionMovedParams) => {
 				try {
 					// When a connection gets moved from one node to another it for some reason
 					// calls the "connection" event but not the "connectionDetached" one. So we listen
@@ -2317,18 +2317,18 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			this.instance?.bind(EVENT_ENDPOINT_MOUSEOVER, (endpoint: Endpoint, mouse) => {
+			this.instance.bind(EVENT_ENDPOINT_MOUSEOVER, (endpoint: Endpoint, mouse) => {
 				// This event seems bugged. It gets called constantly even when the mouse is not over the endpoint
 				// if the endpoint has a connection attached to it. So we need to check if the mouse is actually over
 				// the endpoint.
 				if (!endpoint.isTarget || mouse.target !== endpoint.endpoint.canvas) return;
 				this.instance.setHover(endpoint, true);
 			});
-			this.instance?.bind(EVENT_ENDPOINT_MOUSEOUT, (endpoint: Endpoint) => {
+			this.instance.bind(EVENT_ENDPOINT_MOUSEOUT, (endpoint: Endpoint) => {
 				if (!endpoint.isTarget) return;
 				this.instance.setHover(endpoint, false);
 			});
-			this.instance?.bind(EVENT_CONNECTION_DETACHED, async (info: ConnectionDetachedParams) => {
+			this.instance.bind(EVENT_CONNECTION_DETACHED, async (info: ConnectionDetachedParams) => {
 				try {
 					const connectionInfo: [IConnection, IConnection] | null = getConnectionInfo(info);
 					NodeViewUtils.resetInputLabelPosition(info.targetEndpoint);
@@ -2363,7 +2363,7 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			this.instance?.bind(EVENT_CONNECTION_DRAG, (connection: Connection) => {
+			this.instance.bind(EVENT_CONNECTION_DRAG, (connection: Connection) => {
 				// The overlays are visible by default so we need to hide the midpoint arrow
 				// manually
 				connection.overlays['midpoint-arrow']?.setVisible(false);
@@ -2435,7 +2435,7 @@ export default mixins(
 					console.error(e); // eslint-disable-line no-console
 				}
 			});
-			this.instance?.bind(
+			this.instance.bind(
 				[EVENT_CONNECTION_DRAG, EVENT_CONNECTION_ABORT, EVENT_CONNECTION_DETACHED],
 				(connection: Connection) => {
 					Object.values(this.instance?.endpointsByElement)
@@ -2446,8 +2446,7 @@ export default mixins(
 						);
 				},
 			);
-
-			this.instance?.bind('plusEndpointClick', (endpoint: Endpoint) => {
+			this.instance.bind('plusEndpointClick', (endpoint: Endpoint) => {
 				if (endpoint && endpoint.__meta) {
 					insertNodeAfterSelected({
 						sourceId: endpoint.__meta.nodeId,
@@ -3311,8 +3310,6 @@ export default mixins(
 							});
 						}
 					}
-
-					const plumbNode = this.instance?.getEndpoint;
 				}
 			}
 
@@ -3909,6 +3906,7 @@ export default mixins(
 		}
 		this.uiStore.addFirstStepOnLoad = false;
 
+		this.initNodeView();
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
 		window.addEventListener('message', this.onPostMessageReceived);
@@ -3949,9 +3947,11 @@ export default mixins(
 		dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 		dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
+		this.instance.unbind();
 	},
 	destroyed() {
 		this.resetWorkspace();
+		this.instance.unbind();
 		this.uiStore.stateIsDirty = false;
 		window.removeEventListener('message', this.onPostMessageReceived);
 		this.$root.$off('newWorkflow', this.newWorkflow);
