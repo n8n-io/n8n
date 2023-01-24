@@ -10,11 +10,9 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
 
 /**
  * Completions offered at the dollar position: `$`
- *
- * Negative charset `[^}]` ensures completion match stays within resolvable boundaries.
  */
 export function dollarCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/\$\w*[^}]*/);
+	const word = context.matchBefore(/\$[^$]*/);
 
 	if (!word) return null;
 

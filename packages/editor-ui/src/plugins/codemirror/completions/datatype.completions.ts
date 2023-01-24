@@ -18,7 +18,7 @@ import type { Resolved } from './types';
  * Resolution-based completions offered according to datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
-	const generalReference = /\$[\S]+\.([^{\s])*/; // $input.
+	const generalReference = /\$[^$]+\.([^{\s])*/; // $input.
 	const nodeSelectorReference = /\$\(['"][\S\s]+['"]\)\..*/; // $('nodeName')
 	const numberLiteral = /\((\d+)\.?(\d*)\)\.([^{\s])*/; // (123). or (123.4).
 	const stringLiteral = /(".+"|('.+'))\.([^{\s])*/; // 'abc'. or "abc".
