@@ -373,7 +373,7 @@ compact.doc = {
 length.doc = {
 	name: 'length',
 	description: 'Returns the number of elements in the array',
-	returnType: 'array',
+	returnType: 'number',
 	aliases: ['count', 'size'],
 };
 
@@ -422,7 +422,7 @@ randomItem.doc = {
 unique.doc = {
 	name: 'unique',
 	description: 'Returns a random element from an array',
-	returnType: 'number',
+	returnType: 'array item',
 	aliases: ['removeDuplicates'],
 };
 

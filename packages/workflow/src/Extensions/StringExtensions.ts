@@ -265,7 +265,7 @@ removeMarkdown.doc = {
 
 stripTags.doc = {
 	name: 'stripTags',
-	description: 'Removes tags, such as HTML or XML from a string',
+	description: 'Removes tags, such as HTML or XML, from a string',
 	returnType: 'string',
 };
 
@@ -303,7 +303,7 @@ toSnakeCase.doc = {
 
 toTitleCase.doc = {
 	name: 'toTitleCase',
-	description: 'Formats a string to title case. Example: “This Is a Title”',
+	description: 'Formats a string to title case. Example: "This Is a Title"',
 	returnType: 'string',
 };
 
