@@ -239,7 +239,7 @@ export class Start extends Command {
 
 		try {
 			// Start directly with the init of the database to improve startup time
-			const startDbInitPromise = Db.init().catch(async (error: Error) =>
+			await Db.init().catch(async (error: Error) =>
 				exitWithCrash('There was an error initializing DB', error),
 			);
 
@@ -280,9 +280,6 @@ export class Start extends Command {
 			await CredentialsOverwrites(credentialTypes).init();
 
 			await loadNodesAndCredentials.generateTypesForFrontend();
-
-			// Wait till the database is ready
-			await startDbInitPromise;
 
 			const installedPackages = await getAllInstalledPackages();
 			const missingPackages = new Set<{

@@ -358,12 +358,6 @@ export class WorkflowDataProxy {
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
 		} else {
 			// Short syntax got used to return data from active node
-
-			// TODO: Here have to generate connection Input data for the current node by itself
-			// Data needed:
-			// #- the run-index
-			// - node which did send data (has to be the one from last recent execution)
-			// - later also the name of the input and its index (currently not needed as it is always "main" and index "0")
 			executionData = that.connectionInputData;
 		}
 
@@ -1174,6 +1168,15 @@ export class WorkflowDataProxy {
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					const node = this.workflow.nodes[nodeName];
+					let result = that.connectionInputData;
+					if (node.executeOnce === true) {
+						result = result.slice(0, 1);
+					}
+					if (result.length) {
+						return result;
+					}
+					return [];
 				}
 
 				outputIndex = outputIndex || 0;
