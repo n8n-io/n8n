@@ -24,34 +24,30 @@ let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
-	try {
-		app = await utils.initTestServer({
-			endpointGroups: ['workflows'],
-			applyAuth: true,
-		});
-		await testDb.init();
+	app = await utils.initTestServer({
+		endpointGroups: ['workflows'],
+		applyAuth: true,
+	});
+	await testDb.init();
 
-		globalOwnerRole = await testDb.getGlobalOwnerRole();
-		globalMemberRole = await testDb.getGlobalMemberRole();
-		credentialOwnerRole = await testDb.getCredentialOwnerRole();
+	globalOwnerRole = await testDb.getGlobalOwnerRole();
+	globalMemberRole = await testDb.getGlobalMemberRole();
+	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 
-		saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
+	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-		authAgent = utils.createAuthAgent(app);
+	authAgent = utils.createAuthAgent(app);
 
-		utils.initTestLogger();
-		utils.initTestTelemetry();
+	utils.initTestLogger();
+	utils.initTestTelemetry();
 
-		isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
-		await utils.initNodeTypes();
-		workflowRunner = await utils.initActiveWorkflowRunner();
+	await utils.initNodeTypes();
+	workflowRunner = await utils.initActiveWorkflowRunner();
 
-		config.set('enterprise.features.sharing', true);
-		sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true); // @TODO: Remove on release
-	} catch (e) {
-		console.log(e);
-	}
+	config.set('enterprise.features.sharing', true);
+	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true); // @TODO: Remove on release
 });
 
 beforeEach(async () => {
