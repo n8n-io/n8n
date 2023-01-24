@@ -100,7 +100,15 @@ function datatypeOptions(resolved: Resolved, toResolve: string) {
 	if (Array.isArray(resolved)) {
 		if (toResolve.endsWith('all()')) return [];
 
-		return extensions('array');
+		const arrayExtensions = extensions('array');
+
+		if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {
+			const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(['max()', 'min()', 'sum()', 'average()']);
+
+			return arrayExtensions.filter((e) => !NUMBER_ONLY_ARRAY_EXTENSIONS.has(e.label));
+		}
+
+		return arrayExtensions;
 	}
 
 	if (typeof resolved === 'object') {
