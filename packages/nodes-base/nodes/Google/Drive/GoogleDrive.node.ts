@@ -2297,7 +2297,7 @@ export class GoogleDrive implements INodeType {
 							);
 						}
 
-						const mimeType = file.mimeType ?? response.headers['content-type'] ?? undefined;
+						const mimeType = response.headers['content-type'] ?? file.mimeType ?? undefined;
 						const fileName = downloadOptions.fileName ?? file.name ?? undefined;
 
 						const newItem: INodeExecutionData = {
