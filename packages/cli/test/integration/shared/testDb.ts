@@ -11,14 +11,7 @@ import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
-import {
-	randomApiKey,
-	randomCredentialPayload,
-	randomEmail,
-	randomName,
-	randomString,
-	randomValidPassword,
-} from './random';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
 import { categorize, getPostgresSchemaSection } from './utils';
 
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
@@ -108,7 +101,7 @@ export async function terminate() {
 
 async function truncateMappingTables(
 	dbType: DatabaseType,
-	collections: Array<CollectionName>,
+	collections: CollectionName[],
 	testDb: Connection,
 ) {
 	const mappingTables = collections.reduce<string[]>((acc, collection) => {
@@ -120,7 +113,7 @@ async function truncateMappingTables(
 	}, []);
 
 	if (dbType === 'sqlite') {
-		const promises = mappingTables.map((tableName) =>
+		const promises = mappingTables.map(async (tableName) =>
 			testDb.query(
 				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
 			),
@@ -157,16 +150,16 @@ async function truncateMappingTables(
  * @param collections Array of entity names whose tables to truncate.
  * @param testDbName Name of the test DB to truncate tables in.
  */
-export async function truncate(collections: Array<CollectionName>) {
+export async function truncate(collections: CollectionName[]) {
 	const dbType = config.getEnv('database.type');
 	const testDb = Db.getConnection();
 
 	if (dbType === 'sqlite') {
 		await testDb.query('PRAGMA foreign_keys=OFF');
 
-		const truncationPromises = collections.map((collection) => {
+		const truncationPromises = collections.map(async (collection) => {
 			const tableName = toTableName(collection);
-			Db.collections[collection].clear();
+			// Db.collections[collection].clear();
 			return testDb.query(
 				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
 			);
@@ -205,7 +198,7 @@ export async function truncate(collections: Array<CollectionName>) {
 
 			const hasIdColumn = await testDb
 				.query(`SHOW COLUMNS FROM ${tableName}`)
-				.then((columns: { Field: string }[]) => columns.find((c) => c.Field === 'id'));
+				.then((columns: Array<{ Field: string }>) => columns.find((c) => c.Field === 'id'));
 
 			if (!hasIdColumn) continue;
 
@@ -250,7 +243,7 @@ function toTableName(sourceName: CollectionName | MappingName) {
  * Save a credential to the test DB, sharing it with a user.
  */
 export async function saveCredential(
-	credentialPayload: CredentialPayload = randomCredentialPayload(),
+	credentialPayload: CredentialPayload,
 	{ user, role }: { user: User; role: Role },
 ) {
 	const newCredential = new CredentialsEntity();
@@ -287,7 +280,7 @@ export async function shareCredentialWithUsers(credential: CredentialsEntity, us
 }
 
 export function affixRoleToSaveCredential(role: Role) {
-	return (credentialPayload: CredentialPayload, { user }: { user: User }) =>
+	return async (credentialPayload: CredentialPayload, { user }: { user: User }) =>
 		saveCredential(credentialPayload, { user, role });
 }
 
@@ -312,10 +305,7 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	return Db.collections.User.save(user);
 }
 
-export async function createLdapUser(
-	attributes: Partial<User> = {},
-	ldapId: string,
-): Promise<User> {
+export async function createLdapUser(attributes: Partial<User>, ldapId: string): Promise<User> {
 	const user = await createUser(attributes);
 	await Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId, 'ldap'));
 	return user;
@@ -325,7 +315,7 @@ export async function createOwner() {
 	return createUser({ globalRole: await getGlobalOwnerRole() });
 }
 
-export function createUserShell(globalRole: Role): Promise<User> {
+export async function createUserShell(globalRole: Role): Promise<User> {
 	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
 	}
@@ -382,7 +372,7 @@ export async function saveInstalledPackage(
 	return savedInstalledPackage;
 }
 
-export function saveInstalledNode(
+export async function saveInstalledNode(
 	installedNodePayload: InstalledNodePayload,
 ): Promise<InstalledNodes> {
 	const newInstalledNode = new InstalledNodes();
@@ -392,7 +382,7 @@ export function saveInstalledNode(
 	return Db.collections.InstalledNodes.save(newInstalledNode);
 }
 
-export function addApiKey(user: User): Promise<User> {
+export async function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
 	return Db.collections.User.save(user);
 }
@@ -401,42 +391,42 @@ export function addApiKey(user: User): Promise<User> {
 //          role fetchers
 // ----------------------------------
 
-export function getGlobalOwnerRole() {
+export async function getGlobalOwnerRole() {
 	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 }
 
-export function getGlobalMemberRole() {
+export async function getGlobalMemberRole() {
 	return Db.collections.Role.findOneByOrFail({
 		name: 'member',
 		scope: 'global',
 	});
 }
 
-export function getWorkflowOwnerRole() {
+export async function getWorkflowOwnerRole() {
 	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'workflow',
 	});
 }
 
-export function getWorkflowEditorRole() {
+export async function getWorkflowEditorRole() {
 	return Db.collections.Role.findOneByOrFail({
 		name: 'editor',
 		scope: 'workflow',
 	});
 }
 
-export function getCredentialOwnerRole() {
+export async function getCredentialOwnerRole() {
 	return Db.collections.Role.findOneByOrFail({
 		name: 'owner',
 		scope: 'credential',
 	});
 }
 
-export function getAllRoles() {
+export async function getAllRoles() {
 	return Promise.all([
 		getGlobalOwnerRole(),
 		getGlobalMemberRole(),
@@ -445,9 +435,15 @@ export function getAllRoles() {
 	]);
 }
 
-export const getAllUsers = () =>
+export const getAllUsers = async () =>
 	Db.collections.User.find({
 		relations: ['globalRole', 'authIdentities'],
+	});
+
+export const getLdapIdentities = async () =>
+	Db.collections.AuthIdentity.find({
+		where: { providerType: 'ldap' },
+		relations: ['user'],
 	});
 
 // ----------------------------------
@@ -459,17 +455,14 @@ export async function createManyExecutions(
 	workflow: WorkflowEntity,
 	callback: (workflow: WorkflowEntity) => Promise<ExecutionEntity>,
 ) {
-	const executionsRequests = [...Array(amount)].map((_) => callback(workflow));
+	const executionsRequests = [...Array(amount)].map(async (_) => callback(workflow));
 	return Promise.all(executionsRequests);
 }
 
 /**
  * Store a execution in the DB and assign it to a workflow.
  */
-export async function createExecution(
-	attributes: Partial<ExecutionEntity> = {},
-	workflow: WorkflowEntity,
-) {
+async function createExecution(attributes: Partial<ExecutionEntity>, workflow: WorkflowEntity) {
 	const { data, finished, mode, startedAt, stoppedAt, waitTill } = attributes;
 
 	const execution = await Db.collections.Execution.save({
@@ -489,38 +482,21 @@ export async function createExecution(
  * Store a successful execution in the DB and assign it to a workflow.
  */
 export async function createSuccessfulExecution(workflow: WorkflowEntity) {
-	return await createExecution(
-		{
-			finished: true,
-		},
-		workflow,
-	);
+	return createExecution({ finished: true }, workflow);
 }
 
 /**
  * Store an error execution in the DB and assign it to a workflow.
  */
 export async function createErrorExecution(workflow: WorkflowEntity) {
-	return await createExecution(
-		{
-			finished: false,
-			stoppedAt: new Date(),
-		},
-		workflow,
-	);
+	return createExecution({ finished: false, stoppedAt: new Date() }, workflow);
 }
 
 /**
  * Store a waiting execution in the DB and assign it to a workflow.
  */
 export async function createWaitingExecution(workflow: WorkflowEntity) {
-	return await createExecution(
-		{
-			finished: false,
-			waitTill: new Date(),
-		},
-		workflow,
-	);
+	return createExecution({ finished: false, waitTill: new Date() }, workflow);
 }
 
 // ----------------------------------
@@ -530,7 +506,7 @@ export async function createWaitingExecution(workflow: WorkflowEntity) {
 export async function createTag(attributes: Partial<TagEntity> = {}) {
 	const { name } = attributes;
 
-	return await Db.collections.Tag.save({
+	return Db.collections.Tag.save({
 		name: name ?? randomName(),
 		...attributes,
 	});
@@ -545,7 +521,7 @@ export async function createManyWorkflows(
 	attributes: Partial<WorkflowEntity> = {},
 	user?: User,
 ) {
-	const workflowRequests = [...Array(amount)].map((_) => createWorkflow(attributes, user));
+	const workflowRequests = [...Array(amount)].map(async (_) => createWorkflow(attributes, user));
 	return Promise.all(workflowRequests);
 }
 
@@ -674,7 +650,7 @@ const baseOptions = (type: TestDBType) => ({
 	port: config.getEnv(`database.${type}db.port`),
 	username: config.getEnv(`database.${type}db.user`),
 	password: config.getEnv(`database.${type}db.password`),
-	schema: type === 'postgres' ? config.getEnv(`database.postgresdb.schema`) : undefined,
+	schema: type === 'postgres' ? config.getEnv('database.postgresdb.schema') : undefined,
 });
 
 /**
