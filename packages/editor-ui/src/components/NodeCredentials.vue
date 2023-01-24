@@ -439,7 +439,6 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			if (
 				oldCredentials.id === null ||
 				(oldCredentials.id &&
-					!this.showAll &&
 					!this.credentialsStore.getCredentialByIdAndType(
 						oldCredentials.id,
 						selectedCredentialsType,
