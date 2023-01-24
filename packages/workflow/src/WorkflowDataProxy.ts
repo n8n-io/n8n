@@ -126,7 +126,7 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 1) {
+		if (!that.runExecutionData?.executionData && that.connectionInputData.length > 0) {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
