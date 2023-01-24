@@ -111,7 +111,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import type { ICredentialsResponse, INodeUpdatePropertiesInformation, IUser, NewCredentialsModal } from '@/Interface';
+import type { ICredentialsResponse, IUser, NewCredentialsModal } from '@/Interface';
 
 import {
 	CredentialInformation,
