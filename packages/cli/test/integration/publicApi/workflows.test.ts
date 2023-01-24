@@ -17,21 +17,25 @@ let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
-	await testDb.init();
+	try {
+		app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+		await testDb.init();
 
-	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =
-		await testDb.getAllRoles();
+		const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =
+			await testDb.getAllRoles();
 
-	globalOwnerRole = fetchedGlobalOwnerRole;
-	globalMemberRole = fetchedGlobalMemberRole;
-	workflowOwnerRole = fetchedWorkflowOwnerRole;
+		globalOwnerRole = fetchedGlobalOwnerRole;
+		globalMemberRole = fetchedGlobalMemberRole;
+		workflowOwnerRole = fetchedWorkflowOwnerRole;
 
-	utils.initTestTelemetry();
-	utils.initTestLogger();
-	utils.initConfigFile();
-	await utils.initNodeTypes();
-	workflowRunner = await utils.initActiveWorkflowRunner();
+		utils.initTestTelemetry();
+		utils.initTestLogger();
+		utils.initConfigFile();
+		await utils.initNodeTypes();
+		workflowRunner = await utils.initActiveWorkflowRunner();
+	} catch (e) {
+		console.log(e);
+	}
 });
 
 beforeEach(async () => {
