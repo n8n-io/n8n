@@ -114,11 +114,6 @@ export const CONNECTOR_PAINT_STYLE_PRIMARY = {
 	stroke: getStyleTokenValue('--color-primary'),
 };
 
-export const CONNECTOR_PAINT_STYLE_SUCCESS = {
-	...CONNECTOR_PAINT_STYLE_DEFAULT,
-	stroke: getStyleTokenValue('--color-success-light'),
-};
-
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 	{
 		type: 'Arrow',
@@ -606,9 +601,9 @@ export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputCo
 
 export const resetConnection = (connection: Connection) => {
 	connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
-	showOrHideMidpointArrow(connection);
 	connection.removeClass('success');
+	showOrHideMidpointArrow(connection);
+	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_DEFAULT);
 };
 
 export const getRunItemsLabel = (output: { total: number; iterations: number }): string => {
@@ -622,8 +617,6 @@ export const addConnectionOutputSuccess = (
 	connection: Connection,
 	output: { total: number; iterations: number },
 ) => {
-	connection.setPaintStyle(CONNECTOR_PAINT_STYLE_SUCCESS);
-
 	connection.addClass('success');
 	if (getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
@@ -650,6 +643,7 @@ export const addConnectionOutputSuccess = (
 	overlay.setVisible(true);
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
+
 	overlay.instance.repaintEverything();
 };
 

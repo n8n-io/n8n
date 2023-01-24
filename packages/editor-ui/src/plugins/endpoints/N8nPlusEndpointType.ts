@@ -152,12 +152,10 @@ export class N8nPlusEndpoint extends EndpointRepresentation<ComputedN8nPlusEndpo
 	}
 
 	clearSuccessOutput() {
-		this.instance.setSuspendDrawing(true);
 		this.endpoint.removeOverlay('successOutputOverlay');
 		this.endpoint.removeClass('ep-success');
 		this.label = '';
 		this.setStalkLabels();
-		this.instance.setSuspendDrawing(false, true);
 	}
 }
 

@@ -833,6 +833,14 @@ export default mixins(
 }
 .jtk-connector.success {
 	z-index: 4;
+
+	path:not(.jtk-connector-outline) {
+		stroke: var(--color-success-light);
+	}
+	path[jtk-overlay-id='endpoint-arrow'],
+	path[jtk-overlay-id='midpoint-arrow'] {
+		fill: var(--color-success-light);
+	}
 }
 .node-input-endpoint-label,
 .node-output-endpoint-label,

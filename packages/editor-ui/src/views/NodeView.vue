@@ -2656,13 +2656,8 @@ export default mixins(
 			// it visibly stays behind free floating without a connection.
 			connection.removeOverlays();
 
-			const sourceEndpoint = connection.endpoints?.[0];
 			this.pullConnActiveNodeName = null; // prevent new connections when connectionDetached is triggered
 			this.instance?.deleteConnection(connection); // on delete, triggers connectionDetached event which applies mutation to store
-			if (sourceEndpoint) {
-				const endpoints = this.instance?.getEndpoints(sourceEndpoint.element);
-				endpoints.forEach((endpoint: Endpoint) => this.instance.repaint(endpoint.element)); // repaint both circle and plus endpoint
-			}
 			if (trackHistory && connection.__meta) {
 				const connectionData: [IConnection, IConnection] = [
 					{
