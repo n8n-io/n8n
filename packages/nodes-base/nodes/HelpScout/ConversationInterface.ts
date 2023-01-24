@@ -11,6 +11,7 @@ export interface IConversation {
 	mailboxId?: number;
 	status?: string;
 	subject?: string;
+	tag?: IDataObject[];
 	tags?: IDataObject[];
 	threads?: IDataObject[];
 	type?: string;

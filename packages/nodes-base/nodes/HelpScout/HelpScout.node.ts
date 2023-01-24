@@ -248,7 +248,12 @@ export class HelpScout implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i);
+						if (options.tags) {
+							qs.tag = options.tags.toString();
+						}
 						Object.assign(qs, options);
+						delete qs.tags;
+
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
