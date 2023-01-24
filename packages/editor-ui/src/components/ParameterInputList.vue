@@ -310,7 +310,8 @@ export default mixins(workflowHelpers).extend({
 			// Hide authentication related fields since it will now be part of credentials modal
 			if (
 				!KEEP_AUTH_IN_NDV_FOR_NODES.includes(this.node?.type || '') &&
-				(parameter.name === (this.mainNodeAuthField?.name || '') ||
+				this.mainNodeAuthField &&
+				(parameter.name === this.mainNodeAuthField?.name ||
 					this.shouldHideAuthRelatedParameter(parameter))
 			) {
 				return false;

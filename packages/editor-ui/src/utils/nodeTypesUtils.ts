@@ -338,7 +338,11 @@ export const getMainAuthField = (nodeType: INodeTypeDescription | null): INodePr
 	}
 	const credentialDependencies = getNodeAuthFields(nodeType);
 	const authenticationField =
-		credentialDependencies.find((prop) => prop.name === MAIN_AUTH_FIELD_NAME) || null;
+		credentialDependencies.find(
+			(prop) =>
+				prop.name === MAIN_AUTH_FIELD_NAME &&
+				!prop.options?.find((option) => option.value === 'none'),
+		) || null;
 	// If there is a field name `authentication`, use it
 	// Otherwise, try to find alternative main auth field
 	return authenticationField || findAlternativeAuthField(nodeType, credentialDependencies);
