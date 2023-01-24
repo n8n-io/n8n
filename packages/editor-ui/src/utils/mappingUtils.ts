@@ -4,7 +4,7 @@ export function generatePath(root: string, path: Array<string | number>): string
 			return `${accu}[${part}]`;
 		}
 
-		if (part.includes(' ')) {
+		if (part.includes(' ') || part.includes('.')) {
 			return `${accu}["${part}"]`;
 		}
 
