@@ -122,16 +122,14 @@
 			</div>
 		</enterprise-edition>
 
-		<div data-test-id="credential-inputs-container">
-			<CredentialInputs
-				v-if="credentialType && credentialPermissions.updateConnection"
-				:credentialData="credentialData"
-				:credentialProperties="credentialProperties"
-				:documentationUrl="documentationUrl"
-				:showValidationWarnings="showValidationWarning"
-				@change="onDataChange"
-			/>
-		</div>
+		<CredentialInputs
+			v-if="credentialType && credentialPermissions.updateConnection"
+			:credentialData="credentialData"
+			:credentialProperties="credentialProperties"
+			:documentationUrl="documentationUrl"
+			:showValidationWarnings="showValidationWarning"
+			@change="onDataChange"
+		/>
 
 		<OauthButton
 			v-if="
@@ -174,12 +172,7 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import {
-	BUILTIN_CREDENTIALS_DOCS_URL,
-	CREDENTIAL_EDIT_MODAL_KEY,
-	DOCS_DOMAIN,
-	EnterpriseEditionFeature,
-} from '@/constants';
+import { BUILTIN_CREDENTIALS_DOCS_URL, DOCS_DOMAIN, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from '@/permissions';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -245,7 +238,7 @@ export default mixins(restApi).extend({
 			type: String,
 			required: true,
 		},
-		requiredCredentials: {
+		showAuthTypeSelector: {
 			type: Boolean,
 		},
 	},
@@ -310,9 +303,8 @@ export default mixins(restApi).extend({
 			return getNodeAuthOptions(this.activeNodeType);
 		},
 		filteredNodeAuthOptions(): NodeAuthenticationOption[] {
-			return this.nodeAuthOptions.filter(
-				(option) => this.requiredCredentials && this.shouldShowAuthOption(option),
-			);
+			if (!this.showAuthTypeSelector) return [];
+			return this.nodeAuthOptions.filter((option) => this.shouldShowAuthOption(option));
 		},
 		appName(): string {
 			if (!this.credentialType) {

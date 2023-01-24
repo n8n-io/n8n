@@ -184,50 +184,51 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			}
 
 			after(async (result) => {
-				if (listeningForActions.includes(name)) {
-					const current = this.selected[credentialType];
-					let credentialsOfType: ICredentialsResponse[] = [];
-					if (this.showAll) {
-						if (this.node) {
-							credentialsOfType = [
-								...(this.credentialsStore.allUsableCredentialsForNode(this.node) || []),
-							];
-						}
-					} else {
+				if (!listeningForActions.includes(name)) {
+					return;
+				}
+				const current = this.selected[credentialType];
+				let credentialsOfType: ICredentialsResponse[] = [];
+				if (this.showAll) {
+					if (this.node) {
 						credentialsOfType = [
-							...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+							...(this.credentialsStore.allUsableCredentialsForNode(this.node) || []),
 						];
 					}
-					switch (name) {
-						// new credential was added
-						case 'createNewCredential':
-							if (result) {
-								this.onCredentialSelected(credentialType, (result as ICredentialsResponse).id);
+				} else {
+					credentialsOfType = [
+						...(this.credentialsStore.allUsableCredentialsByType[credentialType] || []),
+					];
+				}
+				switch (name) {
+					// new credential was added
+					case 'createNewCredential':
+						if (result) {
+							this.onCredentialSelected(credentialType, (result as ICredentialsResponse).id);
+						}
+						break;
+					case 'updateCredential':
+						const updatedCredential = result as ICredentialsResponse;
+						// credential name was changed, update it
+						if (updatedCredential.name !== current.name) {
+							this.onCredentialSelected(credentialType, current.id);
+						}
+						break;
+					case 'deleteCredential':
+						// all credentials were deleted
+						if (credentialsOfType.length === 0) {
+							this.clearSelectedCredential(credentialType);
+						} else {
+							const id = args[0].id;
+							// credential was deleted, select last one added to replace with
+							if (current.id === id) {
+								this.onCredentialSelected(
+									credentialType,
+									credentialsOfType[credentialsOfType.length - 1].id,
+								);
 							}
-							break;
-						case 'updateCredential':
-							const updatedCredential = result as ICredentialsResponse;
-							// credential name was changed, update it
-							if (updatedCredential.name !== current.name) {
-								this.onCredentialSelected(credentialType, current.id);
-							}
-							break;
-						case 'deleteCredential':
-							// all credentials were deleted
-							if (credentialsOfType.length === 0) {
-								this.clearSelectedCredential(credentialType);
-							} else {
-								const id = args[0].id;
-								// credential was deleted, select last one added to replace with
-								if (current.id === id) {
-									this.onCredentialSelected(
-										credentialType,
-										credentialsOfType[credentialsOfType.length - 1].id,
-									);
-								}
-							}
-							break;
-					}
+						}
+						break;
 				}
 			});
 		});
@@ -464,20 +465,18 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 			}
 
 			// If credential is selected from mixed credential dropdown, update node's auth filed based on selected credential
-			if (this.showAll) {
-				if (this.mainNodeAuthField) {
-					const nodeCredentialDescription = this.nodeType?.credentials?.find(
-						(cred) => cred.name === selectedCredentialsType,
-					);
-					const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
-					if (authOption) {
-						updateNodeAuthType(this.node, authOption.value);
-						const parameterData = {
-							name: `parameters.${this.mainNodeAuthField.name}`,
-							value: authOption.value,
-						};
-						this.$emit('valueChanged', parameterData);
-					}
+			if (this.showAll && this.mainNodeAuthField) {
+				const nodeCredentialDescription = this.nodeType?.credentials?.find(
+					(cred) => cred.name === selectedCredentialsType,
+				);
+				const authOption = getAuthTypeForNodeCredential(this.nodeType, nodeCredentialDescription);
+				if (authOption) {
+					updateNodeAuthType(this.node, authOption.value);
+					const parameterData = {
+						name: `parameters.${this.mainNodeAuthField.name}`,
+						value: authOption.value,
+					};
+					this.$emit('valueChanged', parameterData);
 				}
 			}
 

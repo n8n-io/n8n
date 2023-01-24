@@ -24,7 +24,6 @@ export class CredentialsModal extends BasePage {
 		credentialsEditModal: () => cy.getByTestId('credential-edit-dialog'),
 		credentialsAuthTypeSelector: () => cy.getByTestId('node-auth-type-selector'),
 		credentialAuthTypeRadioButtons: () => this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
-		credentialInputsContainer: () => cy.getByTestId('credential-inputs-container'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
 	};
 	actions = {

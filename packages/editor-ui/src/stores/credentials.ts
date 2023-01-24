@@ -76,13 +76,11 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		allUsableCredentialsForNode() {
 			return (node: INodeUi): ICredentialsResponse[] => {
 				let credentials: ICredentialsResponse[] = [];
-				if (node) {
-					const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-					if (nodeType && nodeType.credentials) {
-						nodeType.credentials.forEach((cred) => {
-							credentials = credentials.concat(this.allUsableCredentialsByType[cred.name]);
-						});
-					}
+				const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+				if (nodeType && nodeType.credentials) {
+					nodeType.credentials.forEach((cred) => {
+						credentials = credentials.concat(this.allUsableCredentialsByType[cred.name]);
+					});
 				}
 				return credentials.sort((a, b) => {
 					const aDate = new Date(a.updatedAt);

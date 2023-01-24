@@ -1090,6 +1090,9 @@ export interface IModalState {
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
+}
+
+export interface NewCredentialsModal extends IModalState {
 	requiredCredentials?: boolean;
 }
 
@@ -1159,7 +1162,7 @@ export interface UIState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
 	modals: {
-		[key: string]: IModalState;
+		[key: string]: IModalState | NewCredentialsModal;
 	};
 	isPageLoading: boolean;
 	currentView: string;

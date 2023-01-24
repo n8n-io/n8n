@@ -19,7 +19,6 @@ import {
 	FAKE_DOOR_FEATURES,
 	IMPORT_CURL_MODAL_KEY,
 	INVITE_USER_MODAL_KEY,
-	KEEP_AUTH_IN_NDV_FOR_NODES,
 	LOG_STREAM_MODAL_KEY,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
@@ -67,7 +66,7 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				mode: '',
 				activeId: null,
-				showAuthOptions: false,
+				requiredCredentials: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -290,7 +289,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		setMode(name: string, mode: string): void {
 			Vue.set(this.modals[name], 'mode', mode);
 		},
-		setActiveId(name: string, id: string | null): void {
+		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
 		setRequiredCredentials(name: string, show: boolean) {

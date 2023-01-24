@@ -381,28 +381,28 @@ const findAlternativeAuthField = (
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
 ): NodeAuthenticationOption[] => {
-	if (nodeType) {
-		let options: NodeAuthenticationOption[] = [];
-		const authProp = getMainAuthField(nodeType);
-		// Some nodes have multiple auth fields with same name but different display options so need
-		// take them all into account
-		const authProps = getNodeAuthFields(nodeType).filter((prop) => prop.name === authProp?.name);
-
-		authProps.forEach((field) => {
-			if (field.options) {
-				options = options.concat(
-					field.options.map((option) => ({
-						name: option.name,
-						value: option.value,
-						// Also add in the display options so we can hide/show the option if necessary
-						displayOptions: field.displayOptions,
-					})) || [],
-				);
-			}
-		});
-		return options;
+	if (!nodeType) {
+		return [];
 	}
-	return [];
+	let options: NodeAuthenticationOption[] = [];
+	const authProp = getMainAuthField(nodeType);
+	// Some nodes have multiple auth fields with same name but different display options so need
+	// take them all into account
+	const authProps = getNodeAuthFields(nodeType).filter((prop) => prop.name === authProp?.name);
+
+	authProps.forEach((field) => {
+		if (field.options) {
+			options = options.concat(
+				field.options.map((option) => ({
+					name: option.name,
+					value: option.value,
+					// Also add in the display options so we can hide/show the option if necessary
+					displayOptions: field.displayOptions,
+				})) || [],
+			);
+		}
+	});
+	return options;
 };
 
 export const getAllNodeCredentialForAuthType = (
@@ -511,22 +511,23 @@ export const getCredentialsRelatedFields = (
 };
 
 export const updateNodeAuthType = (node: INodeUi | null, type: string) => {
-	if (node) {
-		const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
-		if (nodeType) {
-			const nodeAuthField = getMainAuthField(nodeType);
-			if (nodeAuthField) {
-				const updateInformation = {
-					name: node.name,
-					properties: {
-						parameters: {
-							...node.parameters,
-							[nodeAuthField.name]: type,
-						},
-					} as IDataObject,
-				} as INodeUpdatePropertiesInformation;
-				useWorkflowsStore().updateNodeProperties(updateInformation);
-			}
+	if (!node) {
+		return;
+	}
+	const nodeType = useNodeTypesStore().getNodeType(node.type, node.typeVersion);
+	if (nodeType) {
+		const nodeAuthField = getMainAuthField(nodeType);
+		if (nodeAuthField) {
+			const updateInformation = {
+				name: node.name,
+				properties: {
+					parameters: {
+						...node.parameters,
+						[nodeAuthField.name]: type,
+					},
+				} as IDataObject,
+			} as INodeUpdatePropertiesInformation;
+			useWorkflowsStore().updateNodeProperties(updateInformation);
 		}
 	}
 };
