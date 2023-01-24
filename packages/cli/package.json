@@ -33,7 +33,7 @@
     "start:windows": "cd bin && n8n",
     "swagger": "swagger-cli",
     "test": "pnpm test:sqlite",
-    "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
+    "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest --detectOpenHandles",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema pnpm test:postgres",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest",
