@@ -1,5 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
-import { workbookRLC, worksheetRLC } from './CommonDescription';
+import { tableRLC, workbookRLC, worksheetRLC } from './CommonDescription';
 
 export const tableOperations: INodeProperties[] = [
 	{
@@ -65,23 +65,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
-		name: 'table',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['worksheet'],
-		},
+		...tableRLC,
 		displayOptions: {
 			show: {
 				operation: ['addRow'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -131,23 +121,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
-		name: 'table',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['worksheet'],
-		},
+		...tableRLC,
 		displayOptions: {
 			show: {
 				operation: ['getRows'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -253,23 +233,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
-		name: 'table',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['worksheet'],
-		},
+		...tableRLC,
 		displayOptions: {
 			show: {
 				operation: ['getColumns'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -375,23 +345,13 @@ export const tableFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Table Name or ID',
-		name: 'table',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		required: true,
-		typeOptions: {
-			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: ['worksheet'],
-		},
+		...tableRLC,
 		displayOptions: {
 			show: {
 				operation: ['lookup'],
 				resource: ['table'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Lookup Column',

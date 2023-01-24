@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
 	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
@@ -154,10 +155,50 @@ export class MicrosoftExcel implements INodeType {
 					})),
 				};
 			},
+
+			async getWorksheetTables(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const workbookRLC = this.getNodeParameter('workbook') as IDataObject;
+				const workbookId = workbookRLC.value as string;
+				const workbookURL = workbookRLC.cachedResultUrl as string;
+
+				const worksheetId = this.getNodeParameter('worksheet', undefined, {
+					extractValue: true,
+				}) as string;
+
+				let response: IDataObject = {};
+
+				response = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
+					undefined,
+				);
+
+				const results: INodeListSearchItems[] = [];
+
+				for (const table of response.value as IDataObject[]) {
+					const name = table.name as string;
+					const value = table.id as string;
+
+					const { address } = await microsoftApiRequest.call(
+						this,
+						'GET',
+						`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
+						undefined,
+						{
+							select: 'address',
+						},
+					);
+
+					const url = `${workbookURL}&activeCell=${encodeURIComponent(address)}`;
+
+					results.push({ name, value, url });
+				}
+
+				return { results };
+			},
 		},
 		loadOptions: {
-			// Get all the tables to display them to user so that he can
-			// select them easily
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const workbookId = this.getNodeParameter('workbook', undefined, {
 					extractValue: true,
@@ -216,7 +257,10 @@ export class MicrosoftExcel implements INodeType {
 						extractValue: true,
 					}) as string;
 
-					const tableId = this.getNodeParameter('table', 0) as string;
+					const tableId = this.getNodeParameter('table', 0, undefined, {
+						extractValue: true,
+					}) as string;
+
 					const additionalFields = this.getNodeParameter('additionalFields', 0);
 					const body: IDataObject = {};
 
@@ -302,7 +346,10 @@ export class MicrosoftExcel implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						const tableId = this.getNodeParameter('table', i) as string;
+						const tableId = this.getNodeParameter('table', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
@@ -370,7 +417,10 @@ export class MicrosoftExcel implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						const tableId = this.getNodeParameter('table', i) as string;
+						const tableId = this.getNodeParameter('table', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
@@ -460,7 +510,10 @@ export class MicrosoftExcel implements INodeType {
 							extractValue: true,
 						}) as string;
 
-						const tableId = this.getNodeParameter('table', i) as string;
+						const tableId = this.getNodeParameter('table', i, undefined, {
+							extractValue: true,
+						}) as string;
+
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
 						const options = this.getNodeParameter('options', i);

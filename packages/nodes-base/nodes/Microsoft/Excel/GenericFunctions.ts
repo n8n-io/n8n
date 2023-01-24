@@ -62,7 +62,6 @@ export async function microsoftApiRequestAllItemsSkip(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-
 	body: any = {},
 	query: IDataObject = {},
 ): Promise<any> {

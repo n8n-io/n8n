@@ -56,8 +56,40 @@ export const worksheetRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '[a-zA-Z0-9\\-_]{2,}',
+						regex: '{[a-zA-Z0-9\\-_]{2,}}',
 						errorMessage: 'Not a valid Worksheet ID',
+					},
+				},
+			],
+		},
+	],
+};
+
+export const tableRLC: INodeProperties = {
+	displayName: 'Table',
+	name: 'table',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getWorksheetTables',
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '{[a-zA-Z0-9\\-_]{2,}}',
+						errorMessage: 'Not a valid Table ID',
 					},
 				},
 			],

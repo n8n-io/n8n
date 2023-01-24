@@ -22,8 +22,8 @@ export const workbookOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of many workbooks',
-				action: 'Get many workbooks',
+				description: 'Get workbooks',
+				action: 'Get workbooks',
 			},
 		],
 		default: 'create',
