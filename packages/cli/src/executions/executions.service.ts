@@ -11,6 +11,7 @@ import {
 	JsonObject,
 	jsonParse,
 	Workflow,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { FindOperator, FindOptionsWhere, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
@@ -40,6 +41,7 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
+	status?: ExecutionStatus[];
 	workflowId?: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any> | boolean;
@@ -53,6 +55,10 @@ const schemaGetExecutionsQueryFilter = {
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
+		status: {
+			type: 'array',
+			items: { type: 'string' },
+		},
 		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
@@ -201,7 +207,16 @@ export class ExecutionsService {
 				.map(({ id }) => id),
 		);
 
-		const findWhere: FindOptionsWhere<ExecutionEntity> = { workflowId: In(sharedWorkflowIds) };
+		const findWhere: FindOptionsWhere<ExecutionEntity> = {
+			workflowId: In(sharedWorkflowIds),
+		};
+		if (filter?.status) {
+			Object.assign(findWhere, { status: In(filter.status) });
+			delete filter.status; // remove status from filter so it does not get applied twice
+		}
+		if (filter?.finished) {
+			Object.assign(findWhere, { finished: filter.finished });
+		}
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {

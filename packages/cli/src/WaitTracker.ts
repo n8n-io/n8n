@@ -10,7 +10,7 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import { FindManyOptions, LessThanOrEqual, ObjectLiteral, Not } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import * as Db from '@/Db';
@@ -57,6 +57,7 @@ export class WaitTrackerClass {
 			select: ['id', 'waitTill'],
 			where: {
 				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				status: Not('crashed'),
 			},
 			order: {
 				waitTill: 'ASC',

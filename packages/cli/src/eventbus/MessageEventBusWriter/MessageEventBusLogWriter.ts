@@ -192,6 +192,9 @@ export class MessageEventBusLogWriter {
 								const executionId = msg.payload.executionId as string;
 								switch (msg.eventName) {
 									case 'n8n.workflow.started':
+										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+											results.unfinishedExecutions[executionId] = [];
+										}
 										results.unfinishedExecutions[executionId] = [msg];
 										break;
 									case 'n8n.workflow.success':
@@ -201,6 +204,9 @@ export class MessageEventBusLogWriter {
 										break;
 									case 'n8n.node.started':
 									case 'n8n.node.finished':
+										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+											results.unfinishedExecutions[executionId] = [];
+										}
 										results.unfinishedExecutions[executionId].push(msg);
 										break;
 								}
@@ -212,9 +218,10 @@ export class MessageEventBusLogWriter {
 								results.sentMessages.push(...removedMessage);
 							}
 						}
-					} catch {
+					} catch (error) {
 						LoggerProxy.error(
-							`Error reading line messages from file: ${logFileName}, line: ${line}`,
+							// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
 						);
 					}
 				});

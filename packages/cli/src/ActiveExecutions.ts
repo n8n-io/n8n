@@ -11,6 +11,7 @@ import {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
+	LoggerProxy,
 } from 'n8n-workflow';
 
 import type { ChildProcess } from 'child_process';
@@ -234,9 +235,12 @@ export class ActiveExecutions {
 		return returnData;
 	}
 
-	setStatus(executionId: string, status: ExecutionStatus): void {
+	async setStatus(executionId: string, status: ExecutionStatus): Promise<void> {
 		if (this.activeExecutions[executionId] === undefined) {
-			throw new Error(`There is no active execution with id "${executionId}".`);
+			LoggerProxy.debug(
+				`There is no active execution with id "${executionId}", can't update status to ${status}.`,
+			);
+			return;
 		}
 
 		this.activeExecutions[executionId].status = status;

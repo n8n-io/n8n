@@ -367,7 +367,6 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				if (['ALL', 'error', 'crashed', 'success', 'waiting'].includes(this.filter.status)) {
 					returnData.push(...this.finishedExecutions);
 				}
-
 				return returnData;
 			},
 			combinedExecutionsCount(): number {
@@ -395,16 +394,28 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 				return filter;
 			},
 			workflowFilterPast(): IDataObject {
-				const filter: IDataObject = {};
+				const queryFilter: IDataObject = {};
 				if (this.filter.workflowId !== 'ALL') {
-					filter.workflowId = this.filter.workflowId;
+					queryFilter.workflowId = this.filter.workflowId;
 				}
-				if (this.filter.status === 'waiting') {
-					filter.waitTill = true;
-				} else if (['error', 'crashed', 'success'].includes(this.filter.status)) {
-					filter.finished = this.filter.status === 'success';
+				switch (this.filter.status as ExecutionStatus) {
+					case 'waiting':
+						queryFilter.status = ['waiting'];
+						break;
+					case 'crashed':
+						queryFilter.status = ['crashed'];
+						break;
+					case 'error':
+						queryFilter.status = ['failed', 'crashed', 'error'];
+						break;
+					case 'success':
+						queryFilter.status = ['success'];
+						break;
+					case 'running':
+						queryFilter.status = ['running'];
+						break;
 				}
-				return filter;
+				return queryFilter;
 			},
 		},
 		methods: {
@@ -797,19 +808,22 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			},
 			getStatus(execution: IExecutionsSummary): ExecutionStatus {
 				if (execution.status) return execution.status;
-				let status: ExecutionStatus = 'unknown';
-				if (execution.waitTill) {
-					status = 'waiting';
-				} else if (execution.stoppedAt === undefined) {
-					status = 'running';
-				} else if (execution.finished) {
-					status = 'success';
-				} else if (execution.stoppedAt !== null) {
-					status = 'failed';
-				} else {
-					status = 'unknown';
+				else {
+					// this should not happen but just in case
+					let status: ExecutionStatus = 'unknown';
+					if (execution.waitTill) {
+						status = 'waiting';
+					} else if (execution.stoppedAt === undefined) {
+						status = 'running';
+					} else if (execution.finished) {
+						status = 'success';
+					} else if (execution.stoppedAt !== null) {
+						status = 'failed';
+					} else {
+						status = 'unknown';
+					}
+					return status;
 				}
-				return status;
 			},
 			getRowClass(execution: IExecutionsSummary): string {
 				return [this.$style.execRow, this.$style[this.getStatus(execution)]].join(' ');
@@ -820,14 +834,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					text = this.$locale.baseText('executionsList.waiting');
+				} else if (status === 'crashed') {
+					text = this.$locale.baseText('executionsList.crashed');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
 					text = this.$locale.baseText('executionsList.succeeded');
 				} else if (status === 'failed') {
 					text = this.$locale.baseText('executionsList.error');
-				} else if (status === 'crashed') {
-					text = this.$locale.baseText('executionsList.crashed');
 				} else {
 					text = this.$locale.baseText('executionsList.unknown');
 				}
@@ -840,14 +854,14 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 
 				if (status === 'waiting') {
 					path = 'executionsList.statusWaiting';
+				} else if (status === 'crashed') {
+					path = 'executionsList.statusCrashed';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {
 					path = 'executionsList.statusText';
 				} else if (status === 'failed') {
 					path = 'executionsList.statusText';
-				} else if (status === 'crashed') {
-					path = 'executionsList.crashed';
 				} else {
 					path = 'executionsList.statusUnknown';
 				}

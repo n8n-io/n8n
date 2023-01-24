@@ -472,6 +472,7 @@
 	"executionsList.id": "Execution ID",
 	"executionsList.status": "Status",
 	"executionsList.statusText": "{status} in {time}",
+	"executionsList.statusCrashed": "{status}",
 	"executionsList.statusRunning": "{status} for {time}",
 	"executionsList.statusWaiting": "{status} until {time}",
 	"executionsList.statusUnknown": "{status}",

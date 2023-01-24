@@ -6,7 +6,8 @@ import {
 	ITaskData,
 } from 'n8n-workflow';
 import * as Db from '@/Db';
-import { EventMessageTypes } from '../EventMessageClasses';
+import { EventMessageTypes, EventNamesTypes } from '../EventMessageClasses';
+import { DateTime } from 'luxon';
 
 export async function recoverExecutionDataFromEventLogMessages(
 	executionId: string,
@@ -41,6 +42,8 @@ export async function recoverExecutionDataFromEventLogMessages(
 			}
 			nodeNames = executionEntry.workflowData.nodes.map((n) => n.name);
 		}
+
+		let lastNodeRunTimestamp: DateTime | undefined = undefined;
 
 		for (const nodeName of nodeNames) {
 			const nodeByName = executionEntry?.workflowData.nodes.find((n) => n.name === nodeName);
@@ -77,14 +80,37 @@ export async function recoverExecutionDataFromEventLogMessages(
 			if (!nodeFinishedMessage) {
 				iRunData.error = error;
 				executionData.resultData.lastNodeExecuted = nodeName;
+				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
 
 			executionData.resultData.runData[nodeName] = [iRunData];
+		}
+		if (!lastNodeRunTimestamp) {
+			const workflowEndedMessage = messages.find((message) =>
+				(
+					[
+						'n8n.workflow.success',
+						'n8n.workflow.crashed',
+						'n8n.workflow.failed',
+					] as EventNamesTypes[]
+				).includes(message.eventName),
+			);
+			if (workflowEndedMessage) {
+				lastNodeRunTimestamp = workflowEndedMessage.ts;
+			} else {
+				const workflowStartedMessage = messages.find(
+					(message) => message.eventName === 'n8n.workflow.started',
+				);
+				if (workflowStartedMessage) {
+					lastNodeRunTimestamp = workflowStartedMessage.ts;
+				}
+			}
 		}
 		if (applyToDb) {
 			await Db.collections.Execution.update(executionId, {
 				data: stringify(executionData),
 				status: 'crashed',
+				stoppedAt: lastNodeRunTimestamp?.toJSDate(),
 			});
 		}
 		return executionData;

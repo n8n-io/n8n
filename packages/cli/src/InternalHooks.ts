@@ -384,8 +384,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 			}
 		}
 
-		let executionStatus: ExecutionStatus = properties.success ? 'success' : 'failed';
-		if (runData?.status === 'waiting' || runData?.data?.waitTill) executionStatus = 'waiting';
+		let executionStatus: ExecutionStatus;
+		if (runData?.status === 'crashed') {
+			executionStatus = 'crashed';
+		} else if (runData?.status === 'waiting' || runData?.data?.waitTill) {
+			executionStatus = 'waiting';
+		} else {
+			executionStatus = properties.success ? 'success' : 'failed';
+		}
 
 		promises.push(
 			Db.collections.Execution.update(executionId, {
