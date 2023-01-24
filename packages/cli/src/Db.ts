@@ -127,6 +127,16 @@ export async function init(
 	connection = new Connection(connectionOptions);
 	await connection.initialize();
 
+	if (dbType === 'postgresdb') {
+		const schema = config.getEnv('database.postgresdb.schema');
+		const searchPath = ['public'];
+		if (schema !== 'public') {
+			await connection.query(`CREATE SCHEMA IF NOT EXISTS ${schema}`);
+			searchPath.unshift(schema);
+		}
+		await connection.query(`SET search_path TO ${searchPath.join(',')};`);
+	}
+
 	if (!testConnectionOptions && dbType === 'sqlite') {
 		// This specific migration changes database metadata.
 		// A field is now nullable. We need to reconnect so that
@@ -143,7 +153,7 @@ export async function init(
 
 		// If you remove this call, remember to turn back on the
 		// setting to run migrations automatically above.
-		await connection.runMigrations();
+		await connection.runMigrations({ transaction: 'each' });
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		if (migrations.length === 0) {
@@ -151,17 +161,15 @@ export async function init(
 			connection = new Connection(connectionOptions);
 			await connection.initialize();
 		}
+	} else {
+		await connection.runMigrations({ transaction: 'each' });
 	}
 
-	// @ts-ignore
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
-	// @ts-ignore
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
-	// @ts-ignore
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
-
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
@@ -170,7 +178,6 @@ export async function init(
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
-
 	collections.EventDestinations = linkRepository(entities.EventDestinations);
 
 	isInitialized = true;
