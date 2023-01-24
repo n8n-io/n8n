@@ -18,7 +18,8 @@ import type { Resolved } from './types';
  * Resolution-based completions offered according to datatype.
  */
 export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
-	const reference = /\$[\S]+\.([^{\s])*/; // $input.
+	const generalReference = /\$[\S]+\.([^{\s])*/; // $input.
+	const nodeSelectorReference = /\$\(['"][\S\s]+['"]\)\..*/; // $('nodeName')
 	const numberLiteral = /\((\d+)\.?(\d*)\)\.([^{\s])*/; // (123). or (123.4).
 	const stringLiteral = /(".+"|('.+'))\.([^{\s])*/; // 'abc'. or "abc".
 	const dateLiteral = /\(?new Date\(\(?.*?\)\)?\.([^{\s])*/; // new Date(). or (new Date()).
@@ -28,7 +29,8 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 	const combinedRegex = new RegExp(
 		[
-			reference.source,
+			generalReference.source,
+			nodeSelectorReference.source,
 			numberLiteral.source,
 			stringLiteral.source,
 			dateLiteral.source,
