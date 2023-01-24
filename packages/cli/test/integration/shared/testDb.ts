@@ -445,6 +445,11 @@ export function getAllRoles() {
 	]);
 }
 
+export const getAllUsers = () =>
+	Db.collections.User.find({
+		relations: ['globalRole', 'authIdentities'],
+	});
+
 // ----------------------------------
 //          Execution helpers
 // ----------------------------------

@@ -12,6 +12,7 @@ import * as utils from '../shared/utils';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED, RunningMode } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
+import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -36,8 +37,8 @@ beforeAll(async () => {
 
 	utils.initConfigFile();
 	utils.initTestLogger();
-	utils.initLdapManager();
 	utils.initTestTelemetry();
+	await utils.initLdapManager();
 });
 
 beforeEach(async () => {
@@ -378,12 +379,16 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 	expect(synchronization.created).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const allUsers = await getAllUsers();
+	const allUsers = await testDb.getAllUsers();
 	expect(allUsers.length).toBe(2);
-	expect(allUsers[0].email).toBe(owner.email);
-	expect(allUsers[1].email).toBe(ldapUser.mail);
-	expect(allUsers[1].lastName).toBe(ldapUser.sn);
-	expect(allUsers[1].firstName).toBe(ldapUser.givenName);
+
+	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
+	expect(ownerUser.email).toBe(owner.email);
+
+	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
+	expect(memberUser.email).toBe(ldapUser.mail);
+	expect(memberUser.lastName).toBe(ldapUser.sn);
+	expect(memberUser.firstName).toBe(ldapUser.givenName);
 
 	const authIdentities = await getLdapIdentities();
 	expect(authIdentities.length).toBe(1);
@@ -511,13 +516,17 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 	expect(synchronization.disabled).toBe(1);
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
-	const allUsers = await getAllUsers();
+	const allUsers = await testDb.getAllUsers();
 	expect(allUsers.length).toBe(2);
-	expect(allUsers[0].email).toBe(owner.email);
-	expect(allUsers[1].email).toBe(ldapUser.mail);
-	expect(allUsers[1].lastName).toBe(ldapUser.sn);
-	expect(allUsers[1].firstName).toBe(ldapUser.givenName);
-	expect(allUsers[1].disabled).toBe(true);
+
+	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
+	expect(ownerUser.email).toBe(owner.email);
+
+	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
+	expect(memberUser.email).toBe(ldapUser.mail);
+	expect(memberUser.lastName).toBe(ldapUser.sn);
+	expect(memberUser.firstName).toBe(ldapUser.givenName);
+	expect(memberUser.disabled).toBe(true);
 
 	const authIdentities = await getLdapIdentities();
 	expect(authIdentities.length).toBe(0);
@@ -545,11 +554,9 @@ test('GET /ldap/sync should return paginated synchronizations', async () => {
 
 	let response = await authAgent(owner).get('/ldap/sync?perPage=1&page=0');
 	expect(response.body.data.length).toBe(1);
-	// expect(response.body.data[0].id).toBe(2);
 
 	response = await authAgent(owner).get('/ldap/sync?perPage=1&page=1');
 	expect(response.body.data.length).toBe(1);
-	// expect(response.body.data[0].id).toBe(1);
 });
 
 test('POST /login should allow new LDAP user to login and synchronize data', async () => {
@@ -588,6 +595,8 @@ test('POST /login should allow new LDAP user to login and synchronize data', asy
 		.post('/login')
 		.send({ email: ldapUser.mail, password: 'password' });
 
+	if (!response.headers['set-cookie'])
+		console.log(response.statusCode, response.headers, response.body);
 	expect(response.headers['set-cookie']).toBeDefined();
 	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
 
@@ -856,12 +865,14 @@ test('Sign-type should be returned when listing users', async () => {
 		uniqueId(),
 	);
 
-	const response = await authAgent(owner).get(`/users`);
+	const allUsers = await testDb.getAllUsers();
+	expect(allUsers.length).toBe(2);
 
-	const { data } = response.body;
+	const ownerUser = allUsers.find((u) => u.email === owner.email)!;
+	expect(sanitizeUser(ownerUser).signInType).toStrictEqual('email');
 
-	expect(data[0].signInType).toStrictEqual('email');
-	expect(data[1].signInType).toStrictEqual('ldap');
+	const memberUser = allUsers.find((u) => u.email !== owner.email)!;
+	expect(sanitizeUser(memberUser).signInType).toStrictEqual('ldap');
 });
 
 test('Once user disabled during synchronization it should lose access to the instance', async () => {
@@ -905,5 +916,3 @@ const getLdapIdentities = () =>
 		where: { providerType: 'ldap' },
 		relations: ['user'],
 	});
-
-const getAllUsers = () => Db.collections.User.find({ relations: ['globalRole'] });
