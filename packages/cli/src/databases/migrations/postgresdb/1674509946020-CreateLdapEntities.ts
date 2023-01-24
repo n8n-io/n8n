@@ -11,12 +11,12 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}user ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
+			`ALTER TABLE "${tablePrefix}user" ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
 		);
 
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS ${tablePrefix}auth_identity (
-				"userId" uuid REFERENCES ${tablePrefix}user (id),
+				"userId" uuid REFERENCES "${tablePrefix}user" (id),
 				"providerId" VARCHAR(60) NOT NULL,
 				"providerType" VARCHAR(20) NOT NULL,
 				"createdAt" timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -52,6 +52,6 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
 		await queryRunner.query(`DROP TABLE ${tablePrefix}auth_identity`);
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN disabled`);
+		await queryRunner.query(`ALTER TABLE "${tablePrefix}user" DROP COLUMN disabled`);
 	}
 }
