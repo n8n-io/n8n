@@ -333,6 +333,67 @@ export class MicrosoftExcel implements INodeType {
 					}
 				}
 			}
+			//https://learn.microsoft.com/en-us/graph/api/worksheet-post-tables?view=graph-rest-1.0
+			if (operation === 'addTable') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const selectRange = this.getNodeParameter('selectRange', i) as string;
+
+						const hasHeaders = this.getNodeParameter('hasHeaders', i) as boolean;
+
+						let range = '';
+						if (selectRange === 'auto') {
+							const { address } = await microsoftApiRequest.call(
+								this,
+								'GET',
+								`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+								undefined,
+								{
+									select: 'address',
+								},
+							);
+							range = address.split('!')[1];
+						} else {
+							range = this.getNodeParameter('range', i) as string;
+						}
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/add`,
+							{
+								address: range,
+								hasHeaders,
+							},
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
 			//https://docs.microsoft.com/en-us/graph/api/table-list-columns?view=graph-rest-1.0&tabs=http
 			if (operation === 'getColumns') {
 				for (let i = 0; i < length; i++) {

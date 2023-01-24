@@ -26,7 +26,7 @@ export const worksheetOperations: INodeProperties[] = [
 				action: 'Get a worksheet',
 			},
 		],
-		default: 'create',
+		default: 'getAll',
 	},
 ];
 
@@ -127,10 +127,11 @@ export const worksheetFields: INodeProperties[] = [
 				resource: ['worksheet'],
 			},
 		},
-		default: 'A1:C3',
+		placeholder: 'A1:C3',
+		default: '',
 		required: true,
-		description:
-			'The address or the name of the range. If not specified, the entire worksheet range is returned.',
+		description: 'The address or the name of the range',
+		hint: 'Leave blank to return entire worksheet',
 	},
 	{
 		displayName: 'RAW Data',
@@ -178,7 +179,7 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		description:
-			'Index of the first row which contains the actual data and not the keys. Starts with 0.',
+			'Index of the first row which contains the actual data and not the keys. Starts with 0. Relative to range.',
 	},
 	{
 		displayName: 'Key Row',
@@ -198,7 +199,7 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		default: 0,
 		description:
-			'Index of the row which contains the keys. Starts at 0. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+			'Index of the row which contains the keys, relative to range. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 	},
 	{
 		displayName: 'Filters',

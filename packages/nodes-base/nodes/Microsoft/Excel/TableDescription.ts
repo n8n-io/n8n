@@ -20,6 +20,12 @@ export const tableOperations: INodeProperties[] = [
 				action: 'Add a row',
 			},
 			{
+				name: 'Add Table',
+				value: 'addTable',
+				description: 'Adds table based on range',
+				action: 'Add a table',
+			},
+			{
 				name: 'Get Columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of tablecolumns',
@@ -43,6 +49,79 @@ export const tableOperations: INodeProperties[] = [
 ];
 
 export const tableFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:addTable                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		...workbookRLC,
+		displayOptions: {
+			show: {
+				operation: ['addTable'],
+				resource: ['table'],
+			},
+		},
+	},
+	{
+		...worksheetRLC,
+		displayOptions: {
+			show: {
+				operation: ['addTable'],
+				resource: ['table'],
+			},
+		},
+	},
+	{
+		displayName: 'Select Range',
+		name: 'selectRange',
+		type: 'options',
+		options: [
+			{
+				name: 'Automatically',
+				value: 'auto',
+			},
+			{
+				name: 'Manually',
+				value: 'manual',
+			},
+		],
+		default: 'auto',
+		displayOptions: {
+			show: {
+				operation: ['addTable'],
+				resource: ['table'],
+			},
+		},
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		default: '',
+		placeholder: 'A1:B2',
+		description: 'The range of cells that will be converted to table',
+		displayOptions: {
+			show: {
+				operation: ['addTable'],
+				resource: ['table'],
+				selectRange: ['manual'],
+			},
+		},
+	},
+	{
+		displayName: 'Has Headers',
+		name: 'hasHeaders',
+		type: 'boolean',
+		default: true,
+		description:
+			'Whether the range has column labels. When this property set to false Excel will automatically generate header shifting the data down by one row.',
+		displayOptions: {
+			show: {
+				operation: ['addTable'],
+				resource: ['table'],
+			},
+		},
+	},
+
 	/* -------------------------------------------------------------------------- */
 	/*                                 table:addRow                               */
 	/* -------------------------------------------------------------------------- */
