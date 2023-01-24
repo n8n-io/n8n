@@ -165,7 +165,6 @@ import { mapStores } from 'pinia';
 
 import {
 	Endpoint,
-	Overlay,
 	Connection,
 	EVENT_CONNECTION,
 	ConnectionEstablishedParams,
@@ -585,7 +584,7 @@ export default mixins(
 			return this.canvasStore.nodeViewScale;
 		},
 		instance(): BrowserJsPlumbInstance {
-			return this.canvasStore.instance;
+			return this.canvasStore.jsPlumbInstance;
 		},
 	},
 	data() {
@@ -610,8 +609,8 @@ export default mixins(
 			workflowData: null as INewWorkflowData | null,
 			activeConnection: null as null | Connection,
 			isProductionExecutionPreview: false,
-			enterTimer: undefined as undefined | number,
-			exitTimer: undefined as undefined | number,
+			enterTimer: undefined as undefined | ReturnType<typeof setTimeout>,
+			exitTimer: undefined as undefined | ReturnType<typeof setTimeout>,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -789,7 +788,6 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.workflowData.pinData);
 			}
 
-			// await new Promise((resolve) => setTimeout(resolve, 5000));
 			await this.addNodes(
 				deepCopy(data.workflowData.nodes),
 				deepCopy(data.workflowData.connections),
@@ -2200,6 +2198,7 @@ export default mixins(
 						connection: connectionData,
 						setStateDirty: true,
 					});
+					this.dropPrevented = true;
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData));
 					}
@@ -2251,7 +2250,7 @@ export default mixins(
 					)
 						return;
 
-					NodeViewUtils.hideConnectionActions(this.activeConnection as Connection);
+					if (this.activeConnection) NodeViewUtils.hideConnectionActions(this.activeConnection);
 
 					this.enterTimer = setTimeout(() => {
 						this.enterTimer = undefined;
@@ -3013,7 +3012,7 @@ export default mixins(
 			setTimeout(() => {
 				// Suspend drawing
 				this.instance?.setSuspendDrawing(true);
-				this.instance?.endpointsByElement[node.id]
+				(this.instance?.endpointsByElement[node.id] || [])
 					.flat()
 					.forEach((endpoint) => this.instance?.deleteEndpoint(endpoint));
 
@@ -3208,8 +3207,10 @@ export default mixins(
 
 			// Before proceeding we must check if all nodes contain the `properties` attribute.
 			// Nodes are loaded without this information so we must make sure that all nodes
-			// // being added have this information.
-			// await this.loadNodesProperties(nodes.map(node => ({ name: node.type, version: node.typeVersion })));
+			// being added have this information.
+			await this.loadNodesProperties(
+				nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
+			);
 
 			// Add the node to the node-list
 			let nodeType: INodeTypeDescription | null;
@@ -3312,7 +3313,6 @@ export default mixins(
 					}
 				}
 			}
-
 			// Now it can draw again
 			this.instance?.setSuspendDrawing(false, true);
 		},

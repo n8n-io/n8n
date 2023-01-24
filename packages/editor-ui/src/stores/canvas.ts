@@ -29,6 +29,7 @@ import {
 	CONNECTOR_FLOWCHART_TYPE,
 	GRID_SIZE,
 } from '@/utils/nodeViewUtils';
+import { PointXY } from '@jsplumb/util';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
@@ -36,7 +37,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const uiStore = useUIStore();
 	const historyStore = useHistoryStore();
 
-	const instance = ref<BrowserJsPlumbInstance>();
+	const jsPlumbInstance = ref<BrowserJsPlumbInstance>();
 	const isDragging = ref<boolean>(false);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -77,7 +78,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
-		instance.value?.setZoom(zoomLevel);
+		jsPlumbInstance.value?.setZoom(zoomLevel);
 		uiStore.nodeViewOffsetPosition = offset;
 	};
 
@@ -142,13 +143,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	function initInstance(container: Element) {
 		// Make sure to clean-up previous instance if it exists
-		if (instance.value) {
-			instance.value.destroy();
-			instance.value.reset();
-			instance.value = undefined;
+		if (jsPlumbInstance.value) {
+			jsPlumbInstance.value.destroy();
+			jsPlumbInstance.value.reset();
+			jsPlumbInstance.value = undefined;
 		}
 
-		instance.value = newInstance({
+		jsPlumbInstance.value = newInstance({
 			container,
 			connector: CONNECTOR_FLOWCHART_TYPE,
 			resizeObserver: false,
@@ -167,7 +168,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 						// Only the node which gets dragged directly gets an event, for all others it is
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
-						instance.value?.clearDragSelection();
+						jsPlumbInstance.value?.clearDragSelection();
 						uiStore.resetSelectedNodes();
 					}
 
@@ -230,8 +231,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 				filter: '.node-description, .node-description .node-name, .node-description .node-subtitle',
 			},
 		});
-		instance.value?.setDragConstrainFunction((pos: XYPosition) => {
-			const isReadOnly = uiStore.isReadOnly;
+		jsPlumbInstance.value?.setDragConstrainFunction((pos: PointXY) => {
+			const isReadOnly = uiStore.isReadOnlyView;
 			if (isReadOnly) {
 				// Do not allow to move nodes in readOnly mode
 				return null;
@@ -252,6 +253,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomToFit,
 		wheelScroll,
 		initInstance,
-		instance,
+		jsPlumbInstance,
 	};
 });

@@ -327,7 +327,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const isConnectionHovered = connection.isHover();
 
 	const arrow = getOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
-	const isVisible =
+	const isArrowVisible =
 		isBackwards &&
 		isTooLong &&
 		!isActionsOverlayHovered &&
@@ -335,7 +335,7 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 		!connection.instance.isConnectionBeingDragged;
 
 	if (arrow) {
-		arrow.setVisible(isVisible);
+		arrow.setVisible(isArrowVisible);
 		arrow.setLocation(hasItemsLabel ? 0.6 : 0.5);
 		connection.instance.repaint(arrow.canvas);
 	}
@@ -515,25 +515,26 @@ export const getBackgroundStyles = (
 };
 
 export const hideConnectionActions = (connection: Connection) => {
-	if (!connection) return;
-
 	connection.instance.setSuspendDrawing(true);
 	hideOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 	showOrHideMidpointArrow(connection);
 	showOrHideItemsLabel(connection);
-	connection.instance.setSuspendDrawing(false, true);
+	connection.instance.setSuspendDrawing(false);
+	(connection.endpoints || []).forEach((endpoint) => {
+		connection.instance.repaint(endpoint.element);
+	});
 };
 
 export const showConnectionActions = (connection: Connection) => {
-	if (!connection) return;
-
 	showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 	hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 	if (!getOverlay(connection, OVERLAY_RUN_ITEMS_ID)) {
 		hideOverlay(connection, OVERLAY_MIDPOINT_ARROW_ID);
 	}
 
-	connection.instance.repaintEverything();
+	(connection.endpoints || []).forEach((endpoint) => {
+		connection.instance.repaint(endpoint.element);
+	});
 };
 
 export const getOutputSummary = (data: ITaskData[], nodeConnections: NodeInputConnections) => {
@@ -644,7 +645,9 @@ export const addConnectionOutputSuccess = (
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
 
-	overlay.instance.repaintEverything();
+	(connection.endpoints || []).forEach((endpoint) => {
+		connection.instance.repaint(endpoint.element);
+	});
 };
 
 const getContentDimensions = (): { editorWidth: number; editorHeight: number } => {
