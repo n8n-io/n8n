@@ -372,7 +372,6 @@ export const nodeHelpers = mixins(restApi).extend({
 							];
 						}
 					}
-
 				}
 			}
 
