@@ -217,11 +217,11 @@ function toTableName(sourceName: CollectionName | MappingName) {
 
 	return {
 		AuthIdentity: 'auth_identity',
+		AuthProviderSyncHistory: 'auth_provider_sync_history',
 		Credentials: 'credentials_entity',
 		Execution: 'execution_entity',
 		InstalledNodes: 'installed_nodes',
 		InstalledPackages: 'installed_packages',
-		LdapSyncHistory: 'ldap_sync_history',
 		Role: 'role',
 		Settings: 'settings',
 		SharedCredentials: 'shared_credentials',

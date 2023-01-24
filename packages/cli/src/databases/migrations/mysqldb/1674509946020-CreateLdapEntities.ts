@@ -11,18 +11,7 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}user ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
-		);
-
-		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS ${tablePrefix}auth_identity (
-				\`userId\` VARCHAR(36) REFERENCES ${tablePrefix}user (id),
-				\`providerId\` VARCHAR(60) NOT NULL,
-				\`providerType\` VARCHAR(20) NOT NULL,
-				\`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				\`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-				PRIMARY KEY(\`providerId\`, \`providerType\`)
-			) ENGINE='InnoDB';`,
+			`ALTER TABLE \`${tablePrefix}user\` ADD COLUMN disabled BOOLEAN NOT NULL DEFAULT false;`,
 		);
 
 		await queryRunner.query(`
@@ -31,16 +20,28 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 		`);
 
 		await queryRunner.query(
-			`CREATE TABLE IF NOT EXISTS ${tablePrefix}ldap_sync_history (
+			`CREATE TABLE IF NOT EXISTS \`${tablePrefix}auth_identity\` (
+				\`userId\` VARCHAR(36) REFERENCES \`${tablePrefix}user\` (id),
+				\`providerId\` VARCHAR(64) NOT NULL,
+				\`providerType\` VARCHAR(32) NOT NULL,
+				\`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				\`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY(\`providerId\`, \`providerType\`)
+			) ENGINE='InnoDB';`,
+		);
+
+		await queryRunner.query(
+			`CREATE TABLE IF NOT EXISTS \`${tablePrefix}auth_provider_sync_history\` (
 				\`id\` INTEGER NOT NULL AUTO_INCREMENT,
+				\`providerType\` VARCHAR(32) NOT NULL,
+				\`runMode\` TEXT NOT NULL,
+				\`status\`	TEXT NOT NULL,
 				\`startedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				\`endedAt\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				\`scanned\`	INTEGER NOT NULL,
 				\`created\`	INTEGER NOT NULL,
 				\`updated\`	INTEGER NOT NULL,
 				\`disabled\`	INTEGER NOT NULL,
-				\`scanned\`	INTEGER NOT NULL,
-				\`status\`	TEXT NOT NULL,
-				\`runMode\` TEXT NOT NULL,
 				\`error\` TEXT,
 				PRIMARY KEY (\`id\`)
 			) ENGINE='InnoDB';`,
@@ -51,8 +52,12 @@ export class CreateLdapEntities1674509946020 implements MigrationInterface {
 
 	async down(queryRunner: QueryRunner): Promise<void> {
 		const tablePrefix = getTablePrefix();
-		await queryRunner.query(`DROP TABLE ${tablePrefix}ldap_sync_history`);
-		await queryRunner.query(`DROP TABLE ${tablePrefix}auth_identity`);
-		await queryRunner.query(`ALTER TABLE ${tablePrefix}user DROP COLUMN disabled`);
+		await queryRunner.query(`DROP TABLE \`${tablePrefix}auth_provider_sync_history\``);
+		await queryRunner.query(`DROP TABLE \`${tablePrefix}auth_identity\``);
+
+		await queryRunner.query(
+			`DELETE FROM ${tablePrefix}settings WHERE \`key\` = '${LDAP_FEATURE_NAME}'`,
+		);
+		await queryRunner.query(`ALTER TABLE \`${tablePrefix}user\` DROP COLUMN disabled`);
 	}
 }

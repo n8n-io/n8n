@@ -173,6 +173,7 @@ export async function init(
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
 	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
+	collections.AuthProviderSyncHistory = linkRepository(entities.AuthProviderSyncHistory);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
@@ -180,7 +181,6 @@ export async function init(
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
 	collections.EventDestinations = linkRepository(entities.EventDestinations);
-	collections.LdapSyncHistory = linkRepository(entities.LdapSyncHistory);
 
 	isInitialized = true;
 

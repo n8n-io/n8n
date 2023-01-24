@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-shadow */
 import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
@@ -8,30 +6,28 @@ import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
 import * as Db from '@/Db';
 import config from '@/config';
-import { LdapSyncHistory } from '@db/entities/LdapSyncHistory';
-import { Role } from '@db/entities/Role';
+import type { Role } from '@db/entities/Role';
 import { User } from '@db/entities/User';
-import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
+import { isUserManagementEnabled } from '@/UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
 import {
 	BINARY_AD_ATTRIBUTES,
-	ConnectionSecurity,
 	LDAP_CONFIG_SCHEMA,
 	LDAP_ENABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
 } from './constants';
-import type { LdapConfig } from './types';
+import type { ConnectionSecurity, LdapConfig } from './types';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import { getLicense } from '@/License';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 
 /**
- *  Check whether the LDAP feature
- *	is disabled in the instance
+ *  Check whether the LDAP feature is disabled in the instance
  */
 export const isLdapEnabled = (): boolean => {
 	const license = getLicense();
@@ -39,65 +35,55 @@ export const isLdapEnabled = (): boolean => {
 };
 
 /**
- * 	Check whether the LDAP feature
- *	is enabled in the instance
+ * 	Check whether the LDAP feature is enabled in the instance
  */
 export const isLdapDisabled = (): boolean => !isLdapEnabled();
 
 /**
- * Set the LDAP login label
- * to the configuration object
+ * Set the LDAP login label to the configuration object
  */
 export const setLdapLoginLabel = (value: string): void => {
 	config.set(LDAP_LOGIN_LABEL, value);
 };
 
 /**
- * Set the LDAP login enabled
- * to the configuration object
+ * Set the LDAP login enabled to the configuration object
  */
 export const setLdapLoginEnabled = (value: boolean): void => {
 	config.set(LDAP_LOGIN_ENABLED, value);
 };
 
 /**
- * Retrieve the LDAP login label
- * from the configuration object
+ * Retrieve the LDAP login label from the configuration object
  */
 export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
 
 /**
- * Retrieve the LDAP login enabled
- * from the configuration object
+ * Retrieve the LDAP login enabled from the configuration object
  */
 export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
 
 /**
- * Return a random password
- * to be assigned to the LDAP users
+ * Return a random password to be assigned to the LDAP users
  */
 export const randomPassword = (): string => {
 	return Math.random().toString(36).slice(-8);
 };
 
 /**
- * Return the user role to be assigned
- * to LDAP users
+ * Return the user role to be assigned to LDAP users
  */
 export const getLdapUserRole = async (): Promise<Role> => {
 	return Db.collections.Role.findOneByOrFail({ scope: 'global', name: 'member' });
 };
 
 /**
- * Validate the structure of the LDAP
- * configuration schema
- * @param  {LdapConfig} config
- * @returns string
+ * Validate the structure of the LDAP configuration schema
  */
 export const validateLdapConfigurationSchema = (
-	config: LdapConfig,
+	ldapConfig: LdapConfig,
 ): { valid: boolean; message: string } => {
-	const { valid, errors } = validate(config, LDAP_CONFIG_SCHEMA, { nestedErrors: true });
+	const { valid, errors } = validate(ldapConfig, LDAP_CONFIG_SCHEMA, { nestedErrors: true });
 
 	let message = '';
 	if (!valid) {
@@ -107,9 +93,7 @@ export const validateLdapConfigurationSchema = (
 };
 
 /**
- * Encrypt password using the instance's
- * encryption key
- * @param  {string} password
+ * Encrypt password using the instance's encryption key
  */
 export const encryptPassword = async (password: string): Promise<string> => {
 	const encryptionKey = await UserSettings.getEncryptionKey();
@@ -117,9 +101,7 @@ export const encryptPassword = async (password: string): Promise<string> => {
 };
 
 /**
- * Decrypt password using the instance's
- * encryption key
- * @param  {string} password
+ * Decrypt password using the instance's encryption key
  */
 export const decryptPassword = async (password: string): Promise<string> => {
 	const encryptionKey = await UserSettings.getEncryptionKey();
@@ -127,8 +109,7 @@ export const decryptPassword = async (password: string): Promise<string> => {
 };
 
 /**
- * Retrieve the LDAP configuration (decrypted)
- * form the database
+ * Retrieve the LDAP configuration (decrypted) form the database
  */
 export const getLdapConfig = async (): Promise<LdapConfig> => {
 	const configuration = await Db.collections.Settings.findOneByOrFail({
@@ -142,15 +123,11 @@ export const getLdapConfig = async (): Promise<LdapConfig> => {
 };
 
 /**
- * Take the LDAP configuration and
- * set login enabled and login label
- * to the config object
- * @param  {LdapConfig} config
- * @returns void
+ * Take the LDAP configuration and set login enabled and login label to the config object
  */
-export const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
-	setLdapLoginEnabled(config.loginEnabled);
-	setLdapLoginLabel(config.loginLabel);
+export const setGlobalLdapConfigVariables = (ldapConfig: LdapConfig): void => {
+	setLdapLoginEnabled(ldapConfig.loginEnabled);
+	setLdapLoginLabel(ldapConfig.loginLabel);
 };
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -167,24 +144,21 @@ export const resolveBinaryAttributes = (entries: Entry[]): void => {
 };
 
 /**
- * Update the LDAP configuration
- * in the database
- * @param  {LdapConfig} config
- * @returns Promise<void>
+ * Update the LDAP configuration in the database
  */
-export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
-	const { valid, message } = validateLdapConfigurationSchema(config);
+export const updateLdapConfig = async (ldapConfig: LdapConfig): Promise<void> => {
+	const { valid, message } = validateLdapConfigurationSchema(ldapConfig);
 
 	if (!valid) {
 		throw new Error(message);
 	}
 
-	LdapManager.updateConfig({ ...config });
+	LdapManager.updateConfig({ ...ldapConfig });
 
-	config.bindingAdminPassword = await encryptPassword(config.bindingAdminPassword);
+	ldapConfig.bindingAdminPassword = await encryptPassword(ldapConfig.bindingAdminPassword);
 
-	if (!config.loginEnabled) {
-		config.synchronizationEnabled = false;
+	if (!ldapConfig.loginEnabled) {
+		ldapConfig.synchronizationEnabled = false;
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
 			await deleteAllLdapIdentities();
@@ -198,16 +172,14 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 
 	await Db.collections.Settings.update(
 		{ key: LDAP_FEATURE_NAME },
-		{ value: JSON.stringify(config), loadOnStartup: true },
+		{ value: JSON.stringify(ldapConfig), loadOnStartup: true },
 	);
-	setGlobalLdapConfigVariables(config);
+	setGlobalLdapConfigVariables(ldapConfig);
 };
+
 /**
  * Handle the LDAP initialization.
- * If it's the first run of this feature,
- * all the default data is created in the database
- * @param  {Settings[]} databaseSettings
- * @returns Promise
+ * If it's the first run of this feature, all the default data is created in the database
  */
 export const handleLdapInit = async (): Promise<void> => {
 	if (!isLdapEnabled()) {
@@ -231,12 +203,6 @@ export const handleLdapInit = async (): Promise<void> => {
 	LdapManager.init(ldapConfig);
 };
 
-/**
- * @param  {string} filter
- * @param  {string} configUserFilter
- * @returns string
- */
-
 export const createFilter = (filter: string, userFilter: string) => {
 	let _filter = `(&(|(objectClass=person)(objectClass=user))${filter})`;
 	if (userFilter) {
@@ -251,13 +217,7 @@ export const escapeFilter = (filter: string): string => {
 };
 
 /**
- * Find and authenticate user in the LDAP
- * server.
- * @param  {string} loginId
- * @param  {string} password
- * @param  {string} loginIdAttribute
- * @param  {string} userFilter
- * @returns Promise
+ * Find and authenticate user in the LDAP server.
  */
 export const findAndAuthenticateLdapUser = async (
 	loginId: string,
@@ -318,10 +278,7 @@ export const findAndAuthenticateLdapUser = async (
 };
 
 /**
- * Retrieve auth identity by LDAP ID
- * from database
- * @param  {string} idAttributeValue
- * @returns Promise
+ * Retrieve auth identity by LDAP ID from database
  */
 export const getAuthIdentityByLdapId = async (
 	idAttributeValue: string,
@@ -343,29 +300,25 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
 };
 
 /**
- * Map attributes from the LDAP server
- * to the proper columns in the database
+ * Map attributes from the LDAP server to the proper columns in the database
  * e.g. mail => email | uid => ldapId
- * @param  {Entry} ldapUser
- * @param  {LdapConfig['attributeMapping']} attributes
  */
 export const mapLdapAttributesToUser = (
 	ldapUser: Entry,
-	config: LdapConfig,
+	ldapConfig: LdapConfig,
 ): [AuthIdentity['providerId'], Pick<User, 'email' | 'firstName' | 'lastName'>] => {
 	return [
-		ldapUser[config.ldapIdAttribute] as string,
+		ldapUser[ldapConfig.ldapIdAttribute] as string,
 		{
-			email: ldapUser[config.emailAttribute] as string,
-			firstName: ldapUser[config.firstNameAttribute] as string,
-			lastName: ldapUser[config.lastNameAttribute] as string,
+			email: ldapUser[ldapConfig.emailAttribute] as string,
+			firstName: ldapUser[ldapConfig.firstNameAttribute] as string,
+			lastName: ldapUser[ldapConfig.lastNameAttribute] as string,
 		},
 	];
 };
 
 /**
  * Retrieve LDAP ID of all LDAP users in the database
- * @returns Promise
  */
 export const getLdapIds = async (): Promise<string[]> => {
 	const identities = await Db.collections.AuthIdentity.find({
@@ -389,17 +342,14 @@ export const getLdapUsers = async (): Promise<User[]> => {
 
 /**
  * Map a LDAP user to database user
- * @param  {Entry} adUser
- * @param  {LdapConfig['attributeMapping']} attributes
- * @param  {Role} role?
  */
 export const mapLdapUserToDbUser = (
-	adUser: Entry,
-	config: LdapConfig,
+	ldapUser: Entry,
+	ldapConfig: LdapConfig,
 	role?: Role,
 ): [string, User] => {
 	const user = new User();
-	const [ldapId, data] = mapLdapAttributesToUser(adUser, config);
+	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (role) {
 		user.globalRole = role;
@@ -410,6 +360,7 @@ export const mapLdapUserToDbUser = (
 	}
 	return [ldapId, user];
 };
+
 /**
  * Save "toCreateUsers" in the database
  * Update "toUpdateUsers" in the database
@@ -452,52 +403,53 @@ export const processUsers = async (
 };
 
 /**
- * Save a LDAP synchronization data
- * to the database
- * @param  {LdapSyncHistory} sync
- * @returns Promise
+ * Save a LDAP synchronization data to the database
  */
-export const saveLdapSynchronization = async (data: Omit<LdapSyncHistory, 'id'>): Promise<void> => {
-	await Db.collections.LdapSyncHistory.save(data);
+export const saveLdapSynchronization = async (
+	data: Omit<AuthProviderSyncHistory, 'id' | 'providerType'>,
+): Promise<void> => {
+	await Db.collections.AuthProviderSyncHistory.save({
+		...data,
+		providerType: 'ldap',
+	});
 };
 
 /**
- * Retrieve all LDAP synchronizations
- * in the database
- * @returns Promise
+ * Retrieve all LDAP synchronizations in the database
  */
 export const getLdapSynchronizations = async (
 	page: number,
 	perPage: number,
-): Promise<LdapSyncHistory[]> => {
+): Promise<AuthProviderSyncHistory[]> => {
 	const _page = Math.abs(page);
-	return Db.collections.LdapSyncHistory.find({
-		order: {
-			id: 'DESC',
-		},
+	return Db.collections.AuthProviderSyncHistory.find({
+		where: { providerType: 'ldap' },
+		order: { id: 'DESC' },
 		take: perPage,
 		skip: _page * perPage,
 	});
 };
 
 /**
- * Format the LDAP connection URL
- * to conform with LDAP client library
- * @returns String
+ * Format the LDAP connection URL to conform with LDAP client library
  */
 export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
 	const protocol = ['tls'].includes(security) ? 'ldaps' : 'ldap';
 	return `${protocol}://${url}:${port}`;
 };
 
-export const getMappingAttributes = (config: LdapConfig): string[] => {
+export const getMappingAttributes = (ldapConfig: LdapConfig): string[] => {
 	return [
-		config.emailAttribute,
-		config.ldapIdAttribute,
-		config.firstNameAttribute,
-		config.lastNameAttribute,
-		config.emailAttribute,
+		ldapConfig.emailAttribute,
+		ldapConfig.ldapIdAttribute,
+		ldapConfig.firstNameAttribute,
+		ldapConfig.lastNameAttribute,
+		ldapConfig.emailAttribute,
 	];
+};
+
+export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
+	return Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId));
 };
 
 export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>, ldapId: string) => {
@@ -515,10 +467,6 @@ export const updateLdapUserOnLocalDb = async (identity: AuthIdentity, data: Part
 	if (userId) {
 		await Db.collections.User.update({ id: userId }, data);
 	}
-};
-
-export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
-	return Db.collections.AuthIdentity.save(AuthIdentity.create(user, ldapId));
 };
 
 const deleteAllLdapIdentities = async () => {

@@ -1,8 +1,8 @@
 import { Entry as LDAPUser } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
+import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
-import { RunningMode, SyncStatus } from './constants';
 import {
 	getLdapUserRole,
 	mapLdapUserToDbUser,
@@ -14,7 +14,7 @@ import {
 } from './helpers';
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
-import { QueryFailedError } from 'typeorm/error/QueryFailedError';
+import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
 import { InternalHooksManager } from '@/InternalHooksManager';
 
 export class LdapSync {
@@ -26,7 +26,6 @@ export class LdapSync {
 
 	/**
 	 * Updates the LDAP configuration
-	 * @param  {LdapConfig} config
 	 */
 	set config(config: LdapConfig) {
 		this._config = config;
@@ -48,34 +47,27 @@ export class LdapSync {
 
 	/**
 	 * Set the LDAP service instance
-	 * @param  {LdapService} service
 	 */
 	set ldapService(service: LdapService) {
 		this._ldapService = service;
 	}
 
 	/**
-	 * Schedule a synchronization job based
-	 * on the interval set in the LDAP config
-	 * @returns void
+	 * Schedule a synchronization job based on the interval set in the LDAP config
 	 */
 	scheduleRun(): void {
 		if (!this._config.synchronizationInterval) {
 			throw new Error('Interval variable has to be defined');
 		}
 		this.intervalId = setInterval(async () => {
-			await this.run(RunningMode.LIVE);
+			await this.run('live');
 		}, this._config.synchronizationInterval * 60000);
 	}
 
 	/**
 	 * Run the synchronization job.
-	 * If the job runs in "live" mode,
-	 * changes to LDAP users are persisted
-	 * in the database, else the users are
-	 * not modified
-	 * @param  {RunningMode} mode
-	 * @returns Promise
+	 * If the job runs in "live" mode, changes to LDAP users are persisted in the database,
+	 * else the users are not modified
 	 */
 	async run(mode: RunningMode): Promise<void> {
 		Logger.debug(`LDAP - Starting a synchronization run in ${mode} mode`);
@@ -126,16 +118,16 @@ export class LdapSync {
 		});
 
 		const endedAt = new Date();
-		let status = SyncStatus.SUCCESS;
+		let status: SyncStatus = 'success';
 		let errorMessage = '';
 
 		try {
-			if (mode === RunningMode.LIVE) {
+			if (mode === 'live') {
 				await processUsers(usersToCreate, usersToUpdate, usersToDisable);
 			}
 		} catch (error) {
 			if (error instanceof QueryFailedError) {
-				status = SyncStatus.ERROR;
+				status = 'error';
 				errorMessage = `${error.message}`;
 			}
 		}
@@ -163,9 +155,7 @@ export class LdapSync {
 	}
 
 	/**
-	 * Stop the current job scheduled,
-	 * if any
-	 * @returns void
+	 * Stop the current job scheduled, if any
 	 */
 	stop(): void {
 		clearInterval(this.intervalId);
@@ -173,12 +163,7 @@ export class LdapSync {
 	}
 
 	/**
-	 * Get all the user that will be
-	 * changed (created, updated, disabled),
-	 * in the database
-	 * @param  {LDAPUser[]} adUsers
-	 * @param  {string[]} localAdUsers
-	 * @param  {Role} role
+	 * Get all the user that will be changed (created, updated, disabled), in the database
 	 */
 	private getUsersToProcess(
 		adUsers: LDAPUser[],
@@ -198,9 +183,6 @@ export class LdapSync {
 
 	/**
 	 * Get users in LDAP that are not in the database yet
-	 * @param  {LDAPUser[]} remoteAdUsers
-	 * @param  {string[]} localLdapIds
-	 * @returns Array
 	 */
 	private getUsersToCreate(
 		remoteAdUsers: LDAPUser[],
@@ -214,9 +196,6 @@ export class LdapSync {
 
 	/**
 	 * Get users in LDAP that are already in the database
-	 * @param  {LDAPUser[]} remoteAdUsers
-	 * @param  {string[]} localLdapIds
-	 * @returns Array
 	 */
 	private getUsersToUpdate(
 		remoteAdUsers: LDAPUser[],
@@ -229,9 +208,6 @@ export class LdapSync {
 
 	/**
 	 * Get users that are in the database but not in the LDAP server
-	 * @param  {LDAPUser[]} remoteAdUsers
-	 * @param  {string[]} localLdapIds
-	 * @returns Array
 	 */
 	private getUsersToDisable(remoteAdUsers: LDAPUser[], localLdapIds: string[]): string[] {
 		const remoteAdUserIds = remoteAdUsers.map((adUser) => adUser[this._config.ldapIdAttribute]);

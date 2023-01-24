@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import express from 'express';
-import type { User } from '@db/entities/User';
-import { ConnectionSecurity, RunningMode, SyncStatus } from './constants';
+import type { RunningMode } from '@db/entities/AuthProviderSyncHistory';
+import { AuthenticatedRequest } from '@/requests';
+
+export type ConnectionSecurity = 'none' | 'tls' | 'startTls';
 
 export interface LdapConfig {
 	loginEnabled: boolean;
@@ -25,26 +25,8 @@ export interface LdapConfig {
 	searchTimeout: number;
 }
 
-export type AuthenticatedRequest<
-	RouteParams = {},
-	ResponseBody = {},
-	RequestBody = {},
-	RequestQuery = {},
-> = express.Request<RouteParams, ResponseBody, RequestBody, RequestQuery> & {
-	user: User;
-};
-
 export declare namespace LdapConfiguration {
 	type Update = AuthenticatedRequest<{}, {}, LdapConfig, {}>;
 	type Sync = AuthenticatedRequest<{}, {}, { type: RunningMode }, {}>;
 	type GetSync = AuthenticatedRequest<{}, {}, {}, { page?: string; perPage?: string }>;
-}
-
-export interface SynchronizationList {
-	id: number;
-	runTime: string;
-	scanned: number;
-	status: SyncStatus;
-	startedAt: string;
-	errorMessage: string;
 }

@@ -2,7 +2,7 @@
 import { Client, Entry, ClientOptions } from 'ldapts';
 import type { LdapConfig } from './types';
 import { formatUrl, getMappingAttributes } from './helpers';
-import { BINARY_AD_ATTRIBUTES, ConnectionSecurity } from './constants';
+import { BINARY_AD_ATTRIBUTES } from './constants';
 import { ConnectionOptions } from 'tls';
 
 export class LdapService {
@@ -11,9 +11,7 @@ export class LdapService {
 	private _config: LdapConfig;
 
 	/**
-	 * Set the LDAP configuration
-	 * and expire the current client
-	 * @param  {LdapConfig} config
+	 * Set the LDAP configuration and expire the current client
 	 */
 	set config(config: LdapConfig) {
 		this._config = config;
@@ -38,26 +36,24 @@ export class LdapService {
 			const ldapOptions: ClientOptions = { url };
 			const tlsOptions: ConnectionOptions = {};
 
-			if (this._config.connectionSecurity !== ConnectionSecurity.NONE) {
+			if (this._config.connectionSecurity !== 'none') {
 				Object.assign(tlsOptions, {
 					rejectUnauthorized: !this._config.allowUnauthorizedCerts,
 				});
-				if (this._config.connectionSecurity === ConnectionSecurity.TLS) {
+				if (this._config.connectionSecurity === 'tls') {
 					ldapOptions.tlsOptions = tlsOptions;
 				}
 			}
 
 			this.client = new Client(ldapOptions);
-			if (this._config.connectionSecurity === ConnectionSecurity.STARTTLS) {
+			if (this._config.connectionSecurity === 'startTls') {
 				await this.client.startTLS(tlsOptions);
 			}
 		}
 	}
 
 	/**
-	 * Attempt a binding with the admin
-	 * credentials
-	 * @returns Promise
+	 * Attempt a binding with the admin credentials
 	 */
 	private async bindAdmin(): Promise<void> {
 		await this.getClient();
@@ -67,11 +63,8 @@ export class LdapService {
 	}
 
 	/**
-	 * Search the LDAP server using
-	 * the administrator binding (if any,
-	 * else a anonymous bilding will be attempted)
-	 * @param  {string} filter
-	 * @returns Promise
+	 * Search the LDAP server using the administrator binding
+	 * (if any, else a anonymous binding will be attempted)
 	 */
 	async searchWithAdminBinding(filter: string): Promise<Entry[]> {
 		await this.bindAdmin();
@@ -92,11 +85,7 @@ export class LdapService {
 	}
 
 	/**
-	 * Attempt binding with the user's
-	 * credentials
-	 * @param  {string} dn
-	 * @param  {string} password
-	 * @returns Promise
+	 * Attempt binding with the user's credentials
 	 */
 	async validUser(dn: string, password: string): Promise<void> {
 		await this.getClient();
@@ -107,9 +96,7 @@ export class LdapService {
 	}
 
 	/**
-	 * Attempt binding with the adminatror
-	 * credentials, to test the connection
-	 * @returns Promise
+	 * Attempt binding with the administrator credentials, to test the connection
 	 */
 	async testConnection(): Promise<void> {
 		await this.bindAdmin();

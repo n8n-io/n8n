@@ -1,8 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/naming-convention */
-
-import { LdapConfig } from './types';
+import type { LdapConfig } from './types';
 
 export const LDAP_FEATURE_NAME = 'features.ldap';
 
@@ -14,28 +10,12 @@ export const LDAP_LOGIN_ENABLED = 'ldap.loginEnabled';
 
 export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
 
-export enum ConnectionSecurity {
-	NONE = 'none',
-	TLS = 'tls',
-	STARTTLS = 'startTls',
-}
-
-export enum RunningMode {
-	DRY = 'dry',
-	LIVE = 'live',
-}
-
-export enum SyncStatus {
-	SUCCESS = 'success',
-	ERROR = 'error',
-}
-
-export const LDAP_DEFAULT_CONFIGURATION = {
+export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	loginEnabled: false,
 	loginLabel: '',
 	connectionUrl: '',
 	allowUnauthorizedCerts: false,
-	connectionSecurity: ConnectionSecurity.NONE,
+	connectionSecurity: 'none',
 	connectionPort: 389,
 	baseDn: '',
 	bindingAdminDn: '',

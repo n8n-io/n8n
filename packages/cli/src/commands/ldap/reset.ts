@@ -11,11 +11,9 @@ export class Reset extends BaseCommand {
 			where: { providerType: 'ldap' },
 			select: ['userId'],
 		});
+		await Db.collections.AuthProviderSyncHistory.delete({ providerType: 'ldap' });
 		await Db.collections.AuthIdentity.delete({ providerType: 'ldap' });
 		await Db.collections.User.delete({ id: In(ldapIdentities.map((i) => i.userId)) });
-
-		await Db.collections.LdapSyncHistory.delete({});
-
 		await Db.collections.Settings.delete({ key: LDAP_FEATURE_NAME });
 
 		this.logger.info('Successfully reset the database to default ldap state.');

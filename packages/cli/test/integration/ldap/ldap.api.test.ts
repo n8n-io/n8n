@@ -2,8 +2,8 @@ import express from 'express';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
-import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
-import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED, RunningMode } from '@/Ldap/constants';
+import type { RunningMode, SyncStatus } from '@db/entities/AuthProviderSyncHistory';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_ENABLED } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapService } from '@/Ldap/LdapService.ee';
 import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
@@ -11,6 +11,7 @@ import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
+import { saveLdapSynchronization } from '@/Ldap/helpers';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -42,7 +43,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate([
 		'AuthIdentity',
-		'LdapSyncHistory',
+		'AuthProviderSyncHistory',
 		'SharedCredentials',
 		'Credentials',
 		'SharedWorkflow',
@@ -197,11 +198,11 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 		]),
 	);
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.DRY });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'dry' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -213,7 +214,7 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.runMode).toBe('dry');
 	expect(synchronization.scanned).toBe(1);
 	expect(synchronization.created).toBe(1);
 
@@ -255,11 +256,11 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 		]),
 	);
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.DRY });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'dry' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -271,7 +272,7 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.runMode).toBe('dry');
 	expect(synchronization.scanned).toBe(1);
 	expect(synchronization.updated).toBe(1);
 
@@ -306,11 +307,11 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 		.mockImplementation(async () => Promise.resolve([]));
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.DRY });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'dry' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -322,7 +323,7 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.DRY);
+	expect(synchronization.runMode).toBe('dry');
 	expect(synchronization.scanned).toBe(0);
 	expect(synchronization.disabled).toBe(1);
 
@@ -358,11 +359,11 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 		.mockImplementation(async () => Promise.resolve([ldapUser]));
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -374,7 +375,7 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.runMode).toBe('live');
 	expect(synchronization.scanned).toBe(1);
 	expect(synchronization.created).toBe(1);
 
@@ -430,11 +431,11 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 		.mockImplementation(async () => Promise.resolve([ldapUser]));
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -446,7 +447,7 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.runMode).toBe('live');
 	expect(synchronization.scanned).toBe(1);
 	expect(synchronization.updated).toBe(1);
 
@@ -495,11 +496,11 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 		.mockImplementation(async () => Promise.resolve([]));
 
-	const response = await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
+	const response = await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
 
 	expect(response.statusCode).toBe(200);
 
-	const synchronization = await Db.collections.LdapSyncHistory.findOneByOrFail({});
+	const synchronization = await Db.collections.AuthProviderSyncHistory.findOneByOrFail({});
 
 	expect(synchronization.id).toBeDefined();
 	expect(synchronization.startedAt).toBeDefined();
@@ -511,7 +512,7 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 	expect(synchronization.scanned).toBeDefined();
 	expect(synchronization.error).toBeDefined();
 	expect(synchronization.runMode).toBeDefined();
-	expect(synchronization.runMode).toBe(RunningMode.LIVE);
+	expect(synchronization.runMode).toBe('live');
 	expect(synchronization.scanned).toBe(0);
 	expect(synchronization.disabled).toBe(1);
 
@@ -535,21 +536,18 @@ test('POST /ldap/sync?type=live should detect disabled user and persist change i
 test('GET /ldap/sync should return paginated synchronizations', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const synchronizationData = {
-		created: 0,
-		scanned: 0,
-		updated: 0,
-		disabled: 0,
-		startedAt: new Date(),
-		endedAt: new Date(),
-		status: 'success',
-		runMode: RunningMode.DRY,
-	};
-
-	for (const _ of Array(2).fill(2)) {
-		const synchronization = new ADSync();
-		Object.assign(synchronization, synchronizationData);
-		await Db.collections.LdapSyncHistory.save(synchronization);
+	for (let i = 0; i < 2; i++) {
+		await saveLdapSynchronization({
+			created: 0,
+			scanned: 0,
+			updated: 0,
+			disabled: 0,
+			startedAt: new Date(),
+			endedAt: new Date(),
+			status: 'success',
+			error: '',
+			runMode: 'dry',
+		});
 	}
 
 	let response = await authAgent(owner).get('/ldap/sync?perPage=1&page=0');
@@ -904,7 +902,7 @@ test('Once user disabled during synchronization it should lose access to the ins
 		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 		.mockImplementation(async () => Promise.resolve([]));
 
-	await authAgent(owner).post('/ldap/sync').send({ type: RunningMode.LIVE });
+	await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
 
 	const response = await authAgent(member).get('/login');
 

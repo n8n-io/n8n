@@ -29,9 +29,9 @@ import type { FindOperator, Repository } from 'typeorm';
 import type { ChildProcess } from 'child_process';
 
 import type { AuthIdentity, AuthProviderType } from '@db/entities/AuthIdentity';
+import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { LdapSyncHistory } from '@db/entities/LdapSyncHistory';
 import type { Role } from '@db/entities/Role';
 import type { Settings } from '@db/entities/Settings';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
@@ -67,6 +67,7 @@ export interface ICredentialsOverwrite {
 
 export interface IDatabaseCollections {
 	AuthIdentity: Repository<AuthIdentity>;
+	AuthProviderSyncHistory: Repository<AuthProviderSyncHistory>;
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
@@ -80,7 +81,6 @@ export interface IDatabaseCollections {
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
-	LdapSyncHistory: Repository<LdapSyncHistory>;
 	EventDestinations: Repository<EventDestinations>;
 }
 

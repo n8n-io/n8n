@@ -1,16 +1,32 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { datetimeColumnType } from './AbstractEntity';
+import { AuthProviderType } from './AuthIdentity';
 
-@Entity({ name: 'ldap_sync_history' })
-export class LdapSyncHistory {
+export type RunningMode = 'dry' | 'live';
+export type SyncStatus = 'success' | 'error';
+
+@Entity()
+export class AuthProviderSyncHistory {
 	@PrimaryGeneratedColumn()
 	id: number;
+
+	@Column('text')
+	providerType: AuthProviderType;
+
+	@Column('text')
+	runMode: RunningMode;
+
+	@Column('text')
+	status: SyncStatus;
 
 	@Column(datetimeColumnType)
 	startedAt: Date;
 
 	@Column(datetimeColumnType)
 	endedAt: Date;
+
+	@Column()
+	scanned: number;
 
 	@Column()
 	created: number;
@@ -22,14 +38,5 @@ export class LdapSyncHistory {
 	disabled: number;
 
 	@Column()
-	scanned: number;
-
-	@Column()
-	status: string;
-
-	@Column()
 	error: string;
-
-	@Column()
-	runMode: string;
 }
