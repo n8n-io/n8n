@@ -58,13 +58,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v2
-        with:
-            registry: ghcr.io
-            username: ${{ github.actor }}
-            password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
@@ -85,7 +78,6 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
-            ghcr.io/${{ github.repository_owner }}/n8n:${{ github.event.inputs.tag || 'nightly' }}
           no-cache: true
 
       - name: Call Success URL - optionally
