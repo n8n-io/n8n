@@ -21,6 +21,10 @@ function isEmpty(value: object): boolean {
 	return Object.keys(value).length === 0;
 }
 
+function isNotEmpty(value: object): boolean {
+	return !isEmpty(value);
+}
+
 function hasField(value: object, extraArgs: string[]): boolean {
 	const [name] = extraArgs;
 	return name in value;
@@ -40,7 +44,7 @@ function removeField(value: object, extraArgs: string[]): object {
 function removeFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
 	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of removeFieldsContaining must be an string');
+		throw new ExpressionExtensionError('argument of removeFieldsContaining must be a string');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
@@ -55,7 +59,7 @@ function removeFieldsContaining(value: object, extraArgs: string[]): object {
 function keepFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
 	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of keepFieldsContaining must be an string');
+		throw new ExpressionExtensionError('argument of keepFieldsContaining must be a string');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {
@@ -71,7 +75,7 @@ export function compact(value: object): object {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const newObj: any = {};
 	for (const [key, val] of Object.entries(value)) {
-		if (val !== null && val !== undefined) {
+		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				newObj[key] = compact(val);
@@ -93,6 +97,7 @@ export const objectExtensions: ExtensionMap = {
 	typeName: 'Object',
 	functions: {
 		isEmpty,
+		isNotEmpty,
 		merge,
 		hasField,
 		removeField,

@@ -87,11 +87,11 @@ function first(value: unknown[]): unknown {
 	return value[0];
 }
 
-function isBlank(value: unknown[]): boolean {
+function isEmpty(value: unknown[]): boolean {
 	return value.length === 0;
 }
 
-function isPresent(value: unknown[]): boolean {
+function isNotEmpty(value: unknown[]): boolean {
 	return value.length > 0;
 }
 
@@ -121,7 +121,7 @@ function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	}) as unknown[];
 }
 
-function random(value: unknown[]): unknown {
+function randomItem(value: unknown[]): unknown {
 	const len = value === undefined ? 0 : value.length;
 	return len ? value[Math.floor(Math.random() * len)] : undefined;
 }
@@ -149,7 +149,15 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 	}, []);
 }
 
+const ensureNumberArray = (arr: unknown[]) => {
+	if (arr.some((i) => typeof i !== 'number')) {
+		throw new ExpressionExtensionError('all array elements must be of type number');
+	}
+};
+
 function sum(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return value.reduce((p: number, c: unknown) => {
 		if (typeof c === 'string') {
 			return p + parseFloat(c);
@@ -162,6 +170,8 @@ function sum(value: unknown[]): number {
 }
 
 function min(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return Math.min(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -176,6 +186,8 @@ function min(value: unknown[]): number {
 }
 
 function max(value: unknown[]): number {
+	ensureNumberArray(value);
+
 	return Math.max(
 		...value.map((v) => {
 			if (typeof v === 'string') {
@@ -190,6 +202,8 @@ function max(value: unknown[]): number {
 }
 
 export function average(value: unknown[]) {
+	ensureNumberArray(value);
+
 	// This would usually be NaN but I don't think users
 	// will expect that
 	if (value.length === 0) {
@@ -200,7 +214,7 @@ export function average(value: unknown[]) {
 
 function compact(value: unknown[]): unknown[] {
 	return value
-		.filter((v) => v !== null && v !== undefined)
+		.filter((v) => v !== null && v !== undefined && v !== 'nil' && v !== '')
 		.map((v) => {
 			if (typeof v === 'object' && v !== null) {
 				return oCompact(v);
@@ -239,26 +253,6 @@ function chunk(value: unknown[], extraArgs: number[]) {
 		chunks.push(value.slice(i, i + chunkSize));
 	}
 	return chunks;
-}
-
-function filter(value: unknown[], extraArgs: unknown[]): unknown[] {
-	const [field, term] = extraArgs as [string | (() => void), unknown | string];
-	if (typeof field !== 'string' && typeof field !== 'function') {
-		throw new ExpressionExtensionError(
-			'filter requires 1 or 2 arguments: (field and term), (term and [optional keepOrRemove "keep" or "remove" default "keep"] (for string arrays)), or function. e.g. .filter("type", "home") or .filter((i) => i.type === "home") or .filter("home", [optional keepOrRemove]) (for string arrays)',
-		);
-	}
-	if (value.every((i) => typeof i === 'string') && typeof field === 'string') {
-		return (value as string[]).filter((i) =>
-			term === 'remove' ? !i.includes(field) : i.includes(field),
-		);
-	} else if (typeof field === 'string') {
-		return value.filter(
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-			(v) => typeof v === 'object' && v !== null && field in v && (v as any)[field] === term,
-		);
-	}
-	return value.filter(field);
 }
 
 function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
@@ -347,7 +341,7 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'difference requires 1 argument that is an array. e.g. .difference([1, 2, 3, 4])',
+			'intersection requires 1 argument that is an array. e.g. .intersection([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];
@@ -368,23 +362,20 @@ export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
 		count: length,
-		duplicates: unique,
-		filter,
+		removeDuplicates: unique,
 		first,
 		last,
 		length,
 		pluck,
 		unique,
-		random,
-		randomItem: random,
-		remove: unique,
+		randomItem,
 		size: length,
 		sum,
 		min,
 		max,
 		average,
-		isPresent,
-		isBlank,
+		isNotEmpty,
+		isEmpty,
 		compact,
 		smartJoin,
 		chunk,

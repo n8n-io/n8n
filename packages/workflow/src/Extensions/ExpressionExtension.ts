@@ -11,12 +11,12 @@ import { objectExtensions } from './ObjectExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
-function isBlank(value: unknown) {
+function isEmpty(value: unknown) {
 	return value === null || value === undefined || !value;
 }
 
-function isPresent(value: unknown) {
-	return !isBlank(value);
+function isNotEmpty(value: unknown) {
+	return !isEmpty(value);
 }
 
 export const EXTENSION_OBJECTS = [
@@ -29,8 +29,8 @@ export const EXTENSION_OBJECTS = [
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 const genericExtensions: Record<string, Function> = {
-	isBlank,
-	isPresent,
+	isEmpty,
+	isNotEmpty,
 };
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
@@ -41,14 +41,17 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(arrayExtensions.functions),
 		...Object.keys(objectExtensions.functions),
 		...Object.keys(genericExtensions),
-		'$if',
 	]),
+);
+
+const EXPRESSION_EXTENSION_REGEX = new RegExp(
+	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')}))\\s*\\(`,
 );
 
 const isExpressionExtension = (str: string) => EXPRESSION_EXTENSION_METHODS.some((m) => m === str);
 
 export const hasExpressionExtension = (str: string): boolean =>
-	EXPRESSION_EXTENSION_METHODS.some((m) => str.includes(m));
+	EXPRESSION_EXTENSION_REGEX.test(str);
 
 export const hasNativeMethod = (method: string): boolean => {
 	if (hasExpressionExtension(method)) {
