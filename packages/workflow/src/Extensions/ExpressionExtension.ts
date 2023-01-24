@@ -75,28 +75,6 @@ export const hasNativeMethod = (method: string): boolean => {
 };
 
 /**
- * recast's types aren't great and we need to use a lot of anys
- */
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const findParent = <T>(path: T, matcher: (path: T) => boolean): T | undefined => {
-	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-	// @ts-ignore
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	let parent = path.parentPath;
-	while (parent) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		if (matcher(parent)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return parent;
-		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		parent = parent.parentPath;
-	}
-	return;
-};
-
-/**
  * A function to inject an extender function call into the AST of an expression.
  * This uses recast to do the transform.
  *
@@ -115,66 +93,53 @@ export const extendTransform = (expression: string): { code: string } | undefine
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		visit(ast, {
-			visitIdentifier(path) {
+			visitCallExpression(path) {
 				this.traverse(path);
-				if (path.node.name === '$if') {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const callPath: any = findParent(path, (p) => p.value?.type === 'CallExpression');
-					if (!callPath || callPath.value?.type !== 'CallExpression') {
-						return;
-					}
 
-					if (callPath.node.arguments.length < 2) {
+				if (
+					path.node.callee.type === 'MemberExpression' &&
+					path.node.callee.property.type === 'Identifier' &&
+					isExpressionExtension(path.node.callee.property.name)
+				) {
+					path.replace(
+						types.builders.callExpression(types.builders.identifier(EXPRESSION_EXTENDER), [
+							path.node.callee.object,
+							types.builders.stringLiteral(path.node.callee.property.name),
+							types.builders.arrayExpression(path.node.arguments),
+						]),
+					);
+				} else if (
+					path.node.callee.type === 'Identifier' &&
+					path.node.callee.name === '$if' &&
+					path.node.arguments.every((v) => v.type !== 'SpreadElement')
+				) {
+					if (path.node.arguments.length < 2) {
 						throw new ExpressionExtensionError(
 							'$if requires at least 2 parameters: test, value_if_true[, and value_if_false]',
 						);
 					}
 
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const test = callPath.node.arguments[0];
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-					const consequent = callPath.node.arguments[1];
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					const test = path.node.arguments[0];
+					const consequent = path.node.arguments[1];
 					const alternative =
-						callPath.node.arguments[2] === undefined
+						path.node.arguments[2] === undefined
 							? types.builders.booleanLiteral(false)
-							: callPath.node.arguments[2];
+							: path.node.arguments[2];
 
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument
-					callPath.replace(types.builders.conditionalExpression(test, consequent, alternative));
-				}
-			},
-		});
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-		visit(ast, {
-			visitIdentifier(path) {
-				this.traverse(path);
-				if (
-					isExpressionExtension(path.node.name) &&
-					// types.namedTypes.MemberExpression.check(path.parent)
-					path.parentPath?.value?.type === 'MemberExpression'
-				) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const callPath: any = findParent(path, (p) => p.value?.type === 'CallExpression');
-
-					if (!callPath || callPath.value?.type !== 'CallExpression') {
-						return;
-					}
-
-					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-					callPath.replace(
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-						types.builders.callExpression(types.builders.identifier(EXPRESSION_EXTENDER), [
-							path.parentPath.value.object,
-							types.builders.stringLiteral(path.node.name),
-							// eslint-disable-next-line
-							types.builders.arrayExpression(callPath.node.arguments),
-						]),
+					path.replace(
+						types.builders.conditionalExpression(
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							test as any,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							consequent as any,
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+							alternative as any,
+						),
 					);
 				}
 			},
 		});
+
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument
 		return print(ast);
 	} catch (e) {
