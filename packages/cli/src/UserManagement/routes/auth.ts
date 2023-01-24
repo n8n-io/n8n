@@ -11,7 +11,7 @@ import { sanitizeUser } from '../UserManagementHelper';
 import { User } from '@db/entities/User';
 import type { LoginRequest } from '@/requests';
 import config from '@/config';
-import { handleEmailLogin, handleLdapLogin } from '@/UserAuthentication';
+import { handleEmailLogin, handleLdapLogin } from '@/auth';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**

@@ -21,7 +21,7 @@ import {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { AuthProviderType } from '@db/entities/AuthIdentity';
+import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
