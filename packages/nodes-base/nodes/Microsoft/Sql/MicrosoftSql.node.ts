@@ -12,7 +12,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { chunk, flatten } from '../../utils/utilities';
+import { chunk, flatten } from '../../../utils/utilities';
 
 import mssql from 'mssql';
 
