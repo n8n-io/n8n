@@ -62,40 +62,11 @@
 				</span>
 			</n8n-notice>
 
-			<div
-				v-if="isNewCredential && filteredNodeAuthOptions.length > 0"
-				:class="$style.authTypeContainer"
-				data-test-id="node-auth-type-selector"
-			>
-				<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
-					<parameter-input-full
-						:parameter="parameter"
-						:value="authRelatedFieldsValues[parameter.name] || parameter.default"
-						:path="parameter.name"
-						:displayOptions="false"
-						@valueChanged="valueChanged"
-					/>
-				</div>
-				<div>
-					<n8n-input-label
-						:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-						:tooltipText="
-							$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')
-						"
-						:required="true"
-					/>
-				</div>
-				<el-radio
-					v-for="prop in filteredNodeAuthOptions"
-					:key="prop.value"
-					v-model="selectedCredentialType"
-					:label="prop.value"
-					:class="$style.authRadioButton"
-					border
-					@change="onAuthTypeChange"
-					>{{ prop.name }}</el-radio
-				>
-			</div>
+			<AuthTypeSelector
+				v-if="showAuthTypeSelector && isNewCredential"
+				:credentialType="credentialType"
+				@authTypeChanged="onAuthTypeChange"
+			/>
 
 			<CopyInput
 				v-if="isOAuthType && credentialProperties.length"
@@ -149,21 +120,8 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import {
-	ICredentialType,
-	INodeProperties,
-	INodeTypeDescription,
-	NodeParameterValue,
-} from 'n8n-workflow';
-import {
-	getAppNameFromCredType,
-	isCommunityPackageName,
-	getNodeAuthOptions,
-	getAuthTypeForNodeCredential,
-	getNodeAuthFields,
-	isAuthRelatedParameter,
-} from '@/utils';
+import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
@@ -183,10 +141,12 @@ import { useCredentialsStore } from '@/stores/credentials';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialsResponse, IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import AuthTypeSelector from '@/components/CredentialEdit/AuthTypeSelector.vue';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
 	components: {
+		AuthTypeSelector,
 		Banner,
 		CopyInput,
 		CredentialInputs,
@@ -245,8 +205,6 @@ export default mixins(restApi).extend({
 	data() {
 		return {
 			EnterpriseEditionFeature,
-			selectedCredentialType: '',
-			authRelatedFieldsValues: {} as { [key: string]: NodeParameterValue },
 		};
 	},
 	async beforeMount() {
@@ -265,23 +223,6 @@ export default mixins(restApi).extend({
 			this.rootStore.defaultLocale,
 		);
 	},
-	mounted() {
-		// Select auth type radio button based on the selected credential type and it's display options
-		if ((this.selectedCredentialType || this.credentialType) && this.activeNodeType?.credentials) {
-			const credentialsForType =
-				this.activeNodeType.credentials.find((cred) => cred.name === this.credentialType.name) ||
-				null;
-			const authOptionForCred = getAuthTypeForNodeCredential(
-				this.activeNodeType,
-				credentialsForType,
-			);
-			this.selectedCredentialType = authOptionForCred?.value || '';
-		}
-		// Populate default values of related fields
-		this.authRelatedFields.forEach((field) => {
-			Vue.set(this.authRelatedFieldsValues, field.name, field.default);
-		});
-	},
 	computed: {
 		...mapStores(
 			useCredentialsStore,
@@ -298,13 +239,6 @@ export default mixins(restApi).extend({
 				return this.nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
 			}
 			return null;
-		},
-		nodeAuthOptions(): NodeAuthenticationOption[] {
-			return getNodeAuthOptions(this.activeNodeType);
-		},
-		filteredNodeAuthOptions(): NodeAuthenticationOption[] {
-			if (!this.showAuthTypeSelector) return [];
-			return this.nodeAuthOptions.filter((option) => this.shouldShowAuthOption(option));
 		},
 		appName(): string {
 			if (!this.credentialType) {
@@ -374,19 +308,8 @@ export default mixins(restApi).extend({
 				!this.authError
 			);
 		},
-		// These are node properties that authentication fields depend on
-		// (have them in their display options). They all are show here
-		// instead of in the NDV
-		authRelatedFields(): INodeProperties[] {
-			const nodeAuthFields = getNodeAuthFields(this.activeNodeType);
-			return (
-				this.activeNodeType?.properties.filter((prop) =>
-					isAuthRelatedParameter(nodeAuthFields, prop),
-				) || []
-			);
-		},
 		isMissingCredentials(): boolean {
-			return this.selectedCredentialType !== '' && this.credentialType === null;
+			return this.credentialType === null;
 		},
 		isNewCredential(): boolean {
 			return this.mode === 'new' && !this.credentialId;
@@ -410,33 +333,6 @@ export default mixins(restApi).extend({
 		onAuthTypeChange(newType: string): void {
 			this.$emit('authTypeChanged', newType);
 		},
-		valueChanged(data: IUpdateInformation): void {
-			Vue.set(this.authRelatedFieldsValues, data.name, data.value);
-		},
-		getValue(paramName: string): unknown {
-			return this.authRelatedFieldsValues[paramName];
-		},
-		shouldShowAuthOption(option: NodeAuthenticationOption): boolean {
-			// Node auth radio button should be shown if any of the fields that it depends on
-			// has value specified in it's displayOptions.show
-			if (this.authRelatedFields.length === 0) {
-				// If there are no related fields, show option
-				return true;
-			}
-
-			let shouldDisplay = false;
-			Object.keys(this.authRelatedFieldsValues).forEach((fieldName) => {
-				if (option.displayOptions && option.displayOptions.show) {
-					if (
-						option.displayOptions.show[fieldName]?.includes(this.authRelatedFieldsValues[fieldName])
-					) {
-						shouldDisplay = true;
-						return;
-					}
-				}
-			});
-			return shouldDisplay;
-		},
 	},
 	watch: {
 		showOAuthSuccessBanner(newValue, oldValue) {
@@ -453,13 +349,6 @@ export default mixins(restApi).extend({
 	--notice-margin: 0;
 	> * {
 		margin-bottom: var(--spacing-l);
-	}
-}
-
-.authRadioButton {
-	margin-right: 0 !important;
-	& + & {
-		margin-left: 8px !important;
 	}
 }
 </style>
