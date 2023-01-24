@@ -234,7 +234,7 @@ export default mixins(genericHelpers, nodeHelpers, restApi, showMessage).extend(
 		});
 	},
 	watch: {
-		'ndvStore.activeNode.parameters': {
+		'node.parameters': {
 			immediate: true,
 			deep: true,
 			handler(newValue: INodeParameters, oldValue: INodeParameters) {

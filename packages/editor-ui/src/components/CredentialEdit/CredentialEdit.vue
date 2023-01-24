@@ -234,16 +234,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			await this.loadCurrentCredential();
 		}
 
-		if (this.credentialType) {
-			for (const property of this.credentialType.properties) {
-				if (
-					!this.credentialData.hasOwnProperty(property.name) &&
-					!this.credentialType.__overwrittenProperties?.includes(property.name)
-				) {
-					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
-				}
-			}
-		}
+		this.resetCredentialData();
 
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
@@ -1008,20 +999,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const credentialsForType = getNodeCredentialForSelectedAuthType(this.activeNodeType, type);
 			if (credentialsForType) {
 				this.selectedCredential = credentialsForType.name;
-				if (this.credentialType) {
-					for (const property of this.credentialType.properties) {
-						if (
-							!this.credentialData.hasOwnProperty(property.name) &&
-							!this.credentialType.__overwrittenProperties?.includes(property.name)
-						) {
-							Vue.set(
-								this.credentialData,
-								property.name,
-								property.default as CredentialInformation,
-							);
-						}
-					}
-				}
+				this.resetCredentialData();
 				this.setupNodeAccess();
 				// Update current node auth type so credentials dropdown can be displayed properly
 				updateNodeAuthType(this.ndvStore.activeNode, type);
@@ -1047,6 +1025,19 @@ export default mixins(showMessage, nodeHelpers).extend({
 				},
 				{},
 			);
+		},
+		resetCredentialData(): void {
+			if (!this.credentialType) {
+				return;
+			}
+			for (const property of this.credentialType.properties) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				}
+			}
 		},
 	},
 });
