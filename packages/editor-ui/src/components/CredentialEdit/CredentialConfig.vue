@@ -63,7 +63,7 @@
 			</n8n-notice>
 
 			<div
-				v-if="isNewCredential && nodeAuthOptions.length > 0"
+				v-if="isNewCredential && filteredNodeAuthOptions.length > 0"
 				:class="$style.authTypeContainer"
 				data-test-id="node-auth-type-selector"
 			>
