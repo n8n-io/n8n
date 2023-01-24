@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.213.0
+
+### What changed?
+
+In expressions, `DateTime.fromHTTP()`, `DateTime.fromISO()` and `DateTime.fromJSDate()` require an argument. Before, they returned `null` when called without an argument; now, they throw an error.
+
+### When is action necessary?
+
+If you were relying on the above behavior, review your workflow to ensure the argument being passed in cannot be `undefined`.
+
 ## 0.202.0
 
 ### What changed?
