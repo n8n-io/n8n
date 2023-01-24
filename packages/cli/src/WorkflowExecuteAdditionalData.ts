@@ -1013,7 +1013,12 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(
+		executionId,
+		workflowData,
+		data,
+		additionalData.userId,
+	);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully

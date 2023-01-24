@@ -314,10 +314,14 @@ export class Expression {
 	}
 
 	extendSyntax(bracketedExpression: string): string {
-		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
 		const chunks = splitExpression(bracketedExpression);
+
+		const codeChunks = chunks
+			.filter((c) => c.type === 'code')
+			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
+
+		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
 
 		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
 			if (chunk.type === 'code') {
