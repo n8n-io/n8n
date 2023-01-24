@@ -358,6 +358,122 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	return unique(newArr, []);
 }
 
+average.doc = {
+	name: 'average',
+	description: 'Returns the mean average of all values in the array',
+	returnType: 'number',
+};
+
+compact.doc = {
+	name: 'compact',
+	description: 'Removes all empty values from the array',
+	returnType: 'array',
+};
+
+length.doc = {
+	name: 'length',
+	description: 'Returns the number of elements in the array',
+	returnType: 'array',
+	aliases: ['count', 'size'],
+};
+
+isEmpty.doc = {
+	name: 'isEmpty',
+	description: 'Checks if the array doesn’t have any elements',
+	returnType: 'boolean',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description: 'Checks if the array has elements',
+	returnType: 'boolean',
+};
+
+first.doc = {
+	name: 'first',
+	description: 'Returns the first element of the array',
+	returnType: 'array item',
+};
+
+last.doc = {
+	name: 'last',
+	description: 'Returns the last element of the array',
+	returnType: 'array item',
+};
+
+max.doc = {
+	name: 'max',
+	description: 'Gets the maximum value from a number-only array',
+	returnType: 'number',
+};
+
+min.doc = {
+	name: 'min',
+	description: 'Gets the minimum value from a number-only array',
+	returnType: 'number',
+};
+
+randomItem.doc = {
+	name: 'randomItem',
+	description: 'Returns a random element from an array',
+	returnType: 'number',
+};
+
+unique.doc = {
+	name: 'unique',
+	description: 'Returns a random element from an array',
+	returnType: 'number',
+	aliases: ['removeDuplicates'],
+};
+
+sum.doc = {
+	name: 'sum',
+	description: 'Returns the total sum all the values in an array of parsable numbers',
+	returnType: 'number',
+};
+
+// @TODO: Extensions below will be documented in next phase
+
+chunk.doc = {
+	name: 'chunk',
+	returnType: 'array',
+};
+
+difference.doc = {
+	name: 'difference',
+	returnType: 'array',
+};
+
+intersection.doc = {
+	name: 'intersection',
+	returnType: 'array',
+};
+
+merge.doc = {
+	name: 'merge',
+	returnType: 'array',
+};
+
+pluck.doc = {
+	name: 'pluck',
+	returnType: 'array',
+};
+
+renameKeys.doc = {
+	name: 'renameKeys',
+	returnType: 'array',
+};
+
+smartJoin.doc = {
+	name: 'smartJoin',
+	returnType: 'array',
+};
+
+union.doc = {
+	name: 'union',
+	returnType: 'array',
+};
+
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {

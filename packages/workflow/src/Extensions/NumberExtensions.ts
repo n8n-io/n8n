@@ -34,6 +34,42 @@ function round(value: number, extraArgs: number[]) {
 	return +value.toFixed(decimalPlaces);
 }
 
+ceil.doc = {
+	name: 'ceil',
+	description: 'Rounds up a number to a whole number',
+	returnType: 'number',
+};
+
+floor.doc = {
+	name: 'floor',
+	description: 'Rounds down a number to a whole number',
+	returnType: 'number',
+};
+
+isEven.doc = {
+	name: 'isEven',
+	description: 'Returns true if the number is even. Only works on whole numbers.',
+	returnType: 'boolean',
+};
+
+isOdd.doc = {
+	name: 'isOdd',
+	description: 'Returns true if the number is odd. Only works on whole numbers.',
+	returnType: 'boolean',
+};
+
+// @TODO: Extensions below will be documented in next phase
+
+format.doc = {
+	name: 'format',
+	returnType: 'string',
+};
+
+round.doc = {
+	name: 'round',
+	returnType: 'number',
+};
+
 export const numberExtensions: ExtensionMap = {
 	typeName: 'Number',
 	functions: {

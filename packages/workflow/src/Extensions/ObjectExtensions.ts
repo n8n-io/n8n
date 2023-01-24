@@ -93,6 +93,57 @@ export function urlEncode(value: object) {
 	return new URLSearchParams(value as Record<string, string>).toString();
 }
 
+isEmpty.doc = {
+	name: 'isEmpty',
+	description: 'Checks if the Object has no key-value pairs',
+	returnType: 'boolean',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description: 'Checks if the Object has key-value pairs',
+	returnType: 'boolean',
+};
+
+compact.doc = {
+	name: 'compact',
+	description: 'Removes empty values from an Object',
+	returnType: 'boolean',
+};
+
+urlEncode.doc = {
+	name: 'urlEncode',
+	description: 'Transforms an Object into a URL parameter list. Only top-level keys are supported.',
+	returnType: 'string',
+};
+
+// @TODO: Extensions below will be documented in next phase
+
+merge.doc = {
+	name: 'merge',
+	returnType: 'object',
+};
+
+hasField.doc = {
+	name: 'hasField',
+	returnType: 'boolean',
+};
+
+removeField.doc = {
+	name: 'removeField',
+	returnType: 'object',
+};
+
+removeFieldsContaining.doc = {
+	name: 'removeFieldsContaining',
+	returnType: 'object',
+};
+
+keepFieldsContaining.doc = {
+	name: 'keepFieldsContaining',
+	returnType: 'object',
+};
+
 export const objectExtensions: ExtensionMap = {
 	typeName: 'Object',
 	functions: {

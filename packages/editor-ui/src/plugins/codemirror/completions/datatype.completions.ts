@@ -172,8 +172,39 @@ export const extensions = (typeName: 'number' | 'string' | 'date' | 'array' | 'o
 				type: 'function',
 			};
 
-			// @TODO
-			// if (fn.description) option.info = f.description;
+			option.info = () => {
+				// @TODO: Tooltip will be refactored completely in next phase
+				const tooltipContainer = document.createElement('div');
+
+				if (!fn.doc?.description) return null;
+
+				tooltipContainer.style.display = 'flex';
+				tooltipContainer.style.flexDirection = 'column';
+				tooltipContainer.style.paddingTop = 'var(--spacing-4xs)';
+				tooltipContainer.style.paddingBottom = 'var(--spacing-4xs)';
+
+				const header = document.createElement('div');
+				header.style.marginBottom = 'var(--spacing-2xs)';
+
+				const typeNameSpan = document.createElement('span');
+				typeNameSpan.innerHTML = typeName.slice(0, 1).toUpperCase() + typeName.slice(1) + '.';
+
+				const functionNameSpan = document.createElement('span');
+				functionNameSpan.innerHTML = fn.doc.name + '()';
+				functionNameSpan.style.fontWeight = 'var(--font-weight-bold)';
+
+				const returnTypeSpan = document.createElement('span');
+				returnTypeSpan.innerHTML = ': ' + fn.doc.returnType;
+
+				header.appendChild(typeNameSpan);
+				header.appendChild(functionNameSpan);
+				header.appendChild(returnTypeSpan);
+
+				tooltipContainer.appendChild(header);
+				tooltipContainer.appendChild(document.createTextNode(fn.doc.description));
+
+				return tooltipContainer;
+			};
 
 			return option;
 		});

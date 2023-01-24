@@ -210,6 +210,66 @@ function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
 }
 
+endOfMonth.doc = {
+	name: 'endOfMonth',
+	returnType: 'Date',
+	description: 'Transforms a date to the last possible moment that lies within the month',
+};
+
+isDst.doc = {
+	name: 'isDst',
+	returnType: 'boolean',
+	description: 'Checks if a Date is within Daylight Savings Time',
+};
+
+isWeekend.doc = {
+	name: 'isWeekend',
+	returnType: 'boolean',
+	description: 'Checks if the Date falls on a Saturday or Sunday',
+};
+
+// @TODO: Extensions below will be documented in next phase
+
+beginningOf.doc = {
+	name: 'beginningOf',
+	returnType: 'Date',
+};
+
+extract.doc = {
+	name: 'extract',
+	returnType: 'number',
+};
+
+format.doc = {
+	name: 'format',
+	returnType: '(?)',
+};
+
+isBetween.doc = {
+	name: 'isBetween',
+	returnType: 'boolean',
+};
+
+isInLast.doc = {
+	name: 'isInLast',
+	returnType: 'boolean',
+};
+
+minus.doc = {
+	name: 'minus',
+	returnType: 'Date',
+};
+
+plus.doc = {
+	name: 'plus',
+	returnType: 'Date',
+};
+
+toLocaleString.doc = {
+	name: 'toLocaleString',
+	returnType: 'string',
+};
+
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
 	functions: {

@@ -253,6 +253,151 @@ function extractUrl(value: string) {
 	return matched[0];
 }
 
+function toTitleCase(value: string) {
+	return titleCase(value);
+}
+
+removeMarkdown.doc = {
+	name: 'removeMarkdown',
+	description: 'Removes Markdown formatting from a string',
+	returnType: 'string',
+};
+
+stripTags.doc = {
+	name: 'stripTags',
+	description: 'Removes tags, such as HTML or XML from a string',
+	returnType: 'string',
+};
+
+toDate.doc = {
+	name: 'toDate',
+	description: 'Converts a string to a date',
+	returnType: 'Date',
+};
+
+toFloat.doc = {
+	name: 'toFloat',
+	description: 'Converts a string to a decimal number',
+	returnType: 'number',
+	aliases: ['toDecimalNumber'],
+};
+
+toInt.doc = {
+	name: 'toInt',
+	description: 'Converts a string to an integer',
+	returnType: 'number',
+	aliases: ['toWholeNumber'],
+};
+
+toSentenceCase.doc = {
+	name: 'toSentenceCase',
+	description: 'Formats a string to sentence case. Example: "This is a sentence"',
+	returnType: 'string',
+};
+
+toSnakeCase.doc = {
+	name: 'toSnakeCase',
+	description: 'Formats a string to snake case. Example: "this_is_snake_case"',
+	returnType: 'string',
+};
+
+toTitleCase.doc = {
+	name: 'toTitleCase',
+	description: 'Formats a string to title case. Example: “This Is a Title”',
+	returnType: 'string',
+};
+
+urlDecode.doc = {
+	name: 'urlDecode',
+	description:
+		'Decodes a URL-encoded string. It decodes any percent-encoded characters in the input string, and replaces them with their original characters.',
+	returnType: 'string',
+};
+
+replaceSpecialChars.doc = {
+	name: 'replaceSpecialChars',
+	description: 'Replaces non-ASCII characters in a string with an ASCII representation',
+	returnType: 'string',
+};
+
+length.doc = {
+	name: 'length',
+	description: 'Returns the character count of a string',
+	returnType: 'number',
+};
+
+isDomain.doc = {
+	name: 'isDomain',
+	description: 'Checks if a string is a domain',
+	returnType: 'boolean',
+};
+
+isEmail.doc = {
+	name: 'isEmail',
+	description: 'Checks if a string is an email',
+	returnType: 'boolean',
+};
+
+isNumeric.doc = {
+	name: 'isEmail',
+	description: 'Checks if a string only contains digits',
+	returnType: 'boolean',
+};
+
+isUrl.doc = {
+	name: 'isUrl',
+	description: 'Checks if a string is a valid URL',
+	returnType: 'boolean',
+	aliases: ['isURL'],
+};
+
+isEmpty.doc = {
+	name: 'isEmpty',
+	description: 'Checks if a string is empty',
+	returnType: 'boolean',
+};
+
+isNotEmpty.doc = {
+	name: 'isNotEmpty',
+	description: 'Checks if a string has content',
+	returnType: 'boolean',
+};
+
+extractEmail.doc = {
+	name: 'extractEmail',
+	description: 'Extracts an email from a string',
+	returnType: 'string',
+};
+
+extractDomain.doc = {
+	name: 'extractDomain',
+	description: 'Extracts a domain from a string',
+	returnType: 'string',
+};
+
+extractUrl.doc = {
+	name: 'extractUrl',
+	description: 'Extracts a URL from a string',
+	returnType: 'string',
+};
+
+// @TODO: Extensions below will be documented in next phase
+
+hash.doc = {
+	name: 'hash',
+	returnType: 'string',
+};
+
+urlEncode.doc = {
+	name: 'urlEncode',
+	returnType: 'string',
+};
+
+quote.doc = {
+	name: 'quote',
+	returnType: 'string',
+};
+
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
@@ -266,7 +411,7 @@ export const stringExtensions: ExtensionMap = {
 		toWholeNumber: toInt,
 		toSentenceCase,
 		toSnakeCase,
-		toTitleCase: titleCase,
+		toTitleCase,
 		urlDecode,
 		urlEncode,
 		quote,
