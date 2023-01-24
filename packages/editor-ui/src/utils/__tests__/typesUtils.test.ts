@@ -267,6 +267,27 @@ describe('Utils', () => {
 				},
 			],
 			[
+				{ 'with space': [], 'with.dot': 'test' },
+				{
+					type: 'object',
+					value: [
+						{
+							type: 'array',
+							key: 'with space',
+							value: [],
+							path: '["with space"]',
+						},
+						{
+							type: 'string',
+							key: 'with.dot',
+							value: 'test',
+							path: '["with.dot"]',
+						},
+					],
+					path: '',
+				},
+			],
+			[
 				[
 					{ name: 'John', age: 22 },
 					{ name: 'Joe', age: 33 },
