@@ -150,6 +150,12 @@ function toInt(value: string, extraArgs: Array<number | undefined>) {
 }
 
 function toFloat(value: string) {
+	if (value.includes(',')) {
+		throw new ExpressionError.ExpressionExtensionError(
+			'cannot convert to float, expected . as decimal separator',
+		);
+	}
+
 	const float = parseFloat(value.replace(CURRENCY_REGEXP, ''));
 
 	if (isNaN(float)) {
