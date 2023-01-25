@@ -1,4 +1,3 @@
-import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { EventDestinations } from '@/databases/entities/MessageEventBusDestinationEntity';
 import { promClient } from '@/metrics';
 import {
@@ -28,7 +27,7 @@ export function messageEventBusDestinationFromDb(
 			case MessageEventBusDestinationTypeNames.webhook:
 				return MessageEventBusDestinationWebhook.deserialize(eventBusInstance, destinationData);
 			default:
-				console.log('MessageEventBusDestination __type unknown');
+				LoggerProxy.debug('MessageEventBusDestination __type unknown');
 		}
 	}
 	return null;

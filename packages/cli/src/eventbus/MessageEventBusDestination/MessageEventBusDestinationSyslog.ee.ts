@@ -93,8 +93,8 @@ export class MessageEventBusDestinationSyslog
 					timestamp: msg.ts.toJSDate(),
 				},
 				async (error) => {
-					if (error) {
-						console.log(error);
+					if (error?.message) {
+						LoggerProxy.debug(error.message);
 					} else {
 						// eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						confirmCallback(msg, { id: this.id, name: this.label });
@@ -103,7 +103,7 @@ export class MessageEventBusDestinationSyslog
 				},
 			);
 		} catch (error) {
-			console.log(error);
+			if (error.message) LoggerProxy.debug(error.message as string);
 		}
 		if (msg.eventName === eventMessageGenericDestinationTestEvent) {
 			await new Promise((resolve) => setTimeout(resolve, 500));

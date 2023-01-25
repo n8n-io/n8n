@@ -1060,7 +1060,11 @@ export function setExecutionStatus(status: ExecutionStatus) {
 		return;
 	}
 	Logger.debug(`Setting execution status for ${this.executionId} to "${status}"`);
-	ActiveExecutions.getInstance().setStatus(this.executionId, status);
+	ActiveExecutions.getInstance()
+		.setStatus(this.executionId, status)
+		.catch((error) => {
+			Logger.debug(`Setting execution status "${status}" failed: ${error.message}`);
+		});
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

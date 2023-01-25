@@ -84,7 +84,8 @@ export class MessageEventBus extends EventEmitter {
 						await this.addDestination(destination);
 					}
 				} catch (error) {
-					console.log(error);
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+					if (error.message) LoggerProxy.debug(error.message as string);
 				}
 			}
 		}

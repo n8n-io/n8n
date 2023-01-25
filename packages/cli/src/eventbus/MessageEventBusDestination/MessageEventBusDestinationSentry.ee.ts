@@ -4,6 +4,7 @@
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import * as Sentry from '@sentry/node';
 import {
+	LoggerProxy,
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationTypeNames,
@@ -89,7 +90,7 @@ export class MessageEventBusDestinationSentry
 				sendResult = true;
 			}
 		} catch (error) {
-			console.log(error);
+			if (error.message) LoggerProxy.debug(error.message as string);
 		}
 		return sendResult;
 	}
