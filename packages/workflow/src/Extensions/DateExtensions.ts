@@ -5,6 +5,7 @@ import {
 	DateTimeFormatOptions,
 	DateTimeUnit,
 	Duration,
+	DurationLike,
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
@@ -138,7 +139,10 @@ function isBetween(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return secondDate > date && date > firstDate;
 }
 
-function isDst(date: Date): boolean {
+function isDst(date: Date | DateTime): boolean {
+	if (isDateTime(date)) {
+		return date.isInDST;
+	}
 	return DateTime.fromJSDate(date).isInDST;
 }
 
@@ -153,15 +157,22 @@ function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
 	return dateInThePast <= thisDate && thisDate <= DateTime.now();
 }
 
-function isWeekend(date: Date): boolean {
+function isWeekend(date: Date | DateTime): boolean {
 	enum DAYS {
 		saturday = 6,
 		sunday = 7,
 	}
+	if (isDateTime(date)) {
+		return [DAYS.saturday, DAYS.sunday].includes(date.weekday);
+	}
 	return [DAYS.saturday, DAYS.sunday].includes(DateTime.fromJSDate(date).weekday);
 }
 
-function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
+function minus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
+	if (isDateTime(date) && extraArgs.length === 1) {
+		return date.minus(extraArgs[0] as DurationLike);
+	}
+
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
@@ -170,7 +181,11 @@ function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
 	return DateTime.fromJSDate(date).minus(generateDurationObject(durationValue, unit)).toJSDate();
 }
 
-function plus(date: Date | DateTime, extraArgs: unknown[]): Date {
+function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
+	if (isDateTime(date) && extraArgs.length === 1) {
+		return date.plus(extraArgs[0] as DurationLike);
+	}
+
 	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
@@ -191,7 +206,7 @@ function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
 	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
 }
 
-function toTimeFromNow(date: Date): string {
+function toTimeFromNow(date: Date | DateTime): string {
 	let diffObj: Duration;
 	if (isDateTime(date)) {
 		diffObj = date.diffNow();

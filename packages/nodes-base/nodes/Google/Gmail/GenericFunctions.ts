@@ -116,7 +116,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://www.googleapis.com${endpoint}`,
+		uri: uri || `https://www.googleapis.com${endpoint}`,
 		qsStringifyOptions: {
 			arrayFormat: 'repeat',
 		},
@@ -528,7 +528,7 @@ export async function prepareEmailAttachments(
 				}
 
 				attachmentsList.push({
-					name: binaryData.fileName ?? 'unknown',
+					name: binaryData.fileName || 'unknown',
 					content: binaryDataBuffer,
 					type: binaryData.mimeType,
 				});

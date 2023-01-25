@@ -26,7 +26,7 @@ export async function boxApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://api.box.com/2.0${resource}`,
+		uri: uri || `https://api.box.com/2.0${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

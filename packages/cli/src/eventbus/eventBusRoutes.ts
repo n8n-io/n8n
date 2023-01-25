@@ -32,6 +32,7 @@ import {
 } from 'n8n-workflow';
 import { User } from '../databases/entities/User';
 import * as ResponseHelper from '@/ResponseHelper';
+import { EventMessageNode, EventMessageNodeOptions } from './EventMessageClasses/EventMessageNode';
 import { recoverExecutionDataFromEventLogMessages } from './MessageEventBus/recoverEvents';
 
 export const eventBusRouter = express.Router();
@@ -142,6 +143,9 @@ eventBusRouter.post(
 					break;
 				case EventMessageTypeNames.audit:
 					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
+					break;
+				case EventMessageTypeNames.node:
+					msg = new EventMessageNode(req.body as EventMessageNodeOptions);
 					break;
 				case EventMessageTypeNames.generic:
 				default:

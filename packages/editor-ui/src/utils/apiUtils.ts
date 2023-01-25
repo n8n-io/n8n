@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig, Method } from 'axios';
 import { IDataObject } from 'n8n-workflow';
-import type { IRestApiContext } from '../Interface';
+import type { IRestApiContext } from '@/Interface';
+
+export const NO_NETWORK_ERROR_CODE = 999;
 
 class ResponseError extends Error {
 	// The HTTP status code of response
@@ -67,7 +69,9 @@ async function request(config: {
 		return response.data;
 	} catch (error) {
 		if (error.message === 'Network Error') {
-			throw new ResponseError('API-Server can not be reached. It is probably down.');
+			throw new ResponseError('API-Server can not be reached. It is probably down.', {
+				errorCode: NO_NETWORK_ERROR_CODE,
+			});
 		}
 
 		const errorResponseData = error.response.data;

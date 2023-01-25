@@ -16,6 +16,11 @@ function deepCompare(left: unknown, right: unknown): boolean {
 		return true;
 	}
 
+	// Explicitly return false if certain primitives don't equal each other
+	if (['number', 'string', 'bigint', 'boolean', 'symbol'].includes(typeof left) && left !== right) {
+		return false;
+	}
+
 	// Quickly check how many properties each has to avoid checking obviously mismatching
 	// objects
 	if (Object.keys(left as object).length !== Object.keys(right as object).length) {

@@ -69,6 +69,12 @@ export class ConflictError extends ResponseError {
 	}
 }
 
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 422);
+	}
+}
+
 export class InternalServerError extends ResponseError {
 	constructor(message: string, errorCode = 500) {
 		super(message, 500, errorCode);

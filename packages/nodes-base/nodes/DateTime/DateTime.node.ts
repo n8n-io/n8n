@@ -430,7 +430,7 @@ export class DateTime implements INodeType {
 						newDate = moment.unix(currentDate as unknown as number);
 					} else {
 						if (options.fromTimezone || options.toTimezone) {
-							const fromTimezone = options.fromTimezone ?? workflowTimezone;
+							const fromTimezone = options.fromTimezone || workflowTimezone;
 							if (options.fromFormat) {
 								newDate = moment.tz(
 									currentDate,

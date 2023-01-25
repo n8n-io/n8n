@@ -1211,7 +1211,6 @@ export class Workflow {
 
 		if (node.executeOnce === true) {
 			// If node should be executed only once so use only the first input item
-			connectionInputData = connectionInputData.slice(0, 1);
 			const newInputData: ITaskDataConnections = {};
 			for (const inputName of Object.keys(inputData)) {
 				newInputData[inputName] = inputData[inputName].map((input) => {

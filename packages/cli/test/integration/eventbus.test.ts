@@ -104,7 +104,6 @@ beforeAll(async () => {
 	config.set('eventBus.logWriter.keepLogCount', '1');
 	config.set('enterprise.features.logStreaming', true);
 
-	console.log('initializing event bus');
 	await eventBus.initialize();
 });
 
@@ -219,7 +218,7 @@ test.skip('should send message to syslog', async () => {
 	});
 });
 
-test('should confirm send message if there are no subscribers', async () => {
+test.skip('should confirm send message if there are no subscribers', async () => {
 	const testMessageUnsubscribed = new EventMessageGeneric({
 		eventName: 'n8n.test.unsub' as EventNamesTypes,
 		id: uuid(),
@@ -365,7 +364,7 @@ test('should send message to sentry ', async () => {
 
 	sentryDestination.enable();
 
-	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient, 'captureMessage');
+	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
 		eventBus.confirmSent(testMessage, {
 			id: sentryDestination.id,

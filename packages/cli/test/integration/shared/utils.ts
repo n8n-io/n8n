@@ -26,8 +26,6 @@ import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
-
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -68,6 +66,10 @@ import type {
 } from './types';
 import { licenseController } from '@/license/license.controller';
 import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+
+import { v4 as uuid } from 'uuid';
+import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
@@ -130,6 +132,7 @@ export async function initTestServer({
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 			publicApi: apiRouters,
+			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		for (const group of routerEndpoints) {
@@ -173,7 +176,15 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'license', 'eventBus'];
+	const ROUTER_GROUP = [
+		'credentials',
+		'nodes',
+		'workflows',
+		'publicApi',
+		'ldap',
+		'eventBus',
+		'license',
+	];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -237,6 +248,13 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
+}
+
+/**
+ * Initialize LDAP manager.
+ */
+export async function initLdapManager(): Promise<void> {
+	await handleLdapInit();
 }
 
 /**
@@ -656,20 +674,6 @@ export async function isInstanceOwnerSetUp() {
 // ----------------------------------
 //              misc
 // ----------------------------------
-
-/**
- * Categorize array items into two groups based on whether they pass a test.
- */
-export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
-	);
-};
 
 export function getPostgresSchemaSection(
 	schema = config.getSchema(),

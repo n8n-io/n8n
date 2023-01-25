@@ -89,7 +89,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://translation.googleapis.com${resource}`,
+		uri: uri || `https://translation.googleapis.com${resource}`,
 		json: true,
 	};
 	try {

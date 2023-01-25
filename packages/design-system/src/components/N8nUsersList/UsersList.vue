@@ -13,7 +13,13 @@
 				</n8n-badge>
 				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
 				<n8n-action-toggle
-					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
+					v-if="
+						!user.isOwner &&
+						user.signInType !== 'ldap' &&
+						!readonly &&
+						getActions(user).length > 0 &&
+						actions.length > 0
+					"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"

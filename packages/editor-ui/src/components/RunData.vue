@@ -67,6 +67,7 @@
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
+					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
@@ -100,6 +101,7 @@
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
+						data-test-id="ndv-pin-data"
 					/>
 				</n8n-tooltip>
 
@@ -1204,7 +1206,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.restApi().getBinaryUrl(id, 'download');
+				const url = this.restApi().getBinaryUrl(id, 'download', fileName, mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {

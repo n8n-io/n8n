@@ -35,7 +35,7 @@ async function getAccessToken(
 	const signature = jwt.sign(
 		{
 			iss: credentials.email,
-			sub: credentials.delegatedEmail ?? credentials.email,
+			sub: credentials.delegatedEmail || credentials.email,
 			scope: scopes.join(' '),
 			aud: 'https://oauth2.googleapis.com/token',
 			iat: now,
@@ -91,7 +91,7 @@ export async function googleApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri ?? `https://www.googleapis.com${resource}`,
+		uri: uri || `https://www.googleapis.com${resource}`,
 		json: true,
 	};
 
@@ -136,8 +136,8 @@ export async function googleApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	query.maxResults = query.maxResults ?? 100;
-	query.pageSize = query.pageSize ?? 100;
+	query.maxResults = query.maxResults || 100;
+	query.pageSize = query.pageSize || 100;
 
 	do {
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);

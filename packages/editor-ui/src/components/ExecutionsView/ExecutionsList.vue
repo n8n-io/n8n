@@ -54,7 +54,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab } from '@/utils';
+import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -84,13 +84,12 @@ export default mixins(
 	computed: {
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
-			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent =
 				this.filterApplied &&
 				(this.executions as IExecutionsSummary[]).find(
 					(ex) => ex.id === this.activeExecution.id,
 				) === undefined;
-			return this.loading || nothingToShow || activeNotPresent;
+			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
@@ -373,8 +372,9 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList =
-					existingExecutions.find((ex) => ex.id === this.activeExecution.id) === undefined;
+				const activeNotInTheList = !existingExecutions.some(
+					(ex) => ex.id === this.activeExecution?.id,
+				);
 				if (activeNotInTheList && this.executions.length > 0) {
 					this.$router
 						.push({
@@ -393,11 +393,24 @@ export default mixins(
 				return [];
 			}
 			try {
-				const executions: IExecutionsSummary[] =
-					await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
-				return executions;
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
+					this.$showMessage(
+						{
+							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
+							message: error.message,
+							type: 'error',
+							duration: 3500,
+						},
+						false,
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('executionsList.showError.refreshData.title'),
+					);
+				}
 				return [];
 			}
 		},

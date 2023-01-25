@@ -1,11 +1,13 @@
 import { CODE_NODE_NAME, SET_NODE_NAME } from './../constants';
 import { SCHEDULE_TRIGGER_NODE_NAME } from '../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { NDV } from '../pages/ndv';
 
 // Suite-specific constants
 const CODE_NODE_NEW_NAME = 'Something else';
 
 const WorkflowPage = new WorkflowPageClass();
+const ndv = new NDV();
 
 describe('Undo/Redo', () => {
 	beforeEach(() => {
@@ -205,11 +207,7 @@ describe('Undo/Redo', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().last().click();
 		cy.get('body').type('{enter}');
-		WorkflowPage.getters.nodeNameContainerNDV().click();
-		WorkflowPage.getters.nodeRenameInput().should('be.visible');
-		WorkflowPage.getters.nodeRenameInput().type('{selectall}');
-		WorkflowPage.getters.nodeRenameInput().type(CODE_NODE_NEW_NAME);
-		cy.get('body').type('{enter}');
+		ndv.actions.rename(CODE_NODE_NEW_NAME);
 		cy.get('body').type('{esc}');
 		WorkflowPage.actions.hitUndo();
 		cy.get('body').type('{esc}');
