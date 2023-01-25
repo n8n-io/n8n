@@ -252,7 +252,6 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	position: absolute;
 
 	.sticky-default {
-
 		.sticky-box {
 			width: 100%;
 			height: 100%;
