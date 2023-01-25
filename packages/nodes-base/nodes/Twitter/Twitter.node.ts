@@ -53,11 +53,6 @@ export class Twitter implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Authorized API Call',
-						value: 'api',
-						description: 'Call any Twitter API',
-					},
-					{
 						name: 'Direct Message',
 						value: 'directMessage',
 						description: 'Send a direct message to a user',
@@ -92,18 +87,6 @@ export class Twitter implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
-			{
-				displayName:
-					"Use the <strong>HTTP Request</strong> node to make a custom API call. You can configure any call to the Twitter API using you credentials. <a href='https://docs.n8n.io/integrations/custom-operations/' target='_blank'>Learn more</a>",
-				name: 'campaigsNotice',
-				type: 'notice',
-				default: '',
-				displayOptions: {
-					show: {
-						resource: ['api'],
-					},
-				},
-			},
 		],
 	};
 
