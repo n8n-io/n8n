@@ -45,11 +45,7 @@
 					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
 					:class="$style.googleReconnectLabel"
 				/>
-				<GoogleAuthButton
-					v-if="isGoogleOAuthType"
-					@click="$emit('oauth')"
-					style="--google-auth-btn-height: 40px"
-				/>
+				<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
 			</template>
 		</banner>
 

@@ -21,6 +21,7 @@ const googleAuthButtons = {
 
 <style module lang="scss">
 .googleAuthBtn {
+	--google-auth-btn-height: 46px;
 	cursor: pointer;
 	border: none;
 	padding: 0;
@@ -29,9 +30,9 @@ const googleAuthButtons = {
 	background-color: transparent;
 	background-size: 100% 100%;
 	border-radius: 4px;
-	height: var(--google-auth-btn-height, 46px);
+	height: var(--google-auth-btn-height);
 	// We have to preserve exact google button ratio
-	width: calc(var(--google-auth-btn-height, 46px) * 4.15217391);
+	width: calc(var(--google-auth-btn-height) * 4.15217391);
 
 	&:focus,
 	&:hover {

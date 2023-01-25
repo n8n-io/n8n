@@ -22,6 +22,5 @@ defineProps<{
 <style module lang="scss">
 .container {
 	display: inline-block;
-	--google-auth-btn-height: 46px;
 }
 </style>
