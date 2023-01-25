@@ -2,6 +2,7 @@ import { Telemetry } from '@/telemetry';
 import config from '@/config';
 import { flushPromises } from './Helpers';
 
+jest.unmock('@/telemetry');
 jest.mock('@/license/License.service', () => {
 	return {
 		LicenseService: {
@@ -38,7 +39,7 @@ describe('Telemetry', () => {
 
 	beforeEach(() => {
 		spyTrack.mockClear();
-		telemetry = new Telemetry(instanceId, n8nVersion);
+		telemetry = new Telemetry(instanceId);
 		(telemetry as any).rudderStack = {
 			flush: () => {},
 			identify: () => {},

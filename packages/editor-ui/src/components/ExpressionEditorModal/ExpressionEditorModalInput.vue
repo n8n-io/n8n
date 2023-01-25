@@ -10,13 +10,14 @@ import { history } from '@codemirror/commands';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { expressionManager } from '@/mixins/expressionManager';
-import { doubleBraceHandler } from '@/plugins/codemirror/doubleBraceHandler';
-import { n8nLanguageSupport } from '@/plugins/codemirror/n8nLanguageSupport';
+import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';
+import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { highlighter } from '@/plugins/codemirror/resolvableHighlighter';
 import { inputTheme } from './theme';
 
 import type { IVariableItemSelected } from '@/Interface';
 import { forceParse } from '@/utils/forceParse';
+import { autocompletion } from '@codemirror/autocomplete';
 
 export default mixins(expressionManager, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
@@ -36,9 +37,10 @@ export default mixins(expressionManager, workflowHelpers).extend({
 	mounted() {
 		const extensions = [
 			inputTheme(),
-			n8nLanguageSupport(),
+			autocompletion(),
+			n8nLang(),
 			history(),
-			doubleBraceHandler(),
+			expressionInputHandler(),
 			EditorView.lineWrapping,
 			EditorState.readOnly.of(this.isReadOnly),
 			EditorView.domEventHandlers({ scroll: forceParse }),

@@ -374,10 +374,7 @@ export class FacebookGraphApi implements INodeType {
 					});
 				}
 
-				const binaryPropertyNameFull = this.getNodeParameter(
-					'binaryPropertyName',
-					itemIndex,
-				) as string;
+				const binaryPropertyNameFull = this.getNodeParameter('binaryPropertyName', itemIndex);
 
 				let propertyName = 'file';
 				let binaryPropertyName = binaryPropertyNameFull;

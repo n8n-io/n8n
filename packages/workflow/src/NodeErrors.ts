@@ -217,6 +217,7 @@ abstract class NodeError extends ExecutionBaseError {
 }
 
 interface NodeOperationErrorOptions {
+	message?: string;
 	description?: string;
 	runIndex?: number;
 	itemIndex?: number;
@@ -234,6 +235,9 @@ export class NodeOperationError extends NodeError {
 		}
 		super(node, error);
 
+		if (options.message) {
+			this.message = options.message;
+		}
 		this.description = options.description;
 		this.context.runIndex = options.runIndex;
 		this.context.itemIndex = options.itemIndex;

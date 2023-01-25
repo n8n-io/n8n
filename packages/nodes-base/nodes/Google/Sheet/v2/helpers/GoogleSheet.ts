@@ -1,4 +1,4 @@
-import { IDataObject, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IPollFunctions, NodeOperationError } from 'n8n-workflow';
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { apiRequest } from '../transport';
 import { utils as xlsxUtils } from 'xlsx';
@@ -17,9 +17,12 @@ import { removeEmptyColumns } from './GoogleSheets.utils';
 export class GoogleSheet {
 	id: string;
 
-	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions;
+	executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions;
 
-	constructor(spreadsheetId: string, executeFunctions: IExecuteFunctions | ILoadOptionsFunctions) {
+	constructor(
+		spreadsheetId: string,
+		executeFunctions: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
+	) {
 		this.executeFunctions = executeFunctions;
 		this.id = spreadsheetId;
 	}
@@ -465,15 +468,27 @@ export class GoogleSheet {
 			);
 		}
 
-		const columnValues =
+		const columnValues: Array<string | number> =
 			columnValuesList ||
 			(await this.getColumnValues(range, keyIndex, dataStartRowIndex, valueRenderMode));
 
 		const updateData: ISheetUpdateData[] = [];
 		const appendData: IDataObject[] = [];
 
+		const getKeyIndex = (key: string | number, data: Array<string | number>) => {
+			let index = -1;
+			for (let i = 0; i < data.length; i++) {
+				if (data[i]?.toString() === key.toString()) {
+					index = i;
+					break;
+				}
+			}
+			return index;
+		};
+
 		for (const item of inputData) {
 			const inputIndexKey = item[indexKey] as string;
+
 			if (inputIndexKey === undefined || inputIndexKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
@@ -483,7 +498,8 @@ export class GoogleSheet {
 			}
 
 			// Item does have the key so check if it exists in Sheet
-			const indexOfIndexKeyInSheet = columnValues.indexOf(inputIndexKey);
+			const indexOfIndexKeyInSheet = getKeyIndex(inputIndexKey, columnValues);
+
 			if (indexOfIndexKeyInSheet === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
@@ -569,6 +585,7 @@ export class GoogleSheet {
 				}
 			}
 		}
+
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
@@ -604,7 +621,13 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.convertSheetDataArrayToObjectArray(removeEmptyColumns(returnData), 1, keys, true);
+		const dataWithoutEmptyColumns = removeEmptyColumns(returnData);
+		return this.convertSheetDataArrayToObjectArray(
+			dataWithoutEmptyColumns,
+			1,
+			dataWithoutEmptyColumns[0] as string[],
+			true,
+		);
 	}
 
 	private async convertObjectArrayToSheetDataArray(

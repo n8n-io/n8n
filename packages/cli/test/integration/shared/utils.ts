@@ -8,6 +8,7 @@ import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
+	ICredentialTypes,
 	IDataObject,
 	IExecuteFunctions,
 	INode,
@@ -25,8 +26,6 @@ import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
-
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -66,10 +65,16 @@ import type {
 	PostgresSchemaSection,
 } from './types';
 import { licenseController } from '@/license/license.controller';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+
+import { v4 as uuid } from 'uuid';
+import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
 };
 
 const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
@@ -125,7 +130,9 @@ export async function initTestServer({
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
 			license: { controller: licenseController, path: 'license' },
+			eventBus: { controller: eventBusRouter, path: 'eventbus' },
 			publicApi: apiRouters,
+			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		for (const group of routerEndpoints) {
@@ -158,7 +165,7 @@ export async function initTestServer({
  * Pre-requisite: Mock the telemetry module before calling.
  */
 export function initTestTelemetry() {
-	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
+	void InternalHooksManager.init('test-instance-id', mockNodeTypes);
 }
 
 /**
@@ -169,7 +176,15 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'license'];
+	const ROUTER_GROUP = [
+		'credentials',
+		'nodes',
+		'workflows',
+		'publicApi',
+		'ldap',
+		'eventBus',
+		'license',
+	];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -202,18 +217,21 @@ export function gitHubCredentialType(): ICredentialType {
 				name: 'server',
 				type: 'string',
 				default: 'https://api.github.com',
+				required: true,
 				description: 'The server to connect to. Only has to be set if Github Enterprise is used.',
 			},
 			{
 				displayName: 'User',
 				name: 'user',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 			{
 				displayName: 'Access Token',
 				name: 'accessToken',
 				type: 'string',
+				required: true,
 				default: '',
 			},
 		],
@@ -230,6 +248,13 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	};
+}
+
+/**
+ * Initialize LDAP manager.
+ */
+export async function initLdapManager(): Promise<void> {
+	await handleLdapInit();
 }
 
 /**
@@ -639,7 +664,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.findOneOrFail({
+	const { value } = await Db.collections.Settings.findOneByOrFail({
 		key: 'userManagement.isInstanceOwnerSetUp',
 	});
 
@@ -649,20 +674,6 @@ export async function isInstanceOwnerSetUp() {
 // ----------------------------------
 //              misc
 // ----------------------------------
-
-/**
- * Categorize array items into two groups based on whether they pass a test.
- */
-export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
-	);
-};
 
 export function getPostgresSchemaSection(
 	schema = config.getSchema(),

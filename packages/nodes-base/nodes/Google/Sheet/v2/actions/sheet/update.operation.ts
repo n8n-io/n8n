@@ -251,9 +251,14 @@ export async function execute(
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
-			const fields = (
-				(this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]) || []
-			).reduce((acc, entry) => {
+			const valuesToSend = this.getNodeParameter('fieldsUi.values', i, []) as IDataObject[];
+			if (!valuesToSend?.length) {
+				throw new NodeOperationError(
+					this.getNode(),
+					"At least one value has to be added under 'Values to Send'",
+				);
+			}
+			const fields = valuesToSend.reduce((acc, entry) => {
 				if (entry.column === 'newColumn') {
 					const columnName = entry.columnName as string;
 

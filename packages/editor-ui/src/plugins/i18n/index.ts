@@ -325,6 +325,153 @@ export class I18nClass {
 			},
 		};
 	}
+
+	rootVars: Record<string, string | undefined> = {
+		$binary: this.baseText('codeNodeEditor.completer.binary'),
+		$execution: this.baseText('codeNodeEditor.completer.$execution'),
+		$input: this.baseText('codeNodeEditor.completer.$input'),
+		'$jmespath()': this.baseText('codeNodeEditor.completer.$jmespath'),
+		$json: this.baseText('codeNodeEditor.completer.json'),
+		$itemIndex: this.baseText('codeNodeEditor.completer.$itemIndex'),
+		$now: this.baseText('codeNodeEditor.completer.$now'),
+		$prevNode: this.baseText('codeNodeEditor.completer.$prevNode'),
+		$runIndex: this.baseText('codeNodeEditor.completer.$runIndex'),
+		$today: this.baseText('codeNodeEditor.completer.$today'),
+		$workflow: this.baseText('codeNodeEditor.completer.$workflow'),
+	};
+
+	proxyVars: Record<string, string | undefined> = {
+		'$input.all': this.baseText('codeNodeEditor.completer.$input.all'),
+		'$input.first': this.baseText('codeNodeEditor.completer.$input.first'),
+		'$input.item': this.baseText('codeNodeEditor.completer.$input.item'),
+		'$input.last': this.baseText('codeNodeEditor.completer.$input.last'),
+
+		'$().all': this.baseText('codeNodeEditor.completer.selector.all'),
+		'$().context': this.baseText('codeNodeEditor.completer.selector.context'),
+		'$().first': this.baseText('codeNodeEditor.completer.selector.first'),
+		'$().item': this.baseText('codeNodeEditor.completer.selector.item'),
+		'$().itemMatching': this.baseText('codeNodeEditor.completer.selector.itemMatching'),
+		'$().last': this.baseText('codeNodeEditor.completer.selector.last'),
+		'$().params': this.baseText('codeNodeEditor.completer.selector.params'),
+
+		'$prevNode.name': this.baseText('codeNodeEditor.completer.$prevNode.name'),
+		'$prevNode.outputIndex': this.baseText('codeNodeEditor.completer.$prevNode.outputIndex'),
+		'$prevNode.runIndex': this.baseText('codeNodeEditor.completer.$prevNode.runIndex'),
+
+		'$execution.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
+		'$execution.mode': this.baseText('codeNodeEditor.completer.$execution.mode'),
+		'$execution.resumeUrl': this.baseText('codeNodeEditor.completer.$execution.resumeUrl'),
+
+		'$workflow.active': this.baseText('codeNodeEditor.completer.$workflow.active'),
+		'$workflow.id': this.baseText('codeNodeEditor.completer.$workflow.id'),
+		'$workflow.name': this.baseText('codeNodeEditor.completer.$workflow.name'),
+	};
+
+	luxonInstance: Record<string, string | undefined> = {
+		// getters
+		isValid: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isValid'),
+		invalidReason: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.invalidReason'),
+		invalidExplanation: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.invalidExplanation',
+		),
+		locale: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.locale'),
+		numberingSystem: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.numberingSystem',
+		),
+		outputCalendar: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.outputCalendar'),
+		zone: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.zone'),
+		zoneName: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.zoneName'),
+		year: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.year'),
+		quarter: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.quarter'),
+		month: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.month'),
+		day: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.day'),
+		hour: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.hour'),
+		minute: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.minute'),
+		second: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.second'),
+		millisecond: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.millisecond'),
+		weekYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekYear'),
+		weekNumber: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekNumber'),
+		weekday: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekday'),
+		ordinal: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.ordinal'),
+		monthShort: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.monthShort'),
+		monthLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.monthLong'),
+		weekdayShort: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekdayShort'),
+		weekdayLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.weekdayLong'),
+		offset: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offset'),
+		offsetNumber: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offsetNumber'),
+		offsetNameShort: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.offsetNameShort',
+		),
+		offsetNameLong: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.offsetNameLong'),
+		isOffsetFixed: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isOffsetFixed'),
+		isInDST: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isInDST'),
+		isInLeapYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.isInLeapYear'),
+		daysInMonth: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.daysInMonth'),
+		daysInYear: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.daysInYear'),
+		weeksInWeekYear: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.weeksInWeekYear',
+		),
+
+		// methods
+		toUTC: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUTC'),
+		toLocal: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocal'),
+		setZone: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.setZone'),
+		setLocale: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.setLocale'),
+		set: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.set'),
+		plus: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.plus'),
+		minus: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.minus'),
+		startOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.startOf'),
+		endOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.endOf'),
+		toFormat: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toFormat'),
+		toLocaleString: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocaleString'),
+		toLocaleParts: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toLocaleParts'),
+		toISO: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISO'),
+		toISODate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISODate'),
+		toISOWeekDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISOWeekDate'),
+		toISOTime: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toISOTime'),
+		toRFC2822: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toRFC2822'),
+		toHTTP: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toHTTP'),
+		toSQLDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQLDate'),
+		toSQLTime: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQLTime'),
+		toSQL: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSQL'),
+		toString: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toString'),
+		valueOf: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.valueOf'),
+		toMillis: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toMillis'),
+		toSeconds: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toSeconds'),
+		toUnixInteger: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toUnixInteger'),
+		toJSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJSON'),
+		toBSON: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toBSON'),
+		toObject: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toObject'),
+		toJsDate: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toJsDate'),
+		diff: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diff'),
+		diffNow: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.diffNow'),
+		until: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.until'),
+		hasSame: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.hasSame'),
+		equals: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.equals'),
+		toRelative: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.toRelative'),
+		toRelativeCalendar: this.baseText(
+			'codeNodeEditor.completer.luxon.instanceMethods.toRelativeCalendar',
+		),
+		min: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.min'),
+		max: this.baseText('codeNodeEditor.completer.luxon.instanceMethods.max'),
+	};
+
+	luxonStatic: Record<string, string | undefined> = {
+		now: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.now'),
+		local: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.local'),
+		utc: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.utc'),
+		fromJSDate: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromJSDate'),
+		fromMillis: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromMillis'),
+		fromSeconds: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSeconds'),
+		fromObject: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromObject'),
+		fromISO: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromISO'),
+		fromRFC2822: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromRFC2822'),
+		fromHTTP: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromHTTP'),
+		fromFormat: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromFormat'),
+		fromSQL: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.fromSQL'),
+		invalid: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.invalid'),
+		isDateTime: this.baseText('codeNodeEditor.completer.luxon.dateTimeStaticMethods.isDateTime'),
+	};
 }
 
 export const i18nInstance = new VueI18n({

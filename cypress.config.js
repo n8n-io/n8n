@@ -24,6 +24,8 @@ module.exports = defineConfig({
 						body: JSON.stringify(payload),
 						headers: { 'Content-Type': 'application/json' },
 					}),
+				'enable-feature': (feature) =>
+					fetch(BASE_URL + `/e2e/enable-feature/${feature}`, { method: 'POST' }),
 			});
 		},
 	},

@@ -67,6 +67,7 @@
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
+					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
@@ -100,6 +101,7 @@
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
+						data-test-id="ndv-pin-data"
 					/>
 				</n8n-tooltip>
 
@@ -590,10 +592,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 			this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
-			if (!hasSeenPinDataTooltip) {
-				this.showPinDataDiscoveryTooltip(this.jsonData);
-			}
+			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
 		this.ndvStore.setNDVBranchIndex({
 			pane: this.paneType as 'input' | 'output',
@@ -861,7 +860,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return;
 			}
 
-			if (value && value.length > 0) {
+			if (
+				value &&
+				value.length > 0 &&
+				!this.isReadOnly &&
+				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
+			) {
 				this.pinDataDiscoveryComplete();
 
 				setTimeout(() => {
@@ -1290,11 +1294,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		},
 		jsonData(value: IDataObject[]) {
 			this.refreshDataSize();
-
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
-			if (!hasSeenPinDataTooltip) {
-				this.showPinDataDiscoveryTooltip(value);
-			}
+			this.showPinDataDiscoveryTooltip(value);
 		},
 		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 			if (newData.length && !prevData.length && this.displayMode !== 'binary') {

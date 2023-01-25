@@ -243,7 +243,7 @@ export class GoogleChat implements INodeType {
 
 						items[i] = newItem;
 
-						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 						items[i].binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
 							responseData,

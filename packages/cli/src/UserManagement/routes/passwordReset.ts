@@ -13,9 +13,10 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import { N8nApp } from '../Interfaces';
 import { getInstanceBaseUrl, hashPassword, validatePassword } from '../UserManagementHelper';
 import * as UserManagementMailer from '../email';
-import type { PasswordResetRequest } from '../../requests';
+import type { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import config from '@/config';
+import { isLdapEnabled } from '@/Ldap/helpers';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -52,14 +53,27 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOne({
+				where: {
+					email,
+					password: Not(IsNull()),
+				},
+				relations: ['authIdentities'],
+			});
+			const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
 
-			if (!user?.password) {
+			if (!user?.password || (ldapIdentity && user.disabled)) {
 				Logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
 				);
 				return;
+			}
+
+			if (isLdapEnabled() && ldapIdentity) {
+				throw new ResponseHelper.UnprocessableRequestError(
+					'forgotPassword.ldapUserPasswordResetUnavailable',
+				);
 			}
 
 			user.resetPasswordToken = uuid();
@@ -76,7 +90,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			url.searchParams.append('token', resetPasswordToken);
 
 			try {
-				const mailer = await UserManagementMailer.getInstance();
+				const mailer = UserManagementMailer.getInstance();
 				await mailer.passwordReset({
 					email,
 					firstName,
@@ -86,7 +100,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
-					user_id: user.id,
+					user,
 					message_type: 'Reset password',
 					public_api: false,
 				});
@@ -105,7 +119,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			});
 
 			void InternalHooksManager.getInstance().onUserPasswordResetRequestClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -133,7 +147,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// Timestamp is saved in seconds
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
-			const user = await Db.collections.User.findOne({
+			const user = await Db.collections.User.findOneBy({
 				id,
 				resetPasswordToken,
 				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
@@ -152,7 +166,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			Logger.info('Reset-password token resolved successfully', { userId: id });
 			void InternalHooksManager.getInstance().onUserPasswordResetEmailClick({
-				user_id: id,
+				user,
 			});
 		}),
 	);
@@ -185,9 +199,12 @@ export function passwordResetNamespace(this: N8nApp): void {
 			const currentTimestamp = Math.floor(Date.now() / 1000);
 
 			const user = await Db.collections.User.findOne({
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+				where: {
+					id: userId,
+					resetPasswordToken,
+					resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+				},
+				relations: ['authIdentities'],
 			});
 
 			if (!user) {
@@ -212,9 +229,18 @@ export function passwordResetNamespace(this: N8nApp): void {
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: userId,
+				user,
 				fields_changed: ['password'],
 			});
+
+			// if this user used to be an LDAP users
+			const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+			if (ldapIdentity) {
+				void InternalHooksManager.getInstance().onUserSignup(user, {
+					user_type: 'email',
+					was_disabled_ldap_user: true,
+				});
+			}
 
 			await this.externalHooks.run('user.password.update', [user.email, password]);
 		}),

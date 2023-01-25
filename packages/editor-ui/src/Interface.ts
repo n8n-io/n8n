@@ -37,8 +37,10 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import { SignInType } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
@@ -236,6 +238,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
 export interface INodeTranslationHeaders {
@@ -544,6 +547,11 @@ export interface IPushDataExecutionFinished {
 	retryOf?: string;
 }
 
+export interface IPushDataUnsavedExecutionFinished {
+	executionId: string;
+	data: { finished: true; stoppedAt: Date };
+}
+
 export interface IPushDataExecutionStarted {
 	executionId: string;
 }
@@ -635,12 +643,14 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
+	signInType?: SignInType;
 }
 
 export interface IUser extends IUserResponse {
 	isDefaultUser: boolean;
 	isPendingUser: boolean;
 	isOwner: boolean;
+	inviteAcceptUrl?: string;
 	fullName?: string;
 	createdAt?: Date;
 }
@@ -800,6 +810,10 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
 		builtIn?: string[];
@@ -954,6 +968,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	pristine: boolean;
 }
 
 export interface IUsedCredential {
@@ -1187,7 +1202,11 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[];
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
+export type IFakeDoorLocation =
+	| 'settings'
+	| 'settings/users'
+	| 'credentialsModal'
+	| 'workflowShareModal';
 
 export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
 
@@ -1210,6 +1229,10 @@ export interface ISettingsState {
 		swaggerUi: {
 			enabled: boolean;
 		};
+	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1293,6 +1316,8 @@ export interface IInviteResponse {
 	user: {
 		id: string;
 		email: string;
+		emailSent: boolean;
+		inviteAcceptUrl: string;
 	};
 	error?: string;
 }
@@ -1370,6 +1395,50 @@ export type SchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
+
+export interface ILdapSyncData {
+	id: number;
+	startedAt: string;
+	endedAt: string;
+	created: number;
+	updated: number;
+	disabled: number;
+	scanned: number;
+	status: string;
+	error: string;
+	runMode: string;
+}
+
+export interface ILdapSyncTable {
+	status: string;
+	endedAt: string;
+	runTime: string;
+	runMode: string;
+	details: string;
+}
+
+export interface ILdapConfig {
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: string;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
+}
+
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {

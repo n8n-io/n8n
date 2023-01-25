@@ -34,7 +34,6 @@ import { CredentialTypes } from '@/CredentialTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
@@ -111,8 +110,7 @@ class WorkflowRunnerProcess {
 		await externalHooks.init();
 
 		const instanceId = (await UserSettings.prepareUserSettings()).instanceId ?? '';
-		const { cli } = await GenericHelpers.getVersions();
-		await InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		const binaryDataConfig = config.getEnv('binaryDataManager');
 		await BinaryDataManager.init(binaryDataConfig);
@@ -121,7 +119,7 @@ class WorkflowRunnerProcess {
 		await Db.init();
 
 		const license = getLicense();
-		await license.init(instanceId, cli);
+		await license.init(instanceId);
 
 		// Start timeout for the execution
 		let workflowTimeout = config.getEnv('executions.timeout'); // initialize with default
@@ -222,6 +220,9 @@ class WorkflowRunnerProcess {
 					resolve(executionId);
 				};
 			});
+
+			void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+
 			let result: IRun;
 			try {
 				const executeWorkflowFunctionOutput = (await executeWorkflowFunction(

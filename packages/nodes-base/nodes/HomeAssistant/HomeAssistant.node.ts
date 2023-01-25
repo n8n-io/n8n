@@ -392,10 +392,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'cameraProxy') {
 					if (operation === 'getScreenshot') {
 						const cameraEntityId = this.getNodeParameter('cameraEntityId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter(
-							'binaryPropertyName',
-							i,
-						) as string;
+						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i);
 						const endpoint = `/camera_proxy/${cameraEntityId}`;
 
 						let mimeType: string | undefined;

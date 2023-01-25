@@ -228,7 +228,7 @@ const config = (module.exports = {
 			},
 			{
 				selector: 'property',
-				format: ['camelCase', 'snake_case'],
+				format: ['camelCase', 'snake_case', 'UPPER_CASE'],
 				leadingUnderscore: 'allowSingleOrDouble',
 				trailingUnderscore: 'allowSingleOrDouble',
 			},
@@ -404,6 +404,15 @@ const config = (module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
+
+	overrides: [
+		{
+			files: ['**/*.d.ts'],
+			rules: {
+				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+	],
 });
 
 if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {

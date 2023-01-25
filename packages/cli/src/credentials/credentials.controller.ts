@@ -130,6 +130,8 @@ credentialsController.post(
 		const credential = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void InternalHooksManager.getInstance().onUserCreatedCredentials({
+			user: req.user,
+			credential_name: newCredential.name,
 			credential_type: credential.type,
 			credential_id: credential.id,
 			public_api: false,
@@ -175,7 +177,7 @@ credentialsController.patch(
 
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
-		if (responseData === undefined) {
+		if (responseData === null) {
 			throw new ResponseHelper.NotFoundError(
 				`Credential ID "${credentialId}" could not be found to be updated.`,
 			);

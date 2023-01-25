@@ -130,7 +130,7 @@ export class WorkflowDataProxy {
 			return {}; // incoming connection has pinned data, so stub context object
 		}
 
-		if (!that.runExecutionData?.executionData) {
+		if (!that.runExecutionData?.executionData && !that.runExecutionData?.resultData) {
 			throw new ExpressionError(
 				"The workflow hasn't been executed yet, so you can't reference any context data",
 				{
@@ -358,12 +358,6 @@ export class WorkflowDataProxy {
 			executionData = taskData.main[outputIndex] as INodeExecutionData[];
 		} else {
 			// Short syntax got used to return data from active node
-
-			// TODO: Here have to generate connection Input data for the current node by itself
-			// Data needed:
-			// #- the run-index
-			// - node which did send data (has to be the one from last recent execution)
-			// - later also the name of the input and its index (currently not needed as it is always "main" and index "0")
 			executionData = that.connectionInputData;
 		}
 
@@ -579,7 +573,8 @@ export class WorkflowDataProxy {
 						throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 							runIndex: that.runIndex,
 							itemIndex: that.itemIndex,
-							failExecution: true,
+							// TODO: re-enable this for v1.0.0 release
+							// failExecution: true,
 						});
 					}
 
@@ -931,6 +926,18 @@ export class WorkflowDataProxy {
 				return new Proxy(
 					{},
 					{
+						ownKeys(target) {
+							return [
+								'pairedItem',
+								'itemMatching',
+								'item',
+								'first',
+								'last',
+								'all',
+								'context',
+								'params',
+							];
+						},
 						get(target, property, receiver) {
 							if (['pairedItem', 'itemMatching', 'item'].includes(property as string)) {
 								const pairedItemMethod = (itemIndex?: number) => {
@@ -1161,6 +1168,15 @@ export class WorkflowDataProxy {
 			$items: (nodeName?: string, outputIndex?: number, runIndex?: number) => {
 				if (nodeName === undefined) {
 					nodeName = (that.prevNodeGetter() as { name: string }).name;
+					const node = this.workflow.nodes[nodeName];
+					let result = that.connectionInputData;
+					if (node.executeOnce === true) {
+						result = result.slice(0, 1);
+					}
+					if (result.length) {
+						return result;
+					}
+					return [];
 				}
 
 				outputIndex = outputIndex || 0;
