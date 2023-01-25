@@ -12,7 +12,7 @@
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
-						<CredentialIcon :credentialTypeName="getDefaultCredentialTypeName" />
+						<CredentialIcon :credentialTypeName="defaultCredentialTypeName" />
 					</div>
 					<InlineNameEdit
 						:name="credentialName"
@@ -156,6 +156,7 @@ import {
 	getNodeAuthOptions,
 	getNodeCredentialForSelectedAuthType,
 	updateNodeAuthType,
+	isCredentialModalState,
 } from '@/utils';
 
 interface NodeAccessMap {
@@ -212,14 +213,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	async mounted() {
 		this.requiredCredentials =
-			(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY] as NewCredentialsModal)
-				.requiredCredentials === true;
+			isCredentialModalState(this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY]) &&
+			this.uiStore.modals[CREDENTIAL_EDIT_MODAL_KEY].showAuthSelector === true;
 
 		this.setupNodeAccess();
 
 		if (this.mode === 'new' && this.credentialTypeName) {
 			this.credentialName = await this.credentialsStore.getNewCredentialName({
-				credentialTypeName: this.getDefaultCredentialTypeName,
+				credentialTypeName: this.defaultCredentialTypeName,
 			});
 
 			if (this.currentUser) {
@@ -461,7 +462,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		isSharingAvailable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
-		getDefaultCredentialTypeName(): string {
+		defaultCredentialTypeName(): string {
 			let credentialTypeName = this.credentialTypeName;
 			if (!credentialTypeName || credentialTypeName === 'null') {
 				if (this.activeNodeType && this.activeNodeType.credentials) {
@@ -1013,7 +1014,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				// Also update credential name but only if the default name is still used
 				if (this.hasUnsavedChanges && !this.hasUserSpecifiedName) {
 					const newDefaultName = await this.credentialsStore.getNewCredentialName({
-						credentialTypeName: this.getDefaultCredentialTypeName,
+						credentialTypeName: this.defaultCredentialTypeName,
 					});
 					this.credentialName = newDefaultName;
 				}

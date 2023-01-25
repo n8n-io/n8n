@@ -1,34 +1,3 @@
-<template>
-	<div data-test-id="node-auth-type-selector">
-		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
-			<parameter-input-full
-				:parameter="parameter"
-				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
-				:path="parameter.name"
-				:displayOptions="false"
-				@valueChanged="valueChanged"
-			/>
-		</div>
-		<div>
-			<n8n-input-label
-				:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
-				:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
-				:required="true"
-			/>
-		</div>
-		<el-radio
-			v-for="prop in filteredNodeAuthOptions"
-			:key="prop.value"
-			v-model="selected"
-			:label="prop.value"
-			:class="$style.authRadioButton"
-			border
-			@change="onAuthTypeChange"
-			>{{ prop.name }}</el-radio
-		>
-	</div>
-</template>
-
 <script setup lang="ts">
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
@@ -140,6 +109,37 @@ defineExpose({
 	onAuthTypeChange,
 });
 </script>
+
+<template>
+	<div data-test-id="node-auth-type-selector">
+		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
+			<parameter-input-full
+				:parameter="parameter"
+				:value="authRelatedFieldsValues[parameter.name] || parameter.default"
+				:path="parameter.name"
+				:displayOptions="false"
+				@valueChanged="valueChanged"
+			/>
+		</div>
+		<div>
+			<n8n-input-label
+				:label="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorLabel')"
+				:tooltipText="$locale.baseText('credentialEdit.credentialConfig.authTypeSelectorTooltip')"
+				:required="true"
+			/>
+		</div>
+		<el-radio
+			v-for="prop in filteredNodeAuthOptions"
+			:key="prop.value"
+			v-model="selected"
+			:label="prop.value"
+			:class="$style.authRadioButton"
+			border
+			@change="onAuthTypeChange"
+			>{{ prop.name }}</el-radio
+		>
+	</div>
+</template>
 
 <style lang="scss" module>
 .authRadioButton {

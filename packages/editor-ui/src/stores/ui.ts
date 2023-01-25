@@ -1,4 +1,3 @@
-import { useNDVStore } from '@/stores/ndv';
 import {
 	applyForOnboardingCall,
 	fetchNextOnboardingPrompt,
@@ -62,12 +61,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			[CONTACT_PROMPT_MODAL_KEY]: {
 				open: false,
 			},
-			[CREDENTIAL_EDIT_MODAL_KEY]: {
-				open: false,
-				mode: '',
-				activeId: null,
-				requiredCredentials: false,
-			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
 			},
@@ -124,6 +117,12 @@ export const useUIStore = defineStore(STORES.UI, {
 			[LOG_STREAM_MODAL_KEY]: {
 				open: false,
 				data: undefined,
+			},
+			[CREDENTIAL_EDIT_MODAL_KEY]: {
+				open: false,
+				mode: '',
+				activeId: null,
+				showAuthSelector: false,
 			},
 		},
 		modalStack: [],
@@ -292,8 +291,8 @@ export const useUIStore = defineStore(STORES.UI, {
 		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
-		setRequiredCredentials(name: string, show: boolean) {
-			Vue.set(this.modals[name], 'requiredCredentials', show);
+		setShowAuthSelector(name: string, show: boolean) {
+			Vue.set(this.modals[name], 'showAuthSelector', show);
 		},
 		setModalData(payload: { name: string; data: Record<string, unknown> }) {
 			Vue.set(this.modals[payload.name], 'data', payload.data);
@@ -355,7 +354,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		},
 		openNewCredential(type: string, showAuthOptions = false): void {
 			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
-			this.setRequiredCredentials(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
+			this.setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},

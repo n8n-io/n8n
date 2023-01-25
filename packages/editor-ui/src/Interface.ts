@@ -1,3 +1,4 @@
+import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IMenuItem } from 'n8n-design-system';
 import {
@@ -1083,18 +1084,26 @@ export interface ITagsState {
 	fetchedUsageCount: boolean;
 }
 
-export interface IModalState {
+export type Modals =
+	| {
+			[key: string]: ModalState;
+	  }
+	| {
+			[CREDENTIAL_EDIT_MODAL_KEY]: NewCredentialsModal;
+	  };
+
+export type ModalState = {
 	open: boolean;
 	mode?: string | null;
 	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
-}
+};
 
-export interface NewCredentialsModal extends IModalState {
-	requiredCredentials?: boolean;
-}
+export type NewCredentialsModal = ModalState & {
+	showAuthSelector?: boolean;
+};
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
 export type NodePanelType = 'input' | 'output';
@@ -1142,28 +1151,12 @@ export interface NDVState {
 	};
 }
 
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
-	isPageLoading: boolean;
-	currentView: string;
-	fakeDoorFeatures: IFakeDoor[];
-	nodeViewInitialized: boolean;
-	addFirstStepOnLoad: boolean;
-	executionSidebarAutoRefresh: boolean;
-}
-
 export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
-	modals: {
-		[key: string]: IModalState | NewCredentialsModal;
-	};
+	modals: Modals;
 	isPageLoading: boolean;
 	currentView: string;
 	mainPanelPosition: number;
