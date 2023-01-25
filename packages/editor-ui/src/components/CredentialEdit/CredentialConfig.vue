@@ -41,6 +41,10 @@
 			@click="$emit('oauth')"
 		>
 			<template #button>
+				<p
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+					:class="$style.googleReconnectLabel"
+				/>
 				<GoogleAuthButton
 					v-if="isGoogleOAuthType"
 					@click="$emit('oauth')"
@@ -314,5 +318,8 @@ export default mixins(restApi).extend({
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
+}
+.googleReconnectLabel {
+	margin-right: var(--spacing-3xs);
 }
 </style>
