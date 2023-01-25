@@ -7,13 +7,11 @@ import type { Role } from '@db/entities/Role';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 let app: express.Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['auth'], applyAuth: true });
@@ -22,10 +20,8 @@ beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
-	authAgent = utils.createAuthAgent(app);
-
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
@@ -135,7 +131,7 @@ test('GET /login should return 401 Unauthorized if invalid cookie', async () => 
 test('GET /login should return logged-in owner shell', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(ownerShell).get('/login');
+	const response = await utils.createAuthAgent(app, ownerShell).get('/login');
 
 	expect(response.statusCode).toBe(200);
 
@@ -171,7 +167,7 @@ test('GET /login should return logged-in owner shell', async () => {
 test('GET /login should return logged-in member shell', async () => {
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authAgent(memberShell).get('/login');
+	const response = await utils.createAuthAgent(app, memberShell).get('/login');
 
 	expect(response.statusCode).toBe(200);
 
@@ -207,7 +203,7 @@ test('GET /login should return logged-in member shell', async () => {
 test('GET /login should return logged-in owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const response = await authAgent(owner).get('/login');
+	const response = await utils.createAuthAgent(app, owner).get('/login');
 
 	expect(response.statusCode).toBe(200);
 
@@ -243,7 +239,7 @@ test('GET /login should return logged-in owner', async () => {
 test('GET /login should return logged-in member', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authAgent(member).get('/login');
+	const response = await utils.createAuthAgent(app, member).get('/login');
 
 	expect(response.statusCode).toBe(200);
 
@@ -279,7 +275,7 @@ test('GET /login should return logged-in member', async () => {
 test('POST /logout should log user out', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const response = await authAgent(owner).post('/logout');
+	const response = await utils.createAuthAgent(app, owner).post('/logout');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(LOGGED_OUT_RESPONSE_BODY);

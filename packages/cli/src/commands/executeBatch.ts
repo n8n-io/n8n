@@ -122,10 +122,9 @@ export class ExecuteBatch extends Command {
 
 		ExecuteBatch.cancelled = true;
 		const activeExecutionsInstance = ActiveExecutions.getInstance();
-		const stopPromises = activeExecutionsInstance.getActiveExecutions().map(async (execution) => {
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			activeExecutionsInstance.stopExecution(execution.id);
-		});
+		const stopPromises = activeExecutionsInstance
+			.getActiveExecutions()
+			.map(async (execution) => activeExecutionsInstance.stopExecution(execution.id));
 
 		await Promise.allSettled(stopPromises);
 

@@ -345,7 +345,6 @@ export class Start extends Command {
 			if (dbType === 'sqlite') {
 				const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 				if (shouldRunVacuum) {
-					// eslint-disable-next-line @typescript-eslint/no-floating-promises
 					await Db.collections.Execution.query('VACUUM;');
 				}
 			}
@@ -437,8 +436,7 @@ export class Start extends Command {
 						inputText = '';
 					} else if (key.charCodeAt(0) === 3) {
 						// Ctrl + c got pressed
-						// eslint-disable-next-line @typescript-eslint/no-floating-promises
-						Start.stopProcess();
+						void Start.stopProcess();
 					} else {
 						// When anything else got pressed, record it and send it on enter into the child process
 						// eslint-disable-next-line no-lonely-if

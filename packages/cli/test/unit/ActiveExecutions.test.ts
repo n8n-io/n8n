@@ -159,12 +159,10 @@ function mockFullRunData(): IRun {
 	};
 }
 
-function mockCancelablePromise(): PCancelable<IRun> {
-	return new PCancelable(async (resolve) => {
-		resolve();
-	});
+async function mockCancelablePromise(): PCancelable<IRun> {
+	return new PCancelable((resolve) => resolve());
 }
 
-function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
+async function mockDeferredPromise(): Promise<IDeferredPromise<IExecuteResponsePromiseData>> {
 	return createDeferredPromise<IExecuteResponsePromiseData>();
 }

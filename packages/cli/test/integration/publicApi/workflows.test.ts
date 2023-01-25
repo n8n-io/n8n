@@ -27,9 +27,9 @@ beforeAll(async () => {
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 	utils.initTestLogger();
-	utils.initConfigFile();
+	await utils.initConfigFile();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
 });
@@ -360,7 +360,7 @@ test('GET /workflows/:id should fail due to missing API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authOwnerAgent.get('/workflows/2');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -377,7 +377,7 @@ test('GET /workflows/:id should fail due to invalid API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authOwnerAgent.get('/workflows/2');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -392,7 +392,7 @@ test('GET /workflows/:id should fail due to non-existing workflow', async () => 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.get(`/workflows/2`);
+	const response = await authOwnerAgent.get('/workflows/2');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -471,7 +471,7 @@ test('DELETE /workflows/:id should fail due to missing API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authOwnerAgent.delete('/workflows/2');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -488,7 +488,7 @@ test('DELETE /workflows/:id should fail due to invalid API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authOwnerAgent.delete('/workflows/2');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -503,7 +503,7 @@ test('DELETE /workflows/:id should fail due to non-existing workflow', async () 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.delete(`/workflows/2`);
+	const response = await authOwnerAgent.delete('/workflows/2');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -595,7 +595,7 @@ test('POST /workflows/:id/activate should fail due to missing API Key', async ()
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authOwnerAgent.post('/workflows/2/activate');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -612,7 +612,7 @@ test('POST /workflows/:id/activate should fail due to invalid API Key', async ()
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authOwnerAgent.post('/workflows/2/activate');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -627,7 +627,7 @@ test('POST /workflows/:id/activate should fail due to non-existing workflow', as
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/activate`);
+	const response = await authOwnerAgent.post('/workflows/2/activate');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -757,7 +757,7 @@ test('POST /workflows/:id/deactivate should fail due to missing API Key', async 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authOwnerAgent.post('/workflows/2/deactivate');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -774,7 +774,7 @@ test('POST /workflows/:id/deactivate should fail due to invalid API Key', async 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authOwnerAgent.post('/workflows/2/deactivate');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -789,7 +789,7 @@ test('POST /workflows/:id/deactivate should fail due to non-existing workflow', 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.post(`/workflows/2/deactivate`);
+	const response = await authOwnerAgent.post('/workflows/2/deactivate');
 
 	expect(response.statusCode).toBe(404);
 });
@@ -1013,7 +1013,7 @@ test('PUT /workflows/:id should fail due to missing API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.put(`/workflows/1`);
+	const response = await authOwnerAgent.put('/workflows/1');
 
 	expect(response.statusCode).toBe(401);
 });
@@ -1030,7 +1030,7 @@ test('PUT /workflows/:id should fail due to invalid API Key', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.put(`/workflows/1`).send({});
+	const response = await authOwnerAgent.put('/workflows/1').send({});
 
 	expect(response.statusCode).toBe(401);
 });
@@ -1045,7 +1045,7 @@ test('PUT /workflows/:id should fail due to non-existing workflow', async () => 
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.put(`/workflows/1`).send({
+	const response = await authOwnerAgent.put('/workflows/1').send({
 		name: 'testing',
 		nodes: [
 			{
@@ -1082,7 +1082,7 @@ test('PUT /workflows/:id should fail due to invalid body', async () => {
 		version: 1,
 	});
 
-	const response = await authOwnerAgent.put(`/workflows/1`).send({
+	const response = await authOwnerAgent.put('/workflows/1').send({
 		nodes: [
 			{
 				id: 'uuid-1234',

@@ -16,7 +16,6 @@ describe('Telemetry', () => {
 	const spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
 
 	let telemetry: Telemetry;
-	const n8nVersion = '0.0.0';
 	const instanceId = 'Telemetry unit test';
 	const testDateTime = new Date('2022-01-01 00:00:00');
 
@@ -34,7 +33,7 @@ describe('Telemetry', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		startPulseSpy.mockRestore();
-		telemetry.trackN8nStop();
+		void telemetry.trackN8nStop();
 	});
 
 	beforeEach(() => {
@@ -48,12 +47,12 @@ describe('Telemetry', () => {
 	});
 
 	afterEach(() => {
-		telemetry.trackN8nStop();
+		void telemetry.trackN8nStop();
 	});
 
 	describe('trackN8nStop', () => {
 		test('should call track method', () => {
-			telemetry.trackN8nStop();
+			void telemetry.trackN8nStop();
 			expect(spyTrack).toHaveBeenCalledTimes(1);
 		});
 	});

@@ -9,8 +9,6 @@ export type CollectionName = keyof IDatabaseCollections;
 
 export type ApiPath = 'internal' | 'public';
 
-export type AuthAgent = (user: User) => SuperAgentTest;
-
 type EndpointGroup =
 	| 'me'
 	| 'users'

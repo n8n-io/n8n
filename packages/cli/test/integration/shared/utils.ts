@@ -7,9 +7,9 @@ import express from 'express';
 import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
+	deepCopy,
 	ICredentialType,
 	ICredentialTypes,
-	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
@@ -164,8 +164,8 @@ export async function initTestServer({
 /**
  * Pre-requisite: Mock the telemetry module before calling.
  */
-export function initTestTelemetry() {
-	void InternalHooksManager.init('test-instance-id', mockNodeTypes);
+export async function initTestTelemetry() {
+	await InternalHooksManager.init('test-instance-id', mockNodeTypes);
 }
 
 /**
@@ -202,7 +202,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
  */
 export async function initActiveWorkflowRunner(): Promise<ActiveWorkflowRunner.ActiveWorkflowRunner> {
 	const workflowRunner = ActiveWorkflowRunner.getInstance();
-	workflowRunner.init();
+	await workflowRunner.init();
 	return workflowRunner;
 }
 
@@ -279,7 +279,7 @@ export async function initNodeTypes() {
 					outputs: ['main'],
 					properties: [],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					return this.prepareOutputData(items);
@@ -482,7 +482,7 @@ export async function initNodeTypes() {
 						},
 					],
 				},
-				execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 					const items = this.getInputData();
 
 					if (items.length === 0) {
@@ -496,13 +496,13 @@ export async function initNodeTypes() {
 					for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 						keepOnlySet = this.getNodeParameter('keepOnlySet', itemIndex, false) as boolean;
 						item = items[itemIndex];
-						const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
+						const options = this.getNodeParameter('options', itemIndex, {});
 
 						const newItem: INodeExecutionData = {
 							json: {},
 						};
 
-						if (keepOnlySet !== true) {
+						if (!keepOnlySet) {
 							if (item.binary !== undefined) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
@@ -511,7 +511,7 @@ export async function initNodeTypes() {
 								Object.assign(newItem.binary, item.binary);
 							}
 
-							newItem.json = JSON.parse(JSON.stringify(item.json));
+							newItem.json = deepCopy(item.json);
 						}
 
 						// Add boolean values
@@ -575,12 +575,12 @@ export async function initBinaryManager() {
 /**
  * Initialize a user settings config file if non-existent.
  */
-export function initConfigFile() {
+export async function initConfigFile() {
 	const settingsPath = UserSettings.getUserSettingsPath();
 
 	if (!existsSync(settingsPath)) {
 		const userSettings = { encryptionKey: randomBytes(24).toString('base64') };
-		UserSettings.writeUserSettings(userSettings, settingsPath);
+		await UserSettings.writeUserSettings(userSettings, settingsPath);
 	}
 }
 
@@ -616,8 +616,8 @@ export function createAgent(
 	return agent;
 }
 
-export function createAuthAgent(app: express.Application) {
-	return (user: User) => createAgent(app, { auth: true, user });
+export function createAuthAgent(app: express.Application, user: User) {
+	return createAgent(app, { auth: true, user });
 }
 
 /**
@@ -626,8 +626,8 @@ export function createAuthAgent(app: express.Application) {
  * Example: http://127.0.0.1:62100/me/password → http://127.0.0.1:62100/rest/me/password
  */
 export function prefix(pathSegment: string) {
-	return function (request: superagent.SuperAgentRequest) {
-		const url = new URL(request.url);
+	return async function (req: superagent.SuperAgentRequest) {
+		const url = new URL(req.url);
 
 		// enforce consistency at call sites
 		if (url.pathname[0] !== '/') {
@@ -635,8 +635,8 @@ export function prefix(pathSegment: string) {
 		}
 
 		url.pathname = pathSegment + url.pathname;
-		request.url = url.toString();
-		return request;
+		req.url = url.toString();
+		return req;
 	};
 }
 
@@ -654,7 +654,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 
 	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
 
-	if (!match || !match.groups) return undefined;
+	if (!match?.groups) return undefined;
 
 	return match.groups.token;
 }
@@ -708,7 +708,7 @@ export function installedNodePayload(packageName: string): InstalledNodePayload 
 	};
 }
 
-export const emptyPackage = () => {
+export const emptyPackage = async () => {
 	const installedPackage = new InstalledPackages();
 	installedPackage.installedNodes = [];
 

@@ -21,7 +21,7 @@ beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
 	await testDb.init();
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, _, fetchedCredentialOwnerRole] =
 		await testDb.getAllRoles();
@@ -33,8 +33,8 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	utils.initTestLogger();
-	utils.initTestTelemetry();
-	utils.initCredentialsTypes();
+	await utils.initTestTelemetry();
+	await utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {

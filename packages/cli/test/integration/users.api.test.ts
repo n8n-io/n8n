@@ -17,7 +17,6 @@ import {
 	randomValidPassword,
 } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
 import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
@@ -30,7 +29,6 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
@@ -48,9 +46,7 @@ beforeAll(async () => {
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
 
-	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 	utils.initTestLogger();
 });
 
@@ -74,7 +70,7 @@ test('GET /users should return all users', async () => {
 
 	await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authAgent(owner).get('/users');
+	const response = await utils.createAuthAgent(app, owner).get('/users');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(2);
@@ -147,7 +143,7 @@ test('DELETE /users/:id should delete the user', async () => {
 		credentials: savedCredential,
 	});
 
-	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`);
+	const response = await utils.createAuthAgent(app, owner).delete(`/users/${userToDelete.id}`);
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
@@ -179,7 +175,7 @@ test('DELETE /users/:id should delete the user', async () => {
 test('DELETE /users/:id should fail to delete self', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const response = await authAgent(owner).delete(`/users/${owner.id}`);
+	const response = await utils.createAuthAgent(app, owner).delete(`/users/${owner.id}`);
 
 	expect(response.statusCode).toBe(400);
 
@@ -192,7 +188,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	const { id: idToDelete } = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authAgent(owner).delete(`/users/${idToDelete}`).query({
+	const response = await utils.createAuthAgent(app, owner).delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
 	});
 
@@ -214,9 +210,12 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 		role: credentialOwnerRole,
 	});
 
-	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`).query({
-		transferId: owner.id,
-	});
+	const response = await utils
+		.createAuthAgent(app, owner)
+		.delete(`/users/${userToDelete.id}`)
+		.query({
+			transferId: owner.id,
+		});
 
 	expect(response.statusCode).toBe(200);
 
@@ -246,7 +245,8 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.get('/resolve-signup-token')
 		.query({ inviterId: owner.id })
 		.query({ inviteeId: memberShell.id });
@@ -264,7 +264,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 
 test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = authAgent(owner);
+	const authOwnerAgent = utils.createAuthAgent(app, owner);
 
 	const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -432,7 +432,8 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 test('POST /users should succeed if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
@@ -446,7 +447,8 @@ test('POST /users should fail if user management is disabled', async () => {
 	config.set('userManagement.disabled', true);
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.post('/users')
 		.send([{ email: randomEmail() }]);
 
@@ -464,7 +466,7 @@ test('POST /users should email invites and create user shells but ignore existin
 
 	const payload = testEmails.map((e) => ({ email: e }));
 
-	const response = await authAgent(owner).post('/users').send(payload);
+	const response = await utils.createAuthAgent(app, owner).post('/users').send(payload);
 
 	expect(response.statusCode).toBe(200);
 
@@ -497,7 +499,7 @@ test('POST /users should email invites and create user shells but ignore existin
 
 test('POST /users should fail with invalid inputs', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = authAgent(owner);
+	const authOwnerAgent = utils.createAuthAgent(app, owner);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -525,7 +527,7 @@ test('POST /users should ignore an empty payload', async () => {
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const response = await authAgent(owner).post('/users').send([]);
+	const response = await utils.createAuthAgent(app, owner).post('/users').send([]);
 
 	const { data } = response.body;
 
@@ -572,7 +574,7 @@ test('UserManagementMailer expect NodeMailer.verifyConnection not be called when
 
 	const userManagementMailer = UserManagementMailer.getInstance();
 	// NodeMailer.verifyConnection gets called only explicitly
-	expect(async () => await userManagementMailer.verifyConnection()).rejects.toThrow();
+	expect(async () => userManagementMailer.verifyConnection()).rejects.toThrow();
 
 	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(0);
 
@@ -591,7 +593,7 @@ test('UserManagementMailer expect NodeMailer.verifyConnection to be called when 
 
 	const userManagementMailer = new UserManagementMailer.UserManagementMailer();
 	// NodeMailer.verifyConnection gets called only explicitly
-	expect(async () => await userManagementMailer.verifyConnection()).not.toThrow();
+	expect(async () => userManagementMailer.verifyConnection()).not.toThrow();
 
 	// expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(1);
 	mockVerifyConnection.mockRestore();

@@ -158,8 +158,7 @@ export class TestWebhooks {
 				clearTimeout(this.testWebhookData[webhookKey].timeout);
 				delete this.testWebhookData[webhookKey];
 			}
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			this.activeWebhooks!.removeWorkflow(workflow);
+			void this.activeWebhooks!.removeWorkflow(workflow);
 		});
 	}
 
@@ -288,8 +287,7 @@ export class TestWebhooks {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				this.activeWebhooks!.removeWorkflow(workflow);
+				void this.activeWebhooks!.removeWorkflow(workflow);
 			}
 
 			foundWebhook = true;

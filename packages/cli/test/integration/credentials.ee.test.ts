@@ -9,7 +9,7 @@ import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
+import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 import type { IUser } from 'n8n-workflow';
 
@@ -18,7 +18,6 @@ let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
-let authAgent: AuthAgent;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
@@ -28,17 +27,16 @@ beforeAll(async () => {
 	});
 	await testDb.init();
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
-	authAgent = utils.createAuthAgent(app);
 
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 
 	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
@@ -63,11 +61,15 @@ test('router should switch based on flag', async () => {
 	// free router
 	sharingSpy.mockReturnValueOnce(false);
 
-	const freeShareResponse = authAgent(owner)
+	const freeShareResponse = utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: [member.id] });
 
-	const freeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
+	const freeGetResponse = utils
+		.createAuthAgent(app, owner)
+		.get(`/credentials/${savedCredential.id}`)
+		.send();
 
 	const [{ statusCode: freeShareStatus }, { statusCode: freeGetStatus }] = await Promise.all([
 		freeShareResponse,
@@ -79,11 +81,15 @@ test('router should switch based on flag', async () => {
 
 	// EE router
 
-	const eeShareResponse = authAgent(owner)
+	const eeShareResponse = utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: [member.id] });
 
-	const eeGetResponse = authAgent(owner).get(`/credentials/${savedCredential.id}`).send();
+	const eeGetResponse = utils
+		.createAuthAgent(app, owner)
+		.get(`/credentials/${savedCredential.id}`)
+		.send();
 
 	const [{ statusCode: eeShareStatus }, { statusCode: eeGetStatus }] = await Promise.all([
 		eeShareResponse,
@@ -110,7 +116,7 @@ test('GET /credentials should return all creds for owner', async () => {
 	const sharedWith = [member1, member2, member3];
 	await testDb.shareCredentialWithUsers(savedCredential, sharedWith);
 
-	const response = await authAgent(owner).get('/credentials');
+	const response = await utils.createAuthAgent(app, owner).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data).toHaveLength(2); // owner retrieved owner cred and member cred
@@ -169,7 +175,7 @@ test('GET /credentials should return only relevant creds for member', async () =
 
 	await testDb.shareCredentialWithUsers(savedMemberCredential, [member2]);
 
-	const response = await authAgent(member1).get('/credentials');
+	const response = await utils.createAuthAgent(app, member1).get('/credentials');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data).toHaveLength(1); // member retrieved only member cred
@@ -205,7 +211,7 @@ test('GET /credentials should return only relevant creds for member', async () =
 
 test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
-	const authOwnerAgent = authAgent(ownerShell);
+	const authOwnerAgent = utils.createAuthAgent(app, ownerShell);
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
 	const firstResponse = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
@@ -236,7 +242,7 @@ test('GET /credentials/:id should retrieve owned cred for owner', async () => {
 
 test('GET /credentials/:id should retrieve non-owned cred for owner', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = authAgent(owner);
+	const authOwnerAgent = utils.createAuthAgent(app, owner);
 	const [member1, member2] = await testDb.createManyUsers(2, {
 		globalRole: globalMemberRole,
 	});
@@ -279,7 +285,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 	const [member1, member2, member3] = await testDb.createManyUsers(3, {
 		globalRole: globalMemberRole,
 	});
-	const authMemberAgent = authAgent(member1);
+	const authMemberAgent = utils.createAuthAgent(app, member1);
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
 	await testDb.shareCredentialWithUsers(savedCredential, [member2, member3]);
 
@@ -297,7 +303,7 @@ test('GET /credentials/:id should retrieve owned cred for member', async () => {
 		lastName: member1.lastName,
 	});
 	expect(firstCredential.sharedWith).toHaveLength(2);
-	firstCredential.sharedWith.forEach((sharee: IUser, idx: number) => {
+	firstCredential.sharedWith.forEach((sharee: IUser) => {
 		expect([member2.id, member3.id]).toContain(sharee.id);
 	});
 
@@ -318,7 +324,9 @@ test('GET /credentials/:id should not retrieve non-owned cred for member', async
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: ownerShell });
 
-	const response = await authAgent(member).get(`/credentials/${savedCredential.id}`);
+	const response = await utils
+		.createAuthAgent(app, member)
+		.get(`/credentials/${savedCredential.id}`);
 
 	expect(response.statusCode).toBe(403);
 	expect(response.body.data).toBeUndefined(); // owner's cred not returned
@@ -331,7 +339,8 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 	const mock = jest.spyOn(UserSettings, 'getEncryptionKey');
 	mock.mockRejectedValue(new Error(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY));
 
-	const response = await authAgent(ownerShell)
+	const response = await utils
+		.createAuthAgent(app, ownerShell)
 		.get(`/credentials/${savedCredential.id}`)
 		.query({ includeData: true });
 
@@ -343,14 +352,14 @@ test('GET /credentials/:id should fail with missing encryption key', async () =>
 test('GET /credentials/:id should return 404 if cred not found', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(ownerShell).get('/credentials/789');
+	const response = await utils.createAuthAgent(app, ownerShell).get('/credentials/789');
 	expect(response.statusCode).toBe(404);
 
-	const responseAbc = await authAgent(ownerShell).get('/credentials/abc');
+	const responseAbc = await utils.createAuthAgent(app, ownerShell).get('/credentials/abc');
 	expect(responseAbc.statusCode).toBe(404);
 
 	// because EE router has precedence, check if forwards this route
-	const responseNew = await authAgent(ownerShell).get('/credentials/new');
+	const responseNew = await utils.createAuthAgent(app, ownerShell).get('/credentials/new');
 	expect(responseNew.statusCode).toBe(200);
 });
 
@@ -369,7 +378,8 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 
 	await testDb.shareCredentialWithUsers(savedCredential, [member4, member5]);
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds });
 
@@ -408,7 +418,8 @@ test('PUT /credentials/:id/share should share the credential with the provided u
 	const memberIds = [member1.id, member2.id, member3.id];
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: memberIds });
 
@@ -442,8 +453,9 @@ test('PUT /credentials/:id/share should respond 403 for non-existing credentials
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authAgent(owner)
-		.put(`/credentials/1234567/share`)
+	const response = await utils
+		.createAuthAgent(app, owner)
+		.put('/credentials/1234567/share')
 		.send({ shareWithIds: [member.id] });
 
 	expect(response.statusCode).toBe(403);
@@ -454,7 +466,8 @@ test('PUT /credentials/:id/share should respond 403 for non-owned credentials', 
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: [member.id] });
 
@@ -466,7 +479,8 @@ test('PUT /credentials/:id/share should ignore pending sharee', async () => {
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: [memberShell.id] });
 
@@ -484,7 +498,8 @@ test('PUT /credentials/:id/share should ignore non-existing sharee', async () =>
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: ['bce38a11-5e45-4d1c-a9ee-36e4a20ab0fc'] });
 
@@ -503,8 +518,9 @@ test('PUT /credentials/:id/share should respond 400 if invalid payload is provid
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	const responses = await Promise.all([
-		authAgent(owner).put(`/credentials/${savedCredential.id}/share`).send(),
-		authAgent(owner)
+		utils.createAuthAgent(app, owner).put(`/credentials/${savedCredential.id}/share`).send(),
+		utils
+			.createAuthAgent(app, owner)
 			.put(`/credentials/${savedCredential.id}/share`)
 			.send({ shareWithIds: [1] }),
 	]);
@@ -526,7 +542,8 @@ test('PUT /credentials/:id/share should unshare the credential', async () => {
 
 	await testDb.shareCredentialWithUsers(savedCredential, [member1, member2]);
 
-	const response = await authAgent(owner)
+	const response = await utils
+		.createAuthAgent(app, owner)
 		.put(`/credentials/${savedCredential.id}/share`)
 		.send({ shareWithIds: [] });
 

@@ -19,9 +19,9 @@ async function mockFind({
 	return {
 		[type]: {
 			[id]: {
-				id: id,
+				id,
 				name: type,
-				type: type,
+				type,
 				nodesAccess: [],
 				data: '',
 			},

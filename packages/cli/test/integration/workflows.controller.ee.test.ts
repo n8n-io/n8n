@@ -8,20 +8,16 @@ import { createWorkflow } from './shared/testDb';
 import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 import type { Role } from '@db/entities/Role';
 import config from '@/config';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
+import type { SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
 let app: express.Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
-let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
 let isSharingEnabled: jest.SpyInstance<boolean>;
-let workflowRunner: ActiveWorkflowRunner;
-let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -36,18 +32,16 @@ beforeAll(async () => {
 
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
-	authAgent = utils.createAuthAgent(app);
-
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 
 	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 
 	await utils.initNodeTypes();
-	workflowRunner = await utils.initActiveWorkflowRunner();
+	await utils.initActiveWorkflowRunner();
 
 	config.set('enterprise.features.sharing', true);
-	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true); // @TODO: Remove on release
+	jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true); // @TODO: Remove on release
 });
 
 beforeEach(async () => {
@@ -62,14 +56,18 @@ test('Router should switch dynamically', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const createWorkflowResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+	const createWorkflowResponse = await utils
+		.createAuthAgent(app, owner)
+		.post('/workflows')
+		.send(makeWorkflow());
 	const { id } = createWorkflowResponse.body.data;
 
 	// free router
 
 	isSharingEnabled.mockReturnValueOnce(false);
 
-	const freeShareResponse = await authAgent(owner)
+	const freeShareResponse = await utils
+		.createAuthAgent(app, owner)
 		.put(`/workflows/${id}/share`)
 		.send({ shareWithIds: [member.id] });
 
@@ -77,7 +75,8 @@ test('Router should switch dynamically', async () => {
 
 	// EE router
 
-	const paidShareResponse = await authAgent(owner)
+	const paidShareResponse = await utils
+		.createAuthAgent(app, owner)
 		.put(`/workflows/${id}/share`)
 		.send({ shareWithIds: [member.id] });
 
@@ -90,7 +89,8 @@ describe('PUT /workflows/:id', () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 		const workflow = await createWorkflow({}, owner);
 
-		const response = await authAgent(owner)
+		const response = await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${workflow.id}/share`)
 			.send({ shareWithIds: [member.id] });
 
@@ -104,7 +104,8 @@ describe('PUT /workflows/:id', () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const workflow = await createWorkflow({}, owner);
 
-		const response = await authAgent(owner)
+		const response = await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${workflow.id}/share`)
 			.send({ shareWithIds: [uuid()] });
 
@@ -120,7 +121,8 @@ describe('PUT /workflows/:id', () => {
 		const anotherMember = await testDb.createUser({ globalRole: globalMemberRole });
 		const workflow = await createWorkflow({}, owner);
 
-		const response = await authAgent(owner)
+		const response = await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${workflow.id}/share`)
 			.send({ shareWithIds: [member.id, anotherMember.id] });
 
@@ -136,7 +138,7 @@ describe('PUT /workflows/:id', () => {
 		const anotherMember = await testDb.createUser({ globalRole: globalMemberRole });
 		const workflow = await createWorkflow({}, owner);
 
-		const authOwnerAgent = authAgent(owner);
+		const authOwnerAgent = utils.createAuthAgent(app, owner);
 
 		const response = await authOwnerAgent
 			.put(`/workflows/${workflow.id}/share`)
@@ -188,7 +190,7 @@ describe('GET /workflows', () => {
 
 		await testDb.shareWorkflowWithUsers(workflow, [member]);
 
-		const response = await authAgent(owner).get('/workflows');
+		const response = await utils.createAuthAgent(app, owner).get('/workflows');
 
 		const [fetchedWorkflow] = response.body.data;
 
@@ -228,7 +230,7 @@ describe('GET /workflows/:id', () => {
 	test('GET should fail with invalid id due to route rule', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-		const response = await authAgent(owner).get('/workflows/potatoes');
+		const response = await utils.createAuthAgent(app, owner).get('/workflows/potatoes');
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -236,7 +238,7 @@ describe('GET /workflows/:id', () => {
 	test('GET should return 404 for non existing workflow', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-		const response = await authAgent(owner).get('/workflows/9001');
+		const response = await utils.createAuthAgent(app, owner).get('/workflows/9001');
 
 		expect(response.statusCode).toBe(404);
 	});
@@ -245,7 +247,7 @@ describe('GET /workflows/:id', () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const workflow = await createWorkflow({}, owner);
 
-		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+		const response = await utils.createAuthAgent(app, owner).get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.ownedBy).toMatchObject({
@@ -264,7 +266,7 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow({}, owner);
 		await testDb.shareWorkflowWithUsers(workflow, [member]);
 
-		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+		const response = await utils.createAuthAgent(app, owner).get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.ownedBy).toMatchObject({
@@ -290,7 +292,7 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow({}, owner);
 		await testDb.shareWorkflowWithUsers(workflow, [member1, member2]);
 
-		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+		const response = await utils.createAuthAgent(app, owner).get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.ownedBy).toMatchObject({
@@ -313,7 +315,7 @@ describe('GET /workflows/:id', () => {
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
-		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+		const response = await utils.createAuthAgent(app, owner).get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.usedCredentials).toMatchObject([
@@ -338,7 +340,7 @@ describe('GET /workflows/:id', () => {
 		});
 		const workflow = await createWorkflow(workflowPayload, owner);
 
-		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+		const response = await utils.createAuthAgent(app, owner).get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.usedCredentials).toMatchObject([
@@ -364,7 +366,9 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow(workflowPayload, member1);
 		await testDb.shareWorkflowWithUsers(workflow, [member2]);
 
-		const responseMember1 = await authAgent(member1).get(`/workflows/${workflow.id}`);
+		const responseMember1 = await utils
+			.createAuthAgent(app, member1)
+			.get(`/workflows/${workflow.id}`);
 		expect(responseMember1.statusCode).toBe(200);
 		expect(responseMember1.body.data.usedCredentials).toMatchObject([
 			{
@@ -375,7 +379,9 @@ describe('GET /workflows/:id', () => {
 		]);
 		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
 
-		const responseMember2 = await authAgent(member2).get(`/workflows/${workflow.id}`);
+		const responseMember2 = await utils
+			.createAuthAgent(app, member2)
+			.get(`/workflows/${workflow.id}`);
 		expect(responseMember2.statusCode).toBe(200);
 		expect(responseMember2.body.data.usedCredentials).toMatchObject([
 			{
@@ -401,7 +407,9 @@ describe('GET /workflows/:id', () => {
 		const workflow = await createWorkflow(workflowPayload, member1);
 		await testDb.shareWorkflowWithUsers(workflow, [member2]);
 
-		const responseMember1 = await authAgent(member1).get(`/workflows/${workflow.id}`);
+		const responseMember1 = await utils
+			.createAuthAgent(app, member1)
+			.get(`/workflows/${workflow.id}`);
 		expect(responseMember1.statusCode).toBe(200);
 		expect(responseMember1.body.data.usedCredentials).toMatchObject([
 			{
@@ -412,7 +420,9 @@ describe('GET /workflows/:id', () => {
 		]);
 		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
 
-		const responseMember2 = await authAgent(member2).get(`/workflows/${workflow.id}`);
+		const responseMember2 = await utils
+			.createAuthAgent(app, member2)
+			.get(`/workflows/${workflow.id}`);
 		expect(responseMember2.statusCode).toBe(200);
 		expect(responseMember2.body.data.usedCredentials).toMatchObject([
 			{
@@ -431,7 +441,7 @@ describe('POST /workflows', () => {
 
 		const workflow = makeWorkflow({ withPinData: false });
 
-		const response = await authAgent(owner).post('/workflows').send(workflow);
+		const response = await utils.createAuthAgent(app, owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
 	});
@@ -445,7 +455,7 @@ describe('POST /workflows', () => {
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
-		const response = await authAgent(owner).post('/workflows').send(workflow);
+		const response = await utils.createAuthAgent(app, owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
 	});
@@ -461,7 +471,7 @@ describe('POST /workflows', () => {
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
-		const response = await authAgent(member).post('/workflows').send(workflow);
+		const response = await utils.createAuthAgent(app, member).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
@@ -480,7 +490,7 @@ describe('POST /workflows', () => {
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
-		const response = await authAgent(owner).post('/workflows').send(workflow);
+		const response = await utils.createAuthAgent(app, owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
 	});
@@ -497,7 +507,7 @@ describe('POST /workflows', () => {
 			withCredential: { id: savedCredential.id, name: savedCredential.name },
 		});
 
-		const response = await authAgent(member2).post('/workflows').send(workflow);
+		const response = await utils.createAuthAgent(app, member2).post('/workflows').send(workflow);
 		expect(response.statusCode).toBe(200);
 	});
 });
@@ -529,10 +539,13 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			],
 		};
 
-		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		const response = await authAgent(owner).patch(`/workflows/${id}`).send({
+		const response = await utils.createAuthAgent(app, owner).patch(`/workflows/${id}`).send({
 			name: 'new name',
 			versionId,
 		});
@@ -567,10 +580,14 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			],
 		};
 
-		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		const response = await authAgent(owner)
+		const response = await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({
 				versionId,
@@ -623,10 +640,14 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			],
 		};
 
-		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		const response = await authAgent(member)
+		const response = await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({
 				versionId,
@@ -732,14 +753,18 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 			nodes: originalNodes,
 		};
 
-		const createResponse = await authAgent(member1).post('/workflows').send(workflow);
+		const createResponse = await utils
+			.createAuthAgent(app, member1)
+			.post('/workflows')
+			.send(workflow);
 		const { id, versionId } = createResponse.body.data;
 
-		await authAgent(member1)
+		await utils
+			.createAuthAgent(app, member1)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member2.id] });
 
-		const response = await authAgent(member2).patch(`/workflows/${id}`).send({
+		const response = await utils.createAuthAgent(app, member2).patch(`/workflows/${id}`).send({
 			versionId,
 			nodes: changedNodes,
 		});
@@ -756,24 +781,30 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses and updates workflow name
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
-		await authAgent(member)
+		await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Update by member', versionId: memberVersionId });
 
 		// owner blocked from updating workflow nodes
 
-		const updateAttemptResponse = await authAgent(owner)
+		const updateAttemptResponse = await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ nodes: [], versionId: ownerVersionId });
 
@@ -787,33 +818,40 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates, updates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
 
-		const updateResponse = await authAgent(owner)
+		const updateResponse = await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
 
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses workflow
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner re-updates workflow
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Owner update again', versionId: ownerSecondVersionId });
 
 		// member blocked from updating workflow
 
-		const updateAttemptResponse = await authAgent(member)
+		const updateAttemptResponse = await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ nodes: [], versionId: memberVersionId });
 
@@ -827,23 +865,29 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses and activates workflow
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
-		await authAgent(member)
+		await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ active: true, versionId: memberVersionId });
 
 		// owner blocked from activating workflow
 
-		const activationAttemptResponse = await authAgent(owner)
+		const activationAttemptResponse = await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ active: true, versionId: ownerVersionId });
 
@@ -857,32 +901,39 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates, updates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerFirstVersionId } = createResponse.body.data;
 
-		const updateResponse = await authAgent(owner)
+		const updateResponse = await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Update by owner', versionId: ownerFirstVersionId });
 		const { versionId: ownerSecondVersionId } = updateResponse.body.data;
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses workflow
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner activates workflow
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ active: true, versionId: ownerSecondVersionId });
 
 		// member blocked from activating workflow
 
-		const updateAttemptResponse = await authAgent(member)
+		const updateAttemptResponse = await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ active: true, versionId: memberVersionId });
 
@@ -896,26 +947,32 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses workflow
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner updates workflow name
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Another name', versionId: ownerVersionId });
 
 		// member blocked from updating workflow settings
 
-		const updateAttemptResponse = await authAgent(member)
+		const updateAttemptResponse = await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
 
@@ -929,26 +986,32 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		// owner creates and shares workflow
 
-		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const createResponse = await utils
+			.createAuthAgent(app, owner)
+			.post('/workflows')
+			.send(makeWorkflow());
 		const { id, versionId: ownerVersionId } = createResponse.body.data;
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put(`/workflows/${id}/share`)
 			.send({ shareWithIds: [member.id] });
 
 		// member accesses workflow
 
-		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const memberGetResponse = await utils.createAuthAgent(app, member).get(`/workflows/${id}`);
 		const { versionId: memberVersionId } = memberGetResponse.body.data;
 
 		// owner updates workflow settings
 
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.patch(`/workflows/${id}`)
 			.send({ settings: { saveManualExecutions: true }, versionId: ownerVersionId });
 
 		// member blocked from updating workflow name
 
-		const updateAttemptResponse = await authAgent(member)
+		const updateAttemptResponse = await utils
+			.createAuthAgent(app, member)
 			.patch(`/workflows/${id}`)
 			.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
 

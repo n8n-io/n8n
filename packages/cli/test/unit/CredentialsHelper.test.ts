@@ -1,4 +1,5 @@
 import {
+	deepCopy,
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -186,8 +187,8 @@ describe('CredentialsHelper', () => {
 							credentials: ICredentialDataDecryptedObject,
 							requestOptions: IHttpRequestOptions,
 						): Promise<IHttpRequestOptions> {
-							requestOptions.headers!['Authorization'] = `Bearer ${credentials.accessToken}`;
-							requestOptions.qs!['user'] = credentials.user;
+							requestOptions.headers!.Authorization = `Bearer ${credentials.accessToken}`;
+							requestOptions.qs!.user = credentials.user;
 							return requestOptions;
 						}
 					})(),
@@ -246,7 +247,7 @@ describe('CredentialsHelper', () => {
 				const result = await credentialsHelper.authenticate(
 					testData.input.credentials,
 					testData.input.credentialType.name,
-					JSON.parse(JSON.stringify(incomingRequestOptions)),
+					deepCopy(incomingRequestOptions),
 					workflow,
 					node,
 					timezone,

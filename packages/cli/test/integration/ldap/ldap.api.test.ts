@@ -13,7 +13,6 @@ import type { LdapConfig } from '@/Ldap/types';
 import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
-import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 
 jest.mock('@/telemetry');
@@ -23,7 +22,6 @@ let app: express.Application;
 let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let owner: User;
-let authAgent: AuthAgent;
 
 const defaultLdapConfig = {
 	...LDAP_DEFAULT_CONFIGURATION,
@@ -48,16 +46,14 @@ beforeAll(async () => {
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
 
-	authAgent = utils.createAuthAgent(app);
-
 	config.set(LDAP_ENABLED, true);
 	defaultLdapConfig.bindingAdminPassword = await encryptPassword(
 		defaultLdapConfig.bindingAdminPassword,
 	);
 
-	utils.initConfigFile();
+	await utils.initConfigFile();
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 	await utils.initLdapManager();
 });
 
@@ -101,19 +97,19 @@ const createLdapConfig = async (attributes: Partial<LdapConfig> = {}): Promise<L
 test('Member role should not be able to access ldap routes', async () => {
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-	let response = await authAgent(member).get('/ldap/config');
+	let response = await utils.createAuthAgent(app, member).get('/ldap/config');
 	expect(response.statusCode).toBe(403);
 
-	response = await authAgent(member).put('/ldap/config');
+	response = await utils.createAuthAgent(app, member).put('/ldap/config');
 	expect(response.statusCode).toBe(403);
 
-	response = await authAgent(member).post('/ldap/test-connection');
+	response = await utils.createAuthAgent(app, member).post('/ldap/test-connection');
 	expect(response.statusCode).toBe(403);
 
-	response = await authAgent(member).post('/ldap/sync');
+	response = await utils.createAuthAgent(app, member).post('/ldap/sync');
 	expect(response.statusCode).toBe(403);
 
-	response = await authAgent(member).get('/ldap/sync');
+	response = await utils.createAuthAgent(app, member).get('/ldap/sync');
 	expect(response.statusCode).toBe(403);
 });
 
@@ -143,7 +139,10 @@ describe('PUT /ldap/config', () => {
 		];
 
 		for (const invalidPayload of invalidPayloads) {
-			const response = await authAgent(owner).put('/ldap/config').send(invalidPayload);
+			const response = await utils
+				.createAuthAgent(app, owner)
+				.put('/ldap/config')
+				.send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 			expect(response.body).toHaveProperty('message');
 		}
@@ -156,7 +155,7 @@ describe('PUT /ldap/config', () => {
 			loginLabel: '',
 		};
 
-		const response = await authAgent(owner).put('/ldap/config').send(validPayload);
+		const response = await utils.createAuthAgent(app, owner).put('/ldap/config').send(validPayload);
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.loginEnabled).toBe(true);
@@ -172,7 +171,8 @@ describe('PUT /ldap/config', () => {
 		const configuration = ldapConfig;
 
 		// disable the login, so the strategy is applied
-		await authAgent(owner)
+		await utils
+			.createAuthAgent(app, owner)
 			.put('/ldap/config')
 			.send({ ...configuration, loginEnabled: false });
 
@@ -193,10 +193,10 @@ test('GET /ldap/config route should retrieve current configuration', async () =>
 		loginLabel: '',
 	};
 
-	let response = await authAgent(owner).put('/ldap/config').send(validPayload);
+	let response = await utils.createAuthAgent(app, owner).put('/ldap/config').send(validPayload);
 	expect(response.statusCode).toBe(200);
 
-	response = await authAgent(owner).get('/ldap/config');
+	response = await utils.createAuthAgent(app, owner).get('/ldap/config');
 
 	expect(response.body.data).toMatchObject(validPayload);
 });
@@ -207,7 +207,7 @@ describe('POST /ldap/test-connection', () => {
 			.spyOn(LdapService.prototype, 'testConnection')
 			.mockImplementation(async () => Promise.resolve());
 
-		const response = await authAgent(owner).post('/ldap/test-connection');
+		const response = await utils.createAuthAgent(app, owner).post('/ldap/test-connection');
 		expect(response.statusCode).toBe(200);
 	});
 
@@ -218,7 +218,7 @@ describe('POST /ldap/test-connection', () => {
 			.spyOn(LdapService.prototype, 'testConnection')
 			.mockImplementation(async () => Promise.reject(new Error(errorMessage)));
 
-		const response = await authAgent(owner).post('/ldap/test-connection');
+		const response = await utils.createAuthAgent(app, owner).post('/ldap/test-connection');
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toHaveProperty('message');
 		expect(response.body.message).toStrictEqual(errorMessage);
@@ -242,7 +242,10 @@ describe('POST /ldap/sync', () => {
 				.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 				.mockImplementation(async () => Promise.resolve(ldapUsers));
 
-			const response = await authAgent(owner).post('/ldap/sync').send({ type: 'dry' });
+			const response = await utils
+				.createAuthAgent(app, owner)
+				.post('/ldap/sync')
+				.send({ type: 'dry' });
 
 			expect(response.statusCode).toBe(200);
 
@@ -339,7 +342,10 @@ describe('POST /ldap/sync', () => {
 				.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 				.mockImplementation(async () => Promise.resolve(ldapUsers));
 
-			const response = await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
+			const response = await utils
+				.createAuthAgent(app, owner)
+				.post('/ldap/sync')
+				.send({ type: 'live' });
 
 			expect(response.statusCode).toBe(200);
 
@@ -469,9 +475,9 @@ describe('POST /ldap/sync', () => {
 				.spyOn(LdapService.prototype, 'searchWithAdminBinding')
 				.mockImplementation(async () => Promise.resolve([]));
 
-			await authAgent(owner).post('/ldap/sync').send({ type: 'live' });
+			await utils.createAuthAgent(app, owner).post('/ldap/sync').send({ type: 'live' });
 
-			const response = await authAgent(member).get('/login');
+			const response = await utils.createAuthAgent(app, member).get('/login');
 			expect(response.body.code).toBe(401);
 		});
 	});
@@ -492,10 +498,10 @@ test('GET /ldap/sync should return paginated synchronizations', async () => {
 		});
 	}
 
-	let response = await authAgent(owner).get('/ldap/sync?perPage=1&page=0');
+	let response = await utils.createAuthAgent(app, owner).get('/ldap/sync?perPage=1&page=0');
 	expect(response.body.data.length).toBe(1);
 
-	response = await authAgent(owner).get('/ldap/sync?perPage=1&page=1');
+	response = await utils.createAuthAgent(app, owner).get('/ldap/sync?perPage=1&page=1');
 	expect(response.body.data.length).toBe(1);
 });
 
@@ -594,7 +600,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 
 		const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
 
-		await authAgent(owner).post(`/users/${member.id}`);
+		await utils.createAuthAgent(app, owner).post(`/users/${member.id}`);
 	});
 
 	test('transfer workflows and credentials', async () => {
@@ -604,7 +610,7 @@ describe('Instance owner should able to delete LDAP users', () => {
 		const member = await testDb.createLdapUser({ globalRole: globalMemberRole }, uniqueId());
 
 		// delete the LDAP member and transfer its workflows/credentials to instance owner
-		await authAgent(owner).post(`/users/${member.id}?transferId=${owner.id}`);
+		await utils.createAuthAgent(app, owner).post(`/users/${member.id}?transferId=${owner.id}`);
 	});
 });
 

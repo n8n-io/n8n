@@ -17,7 +17,6 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 
 import type { Role } from '@db/entities/Role';
-import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
@@ -44,7 +43,6 @@ const mockedEmptyPackage = mocked(utils.emptyPackage);
 
 let app: express.Application;
 let globalOwnerRole: Role;
-let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['nodes'], applyAuth: true });
@@ -52,11 +50,9 @@ beforeAll(async () => {
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
-	authAgent = utils.createAuthAgent(app);
-
-	utils.initConfigFile();
+	await utils.initConfigFile();
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 });
 
 beforeEach(async () => {
@@ -80,7 +76,7 @@ test('GET /nodes should respond 200 if no nodes are installed', async () => {
 	const {
 		statusCode,
 		body: { data },
-	} = await authAgent(ownerShell).get('/nodes');
+	} = await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(statusCode).toBe(200);
 	expect(data).toHaveLength(0);
@@ -95,7 +91,7 @@ test('GET /nodes should return list of one installed package and node', async ()
 	const {
 		statusCode,
 		body: { data },
-	} = await authAgent(ownerShell).get('/nodes');
+	} = await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(statusCode).toBe(200);
 	expect(data).toHaveLength(1);
@@ -115,7 +111,7 @@ test('GET /nodes should return list of multiple installed packages and nodes', a
 	const {
 		statusCode,
 		body: { data },
-	} = await authAgent(ownerShell).get('/nodes');
+	} = await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(statusCode).toBe(200);
 	expect(data).toHaveLength(2);
@@ -131,7 +127,7 @@ test('GET /nodes should return list of multiple installed packages and nodes', a
 test('GET /nodes should not check for updates if no packages installed', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	await authAgent(ownerShell).get('/nodes');
+	await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(mocked(executeCommand)).toHaveBeenCalledTimes(0);
 });
@@ -142,7 +138,7 @@ test('GET /nodes should check for updates if packages installed', async () => {
 	const { packageName } = await testDb.saveInstalledPackage(utils.installedPackagePayload());
 	await testDb.saveInstalledNode(utils.installedNodePayload(packageName));
 
-	await authAgent(ownerShell).get('/nodes');
+	await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(mocked(executeCommand)).toHaveBeenCalledWith('npm outdated --json', {
 		doNotHandleError: true,
@@ -173,7 +169,7 @@ test('GET /nodes should report package updates if available', async () => {
 
 	const {
 		body: { data },
-	} = await authAgent(ownerShell).get('/nodes');
+	} = await utils.createAuthAgent(app, ownerShell).get('/nodes');
 
 	expect(data[0].installedVersion).toBe(COMMUNITY_PACKAGE_VERSION.CURRENT);
 	expect(data[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
@@ -186,7 +182,7 @@ test('GET /nodes should report package updates if available', async () => {
 test('POST /nodes should reject if package name is missing', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const { statusCode } = await authAgent(ownerShell).post('/nodes');
+	const { statusCode } = await utils.createAuthAgent(app, ownerShell).post('/nodes');
 
 	expect(statusCode).toBe(400);
 });
@@ -201,7 +197,7 @@ test('POST /nodes should reject if package is duplicate', async () => {
 	const {
 		statusCode,
 		body: { message },
-	} = await authAgent(ownerShell).post('/nodes').send({
+	} = await utils.createAuthAgent(app, ownerShell).post('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -218,7 +214,7 @@ test('POST /nodes should allow installing packages that could not be loaded', as
 
 	jest.spyOn(LoadNodesAndCredentials(), 'loadNpmModule').mockImplementationOnce(mockedEmptyPackage);
 
-	const { statusCode } = await authAgent(ownerShell).post('/nodes').send({
+	const { statusCode } = await utils.createAuthAgent(app, ownerShell).post('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -233,7 +229,7 @@ test('POST /nodes should not install a banned package', async () => {
 	const {
 		statusCode,
 		body: { message },
-	} = await authAgent(ownerShell).post('/nodes').send({
+	} = await utils.createAuthAgent(app, ownerShell).post('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -248,7 +244,7 @@ test('POST /nodes should not install a banned package', async () => {
 test('DELETE /nodes should not delete if package name is empty', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(ownerShell).delete('/nodes');
+	const response = await utils.createAuthAgent(app, ownerShell).delete('/nodes');
 
 	expect(response.statusCode).toBe(400);
 });
@@ -259,7 +255,7 @@ test('DELETE /nodes should reject if package is not installed', async () => {
 	const {
 		statusCode,
 		body: { message },
-	} = await authAgent(ownerShell).delete('/nodes').query({
+	} = await utils.createAuthAgent(app, ownerShell).delete('/nodes').query({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -276,7 +272,7 @@ test('DELETE /nodes should uninstall package', async () => {
 
 	mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
 
-	const { statusCode } = await authAgent(ownerShell).delete('/nodes').query({
+	const { statusCode } = await utils.createAuthAgent(app, ownerShell).delete('/nodes').query({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -291,7 +287,7 @@ test('DELETE /nodes should uninstall package', async () => {
 test('PATCH /nodes should reject if package name is empty', async () => {
 	const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(ownerShell).patch('/nodes');
+	const response = await utils.createAuthAgent(app, ownerShell).patch('/nodes');
 
 	expect(response.statusCode).toBe(400);
 });
@@ -302,7 +298,7 @@ test('PATCH /nodes reject if package is not installed', async () => {
 	const {
 		statusCode,
 		body: { message },
-	} = await authAgent(ownerShell).patch('/nodes').send({
+	} = await utils.createAuthAgent(app, ownerShell).patch('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
 	});
 
@@ -319,7 +315,7 @@ test('PATCH /nodes should update a package', async () => {
 
 	mocked(findInstalledPackage).mockImplementationOnce(mockedEmptyPackage);
 
-	await authAgent(ownerShell).patch('/nodes').send({
+	await utils.createAuthAgent(app, ownerShell).patch('/nodes').send({
 		name: utils.installedPackagePayload().packageName,
 	});
 

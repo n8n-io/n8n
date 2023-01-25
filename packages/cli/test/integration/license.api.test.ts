@@ -3,7 +3,6 @@ import express from 'express';
 import config from '@/config';
 import type { Role } from '@db/entities/Role';
 import * as testDb from './shared/testDb';
-import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 import { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { License } from '@/License';
@@ -15,7 +14,6 @@ const MOCK_INSTANCE_ID = 'instance-id';
 let app: express.Application;
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let authAgent: AuthAgent;
 let license: License;
 
 beforeAll(async () => {
@@ -25,10 +23,8 @@ beforeAll(async () => {
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
 
-	authAgent = utils.createAuthAgent(app);
-
 	utils.initTestLogger();
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 
 	config.set('license.serverUrl', MOCK_SERVER_URL);
 	config.set('license.autoRenewEnabled', true);
@@ -51,7 +47,7 @@ afterAll(async () => {
 test('GET /license should return license information to the instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(userShell).get('/license');
+	const response = await utils.createAuthAgent(app, userShell).get('/license');
 
 	expect(response.statusCode).toBe(200);
 
@@ -62,7 +58,7 @@ test('GET /license should return license information to the instance owner', asy
 test('GET /license should return license information to a regular user', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authAgent(userShell).get('/license');
+	const response = await utils.createAuthAgent(app, userShell).get('/license');
 
 	expect(response.statusCode).toBe(200);
 
@@ -73,7 +69,8 @@ test('GET /license should return license information to a regular user', async (
 test('POST /license/activate should work for instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(userShell)
+	const response = await utils
+		.createAuthAgent(app, userShell)
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
@@ -86,7 +83,8 @@ test('POST /license/activate should work for instance owner', async () => {
 test('POST /license/activate does not work for regular users', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authAgent(userShell)
+	const response = await utils
+		.createAuthAgent(app, userShell)
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
@@ -101,7 +99,8 @@ test('POST /license/activate errors out properly', async () => {
 
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(userShell)
+	const response = await utils
+		.createAuthAgent(app, userShell)
 		.post('/license/activate')
 		.send({ activationKey: 'abcde' });
 
@@ -112,7 +111,7 @@ test('POST /license/activate errors out properly', async () => {
 test('POST /license/renew should work for instance owner', async () => {
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(userShell).post('/license/renew');
+	const response = await utils.createAuthAgent(app, userShell).post('/license/renew');
 
 	expect(response.statusCode).toBe(200);
 
@@ -123,7 +122,7 @@ test('POST /license/renew should work for instance owner', async () => {
 test('POST /license/renew does not work for regular users', async () => {
 	const userShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authAgent(userShell).post('/license/renew');
+	const response = await utils.createAuthAgent(app, userShell).post('/license/renew');
 
 	expect(response.statusCode).toBe(403);
 	expect(response.body.message).toBe(NON_OWNER_ACTIVATE_RENEW_MESSAGE);
@@ -136,7 +135,7 @@ test('POST /license/renew errors out properly', async () => {
 
 	const userShell = await testDb.createUserShell(globalOwnerRole);
 
-	const response = await authAgent(userShell).post('/license/renew');
+	const response = await utils.createAuthAgent(app, userShell).post('/license/renew');
 
 	expect(response.statusCode).toBe(400);
 	expect(response.body.message).toBe(RENEW_ERROR_MESSAGE);

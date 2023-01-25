@@ -83,8 +83,7 @@ export class Worker extends Command {
 		LoggerProxy.info('Stopping n8n...');
 
 		// Stop accepting new jobs
-		// eslint-disable-next-line @typescript-eslint/no-floating-promises
-		Worker.jobQueue.pause(true);
+		await Worker.jobQueue.pause(true);
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -306,8 +305,9 @@ export class Worker extends Command {
 
 				const queue = await Queue.getInstance();
 				Worker.jobQueue = queue.getBullObjectInstance();
-				// eslint-disable-next-line @typescript-eslint/no-floating-promises
-				Worker.jobQueue.process(flags.concurrency, async (job) => this.runJob(job, nodeTypes));
+				await Worker.jobQueue.process(flags.concurrency, async (job) =>
+					this.runJob(job, nodeTypes),
+				);
 
 				const instanceId = await UserSettings.getInstanceId();
 

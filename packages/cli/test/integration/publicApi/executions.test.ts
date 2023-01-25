@@ -18,7 +18,7 @@ beforeAll(async () => {
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
-	utils.initTestTelemetry();
+	await utils.initTestTelemetry();
 	utils.initTestLogger();
 
 	await utils.initBinaryManager();
@@ -241,7 +241,7 @@ test('GET /executions should retrieve all successful executions', async () => {
 
 	await testDb.createErrorExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authOwnerAgent.get('/executions').query({
 		status: 'success',
 	});
 
@@ -291,7 +291,7 @@ test.skip('GET /executions should paginate two executions', async () => {
 
 	await testDb.createErrorExecution(workflow);
 
-	const firstExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+	const firstExecutionResponse = await authOwnerAgent.get('/executions').query({
 		status: 'success',
 		limit: 1,
 	});
@@ -300,7 +300,7 @@ test.skip('GET /executions should paginate two executions', async () => {
 	expect(firstExecutionResponse.body.data.length).toBe(1);
 	expect(firstExecutionResponse.body.nextCursor).toBeDefined();
 
-	const secondExecutionResponse = await authOwnerAgent.get(`/executions`).query({
+	const secondExecutionResponse = await authOwnerAgent.get('/executions').query({
 		status: 'success',
 		limit: 1,
 		cursor: firstExecutionResponse.body.nextCursor,
@@ -354,7 +354,7 @@ test('GET /executions should retrieve all error executions', async () => {
 
 	const errorExecution = await testDb.createErrorExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authOwnerAgent.get('/executions').query({
 		status: 'error',
 	});
 
@@ -403,7 +403,7 @@ test('GET /executions should return all waiting executions', async () => {
 
 	const waitingExecution = await testDb.createWaitingExecution(workflow);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authOwnerAgent.get('/executions').query({
 		status: 'waiting',
 	});
 
@@ -455,7 +455,7 @@ test('GET /executions should retrieve all executions of specific workflow', asyn
 	// @ts-ignore
 	await testDb.createManyExecutions(2, workflow2, testDb.createSuccessfulExecution);
 
-	const response = await authOwnerAgent.get(`/executions`).query({
+	const response = await authOwnerAgent.get('/executions').query({
 		workflowId: workflow.id,
 	});
 
