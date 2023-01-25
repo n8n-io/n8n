@@ -35,15 +35,15 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 });
 
+beforeEach(async () => {
+	await testDb.truncate(['User']);
+});
+
 afterAll(async () => {
 	await testDb.terminate();
 });
 
 describe('Owner shell', () => {
-	beforeEach(async () => {
-		await testDb.truncate(['User']);
-	});
-
 	test('GET /me should return sanitized owner shell', async () => {
 		const ownerShell = await testDb.createUserShell(globalOwnerRole);
 
@@ -236,10 +236,6 @@ describe('Member', () => {
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
 		);
-	});
-
-	afterEach(async () => {
-		await testDb.truncate(['User']);
 	});
 
 	test('GET /me should return sanitized member', async () => {
@@ -439,10 +435,6 @@ describe('Member', () => {
 describe('Owner', () => {
 	beforeEach(async () => {
 		config.set('userManagement.isInstanceOwnerSetUp', true);
-	});
-
-	afterEach(async () => {
-		await testDb.truncate(['User']);
 	});
 
 	test('GET /me should return sanitized owner', async () => {
