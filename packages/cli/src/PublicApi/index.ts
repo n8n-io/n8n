@@ -3,6 +3,9 @@ import express, { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
+import validator from 'validator';
+import { middleware as openapiValidatorMiddleware } from 'express-openapi-validator';
+import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
@@ -19,7 +22,6 @@ async function createApiRouter(
 	publicApiEndpoint: string,
 ): Promise<Router> {
 	const n8nPath = config.getEnv('path');
-	const YAML = await import('yamljs');
 	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
@@ -46,12 +48,10 @@ async function createApiRouter(
 		);
 	}
 
-	const { default: validator } = await import('validator');
-	const { middleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		middleware({
+		openapiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
