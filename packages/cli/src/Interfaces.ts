@@ -28,6 +28,8 @@ import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
+import type { AuthIdentity, AuthProviderType } from '@db/entities/AuthIdentity';
+import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
@@ -64,6 +66,8 @@ export interface ICredentialsOverwrite {
 }
 
 export interface IDatabaseCollections {
+	AuthIdentity: Repository<AuthIdentity>;
+	AuthProviderSyncHistory: Repository<AuthProviderSyncHistory>;
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
@@ -318,6 +322,7 @@ export interface IDiagnosticInfo {
 	binaryDataMode: string;
 	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
+	ldap_allowed: boolean;
 }
 
 export interface ITelemetryUserDeletionData {
@@ -400,7 +405,13 @@ export interface IInternalHooksClass {
 	}): Promise<void>;
 	onUserPasswordResetRequestClick(userPasswordResetData: { user: User }): Promise<void>;
 	onInstanceOwnerSetup(instanceOwnerSetupData: { user_id: string }, user?: User): Promise<void>;
-	onUserSignup(userSignupData: { user: User }): Promise<void>;
+	onUserSignup(
+		user: User,
+		userSignupData: {
+			user_type: AuthProviderType;
+			was_disabled_ldap_user: boolean;
+		},
+	): Promise<void>;
 	onCommunityPackageInstallFinished(installationData: {
 		user: User;
 		input_string: string;
@@ -519,6 +530,10 @@ export interface IN8nUISettings {
 	personalizationSurveyEnabled: boolean;
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
 	publicApi: IPublicApiSettings;
 	workflowTagsDisabled: boolean;
 	logLevel: 'info' | 'debug' | 'warn' | 'error' | 'verbose' | 'silent';
@@ -541,6 +556,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: {
 		sharing: boolean;
+		ldap: boolean;
 		logStreaming: boolean;
 	};
 	hideUsagePage: boolean;
@@ -566,6 +582,9 @@ export interface IUserManagementSettings {
 	enabled: boolean;
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
+}
+export interface IActiveDirectorySettings {
+	enabled: boolean;
 }
 export interface IPublicApiSettings {
 	enabled: boolean;

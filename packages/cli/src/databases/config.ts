@@ -36,7 +36,7 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	return {
 		entityPrefix,
 		entities: Object.values(entities),
-		migrationsRun: true,
+		migrationsRun: false,
 		migrationsTableName: `${entityPrefix}migrations`,
 		cli: { entitiesDir, migrationsDir },
 		...connectionDetails,
@@ -54,7 +54,6 @@ export const getOptionOverrides = async (dbType: 'postgresdb' | 'mysqldb') => ({
 export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
 	type: 'sqlite',
 	...getDBConnectionOptions('sqlite'),
-	migrationsRun: false, // sqlite migrations are manually run in `Db.ts`
 	migrations: sqliteMigrations,
 });
 
