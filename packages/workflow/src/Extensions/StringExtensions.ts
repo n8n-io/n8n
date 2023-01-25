@@ -185,7 +185,13 @@ function isDomain(value: string) {
 }
 
 function isEmail(value: string) {
-	return EMAIL_REGEXP.test(value);
+	const result = EMAIL_REGEXP.test(value);
+
+	if (result && value.includes(' ')) {
+		return false;
+	}
+
+	return result;
 }
 
 function replaceSpecialChars(value: string) {
