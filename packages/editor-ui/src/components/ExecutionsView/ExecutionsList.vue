@@ -326,7 +326,7 @@ export default mixins(
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
@@ -372,10 +372,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList = !existingExecutions.some(
-					(ex) => ex.id === this.activeExecution?.id,
-				);
-				if (activeNotInTheList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
