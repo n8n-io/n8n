@@ -77,7 +77,7 @@ export function resolveParameter(
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
 	} = {},
-): IDataObject | string | number | unknown[] | null {
+): IDataObject | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 	const inputName = 'main';

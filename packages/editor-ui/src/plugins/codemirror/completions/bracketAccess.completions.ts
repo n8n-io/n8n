@@ -2,6 +2,7 @@ import { resolveParameter } from '@/mixins/workflowHelpers';
 import { prefixMatch, longestCommonPrefix } from './utils';
 import type { IDataObject } from 'n8n-workflow';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import type { Resolved } from './types';
 
 /**
  * Resolution-based completions offered at the start of bracket access notation.
@@ -14,7 +15,7 @@ import type { Completion, CompletionContext, CompletionResult } from '@codemirro
  * - `$input.first().json.myStr[`
  */
 export function bracketAccessCompletions(context: CompletionContext): CompletionResult | null {
-	const word = context.matchBefore(/\$[\S]*\[.*/);
+	const word = context.matchBefore(/\$[\S\s]*\[.*/);
 
 	if (!word) return null;
 
@@ -27,7 +28,7 @@ export function bracketAccessCompletions(context: CompletionContext): Completion
 	const base = word.text.substring(0, word.text.lastIndexOf('['));
 	const tail = word.text.split('[').pop() ?? '';
 
-	let resolved: IDataObject | null;
+	let resolved: Resolved;
 
 	try {
 		resolved = resolveParameter(`={{ ${base} }}`);
