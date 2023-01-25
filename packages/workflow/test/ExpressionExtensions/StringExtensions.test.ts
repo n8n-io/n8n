@@ -52,8 +52,8 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
-		test('.stripTags should work correctly on a string', () => {
-			expect(evaluate('={{ "<html><head>test</head></html>".stripTags() }}')).toEqual('test');
+		test('.removeTags should work correctly on a string', () => {
+			expect(evaluate('={{ "<html><head>test</head></html>".removeTags() }}')).toEqual('test');
 		});
 
 		test('.removeMarkdown should work correctly on a string', () => {

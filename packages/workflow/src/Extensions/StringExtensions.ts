@@ -108,7 +108,7 @@ function removeMarkdown(value: string): string {
 	return output;
 }
 
-function stripTags(value: string): string {
+function removeTags(value: string): string {
 	return value.replace(/<[^>]*>?/gm, '');
 }
 
@@ -275,8 +275,8 @@ removeMarkdown.doc = {
 	returnType: 'string',
 };
 
-stripTags.doc = {
-	name: 'stripTags',
+removeTags.doc = {
+	name: 'removeTags',
 	description: 'Removes tags, such as HTML or XML, from a string',
 	returnType: 'string',
 };
@@ -416,7 +416,7 @@ export const stringExtensions: ExtensionMap = {
 	functions: {
 		hash,
 		removeMarkdown,
-		stripTags,
+		removeTags,
 		toDate,
 		toDecimalNumber: toFloat,
 		toFloat,
