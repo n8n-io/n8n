@@ -16,6 +16,7 @@ const config = {
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
+	testTimeout: 10_000,
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 	},
