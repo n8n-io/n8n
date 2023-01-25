@@ -941,6 +941,7 @@ export class MicrosoftExcel implements INodeType {
 							}) as string;
 
 							const range = this.getNodeParameter('range', i) as string;
+
 							const rawData = this.getNodeParameter('rawData', i);
 
 							if (rawData) {
@@ -950,13 +951,23 @@ export class MicrosoftExcel implements INodeType {
 								}
 							}
 
-							responseData = await microsoftApiRequest.call(
-								this,
-								'GET',
-								`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-								{},
-								qs,
-							);
+							if (range) {
+								responseData = await microsoftApiRequest.call(
+									this,
+									'GET',
+									`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+									{},
+									qs,
+								);
+							} else {
+								responseData = await microsoftApiRequest.call(
+									this,
+									'GET',
+									`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+									{},
+									qs,
+								);
+							}
 
 							if (!rawData) {
 								const keyRow = this.getNodeParameter('keyRow', i) as number;

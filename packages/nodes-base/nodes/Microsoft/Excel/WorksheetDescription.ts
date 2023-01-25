@@ -232,7 +232,6 @@ export const worksheetFields: INodeProperties[] = [
 		},
 		placeholder: 'A1:C3',
 		default: '',
-		required: true,
 		description: 'The address or the name of the range',
 		hint: 'Leave blank to return entire worksheet',
 	},
