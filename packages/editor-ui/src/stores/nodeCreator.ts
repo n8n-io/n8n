@@ -248,7 +248,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		itemsFilter: '',
 		showTabs: true,
 		showScrim: false,
-		selectedType: ALL_NODE_FILTER,
+		selectedView: TRIGGER_NODE_FILTER,
+		rootViewHistory: [],
 	}),
 	actions: {
 		setShowTabs(isVisible: boolean) {
@@ -257,8 +258,18 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		setShowScrim(isVisible: boolean) {
 			this.showScrim = isVisible;
 		},
-		setSelectedType(selectedNodeType: INodeFilterType) {
-			this.selectedType = selectedNodeType;
+		setSelectedView(selectedNodeType: INodeFilterType) {
+			this.selectedView = selectedNodeType;
+			if (!this.rootViewHistory.includes(selectedNodeType)) {
+				this.rootViewHistory.push(selectedNodeType);
+			}
+		},
+		closeCurrentView() {
+			this.rootViewHistory.pop();
+			this.selectedView = this.rootViewHistory[this.rootViewHistory.length - 1];
+		},
+		resetRootViewHistory() {
+			this.rootViewHistory = [];
 		},
 		setFilter(search: string) {
 			this.itemsFilter = search;
@@ -307,6 +318,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 				return node;
 			});
+			console.log('Recalculating visible nodes');
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
@@ -339,13 +351,13 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					return acc;
 				}, {});
 
-			const isTriggerRoot = this.selectedType === TRIGGER_NODE_FILTER;
-			console.log('🚀 ~ file: nodeCreator.ts:339 ~ mergedAppNodes ~ isTriggerRoot', isTriggerRoot);
+			const isTriggerRoot = this.selectedView === TRIGGER_NODE_FILTER;
 			const filteredNodes = Object.values(mergedNodes).map((node) => ({
 				...node,
 				actions: filterSinglePlaceholderAction(node.actions || [], isTriggerRoot),
 			}));
 
+			console.log('Recalculating merged nodes');
 			return filteredNodes;
 		},
 		getNodeTypesWithManualTrigger:
@@ -356,7 +368,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const { workflowTriggerNodes } = useWorkflowsStore();
 				const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
+				const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;
 
 				const nodeTypes =

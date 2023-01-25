@@ -266,15 +266,15 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
+	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === ALL_NODE_FILTER;
+	return selectedView === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {

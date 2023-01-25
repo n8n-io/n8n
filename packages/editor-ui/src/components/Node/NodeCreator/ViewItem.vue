@@ -1,18 +1,19 @@
 <template>
 	<n8n-node-creator-node
 		:class="{
-			[$style.subCategory]: true,
+			[$style.view]: true,
+			[$style.withTopBorder]: view.withTopBorder,
 		}"
-		:title="$locale.baseText(`nodeCreator.subcategoryNames.${subcategoryName}`)"
+		:title="view.title"
 		:isTrigger="false"
-		:description="$locale.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}`)"
+		:description="view.description"
 		:showActionArrow="true"
 	>
 		<template #icon>
 			<n8n-node-icon
 				type="icon"
-				:name="item.icon"
-				:color="item.color"
+				:name="view.icon"
+				:color="view.color"
 				:circle="false"
 				:showTooltip="false"
 			></n8n-node-icon>
@@ -21,19 +22,15 @@
 </template>
 
 <script setup lang="ts">
-import camelcase from 'lodash.camelcase';
-import { computed } from 'vue';
 export interface Props {
-	item: Record<string, unknown>;
+	view: Record<string, unknown>;
 }
 
 const props = defineProps<Props>();
-console.log('🚀 ~ file: SubcategoryItem.vue:32 ~ props.item.subcategor', props.item);
-const subcategoryName = computed(() => camelcase(props.item.subcategory));
 </script>
 
 <style lang="scss" module>
-.subCategory {
+.view {
 	--action-arrow-color: var(--color-text-light);
 	margin-left: 15px;
 	margin-right: 12px;

@@ -43,6 +43,13 @@
 					:class="$style.title"
 				/>
 			</template>
+			<template #description>
+				<p
+					v-if="isRoot && activeView && activeView.description"
+					v-text="activeView.description"
+					:class="$style.description"
+				/>
+			</template>
 			<template #footer v-if="activeNodeActions && containsAPIAction">
 				<span
 					v-html="getCustomAPICallHintLocale('apiCall')"
@@ -55,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, getCurrentInstance, computed, onMounted, ref } from 'vue';
+import { reactive, toRefs, getCurrentInstance, computed, onUnmounted, ref } from 'vue';
 import {
 	INodeTypeDescription,
 	INodeActionTypeDescription,
@@ -105,10 +112,7 @@ const VIEWS = [
 				title: 'Action in an app',
 				properties: {
 					subcategory: 'App Regular Nodes',
-					icon: 'fa:info-circle',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'info-circle',
 				},
 			},
 			{
@@ -117,10 +121,7 @@ const VIEWS = [
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					subcategory: TRANSFORM_DATA_SUBCATEGORY,
-					icon: 'fa:pen',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'pen',
 				},
 			},
 			{
@@ -129,10 +130,8 @@ const VIEWS = [
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					subcategory: FILES_SUBCATEGORY,
-					icon: 'fa:file-alt',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'file-alt',
+					color: '#7D838F',
 				},
 			},
 			{
@@ -141,10 +140,8 @@ const VIEWS = [
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					subcategory: FLOWS_CONTROL_SUBCATEGORY,
-					icon: 'fa:code-branch',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'code-branch',
+					color: '#7D838F',
 				},
 			},
 			{
@@ -153,10 +150,19 @@ const VIEWS = [
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					subcategory: HELPERS_SUBCATEGORY,
-					icon: 'fa:toolbox',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'toolbox',
+					color: '#7D838F',
+				},
+			},
+			{
+				key: TRIGGER_NODE_FILTER,
+				type: 'view',
+				properties: {
+					title: 'Add another trigger',
+					icon: 'bolt',
+					color: '#7D838F',
+					withTopBorder: true,
+					description: 'Triggers start your workflow. Workflows can have multiple triggers.',
 				},
 			},
 		],
@@ -172,10 +178,7 @@ const VIEWS = [
 				title: instance?.proxy.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
 				properties: {
 					subcategory: 'App Trigger Nodes',
-					icon: 'fa:satellite-dish',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'satellite-dish',
 				},
 			},
 			{
@@ -268,10 +271,7 @@ const VIEWS = [
 				category: CORE_NODES_CATEGORY,
 				properties: {
 					subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
-					icon: 'fa:folder-open',
-					defaults: {
-						color: '#7D838F',
-					},
+					icon: 'folder-open',
 				},
 			},
 		],
@@ -297,10 +297,11 @@ const {
 	getActionData,
 	getNodeTypesWithManualTrigger,
 	setAddedNodeActionParameters,
-	selectedType,
 } = useNodeCreatorStore();
 
-const activeView = computed(() => VIEWS.find((v) => v.value === selectedType));
+const activeView = computed(() => {
+	return VIEWS.find((v) => v.value === useNodeCreatorStore().selectedView) || TRIGGER_NODE_FILTER;
+});
 const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
@@ -340,25 +341,6 @@ const searchPlaceholder = computed(() => {
 	return isActionsActive.value ? actionsSearchPlaceholder : undefined;
 });
 
-// const filteredMergedAppNodes = computed(() => {
-// 	const WHITELISTED_APP_CORE_NODES = [EMAIL_IMAP_NODE_TYPE, WEBHOOK_NODE_TYPE];
-
-// 	if (isAppEventSubcategory.value)
-// 		return mergedAppNodes.filter((node) => {
-// 			const isRegularNode = !isTriggerNode(node.name);
-// 			const isStickyNode = node.name === STICKY_NODE_TYPE;
-// 			const isCoreNode =
-// 				node.codex?.categories?.includes(CORE_NODES_CATEGORY) &&
-// 				!WHITELISTED_APP_CORE_NODES.includes(node.name);
-// 			const hasActions = (node.actions || []).length > 0;
-
-// 			if (isRegularNode && !hasActions) return false;
-// 			return !isCoreNode && !isStickyNode;
-// 		});
-
-// 	return mergedAppNodes;
-// });
-
 const filteredMergedAppNodes = computed(() => {
 	const WHITELISTED_APP_CORE_NODES = [EMAIL_IMAP_NODE_TYPE, WEBHOOK_NODE_TYPE];
 
@@ -378,8 +360,8 @@ const filteredMergedAppNodes = computed(() => {
 			// Only show nodes without action within their view
 			if (!hasActions) {
 				return isRegularNode
-					? selectedType === REGULAR_NODE_FILTER
-					: selectedType === TRIGGER_NODE_FILTER;
+					? useNodeCreatorStore().selectedView === REGULAR_NODE_FILTER
+					: useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
 			}
 
 			return true;
@@ -526,11 +508,15 @@ function trackActionsView() {
 	telemetry?.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
 }
 
+onUnmounted(() => {
+	useNodeCreatorStore().resetRootViewHistory();
+});
 const { isRoot, activeNodeActions } = toRefs(state);
 </script>
 
 <style lang="scss" module>
 .triggerHelperContainer {
+	--node-icon-color: var(--color-text-base);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -556,6 +542,10 @@ const { isRoot, activeNodeActions } = toRefs(state);
 	line-height: var(--font-line-height-xloose);
 	font-weight: var(--font-weight-bold);
 	color: var(--color-text-dark);
-	padding: var(--spacing-s) var(--spacing-s) var(--spacing-3xs);
+}
+.description {
+	font-size: var(--font-size-s);
+	line-height: var(--font-line-height-loose);
+	color: var(--color-text-base);
 }
 </style>
