@@ -394,6 +394,86 @@ export class MicrosoftExcel implements INodeType {
 					}
 				}
 			}
+			if (operation === 'delete') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const tableId = this.getNodeParameter('table', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						await microsoftApiRequest.call(
+							this,
+							'DELETE',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}`,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ success: true }),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
+			if (operation === 'convertToRange') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						const tableId = this.getNodeParameter('table', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'POST',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${tableId}/convertToRange`,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(responseData),
+							{ itemData: { item: i } },
+						);
+
+						returnData.push(...executionData);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
 			//https://docs.microsoft.com/en-us/graph/api/table-list-columns?view=graph-rest-1.0&tabs=http
 			if (operation === 'getColumns') {
 				for (let i = 0; i < length; i++) {
@@ -748,116 +828,178 @@ export class MicrosoftExcel implements INodeType {
 			}
 		}
 		if (resource === 'worksheet') {
-			for (let i = 0; i < length; i++) {
-				qs = {};
-				try {
-					//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
-					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const workbookId = this.getNodeParameter('workbook', i, undefined, {
-							extractValue: true,
-						}) as string;
-						const filters = this.getNodeParameter('filters', i);
-						if (filters.fields) {
-							qs.$select = filters.fields;
-						}
+			if (operation === 'update') {
+				//update worksheet
+			} else {
+				for (let i = 0; i < length; i++) {
+					qs = {};
+					try {
+						if (operation === 'clear') {
+							const workbookId = this.getNodeParameter('workbook', i, undefined, {
+								extractValue: true,
+							}) as string;
 
-						if (returnAll) {
-							responseData = await microsoftApiRequestAllItems.call(
-								this,
-								'value',
-								'GET',
-								`/drive/items/${workbookId}/workbook/worksheets`,
-								{},
-								qs,
-							);
-						} else {
-							qs.$top = this.getNodeParameter('limit', i);
-							responseData = await microsoftApiRequest.call(
-								this,
-								'GET',
-								`/drive/items/${workbookId}/workbook/worksheets`,
-								{},
-								qs,
-							);
-							responseData = responseData.value;
-						}
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
+							const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+								extractValue: true,
+							}) as string;
 
-						returnData.push(...executionData);
-					}
-					//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
-					if (operation === 'getContent') {
-						const workbookId = this.getNodeParameter('workbook', i, undefined, {
-							extractValue: true,
-						}) as string;
+							const applyTo = this.getNodeParameter('applyTo', i) as string;
+							const selectRange = this.getNodeParameter('selectRange', i) as string;
 
-						const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
-							extractValue: true,
-						}) as string;
-
-						const range = this.getNodeParameter('range', i) as string;
-						const rawData = this.getNodeParameter('rawData', i);
-
-						if (rawData) {
-							const filters = this.getNodeParameter('filters', i);
-							if (filters.fields) {
-								qs.$select = filters.fields;
-							}
-						}
-
-						responseData = await microsoftApiRequest.call(
-							this,
-							'GET',
-							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
-							{},
-							qs,
-						);
-
-						if (!rawData) {
-							const keyRow = this.getNodeParameter('keyRow', i) as number;
-							const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
-							if (responseData.values === null) {
-								throw new NodeApiError(this.getNode(), responseData, {
-									message: 'Range did not return data',
-								});
-							}
-							const keyValues = responseData.values[keyRow];
-							for (let index = dataStartRow; index < responseData.values.length; index++) {
-								const object: IDataObject = {};
-								for (let y = 0; y < keyValues.length; y++) {
-									object[keyValues[y]] = responseData.values[index][y];
-								}
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray({ ...object }),
-									{ itemData: { item: index } },
+							if (selectRange === 'whole') {
+								await microsoftApiRequest.call(
+									this,
+									'POST',
+									`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range/clear`,
+									{ applyTo },
 								);
-
-								returnData.push(...executionData);
+							} else {
+								const range = this.getNodeParameter('range', i) as string;
+								await microsoftApiRequest.call(
+									this,
+									'POST',
+									`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')/clear`,
+									{ applyTo },
+								);
 							}
-						} else {
-							const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+								this.helpers.returnJsonArray({ success: true }),
 								{ itemData: { item: i } },
 							);
 
 							returnData.push(...executionData);
 						}
+						if (operation === 'delete') {
+							const workbookId = this.getNodeParameter('workbook', i, undefined, {
+								extractValue: true,
+							}) as string;
+
+							const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+								extractValue: true,
+							}) as string;
+
+							await microsoftApiRequest.call(
+								this,
+								'DELETE',
+								`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}`,
+							);
+
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ success: true }),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
+						}
+						//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
+						if (operation === 'getAll') {
+							const returnAll = this.getNodeParameter('returnAll', i);
+							const workbookId = this.getNodeParameter('workbook', i, undefined, {
+								extractValue: true,
+							}) as string;
+							const filters = this.getNodeParameter('filters', i);
+							if (filters.fields) {
+								qs.$select = filters.fields;
+							}
+
+							if (returnAll) {
+								responseData = await microsoftApiRequestAllItems.call(
+									this,
+									'value',
+									'GET',
+									`/drive/items/${workbookId}/workbook/worksheets`,
+									{},
+									qs,
+								);
+							} else {
+								qs.$top = this.getNodeParameter('limit', i);
+								responseData = await microsoftApiRequest.call(
+									this,
+									'GET',
+									`/drive/items/${workbookId}/workbook/worksheets`,
+									{},
+									qs,
+								);
+								responseData = responseData.value;
+							}
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(responseData),
+								{ itemData: { item: i } },
+							);
+
+							returnData.push(...executionData);
+						}
+						//https://docs.microsoft.com/en-us/graph/api/worksheet-range?view=graph-rest-1.0&tabs=http
+						if (operation === 'getContent') {
+							const workbookId = this.getNodeParameter('workbook', i, undefined, {
+								extractValue: true,
+							}) as string;
+
+							const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+								extractValue: true,
+							}) as string;
+
+							const range = this.getNodeParameter('range', i) as string;
+							const rawData = this.getNodeParameter('rawData', i);
+
+							if (rawData) {
+								const filters = this.getNodeParameter('filters', i);
+								if (filters.fields) {
+									qs.$select = filters.fields;
+								}
+							}
+
+							responseData = await microsoftApiRequest.call(
+								this,
+								'GET',
+								`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+								{},
+								qs,
+							);
+
+							if (!rawData) {
+								const keyRow = this.getNodeParameter('keyRow', i) as number;
+								const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
+								if (responseData.values === null) {
+									throw new NodeApiError(this.getNode(), responseData, {
+										message: 'Range did not return data',
+									});
+								}
+								const keyValues = responseData.values[keyRow];
+								for (let index = dataStartRow; index < responseData.values.length; index++) {
+									const object: IDataObject = {};
+									for (let y = 0; y < keyValues.length; y++) {
+										object[keyValues[y]] = responseData.values[index][y];
+									}
+									const executionData = this.helpers.constructExecutionMetaData(
+										this.helpers.returnJsonArray({ ...object }),
+										{ itemData: { item: index } },
+									);
+
+									returnData.push(...executionData);
+								}
+							} else {
+								const dataProperty = this.getNodeParameter('dataProperty', i) as string;
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+									{ itemData: { item: i } },
+								);
+
+								returnData.push(...executionData);
+							}
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							const executionErrorData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionErrorData);
+							continue;
+						}
+						throw error;
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						const executionErrorData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ error: error.message }),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionErrorData);
-						continue;
-					}
-					throw error;
 				}
 			}
 		}

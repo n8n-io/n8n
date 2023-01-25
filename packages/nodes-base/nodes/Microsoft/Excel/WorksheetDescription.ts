@@ -14,16 +14,34 @@ export const worksheetOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get many worksheets',
-				action: 'Get many worksheets',
+				name: 'Clear',
+				value: 'clear',
+				description: 'Clear worksheet',
+				action: 'Clear worksheet',
 			},
 			{
-				name: 'Get Content',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete worksheet',
+				action: 'Delete worksheet',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get worksheets',
+				action: 'Get worksheets',
+			},
+			{
+				name: 'Get Range',
 				value: 'getContent',
-				description: 'Get worksheet content',
-				action: 'Get a worksheet',
+				description: 'Get worksheet range',
+				action: 'Get worksheet range',
+			},
+			{
+				name: 'Update Range',
+				value: 'updateRange',
+				description: 'Update worksheet range',
+				action: 'Update worksheet range',
 			},
 		],
 		default: 'getAll',
@@ -31,6 +49,91 @@ export const worksheetOperations: INodeProperties[] = [
 ];
 
 export const worksheetFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                        worksheet:delete, clear                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		...workbookRLC,
+		displayOptions: {
+			show: {
+				operation: ['delete', 'clear'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		...worksheetRLC,
+		displayOptions: {
+			show: {
+				operation: ['delete', 'clear'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		displayName: 'Apply To',
+		name: 'applyTo',
+		type: 'options',
+		//value in capital case as required by api
+		options: [
+			{
+				name: 'All',
+				value: 'All',
+			},
+			{
+				name: 'Formats',
+				value: 'Formats',
+			},
+			{
+				name: 'Contents',
+				value: 'Contents',
+			},
+		],
+		default: 'All',
+		displayOptions: {
+			show: {
+				operation: ['clear'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		displayName: 'Select Range',
+		name: 'selectRange',
+		type: 'options',
+		options: [
+			{
+				name: 'Whole Worksheet',
+				value: 'whole',
+			},
+			{
+				name: 'Specify',
+				value: 'specify',
+			},
+		],
+		default: 'whole',
+		displayOptions: {
+			show: {
+				operation: ['clear'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		default: '',
+		placeholder: 'A1:B2',
+		description: 'The range of cells that will be cleared',
+		displayOptions: {
+			show: {
+				operation: ['clear'],
+				resource: ['worksheet'],
+				selectRange: ['specify'],
+			},
+		},
+	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:getAll                           */
 	/* -------------------------------------------------------------------------- */

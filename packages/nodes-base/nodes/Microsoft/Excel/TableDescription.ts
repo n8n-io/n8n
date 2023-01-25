@@ -26,6 +26,18 @@ export const tableOperations: INodeProperties[] = [
 				action: 'Add a table',
 			},
 			{
+				name: 'Convert to Range',
+				value: 'convertToRange',
+				description: 'Converts a table to a range',
+				action: 'Convert to range',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a table',
+				action: 'Delete a table',
+			},
+			{
 				name: 'Get Columns',
 				value: 'getColumns',
 				description: 'Retrieve a list of tablecolumns',
@@ -123,13 +135,13 @@ export const tableFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                                 table:addRow                               */
+	/*                table:addRow, delete, convertToRange                        */
 	/* -------------------------------------------------------------------------- */
 	{
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['addRow'],
+				operation: ['addRow', 'delete', 'convertToRange'],
 				resource: ['table'],
 			},
 		},
@@ -138,7 +150,7 @@ export const tableFields: INodeProperties[] = [
 		...worksheetRLC,
 		displayOptions: {
 			show: {
-				operation: ['addRow'],
+				operation: ['addRow', 'delete', 'convertToRange'],
 				resource: ['table'],
 			},
 		},
@@ -147,7 +159,7 @@ export const tableFields: INodeProperties[] = [
 		...tableRLC,
 		displayOptions: {
 			show: {
-				operation: ['addRow'],
+				operation: ['addRow', 'delete', 'convertToRange'],
 				resource: ['table'],
 			},
 		},
