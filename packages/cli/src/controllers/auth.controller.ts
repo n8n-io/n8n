@@ -70,23 +70,18 @@ export class AuthController {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
-		const isInstanceOwnerSetUp = this.config.getEnv('userManagement.isInstanceOwnerSetUp');
-
 		let user: User;
 		if (cookieContents) {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
-				// if (!isInstanceOwnerSetUp) {
-				// 	res.cookie(AUTH_COOKIE_NAME, cookieContents);
-				// }
 				return sanitizeUser(user);
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
 		}
 
-		if (isInstanceOwnerSetUp) {
+		if (this.config.getEnv('userManagement.isInstanceOwnerSetUp')) {
 			throw new AuthError('Not logged in');
 		}
 
@@ -106,7 +101,6 @@ export class AuthController {
 		}
 
 		await issueCookie(res, user);
-
 		return sanitizeUser(user);
 	}
 
