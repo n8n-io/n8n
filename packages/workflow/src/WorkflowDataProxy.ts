@@ -619,16 +619,8 @@ export class WorkflowDataProxy {
 
 		// replacing proxies with the actual data.
 		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
-			if (typeof data !== 'object') {
-				throw new ExpressionError('expected object as first argument', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-					clientOnly: true,
-				});
-			}
-
-			if (typeof query !== 'string') {
-				throw new ExpressionError('expected string as second argument', {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 					clientOnly: true,
