@@ -48,7 +48,7 @@
 				<GoogleAuthButton
 					v-if="isGoogleOAuthType"
 					@click="$emit('oauth')"
-					style="--google-auth-btn-height: 26px"
+					style="--google-auth-btn-height: 40px"
 				/>
 			</template>
 		</banner>
