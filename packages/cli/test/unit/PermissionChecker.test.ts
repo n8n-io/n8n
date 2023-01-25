@@ -49,8 +49,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials']);
-	await testDb.truncate(['User', 'Workflow', 'Credentials']);
+	await testDb.truncate(['SharedWorkflow', 'SharedCredentials', 'Workflow', 'Credentials', 'User']);
 });
 
 afterAll(async () => {

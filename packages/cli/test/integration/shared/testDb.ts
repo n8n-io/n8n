@@ -1,5 +1,9 @@
 import { UserSettings } from 'n8n-core';
-import { DataSource as Connection, DataSourceOptions as ConnectionOptions } from 'typeorm';
+import {
+	DataSource as Connection,
+	DataSourceOptions as ConnectionOptions,
+	Repository,
+} from 'typeorm';
 
 import config from '@/config';
 import * as Db from '@/Db';
@@ -10,26 +14,25 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@db/entities/AuthIdentity';
-import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { Role } from '@db/entities/Role';
-import { TagEntity } from '@db/entities/TagEntity';
-import { User } from '@db/entities/User';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { ICredentialsDb } from '@/Interfaces';
+
+import { DB_INITIALIZATION_TIMEOUT } from './constants';
+import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
+import { getPostgresSchemaSection } from './utils';
 import type {
 	CollectionName,
 	CredentialPayload,
 	InstalledNodePayload,
 	InstalledPackagePayload,
-	MappingName,
 } from './types';
-import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
-import { randomApiKey, randomEmail, randomName, randomString, randomValidPassword } from './random';
-import { categorize, getPostgresSchemaSection } from './utils';
-
-import type { DatabaseType, ICredentialsDb } from '@/Interfaces';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -95,140 +98,14 @@ export async function terminate() {
 	await Db.getConnection().destroy();
 }
 
-async function truncateMappingTables(
-	dbType: DatabaseType,
-	collections: CollectionName[],
-	testDb: Connection,
-) {
-	const mappingTables = collections.reduce<string[]>((acc, collection) => {
-		const found = MAPPING_TABLES_TO_CLEAR[collection];
-
-		if (found) acc.push(...found);
-
-		return acc;
-	}, []);
-
-	if (dbType === 'sqlite') {
-		const promises = mappingTables.map(async (tableName) =>
-			testDb.query(
-				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
-			),
-		);
-
-		return Promise.all(promises);
-	}
-
-	if (dbType === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-
-		// sequential TRUNCATEs to prevent race conditions
-		for (const tableName of mappingTables) {
-			const fullTableName = `${schema}.${tableName}`;
-			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
-		}
-
-		return Promise.resolve([]);
-	}
-
-	// mysqldb, mariadb
-
-	const promises = mappingTables.flatMap((tableName) => [
-		testDb.query(`DELETE FROM ${tableName};`),
-		testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`),
-	]);
-
-	return Promise.all(promises);
-}
-
 /**
  * Truncate specific DB tables in a test DB.
- *
- * @param collections Array of entity names whose tables to truncate.
- * @param testDbName Name of the test DB to truncate tables in.
  */
 export async function truncate(collections: CollectionName[]) {
-	const dbType = config.getEnv('database.type');
-	const testDb = Db.getConnection();
-
-	if (dbType === 'sqlite') {
-		await testDb.query('PRAGMA foreign_keys=OFF');
-
-		const truncationPromises = collections.map(async (collection) => {
-			const tableName = toTableName(collection);
-			// Db.collections[collection].clear();
-			return testDb.query(
-				`DELETE FROM ${tableName}; DELETE FROM sqlite_sequence WHERE name=${tableName};`,
-			);
-		});
-
-		truncationPromises.push(truncateMappingTables(dbType, collections, testDb));
-
-		await Promise.all(truncationPromises);
-
-		return testDb.query('PRAGMA foreign_keys=ON');
+	for (const collection of collections) {
+		const repository: Repository<any> = Db.collections[collection];
+		await repository.delete({});
 	}
-
-	if (dbType === 'postgresdb') {
-		const schema = config.getEnv('database.postgresdb.schema');
-
-		// sequential TRUNCATEs to prevent race conditions
-		for (const collection of collections) {
-			const fullTableName = `${schema}.${toTableName(collection)}`;
-			await testDb.query(`TRUNCATE TABLE ${fullTableName} RESTART IDENTITY CASCADE;`);
-		}
-
-		return truncateMappingTables(dbType, collections, testDb);
-	}
-
-	if (dbType === 'mysqldb') {
-		const { pass: sharedTables, fail: rest } = categorize(collections, (c: CollectionName) =>
-			c.toLowerCase().startsWith('shared'),
-		);
-
-		// sequential DELETEs to prevent race conditions
-		// clear foreign-key tables first to avoid deadlocks on MySQL: https://stackoverflow.com/a/41174997
-		for (const collection of [...sharedTables, ...rest]) {
-			const tableName = toTableName(collection);
-
-			await testDb.query(`DELETE FROM ${tableName};`);
-
-			const hasIdColumn = await testDb
-				.query(`SHOW COLUMNS FROM ${tableName}`)
-				.then((columns: Array<{ Field: string }>) => columns.find((c) => c.Field === 'id'));
-
-			if (!hasIdColumn) continue;
-
-			await testDb.query(`ALTER TABLE ${tableName} AUTO_INCREMENT = 1;`);
-		}
-
-		return truncateMappingTables(dbType, collections, testDb);
-	}
-}
-
-const isMapping = (collection: string): collection is MappingName =>
-	Object.keys(MAPPING_TABLES).includes(collection);
-
-function toTableName(sourceName: CollectionName | MappingName) {
-	if (isMapping(sourceName)) return MAPPING_TABLES[sourceName];
-
-	return {
-		AuthIdentity: 'auth_identity',
-		AuthProviderSyncHistory: 'auth_provider_sync_history',
-		Credentials: 'credentials_entity',
-		Execution: 'execution_entity',
-		InstalledNodes: 'installed_nodes',
-		InstalledPackages: 'installed_packages',
-		Role: 'role',
-		Settings: 'settings',
-		SharedCredentials: 'shared_credentials',
-		SharedWorkflow: 'shared_workflow',
-		Tag: 'tag_entity',
-		User: 'user',
-		Webhook: 'webhook_entity',
-		Workflow: 'workflow_entity',
-		WorkflowStatistics: 'workflow_statistics',
-		EventDestinations: 'event_destinations',
-	}[sourceName];
 }
 
 // ----------------------------------

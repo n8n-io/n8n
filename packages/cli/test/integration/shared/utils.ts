@@ -723,20 +723,6 @@ export async function isInstanceOwnerSetUp() {
 //              misc
 // ----------------------------------
 
-/**
- * Categorize array items into two groups based on whether they pass a test.
- */
-export const categorize = <T>(arr: T[], test: (str: T) => boolean) => {
-	return arr.reduce<{ pass: T[]; fail: T[] }>(
-		(acc, cur) => {
-			test(cur) ? acc.pass.push(cur) : acc.fail.push(cur);
-
-			return acc;
-		},
-		{ pass: [], fail: [] },
-	);
-};
-
 export function getPostgresSchemaSection(
 	schema = config.getSchema(),
 ): PostgresSchemaSection | null {
