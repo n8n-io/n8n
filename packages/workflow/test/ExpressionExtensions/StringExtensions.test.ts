@@ -97,7 +97,7 @@ describe('Data Transformation Functions', () => {
 
 		test('.isUrl should work on a string', () => {
 			expect(evaluate('={{ "https://example.com/".isUrl() }}')).toEqual(true);
-			expect(evaluate('={{ "example.com".isUrl() }}')).toEqual(false);
+			expect(() => evaluate('={{ "example.com".isUrl() }}')).toThrow();
 		});
 
 		test('.isDomain should work on a string', () => {
