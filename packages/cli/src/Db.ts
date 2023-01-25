@@ -172,6 +172,8 @@ export async function init(
 	collections.Tag = linkRepository(entities.TagEntity);
 	collections.Role = linkRepository(entities.Role);
 	collections.User = linkRepository(entities.User);
+	collections.AuthIdentity = linkRepository(entities.AuthIdentity);
+	collections.AuthProviderSyncHistory = linkRepository(entities.AuthProviderSyncHistory);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);

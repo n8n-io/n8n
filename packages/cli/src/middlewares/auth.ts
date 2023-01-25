@@ -120,12 +120,23 @@ export const setupAuthMiddlewares = (
 			return;
 		}
 		// Not owner and user exists. We now protect restricted urls.
-		const postRestrictedUrls = [`/${restEndpoint}/users`, `/${restEndpoint}/owner`];
-		const getRestrictedUrls: string[] = [];
+		const postRestrictedUrls = [
+			`/${restEndpoint}/users`,
+			`/${restEndpoint}/owner`,
+			`/${restEndpoint}/ldap/sync`,
+			`/${restEndpoint}/ldap/test-connection`,
+		];
+		const getRestrictedUrls = [
+			`/${restEndpoint}/users`,
+			`/${restEndpoint}/ldap/sync`,
+			`/${restEndpoint}/ldap/config`,
+		];
+		const putRestrictedUrls = [`/${restEndpoint}/ldap/config`];
 		const trimmedUrl = req.url.endsWith('/') ? req.url.slice(0, -1) : req.url;
 		if (
 			(req.method === 'POST' && postRestrictedUrls.includes(trimmedUrl)) ||
 			(req.method === 'GET' && getRestrictedUrls.includes(trimmedUrl)) ||
+			(req.method === 'PUT' && putRestrictedUrls.includes(trimmedUrl)) ||
 			(req.method === 'DELETE' &&
 				new RegExp(`/${restEndpoint}/users/[^/]+`, 'gm').test(trimmedUrl)) ||
 			(req.method === 'POST' &&

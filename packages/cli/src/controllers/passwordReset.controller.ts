@@ -2,7 +2,12 @@ import { IsNull, MoreThanOrEqual, Not, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
-import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
+import {
+	BadRequestError,
+	InternalServerError,
+	NotFoundError,
+	UnprocessableRequestError,
+} from '@/ResponseHelper';
 import {
 	getInstanceBaseUrl,
 	hashPassword,
@@ -17,6 +22,7 @@ import type { User } from '@db/entities/User';
 import type { PasswordResetRequest } from '@/requests';
 import type { IDatabaseCollections, IExternalHooksClass, IInternalHooksClass } from '@/Interfaces';
 import { issueCookie } from '@/auth/jwt';
+import { isLdapEnabled } from '@/Ldap/helpers';
 
 @RestController()
 export class PasswordResetController {
@@ -83,14 +89,26 @@ export class PasswordResetController {
 		}
 
 		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findOneBy({ email, password: Not(IsNull()) });
+		const user = await this.userRepository.findOne({
+			where: {
+				email,
+				password: Not(IsNull()),
+			},
+			relations: ['authIdentities'],
+		});
 
-		if (!user?.password) {
+		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+
+		if (!user?.password || (ldapIdentity && user.disabled)) {
 			this.logger.debug(
 				'Request to send password reset email failed because no user was found for the provided email',
 				{ invalidEmail: email },
 			);
 			return;
+		}
+
+		if (isLdapEnabled() && ldapIdentity) {
+			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 		}
 
 		user.resetPasswordToken = uuid();
@@ -201,10 +219,13 @@ export class PasswordResetController {
 		// Timestamp is saved in seconds
 		const currentTimestamp = Math.floor(Date.now() / 1000);
 
-		const user = await this.userRepository.findOneBy({
-			id: userId,
-			resetPasswordToken,
-			resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+		const user = await this.userRepository.findOne({
+			where: {
+				id: userId,
+				resetPasswordToken,
+				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
+			},
+			relations: ['authIdentities'],
 		});
 
 		if (!user) {
@@ -232,6 +253,15 @@ export class PasswordResetController {
 			user,
 			fields_changed: ['password'],
 		});
+
+		// if this user used to be an LDAP users
+		const ldapIdentity = user?.authIdentities?.find((i) => i.providerType === 'ldap');
+		if (ldapIdentity) {
+			void this.internalHooks.onUserSignup(user, {
+				user_type: 'email',
+				was_disabled_ldap_user: true,
+			});
+		}
 
 		await this.externalHooks.run('user.password.update', [user.email, password]);
 	}

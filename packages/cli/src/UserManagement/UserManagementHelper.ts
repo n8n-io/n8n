@@ -138,13 +138,22 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 		resetPasswordTokenExpiration,
 		updatedAt,
 		apiKey,
-		...sanitizedUser
+		authIdentities,
+		...rest
 	} = user;
 	if (withoutKeys) {
 		withoutKeys.forEach((key) => {
 			// @ts-ignore
-			delete sanitizedUser[key];
+			delete rest[key];
 		});
+	}
+	const sanitizedUser: PublicUser = {
+		...rest,
+		signInType: 'email',
+	};
+	const ldapIdentity = authIdentities?.find((i) => i.providerType === 'ldap');
+	if (ldapIdentity) {
+		sanitizedUser.signInType = 'ldap';
 	}
 	return sanitizedUser;
 }

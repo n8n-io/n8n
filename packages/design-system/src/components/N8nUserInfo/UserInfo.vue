@@ -10,13 +10,21 @@
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
-				<n8n-text :bold="true" color="text-dark"
-					>{{ firstName }} {{ lastName }}
-					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}</n8n-text
-				>
+				<n8n-text :bold="true" color="text-dark">
+					{{ firstName }} {{ lastName }}
+					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}
+				</n8n-text>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<n8n-badge :bold="true">Disabled</n8n-badge>
+				</span>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
+			</div>
+			<div v-if="!isOwner">
+				<n8n-text v-if="signInType" size="small" color="text-light">
+					Sign-in type: {{ signInType }}
+				</n8n-text>
 			</div>
 		</div>
 	</div>
@@ -47,6 +55,9 @@ export default mixins(Locale).extend({
 		email: {
 			type: String,
 		},
+		isOwner: {
+			type: Boolean,
+		},
 		isPendingUser: {
 			type: Boolean,
 		},
@@ -55,7 +66,10 @@ export default mixins(Locale).extend({
 		},
 		disabled: {
 			type: Boolean,
-			default: false,
+		},
+		signInType: {
+			type: String,
+			required: false,
 		},
 	},
 	computed: {

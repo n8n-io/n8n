@@ -30,6 +30,7 @@ import type {
 	ITelemetryUserDeletionData,
 } from '@/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 
 @RestController('/users')
 export class UsersController {
@@ -316,8 +317,9 @@ export class UsersController {
 
 		await issueCookie(res, updatedUser);
 
-		void this.internalHooks.onUserSignup({
-			user: updatedUser,
+		void this.internalHooks.onUserSignup(updatedUser, {
+			user_type: 'email',
+			was_disabled_ldap_user: false,
 		});
 
 		await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -328,7 +330,7 @@ export class UsersController {
 
 	@Get('/')
 	async listUsers(req: UserRequest.List) {
-		const users = await this.userRepository.find({ relations: ['globalRole'] });
+		const users = await this.userRepository.find({ relations: ['globalRole', 'authIdentities'] });
 		return users.map(
 			(user): PublicUser =>
 				addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
@@ -439,6 +441,8 @@ export class UsersController {
 					{ user: transferee },
 				);
 
+				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
+
 				// This will remove all shared workflows and credentials not owned
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
@@ -475,6 +479,8 @@ export class UsersController {
 			);
 			await transactionManager.remove(ownedWorkflows);
 			await transactionManager.remove(ownedSharedCredentials.map(({ credentials }) => credentials));
+
+			await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
 			await transactionManager.delete(User, { id: userToDelete.id });
 		});
 

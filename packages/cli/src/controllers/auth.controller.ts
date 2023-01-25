@@ -1,7 +1,7 @@
 import validator from 'validator';
 import { Get, Post, RestController } from '@/decorators';
 import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelper';
-import { compareHash, sanitizeUser } from '@/UserManagement/UserManagementHelper';
+import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import type { Request, Response } from 'express';
@@ -11,6 +11,7 @@ import type { LoginRequest, UserRequest } from '@/requests';
 import { In, Repository } from 'typeorm';
 import type { Config } from '@/config';
 import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
+import { handleEmailLogin, handleLdapLogin } from '@/auth';
 
 @RestController()
 export class AuthController {
@@ -46,31 +47,18 @@ export class AuthController {
 	@Post('/login')
 	async login(req: LoginRequest, res: Response): Promise<PublicUser> {
 		const { email, password } = req.body;
-		if (!email) {
-			throw new Error('Email is required to log in');
+		if (!email) throw new Error('Email is required to log in');
+		if (!password) throw new Error('Password is required to log in');
+
+		const user =
+			(await handleLdapLogin(email, password)) ?? (await handleEmailLogin(email, password));
+
+		if (user) {
+			await issueCookie(res, user);
+			return sanitizeUser(user);
 		}
 
-		if (!password) {
-			throw new Error('Password is required to log in');
-		}
-
-		let user: User | null;
-		try {
-			user = await this.userRepository.findOne({
-				where: { email },
-				relations: ['globalRole'],
-			});
-		} catch (error) {
-			throw new Error('Unable to access database.');
-		}
-
-		if (!user?.password || !(await compareHash(req.body.password, user.password))) {
-			throw new AuthError('Wrong username or password. Do you have caps lock on?');
-		}
-
-		await issueCookie(res, user);
-
-		return sanitizeUser(user);
+		throw new AuthError('Wrong username or password. Do you have caps lock on?');
 	}
 
 	/**
@@ -82,18 +70,23 @@ export class AuthController {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const cookieContents = req.cookies?.[AUTH_COOKIE_NAME] as string | undefined;
 
+		const isInstanceOwnerSetUp = this.config.getEnv('userManagement.isInstanceOwnerSetUp');
+
 		let user: User;
 		if (cookieContents) {
 			// If logged in, return user
 			try {
 				user = await resolveJwt(cookieContents);
+				// if (!isInstanceOwnerSetUp) {
+				// 	res.cookie(AUTH_COOKIE_NAME, cookieContents);
+				// }
 				return sanitizeUser(user);
 			} catch (error) {
 				res.clearCookie(AUTH_COOKIE_NAME);
 			}
 		}
 
-		if (this.config.get('userManagement.isInstanceOwnerSetUp')) {
+		if (isInstanceOwnerSetUp) {
 			throw new AuthError('Not logged in');
 		}
 
