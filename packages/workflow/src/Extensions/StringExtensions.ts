@@ -175,7 +175,7 @@ function isUrl(value: string) {
 	try {
 		url = new URL(value);
 	} catch (_error) {
-		return false;
+		throw new ExpressionError.ExpressionExtensionError(`${value} is not a valid URL`);
 	}
 	return url.protocol === 'http:' || url.protocol === 'https:';
 }
