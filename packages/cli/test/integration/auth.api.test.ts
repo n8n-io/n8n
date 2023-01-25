@@ -31,6 +31,8 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 
+	config.set('ldap.disabled', true);
+
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
 	await Db.collections.Settings.update(
