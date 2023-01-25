@@ -3,7 +3,7 @@ import { DateUtils } from 'typeorm/util/DateUtils';
 import * as Db from '@/Db';
 import config from '@/config';
 import { CREDENTIALS_REPORT } from '@/audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
 async function getAllCredsInUse(workflows: WorkflowEntity[]) {

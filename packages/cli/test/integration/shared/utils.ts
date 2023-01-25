@@ -72,7 +72,7 @@ import { setupAuthMiddlewares } from '@/middlewares';
 import * as testDb from '../shared/testDb';
 
 import { v4 as uuid } from 'uuid';
-import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { handleLdapInit } from '@/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 const loadNodesAndCredentials: INodesAndCredentials = {

@@ -1,7 +1,7 @@
 import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { QueryFailedError } from 'typeorm';
 

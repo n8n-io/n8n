@@ -10,7 +10,7 @@ import { mysqlMigrations } from '@db/migrations/mysqldb';
 import { postgresMigrations } from '@db/migrations/postgresdb';
 import { sqliteMigrations } from '@db/migrations/sqlite';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 import { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';

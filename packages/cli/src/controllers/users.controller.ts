@@ -30,7 +30,7 @@ import type {
 	ITelemetryUserDeletionData,
 } from '@/Interfaces';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { AuthIdentity } from '@/databases/entities/AuthIdentity';
+import { AuthIdentity } from '@db/entities/AuthIdentity';
 
 @RestController('/users')
 export class UsersController {
