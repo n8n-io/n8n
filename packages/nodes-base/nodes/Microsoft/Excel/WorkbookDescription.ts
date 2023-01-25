@@ -31,9 +31,6 @@ export const workbookOperations: INodeProperties[] = [
 ];
 
 export const workbookFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 workbook:addWorksheet                      */
-	/* -------------------------------------------------------------------------- */
 	{
 		...workbookRLC,
 		displayOptions: {
@@ -43,6 +40,9 @@ export const workbookFields: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 workbook:addWorksheet                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',

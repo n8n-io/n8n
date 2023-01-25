@@ -49,14 +49,11 @@ export const worksheetOperations: INodeProperties[] = [
 ];
 
 export const worksheetFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                        worksheet:delete, clear                             */
-	/* -------------------------------------------------------------------------- */
 	{
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['delete', 'clear'],
+				operation: ['delete', 'clear', 'getAll', 'getContent', 'updateRange'],
 				resource: ['worksheet'],
 			},
 		},
@@ -65,11 +62,14 @@ export const worksheetFields: INodeProperties[] = [
 		...worksheetRLC,
 		displayOptions: {
 			show: {
-				operation: ['delete', 'clear'],
+				operation: ['delete', 'clear', 'getContent', 'updateRange'],
 				resource: ['worksheet'],
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                        worksheet: clear                                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Apply To',
 		name: 'applyTo',
@@ -138,15 +138,6 @@ export const worksheetFields: INodeProperties[] = [
 	/*                                 worksheet:getAll                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['worksheet'],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -202,24 +193,6 @@ export const worksheetFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 worksheet:getContent                       */
 	/* -------------------------------------------------------------------------- */
-	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-		},
-	},
-	{
-		...worksheetRLC,
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-		},
-	},
 	{
 		displayName: 'Range',
 		name: 'range',
@@ -325,5 +298,107 @@ export const worksheetFields: INodeProperties[] = [
 				description: 'Fields the response will containt. Multiple can be added separated by ,.',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 worksheet:update                       */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+			},
+		},
+		placeholder: 'A1:C3',
+		default: '',
+		description: 'The address or the name of the range',
+		hint: 'Leave blank for entire worksheet',
+	},
+	{
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		default: 'raw',
+		options: [
+			{
+				name: 'Auto-Map',
+				value: 'autoMap',
+			},
+			{
+				name: 'Map',
+				value: 'map',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		displayName: 'Data',
+		name: 'data',
+		type: 'json',
+		default: '',
+		placeholder: '[["Hello", "100"],["1/1/2016", null]]',
+		description:
+			'Raw values for the specified range as array of string arrays in JSON format. Should match specified range.',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+				dataMode: ['raw'],
+			},
+		},
+	},
+	{
+		displayName: 'Column to Match On',
+		name: 'columnToMatchOn',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. ID',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+				dataMode: ['autoMap'],
+			},
+		},
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+			},
+		},
+		default: false,
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
+	},
+	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+				rawData: [true],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data',
 	},
 ];

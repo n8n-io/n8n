@@ -61,14 +61,19 @@ export const tableOperations: INodeProperties[] = [
 ];
 
 export const tableFields: INodeProperties[] = [
-	/* -------------------------------------------------------------------------- */
-	/*                                 table:addTable                               */
-	/* -------------------------------------------------------------------------- */
 	{
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['addTable'],
+				operation: [
+					'addTable',
+					'addRow',
+					'delete',
+					'convertToRange',
+					'getRows',
+					'getColumns',
+					'lookup',
+				],
 				resource: ['table'],
 			},
 		},
@@ -77,11 +82,32 @@ export const tableFields: INodeProperties[] = [
 		...worksheetRLC,
 		displayOptions: {
 			show: {
-				operation: ['addTable'],
+				operation: [
+					'addTable',
+					'addRow',
+					'delete',
+					'convertToRange',
+					'getRows',
+					'getColumns',
+					'lookup',
+				],
 				resource: ['table'],
 			},
 		},
 	},
+	{
+		...tableRLC,
+		displayOptions: {
+			show: {
+				operation: ['addRow', 'delete', 'convertToRange', 'getRows', 'getColumns', 'lookup'],
+				resource: ['table'],
+			},
+		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:addTable                               */
+	/* -------------------------------------------------------------------------- */
+
 	{
 		displayName: 'Select Range',
 		name: 'selectRange',
@@ -135,35 +161,9 @@ export const tableFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*                table:addRow, delete, convertToRange                        */
+	/*                                        table:addRow                        */
 	/* -------------------------------------------------------------------------- */
-	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['addRow', 'delete', 'convertToRange'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...worksheetRLC,
-		displayOptions: {
-			show: {
-				operation: ['addRow', 'delete', 'convertToRange'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...tableRLC,
-		displayOptions: {
-			show: {
-				operation: ['addRow', 'delete', 'convertToRange'],
-				resource: ['table'],
-			},
-		},
-	},
+
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -193,33 +193,7 @@ export const tableFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 table:getRows                              */
 	/* -------------------------------------------------------------------------- */
-	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['getRows'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...worksheetRLC,
-		displayOptions: {
-			show: {
-				operation: ['getRows'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...tableRLC,
-		displayOptions: {
-			show: {
-				operation: ['getRows'],
-				resource: ['table'],
-			},
-		},
-	},
+
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -306,33 +280,6 @@ export const tableFields: INodeProperties[] = [
 	/*                                 table:getColumns                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['getColumns'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...worksheetRLC,
-		displayOptions: {
-			show: {
-				operation: ['getColumns'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...tableRLC,
-		displayOptions: {
-			show: {
-				operation: ['getColumns'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -417,33 +364,6 @@ export const tableFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                 table:lookup                               */
 	/* -------------------------------------------------------------------------- */
-	{
-		...workbookRLC,
-		displayOptions: {
-			show: {
-				operation: ['lookup'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...worksheetRLC,
-		displayOptions: {
-			show: {
-				operation: ['lookup'],
-				resource: ['table'],
-			},
-		},
-	},
-	{
-		...tableRLC,
-		displayOptions: {
-			show: {
-				operation: ['lookup'],
-				resource: ['table'],
-			},
-		},
-	},
 	{
 		displayName: 'Lookup Column',
 		name: 'lookupColumn',

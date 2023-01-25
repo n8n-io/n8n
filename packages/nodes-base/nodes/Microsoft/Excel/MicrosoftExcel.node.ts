@@ -6,10 +6,11 @@ import {
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodeListSearchResult,
-	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeApiError,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import {
@@ -198,39 +199,7 @@ export class MicrosoftExcel implements INodeType {
 				return { results };
 			},
 		},
-		loadOptions: {
-			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const workbookId = this.getNodeParameter('workbook', undefined, {
-					extractValue: true,
-				}) as string;
-
-				const worksheetId = this.getNodeParameter('worksheet', undefined, {
-					extractValue: true,
-				}) as string;
-
-				const qs: IDataObject = {
-					select: 'id,name',
-				};
-				const returnData: INodePropertyOptions[] = [];
-				const tables = await microsoftApiRequestAllItems.call(
-					this,
-					'value',
-					'GET',
-					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
-					{},
-					qs,
-				);
-				for (const table of tables) {
-					const tableName = table.name;
-					const tableId = table.id;
-					returnData.push({
-						name: tableName,
-						value: tableId,
-					});
-				}
-				return returnData;
-			},
-		},
+		loadOptions: {},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -828,8 +797,139 @@ export class MicrosoftExcel implements INodeType {
 			}
 		}
 		if (resource === 'worksheet') {
-			if (operation === 'update') {
-				//update worksheet
+			if (operation === 'updateRange') {
+				try {
+					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
+						extractValue: true,
+					}) as string;
+
+					const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
+						extractValue: true,
+					}) as string;
+
+					let range = this.getNodeParameter('range', 0) as string;
+					const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+					let worksheetData: IDataObject = {};
+
+					if (range && dataMode !== 'raw') {
+						worksheetData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+						);
+					}
+
+					//get used range, if raw mode fetch only address info
+					if (range === '') {
+						const query: IDataObject = {};
+						if (dataMode === 'raw') {
+							query.select = 'address';
+						}
+
+						worksheetData = await microsoftApiRequest.call(
+							this,
+							'GET',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+							undefined,
+							query,
+						);
+
+						range = (worksheetData.address as string).split('!')[1];
+					}
+
+					if (dataMode === 'raw') {
+						const data = this.getNodeParameter('data', 0) as string;
+						const values = jsonParse(data);
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+							{ values },
+						);
+					}
+
+					if (dataMode === 'autoMap') {
+						if (
+							worksheetData.values === undefined ||
+							(worksheetData.values as string[][]).length <= 1
+						) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'No data found in the specified range could not auto map, you can use raw mode instead to update selected range',
+							);
+						}
+						const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+						const [columns, ...values] = worksheetData.values as string[][];
+						const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
+						const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
+
+						const itemsData = items.map((item) => item.json);
+						for (const item of itemsData) {
+							const columnValue = item[columnToMatchOn] as string;
+							const rowIndex = columnToMatchOnData.indexOf(columnValue);
+
+							if (rowIndex === -1) continue;
+
+							const updatedRow: Array<string | null> = [];
+
+							for (const columnName of columns) {
+								const updateValue =
+									item[columnName] === undefined ? null : (item[columnName] as string);
+								updatedRow.push(updateValue);
+							}
+
+							values[rowIndex] = updatedRow as string[];
+						}
+
+						responseData = await microsoftApiRequest.call(
+							this,
+							'PATCH',
+							`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
+							{ values: [columns, ...values] },
+						);
+					}
+
+					const rawData = this.getNodeParameter('rawData', 0);
+
+					if (!rawData) {
+						if (responseData.values === null) {
+							throw new NodeOperationError(this.getNode(), 'Operation did not return data');
+						}
+						const columns = responseData.values[0];
+						for (let rowIndex = 1; rowIndex < responseData.values.length; rowIndex++) {
+							const data: IDataObject = {};
+							for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+								data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
+							}
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray({ ...data }),
+								{ itemData: { item: rowIndex } },
+							);
+
+							returnData.push(...executionData);
+						}
+					} else {
+						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+							{ itemData: { item: 0 } },
+						);
+
+						returnData.push(...executionData);
+					}
+				} catch (error) {
+					if (this.continueOnFail()) {
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ error: error.message }),
+							{ itemData: { item: 0 } },
+						);
+						returnData.push(...executionErrorData);
+					} else {
+						throw error;
+					}
+				}
 			} else {
 				for (let i = 0; i < length; i++) {
 					qs = {};
