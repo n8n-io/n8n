@@ -350,3 +350,14 @@ export declare namespace CurlHelper {
 export declare namespace LicenseRequest {
 	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
 }
+
+export type BinaryDataRequest = AuthenticatedRequest<
+	{ path: string },
+	{},
+	{},
+	{
+		mode: 'view' | 'download';
+		fileName?: string;
+		mimeType?: string;
+	}
+>;
