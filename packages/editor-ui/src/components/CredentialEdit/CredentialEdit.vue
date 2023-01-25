@@ -1039,7 +1039,9 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return;
 			}
 			for (const property of this.credentialType.properties) {
-				Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				if (!this.credentialType.__overwrittenProperties?.includes(property.name)) {
+					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
+				}
 			}
 		},
 	},
