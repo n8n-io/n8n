@@ -237,7 +237,12 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getBinaryUrl(
+		dataPath: string,
+		mode: 'view' | 'download',
+		fileName?: string,
+		mimeType?: string,
+	): string;
 	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
