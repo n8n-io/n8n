@@ -32,10 +32,15 @@ import { extendedFunctions } from './Extensions/ExtendedFunctions';
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
 
+// @TODO: Duplicated below, remove?
 // Make sure that error get forwarded
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (error instanceof ExpressionError) {
 		if (error.context.failExecution) {
+			throw error;
+		}
+
+		if (typeof process === 'undefined' && error.clientOnly) {
 			throw error;
 		}
 	}
@@ -308,6 +313,10 @@ export class Expression {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
 				// to fail the execution
 				if (error.context.failExecution) {
+					throw error;
+				}
+
+				if (typeof process === 'undefined' && error.clientOnly) {
 					throw error;
 				}
 			}
