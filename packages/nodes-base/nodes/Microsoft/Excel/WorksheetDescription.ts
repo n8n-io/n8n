@@ -14,6 +14,12 @@ export const worksheetOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Append',
+				value: 'append',
+				description: 'Append data to worksheet',
+				action: 'Append data to worksheet',
+			},
+			{
 				name: 'Clear',
 				value: 'clear',
 				description: 'Clear worksheet',
@@ -53,7 +59,7 @@ export const worksheetFields: INodeProperties[] = [
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['delete', 'clear', 'getAll', 'getContent', 'updateRange'],
+				operation: ['append', 'delete', 'clear', 'getAll', 'getContent', 'updateRange'],
 				resource: ['worksheet'],
 			},
 		},
@@ -62,10 +68,79 @@ export const worksheetFields: INodeProperties[] = [
 		...worksheetRLC,
 		displayOptions: {
 			show: {
-				operation: ['delete', 'clear', 'getContent', 'updateRange'],
+				operation: ['append', 'delete', 'clear', 'getContent', 'updateRange'],
 				resource: ['worksheet'],
 			},
 		},
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 worksheet:append                           */
+	/* -------------------------------------------------------------------------- */
+
+	{
+		displayName: 'Data Mode',
+		name: 'dataMode',
+		type: 'options',
+		default: 'raw',
+		options: [
+			{
+				name: 'Auto-Map',
+				value: 'autoMap',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['append'],
+				resource: ['worksheet'],
+			},
+		},
+	},
+	{
+		displayName: 'Data',
+		name: 'data',
+		type: 'json',
+		default: '',
+		placeholder: '[["Hello", "100"],["1/1/2016", null]]',
+		description: 'Raw values for the specified range as array of string arrays in JSON format',
+		displayOptions: {
+			show: {
+				operation: ['append'],
+				resource: ['worksheet'],
+				dataMode: ['raw'],
+			},
+		},
+	},
+	{
+		displayName: 'RAW Data',
+		name: 'rawData',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['append'],
+				resource: ['worksheet'],
+			},
+		},
+		default: false,
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
+	},
+	{
+		displayName: 'Data Property',
+		name: 'dataProperty',
+		type: 'string',
+		default: 'data',
+		displayOptions: {
+			show: {
+				operation: ['append'],
+				resource: ['worksheet'],
+				rawData: [true],
+			},
+		},
+		description: 'The name of the property into which to write the RAW data',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                        worksheet: clear                                    */
@@ -300,7 +375,7 @@ export const worksheetFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 worksheet:update                       */
+	/*                                 worksheet:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Range',
@@ -326,10 +401,6 @@ export const worksheetFields: INodeProperties[] = [
 			{
 				name: 'Auto-Map',
 				value: 'autoMap',
-			},
-			{
-				name: 'Map',
-				value: 'map',
 			},
 			{
 				name: 'Raw',

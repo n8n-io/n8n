@@ -797,7 +797,91 @@ export class MicrosoftExcel implements INodeType {
 			}
 		}
 		if (resource === 'worksheet') {
-			if (operation === 'updateRange') {
+			if (operation === 'append') {
+				const workbookId = this.getNodeParameter('workbook', 0, undefined, {
+					extractValue: true,
+				}) as string;
+
+				const worksheetId = this.getNodeParameter('worksheet', 0, undefined, {
+					extractValue: true,
+				}) as string;
+
+				const dataMode = this.getNodeParameter('dataMode', 0) as string;
+
+				const worksheetData = await microsoftApiRequest.call(
+					this,
+					'GET',
+					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
+				);
+
+				let values: string[][] = [];
+
+				if (dataMode === 'raw') {
+					const data = this.getNodeParameter('data', 0) as string;
+					values = jsonParse<string[][]>(data);
+				}
+
+				if (dataMode === 'autoMap') {
+					const columnsRow = (worksheetData.values as string[][])[0];
+
+					const itemsData = items.map((item) => item.json);
+					for (const item of itemsData) {
+						const updateRow: string[] = [];
+
+						for (const column of columnsRow) {
+							updateRow.push(item[column] as string);
+						}
+
+						values.push(updateRow);
+					}
+				}
+
+				const { address } = worksheetData;
+				const usedRange = address.split('!')[1];
+
+				const [rangeFrom, rangeTo] = usedRange.split(':');
+				const cellDataFrom = rangeFrom.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+				const cellDataTo = rangeTo.match(/([a-zA-Z]{1,10})([0-9]{0,10})/) || [];
+
+				const from = `${cellDataFrom[1]}${Number(cellDataTo[2]) + 1}`;
+				const to = `${cellDataTo[1]}${Number(cellDataTo[2]) + Number(values.length)}`;
+
+				responseData = await microsoftApiRequest.call(
+					this,
+					'PATCH',
+					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${from}:${to}')`,
+					{ values },
+				);
+
+				const rawData = this.getNodeParameter('rawData', 0);
+
+				if (!rawData) {
+					if (responseData.values === null) {
+						throw new NodeOperationError(this.getNode(), 'Operation did not return data');
+					}
+					const columns = responseData.values[0];
+					for (let rowIndex = 1; rowIndex < responseData.values.length; rowIndex++) {
+						const data: IDataObject = {};
+						for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+							data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
+						}
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ ...data }),
+							{ itemData: { item: rowIndex } },
+						);
+
+						returnData.push(...executionData);
+					}
+				} else {
+					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+						{ itemData: { item: 0 } },
+					);
+
+					returnData.push(...executionData);
+				}
+			} else if (operation === 'updateRange') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
 						extractValue: true,
