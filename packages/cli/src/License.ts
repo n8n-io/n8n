@@ -97,6 +97,10 @@ export class License {
 		return this.isFeatureEnabled(LICENSE_FEATURES.LOG_STREAMING);
 	}
 
+	isLdapEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+	}
+
 	getCurrentEntitlements() {
 		return this.manager?.getCurrentEntitlements() ?? [];
 	}

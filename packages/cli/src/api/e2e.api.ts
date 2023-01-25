@@ -19,6 +19,8 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const tablesToTruncate = [
+	'auth_identity',
+	'auth_provider_sync_history',
 	'event_destinations',
 	'shared_workflow',
 	'shared_credentials',
