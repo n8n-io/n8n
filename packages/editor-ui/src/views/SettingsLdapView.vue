@@ -169,7 +169,6 @@ import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 import { getLdapSynchronizations } from '@/api/ldap';
 import { N8N_CONTACT_EMAIL, N8N_SALES_EMAIL } from '@/constants';
-import type { ElTableColumn } from 'element-ui/types/table-column';
 
 type FormValues = {
 	loginEnabled: boolean;
