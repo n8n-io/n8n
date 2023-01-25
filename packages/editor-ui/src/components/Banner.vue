@@ -16,8 +16,9 @@
 				</div>
 			</div>
 
+			<slot name="button" v-if="$slots.button" />
 			<n8n-button
-				v-if="buttonLabel"
+				v-else-if="buttonLabel"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:type="theme"
