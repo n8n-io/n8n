@@ -31,6 +31,12 @@ export const tweetOperations: INodeProperties[] = [
 				action: 'Like a Tweet',
 			},
 			{
+				name: 'Retweet',
+				value: 'retweet',
+				description: 'Retweet a tweet',
+				action: 'Retweet a tweet',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search for Tweets from the last seven days',
@@ -50,9 +56,9 @@ export const tweetFields: INodeProperties[] = [
 		name: 'text',
 		type: 'string',
 		typeOptions: {
-			rows: 2, // Text area rows
+			rows: 2,
 		},
-		default: '', // Default value (no placeholder)
+		default: '',
 		required: true,
 		displayOptions: {
 			show: {
@@ -427,6 +433,65 @@ export const tweetFields: INodeProperties[] = [
 				default: [],
 				description:
 					'The fields to add to each returned Tweet object. Default fields are: ID, text, edit_history_tweet_ids.',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:retweet                               */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet',
+		name: 'tweetId',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		description: 'The Tweet to Retweet',
+		displayOptions: {
+			show: {
+				operation: ['retweet'],
+				resource: ['tweet'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. 1187836157394112513',
+				url: '',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. https://twitter.com/n8n_io/status/1187836157394112513',
+				url: '',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				operation: ['retweet'],
+				resource: ['tweet'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Trim User',
+				name: 'trimUser',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether each tweet returned in a timeline will include a user object including only the status authors numerical ID',
 			},
 		],
 	},

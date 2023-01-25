@@ -9,10 +9,10 @@ import {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { userOperations, userFields } from './UserDescription';
+import { directMessageOperations, directMessageFields } from './DirectMessageDescription';
 import { listOperations, listFields } from './ListDescription';
-
 import { tweetFields, tweetOperations } from './TweetDescription';
+import { userOperations, userFields } from './UserDescription';
 
 import {
 	twitterApiRequest,
@@ -32,7 +32,7 @@ export class Twitter implements INodeType {
 		group: ['input', 'output'],
 		version: 2,
 		description:
-			'Post, like, and search tweets, search users, add users to lists, and call custom APIs',
+			'Post, like, and search tweets, send messages, search users, and add users to lists',
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
@@ -53,6 +53,21 @@ export class Twitter implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Authorized API Call',
+						value: 'api',
+						description: 'Call any Twitter API',
+					},
+					{
+						name: 'Direct Message',
+						value: 'directMessage',
+						description: 'Send a direct message to a user',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Add a user to a list',
+					},
+					{
 						name: 'Tweet',
 						value: 'tweet',
 						description: 'Create, like, search, or delete a Tweet',
@@ -62,25 +77,18 @@ export class Twitter implements INodeType {
 						value: 'user',
 						description: 'Search users by username',
 					},
-					{
-						name: 'List',
-						value: 'list',
-						description: 'Add a member to a list',
-					},
-					{
-						name: 'Authorized API Call',
-						value: 'api',
-						description: 'Call any Twitter API',
-					},
 				],
 				default: 'tweet',
 			},
-			// TWEET
-			...tweetOperations,
-			...tweetFields,
+			// DIRECT MESSAGE
+			...directMessageOperations,
+			...directMessageFields,
 			// LIST
 			...listOperations,
 			...listFields,
+			// TWEET
+			...tweetOperations,
+			...tweetFields,
 			// USER
 			...userOperations,
 			...userFields,
