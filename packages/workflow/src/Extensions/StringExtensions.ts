@@ -377,19 +377,20 @@ isNotEmpty.doc = {
 
 extractEmail.doc = {
 	name: 'extractEmail',
-	description: 'Extracts an email from a string',
+	description: 'Extracts an email from a string. Returns undefined if none is found.',
 	returnType: 'string',
 };
 
 extractDomain.doc = {
 	name: 'extractDomain',
-	description: 'Extracts a domain from a string',
+	description:
+		'Extracts a domain from a string containing a valid URL. Returns undefined if none is found.',
 	returnType: 'string',
 };
 
 extractUrl.doc = {
 	name: 'extractUrl',
-	description: 'Extracts a URL from a string',
+	description: 'Extracts a URL from a string. Returns undefined if none is found.',
 	returnType: 'string',
 };
 
