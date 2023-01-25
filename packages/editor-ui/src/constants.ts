@@ -312,6 +312,7 @@ export enum VIEWS {
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
@@ -381,6 +382,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
@@ -441,6 +443,15 @@ export enum STORES {
 	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 }
+
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}
+
+export const N8N_SALES_EMAIL = 'sales@n8n.io';
+
+export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
 
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
 
