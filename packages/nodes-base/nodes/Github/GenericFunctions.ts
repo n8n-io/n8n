@@ -2,14 +2,14 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
  *
  */
 export async function githubApiRequest(
-	this: IHookFunctions | IExecuteFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
 	body: object,
