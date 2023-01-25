@@ -147,6 +147,7 @@
     "jsonschema": "^1.4.1",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "~1.12.1",
+    "ldapts": "^4.2.2",
     "localtunnel": "^2.0.0",
     "lodash.get": "^4.4.2",
     "lodash.intersection": "^4.4.0",

@@ -19,6 +19,7 @@ import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
+import type { AuthIdentity } from './AuthIdentity';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -80,11 +81,17 @@ export class User extends AbstractEntity implements IUser {
 	@Column()
 	globalRoleId: string;
 
+	@OneToMany('AuthIdentity', 'user')
+	authIdentities: AuthIdentity[];
+
 	@OneToMany('SharedWorkflow', 'user')
 	sharedWorkflows: SharedWorkflow[];
 
 	@OneToMany('SharedCredentials', 'user')
 	sharedCredentials: SharedCredentials[];
+
+	@Column({ type: Boolean, default: false })
+	disabled: boolean;
 
 	@BeforeInsert()
 	@BeforeUpdate()
