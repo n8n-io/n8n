@@ -1,16 +1,11 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@db/utils/migrationHelpers';
+import type { MigrationContext, MigrationInterface } from '@db/types';
 
 export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
-	name = 'UniqueWorkflowNames1620824779533';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
-
-		const workflowNames = await queryRunner.query(`
-				SELECT name
-				FROM ${tablePrefix}workflow_entity
-			`);
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
+		const workflowNames = (await queryRunner.query(`
+			SELECT name
+			FROM ${tablePrefix}workflow_entity
+		`)) as Array<{ name: string }>;
 
 		for (const { name } of workflowNames) {
 			const [duplicatesQuery, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
@@ -24,19 +19,22 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 				{},
 			);
 
-			const duplicates = await queryRunner.query(duplicatesQuery, parameters);
+			const duplicates = (await queryRunner.query(duplicatesQuery, parameters)) as Array<{
+				id: number;
+				name: string;
+			}>;
 
 			if (duplicates.length > 1) {
 				await Promise.all(
-					duplicates.map(({ id, name }: { id: number; name: string }, index: number) => {
+					// eslint-disable-next-line @typescript-eslint/no-shadow
+					duplicates.map(async ({ id, name }: { id: number; name: string }, index: number) => {
 						if (index === 0) return Promise.resolve();
 						const [updateQuery, updateParams] =
 							queryRunner.connection.driver.escapeQueryWithParameters(
-								`
-							UPDATE ${tablePrefix}workflow_entity
-							SET name = :name
-							WHERE id = '${id}'
-						`,
+								`UPDATE ${tablePrefix}workflow_entity
+									SET name = :name
+									WHERE id = '${id}'
+								`,
 								{ name: `${name} ${index + 1}` },
 								{},
 							);
@@ -52,8 +50,7 @@ export class UniqueWorkflowNames1620824779533 implements MigrationInterface {
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = getTablePrefix();
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`DROP INDEX "IDX_${tablePrefix}a252c527c4c89237221fe2c0ab"`);
 	}
 }

@@ -35,6 +35,7 @@ import type { FindOperator, Repository } from 'typeorm';
 
 import type { ChildProcess } from 'child_process';
 
+import type { DatabaseType } from '@db/types';
 import type { AuthIdentity, AuthProviderType } from '@db/entities/AuthIdentity';
 import type { AuthProviderSyncHistory } from '@db/entities/AuthProviderSyncHistory';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
@@ -147,7 +148,6 @@ export type ICredentialsDecryptedDb = ICredentialsBase & ICredentialsDecrypted;
 
 export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 
-export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
 
 export interface IExecutionBase {

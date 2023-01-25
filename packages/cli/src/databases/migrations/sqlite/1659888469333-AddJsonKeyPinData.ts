@@ -1,24 +1,18 @@
-import {
-	logMigrationStart,
-	logMigrationEnd,
-	runInBatches,
-	getTablePrefix,
-	escapeQuery,
-} from '@db/utils/migrationHelpers';
-import type { MigrationInterface, QueryRunner } from 'typeorm';
-import { isJsonKeyObject, PinData } from '@db/utils/migrations.types';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-use-before-define */
+import type { MigrationContext, MigrationInterface } from '@db/types';
+import { runInBatches, escapeQuery } from '@db/utils/migrationHelpers';
+import type { PinData } from '@db/utils/migrations.types';
+import { isJsonKeyObject } from '@db/utils/migrations.types';
 
 /**
  * Convert TEXT-type `pinData` column in `workflow_entity` table from
  * `{ [nodeName: string]: IDataObject[] }` to `{ [nodeName: string]: INodeExecutionData[] }`
  */
 export class AddJsonKeyPinData1659888469333 implements MigrationInterface {
-	name = 'AddJsonKeyPinData1659888469333';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-
-		const workflowTable = `${getTablePrefix()}workflow_entity`;
+	async up(context: MigrationContext) {
+		const { queryRunner, tablePrefix } = context;
+		const workflowTable = `${tablePrefix}workflow_entity`;
 
 		const PINDATA_SELECT_QUERY = `
 			SELECT id, pinData
@@ -35,30 +29,25 @@ export class AddJsonKeyPinData1659888469333 implements MigrationInterface {
 		await runInBatches(
 			queryRunner,
 			PINDATA_SELECT_QUERY,
-			addJsonKeyToPinDataColumn(queryRunner, PINDATA_UPDATE_STATEMENT),
+			addJsonKeyToPinDataColumn(context, PINDATA_UPDATE_STATEMENT),
 		);
-
-		logMigrationEnd(this.name);
-	}
-
-	async down() {
-		// irreversible migration
 	}
 }
 
 export const addJsonKeyToPinDataColumn =
-	(queryRunner: QueryRunner, updateStatement: string) =>
+	({ queryRunner }: MigrationContext, updateStatement: string) =>
 	async (fetchedWorkflows: PinData.FetchedWorkflow[]) => {
-		makeUpdateParams(fetchedWorkflows).forEach((param) => {
-			const params = {
-				pinData: param.pinData,
-				id: param.id,
-			};
+		await Promise.all(
+			makeUpdateParams(fetchedWorkflows).map(async (param) => {
+				const params = {
+					pinData: param.pinData,
+					id: param.id,
+				};
 
-			const [escapedStatement, escapedParams] = escapeQuery(queryRunner, updateStatement, params);
-
-			queryRunner.query(escapedStatement, escapedParams);
-		});
+				const [escapedStatement, escapedParams] = escapeQuery(queryRunner, updateStatement, params);
+				return queryRunner.query(escapedStatement, escapedParams);
+			}),
+		);
 	};
 
 function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
@@ -77,6 +66,7 @@ function makeUpdateParams(fetchedWorkflows: PinData.FetchedWorkflow[]) {
 			}
 
 			const newPinDataPerWorkflow = Object.keys(pinDataPerWorkflow).reduce<PinData.New>(
+				// eslint-disable-next-line @typescript-eslint/no-shadow
 				(newPinDataPerWorkflow, nodeName) => {
 					let pinDataPerNode = pinDataPerWorkflow[nodeName];
 

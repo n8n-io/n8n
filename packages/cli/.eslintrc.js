@@ -11,7 +11,6 @@ module.exports = {
 	ignorePatterns: [
 		'jest.config.js',
 		// TODO: Remove these
-		'src/databases/migrations/**',
 		'src/databases/ormconfig.ts',
 	],
 

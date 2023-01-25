@@ -1,3 +1,4 @@
+import type { MigrationClass } from '@db/types';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -34,7 +35,7 @@ import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExec
 import { UpdateRunningExecutionStatus1677236854063 } from './1677236854063-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281778 } from './1679416281778-CreateExecutionMetadataTable';
 
-export const postgresMigrations = [
+export const postgresMigrations: MigrationClass[] = [
 	InitialMigration1587669153312,
 	WebhookModel1589476000887,
 	CreateIndexStoppedAt1594828256133,

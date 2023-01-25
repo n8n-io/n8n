@@ -1,3 +1,4 @@
+import type { MigrationClass } from '@db/types';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -33,7 +34,7 @@ import { MigrateExecutionStatus1676996103000 } from './1676996103000-MigrateExec
 import { UpdateRunningExecutionStatus1677237073720 } from './1677237073720-UpdateRunningExecutionStatus';
 import { CreateExecutionMetadataTable1679416281777 } from './1679416281777-CreateExecutionMetadataTable';
 
-const sqliteMigrations = [
+const sqliteMigrations: MigrationClass[] = [
 	InitialMigration1588102412422,
 	WebhookModel1592445003908,
 	CreateIndexStoppedAt1594825041918,

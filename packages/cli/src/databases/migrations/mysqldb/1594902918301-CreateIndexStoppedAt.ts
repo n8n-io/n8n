@@ -1,13 +1,7 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-
-import config from '@/config';
+import type { MigrationContext, MigrationInterface } from '@db/types';
 
 export class CreateIndexStoppedAt1594902918301 implements MigrationInterface {
-	name = 'CreateIndexStoppedAt1594902918301';
-
-	async up(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'CREATE INDEX `IDX_' +
 				tablePrefix +
@@ -17,9 +11,7 @@ export class CreateIndexStoppedAt1594902918301 implements MigrationInterface {
 		);
 	}
 
-	async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(
 			'DROP INDEX `IDX_' +
 				tablePrefix +

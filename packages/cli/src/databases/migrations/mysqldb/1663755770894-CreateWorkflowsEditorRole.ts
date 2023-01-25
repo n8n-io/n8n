@@ -1,24 +1,14 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import type { MigrationContext, MigrationInterface } from '@db/types';
 
 export class CreateWorkflowsEditorRole1663755770894 implements MigrationInterface {
-	name = 'CreateWorkflowsEditorRole1663755770894';
-
-	async up(queryRunner: QueryRunner) {
-		logMigrationStart(this.name);
-		const tablePrefix = getTablePrefix();
-
+	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			INSERT IGNORE INTO ${tablePrefix}role (name, scope)
 			VALUES ("editor", "workflow")
 		`);
-
-		logMigrationEnd(this.name);
 	}
 
-	async down(queryRunner: QueryRunner) {
-		const tablePrefix = getTablePrefix();
-
+	async down({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			DELETE FROM ${tablePrefix}role WHERE name='user' AND scope='workflow';
 		`);
