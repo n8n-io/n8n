@@ -16,7 +16,6 @@ async function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	handlersDirectory: string,
-	swaggerThemeCss: string,
 	publicApiEndpoint: string,
 ): Promise<Router> {
 	const n8nPath = config.getEnv('path');
@@ -33,6 +32,8 @@ async function createApiRouter(
 
 	if (!config.getEnv('publicApi.swaggerUi.disabled')) {
 		const { serveFiles, setup } = await import('swagger-ui-express');
+		const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
+		const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
 
 		apiController.use(
 			`/${publicApiEndpoint}/${version}/docs`,
@@ -129,15 +130,13 @@ async function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
-	const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 	const folders = await fs.readdir(__dirname);
-	const css = (await fs.readFile(swaggerThemePath)).toString();
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint);
+			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);
 
