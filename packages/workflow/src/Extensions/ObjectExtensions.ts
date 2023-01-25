@@ -77,6 +77,7 @@ export function compact(value: object): object {
 	for (const [key, val] of Object.entries(value)) {
 		if (val !== null && val !== undefined && val !== 'nil' && val !== '') {
 			if (typeof val === 'object') {
+				if (Object.keys(val).length === 0) continue;
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument
 				newObj[key] = compact(val);
 			} else {
