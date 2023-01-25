@@ -10,6 +10,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
+	randomCredentialPayload,
 	randomEmail,
 	randomInvalidPassword,
 	randomName,
@@ -208,7 +209,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 
 	const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-	const savedCredential = await testDb.saveCredential(undefined, {
+	const savedCredential = await testDb.saveCredential(randomCredentialPayload(), {
 		user: userToDelete,
 		role: credentialOwnerRole,
 	});

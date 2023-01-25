@@ -1,6 +1,8 @@
-import { Application } from 'express';
+import type { Application } from 'express';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '@/Interfaces';
+import type { AuthProviderType } from '@/databases/entities/AuthIdentity';
+import type { Role } from '@/databases/entities/Role';
 
 export interface JwtToken {
 	token: string;
@@ -23,6 +25,9 @@ export interface PublicUser {
 	passwordResetToken?: string;
 	createdAt: Date;
 	isPending: boolean;
+	globalRole?: Role;
+	signInType: AuthProviderType;
+	disabled: boolean;
 	inviteAcceptUrl?: string;
 }
 

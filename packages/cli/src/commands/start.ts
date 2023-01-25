@@ -34,6 +34,7 @@ import { WaitTracker } from '@/WaitTracker';
 
 import { getLogger } from '@/Logger';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { handleLdapInit } from '@/Ldap/helpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
@@ -406,6 +407,8 @@ export class Start extends Command {
 			await activeWorkflowRunner.init();
 
 			WaitTracker();
+
+			await handleLdapInit();
 
 			const editorUrl = GenericHelpers.getBaseUrl();
 			this.log(`\nEditor is now accessible via:\n${editorUrl}`);

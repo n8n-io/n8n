@@ -40,28 +40,16 @@ UserSelect.args = {
 			firstName: 'Sunny',
 			lastName: 'Side',
 			email: 'sunny@n8n.io',
-			globalRole: {
-				name: 'owner',
-				id: '1',
-			},
 		},
 		{
 			id: '2',
 			firstName: 'Kobi',
 			lastName: 'Dog',
 			email: 'kobi@n8n.io',
-			globalRole: {
-				name: 'member',
-				id: '2',
-			},
 		},
 		{
 			id: '3',
 			email: 'invited@n8n.io',
-			globalRole: {
-				name: 'member',
-				id: '2',
-			},
 		},
 	],
 	placeholder: 'Select user to transfer to',
