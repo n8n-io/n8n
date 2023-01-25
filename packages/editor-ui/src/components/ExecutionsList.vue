@@ -643,7 +643,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					// Find the correct position to place this newcomer
 					let j;
 					for (j = alreadyPresentExecutions.length - 1; j >= 0; j--) {
-						if (currentId < parseInt(this.finishedExecutions[j].id, 10)) {
+						if (currentId < parseInt(alreadyPresentExecutions[j].id, 10)) {
 							alreadyPresentExecutions.splice(j + 1, 0, currentItem);
 							break;
 						}
