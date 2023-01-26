@@ -3,6 +3,7 @@ import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { resolveParameter } from '@/mixins/workflowHelpers';
 import { CompletionContext } from '@codemirror/autocomplete';
+import { useNDVStore } from '@/stores/ndv';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -92,7 +93,13 @@ export function hasNoParams(toResolve: string) {
 
 export function autocompletableNodeNames() {
 	return useWorkflowsStore()
-		.allNodes.filter((node) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
+		.allNodes.filter((node) => {
+			const activeNodeName = useNDVStore().activeNode?.name;
+
+			return (
+				!NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type) && node.name !== activeNodeName
+			);
+		})
 		.map((node) => node.name);
 }
 
