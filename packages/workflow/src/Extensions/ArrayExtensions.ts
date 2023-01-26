@@ -246,6 +246,9 @@ function chunk(value: unknown[], extraArgs: number[]) {
 	if (typeof chunkSize !== 'number') {
 		throw new ExpressionExtensionError('chunk requires 1 parameter: chunkSize. e.g. .chunk(5)');
 	}
+	if (chunkSize === 0) {
+		throw new ExpressionExtensionError('chunk: arg must be higher than 0, e.g. .chunk(5)');
+	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
 		// I have no clue why eslint thinks 2 numbers could be anything but that but here we are
