@@ -501,6 +501,7 @@
       "dist/nodes/HighLevel/HighLevel.node.js",
       "dist/nodes/HomeAssistant/HomeAssistant.node.js",
       "dist/nodes/HtmlExtract/HtmlExtract.node.js",
+      "dist/nodes/Html/Html.node.js",
       "dist/nodes/HttpRequest/HttpRequest.node.js",
       "dist/nodes/Hubspot/Hubspot.node.js",
       "dist/nodes/Hubspot/HubspotTrigger.node.js",
