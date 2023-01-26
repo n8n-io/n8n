@@ -1,4 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { Readable } from 'stream';
+import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -1962,7 +1963,6 @@ export class Telegram implements INodeType {
 				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 					const itemBinaryData = items[i].binary![binaryPropertyName];
-					const dataStream = this.helpers.getBinaryStream(itemBinaryData.id!);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
@@ -1979,10 +1979,17 @@ export class Telegram implements INodeType {
 
 					body.disable_notification = body.disable_notification?.toString() || 'false';
 
+					let uploadData: Buffer | Readable;
+					if (itemBinaryData.id) {
+						uploadData = this.helpers.getBinaryStream(itemBinaryData.id);
+					} else {
+						uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+					}
+
 					const formData = {
 						...body,
 						[propertyName]: {
-							value: dataStream,
+							value: uploadData,
 							options: {
 								filename,
 								contentType: itemBinaryData.mimeType,
