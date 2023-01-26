@@ -54,7 +54,7 @@ export async function getRepositories(
 	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
 	const page = paginationToken ? +paginationToken : 1;
 	const per_page = 100;
-	const q = `${filter ?? ''} user:${owner}`;
+	const q = `${filter ?? ''} user:${owner} fork:true`;
 	let responseData: RepositorySearchResponse = {
 		items: [],
 		total_count: 0,
