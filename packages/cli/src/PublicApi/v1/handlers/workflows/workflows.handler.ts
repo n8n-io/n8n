@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { FindConditions, FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, FindOptionsWhere, In } from 'typeorm';
 
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import config from '@/config';
@@ -100,7 +100,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const where: FindConditions<WorkflowEntity> = {
+			const where: FindOptionsWhere<WorkflowEntity> = {
 				...(active !== undefined && { active }),
 			};
 			const query: FindManyOptions<WorkflowEntity> = {

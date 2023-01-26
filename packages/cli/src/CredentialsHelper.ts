@@ -270,7 +270,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 					relations: ['credentials'],
 					where: { credentials: { id: nodeCredential.id, type }, userId },
 			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
+			: await Db.collections.Credentials.findOneByOrFail({ id: nodeCredential.id, type });
 
 		if (!credential) {
 			throw new Error(
@@ -765,8 +765,8 @@ export async function getCredentialForUser(
  */
 export async function getCredentialWithoutUser(
 	credentialId: string,
-): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+): Promise<ICredentialsDb | null> {
+	return Db.collections.Credentials.findOneBy({ id: credentialId });
 }
 
 export function createCredentialsFromCredentialsEntity(

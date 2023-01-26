@@ -980,7 +980,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'htmlEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1131,6 +1131,10 @@ export type INodePropertyValueExtractor = INodePropertyValueExtractorRegex;
 export interface IParameterDependencies {
 	[key: string]: string[];
 }
+
+export type IParameterLabel = {
+	size?: 'small' | 'medium';
+};
 
 export interface IPollResponse {
 	closeFunction?: () => Promise<void>;

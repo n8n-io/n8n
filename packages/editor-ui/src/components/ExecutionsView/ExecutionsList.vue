@@ -1,7 +1,6 @@
 <template>
 	<div :class="$style.container" v-if="!loading">
 		<executions-sidebar
-			v-if="showSidebar"
 			:executions="executions"
 			:loading="loading"
 			:loadingMore="loadingMore"
@@ -18,11 +17,6 @@
 				@retryExecution="onRetryExecution"
 				@stopExecution="onStopExecution"
 			/>
-		</div>
-		<div v-if="executions.length === 0 && filterApplied" :class="$style.noResultsContainer">
-			<n8n-text color="text-base" size="medium" align="center">
-				{{ $locale.baseText('executionsLandingPage.noResults') }}
-			</n8n-text>
 		</div>
 	</div>
 </template>
@@ -60,7 +54,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '@/mixins/debounce';
-import { getNodeViewTab } from '@/utils';
+import { getNodeViewTab, NO_NETWORK_ERROR_CODE } from '@/utils';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -76,7 +70,7 @@ export default mixins(
 	debounceHelper,
 	workflowHelpers,
 ).extend({
-	name: 'executions-list',
+	name: 'executions-view',
 	components: {
 		ExecutionsSidebar,
 	},
@@ -90,19 +84,12 @@ export default mixins(
 	computed: {
 		...mapStores(useTagsStore, useNodeTypesStore, useSettingsStore, useUIStore, useWorkflowsStore),
 		hidePreview(): boolean {
-			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent =
 				this.filterApplied &&
 				(this.executions as IExecutionsSummary[]).find(
 					(ex) => ex.id === this.activeExecution.id,
 				) === undefined;
-			return this.loading || nothingToShow || activeNotPresent;
-		},
-		showSidebar(): boolean {
-			if (this.executions.length === 0) {
-				return this.filterApplied;
-			}
-			return true;
+			return this.loading || !this.executions.length || activeNotPresent;
 		},
 		filterApplied(): boolean {
 			return this.filter.status !== '';
@@ -256,22 +243,32 @@ export default mixins(
 		async onDeleteCurrentExecution(): Promise<void> {
 			this.loading = true;
 			try {
+				const executionIndex = this.executions.findIndex(
+					(execution: IExecutionsSummary) => execution.id === this.$route.params.executionId,
+				);
+				const nextExecution =
+					this.executions[executionIndex + 1] ||
+					this.executions[executionIndex - 1] ||
+					this.executions[0];
+
 				await this.restApi().deleteExecutions({ ids: [this.$route.params.executionId] });
-				await this.setExecutions();
-				// Select first execution in the list after deleting the current one
 				if (this.executions.length > 0) {
-					this.workflowsStore.activeWorkflowExecution = this.executions[0];
-					this.$router
+					await this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
-							params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+							params: { name: this.currentWorkflow, executionId: nextExecution.id },
 						})
 						.catch(() => {});
+					this.workflowsStore.activeWorkflowExecution = nextExecution;
 				} else {
 					// If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+					await this.$router.push({
+						name: VIEWS.EXECUTION_HOME,
+						params: { name: this.currentWorkflow },
+					});
 				}
+				await this.setExecutions();
 			} catch (error) {
 				this.loading = false;
 				this.$showError(
@@ -314,8 +311,7 @@ export default mixins(
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
-			const workflowExecutions = await this.loadExecutions();
-			this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
+			this.workflowsStore.currentWorkflowExecutions = await this.loadExecutions();
 			await this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
@@ -330,7 +326,7 @@ export default mixins(
 			for (let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
+				if (lastId !== 0 && !isNaN(currentId)) {
 					if (currentId - lastId > 1) {
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
@@ -376,9 +372,8 @@ export default mixins(
 			if (updatedActiveExecution !== null) {
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
-				const activeNotInTheList =
-					existingExecutions.find((ex) => ex.id === this.activeExecution.id) === undefined;
-				if (activeNotInTheList && this.executions.length > 0) {
+				const activeInList = existingExecutions.some((ex) => ex.id === this.activeExecution.id);
+				if (!activeInList && this.executions.length > 0) {
 					this.$router
 						.push({
 							name: VIEWS.EXECUTION_PREVIEW,
@@ -396,11 +391,24 @@ export default mixins(
 				return [];
 			}
 			try {
-				const executions: IExecutionsSummary[] =
-					await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
-				return executions;
+				return await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
 			} catch (error) {
-				this.$showError(error, this.$locale.baseText('executionsList.showError.refreshData.title'));
+				if (error.errorCode === NO_NETWORK_ERROR_CODE) {
+					this.$showMessage(
+						{
+							title: this.$locale.baseText('executionsList.showError.refreshData.title'),
+							message: error.message,
+							type: 'error',
+							duration: 3500,
+						},
+						false,
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('executionsList.showError.refreshData.title'),
+					);
+				}
 				return [];
 			}
 		},
@@ -666,11 +674,5 @@ export default mixins(
 
 .content {
 	flex: 1;
-}
-
-.noResultsContainer {
-	width: 100%;
-	margin-top: var(--spacing-2xl);
-	text-align: center;
 }
 </style>

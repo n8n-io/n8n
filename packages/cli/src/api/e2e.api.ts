@@ -19,6 +19,8 @@ if (process.env.E2E_TESTS !== 'true') {
 }
 
 const tablesToTruncate = [
+	'auth_identity',
+	'auth_provider_sync_history',
 	'event_destinations',
 	'shared_workflow',
 	'shared_credentials',
@@ -99,11 +101,14 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 	}
 
 	const globalRole = await Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
+		select: ['id'],
+		where: {
+			name: 'owner',
+			scope: 'global',
+		},
 	});
 
-	const owner = await Db.collections.User.findOneOrFail({ globalRole });
+	const owner = await Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 
 	await Db.collections.User.update(owner.id, {
 		email: req.body.email,

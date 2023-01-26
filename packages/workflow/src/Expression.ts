@@ -298,15 +298,30 @@ export class Expression {
 					throw error;
 				}
 			}
+
+			// Syntax errors resolve to `Error` on the frontend and `null` on the backend.
+			// This is a temporary divergence in evaluation behavior until we make the
+			// breaking change to allow syntax errors to fail executions.
+			if (
+				typeof process === 'undefined' &&
+				error instanceof Error &&
+				error.name === 'SyntaxError'
+			) {
+				throw new Error('invalid syntax');
+			}
 		}
 		return null;
 	}
 
 	extendSyntax(bracketedExpression: string): string {
-		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
-			return bracketedExpression;
-
 		const chunks = splitExpression(bracketedExpression);
+
+		const codeChunks = chunks
+			.filter((c) => c.type === 'code')
+			.map((c) => c.text.replace(/("|').*?("|')/, '').trim());
+
+		if (!codeChunks.some(hasExpressionExtension) || hasNativeMethod(bracketedExpression))
+			return bracketedExpression;
 
 		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
 			if (chunk.type === 'code') {

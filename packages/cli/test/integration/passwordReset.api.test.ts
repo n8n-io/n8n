@@ -17,14 +17,12 @@ import type { Role } from '@db/entities/Role';
 jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
-let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
-	const initResult = await testDb.init();
-	testDbName = initResult.testDbName;
+	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	globalMemberRole = await testDb.getGlobalMemberRole();
@@ -34,7 +32,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User'], testDbName);
+	await testDb.truncate(['User']);
 
 	jest.mock('@/config');
 
@@ -43,7 +41,7 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	await testDb.terminate(testDbName);
+	await testDb.terminate();
 });
 
 test('POST /forgot-password should send password reset email', async () => {
@@ -64,7 +62,7 @@ test('POST /forgot-password should send password reset email', async () => {
 			expect(response.statusCode).toBe(200);
 			expect(response.body).toEqual({});
 
-			const user = await Db.collections.User.findOneOrFail({ email: payload.email });
+			const user = await Db.collections.User.findOneByOrFail({ email: payload.email });
 			expect(user.resetPasswordToken).toBeDefined();
 			expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
 		}),
@@ -80,7 +78,7 @@ test('POST /forgot-password should fail if emailing is not set up', async () => 
 
 	expect(response.statusCode).toBe(500);
 
-	const storedOwner = await Db.collections.User.findOneOrFail({ email: owner.email });
+	const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
 	expect(storedOwner.resetPasswordToken).toBeNull();
 });
 
@@ -104,7 +102,7 @@ test('POST /forgot-password should fail with invalid inputs', async () => {
 			const response = await authlessAgent.post('/forgot-password').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedOwner = await Db.collections.User.findOneOrFail({ email: owner.email });
+			const storedOwner = await Db.collections.User.findOneByOrFail({ email: owner.email });
 			expect(storedOwner.resetPasswordToken).toBeNull();
 		}),
 	);
@@ -218,7 +216,7 @@ test('POST /change-password should succeed with valid inputs', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const { password: storedPassword } = await Db.collections.User.findOneOrFail(owner.id);
+	const { password: storedPassword } = await Db.collections.User.findOneByOrFail({ id: owner.id });
 
 	const comparisonResult = await compare(passwordToStore, storedPassword);
 	expect(comparisonResult).toBe(true);
@@ -262,7 +260,7 @@ test('POST /change-password should fail with invalid inputs', async () => {
 			const response = await authlessAgent.post('/change-password').query(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const { password: storedPassword } = await Db.collections.User.findOneOrFail();
+			const { password: storedPassword } = await Db.collections.User.findOneByOrFail({});
 			expect(owner.password).toBe(storedPassword);
 		}),
 	);

@@ -167,7 +167,6 @@ import type {
 	jsPlumbInstance,
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import once from 'lodash/once';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -186,6 +185,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 	EnterpriseEditionFeature,
+	POSTHOG_ASSUMPTION_TEST,
 } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from '@/mixins/externalHooks';
@@ -373,7 +373,6 @@ export default mixins(
 			// Re-center CanvasAddButton if there's no triggers
 			if (containsTrigger === false)
 				this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
-			else this.tryToAddWelcomeSticky();
 		},
 		nodeViewScale(newScale) {
 			const element = this.$refs.nodeView as HTMLDivElement;
@@ -477,16 +476,8 @@ export default mixins(
 		isDemo(): boolean {
 			return this.$route.name === VIEWS.DEMO;
 		},
-		isExecutionView(): boolean {
-			return this.$route.name === VIEWS.EXECUTION;
-		},
 		showCanvasAddButton(): boolean {
-			return (
-				this.loadingService === null &&
-				!this.containsTrigger &&
-				!this.isDemo &&
-				!this.isExecutionView
-			);
+			return this.loadingService === null && !this.containsTrigger && !this.isDemo;
 		},
 		lastSelectedNode(): INodeUi | null {
 			return this.uiStore.getLastSelectedNode;
@@ -893,74 +884,61 @@ export default mixins(
 			});
 			this.stopLoading();
 		},
-		async openWorkflow(workflowId: string) {
+		async openWorkflow(workflow: IWorkflowDb) {
 			this.startLoading();
 
 			const selectedExecution = this.workflowsStore.activeWorkflowExecution;
 
 			this.resetWorkspace();
-			let data: IWorkflowDb | undefined;
-			try {
-				data = await this.restApi().getWorkflow(workflowId);
-			} catch (error) {
-				this.$showError(error, this.$locale.baseText('nodeView.showError.openWorkflow.title'));
-				return;
-			}
 
-			if (!data) {
-				throw new Error(
-					this.$locale.baseText('nodeView.workflowWithIdCouldNotBeFound', {
-						interpolate: { workflowId },
-					}),
-				);
-			}
+			this.workflowsStore.addWorkflow(workflow);
+			this.workflowsStore.setActive(workflow.active || false);
+			this.workflowsStore.setWorkflowId(workflow.id);
+			this.workflowsStore.setWorkflowName({ newName: workflow.name, setStateDirty: false });
+			this.workflowsStore.setWorkflowSettings(workflow.settings || {});
+			this.workflowsStore.setWorkflowPinData(workflow.pinData || {});
+			this.workflowsStore.setWorkflowVersionId(workflow.versionId);
 
-			this.workflowsStore.addWorkflow(data);
-			this.workflowsStore.setActive(data.active || false);
-			this.workflowsStore.setWorkflowId(workflowId);
-			this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
-			this.workflowsStore.setWorkflowSettings(data.settings || {});
-			this.workflowsStore.setWorkflowPinData(data.pinData || {});
-			this.workflowsStore.setWorkflowVersionId(data.versionId);
-
-			if (data.ownedBy) {
+			if (workflow.ownedBy) {
 				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.id,
-					ownedBy: data.ownedBy,
+					workflowId: workflow.id,
+					ownedBy: workflow.ownedBy,
 				});
 			}
 
-			if (data.sharedWith) {
+			if (workflow.sharedWith) {
 				this.workflowsEEStore.setWorkflowSharedWith({
-					workflowId: data.id,
-					sharedWith: data.sharedWith,
+					workflowId: workflow.id,
+					sharedWith: workflow.sharedWith,
 				});
 			}
 
-			if (data.usedCredentials) {
-				this.workflowsStore.setUsedCredentials(data.usedCredentials);
+			if (workflow.usedCredentials) {
+				this.workflowsStore.setUsedCredentials(workflow.usedCredentials);
 			}
 
-			const tags = (data.tags || []) as ITag[];
+			const tags = (workflow.tags || []) as ITag[];
 			const tagIds = tags.map((tag) => tag.id);
 			this.workflowsStore.setWorkflowTagIds(tagIds || []);
 			this.tagsStore.upsertTags(tags);
 
-			await this.addNodes(data.nodes, data.connections);
+			await this.addNodes(workflow.nodes, workflow.connections);
 
 			if (!this.credentialsUpdated) {
 				this.uiStore.stateIsDirty = false;
 			}
 			this.canvasStore.zoomToFit();
-			this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-			if (selectedExecution?.workflowId !== workflowId) {
+			this.$externalHooks().run('workflow.open', {
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+			});
+			if (selectedExecution?.workflowId !== workflow.id) {
 				this.workflowsStore.activeWorkflowExecution = null;
 				this.workflowsStore.currentWorkflowExecutions = [];
 			} else {
 				this.workflowsStore.activeWorkflowExecution = selectedExecution;
 			}
 			this.stopLoading();
-			return data;
 		},
 		touchTap(e: MouseEvent | TouchEvent) {
 			if (this.isTouchDevice) {
@@ -1383,7 +1361,28 @@ export default mixins(
 			} catch (error) {
 				// Execution stop might fail when the execution has already finished. Let's treat this here.
 				const execution = await this.restApi().getExecution(executionId);
-				if (execution?.finished) {
+
+				if (execution === undefined) {
+					// execution finished but was not saved (e.g. due to low connectivity)
+
+					this.workflowsStore.finishActiveExecution({
+						executionId,
+						data: { finished: true, stoppedAt: new Date() },
+					});
+					this.workflowsStore.executingNode = null;
+					this.uiStore.removeActiveAction('workflowRunning');
+
+					this.$titleSet(this.workflowsStore.workflowName, 'IDLE');
+					this.$showMessage({
+						title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.unsaved.title'),
+						message: this.$locale.baseText(
+							'nodeView.showMessage.stopExecutionCatch.unsaved.message',
+						),
+						type: 'success',
+					});
+				} else if (execution?.finished) {
+					// execution finished before it could be stopped
+
 					const executedData = {
 						data: execution.data,
 						finished: execution.finished,
@@ -1895,6 +1894,7 @@ export default mixins(
 			}
 
 			await this.addNodes([newNodeData], undefined, trackHistory);
+			this.workflowsStore.setNodePristine(newNodeData.name, true);
 
 			this.uiStore.stateIsDirty = true;
 
@@ -2415,27 +2415,22 @@ export default mixins(
 			this.workflowsStore.activeWorkflowExecution = null;
 
 			this.uiStore.stateIsDirty = false;
-			this.canvasStore.setZoomLevel(1, 0);
-			this.canvasStore.zoomToFit();
+			this.canvasStore.setZoomLevel(1, [0, 0]);
+			this.tryToAddWelcomeSticky();
+			this.uiStore.nodeViewInitialized = true;
+			this.historyStore.reset();
+			this.workflowsStore.activeWorkflowExecution = null;
+			this.stopLoading();
 		},
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		tryToAddWelcomeSticky: once(async function (this: any) {
+		async tryToAddWelcomeSticky(): Promise<void> {
 			const newWorkflow = this.workflowData;
-			if (window.posthog?.getFeatureFlag?.('welcome-note') === 'test') {
+			if (window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST) === 'assumption-video') {
 				// For novice users (onboardingFlowEnabled == true)
 				// Inject welcome sticky note and zoom to fit
 
 				if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
-					const collisionPadding = NodeViewUtils.GRID_SIZE + NodeViewUtils.NODE_SIZE;
 					// Position the welcome sticky left to the added trigger node
-					let position: XYPosition = [...(this.triggerNodes[0].position as XYPosition)];
-
-					position[0] -=
-						NodeViewUtils.WELCOME_STICKY_NODE.parameters.width + NodeViewUtils.GRID_SIZE * 4;
-					position = NodeViewUtils.getNewNodePosition(this.nodes, position, [
-						collisionPadding,
-						collisionPadding,
-					]);
+					const position: XYPosition = [50, 250];
 
 					await this.addNodes([
 						{
@@ -2449,14 +2444,16 @@ export default mixins(
 							position,
 						},
 					]);
-					this.$telemetry.track('welcome note inserted');
+					setTimeout(() => {
+						this.canvasStore.zoomToFit();
+						this.canvasStore.canvasAddButtonPosition = [500, 350];
+						this.$telemetry.track('welcome note inserted');
+					}, 0);
 				}
+			} else {
+				this.canvasStore.zoomToFit();
 			}
-			this.uiStore.nodeViewInitialized = true;
-			this.historyStore.reset();
-			this.workflowsStore.activeWorkflowExecution = null;
-			this.stopLoading();
-		}),
+		},
 		async initView(): Promise<void> {
 			if (this.$route.params.action === 'workflowSave') {
 				// In case the workflow got saved we do not have to run init
@@ -2469,10 +2466,6 @@ export default mixins(
 			} else if (this.$route.name === VIEWS.TEMPLATE_IMPORT) {
 				const templateId = this.$route.params.id;
 				await this.openWorkflowTemplate(templateId);
-			} else if (this.isExecutionView) {
-				// Load an execution
-				const executionId = this.$route.params.id;
-				await this.openExecution(executionId);
 			} else {
 				const result = this.uiStore.stateIsDirty;
 				if (result) {
@@ -2497,7 +2490,7 @@ export default mixins(
 					workflowId = this.$route.params.name;
 				}
 				if (workflowId !== null) {
-					let workflow;
+					let workflow: IWorkflowDb | undefined = undefined;
 					try {
 						workflow = await this.restApi().getWorkflow(workflowId);
 					} catch (error) {
@@ -2511,7 +2504,7 @@ export default mixins(
 					if (workflow) {
 						this.$titleSet(workflow.name, 'IDLE');
 						// Open existing workflow
-						await this.openWorkflow(workflowId);
+						await this.openWorkflow(workflow);
 					}
 				} else if (this.$route.meta?.nodeView === true) {
 					// Create new workflow

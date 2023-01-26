@@ -37,8 +37,10 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
+	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import { SignInType } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
@@ -235,7 +237,13 @@ export interface IRestApi {
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
-	getBinaryUrl(dataPath: string, mode: 'view' | 'download'): string;
+	getBinaryUrl(
+		dataPath: string,
+		mode: 'view' | 'download',
+		fileName?: string,
+		mimeType?: string,
+	): string;
+	getExecutionEvents(id: string): Promise<IAbstractEventMessage[]>;
 }
 
 export interface INodeTranslationHeaders {
@@ -544,6 +552,11 @@ export interface IPushDataExecutionFinished {
 	retryOf?: string;
 }
 
+export interface IPushDataUnsavedExecutionFinished {
+	executionId: string;
+	data: { finished: true; stoppedAt: Date };
+}
+
 export interface IPushDataExecutionStarted {
 	executionId: string;
 }
@@ -635,6 +648,7 @@ export interface IUserResponse {
 	};
 	personalizationAnswers?: IPersonalizationSurveyVersions | null;
 	isPending: boolean;
+	signInType?: SignInType;
 }
 
 export interface IUser extends IUserResponse {
@@ -801,6 +815,10 @@ export interface IN8nUISettings {
 			enabled: boolean;
 		};
 	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
+	};
 	onboardingCallPromptEnabled: boolean;
 	allowedModules: {
 		builtIn?: string[];
@@ -955,6 +973,7 @@ export interface ITemplatesNode extends IVersionNode {
 
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
+	pristine: boolean;
 }
 
 export interface IUsedCredential {
@@ -1083,7 +1102,7 @@ export interface IModalState {
 	httpNodeParameters?: string;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html';
 export type NodePanelType = 'input' | 'output';
 
 export interface TargetItem {
@@ -1215,6 +1234,10 @@ export interface ISettingsState {
 		swaggerUi: {
 			enabled: boolean;
 		};
+	};
+	ldap: {
+		loginLabel: string;
+		loginEnabled: boolean;
 	};
 	onboardingCallPromptEnabled: boolean;
 	saveDataErrorExecution: string;
@@ -1377,6 +1400,50 @@ export type SchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
+
+export interface ILdapSyncData {
+	id: number;
+	startedAt: string;
+	endedAt: string;
+	created: number;
+	updated: number;
+	disabled: number;
+	scanned: number;
+	status: string;
+	error: string;
+	runMode: string;
+}
+
+export interface ILdapSyncTable {
+	status: string;
+	endedAt: string;
+	runTime: string;
+	runMode: string;
+	details: string;
+}
+
+export interface ILdapConfig {
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: string;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	synchronizationEnabled: boolean;
+	synchronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
+}
+
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
 export type UsageState = {

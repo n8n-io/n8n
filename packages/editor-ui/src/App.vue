@@ -30,7 +30,7 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, POSTHOG_ASSUMPTION_TEST, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
@@ -179,6 +179,17 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 				window.document.body.classList.add(`theme-${theme}`);
 			}
 		},
+		trackExperiments() {
+			const assumption = window.posthog?.getFeatureFlag?.(POSTHOG_ASSUMPTION_TEST);
+			const isVideo = assumption === 'assumption-video';
+			const isDemo = assumption === 'assumption-demo';
+
+			if (isVideo) {
+				this.$telemetry.track('User is part of video experiment');
+			} else if (isDemo) {
+				this.$telemetry.track('User is part of demo experiment');
+			}
+		},
 	},
 	async mounted() {
 		this.setTheme();
@@ -195,6 +206,10 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
+
+		setTimeout(() => {
+			this.trackExperiments();
+		}, 0);
 	},
 	watch: {
 		$route(route) {

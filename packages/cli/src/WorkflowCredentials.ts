@@ -33,7 +33,7 @@ export async function WorkflowCredentials(nodes: INode[]): Promise<IWorkflowCred
 
 			if (!returnCredentials[type][nodeCredentials.id]) {
 				// eslint-disable-next-line no-await-in-loop
-				foundCredentials = await Db.collections.Credentials.findOne({
+				foundCredentials = await Db.collections.Credentials.findOneBy({
 					id: nodeCredentials.id,
 					type,
 				});

@@ -1,9 +1,5 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/await-thenable */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import path from 'path';
@@ -17,7 +13,7 @@ import replaceStream from 'replacestream';
 import { promisify } from 'util';
 import glob from 'fast-glob';
 
-import { LoggerProxy, sleep } from 'n8n-workflow';
+import { LoggerProxy, ErrorReporterProxy as ErrorReporter, sleep } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '@/config';
 
@@ -38,6 +34,7 @@ import { WaitTracker } from '@/WaitTracker';
 
 import { getLogger } from '@/Logger';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { handleLdapInit } from '@/Ldap/helpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
 import { createPostHogLoadingScript } from '@/telemetry/scripts';
@@ -49,7 +46,20 @@ const open = require('open');
 const pipeline = promisify(stream.pipeline);
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
-let processExitCode = 0;
+
+const exitWithCrash = async (message: string, error: unknown) => {
+	ErrorReporter.error(new Error(message, { cause: error }), { level: 'fatal' });
+	await sleep(2000);
+	process.exit(1);
+};
+
+const exitSuccessFully = async () => {
+	try {
+		await CrashJournal.cleanup();
+	} finally {
+		process.exit();
+	}
+};
 
 export class Start extends Command {
 	static description = 'Starts n8n. Makes Web-UI available and starts active workflows';
@@ -101,12 +111,6 @@ export class Start extends Command {
 	static async stopProcess() {
 		getLogger().info('\nStopping n8n...');
 
-		const exit = () => {
-			CrashJournal.cleanup().finally(() => {
-				process.exit(processExitCode);
-			});
-		};
-
 		try {
 			// Stop with trying to activate workflows that could not be activated
 			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
@@ -114,11 +118,11 @@ export class Start extends Command {
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
-			setTimeout(() => {
+			setTimeout(async () => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
 				console.log('process exited after 30s');
-				exit();
+				await exitSuccessFully();
 			}, 30000);
 
 			await InternalHooksManager.getInstance().onN8nStop();
@@ -159,10 +163,10 @@ export class Start extends Command {
 			//finally shut down Event Bus
 			await eventBus.close();
 		} catch (error) {
-			console.error('There was an error shutting down n8n.', error);
+			await exitWithCrash('There was an error shutting down n8n.', error);
 		}
 
-		exit();
+		await exitSuccessFully();
 	}
 
 	static async generateStaticAssets() {
@@ -236,12 +240,9 @@ export class Start extends Command {
 
 		try {
 			// Start directly with the init of the database to improve startup time
-			const startDbInitPromise = Db.init().catch((error: Error) => {
-				logger.error(`There was an error initializing DB: "${error.message}"`);
-
-				processExitCode = 1;
-				process.emit('exit', processExitCode);
-			});
+			await Db.init().catch(async (error: Error) =>
+				exitWithCrash('There was an error initializing DB', error),
+			);
 
 			// Make sure the settings exist
 			const userSettings = await UserSettings.prepareUserSettings();
@@ -281,9 +282,6 @@ export class Start extends Command {
 
 			await loadNodesAndCredentials.generateTypesForFrontend();
 
-			// Wait till the database is ready
-			await startDbInitPromise;
-
 			const installedPackages = await getAllInstalledPackages();
 			const missingPackages = new Set<{
 				packageName: string;
@@ -304,7 +302,7 @@ export class Start extends Command {
 			await UserSettings.getEncryptionKey();
 
 			// Load settings from database and set them to config.
-			const databaseSettings = await Db.collections.Settings.find({ loadOnStartup: true });
+			const databaseSettings = await Db.collections.Settings.findBy({ loadOnStartup: true });
 			databaseSettings.forEach((setting) => {
 				config.set(setting.key, JSON.parse(setting.value));
 			});
@@ -410,6 +408,8 @@ export class Start extends Command {
 
 			WaitTracker();
 
+			await handleLdapInit();
+
 			const editorUrl = GenericHelpers.getBaseUrl();
 			this.log(`\nEditor is now accessible via:\n${editorUrl}`);
 
@@ -456,9 +456,7 @@ export class Start extends Command {
 				});
 			}
 		} catch (error) {
-			console.error('There was an error', error);
-			processExitCode = 1;
-			process.emit('exit', processExitCode);
+			await exitWithCrash('There was an error', error);
 		}
 	}
 }

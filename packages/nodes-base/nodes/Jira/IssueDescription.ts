@@ -71,42 +71,93 @@ export const issueFields: INodeProperties[] = [
 	/*                                issue:create                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Name or ID',
+		displayName: 'Project',
 		name: 'project',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Project',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Project...',
+				typeOptions: {
+					searchListMethod: 'getProjects',
+					// missing searchListDependsOn: ['jiraVersion'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{2,})[ \t]*',
+							errorMessage: 'Not a valid Jira Project ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{2,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['issue'],
 				operation: ['create'],
 			},
-		},
-		typeOptions: {
-			loadOptionsMethod: 'getProjects',
-			loadOptionsDependsOn: ['jiraVersion'],
 		},
 	},
 	{
-		displayName: 'Issue Type Name or ID',
+		displayName: 'Issue Type',
 		name: 'issueType',
-		type: 'options',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Issue Type',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select an Issue Type...',
+				typeOptions: {
+					searchListMethod: 'getIssueTypes',
+					// missing searchListDependsOn: ['project'],
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '10000',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([0-9]{2,})[ \t]*',
+							errorMessage: 'Not a valid Jira Issue Type ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9]{2,})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['issue'],
 				operation: ['create'],
 			},
 		},
-		typeOptions: {
-			loadOptionsMethod: 'getIssueTypes',
-			loadOptionsDependsOn: ['project'],
-		},
-		description:
-			'Issue Types. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Summary',
@@ -135,15 +186,41 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Assignee ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -178,16 +255,41 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'fieldId',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: ['project'],
-								},
-								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-								default: '',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['project'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Field Value',
@@ -237,26 +339,77 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 			{
-				displayName: 'Reporter Name or ID',
+				displayName: 'Reporter',
 				name: 'reporter',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Reporter',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Reporter...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Reporter ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Update History',
@@ -299,15 +452,41 @@ export const issueFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Assignee Name or ID',
+				displayName: 'Assignee',
 				name: 'assignee',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Assignee',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select an Assignee...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Assignee ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Description',
@@ -330,16 +509,41 @@ export const issueFields: INodeProperties[] = [
 						displayName: 'Custom Field',
 						values: [
 							{
-								displayName: 'Field Name or ID',
+								displayName: 'Field',
 								name: 'fieldId',
-								type: 'options',
-								typeOptions: {
-									loadOptionsMethod: 'getCustomFields',
-									loadOptionsDependsOn: ['issueKey'],
-								},
-								description:
-									'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-								default: '',
+								type: 'resourceLocator',
+								default: { mode: 'list', value: '' },
+								modes: [
+									{
+										displayName: 'Field',
+										name: 'list',
+										type: 'list',
+										placeholder: 'Select a Field...',
+										typeOptions: {
+											searchListMethod: 'getCustomFields',
+											// missing searchListDependsOn: ['issueKey'],
+										},
+									},
+									{
+										displayName: 'ID',
+										name: 'id',
+										type: 'string',
+										placeholder: 'customfield_10035',
+										validation: [
+											{
+												type: 'regex',
+												properties: {
+													regex: '(customfield_[0-9]{2,})[ \t]*',
+													errorMessage: 'Not a valid Jira Field ID',
+												},
+											},
+										],
+										extractValue: {
+											type: 'regex',
+											regex: '^(customfield_[0-9]{2,})',
+										},
+									},
+								],
 							},
 							{
 								displayName: 'Field Value',
@@ -396,26 +600,77 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Priority Name or ID',
+				displayName: 'Priority',
 				name: 'priority',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getPriorities',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Priority',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Priority...',
+						typeOptions: {
+							searchListMethod: 'getPriorities',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '1',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Priority ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 			{
-				displayName: 'Reporter Name or ID',
+				displayName: 'Reporter',
 				name: 'reporter',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getUsers',
-				},
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Reporter',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Reporter...',
+						typeOptions: {
+							searchListMethod: 'getUsers',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '62971ebae540870069668714',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([-:a-z0-9]{2,})[ \t]*',
+									errorMessage: 'Not a valid Jira Reporter ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([-:a-z0-9]{2,})',
+						},
+					},
+				],
 			},
 			{
 				displayName: 'Summary',
@@ -424,15 +679,40 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Name or ID',
+				displayName: 'Status',
 				name: 'statusId',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTransitions',
-				},
-				default: '',
-				description:
-					'The ID of the issue status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'Status',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Status...',
+						typeOptions: {
+							searchListMethod: 'getTransitions',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '11',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '([0-9]{1,})[ \t]*',
+									errorMessage: 'Not a valid Jira Status ID',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '^([0-9]{1,})',
+						},
+					},
+				],
 			},
 		],
 	},

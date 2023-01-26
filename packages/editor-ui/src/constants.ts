@@ -92,6 +92,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
@@ -296,7 +297,6 @@ export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.r
 export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
-	EXECUTION = 'ExecutionById',
 	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
@@ -313,6 +313,7 @@ export enum VIEWS {
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
@@ -382,6 +383,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
 	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
@@ -443,4 +445,15 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}
+
+export const N8N_SALES_EMAIL = 'sales@n8n.io';
+
+export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
+
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';

@@ -14,7 +14,7 @@ import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
-	addInviteLinktoUser,
+	addInviteLinkToUser,
 	generateUserInviteUrl,
 	getInstanceBaseUrl,
 	hashPassword,
@@ -27,6 +27,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { AuthIdentity } from '@/databases/entities/AuthIdentity';
 import { RoleService } from '@/role/role.service';
 
 export function usersNamespace(this: N8nApp): void {
@@ -85,7 +86,7 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+			const role = await Db.collections.Role.findOneBy({ scope: 'global', name: 'member' });
 
 			if (!role) {
 				Logger.error(
@@ -348,8 +349,9 @@ export function usersNamespace(this: N8nApp): void {
 
 			await issueCookie(res, updatedUser);
 
-			void InternalHooksManager.getInstance().onUserSignup({
-				user: updatedUser,
+			void InternalHooksManager.getInstance().onUserSignup(updatedUser, {
+				user_type: 'email',
+				was_disabled_ldap_user: false,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);
@@ -362,11 +364,11 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async (req: UserRequest.List) => {
-			const users = await Db.collections.User.find({ relations: ['globalRole'] });
+			const users = await Db.collections.User.find({ relations: ['globalRole', 'authIdentities'] });
 
 			return users.map(
 				(user): PublicUser =>
-					addInviteLinktoUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
+					addInviteLinkToUser(sanitizeUser(user, ['personalizationAnswers']), req.user.id),
 			);
 		}),
 	);
@@ -434,7 +436,7 @@ export function usersNamespace(this: N8nApp): void {
 						.getRepository(SharedWorkflow)
 						.find({
 							select: ['workflowId'],
-							where: { userId: userToDelete.id, role: workflowOwnerRole },
+							where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 						})
 						.then((sharedWorkflows) => sharedWorkflows.map(({ workflowId }) => workflowId));
 
@@ -459,7 +461,7 @@ export function usersNamespace(this: N8nApp): void {
 						.getRepository(SharedCredentials)
 						.find({
 							select: ['credentialsId'],
-							where: { user: userToDelete, role: credentialOwnerRole },
+							where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 						})
 						.then((sharedCredentials) =>
 							sharedCredentials.map(({ credentialsId }) => credentialsId),
@@ -479,6 +481,8 @@ export function usersNamespace(this: N8nApp): void {
 						{ user: transferee },
 					);
 
+					await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
+
 					// This will remove all shared workflows and credentials not owned
 					await transactionManager.delete(User, { id: userToDelete.id });
 				});
@@ -495,11 +499,11 @@ export function usersNamespace(this: N8nApp): void {
 			const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
 				Db.collections.SharedWorkflow.find({
 					relations: ['workflow'],
-					where: { user: userToDelete, role: workflowOwnerRole },
+					where: { userId: userToDelete.id, roleId: workflowOwnerRole?.id },
 				}),
 				Db.collections.SharedCredentials.find({
 					relations: ['credentials'],
-					where: { user: userToDelete, role: credentialOwnerRole },
+					where: { userId: userToDelete.id, roleId: credentialOwnerRole?.id },
 				}),
 			]);
 
@@ -517,6 +521,7 @@ export function usersNamespace(this: N8nApp): void {
 				await transactionManager.remove(
 					ownedSharedCredentials.map(({ credentials }) => credentials),
 				);
+				await transactionManager.delete(AuthIdentity, { userId: userToDelete.id });
 				await transactionManager.delete(User, { id: userToDelete.id });
 			});
 
@@ -546,7 +551,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const reinvitee = await Db.collections.User.findOne({ id: idToReinvite });
+			const reinvitee = await Db.collections.User.findOneBy({ id: idToReinvite });
 
 			if (!reinvitee) {
 				Logger.debug(

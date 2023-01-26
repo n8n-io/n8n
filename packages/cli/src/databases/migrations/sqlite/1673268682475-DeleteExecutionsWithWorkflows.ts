@@ -1,12 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
-import config from '@/config';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInterface {
 	name = 'DeleteExecutionsWithWorkflows1673268682475';
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
-		const tablePrefix = config.getEnv('database.tablePrefix');
+		const tablePrefix = getTablePrefix();
 
 		const workflowIds: Array<{ id: number }> = await queryRunner.query(`
 			SELECT id FROM "${tablePrefix}workflow_entity"
@@ -57,7 +56,6 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');
 
@@ -65,8 +63,7 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		const tablePrefix = config.getEnv('database.tablePrefix');
-		await queryRunner.query('PRAGMA foreign_keys=OFF');
+		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(`DROP TABLE IF EXISTS "${tablePrefix}temporary_execution_entity"`);
 		await queryRunner.query(
@@ -100,8 +97,5 @@ export class DeleteExecutionsWithWorkflows1673268682475 implements MigrationInte
 		await queryRunner.query(
 			`CREATE INDEX "IDX_${tablePrefix}ca4a71b47f28ac6ea88293a8e2" ON "${tablePrefix}execution_entity" ("waitTill")`,
 		);
-		await queryRunner.query(`VACUUM;`);
-
-		await queryRunner.query('PRAGMA foreign_keys=ON');
 	}
 }
