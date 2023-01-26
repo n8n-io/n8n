@@ -706,7 +706,6 @@ export class MicrosoftExcel implements INodeType {
 				try {
 					//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
 					if (operation === 'addWorksheet') {
-						// const workbookId = this.getNodeParameter('workbook', i) as string;
 						const workbookId = this.getNodeParameter('workbook', i, undefined, {
 							extractValue: true,
 						}) as string;
@@ -740,6 +739,15 @@ export class MicrosoftExcel implements INodeType {
 							'',
 							{ 'workbook-session-id': id },
 						);
+					}
+					if (operation === 'delete') {
+						const workbookId = this.getNodeParameter('workbook', i, undefined, {
+							extractValue: true,
+						}) as string;
+
+						await microsoftApiRequest.call(this, 'DELETE', `/drive/items/${workbookId}`);
+
+						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
@@ -934,12 +942,30 @@ export class MicrosoftExcel implements INodeType {
 						const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
 						const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
 
+						const updateAll = this.getNodeParameter('options.updateAll', 0, false) as boolean;
+
 						const itemsData = items.map((item) => item.json);
 						for (const item of itemsData) {
 							const columnValue = item[columnToMatchOn] as string;
-							const rowIndex = columnToMatchOnData.indexOf(columnValue);
 
-							if (rowIndex === -1) continue;
+							const rowIndexes: number[] = [];
+							if (updateAll) {
+								columnToMatchOnData.forEach((value, index) => {
+									if (value === columnValue || Number(value) === Number(columnValue)) {
+										rowIndexes.push(index);
+									}
+								});
+							} else {
+								const rowIndex = columnToMatchOnData.findIndex(
+									(value) => value === columnValue || Number(value) === Number(columnValue),
+								);
+
+								if (rowIndex === -1) continue;
+
+								rowIndexes.push(rowIndex);
+							}
+
+							if (!rowIndexes.length) continue;
 
 							const updatedRow: Array<string | null> = [];
 
@@ -949,7 +975,9 @@ export class MicrosoftExcel implements INodeType {
 								updatedRow.push(updateValue);
 							}
 
-							values[rowIndex] = updatedRow as string[];
+							for (const rowIndex of rowIndexes) {
+								values[rowIndex] = updatedRow as string[];
+							}
 						}
 
 						responseData = await microsoftApiRequest.call(

@@ -86,10 +86,13 @@ export const worksheetFields: INodeProperties[] = [
 			{
 				name: 'Auto-Map',
 				value: 'autoMap',
+				description:
+					'Automatically map data to columns, first row in worksheet must contain column names',
 			},
 			{
 				name: 'Raw',
 				value: 'raw',
+				description: 'Send raw data as JSON',
 			},
 		],
 		displayOptions: {
@@ -378,7 +381,7 @@ export const worksheetFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 worksheet:updateRange                           */
+	/*                                 worksheet:updateRange                      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Range',
@@ -421,10 +424,12 @@ export const worksheetFields: INodeProperties[] = [
 			{
 				name: 'Auto-Map',
 				value: 'autoMap',
+				description: 'Automatically map data to columns',
 			},
 			{
 				name: 'Raw',
 				value: 'raw',
+				description: 'Send raw data as JSON',
 			},
 		],
 		displayOptions: {
@@ -494,5 +499,28 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		description: 'The name of the property into which to write the RAW data',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Update All Matches',
+				name: 'updateAll',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to update all matching rows or just the first match',
+			},
+		],
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+				dataMode: ['autoMap'],
+			},
+		},
 	},
 ];

@@ -20,6 +20,12 @@ export const workbookOperations: INodeProperties[] = [
 				action: 'Add a worksheet to a workbook',
 			},
 			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete workbook',
+				action: 'Delete workbook',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get workbooks',
@@ -35,7 +41,7 @@ export const workbookFields: INodeProperties[] = [
 		...workbookRLC,
 		displayOptions: {
 			show: {
-				operation: ['addWorksheet'],
+				operation: ['addWorksheet', 'delete'],
 				resource: ['workbook'],
 			},
 		},
