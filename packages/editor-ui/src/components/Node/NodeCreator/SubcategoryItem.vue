@@ -28,7 +28,6 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
-console.log('🚀 ~ file: SubcategoryItem.vue:32 ~ props.item.subcategor', props.item);
 const subcategoryName = computed(() => camelcase(props.item.subcategory));
 </script>
 

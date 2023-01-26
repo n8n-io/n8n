@@ -318,7 +318,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 
 				return node;
 			});
-			console.log('Recalculating visible nodes');
 			return nodesWithActions;
 		},
 		mergedAppNodes(): INodeTypeDescription[] {
@@ -357,7 +356,6 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				actions: filterSinglePlaceholderAction(node.actions || [], isTriggerRoot),
 			}));
 
-			console.log('Recalculating merged nodes');
 			return filteredNodes;
 		},
 		getNodeTypesWithManualTrigger:

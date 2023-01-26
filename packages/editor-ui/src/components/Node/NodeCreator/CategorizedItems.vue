@@ -496,7 +496,6 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 	}
 }
 function selected(element: INodeCreateElement) {
-	console.log('🚀 ~ file: CategorizedItems.vue:488 ~ selected ~ element', element);
 	const typeHandler = {
 		category: () => onCategorySelected(element.category),
 		subcategory: () => onSubcategorySelected(element),
