@@ -8,7 +8,6 @@ import {
 	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
-	jsonParse,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -25,6 +24,7 @@ import { workbookFields, workbookOperations } from './WorkbookDescription';
 import { worksheetFields, worksheetOperations } from './WorksheetDescription';
 
 import { tableFields, tableOperations } from './TableDescription';
+import { processJsonInput } from '../../../utils/utilities';
 
 export class MicrosoftExcel implements INodeType {
 	description: INodeTypeDescription = {
@@ -818,8 +818,8 @@ export class MicrosoftExcel implements INodeType {
 				let values: string[][] = [];
 
 				if (dataMode === 'raw') {
-					const data = this.getNodeParameter('data', 0) as string;
-					values = jsonParse<string[][]>(data);
+					const data = this.getNodeParameter('data', 0);
+					values = processJsonInput(data, 'Data') as string[][];
 				}
 
 				if (dataMode === 'autoMap') {
@@ -899,26 +899,9 @@ export class MicrosoftExcel implements INodeType {
 					}
 
 					if (dataMode === 'raw') {
-						const data = this.getNodeParameter('data', 0) as string;
+						const data = this.getNodeParameter('data', 0);
 
-						let values: string[][] = [];
-						if (typeof data === 'string') {
-							try {
-								values = jsonParse(data);
-							} catch (error) {
-								throw new NodeOperationError(
-									this.getNode(),
-									"Input 'Data' must contain a valid JSON",
-								);
-							}
-						} else if (typeof data === 'object') {
-							values = data;
-						} else {
-							throw new NodeOperationError(
-								this.getNode(),
-								"Input 'Data' must contain a valid JSON",
-							);
-						}
+						const values = processJsonInput(data, 'Data') as string[][];
 
 						responseData = await microsoftApiRequest.call(
 							this,

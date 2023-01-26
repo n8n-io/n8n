@@ -1,4 +1,4 @@
-import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+import { IDisplayOptions, INodeProperties, jsonParse } from 'n8n-workflow';
 
 import { merge } from 'lodash';
 
@@ -70,4 +70,23 @@ export function updateDisplayOptions(
 			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
 		};
 	});
+}
+
+export function processJsonInput<T>(jsonData: T, inputName?: string) {
+	let values;
+	const input = `'${inputName}' ` || '';
+
+	if (typeof jsonData === 'string') {
+		try {
+			values = jsonParse(jsonData);
+		} catch (error) {
+			throw new Error(`Input ${input}must contain a valid JSON`);
+		}
+	} else if (typeof jsonData === 'object') {
+		values = jsonData;
+	} else {
+		throw new Error(`Input ${input}must contain a valid JSON`);
+	}
+
+	return values;
 }
