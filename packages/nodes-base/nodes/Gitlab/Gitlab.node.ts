@@ -1591,7 +1591,7 @@ export class Gitlab implements INodeType {
 								);
 							}
 
-							// Currently internally n8n uses base64 and also Github expects it base64 encoded.
+							// Currently internally n8n uses base64 and also GitLab expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
 							body.content = item.binary[binaryPropertyName].data;
 							body.encoding = 'base64';
