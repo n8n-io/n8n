@@ -67,7 +67,7 @@ defineEmits<{
 	}
 }
 .creatorNode:hover .panelIcon {
-	color: var(--color-text-light);
+	color: var(--action-arrow-color-hover, var(--color-text-light));
 }
 
 .panelIcon {
@@ -76,7 +76,7 @@ defineEmits<{
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: var(--spacing-2xs);
-	color: var(--color-text-lighter);
+	color: var(--action-arrow-color, var(--color-text-lighter));
 	cursor: pointer;
 	background: transparent;
 	border: none;

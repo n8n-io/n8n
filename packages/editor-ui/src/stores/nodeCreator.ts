@@ -42,7 +42,7 @@ const customNodeActionsParsers: {
 			(categoryItem): INodeActionTypeDescription => ({
 				...getNodeTypeBase(
 					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: categoryItem.value as string,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onEvent', {
@@ -56,10 +56,14 @@ const customNodeActionsParsers: {
 	},
 };
 
-function filterSinglePlaceholderAction(actions: INodeActionTypeDescription[]) {
+function filterSinglePlaceholderAction(
+	actions: INodeActionTypeDescription[],
+	isTriggerRoot: boolean,
+) {
 	return actions.filter(
 		(action: INodeActionTypeDescription, _: number, arr: INodeActionTypeDescription[]) => {
 			const isPlaceholderTriggerAction = action.actionKey === PLACEHOLDER_RECOMMENDED_ACTION_KEY;
+			if (!isTriggerRoot && isPlaceholderTriggerAction) return false;
 			return !isPlaceholderTriggerAction || (isPlaceholderTriggerAction && arr.length > 1);
 		},
 	);
@@ -120,9 +124,7 @@ function operationsCategory(
 	return items;
 }
 
-function recommendedCategory(
-	nodeTypeDescription: INodeTypeDescription,
-): INodeActionTypeDescription[] {
+function triggersCategory(nodeTypeDescription: INodeTypeDescription): INodeActionTypeDescription[] {
 	const matchingKeys = ['event', 'events', 'trigger on'];
 	const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 	const matchedProperty = nodeTypeDescription.properties.find((property) =>
@@ -138,7 +140,7 @@ function recommendedCategory(
 			{
 				...getNodeTypeBase(
 					nodeTypeDescription,
-					i18n.baseText('nodeCreator.actionsCategory.recommended'),
+					i18n.baseText('nodeCreator.actionsCategory.triggers'),
 				),
 				actionKey: PLACEHOLDER_RECOMMENDED_ACTION_KEY,
 				displayName: i18n.baseText('nodeCreator.actionsCategory.onNewEvent', {
@@ -163,7 +165,7 @@ function recommendedCategory(
 		filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
 			...getNodeTypeBase(
 				nodeTypeDescription,
-				i18n.baseText('nodeCreator.actionsCategory.recommended'),
+				i18n.baseText('nodeCreator.actionsCategory.triggers'),
 			),
 			actionKey: categoryItem.value as string,
 			displayName:
@@ -246,7 +248,8 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		itemsFilter: '',
 		showTabs: true,
 		showScrim: false,
-		selectedType: ALL_NODE_FILTER,
+		selectedView: TRIGGER_NODE_FILTER,
+		rootViewHistory: [],
 	}),
 	actions: {
 		setShowTabs(isVisible: boolean) {
@@ -255,8 +258,18 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		setShowScrim(isVisible: boolean) {
 			this.showScrim = isVisible;
 		},
-		setSelectedType(selectedNodeType: INodeFilterType) {
-			this.selectedType = selectedNodeType;
+		setSelectedView(selectedNodeType: INodeFilterType) {
+			this.selectedView = selectedNodeType;
+			if (!this.rootViewHistory.includes(selectedNodeType)) {
+				this.rootViewHistory.push(selectedNodeType);
+			}
+		},
+		closeCurrentView() {
+			this.rootViewHistory.pop();
+			this.selectedView = this.rootViewHistory[this.rootViewHistory.length - 1];
+		},
+		resetRootViewHistory() {
+			this.rootViewHistory = [];
 		},
 		setFilter(search: string) {
 			this.itemsFilter = search;
@@ -298,7 +311,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				if (isCoreNode) return node;
 
 				node.actions.push(
-					...recommendedCategory(node),
+					...triggersCategory(node),
 					...operationsCategory(node),
 					...resourceCategories(node),
 				);
@@ -337,9 +350,10 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 					return acc;
 				}, {});
 
+			const isTriggerRoot = this.selectedView === TRIGGER_NODE_FILTER;
 			const filteredNodes = Object.values(mergedNodes).map((node) => ({
 				...node,
-				actions: filterSinglePlaceholderAction(node.actions || []),
+				actions: filterSinglePlaceholderAction(node.actions || [], isTriggerRoot),
 			}));
 
 			return filteredNodes;
@@ -352,7 +366,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 				const { workflowTriggerNodes } = useWorkflowsStore();
 				const isTrigger = useNodeTypesStore().isTriggerNode(nodeType);
 				const workflowContainsTrigger = workflowTriggerNodes.length > 0;
-				const isTriggerPanel = useNodeCreatorStore().selectedType === TRIGGER_NODE_FILTER;
+				const isTriggerPanel = useNodeCreatorStore().selectedView === TRIGGER_NODE_FILTER;
 				const isStickyNode = nodeType === STICKY_NODE_TYPE;
 
 				const nodeTypes =

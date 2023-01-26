@@ -106,7 +106,7 @@ export default Vue.extend({
 	width: 26px;
 	height: 26px;
 	border-radius: var(--border-radius-small);
-	color: #444;
+	color: var(--node-icon-color, #444);
 	line-height: 26px;
 	font-size: 1.1em;
 	overflow: hidden;

@@ -166,6 +166,10 @@ export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
 export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
+export const TRANSFORM_DATA_SUBCATEGORY = 'Data Transformation';
+export const FILES_SUBCATEGORY = 'Files';
+export const FLOWS_CONTROL_SUBCATEGORY = 'Flow';
+export const HELPERS_SUBCATEGORY = 'Helpers';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 

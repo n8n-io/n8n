@@ -5,34 +5,44 @@
 			tabindex="0"
 			data-test-id="categorized-items"
 			:class="$style.categorizedItems"
-			:key="`${activeSubcategoryTitle}_transition`"
+			:key="`${activeSubcategoryTitle + selectedViewType}_transition`"
 			@keydown.capture="nodeFilterKeyDown"
 		>
-			<div v-if="$slots.header">
-				<slot name="header" />
-			</div>
-
 			<div
-				:class="$style.subcategoryHeader"
-				v-if="activeSubcategory"
+				:class="{
+					[$style.header]: true,
+					[$style.headerWithBackground]: activeSubcategory,
+				}"
 				data-test-id="categorized-items-subcategory"
 			>
-				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
+				<button
+					:class="$style.backButton"
+					@click="onBackButton"
+					v-if="nodeCreatorStore.rootViewHistory.length > 1 || activeSubcategory"
+				>
 					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
 				</button>
-				<node-icon
-					v-if="showSubcategoryIcon && activeSubcategory.properties.nodeType"
-					:class="$style.nodeIcon"
-					:nodeType="activeSubcategory.properties.nodeType"
-					:size="16"
-					:shrink="false"
-				/>
-				<span v-text="activeSubcategoryTitle" />
+				<div v-if="isRootView && $slots.header">
+					<slot name="header" />
+				</div>
+				<template v-if="activeSubcategory">
+					<node-icon
+						v-if="showSubcategoryIcon && activeSubcategory.properties.nodeType"
+						:class="$style.nodeIcon"
+						:nodeType="activeSubcategory.properties.nodeType"
+						:size="16"
+						:shrink="false"
+					/>
+					<span v-text="activeSubcategoryTitle" />
+				</template>
+			</div>
+			<div v-if="isRootView && $slots.description" :class="$style.description">
+				<slot name="description" />
 			</div>
 
 			<search-bar
 				v-if="alwaysShowSearch || isSearchVisible"
-				:key="nodeCreatorStore.selectedType"
+				:key="nodeCreatorStore.selectedView"
 				:value="nodeCreatorStore.itemsFilter"
 				:placeholder="
 					searchPlaceholder
@@ -71,17 +81,17 @@
 						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 						<n8n-link
 							@click="selectHttpRequest"
-							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
 						>
 							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 						</n8n-link>
-						<template v-if="nodeCreatorStore.selectedType === ALL_NODE_FILTER">
+						<template v-if="nodeCreatorStore.selectedView === ALL_NODE_FILTER">
 							{{ $locale.baseText('nodeCreator.noResults.or') }}
 						</template>
 
 						<n8n-link
 							@click="selectWebhook"
-							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
 						>
 							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 						</n8n-link>
@@ -90,7 +100,7 @@
 
 					<n8n-link
 						@click="selectWebhook"
-						v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+						v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
 					>
 						{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 						{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -162,19 +172,19 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	flatten?: boolean;
-	filterByType?: boolean;
+	filterByType?: boolean; // Delete?
 	showSubcategoryIcon?: boolean;
 	alwaysShowSearch?: boolean;
 	expandAllCategories?: boolean;
-	enableGlobalCategoriesCounter?: boolean;
+	enableGlobalCategoriesCounter?: boolean; // Delete?
 	lazyRender?: boolean;
 	searchPlaceholder?: string;
 	withActionsGetter?: (element: NodeCreateElement) => boolean;
 	searchItems?: INodeCreateElement[];
-	excludedSubcategories?: string[];
+	excludedSubcategories?: string[]; // Delete?
 	firstLevelItems?: INodeCreateElement[];
-	initialActiveCategories?: string[];
-	initialActiveIndex?: number;
+	initialActiveCategories?: string[]; // Delete?
+	initialActiveIndex?: number; // Delete?
 	categorizedItems: INodeCreateElement[];
 	allItems: INodeCreateElement[];
 	categoriesWithNodes: ICategoriesWithNodes;
@@ -193,12 +203,13 @@ const emit = defineEmits<{
 	(event: 'subcategoryClose', value: INodeCreateElement[]): void;
 	(event: 'onSubcategorySelected', value: INodeCreateElement): void;
 	(event: 'nodeTypeSelected', value: string[]): void;
+
 	(event: 'actionSelected', value: INodeCreateElement): void;
 	(event: 'actionsOpen', value: INodeTypeDescription): void;
 }>();
 
 const instance = getCurrentInstance();
-const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+// const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
 const { $externalHooks } = new externalHooks();
 
@@ -215,6 +226,7 @@ const state = reactive({
 		activeIndex: number;
 		filter: string;
 	}>,
+	activeViewHistory: [] as string[],
 	activeIndex: props.initialActiveIndex || 0,
 	activeSubcategoryIndex: 0,
 	ALL_NODE_FILTER,
@@ -255,10 +267,11 @@ const searchFilter = computed<string>(() => nodeCreatorStore.itemsFilter.toLower
 const matchedTypeNodes = computed<INodeCreateElement[]>(() => {
 	if (!props.filterByType) return props.searchItems;
 	return props.searchItems.filter((el: INodeCreateElement) =>
-		matchesSelectType(el, nodeCreatorStore.selectedType),
+		matchesSelectType(el, nodeCreatorStore.selectedView),
 	);
 });
 
+const selectedViewType = computed(() => nodeCreatorStore.selectedView);
 const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	const filter = searchFilter.value;
 
@@ -267,13 +280,13 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 		returnItems = props.searchItems.filter((el: INodeCreateElement) => {
 			return (
 				filter &&
-				matchesSelectType(el, nodeCreatorStore.selectedType) &&
+				matchesSelectType(el, nodeCreatorStore.selectedView) &&
 				matchesNodeType(el, filter)
 			);
 		});
 	} else {
 		const matchingNodes = props.filterByType
-			? props.searchItems.filter((el) => matchesSelectType(el, nodeCreatorStore.selectedType))
+			? props.searchItems.filter((el) => matchesSelectType(el, nodeCreatorStore.selectedView))
 			: props.searchItems;
 
 		const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [
@@ -311,7 +324,7 @@ const categorized = computed<INodeCreateElement[]>(() => {
 			return accu;
 		}
 
-		if (!matchesSelectType(el, nodeCreatorStore.selectedType)) {
+		if (props.filterByType && !matchesSelectType(el, nodeCreatorStore.selectedView)) {
 			return accu;
 		}
 
@@ -330,6 +343,8 @@ const categorized = computed<INodeCreateElement[]>(() => {
 	}, []);
 });
 
+const isRootView = computed(() => activeSubcategory.value === null);
+
 const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 	if (!activeSubcategory.value) return [];
 
@@ -342,8 +357,9 @@ const subcategorizedItems = computed<INodeCreateElement[]>(() => {
 		: categorized.value;
 
 	return nodes.filter((el: INodeCreateElement) =>
-		matchesSelectType(el, nodeCreatorStore.selectedType),
+		matchesSelectType(el, nodeCreatorStore.selectedView),
 	);
+	// return nodes;
 });
 
 const renderedItems = computed<INodeCreateElement[]>(() => {
@@ -367,7 +383,7 @@ const isSearchVisible = computed<boolean>(() => {
 		if (item.type === 'category') {
 			const categoryItems = props.categoriesWithNodes[item.key];
 			const categoryItemsCount = Object.values(categoryItems)?.[0];
-			const countKeys = NODE_TYPE_COUNT_MAPPER[nodeCreatorStore.selectedType];
+			const countKeys = NODE_TYPE_COUNT_MAPPER[nodeCreatorStore.selectedView];
 
 			for (const countKey of countKeys) {
 				totalItems += categoryItemsCount[countKey as 'triggerCount' | 'regularCount'];
@@ -390,14 +406,14 @@ function setScrollTop(scrollTop: number) {
 		scrollableContainer.value.scrollTop = scrollTop;
 	}
 }
-function switchToAllTabAndFilter() {
-	const currentFilter = nodeCreatorStore.itemsFilter;
-	nodeCreatorStore.setShowTabs(true);
-	nodeCreatorStore.setSelectedType(ALL_NODE_FILTER);
-	state.activeSubcategoryHistory = [];
+// function switchToAllTabAndFilter() {
+// 	const currentFilter = nodeCreatorStore.itemsFilter;
+// 	nodeCreatorStore.setShowTabs(true);
+// 	nodeCreatorStore.setSelectedView(ALL_NODE_FILTER);
+// 	state.activeSubcategoryHistory = [];
 
-	nextTick(() => onNodeFilterChange(currentFilter));
-}
+// 	nextTick(() => onNodeFilterChange(currentFilter));
+// }
 
 function onNodeFilterChange(filter: string) {
 	nodeCreatorStore.setFilter(filter);
@@ -407,9 +423,6 @@ function selectWebhook() {
 	emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
 }
 
-function selectHttpRequest() {
-	emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
-}
 function nodeFilterKeyDown(e: KeyboardEvent) {
 	// We only want to propagate 'Escape' as it closes the node-creator and
 	// 'Tab' which toggles it
@@ -438,7 +451,7 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 		) {
 			selected(activeNodeType);
 		} else if (e.key === 'ArrowLeft') {
-			onSubcategoryClose();
+			onBackButton();
 		} else if (
 			e.key === 'ArrowRight' &&
 			activeNodeType?.type === 'category' &&
@@ -488,9 +501,15 @@ function selected(element: INodeCreateElement) {
 		subcategory: () => onSubcategorySelected(element),
 		node: () => onNodeSelected(element as NodeCreateElement),
 		action: () => onActionSelected(element),
+		view: () => onViewSelected(element),
 	};
 
 	typeHandler[element.type]();
+}
+function onViewSelected(view: Record<string, any>) {
+	state.transitionDirection = 'in';
+	nodeCreatorStore.setSelectedView(view.key);
+	emit('viewSelected', view.key);
 }
 
 function onNodeSelected(element: NodeCreateElement) {
@@ -544,8 +563,14 @@ function onSubcategorySelected(selected: INodeCreateElement, track = true) {
 	}
 }
 
-async function onSubcategoryClose() {
+async function onBackButton() {
 	state.transitionDirection = 'out';
+	// Switching views
+	if (isRootView.value && nodeCreatorStore.rootViewHistory.length > 1) {
+		nodeCreatorStore.closeCurrentView();
+		return;
+	}
+
 	const poppedSubCategory = state.activeSubcategoryHistory.pop();
 	onNodeFilterChange(poppedSubCategory?.filter || '');
 	await nextTick();
@@ -576,20 +601,15 @@ watch(
 	},
 );
 
-onMounted(() => {
-	registerCustomAction('showAllNodeCreatorNodes', switchToAllTabAndFilter);
-});
-
 onUnmounted(() => {
 	nodeCreatorStore.setFilter('');
-	unregisterCustomAction('showAllNodeCreatorNodes');
 });
 
 watch(filteredNodeTypes, (returnItems) => {
 	$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 		nodeFilter: nodeCreatorStore.itemsFilter,
 		result: returnItems,
-		selectedType: nodeCreatorStore.selectedType,
+		selectedType: nodeCreatorStore.selectedView,
 	});
 });
 
@@ -609,13 +629,13 @@ watch(
 		$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 			oldValue,
 			newValue,
-			selectedType: nodeCreatorStore.selectedType,
+			selectedType: nodeCreatorStore.selectedView,
 			filteredNodes: filteredNodeTypes.value,
 		});
 		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.nodeFilterChanged', {
 			oldValue,
 			newValue,
-			selectedType: nodeCreatorStore.selectedType,
+			selectedType: nodeCreatorStore.selectedView,
 			filteredNodes: filteredNodeTypes.value,
 			workflow_id: workflowId,
 		});
@@ -675,31 +695,36 @@ const { activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state
 	z-index: 1;
 	margin-top: -1px;
 }
-.subcategoryHeader {
-	border-bottom: $node-creator-border-color solid 1px;
-	height: 50px;
-	background-color: $node-creator-subcategory-panel-header-bacground-color;
-
+.header {
 	font-size: var(--font-size-l);
 	font-weight: var(--font-weight-bold);
 	line-height: var(--font-line-height-compact);
 
 	display: flex;
 	align-items: center;
-	padding: 11px 15px;
-}
+	padding: var(--spacing-s) var(--spacing-s) var(--spacing-2xs);
 
-.subcategoryBackButton {
+	&.headerWithBackground {
+		border-bottom: $node-creator-border-color solid 1px;
+		height: 50px;
+		background-color: $node-creator-subcategory-panel-header-bacground-color;
+		padding: var(--spacing-s) var(--spacing-s);
+	}
+}
+.description {
+	padding: 0 var(--spacing-s) var(--spacing-2xs) var(--spacing-s);
+	margin-top: -4px;
+}
+.backButton {
 	background: transparent;
 	border: none;
 	cursor: pointer;
-	padding: var(--spacing-s) 0;
+	padding: 0 var(--spacing-s) 0 0;
 }
 
 .subcategoryBackIcon {
 	color: $node-creator-arrow-color;
 	height: 16px;
-	margin-right: var(--spacing-s);
 	padding: 0;
 }
 

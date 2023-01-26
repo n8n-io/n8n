@@ -26,7 +26,7 @@
 				:count="enableGlobalCategoriesCounter ? getCategoryCount(item) : undefined"
 			/>
 
-			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item" />
+			<subcategory-item v-else-if="item.type === 'subcategory'" :item="item.properties" />
 
 			<node-item
 				v-else-if="item.type === 'node'"
@@ -45,6 +45,8 @@
 				@dragstart="wrappedEmit('dragstart', item, $event)"
 				@dragend="wrappedEmit('dragend', item, $event)"
 			/>
+
+			<view-item v-else-if="item.type === 'view'" :view="item.properties" />
 		</div>
 		<aside
 			v-for="item in elements.length"
@@ -63,6 +65,7 @@ import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
 import ActionItem from './ActionItem.vue';
+import ViewItem from './ViewItem.vue';
 import { reactive, toRefs, onMounted, watch, onUnmounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';

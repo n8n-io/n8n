@@ -14,7 +14,7 @@
 				@mouseup="onMouseUp"
 				data-test-id="node-creator"
 			>
-				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" :searchItems="searchItems" />
+				<main-panel @nodeTypeSelected="$listeners.nodeTypeSelected" />
 			</div>
 		</slide-transition>
 	</div>
@@ -47,26 +47,6 @@ const state = reactive({
 });
 
 const visibleNodeTypes = computed(() => useNodeTypesStore().visibleNodeTypes);
-const searchItems = computed<INodeCreateElement[]>(() => {
-	const sorted = [...visibleNodeTypes.value];
-	sorted.sort((a, b) => {
-		const textA = a.displayName.toLowerCase();
-		const textB = b.displayName.toLowerCase();
-		return textA < textB ? -1 : textA > textB ? 1 : 0;
-	});
-
-	return sorted.map((nodeType) => ({
-		type: 'node',
-		category: '',
-		key: `${nodeType.name}`,
-		properties: {
-			nodeType,
-			subcategory: '',
-		},
-		includedByTrigger: nodeType.group.includes('trigger'),
-		includedByRegular: !nodeType.group.includes('trigger'),
-	}));
-});
 
 function onClickOutside(event: Event) {
 	// We need to prevent cases where user would click inside the node creator

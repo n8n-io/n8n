@@ -1,6 +1,5 @@
 import {
 	CORE_NODES_CATEGORY,
-	RECOMMENDED_CATEGORY,
 	CUSTOM_NODES_CATEGORY,
 	SUBCATEGORY_DESCRIPTIONS,
 	UNCATEGORIZED_CATEGORY,
@@ -117,14 +116,12 @@ const getCategories = (categoriesWithNodes: ICategoriesWithNodes): string[] => {
 		CUSTOM_NODES_CATEGORY,
 		UNCATEGORIZED_CATEGORY,
 		PERSONALIZED_CATEGORY,
-		RECOMMENDED_CATEGORY,
 	];
 	const categories = Object.keys(categoriesWithNodes);
 	const sorted = categories.filter((category: string) => !excludeFromSort.includes(category));
 	sorted.sort();
 
 	return [
-		RECOMMENDED_CATEGORY,
 		CORE_NODES_CATEGORY,
 		CUSTOM_NODES_CATEGORY,
 		PERSONALIZED_CATEGORY,
@@ -269,15 +266,15 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 		[],
 	);
 
-export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
-	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+export const matchesSelectType = (el: INodeCreateElement, selectedView: string) => {
+	if (selectedView === REGULAR_NODE_FILTER && el.includedByRegular) {
 		return true;
 	}
-	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+	if (selectedView === TRIGGER_NODE_FILTER && el.includedByTrigger) {
 		return true;
 	}
 
-	return selectedType === ALL_NODE_FILTER;
+	return selectedView === ALL_NODE_FILTER;
 };
 
 const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {

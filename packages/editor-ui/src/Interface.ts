@@ -39,8 +39,8 @@ import {
 	INodeActionTypeDescription,
 	IAbstractEventMessage,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
+import { FAKE_DOOR_FEATURES, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from './constants';
 import { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
@@ -1213,13 +1213,14 @@ export type IFakeDoorLocation =
 	| 'credentialsModal'
 	| 'workflowShareModal';
 
-export type INodeFilterType = 'Regular' | 'Trigger' | 'All';
+export type INodeFilterType = typeof REGULAR_NODE_FILTER | typeof TRIGGER_NODE_FILTER;
 
 export interface INodeCreatorState {
 	itemsFilter: string;
 	showTabs: boolean;
 	showScrim: boolean;
-	selectedType: INodeFilterType;
+	rootViewHistory: INodeFilterType[];
+	selectedView: INodeFilterType;
 }
 
 export interface ISettingsState {
