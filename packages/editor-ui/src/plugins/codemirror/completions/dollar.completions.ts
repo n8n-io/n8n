@@ -45,7 +45,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 }
 
 export function dollarOptions(context: CompletionContext) {
-	const BOOST = ['$input', '$json'];
+	const BOOST = ['$json', '$input'];
 	const SKIP = new Set();
 	const DOLLAR_FUNCTIONS = ['$jmespath'];
 
