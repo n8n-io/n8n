@@ -1,13 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
-import {
-	DateTime,
-	DateTimeFormatOptions,
-	DateTimeUnit,
-	DurationLike,
-	DurationObjectUnits,
-	LocaleOptions,
-} from 'luxon';
+import { DateTime, DateTimeUnit, DurationLike, DurationObjectUnits, LocaleOptions } from 'luxon';
 import type { ExtensionMap } from './Extensions';
 
 type DurationUnit =
@@ -198,18 +191,6 @@ function plus(date: Date | DateTime, extraArgs: unknown[]): Date | DateTime {
 	return DateTime.fromJSDate(date).plus(generateDurationObject(durationValue, unit)).toJSDate();
 }
 
-function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
-	const [locale, dateFormat = { timeStyle: 'short', dateStyle: 'short' }] = extraArgs as [
-		string | undefined,
-		DateTimeFormatOptions,
-	];
-
-	if (isDateTime(date)) {
-		return date.toLocaleString(dateFormat, { locale });
-	}
-	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
-}
-
 endOfMonth.doc = {
 	name: 'endOfMonth',
 	returnType: 'Date',
@@ -265,11 +246,6 @@ plus.doc = {
 	returnType: 'Date',
 };
 
-toLocaleString.doc = {
-	name: 'toLocaleString',
-	returnType: 'string',
-};
-
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
 	functions: {
@@ -283,6 +259,5 @@ export const dateExtensions: ExtensionMap = {
 		minus,
 		plus,
 		format,
-		toLocaleString,
 	},
 };

@@ -99,10 +99,6 @@ function last(value: unknown[]): unknown {
 	return value[value.length - 1];
 }
 
-function length(value: unknown[]): number {
-	return Array.isArray(value) ? value.length : 0;
-}
-
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionError('arguments must be passed to pluck');
@@ -374,13 +370,6 @@ compact.doc = {
 	returnType: 'array',
 };
 
-length.doc = {
-	name: 'length',
-	description: 'Returns the number of elements in the array',
-	returnType: 'number',
-	aliases: ['count', 'size'],
-};
-
 isEmpty.doc = {
 	name: 'isEmpty',
 	description: 'Checks if the array doesn’t have any elements',
@@ -481,15 +470,12 @@ union.doc = {
 export const arrayExtensions: ExtensionMap = {
 	typeName: 'Array',
 	functions: {
-		count: length,
 		removeDuplicates: unique,
 		first,
 		last,
-		length,
 		pluck,
 		unique,
 		randomItem,
-		size: length,
 		sum,
 		min,
 		max,
