@@ -1,8 +1,8 @@
 type: object
 properties:
   id:
-    type: string
-    example: '12'
+    type: number
+    example: 12
   name:
     type: string
     example: Production
