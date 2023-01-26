@@ -27,7 +27,6 @@ import moment from 'moment-timezone';
 import { validate as uuidValidate } from 'uuid';
 
 function uuidValidateWithoutDashes(this: IExecuteFunctions, value: string) {
-	if (!value || typeof value !== 'string') return false;
 	if (uuidValidate(value)) return true;
 	if (value.length == 32) {
 		//prettier-ignore
@@ -313,12 +312,16 @@ function getPropertyKeyValue(
 			result = {
 				type: 'relation',
 				relation: value.relationValue
-					.filter((rv: string) => {
-						return uuidValidateWithoutDashes.call(this, rv);
+					.filter((relation: any) => {
+						return relation && typeof relation === 'string';
 					})
 					.reduce((acc: [], cur: any) => {
-						return acc.concat(cur.split(',').map((relation: string) => ({ id: relation.trim() })));
-					}, []),
+						return acc.concat(cur.split(',').map((relation: string) => relation.trim()));
+					}, [])
+					.filter((relation: string) => {
+						return uuidValidateWithoutDashes.call(this, relation);
+					})
+					.map((relation: string) => ({ id: relation })),
 			};
 			break;
 		case 'multi_select':
