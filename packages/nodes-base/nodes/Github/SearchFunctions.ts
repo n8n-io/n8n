@@ -11,38 +11,38 @@ type RepositorySearchItem = {
 	html_url: string;
 };
 
+type UserSearchResponse = {
+	items: UserSearchItem[];
+	total_count: number;
+};
+
+type RepositorySearchResponse = {
+	items: RepositorySearchItem[];
+	total_count: number;
+};
+
 export async function getUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const page = paginationToken ? +paginationToken : 1;
-	const per_page = 20;
-	const responseData = await githubApiRequest.call(
+	const per_page = 100;
+	const responseData: UserSearchResponse = await githubApiRequest.call(
 		this,
 		'GET',
 		'/search/users',
 		{},
-		{
-			q: filter,
-			page,
-			per_page,
-		},
-		{
-			resolveWithFullResponse: true,
-		},
+		{ q: filter, page, per_page },
 	);
 
-	const results: INodeListSearchItems[] = responseData.body.items.map((item: UserSearchItem) => ({
+	const results: INodeListSearchItems[] = responseData.items.map((item: UserSearchItem) => ({
 		name: item.login,
 		value: item.login,
 		url: item.html_url,
 	}));
 
-	const nextPaginationToken = page * per_page < responseData.body.total_count ? page + 1 : null;
-
-	console.log({ paginationToken, page, nextPaginationToken, total: responseData.body.total_count });
-
+	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }
 
@@ -51,36 +51,33 @@ export async function getRepositories(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const page = paginationToken ? +paginationToken : 1;
-	const per_page = 20;
 	const owner = this.getCurrentNodeParameter('owner', { extractValue: true });
-	console.log('get repositories');
-	const responseData = await githubApiRequest.call(
-		this,
-		'GET',
-		'/search/repositories',
-		{},
-		{
-			q: `${filter} user:${owner}`,
-			page,
-			per_page,
-		},
-		{
-			resolveWithFullResponse: true,
-		},
-	);
+	const page = paginationToken ? +paginationToken : 1;
+	const per_page = 100;
+	const q = `${filter ?? ''} user:${owner}`;
+	let responseData: RepositorySearchResponse = {
+		items: [],
+		total_count: 0,
+	};
 
-	const results: INodeListSearchItems[] = responseData.body.items.map(
-		(item: RepositorySearchItem) => ({
-			name: item.name,
-			value: item.name,
-			url: item.html_url,
-		}),
-	);
+	try {
+		responseData = await githubApiRequest.call(
+			this,
+			'GET',
+			'/search/repositories',
+			{},
+			{ q, page, per_page },
+		);
+	} catch (_error) {
+		// will fail if the owner does not have any repositories
+	}
 
-	const nextPaginationToken = page * per_page < responseData.body.total_count ? page + 1 : null;
+	const results: INodeListSearchItems[] = responseData.items.map((item: RepositorySearchItem) => ({
+		name: item.name,
+		value: item.name,
+		url: item.html_url,
+	}));
 
-	console.log({ paginationToken, page, nextPaginationToken, total: responseData.body.total_count });
-
+	const nextPaginationToken = page * per_page < responseData.total_count ? page + 1 : undefined;
 	return { results, paginationToken: nextPaginationToken };
 }

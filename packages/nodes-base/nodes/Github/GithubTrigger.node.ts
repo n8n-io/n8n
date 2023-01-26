@@ -142,7 +142,6 @@ export class GithubTrigger implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getRepositories',
 							searchable: true,
-							searchFilterRequired: true,
 						},
 					},
 					{
