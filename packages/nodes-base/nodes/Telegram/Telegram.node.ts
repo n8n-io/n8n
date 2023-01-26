@@ -2011,20 +2011,16 @@ export class Telegram implements INodeType {
 								encoding: null,
 								uri: `https://api.telegram.org/file/bot${credentials.accessToken}/${filePath}`,
 								resolveWithFullResponse: true,
+								useStream: true,
 							},
 						);
 
 						const fileName = filePath.split('/').pop();
-						const data = await this.helpers.prepareBinaryData(
-							Buffer.from(file.body as string),
-							fileName,
-						);
+						const data = await this.helpers.prepareBinaryData(file.body, fileName);
 
 						returnData.push({
 							json: responseData,
-							binary: {
-								data,
-							},
+							binary: { data },
 							pairedItem: { item: i },
 						});
 						continue;
