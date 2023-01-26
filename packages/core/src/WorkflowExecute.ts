@@ -1351,6 +1351,15 @@ export class WorkflowExecute {
 							});
 
 							if (taskDataMain.filter((data) => data.length).length !== 0) {
+								// Add the node to be executed
+
+								// Make sure that each input at least receives an empty array
+								if (taskDataMain.length < nodeType.description.inputs.length) {
+									for (; taskDataMain.length < nodeType.description.inputs.length; ) {
+										taskDataMain.push([]);
+									}
+								}
+
 								this.runExecutionData.executionData!.nodeExecutionStack.push({
 									node: workflow.nodes[nodeName],
 									data: {
