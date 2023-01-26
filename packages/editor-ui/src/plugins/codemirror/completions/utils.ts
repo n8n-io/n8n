@@ -2,6 +2,7 @@ import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEd
 import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { resolveParameter } from '@/mixins/workflowHelpers';
+import { CompletionContext } from '@codemirror/autocomplete';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -94,3 +95,6 @@ export function autocompletableNodeNames() {
 		.allNodes.filter((node) => !NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION.includes(node.type))
 		.map((node) => node.name);
 }
+
+export const noParensAfterCursor = (context: CompletionContext) =>
+	context.state.sliceDoc(context.pos, context.pos + 2) !== '()';

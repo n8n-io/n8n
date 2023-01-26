@@ -1,5 +1,5 @@
 import { i18n } from '@/plugins/i18n';
-import { prefixMatch, longestCommonPrefix, splitBaseTail } from './utils';
+import { prefixMatch, longestCommonPrefix, splitBaseTail, noParensAfterCursor } from './utils';
 import { DateTime } from 'luxon';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
@@ -19,7 +19,7 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 
 	const [base, tail] = splitBaseTail(word.text);
 
-	let options = base === 'DateTime' ? dateTimeOptions() : nowTodayOptions();
+	let options = base === 'DateTime' ? dateTimeOptions(context) : nowTodayOptions(context);
 
 	if (tail !== '') {
 		options = options.filter((o) => prefixMatch(o.label, tail));
@@ -39,8 +39,10 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 	};
 }
 
-export const nowTodayOptions = () => {
+export const nowTodayOptions = (context: CompletionContext) => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
+
+	const noParens = noParensAfterCursor(context);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
 		.filter(([key]) => !SKIP.has(key))
@@ -49,7 +51,7 @@ export const nowTodayOptions = () => {
 			const isFunction = typeof descriptor.value === 'function';
 
 			const option: Completion = {
-				label: isFunction ? key + '()' : key,
+				label: isFunction && noParens ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 			};
 
@@ -61,14 +63,20 @@ export const nowTodayOptions = () => {
 		});
 };
 
-export const dateTimeOptions = () => {
+export const dateTimeOptions = (context: CompletionContext) => {
 	const SKIP = new Set(['prototype', 'name', 'length', 'invalid']);
+
+	const noParens = noParensAfterCursor(context);
 
 	return Object.keys(Object.getOwnPropertyDescriptors(DateTime))
 		.filter((key) => !SKIP.has(key) && !key.includes('_'))
 		.sort((a, b) => a.localeCompare(b))
 		.map((key) => {
-			const option: Completion = { label: key + '()', type: 'function' };
+			const option: Completion = {
+				label: noParens ? key + '()' : key,
+				type: 'function',
+			};
+
 			const info = i18n.luxonStatic[key];
 
 			if (info) option.info = info;

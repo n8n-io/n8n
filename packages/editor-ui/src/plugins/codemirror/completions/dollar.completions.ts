@@ -5,6 +5,7 @@ import {
 	longestCommonPrefix,
 	bringToStart,
 	prefixMatch,
+	noParensAfterCursor,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
@@ -18,7 +19,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = dollarOptions();
+	let options = dollarOptions(context);
 
 	const userInput = word.text;
 
@@ -43,7 +44,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function dollarOptions() {
+export function dollarOptions(context: CompletionContext) {
 	const BOOST = ['$input', '$json'];
 	const SKIP = new Set();
 	const DOLLAR_FUNCTIONS = ['$jmespath'];
@@ -52,13 +53,15 @@ export function dollarOptions() {
 
 	const keys = Object.keys(i18n.rootVars).sort((a, b) => a.localeCompare(b));
 
+	const noParens = noParensAfterCursor(context);
+
 	return bringToStart(keys, BOOST)
 		.filter((key) => !SKIP.has(key))
 		.map((key) => {
 			const isFunction = DOLLAR_FUNCTIONS.includes(key);
 
 			const option: Completion = {
-				label: isFunction ? key + '()' : key,
+				label: isFunction && noParens ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 			};
 

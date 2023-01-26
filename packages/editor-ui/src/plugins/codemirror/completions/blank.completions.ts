@@ -17,7 +17,7 @@ export function blankCompletions(context: CompletionContext): CompletionResult |
 
 	return {
 		from: word.to,
-		options: dollarOptions(),
+		options: dollarOptions(context),
 		filter: false,
 	};
 }
