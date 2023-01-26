@@ -17,6 +17,7 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 	microsoftApiRequestAllItemsSkip,
+	prepareOutput,
 } from './GenericFunctions';
 
 import { workbookFields, workbookOperations } from './WorkbookDescription';
@@ -855,32 +856,7 @@ export class MicrosoftExcel implements INodeType {
 
 				const rawData = this.getNodeParameter('rawData', 0);
 
-				if (!rawData) {
-					if (responseData.values === null) {
-						throw new NodeOperationError(this.getNode(), 'Operation did not return data');
-					}
-					const columns = responseData.values[0];
-					for (let rowIndex = 1; rowIndex < responseData.values.length; rowIndex++) {
-						const data: IDataObject = {};
-						for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-							data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
-						}
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ ...data }),
-							{ itemData: { item: rowIndex } },
-						);
-
-						returnData.push(...executionData);
-					}
-				} else {
-					const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray({ [dataProperty]: responseData }),
-						{ itemData: { item: 0 } },
-					);
-
-					returnData.push(...executionData);
-				}
+				returnData.push(...prepareOutput.call(this, responseData, rawData));
 			} else if (operation === 'updateRange') {
 				try {
 					const workbookId = this.getNodeParameter('workbook', 0, undefined, {
@@ -904,7 +880,7 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 
-					//get used range, if raw mode fetch only address info
+					//get used range if range not provided; if 'raw' mode fetch only address information
 					if (range === '') {
 						const query: IDataObject = {};
 						if (dataMode === 'raw') {
@@ -977,32 +953,7 @@ export class MicrosoftExcel implements INodeType {
 
 					const rawData = this.getNodeParameter('rawData', 0);
 
-					if (!rawData) {
-						if (responseData.values === null) {
-							throw new NodeOperationError(this.getNode(), 'Operation did not return data');
-						}
-						const columns = responseData.values[0];
-						for (let rowIndex = 1; rowIndex < responseData.values.length; rowIndex++) {
-							const data: IDataObject = {};
-							for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-								data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
-							}
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({ ...data }),
-								{ itemData: { item: rowIndex } },
-							);
-
-							returnData.push(...executionData);
-						}
-					} else {
-						const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({ [dataProperty]: responseData }),
-							{ itemData: { item: 0 } },
-						);
-
-						returnData.push(...executionData);
-					}
+					returnData.push(...prepareOutput.call(this, responseData, rawData));
 				} catch (error) {
 					if (this.continueOnFail()) {
 						const executionErrorData = this.helpers.constructExecutionMetaData(
@@ -1156,32 +1107,11 @@ export class MicrosoftExcel implements INodeType {
 							if (!rawData) {
 								const keyRow = this.getNodeParameter('keyRow', i) as number;
 								const dataStartRow = this.getNodeParameter('dataStartRow', i) as number;
-								if (responseData.values === null) {
-									throw new NodeApiError(this.getNode(), responseData, {
-										message: 'Range did not return data',
-									});
-								}
-								const keyValues = responseData.values[keyRow];
-								for (let index = dataStartRow; index < responseData.values.length; index++) {
-									const object: IDataObject = {};
-									for (let y = 0; y < keyValues.length; y++) {
-										object[keyValues[y]] = responseData.values[index][y];
-									}
-									const executionData = this.helpers.constructExecutionMetaData(
-										this.helpers.returnJsonArray({ ...object }),
-										{ itemData: { item: index } },
-									);
-
-									returnData.push(...executionData);
-								}
-							} else {
-								const dataProperty = this.getNodeParameter('dataProperty', i) as string;
-								const executionData = this.helpers.constructExecutionMetaData(
-									this.helpers.returnJsonArray({ [dataProperty]: responseData }),
-									{ itemData: { item: i } },
+								returnData.push(
+									...prepareOutput.call(this, responseData, rawData, keyRow, dataStartRow),
 								);
-
-								returnData.push(...executionData);
+							} else {
+								returnData.push(...prepareOutput.call(this, responseData, rawData));
 							}
 						}
 					} catch (error) {

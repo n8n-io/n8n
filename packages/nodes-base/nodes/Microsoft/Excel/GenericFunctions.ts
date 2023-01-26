@@ -1,6 +1,6 @@
 import { OptionsWithUri } from 'request';
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -76,6 +76,46 @@ export async function microsoftApiRequestAllItemsSkip(
 		query.$skip += query.$top;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData.value.length !== 0);
+
+	return returnData;
+}
+
+export function prepareOutput(
+	this: IExecuteFunctions,
+	responseData: { values: string[][] },
+	rawData: boolean,
+	keyRow = 0,
+	firstDataRow = 1,
+) {
+	const returnData: INodeExecutionData[] = [];
+
+	if (!rawData) {
+		if (responseData.values === null) {
+			throw new NodeOperationError(this.getNode(), 'Operation did not return data');
+		}
+
+		const columns = responseData.values[keyRow];
+		for (let rowIndex = firstDataRow; rowIndex < responseData.values.length; rowIndex++) {
+			const data: IDataObject = {};
+			for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+				data[columns[columnIndex]] = responseData.values[rowIndex][columnIndex];
+			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ ...data }),
+				{ itemData: { item: rowIndex } },
+			);
+
+			returnData.push(...executionData);
+		}
+	} else {
+		const dataProperty = this.getNodeParameter('dataProperty', 0) as string;
+		const executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray({ [dataProperty]: responseData }),
+			{ itemData: { item: 0 } },
+		);
+
+		returnData.push(...executionData);
+	}
 
 	return returnData;
 }
