@@ -342,6 +342,10 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						name: this.$locale.baseText('executionsList.crashed'),
 					},
 					{
+						id: 'new',
+						name: this.$locale.baseText('executionsList.new'),
+					},
+					{
 						id: 'running',
 						name: this.$locale.baseText('executionsList.running'),
 					},
@@ -361,7 +365,7 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 			combinedExecutions(): IExecutionsSummary[] {
 				const returnData: IExecutionsSummary[] = [];
 
-				if (['ALL', 'running'].includes(this.filter.status)) {
+				if (['ALL', 'running', 'new'].includes(this.filter.status)) {
 					returnData.push(...this.activeExecutions);
 				}
 				if (['ALL', 'error', 'crashed', 'success', 'waiting'].includes(this.filter.status)) {
@@ -404,6 +408,9 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 						break;
 					case 'crashed':
 						queryFilter.status = ['crashed'];
+						break;
+					case 'new':
+						queryFilter.status = ['new'];
 						break;
 					case 'error':
 						queryFilter.status = ['failed', 'crashed', 'error'];
@@ -836,6 +843,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					text = this.$locale.baseText('executionsList.waiting');
 				} else if (status === 'crashed') {
 					text = this.$locale.baseText('executionsList.crashed');
+				} else if (status === 'new') {
+					text = this.$locale.baseText('executionsList.new');
 				} else if (status === 'running') {
 					text = this.$locale.baseText('executionsList.running');
 				} else if (status === 'success') {
@@ -856,6 +865,8 @@ export default mixins(externalHooks, genericHelpers, executionHelpers, restApi, 
 					path = 'executionsList.statusWaiting';
 				} else if (status === 'crashed') {
 					path = 'executionsList.statusCrashed';
+				} else if (status === 'new') {
+					path = 'executionsList.statusNew';
 				} else if (status === 'running') {
 					path = 'executionsList.statusRunning';
 				} else if (status === 'success') {

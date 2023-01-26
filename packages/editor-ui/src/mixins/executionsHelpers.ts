@@ -69,6 +69,9 @@ export const executionHelpers = mixins(genericHelpers).extend({
 						true,
 					);
 				}
+			} else if (execution.status === 'new') {
+				status.name = 'new';
+				status.label = this.$locale.baseText('executionsList.new');
 			} else if (
 				execution.status === 'error' ||
 				execution.status === 'failed' ||

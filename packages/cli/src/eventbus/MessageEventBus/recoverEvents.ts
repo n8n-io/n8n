@@ -21,12 +21,16 @@ export async function recoverExecutionDataFromEventLogMessages(
 	});
 
 	if (executionEntry && messages) {
-		const executionData: IRunExecutionData | undefined = executionEntry?.data
-			? (parse(executionEntry.data) as IRunExecutionData)
-			: { resultData: { runData: {} } };
+		let executionData: IRunExecutionData | undefined;
+		try {
+			executionData = parse(executionEntry.data) as IRunExecutionData;
+		} catch {}
+		if (!executionData) {
+			executionData = { resultData: { runData: {} } };
+		}
 		let nodeNames: string[] = [];
 		if (
-			executionData.resultData?.runData &&
+			executionData?.resultData?.runData &&
 			Object.keys(executionData.resultData.runData).length > 0
 		) {
 			nodeNames = Object.keys(executionData.resultData.runData);
@@ -82,7 +86,6 @@ export async function recoverExecutionDataFromEventLogMessages(
 				executionData.resultData.lastNodeExecuted = nodeName;
 				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
-
 			executionData.resultData.runData[nodeName] = [iRunData];
 		}
 		if (!lastNodeRunTimestamp) {
