@@ -375,6 +375,12 @@ export class MergeV2 implements INodeType {
 				let input1 = this.getInputData(0);
 				let input2 = this.getInputData(1);
 
+				if (input1?.length === 0 || input2?.length === 0) {
+					// If data of any input is missing, return the data of
+					// the input that contains data
+					return [[...input1, ...input2]];
+				}
+
 				if (clashHandling.resolveClash === 'preferInput1') {
 					[input1, input2] = [input2, input1];
 				}
@@ -451,16 +457,35 @@ export class MergeV2 implements INodeType {
 				options.joinMode = joinMode;
 				options.outputDataFrom = outputDataFrom;
 
-				const input1 = checkInput(
-					this.getInputData(0),
+				let input1 = this.getInputData(0);
+				let input2 = this.getInputData(1);
+
+				if (input1?.length === 0 || input2?.length === 0) {
+					if (joinMode === 'keepMatches') {
+						// Stop the execution
+						return [[]];
+					} else if (joinMode === 'enrichInput1' && input1?.length === 0) {
+						// No data to enrich so stop
+						return [[]];
+					} else if (joinMode === 'enrichInput2' && input2?.length === 0) {
+						// No data to enrich so stop
+						return [[]];
+					} else {
+						// Return the data of any of the inputs that contains data
+						return [[...input1, ...input2]];
+					}
+				}
+
+				input1 = checkInput(
+					input1,
 					matchFields.map((pair) => pair.field1),
 					options.disableDotNotation || false,
 					'Input 1',
 				);
 				if (!input1) return [returnData];
 
-				const input2 = checkInput(
-					this.getInputData(1),
+				input2 = checkInput(
+					input2,
 					matchFields.map((pair) => pair.field2),
 					options.disableDotNotation || false,
 					'Input 2',
