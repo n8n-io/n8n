@@ -68,7 +68,6 @@ import {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
-	ExpressionMissingPairedItem,
 	ExpressionError,
 } from 'n8n-workflow';
 
@@ -1803,11 +1802,10 @@ export function getNodeParameter(
 			additionalKeys,
 			executeData,
 		);
-
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e instanceof ExpressionMissingPairedItem && node.continueOnFail) {
-			returnData = undefined;
+		if (e instanceof ExpressionError && node.continueOnFail && node.name === 'Set') {
+			returnData = [{ name: undefined, value: undefined }];
 		} else {
 			if (e.context) e.context.parameter = parameterName;
 			e.cause = value;

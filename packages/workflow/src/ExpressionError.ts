@@ -50,11 +50,3 @@ export class ExpressionError extends ExecutionBaseError {
 		}
 	}
 }
-
-export class ExpressionMissingPairedItem extends ExpressionError {
-	constructor(message: string) {
-		super(message);
-		this.context.failExecution = true;
-		this.message = "Can't get data for expression";
-	}
-}
