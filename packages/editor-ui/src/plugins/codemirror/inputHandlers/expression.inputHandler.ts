@@ -63,7 +63,13 @@ const handler = EditorView.inputHandler.of((view, from, to, insert) => {
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isBraceSetup) {
+	const { head } = view.state.selection.main;
+
+	const isInsideResolvable =
+		view.state.sliceDoc(0, head).includes('{{') &&
+		view.state.sliceDoc(head, view.state.doc.length).includes('}}');
+
+	if (isBraceSetup && !isInsideResolvable) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
 
 		return true;
