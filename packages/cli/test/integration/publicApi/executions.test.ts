@@ -13,7 +13,11 @@ let globalOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
+	app = await utils.initTestServer({
+		endpointGroups: ['publicApi'],
+		applyAuth: false,
+		enablePublicAPI: true,
+	});
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 
@@ -39,7 +43,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-	await workflowRunner.removeAll();
+	await workflowRunner?.removeAll();
 });
 
 afterAll(async () => {

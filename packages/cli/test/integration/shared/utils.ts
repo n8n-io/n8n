@@ -86,16 +86,15 @@ CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
- *
- * @param applyAuth Whether to apply auth middleware to test server.
- * @param endpointGroups Groups of endpoints to apply to test server.
  */
 export async function initTestServer({
 	applyAuth = true,
 	endpointGroups,
+	enablePublicAPI = false,
 }: {
 	applyAuth?: boolean;
 	endpointGroups?: EndpointGroup[];
+	enablePublicAPI?: boolean;
 }) {
 	await testDb.init();
 	const testServer = {
@@ -140,16 +139,19 @@ export async function initTestServer({
 	const [routerEndpoints, functionEndpoints] = classifyEndpointGroups(endpointGroups);
 
 	if (routerEndpoints.length) {
-		const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
 		const map: Record<string, express.Router | express.Router[] | any> = {
 			credentials: { controller: credentialsController, path: 'credentials' },
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
 			license: { controller: licenseController, path: 'license' },
 			eventBus: { controller: eventBusRouter, path: 'eventbus' },
-			publicApi: apiRouters,
 			ldap: { controller: ldapController, path: 'ldap' },
 		};
+
+		if (enablePublicAPI) {
+			const { apiRouters } = await loadPublicApiVersions(testServer.publicApiEndpoint);
+			map.publicApi = apiRouters;
+		}
 
 		for (const group of routerEndpoints) {
 			if (group === 'publicApi') {

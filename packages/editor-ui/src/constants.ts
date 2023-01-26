@@ -92,6 +92,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
