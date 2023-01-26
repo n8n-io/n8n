@@ -1962,7 +1962,7 @@ export class Telegram implements INodeType {
 				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
 					const itemBinaryData = items[i].binary![binaryPropertyName];
-					const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+					const dataStream = this.helpers.getBinaryStream(itemBinaryData.id!);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
 
@@ -1982,7 +1982,7 @@ export class Telegram implements INodeType {
 					const formData = {
 						...body,
 						[propertyName]: {
-							value: dataBuffer,
+							value: dataStream,
 							options: {
 								filename,
 								contentType: itemBinaryData.mimeType,
