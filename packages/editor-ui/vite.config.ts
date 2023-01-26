@@ -62,13 +62,6 @@ export default mergeConfig(
 				targets: ['defaults', 'not IE 11'],
 			}),
 			vue(),
-			// ...(createHtmlPlugin({
-			// 	inject: {
-			// 		data: {
-			// 			BASE_PATH: publicPath,
-			// 		},
-			// 	},
-			// }) as PluginOption[]),
 			monacoEditorPlugin({
 				publicPath: 'assets/monaco-editor',
 				customDistPath: (root: string, buildOutDir: string, base: string) =>
