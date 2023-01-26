@@ -152,7 +152,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					const limit = this.getNodeParameter('limit', i, 0);
 
 					const query = `SELECT * FROM [${projectId}:${datasetId}.${tableId}]${
-						limit ? ' LIMIT ' + limit : ''
+						limit ? ' LIMIT ' + limit.toString() : ''
 					};`;
 
 					const { schema, rows } = await googleApiRequest.call(

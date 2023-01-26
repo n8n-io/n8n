@@ -4,6 +4,15 @@ import { SchemaField, TableRawData, TableSchema } from './BigQuery.types';
 
 import { isEmpty, set } from 'lodash';
 
+function getFieldValue(schemaField: SchemaField, field: IDataObject) {
+	if (schemaField.type === 'RECORD') {
+		// eslint-disable-next-line @typescript-eslint/no-use-before-define
+		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
+	} else {
+		return field.v;
+	}
+}
+
 export function simplify(data: TableRawData[], schema: SchemaField[]) {
 	const returnData: IDataObject[] = [];
 
@@ -26,14 +35,6 @@ export function simplify(data: TableRawData[], schema: SchemaField[]) {
 	}
 
 	return returnData;
-}
-
-function getFieldValue(schemaField: SchemaField, field: IDataObject) {
-	if (schemaField.type === 'RECORD') {
-		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
-	} else {
-		return field.v;
-	}
 }
 
 export function selectedFieldsToObject(selected: string) {

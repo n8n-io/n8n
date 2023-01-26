@@ -5,6 +5,54 @@ import * as jwt from 'jsonwebtoken';
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+async function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentials: IDataObject,
+): Promise<IDataObject> {
+	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
+
+	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
+
+	const scopes = ['https://www.googleapis.com/auth/bigquery'];
+
+	const now = moment().unix();
+
+	const signature = jwt.sign(
+		{
+			iss: credentials.email as string,
+			sub: credentials.delegatedEmail || (credentials.email as string),
+			scope: scopes.join(' '),
+			aud: 'https://oauth2.googleapis.com/token',
+			iat: now,
+			exp: now + 3600,
+		},
+		privateKey,
+		{
+			algorithm: 'RS256',
+			header: {
+				kid: privateKey,
+				typ: 'JWT',
+				alg: 'RS256',
+			},
+		},
+	);
+
+	const options: OptionsWithUri = {
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		method: 'POST',
+		form: {
+			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+			assertion: signature,
+		},
+		uri: 'https://oauth2.googleapis.com/token',
+		json: true,
+	};
+
+	return this.helpers.request(options);
+}
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -85,52 +133,4 @@ export async function googleApiRequestAllItems(
 	} while (responseData.pageToken !== undefined && responseData.pageToken !== '');
 
 	return returnData;
-}
-
-async function getAccessToken(
-	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
-	credentials: IDataObject,
-): Promise<IDataObject> {
-	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
-
-	const privateKey = (credentials.privateKey as string).replace(/\\n/g, '\n').trim();
-
-	const scopes = ['https://www.googleapis.com/auth/bigquery'];
-
-	const now = moment().unix();
-
-	const signature = jwt.sign(
-		{
-			iss: credentials.email as string,
-			sub: credentials.delegatedEmail || (credentials.email as string),
-			scope: scopes.join(' '),
-			aud: 'https://oauth2.googleapis.com/token',
-			iat: now,
-			exp: now + 3600,
-		},
-		privateKey,
-		{
-			algorithm: 'RS256',
-			header: {
-				kid: privateKey,
-				typ: 'JWT',
-				alg: 'RS256',
-			},
-		},
-	);
-
-	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/x-www-form-urlencoded',
-		},
-		method: 'POST',
-		form: {
-			grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-			assertion: signature,
-		},
-		uri: 'https://oauth2.googleapis.com/token',
-		json: true,
-	};
-
-	return this.helpers.request(options);
 }
