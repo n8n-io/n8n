@@ -45,7 +45,7 @@
 					>
 						{{
 							$locale.baseText('executionDetails.runningTimeFinished', {
-								interpolate: { time: executionUIDetails.runningTime },
+								interpolate: { time: executionUIDetails?.runningTime },
 							})
 						}}
 					</n8n-text>

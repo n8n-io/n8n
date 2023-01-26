@@ -1,8 +1,5 @@
 <template>
-	<div
-		v-if="executionUIDetails && executionUIDetails?.name === 'running'"
-		:class="$style.runningInfo"
-	>
+	<div v-if="executionUIDetails?.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
 			<n8n-spinner type="ring" />
 		</div>
