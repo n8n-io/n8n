@@ -4,7 +4,7 @@ import type { ExtensionMap } from './Extensions';
 export function merge(value: object, extraArgs: unknown[]): unknown {
 	const [other] = extraArgs;
 	if (typeof other !== 'object' || !other) {
-		throw new ExpressionExtensionError('argument of merge must be an object');
+		throw new ExpressionExtensionError('merge(): expected object arg');
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const newObject: any = { ...value };
@@ -44,7 +44,7 @@ function removeField(value: object, extraArgs: string[]): object {
 function removeFieldsContaining(value: object, extraArgs: string[]): object {
 	const [match] = extraArgs;
 	if (typeof match !== 'string') {
-		throw new ExpressionExtensionError('argument of removeFieldsContaining must be a string');
+		throw new ExpressionExtensionError('removeFieldsContaining(): expected string arg');
 	}
 	const newObject = { ...value };
 	for (const [key, val] of Object.entries(value)) {

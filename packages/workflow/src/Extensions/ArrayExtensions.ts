@@ -145,14 +145,14 @@ function unique(value: unknown[], extraArgs: string[]): unknown[] {
 	}, []);
 }
 
-const ensureNumberArray = (arr: unknown[]) => {
+const ensureNumberArray = (arr: unknown[], { fnName }: { fnName: string }) => {
 	if (arr.some((i) => typeof i !== 'number')) {
-		throw new ExpressionExtensionError('all array elements must be of type number');
+		throw new ExpressionExtensionError(`${fnName}(): all array elements must be numbers`);
 	}
 };
 
 function sum(value: unknown[]): number {
-	ensureNumberArray(value);
+	ensureNumberArray(value, { fnName: 'sum' });
 
 	return value.reduce((p: number, c: unknown) => {
 		if (typeof c === 'string') {
@@ -166,7 +166,7 @@ function sum(value: unknown[]): number {
 }
 
 function min(value: unknown[]): number {
-	ensureNumberArray(value);
+	ensureNumberArray(value, { fnName: 'min' });
 
 	return Math.min(
 		...value.map((v) => {
@@ -182,7 +182,7 @@ function min(value: unknown[]): number {
 }
 
 function max(value: unknown[]): number {
-	ensureNumberArray(value);
+	ensureNumberArray(value, { fnName: 'max' });
 
 	return Math.max(
 		...value.map((v) => {
@@ -198,7 +198,7 @@ function max(value: unknown[]): number {
 }
 
 export function average(value: unknown[]) {
-	ensureNumberArray(value);
+	ensureNumberArray(value, { fnName: 'average' });
 
 	// This would usually be NaN but I don't think users
 	// will expect that
@@ -227,7 +227,7 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 	const [keyField, valueField] = extraArgs;
 	if (!keyField || !valueField || typeof keyField !== 'string' || typeof valueField !== 'string') {
 		throw new ExpressionExtensionError(
-			'smartJoin requires 2 arguments: keyField and nameField. e.g. .smartJoin("name", "value")',
+			'smartJoin(): expected two string args, e.g. .smartJoin("name", "value")',
 		);
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
@@ -243,11 +243,8 @@ function smartJoin(value: unknown[], extraArgs: string[]): object {
 
 function chunk(value: unknown[], extraArgs: number[]) {
 	const [chunkSize] = extraArgs;
-	if (typeof chunkSize !== 'number') {
-		throw new ExpressionExtensionError('chunk requires 1 parameter: chunkSize. e.g. .chunk(5)');
-	}
-	if (chunkSize === 0) {
-		throw new ExpressionExtensionError('chunk: arg must be higher than 0, e.g. .chunk(5)');
+	if (typeof chunkSize !== 'number' || chunkSize === 0) {
+		throw new ExpressionExtensionError('chunk(): expected non-zero numeric arg, e.g. .chunk(5)');
 	}
 	const chunks: unknown[][] = [];
 	for (let i = 0; i < value.length; i += chunkSize) {
@@ -261,7 +258,7 @@ function chunk(value: unknown[], extraArgs: number[]) {
 function renameKeys(value: unknown[], extraArgs: string[]): unknown[] {
 	if (extraArgs.length === 0 || extraArgs.length % 2 !== 0) {
 		throw new ExpressionExtensionError(
-			'renameKeys requires an even amount of arguments: from1, to1 [, from2, to2, ...]. e.g. .renameKeys("name", "title")',
+			'renameKeys(): expected an even amount of args: from1, to1 [, from2, to2, ...]. e.g. .renameKeys("name", "title")',
 		);
 	}
 	return value.map((v) => {
@@ -288,7 +285,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'merge requires 1 argument that is an array. e.g. .merge([{ id: 1, otherValue: 3 }])',
+			'merge(): expected array arg, e.g. .merge([{ id: 1, otherValue: 3 }])',
 		);
 	}
 	const listLength = value.length > others.length ? value.length : others.length;
@@ -311,9 +308,7 @@ function merge(value: unknown[], extraArgs: unknown[][]): unknown[] {
 function union(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
-		throw new ExpressionExtensionError(
-			'union requires 1 argument that is an array. e.g. .union([1, 2, 3, 4])',
-		);
+		throw new ExpressionExtensionError('union(): expected array arg, e.g. .union([1, 2, 3, 4])');
 	}
 	const newArr: unknown[] = Array.from(value);
 	for (const v of others) {
@@ -328,7 +323,7 @@ function difference(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'difference requires 1 argument that is an array. e.g. .difference([1, 2, 3, 4])',
+			'difference(): expected array arg, e.g. .difference([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];
@@ -344,7 +339,7 @@ function intersection(value: unknown[], extraArgs: unknown[][]): unknown[] {
 	const [others] = extraArgs;
 	if (!Array.isArray(others)) {
 		throw new ExpressionExtensionError(
-			'intersection requires 1 argument that is an array. e.g. .intersection([1, 2, 3, 4])',
+			'intersection(): expected array arg, e.g. .intersection([1, 2, 3, 4])',
 		);
 	}
 	const newArr: unknown[] = [];
