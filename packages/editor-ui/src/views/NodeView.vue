@@ -1957,8 +1957,9 @@ export default mixins(
 			sourceNodeOutputIndex: number,
 			targetNodeName: string,
 			targetNodeOuputIndex: number,
-			trackHistory = false,
 		) {
+			this.uiStore.stateIsDirty = true;
+
 			if (
 				this.getConnection(
 					sourceNodeName,
@@ -2017,17 +2018,11 @@ export default mixins(
 
 					const targetNodeName = lastSelectedConnection.__meta.targetNodeName;
 					const targetOutputIndex = lastSelectedConnection.__meta.targetOutputIndex;
-					this.connectTwoNodes(
-						newNodeData.name,
-						0,
-						targetNodeName,
-						targetOutputIndex,
-						trackHistory,
-					);
+					this.connectTwoNodes(newNodeData.name, 0, targetNodeName, targetOutputIndex);
 				}
 
 				// Connect active node to the newly created one
-				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0, trackHistory);
+				this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
 			}
 			this.historyStore.stopRecordingUndo();
 		},
@@ -2080,13 +2075,7 @@ export default mixins(
 							const sourceNodeName = sourceNode.name;
 							const outputIndex = connection.getParameters().index;
 
-							this.connectTwoNodes(
-								sourceNodeName,
-								outputIndex,
-								this.pullConnActiveNodeName,
-								0,
-								true,
-							);
+							this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 							this.pullConnActiveNodeName = null;
 						}
 						return;
@@ -2243,10 +2232,6 @@ export default mixins(
 						},
 					];
 
-					this.workflowsStore.addConnection({
-						connection: connectionData,
-						setStateDirty: true,
-					});
 					if (!this.suspendRecordingDetachedConnections) {
 						this.historyStore.pushCommandToUndo(new AddConnectionCommand(connectionData, this));
 					}
@@ -2306,7 +2291,7 @@ export default mixins(
 								new RemoveConnectionCommand(connectionInfo, this),
 							);
 						}
-						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0, true);
+						this.connectTwoNodes(sourceNodeName, outputIndex, this.pullConnActiveNodeName, 0);
 						this.pullConnActiveNodeName = null;
 						await this.$nextTick();
 						this.historyStore.stopRecordingUndo();
@@ -2518,7 +2503,7 @@ export default mixins(
 			window.addEventListener('beforeunload', (e) => {
 				if (this.isDemo) {
 					return;
-				} else if (this.uiStore.stateIsDirty === true) {
+				} else if (this.uiStore.stateIsDirty) {
 					const confirmationMessage = this.$locale.baseText(
 						'nodeView.itLooksLikeYouHaveBeenEditingSomething',
 					);
@@ -2562,12 +2547,8 @@ export default mixins(
 					uuids: uuid,
 					detachable: !this.isReadOnly,
 				});
-			} else {
-				const connectionProperties = { connection, setStateDirty: false };
-				// When nodes get connected it gets saved automatically to the storage
-				// so if we do not connect we have to save the connection manually
-				this.workflowsStore.addConnection(connectionProperties);
 			}
+			this.workflowsStore.addConnection({ connection });
 
 			setTimeout(() => {
 				this.addPinDataConnections(this.workflowsStore.pinData);
@@ -2959,7 +2940,6 @@ export default mixins(
 								sourceNodeOutputIndex,
 								targetNodeName,
 								targetNodeOuputIndex,
-								trackHistory,
 							);
 
 							if (waitForNewConnection) {
