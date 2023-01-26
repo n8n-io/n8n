@@ -7,10 +7,11 @@ import * as ResponseHelper from '@/ResponseHelper';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { compareHash, sanitizeUser } from '../UserManagementHelper';
+import { sanitizeUser } from '../UserManagementHelper';
 import { User } from '@db/entities/User';
 import type { LoginRequest } from '@/requests';
 import config from '@/config';
+import { handleEmailLogin, handleLdapLogin } from '@/auth';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -22,6 +23,7 @@ export function authenticationMethods(this: N8nApp): void {
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: LoginRequest, res: Response): Promise<PublicUser> => {
 			const { email, password } = req.body;
+
 			if (!email) {
 				throw new Error('Email is required to log in');
 			}
@@ -30,23 +32,23 @@ export function authenticationMethods(this: N8nApp): void {
 				throw new Error('Password is required to log in');
 			}
 
-			let user: User | null;
-			try {
-				user = await Db.collections.User.findOne({
-					where: { email },
-					relations: ['globalRole'],
-				});
-			} catch (error) {
-				throw new Error('Unable to access database.');
+			const adUser = await handleLdapLogin(email, password);
+
+			if (adUser) {
+				await issueCookie(res, adUser);
+
+				return sanitizeUser(adUser);
 			}
 
-			if (!user?.password || !(await compareHash(req.body.password, user.password))) {
-				throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
+			const localUser = await handleEmailLogin(email, password);
+
+			if (localUser) {
+				await issueCookie(res, localUser);
+
+				return sanitizeUser(localUser);
 			}
 
-			await issueCookie(res, user);
-
-			return sanitizeUser(user);
+			throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
 		}),
 	);
 
@@ -64,6 +66,11 @@ export function authenticationMethods(this: N8nApp): void {
 				// If logged in, return user
 				try {
 					user = await resolveJwt(cookieContents);
+
+					if (!config.get('userManagement.isInstanceOwnerSetUp')) {
+						res.cookie(AUTH_COOKIE_NAME, cookieContents);
+					}
+
 					return sanitizeUser(user);
 				} catch (error) {
 					res.clearCookie(AUTH_COOKIE_NAME);

@@ -21,6 +21,7 @@ import {
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
+import type { AuthProviderType } from '@db/entities/AuthIdentity';
 import { RoleService } from './role/role.service';
 import { eventBus } from './eventbus';
 import type { User } from '@db/entities/User';
@@ -65,6 +66,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 			n8n_binary_data_mode: diagnosticInfo.binaryDataMode,
 			n8n_multi_user_allowed: diagnosticInfo.n8n_multi_user_allowed,
 			smtp_set_up: diagnosticInfo.smtp_set_up,
+			ldap_allowed: diagnosticInfo.ldap_allowed,
 		};
 
 		return Promise.all([
@@ -642,16 +644,23 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track('Owner finished instance setup', instanceOwnerSetupData);
 	}
 
-	async onUserSignup(userSignupData: { user: User }): Promise<void> {
+	async onUserSignup(
+		user: User,
+		userSignupData: {
+			user_type: AuthProviderType;
+			was_disabled_ldap_user: boolean;
+		},
+	): Promise<void> {
 		void Promise.all([
 			eventBus.sendAuditEvent({
 				eventName: 'n8n.audit.user.signedup',
 				payload: {
-					...userToPayload(userSignupData.user),
+					...userToPayload(user),
 				},
 			}),
 			this.telemetry.track('User signed up', {
-				user_id: userSignupData.user.id,
+				user_id: user.id,
+				...userSignupData,
 			}),
 		]);
 	}
@@ -848,7 +857,49 @@ export class InternalHooksClass implements IInternalHooksClass {
 		]);
 	}
 
-	/**
+	async onLdapSyncFinished(data: {
+		type: string;
+		succeeded: boolean;
+		users_synced: number;
+		error: string;
+	}): Promise<void> {
+		return this.telemetry.track('Ldap general sync finished', data);
+	}
+
+	async onLdapUsersDisabled(data: {
+		reason: 'ldap_update' | 'ldap_feature_deactivated';
+		users: number;
+		user_ids: string[];
+	}): Promise<void> {
+		return this.telemetry.track('Ldap users disabled', data);
+	}
+
+	async onUserUpdatedLdapSettings(data: {
+		user_id: string;
+		loginIdAttribute: string;
+		firstNameAttribute: string;
+		lastNameAttribute: string;
+		emailAttribute: string;
+		ldapIdAttribute: string;
+		searchPageSize: number;
+		searchTimeout: number;
+		synchronizationEnabled: boolean;
+		synchronizationInterval: number;
+		loginLabel: string;
+		loginEnabled: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('Ldap general sync finished', data);
+	}
+
+	async onLdapLoginSyncFailed(data: { error: string }): Promise<void> {
+		return this.telemetry.track('Ldap login sync failed', data);
+	}
+
+	async userLoginFailedDueToLdapDisabled(data: { user_id: string }): Promise<void> {
+		return this.telemetry.track('User login failed since ldap disabled', data);
+	}
+
+	/*
 	 * Execution Statistics
 	 */
 	async onFirstProductionWorkflowSuccess(data: {

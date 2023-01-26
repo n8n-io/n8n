@@ -98,6 +98,16 @@ describe('tmpl Expression Parser', () => {
 		});
 	});
 
+	describe('Edge cases', () => {
+		test("Nested member access with name of function inside a function doesn't result in function call", () => {
+			expect(evaluate('={{ Math.floor([1, 2, 3, 4].length + 10) }}')).toEqual(14);
+
+			expect(extendTransform('Math.floor([1, 2, 3, 4].length + 10)')?.code).toBe(
+				'extend(Math, "floor", [[1, 2, 3, 4].length + 10])',
+			);
+		});
+	});
+
 	describe('Non dot extensions', () => {
 		test('min', () => {
 			expect(evaluate('={{ min(1, 2, 3, 4, 5, 6) }}')).toEqual(1);

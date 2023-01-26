@@ -95,6 +95,7 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
+	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -152,6 +153,8 @@ import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
 import { initEvents } from './events';
+import { ldapController } from './Ldap/routes/ldap.controller.ee';
+import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 import { AbstractServer } from './AbstractServer';
 import { configureMetrics } from './metrics';
 
@@ -243,6 +246,10 @@ class Server extends AbstractServer {
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
 			},
+			ldap: {
+				loginEnabled: false,
+				loginLabel: '',
+			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
 				latestVersion: 1,
@@ -271,6 +278,7 @@ class Server extends AbstractServer {
 			},
 			enterprise: {
 				sharing: false,
+				ldap: false,
 				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
@@ -297,7 +305,15 @@ class Server extends AbstractServer {
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
 			logStreaming: isLogStreamingEnabled(),
+			ldap: isLdapEnabled(),
 		});
+
+		if (isLdapEnabled()) {
+			Object.assign(this.frontendSettings.ldap, {
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
@@ -601,6 +617,13 @@ class Server extends AbstractServer {
 		// Tags
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
+
+		// ----------------------------------------
+		// LDAP
+		// ----------------------------------------
+		if (isLdapEnabled()) {
+			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
+		}
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -1283,19 +1306,24 @@ class Server extends AbstractServer {
 		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
+			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
 				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
-					identifier,
-				);
+				let { mode, fileName, mimeType } = req.query;
+				if (!fileName || !mimeType) {
+					try {
+						const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+						fileName = metadata.fileName;
+						mimeType = metadata.mimeType;
+						res.setHeader('Content-Length', metadata.fileSize);
+					} catch {}
+				}
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (req.query.mode === 'download' && fileName) {
+				if (mode === 'download') {
 					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 				}
-				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},
 		);
@@ -1428,6 +1456,7 @@ export async function start(): Promise<void> {
 		binaryDataMode: binaryDataConfig.mode,
 		n8n_multi_user_allowed: isUserManagementEnabled(),
 		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+		ldap_allowed: isLdapEnabled(),
 	};
 
 	// Set up event handling
