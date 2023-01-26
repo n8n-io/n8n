@@ -1,5 +1,4 @@
 import vue from '@vitejs/plugin-vue2';
-import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 import path, { resolve } from 'path';
