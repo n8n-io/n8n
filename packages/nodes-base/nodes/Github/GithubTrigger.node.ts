@@ -177,7 +177,7 @@ export class GithubTrigger implements INodeType {
 								},
 							},
 						],
-						url: '=https://github.com/n8n-io/{{$value}}',
+						url: '=https://github.com/{{$parameter["owner"]}}/{{$value}}',
 					},
 				],
 			},
