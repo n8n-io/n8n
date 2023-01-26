@@ -68,6 +68,8 @@ import {
 	IWebhookFunctions,
 	BinaryMetadata,
 	FileSystemHelperFunctions,
+	ExpressionMissingPairedItem,
+	ExpressionError,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1804,9 +1806,13 @@ export function getNodeParameter(
 
 		cleanupParameterData(returnData);
 	} catch (e) {
-		if (e.context) e.context.parameter = parameterName;
-		e.cause = value;
-		throw e;
+		if (e instanceof ExpressionMissingPairedItem && node.continueOnFail) {
+			returnData = undefined;
+		} else {
+			if (e.context) e.context.parameter = parameterName;
+			e.cause = value;
+			throw e;
+		}
 	}
 
 	// This is outside the try/catch because it throws errors with proper messages
