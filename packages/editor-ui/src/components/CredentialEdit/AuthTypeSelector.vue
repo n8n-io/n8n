@@ -111,7 +111,7 @@ defineExpose({
 </script>
 
 <template>
-	<div data-test-id="node-auth-type-selector">
+	<div v-if="filteredNodeAuthOptions.length > 0" data-test-id="node-auth-type-selector">
 		<div v-for="parameter in authRelatedFields" :key="parameter.name" class="mb-l">
 			<parameter-input-full
 				:parameter="parameter"
