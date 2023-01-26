@@ -142,7 +142,7 @@ importers:
       axios: ^0.21.1
       basic-auth: ^2.0.1
       bcryptjs: ^2.4.3
-      body-parser: ^1.18.3
+      body-parser: ^1.20.1
       body-parser-xml: ^2.0.3
       bull: ^4.10.2
       callsites: ^3.1.0
@@ -158,7 +158,8 @@ importers:
       csrf: ^3.1.0
       curlconverter: ^3.0.0
       dotenv: ^8.0.0
-      express: ^4.16.4
+      express: ^4.18.2
+      express-async-errors: ^3.1.1
       express-openapi-validator: ^4.13.6
       express-prom-bundle: ^6.6.0
       fast-glob: ^3.2.5
@@ -253,6 +254,7 @@ importers:
       curlconverter: 3.21.0
       dotenv: 8.6.0
       express: 4.18.2
+      express-async-errors: 3.1.1_express@4.18.2
       express-openapi-validator: 4.13.8
       express-prom-bundle: 6.6.0_prom-client@13.2.0
       fast-glob: 3.2.12
@@ -11614,6 +11616,14 @@ packages:
       jest-message-util: 29.3.1
       jest-util: 29.3.1
     dev: true
+
+  /express-async-errors/3.1.1_express@4.18.2:
+    resolution: {integrity: sha512-h6aK1da4tpqWSbyCa3FxB/V6Ehd4EEB15zyQq9qe75OZBp0krinNKuH4rAY+S/U/2I36vdLAUFSjQJ+TFmODng==}
+    peerDependencies:
+      express: ^4.16.2
+    dependencies:
+      express: 4.18.2
+    dev: false
 
   /express-openapi-validator/4.13.8:
     resolution: {integrity: sha512-89/sdkq+BKBuIyykaMl/vR9grFc3WFUPTjFo0THHbu+5g+q8rA7fKeoMfz+h84yOQIBcztmJ5ZJdk5uhEls31A==}
