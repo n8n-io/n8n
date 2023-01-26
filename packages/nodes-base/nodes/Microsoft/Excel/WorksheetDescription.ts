@@ -104,7 +104,8 @@ export const worksheetFields: INodeProperties[] = [
 		name: 'data',
 		type: 'json',
 		default: '',
-		placeholder: '[["Hello", "100"],["1/1/2016", null]]',
+		required: true,
+		placeholder: 'e.g. [["Hello", "100"],["1/1/2016", null]]',
 		description: 'Raw values for the specified range as array of string arrays in JSON format',
 		displayOptions: {
 			show: {
@@ -133,6 +134,7 @@ export const worksheetFields: INodeProperties[] = [
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['append'],
@@ -149,7 +151,7 @@ export const worksheetFields: INodeProperties[] = [
 		displayName: 'Apply To',
 		name: 'applyTo',
 		type: 'options',
-		//value in capital case as required by api
+		//values in capital case as required by api
 		options: [
 			{
 				name: 'All',
@@ -199,7 +201,7 @@ export const worksheetFields: INodeProperties[] = [
 		name: 'range',
 		type: 'string',
 		default: '',
-		placeholder: 'A1:B2',
+		placeholder: 'e.g. A1:B2',
 		description: 'The range of cells that will be cleared',
 		displayOptions: {
 			show: {
@@ -278,7 +280,7 @@ export const worksheetFields: INodeProperties[] = [
 				resource: ['worksheet'],
 			},
 		},
-		placeholder: 'A1:C3',
+		placeholder: 'e.g. A1:B2',
 		default: '',
 		description: 'The address or the name of the range',
 		hint: 'Leave blank to return entire worksheet',
@@ -312,26 +314,6 @@ export const worksheetFields: INodeProperties[] = [
 		description: 'The name of the property into which to write the RAW data',
 	},
 	{
-		displayName: 'Data Start Row',
-		name: 'dataStartRow',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 1,
-		displayOptions: {
-			show: {
-				operation: ['getContent'],
-				resource: ['worksheet'],
-			},
-			hide: {
-				rawData: [true],
-			},
-		},
-		description:
-			'Index of the first row which contains the actual data and not the keys. Starts with 0. Relative to range.',
-	},
-	{
 		displayName: 'Key Row',
 		name: 'keyRow',
 		type: 'number',
@@ -348,9 +330,30 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: 0,
+		hint: "Index of the row which contains column names. Relative to 'Range'.",
 		description:
-			'Index of the row which contains the keys, relative to range. The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+			'The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
 	},
+	{
+		displayName: 'Data Start Row',
+		name: 'dataStartRow',
+		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
+		default: 1,
+		displayOptions: {
+			show: {
+				operation: ['getContent'],
+				resource: ['worksheet'],
+			},
+			hide: {
+				rawData: [true],
+			},
+		},
+		hint: "Index of first row which contains the actual data. Relative to 'Range'.",
+	},
+
 	{
 		displayName: 'Filters',
 		name: 'filters',
@@ -375,7 +378,7 @@ export const worksheetFields: INodeProperties[] = [
 		],
 	},
 	/* -------------------------------------------------------------------------- */
-	/*                                 worksheet:update                           */
+	/*                                 worksheet:updateRange                           */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Range',
@@ -385,9 +388,26 @@ export const worksheetFields: INodeProperties[] = [
 			show: {
 				operation: ['updateRange'],
 				resource: ['worksheet'],
+				dataMode: ['autoMap'],
 			},
 		},
-		placeholder: 'A1:C3',
+		placeholder: 'e.g. A1:B2',
+		default: '',
+		description: 'The address or the name of the range',
+		hint: 'First row must contain column names. Leave blank for entire worksheet.',
+	},
+	{
+		displayName: 'Range',
+		name: 'range',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['updateRange'],
+				resource: ['worksheet'],
+				dataMode: ['raw'],
+			},
+		},
+		placeholder: 'e.g. A1:B2',
 		default: '',
 		description: 'The address or the name of the range',
 		hint: 'Leave blank for entire worksheet',
@@ -419,7 +439,8 @@ export const worksheetFields: INodeProperties[] = [
 		name: 'data',
 		type: 'json',
 		default: '',
-		placeholder: '[["Hello", "100"],["1/1/2016", null]]',
+		required: true,
+		placeholder: 'e.g. [["Hello", "100"],["1/1/2016", null]]',
 		description:
 			'Raw values for the specified range as array of string arrays in JSON format. Should match specified range.',
 		displayOptions: {
@@ -436,6 +457,7 @@ export const worksheetFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'e.g. ID',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['updateRange'],
@@ -463,6 +485,7 @@ export const worksheetFields: INodeProperties[] = [
 		name: 'dataProperty',
 		type: 'string',
 		default: 'data',
+		required: true,
 		displayOptions: {
 			show: {
 				operation: ['updateRange'],

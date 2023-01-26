@@ -900,7 +900,25 @@ export class MicrosoftExcel implements INodeType {
 
 					if (dataMode === 'raw') {
 						const data = this.getNodeParameter('data', 0) as string;
-						const values = jsonParse(data);
+
+						let values: string[][] = [];
+						if (typeof data === 'string') {
+							try {
+								values = jsonParse(data);
+							} catch (error) {
+								throw new NodeOperationError(
+									this.getNode(),
+									"Input 'Data' must contain a valid JSON",
+								);
+							}
+						} else if (typeof data === 'object') {
+							values = data;
+						} else {
+							throw new NodeOperationError(
+								this.getNode(),
+								"Input 'Data' must contain a valid JSON",
+							);
+						}
 
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -921,6 +939,14 @@ export class MicrosoftExcel implements INodeType {
 							);
 						}
 						const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+
+						if (!items.some(({ json }) => json[columnToMatchOn] !== undefined)) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Any item in input data contains column '${columnToMatchOn}', that is selected to match on`,
+							);
+						}
+
 						const [columns, ...values] = worksheetData.values as string[][];
 						const columnToMatchOnIndex = columns.indexOf(columnToMatchOn);
 						const columnToMatchOnData = values.map((row) => row[columnToMatchOnIndex]);
