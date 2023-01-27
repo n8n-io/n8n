@@ -8,7 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function sentryIoApiRequest(
 	this:
@@ -37,7 +37,7 @@ export async function sentryIoApiRequest(
 		uri: uri || `https://sentry.io${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 
@@ -69,13 +69,12 @@ export async function sentryIoApiRequest(
 				Authorization: `Bearer ${credentials?.token}`,
 			};
 
-			//@ts-ignore
 			return await this.helpers.request(options);
 		} else {
 			return await this.helpers.requestOAuth2.call(this, 'sentryIoOAuth2Api', options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -120,12 +119,12 @@ export async function sentryApiRequestAllItems(
 			resolveWithFullResponse: true,
 		});
 		link = responseData.headers.link;
-		uri = getNext(link);
-		returnData.push.apply(returnData, responseData.body);
+		uri = getNext(link as string);
+		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		if (query.limit && query.limit >= returnData.length) {
 			return;
 		}
-	} while (hasMore(link));
+	} while (hasMore(link as string));
 
 	return returnData;
 }

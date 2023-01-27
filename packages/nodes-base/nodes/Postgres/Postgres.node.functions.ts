@@ -310,7 +310,7 @@ export async function pgInsert(
 				try {
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
-						result.push(insertResult);
+						result.push(insertResult as IDataObject);
 					}
 				} catch (err) {
 					if (!continueOnFail) {
@@ -373,9 +373,12 @@ export async function pgInsertV2(
 		const queryResult = await db.any(query);
 		return queryResult
 			.map((result, i) => {
-				return this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(result), {
-					itemData: { item: i },
-				});
+				return this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(result as IDataObject),
+					{
+						itemData: { item: i },
+					},
+				);
 			})
 			.flat();
 	} else if (mode === 'transaction') {
@@ -386,9 +389,12 @@ export async function pgInsertV2(
 				try {
 					const insertResult = await t.one(pgp.helpers.insert(itemCopy, cs) + returning);
 					result.push(
-						...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(insertResult), {
-							itemData: { item: i },
-						}),
+						...this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(insertResult as IDataObject),
+							{
+								itemData: { item: i },
+							},
+						),
 					);
 				} catch (err) {
 					if (!continueOnFail) throw err;
@@ -412,7 +418,7 @@ export async function pgInsertV2(
 					const insertResult = await t.oneOrNone(pgp.helpers.insert(itemCopy, cs) + returning);
 					if (insertResult !== null) {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(insertResult),
+							this.helpers.returnJsonArray(insertResult as IDataObject),
 							{ itemData: { item: i } },
 						);
 						result.push(...executionData);

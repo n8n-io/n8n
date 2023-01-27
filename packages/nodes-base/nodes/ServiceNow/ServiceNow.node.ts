@@ -536,8 +536,8 @@ export class ServiceNow implements INodeType {
 									[outputField]: await serviceNowDownloadAttachment.call(
 										this,
 										endpoint,
-										fileMetadata.file_name,
-										fileMetadata.content_type,
+										fileMetadata.file_name as string,
+										fileMetadata.content_type as string,
 									),
 								},
 							};

@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -139,17 +139,17 @@ export async function splunkApiRequest(
 		return await this.helpers.request(options).then(parseXml);
 	} catch (error) {
 		if (error?.cause?.code === 'ECONNREFUSED') {
-			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
+			throw new NodeApiError(this.getNode(), { ...(error as JsonObject), code: 401 });
 		}
 
-		const rawError = (await parseXml(error.error)) as SplunkError;
+		const rawError = (await parseXml(error.error as string)) as SplunkError;
 		error = extractErrorDescription(rawError);
 
 		if ('fatal' in error) {
 			error = { error: error.fatal };
 		}
 
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 

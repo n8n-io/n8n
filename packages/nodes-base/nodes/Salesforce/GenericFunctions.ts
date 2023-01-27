@@ -5,6 +5,7 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 import {
 	IDataObject,
 	INodePropertyOptions,
+	JsonObject,
 	LoggerProxy as Logger,
 	NodeApiError,
 } from 'n8n-workflow';
@@ -33,11 +34,10 @@ function getOptions(
 		json: true,
 	};
 
-	if (!Object.keys(options.body).length) {
+	if (!Object.keys(options.body as IDataObject).length) {
 		delete options.body;
 	}
 
-	//@ts-ignore
 	return options;
 }
 
@@ -134,11 +134,11 @@ export async function salesforceApiRequest(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
 			Object.assign(options, option);
-			//@ts-ignore
+
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
@@ -159,7 +159,7 @@ export async function salesforceApiRequestAllItems(
 	do {
 		responseData = await salesforceApiRequest.call(this, method, endpoint, body, query, uri);
 		uri = `${endpoint}/${responseData.nextRecordsUrl?.split('/')?.pop()}`;
-		returnData.push.apply(returnData, responseData[propertyName]);
+		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
@@ -182,7 +182,7 @@ export function sortOptions(options: INodePropertyOptions[]): void {
 }
 
 export function getValue(value: any) {
-	if (moment(value).isValid()) {
+	if (moment(value as string).isValid()) {
 		return value;
 	} else if (typeof value === 'string') {
 		return `'${value}'`;

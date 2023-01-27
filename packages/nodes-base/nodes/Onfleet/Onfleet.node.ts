@@ -196,6 +196,6 @@ export class Onfleet implements INodeType {
 		const responseData = await operations[resource].call(this, `${resource}s`, operation, items);
 
 		// Map data to n8n data
-		return [this.helpers.returnJsonArray(responseData)];
+		return [this.helpers.returnJsonArray(responseData as IDataObject)];
 	}
 }

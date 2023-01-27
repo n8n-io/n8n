@@ -7,6 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
@@ -1157,8 +1158,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1267,8 +1267,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1312,7 +1311,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/delete-lead-id
@@ -1325,7 +1324,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/lead/${leadId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Lead/get-lead
@@ -1478,8 +1477,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1609,8 +1607,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1658,7 +1655,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/delete-contact-id
@@ -1671,7 +1668,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/contact/${contactId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Contact/get-contact
@@ -1729,8 +1726,7 @@ export class Salesforce implements INodeType {
 							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1763,8 +1759,7 @@ export class Salesforce implements INodeType {
 							const customFields = customFieldsUi.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -1812,7 +1807,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					if (operation === 'delete') {
@@ -1825,7 +1820,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/${customObject}/${recordId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -1938,8 +1933,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2008,8 +2002,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2057,7 +2050,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/delete-opportunity-id
@@ -2070,7 +2063,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/opportunity/${opportunityId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Opportunity/get-opportunity
@@ -2189,8 +2182,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2298,8 +2290,7 @@ export class Salesforce implements INodeType {
 								.customFieldsValues as IDataObject[];
 							if (customFields) {
 								for (const customField of customFields) {
-									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2347,7 +2338,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/delete-account-id
@@ -2360,7 +2351,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/account/${accountId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Account/get-account
@@ -2450,7 +2441,7 @@ export class Salesforce implements INodeType {
 							if (customFields) {
 								for (const customField of customFields) {
 									//@ts-ignore
-									body[customField.fieldId] = customField.value;
+									body[customField.fieldId as string] = customField.value;
 								}
 							}
 						}
@@ -2562,7 +2553,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/delete-case-id
@@ -2575,7 +2566,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/case/${caseId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Case/get-case
@@ -2825,7 +2816,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/delete-task-id
@@ -2838,7 +2829,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/task/${taskId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Task/get-task
@@ -2957,7 +2948,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/delete-attachment-id
@@ -2970,7 +2961,7 @@ export class Salesforce implements INodeType {
 								`/sobjects/attachment/${attachmentId}`,
 							);
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 					//https://developer.salesforce.com/docs/api-explorer/sobject/Attachment/get-attachment-id
@@ -3012,7 +3003,7 @@ export class Salesforce implements INodeType {
 								);
 							}
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 					}
 				}
@@ -3080,7 +3071,7 @@ export class Salesforce implements INodeType {
 				}
 
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData),
+					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
 				);
 

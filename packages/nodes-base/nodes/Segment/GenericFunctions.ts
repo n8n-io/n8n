@@ -32,7 +32,7 @@ export async function segmentApiRequest(
 		uri: uri || `https://api.segment.io/v1${resource}`,
 		json: true,
 	};
-	if (!Object.keys(body).length) {
+	if (!Object.keys(body as IDataObject).length) {
 		delete options.body;
 	}
 	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);

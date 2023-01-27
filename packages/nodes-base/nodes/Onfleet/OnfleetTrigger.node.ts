@@ -3,6 +3,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -52,7 +53,6 @@ export class OnfleetTrigger implements INodeType {
 		properties: [eventDisplay, eventNameField],
 	};
 
-	// @ts-ignore (because of request)
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
@@ -102,7 +102,7 @@ export class OnfleetTrigger implements INodeType {
 					const webhook = await onfleetApiRequest.call(this, 'POST', path, body);
 
 					if (webhook.id === undefined) {
-						throw new NodeApiError(this.getNode(), webhook, {
+						throw new NodeApiError(this.getNode(), webhook as JsonObject, {
 							message: 'Onfleet webhook creation response did not contain the expected data',
 						});
 					}

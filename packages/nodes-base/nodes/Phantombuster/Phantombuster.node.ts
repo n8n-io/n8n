@@ -165,7 +165,7 @@ export class Phantombuster implements INodeType {
 							if (resultObject === null) {
 								responseData = {};
 							} else {
-								responseData = JSON.parse(resultObject);
+								responseData = JSON.parse(resultObject as string);
 							}
 						}
 					}

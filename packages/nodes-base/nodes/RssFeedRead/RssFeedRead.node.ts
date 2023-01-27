@@ -72,7 +72,7 @@ export class RssFeedRead implements INodeType {
 					);
 				}
 
-				throw new NodeOperationError(this.getNode(), error);
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 
 			const returnData: IDataObject[] = [];
@@ -80,7 +80,6 @@ export class RssFeedRead implements INodeType {
 			// For now we just take the items and ignore everything else
 			if (feed.items) {
 				feed.items.forEach((item) => {
-					// @ts-ignore
 					returnData.push(item);
 				});
 			}

@@ -12,7 +12,7 @@ import { readFile, rm, writeFile } from 'fs/promises';
 
 import { file } from 'tmp-promise';
 
-import { NodeSSH } from 'node-ssh';
+import { NodeSSH, Config } from 'node-ssh';
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
@@ -272,7 +272,7 @@ export class Ssh implements INodeType {
 				temporaryFiles.push(path);
 				await writeFile(path, credentials.privateKey as string);
 
-				const options = {
+				const options: Config = {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,

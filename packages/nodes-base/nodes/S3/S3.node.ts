@@ -12,6 +12,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -97,7 +98,7 @@ export class S3 implements INodeType {
 						try {
 							credentials = await this.getCredentials('s3');
 						} catch (error) {
-							throw new NodeApiError(this.getNode(), error);
+							throw new NodeApiError(this.getNode(), error as JsonObject);
 						}
 
 						const name = this.getNodeParameter('name', i) as string;
@@ -186,7 +187,7 @@ export class S3 implements INodeType {
 							);
 							responseData = responseData.slice(0, qs.limit);
 						}
-						returnData.push.apply(returnData, responseData);
+						returnData.push.apply(returnData, responseData as INodeExecutionData[]);
 					}
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
@@ -257,7 +258,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -302,7 +303,7 @@ export class S3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray({ success: true }),
@@ -332,7 +333,7 @@ export class S3 implements INodeType {
 							{ 'list-type': 2, prefix: folderKey },
 							{},
 							{},
-							region,
+							region as string,
 						);
 
 						// folder empty then just delete it
@@ -346,7 +347,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: [{ Key: folderKey }] };
@@ -384,7 +385,7 @@ export class S3 implements INodeType {
 								{ delete: '' },
 								headers,
 								{},
-								region,
+								region as string,
 							);
 
 							responseData = { deleted: responseData.DeleteResult.Deleted };
@@ -429,7 +430,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -443,7 +444,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						}
 						if (Array.isArray(responseData)) {
@@ -457,7 +458,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -565,10 +566,10 @@ export class S3 implements INodeType {
 							qs,
 							headers,
 							{},
-							region,
+							region as string,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData.CopyObjectResult),
+							this.helpers.returnJsonArray(responseData.CopyObjectResult as IDataObject),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -604,7 +605,7 @@ export class S3 implements INodeType {
 							qs,
 							{},
 							{ encoding: null, resolveWithFullResponse: true },
-							region,
+							region as string,
 						);
 
 						let mimeType: string | undefined;
@@ -663,7 +664,7 @@ export class S3 implements INodeType {
 							qs,
 							{},
 							{},
-							region,
+							region as string,
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -708,7 +709,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', 0);
@@ -722,7 +723,7 @@ export class S3 implements INodeType {
 								qs,
 								{},
 								{},
-								region,
+								region as string,
 							);
 							responseData = responseData.splice(0, qs.limit);
 						}
@@ -736,7 +737,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
+							this.helpers.returnJsonArray(responseData as IDataObject[]),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -864,7 +865,7 @@ export class S3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
@@ -884,7 +885,7 @@ export class S3 implements INodeType {
 								qs,
 								headers,
 								{},
-								region,
+								region as string,
 							);
 						}
 

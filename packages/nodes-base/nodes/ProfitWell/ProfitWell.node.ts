@@ -10,6 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import {
+	Metrics,
 	profitWellApiRequest,
 	simplifyDailyMetrics,
 	simplifyMontlyMetrics,
@@ -121,7 +122,7 @@ export class ProfitWell implements INodeType {
 						}
 
 						responseData = await profitWellApiRequest.call(this, 'GET', `/metrics/${type}`, {}, qs);
-						responseData = responseData.data;
+						responseData = responseData.data as Metrics;
 
 						if (simple) {
 							if (type === 'daily') {
