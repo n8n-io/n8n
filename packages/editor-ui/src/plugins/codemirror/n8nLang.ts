@@ -8,7 +8,6 @@ import { blankCompletions } from './completions/blank.completions';
 import { bracketAccessCompletions } from './completions/bracketAccess.completions';
 import { datatypeCompletions } from './completions/datatype.completions';
 import { dollarCompletions } from './completions/dollar.completions';
-import { luxonCompletions } from './completions/luxon.completions';
 import { nonDollarCompletions } from './completions/nonDollar.completions';
 
 const n8nParserWithNestedJsParser = n8nParser.configure({
@@ -29,7 +28,6 @@ export function n8nLang() {
 		bracketAccessCompletions,
 		datatypeCompletions,
 		dollarCompletions,
-		luxonCompletions,
 		nonDollarCompletions,
 	].map((group) => n8nLanguage.data.of({ autocomplete: ifIn(['Resolvable'], group) }));
 

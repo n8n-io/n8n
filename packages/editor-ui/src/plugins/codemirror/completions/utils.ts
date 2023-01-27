@@ -7,11 +7,6 @@ import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
- *
- * ```
- * DateTime. -> ['DateTime', '']
- * DateTime.fr -> ['DateTime', 'fr']
- * ```
  */
 export function splitBaseTail(userInput: string): [string, string] {
 	const parts = userInput.split('.');
@@ -40,23 +35,22 @@ export const prefixMatch = (first: string, second: string) =>
 	first.startsWith(second) && first !== second;
 
 /**
- * Move selected elements to the start of an array, in order.
- * Selected elements are assumed to be in the array.
+ * Make a function to bring selected elements to the start of an array, in order.
  */
-export function bringToStart(array: string[], selected: string[]) {
-	const copy = [...array];
+export const setRank = (selected: string[]) => (full: string[]) => {
+	const fullCopy = [...full];
 
 	[...selected].reverse().forEach((s) => {
-		const index = copy.indexOf(s);
+		const index = fullCopy.indexOf(s);
 
-		if (index !== -1) copy.unshift(copy.splice(index, 1)[0]);
+		if (index !== -1) fullCopy.unshift(fullCopy.splice(index, 1)[0]);
 	});
 
-	return copy;
-}
+	return fullCopy;
+};
 
 export const isPseudoParam = (candidate: string) => {
-	const PSEUDO_PARAMS = ['notice']; // not real params, user input disallowed
+	const PSEUDO_PARAMS = ['notice']; // user input disallowed
 
 	return PSEUDO_PARAMS.includes(candidate);
 };
@@ -71,11 +65,8 @@ export const isAllowedInDotNotation = (str: string) => {
 };
 
 // ----------------------------------
-//        state-based utils
+//      resolution-based utils
 // ----------------------------------
-
-export const isSplitInBatchesAbsent = () =>
-	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
 
 export function receivesNoBinaryData() {
 	return resolveParameter('={{ $binary }}')?.data === undefined;
@@ -91,6 +82,13 @@ export function hasNoParams(toResolve: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
+// ----------------------------------
+//        state-based utils
+// ----------------------------------
+
+export const isSplitInBatchesAbsent = () =>
+	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+
 export function autocompletableNodeNames() {
 	return useWorkflowsStore()
 		.allNodes.filter((node) => {
@@ -104,14 +102,14 @@ export function autocompletableNodeNames() {
 }
 
 /**
- * Remove excess parens from an option label when the cursor is followed
- * by parens already, e.g. `$json.myStr.|()` -> `isNumeric`
+ * Remove excess parens from an option label when the cursor is already
+ * followed by parens, e.g. `$json.myStr.|()` -> `isNumeric`
  */
 export const stripExcessParens = (context: CompletionContext) => (option: Completion) => {
 	const followedByParens = context.state.sliceDoc(context.pos, context.pos + 2) === '()';
 
 	if (option.label.endsWith('()') && followedByParens) {
-		option.label = option.label.slice(0, -2);
+		option.label = option.label.slice(0, '()'.length * -1);
 	}
 
 	return option;

@@ -6,14 +6,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { n8nLang } from '@/plugins/codemirror/n8nLang';
 import { dollarOptions } from '@/plugins/codemirror/completions/dollar.completions';
-import {
-	dateTimeOptions,
-	nowTodayOptions,
-} from '@/plugins/codemirror/completions/luxon.completions';
 import * as utils from '@/plugins/codemirror/completions/utils';
 import * as workflowHelpers from '@/mixins/workflowHelpers';
-import { extensions } from '../datatype.completions';
+import { extensions, luxonInstanceOptions, luxonStaticOptions } from '../datatype.completions';
 import { mock } from './mock';
+import { DateTime } from 'luxon';
 
 beforeEach(() => {
 	setActivePinia(createTestingPinia());
@@ -61,16 +58,25 @@ describe('Top-level completions', () => {
 });
 
 describe('Luxon method completions', () => {
-	test('should return static method completions for: {{ DateTime.| }}', () => {
-		expect(completions('{{ DateTime.| }}')).toHaveLength(dateTimeOptions().length);
+	test('should return class completions for: {{ DateTime.| }}', () => {
+		// @ts-ignore
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime);
+
+		expect(completions('{{ DateTime.| }}')).toHaveLength(luxonStaticOptions().length);
 	});
 
-	test('should return instance method completions for: {{ $now.| }}', () => {
-		expect(completions('{{ $now.| }}')).toHaveLength(nowTodayOptions().length);
+	test('should return instance completions for: {{ $now.| }}', () => {
+		// @ts-ignore
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
+
+		expect(completions('{{ $now.| }}')).toHaveLength(luxonInstanceOptions().length);
 	});
 
-	test('should return instance method completions for: {{ $today.| }}', () => {
-		expect(completions('{{ $today.| }}')).toHaveLength(nowTodayOptions().length);
+	test('should return instance completions for: {{ $today.| }}', () => {
+		// @ts-ignore
+		vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(DateTime.now());
+
+		expect(completions('{{ $today.| }}')).toHaveLength(luxonInstanceOptions().length);
 	});
 });
 

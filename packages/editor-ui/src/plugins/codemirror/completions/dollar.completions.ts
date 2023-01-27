@@ -3,7 +3,7 @@ import {
 	autocompletableNodeNames,
 	receivesNoBinaryData,
 	longestCommonPrefix,
-	bringToStart,
+	setRank,
 	prefixMatch,
 	stripExcessParens,
 } from './utils';
@@ -24,7 +24,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	const userInput = word.text;
 
 	/**
-	 * If user typed anything after `$`, whittle down options based on user input.
+	 * If user typed anything after `$`, narrow down options based on user input.
 	 */
 	if (userInput !== '$') {
 		options = options.filter((o) => prefixMatch(o.label, userInput));
@@ -45,7 +45,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 }
 
 export function dollarOptions() {
-	const BOOST = ['$json', '$input'];
+	const rank = setRank(['$json', '$input']);
 	const SKIP = new Set();
 	const DOLLAR_FUNCTIONS = ['$jmespath'];
 
@@ -53,7 +53,7 @@ export function dollarOptions() {
 
 	const keys = Object.keys(i18n.rootVars).sort((a, b) => a.localeCompare(b));
 
-	return bringToStart(keys, BOOST)
+	return rank(keys)
 		.filter((key) => !SKIP.has(key))
 		.map((key) => {
 			const isFunction = DOLLAR_FUNCTIONS.includes(key);
