@@ -63,7 +63,7 @@
     "n8n-workflow": "~0.133.2",
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.0.22",
-    "prettier": "^2.8.2",
+    "prettier": "^2.8.3",
     "prismjs": "^1.17.1",
     "stream-browserify": "^3.0.0",
     "timeago.js": "^4.0.2",
