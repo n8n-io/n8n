@@ -9,7 +9,7 @@ module.exports = {
 	...sharedOptions(__dirname),
 
 	rules: {
-		'@typescript-eslint/consistent-type-imports': 'on',
+		'@typescript-eslint/consistent-type-imports': 'error',
 
 		// TODO: remove all the following rules
 		eqeqeq: 'off',
