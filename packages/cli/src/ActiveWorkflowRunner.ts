@@ -11,7 +11,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ActiveWorkflows, NodeExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteData,
@@ -24,21 +24,23 @@ import {
 	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData as IWorkflowExecuteAdditionalDataWorkflow,
-	NodeHelpers,
 	WebhookHttpMethod,
-	Workflow,
 	WorkflowActivateMode,
-	WorkflowActivationError,
 	WorkflowExecuteMode,
-	LoggerProxy as Logger,
-	ErrorReporterProxy as ErrorReporter,
 	INodeType,
 } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	Workflow,
+	WorkflowActivationError,
+	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
+} from 'n8n-workflow';
 
-import express from 'express';
+import type express from 'express';
 
 import * as Db from '@/Db';
-import {
+import type {
 	IActivationError,
 	IQueuedWorkflowActivations,
 	IResponseCallbackData,
@@ -51,7 +53,7 @@ import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 
 import config from '@/config';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { WebhookEntity } from '@db/entities/WebhookEntity';
 import * as ActiveExecutions from '@/ActiveExecutions';

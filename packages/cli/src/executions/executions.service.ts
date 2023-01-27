@@ -3,21 +3,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { BinaryDataManager } from 'n8n-core';
-import {
-	deepCopy,
-	IDataObject,
-	IWorkflowBase,
-	LoggerProxy,
-	JsonObject,
-	jsonParse,
-	Workflow,
-} from 'n8n-workflow';
-import { FindOperator, FindOptionsWhere, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import type { IDataObject, IWorkflowBase, JsonObject } from 'n8n-workflow';
+import { deepCopy, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
+import type { FindOperator, FindOptionsWhere } from 'typeorm';
+import { In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
 import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
-import {
+import type {
+	DatabaseType,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -29,7 +24,6 @@ import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import type { DatabaseType } from '@/Interfaces';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 

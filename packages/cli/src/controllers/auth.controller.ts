@@ -4,11 +4,12 @@ import { AuthError, BadRequestError, InternalServerError } from '@/ResponseHelpe
 import { sanitizeUser } from '@/UserManagement/UserManagementHelper';
 import { issueCookie, resolveJwt } from '@/auth/jwt';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import type { ILogger } from 'n8n-workflow';
 import type { User } from '@db/entities/User';
-import type { LoginRequest, UserRequest } from '@/requests';
-import { In, Repository } from 'typeorm';
+import { LoginRequest, UserRequest } from '@/requests';
+import type { Repository } from 'typeorm';
+import { In } from 'typeorm';
 import type { Config } from '@/config';
 import type { PublicUser, IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import { handleEmailLogin, handleLdapLogin } from '@/auth';

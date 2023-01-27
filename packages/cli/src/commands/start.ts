@@ -28,7 +28,7 @@ import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as Server from '@/Server';
-import { DatabaseType } from '@/Interfaces';
+import type { DatabaseType } from '@/Interfaces';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker } from '@/WaitTracker';
 

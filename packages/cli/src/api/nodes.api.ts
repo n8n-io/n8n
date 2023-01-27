@@ -1,5 +1,5 @@
 import express from 'express';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -31,7 +31,7 @@ import {
 } from '@/constants';
 import { isAuthenticatedRequest } from '@/UserManagement/UserManagementHelper';
 
-import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
 import type { CommunityPackages } from '@/Interfaces';
 import type { NodeRequest } from '@/requests';
 
