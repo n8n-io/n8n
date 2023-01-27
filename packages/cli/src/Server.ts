@@ -35,9 +35,12 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { FindManyOptions, In } from 'typeorm';
-import axios, { AxiosRequestConfig } from 'axios';
-import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
+import type { FindManyOptions } from 'typeorm';
+import { In } from 'typeorm';
+import type { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import type { RequestOptions } from 'oauth-1.0a';
+import clientOAuth1 from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -50,7 +53,7 @@ import {
 	UserSettings,
 } from 'n8n-core';
 
-import {
+import type {
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
@@ -58,12 +61,11 @@ import {
 	INodePropertyOptions,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
-	LoggerProxy,
-	jsonParse,
 	WorkflowExecuteMode,
 	INodeTypes,
 	ICredentialTypes,
 } from 'n8n-workflow';
+import { LoggerProxy, jsonParse } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
 import jwt from 'jsonwebtoken';
@@ -124,7 +126,7 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
-import {
+import type {
 	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
@@ -147,7 +149,8 @@ import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
+import type { WaitTrackerClass } from '@/WaitTracker';
+import { WaitTracker } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';

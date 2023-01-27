@@ -3,15 +3,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import {
-	LoggerProxy,
+import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationTypeNames,
 } from 'n8n-workflow';
+import { LoggerProxy, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import { MessageEventBusDestination } from './MessageEventBusDestination.ee';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
-import { EventMessageTypes } from '../EventMessageClasses';
+import type { EventMessageTypes } from '../EventMessageClasses';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 
 export const isMessageEventBusDestinationSyslogOptions = (

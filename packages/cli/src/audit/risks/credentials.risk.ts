@@ -1,4 +1,5 @@
-import { FindOperator, MoreThanOrEqual } from 'typeorm';
+import type { FindOperator } from 'typeorm';
+import { MoreThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 import * as Db from '@/Db';
 import config from '@/config';

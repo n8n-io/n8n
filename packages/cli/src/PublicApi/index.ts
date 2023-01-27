@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import express, { Router } from 'express';
+import type { Router } from 'express';
+import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
