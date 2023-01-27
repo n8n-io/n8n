@@ -72,7 +72,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Update a sheet',
 			},
 		],
-		default: 'append',
+		default: 'read',
 	},
 	{
 		displayName: 'Document',
