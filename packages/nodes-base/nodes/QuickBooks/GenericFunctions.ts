@@ -1,22 +1,22 @@
-import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
+import type { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
+import type { CustomField, GeneralAddress, Ref } from './descriptions/Shared.interface';
 
 import { capitalCase } from 'change-case';
 
 import { omit, pickBy } from 'lodash';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
+import type { DateFieldsUi, Option, QuickBooksOAuth2Credentials, TransactionReport } from './types';
 
 /**
  * Make an authenticated API request to QuickBooks.

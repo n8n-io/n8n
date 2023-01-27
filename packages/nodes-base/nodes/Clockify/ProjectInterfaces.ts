@@ -1,4 +1,4 @@
-import { IHourlyRateDto, IMembershipDto } from './CommonDtos';
+import type { IHourlyRateDto, IMembershipDto } from './CommonDtos';
 
 enum EstimateEnum {
 	AUTO = 'AUTO',

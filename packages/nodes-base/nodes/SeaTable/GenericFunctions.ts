@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import type { IDataObject, ILoadOptionsFunctions, IPollFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
-import { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
+import type { TDtableMetadataColumns, TDtableViewColumns, TEndpointVariableName } from './types';
 
 import { schema } from './Schema';
 
-import {
+import type {
 	ICredential,
 	ICtx,
 	IDtableMetadataColumn,

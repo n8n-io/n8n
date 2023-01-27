@@ -1,7 +1,8 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { GoogleAnalytics, ReportBasedOnProperty } from './node.type';
+import type { GoogleAnalytics, ReportBasedOnProperty } from './node.type';
 import * as userActivity from './userActivity/UserActivity.resource';
 import * as report from './report/Report.resource';
 
