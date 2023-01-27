@@ -25,11 +25,7 @@ let saveCredential: SaveCredentialFunction;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({
-		endpointGroups: ['credentials'],
-		applyAuth: true,
-	});
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['credentials'] });
 
 	utils.initConfigFile();
 
@@ -40,9 +36,6 @@ beforeAll(async () => {
 	saveCredential = testDb.affixRoleToSaveCredential(credentialOwnerRole);
 
 	authAgent = utils.createAuthAgent(app);
-
-	utils.initTestLogger();
-	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {

@@ -9,7 +9,7 @@ import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
-import { Role } from '@/databases/entities/Role';
+import { Role } from '@db/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { eventBus } from '@/eventbus/MessageEventBus/MessageEventBus';
 

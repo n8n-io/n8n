@@ -18,12 +18,8 @@ beforeAll(async () => {
 		applyAuth: false,
 		enablePublicAPI: true,
 	});
-	await testDb.init();
 
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
-
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 
 	await utils.initBinaryManager();
 	await utils.initNodeTypes();

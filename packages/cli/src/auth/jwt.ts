@@ -5,7 +5,7 @@ import { Response } from 'express';
 import { createHash } from 'crypto';
 import * as Db from '@/Db';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { JwtPayload, JwtToken } from '../Interfaces';
+import { JwtPayload, JwtToken } from '@/Interfaces';
 import { User } from '@db/entities/User';
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
