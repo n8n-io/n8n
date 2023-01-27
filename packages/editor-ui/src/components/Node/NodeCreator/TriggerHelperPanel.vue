@@ -227,6 +227,8 @@ const {
 	setAddedNodeActionParameters,
 } = useNodeCreatorStore();
 
+const { getNodeType } = useNodeTypesStore();
+
 const telemetry = instance?.proxy.$telemetry;
 const { categorizedItems: allNodes, isTriggerNode } = useNodeTypesStore();
 const containsAPIAction = computed(
@@ -368,18 +370,26 @@ function onActionSelected(actionCreateElement: INodeCreateElement) {
 	setAddedNodeActionParameters(actionUpdateData, telemetry);
 }
 function addHttpNode() {
+	const app_identifier = state.activeNodeActions?.name;
+	let nodeCredentialType = '';
+	const nodeType = app_identifier ? getNodeType(app_identifier) : null;
+
+	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
+		nodeCredentialType = nodeType.credentials[0].name;
+	}
+
 	const updateData = {
 		name: '',
 		key: HTTP_REQUEST_NODE_TYPE,
 		value: {
 			authentication: 'predefinedCredentialType',
+			nodeCredentialType,
 		},
 	} as IUpdateInformation;
 
 	emit('nodeTypeSelected', [MANUAL_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE]);
 	setAddedNodeActionParameters(updateData, telemetry, false);
 
-	const app_identifier = state.activeNodeActions?.name;
 	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 	telemetry?.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 }

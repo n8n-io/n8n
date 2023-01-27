@@ -9,7 +9,7 @@ import { blockFields, blockOperations } from '../BlockDescription';
 
 import { databasePageFields, databasePageOperations } from '../DatabasePageDescription';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Notion',

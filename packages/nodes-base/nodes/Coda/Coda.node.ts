@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import { codaApiRequest, codaApiRequestAllItems } from './GenericFunctions';
 import { tableFields, tableOperations } from './TableDescription';
 import { formulaFields, formulaOperations } from './FormulaDescription';

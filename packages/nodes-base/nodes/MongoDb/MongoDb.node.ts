@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -9,8 +9,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { nodeDescription } from './MongoDbDescription';
 
@@ -21,15 +21,10 @@ import {
 	validateAndResolveMongoCredentials,
 } from './GenericFunctions';
 
-import {
-	FindOneAndReplaceOptions,
-	FindOneAndUpdateOptions,
-	MongoClient,
-	ObjectId,
-	UpdateOptions,
-} from 'mongodb';
+import type { FindOneAndReplaceOptions, FindOneAndUpdateOptions, UpdateOptions } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
-import { IMongoParametricCredentials } from './mongoDb.types';
+import type { IMongoParametricCredentials } from './mongoDb.types';
 
 export class MongoDb implements INodeType {
 	description: INodeTypeDescription = nodeDescription;
