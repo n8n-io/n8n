@@ -515,10 +515,7 @@ export const isNodeFieldMatchingNodeVersion = (
 	nodeField: INodeProperties,
 	nodeVersion: number | undefined,
 ) => {
-	if (!nodeVersion) {
-		return true;
-	}
-	if (nodeField.displayOptions?.show && '@version' in nodeField.displayOptions.show) {
+	if (nodeVersion && nodeField.displayOptions?.show?.['@version']) {
 		return nodeField.displayOptions.show['@version']?.includes(nodeVersion);
 	}
 	return true;
