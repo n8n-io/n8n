@@ -12,7 +12,8 @@ import { readFile, rm, writeFile } from 'fs/promises';
 
 import { file } from 'tmp-promise';
 
-import { NodeSSH, Config } from 'node-ssh';
+import type { Config } from 'node-ssh';
+import { NodeSSH } from 'node-ssh';
 
 export class Ssh implements INodeType {
 	description: INodeTypeDescription = {

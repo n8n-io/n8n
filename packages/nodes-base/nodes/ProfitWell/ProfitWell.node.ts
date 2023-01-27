@@ -9,8 +9,8 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import type { Metrics } from './GenericFunctions';
 import {
-	Metrics,
 	profitWellApiRequest,
 	simplifyDailyMetrics,
 	simplifyMontlyMetrics,

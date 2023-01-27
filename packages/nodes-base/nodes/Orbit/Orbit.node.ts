@@ -20,7 +20,7 @@ import { noteFields, noteOperations } from './NoteDescription';
 import { postFields, postOperations } from './PostDescription';
 
 import moment from 'moment';
-import { IRelation } from './Interfaces';
+import type { IRelation } from './Interfaces';
 
 export class Orbit implements INodeType {
 	description: INodeTypeDescription = {

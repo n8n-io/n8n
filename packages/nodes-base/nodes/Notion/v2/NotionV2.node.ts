@@ -11,13 +11,12 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError } from 'n8n-workflow';
 
-import type { SortData } from '../GenericFunctions';
+import type { SortData, FileRecord } from '../GenericFunctions';
 import {
 	downloadFiles,
 	extractDatabaseId,
 	extractDatabaseMentionRLC,
 	extractPageId,
-	FileRecord,
 	formatBlocks,
 	formatTitle,
 	getBlockTypes,
