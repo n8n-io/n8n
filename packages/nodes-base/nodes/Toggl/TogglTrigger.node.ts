@@ -1,12 +1,11 @@
-import { IPollFunctions } from 'n8n-core';
-import {
+import type { IPollFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { togglApiRequest } from './GenericFunctions';

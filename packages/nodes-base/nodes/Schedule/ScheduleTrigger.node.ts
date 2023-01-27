@@ -1,11 +1,6 @@
-import { ITriggerFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-	NodeOperationError,
-} from 'n8n-workflow';
+import type { ITriggerFunctions } from 'n8n-core';
+import type { IDataObject, INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { CronJob } from 'cron';
 import moment from 'moment';

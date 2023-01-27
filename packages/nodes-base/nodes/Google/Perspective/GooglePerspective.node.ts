@@ -1,15 +1,20 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { AttributesValuesUi, CommentAnalyzeBody, Language, RequestedAttributes } from './types';
+import type {
+	AttributesValuesUi,
+	CommentAnalyzeBody,
+	Language,
+	RequestedAttributes,
+} from './types';
 
 import { googleApiRequest } from './GenericFunctions';
 

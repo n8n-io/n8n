@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -19,9 +19,9 @@ import { listFields, listOperations } from './ListDescription';
 
 import { listEntryFields, listEntryOperations } from './ListEntryDescription';
 
-import { IOrganization } from './OrganizationInterface';
+import type { IOrganization } from './OrganizationInterface';
 
-import { IPerson } from './PersonInterface';
+import type { IPerson } from './PersonInterface';
 
 export class Affinity implements INodeType {
 	description: INodeTypeDescription = {

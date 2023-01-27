@@ -1,6 +1,6 @@
-import { IWebhookFunctions } from 'n8n-core';
+import type { IWebhookFunctions } from 'n8n-core';
 
-import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 export class ChargebeeTrigger implements INodeType {
 	description: INodeTypeDescription = {

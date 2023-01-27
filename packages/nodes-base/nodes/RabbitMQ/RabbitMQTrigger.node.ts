@@ -1,6 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	createDeferredPromise,
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeProperties,
@@ -9,9 +8,8 @@ import {
 	IRun,
 	ITriggerFunctions,
 	ITriggerResponse,
-	LoggerProxy as Logger,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { createDeferredPromise, LoggerProxy as Logger, NodeOperationError } from 'n8n-workflow';
 
 import { rabbitDefaultOptions } from './DefaultOptions';
 
