@@ -42,6 +42,14 @@ export function recurencyCheck(
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
 			return true;
 		}
+	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'months') {
+		if (
+			lastExecution === undefined ||
+			moment.tz(timezone).month() >= (intervalSize + lastExecution) % 12
+		) {
+			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).month();
+			return true;
+		}
 	} else {
 		return true;
 	}

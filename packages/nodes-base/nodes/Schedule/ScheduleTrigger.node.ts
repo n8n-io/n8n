@@ -588,20 +588,37 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			if (interval[i].field === 'months') {
-				const month = interval[i].monthsInterval?.toString() as string;
+				const month = interval[i].monthsInterval;
 				const day = interval[i].triggerAtDayOfMonth?.toString() as string;
 				const hour = interval[i].triggerAtHour?.toString() as string;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const cronTimes: string[] = [minute, hour, day, `*/${month}`, '*'];
+				const cronTimes: string[] = [minute, hour, day, '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
-				const cronJob = new CronJob(
-					cronExpression,
-					async () => executeTrigger({ activated: false } as IRecurencyRule),
-					undefined,
-					true,
-					timezone,
-				);
-				cronJobs.push(cronJob);
+				if (month === 1) {
+					const cronJob = new CronJob(
+						cronExpression,
+						async () => executeTrigger({ activated: false } as IRecurencyRule),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				} else {
+					const cronJob = new CronJob(
+						cronExpression,
+						async () =>
+							executeTrigger({
+								activated: true,
+								index: i,
+								intervalSize: month,
+								typeInterval: 'months',
+							} as IRecurencyRule),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				}
 			}
 		}
 
