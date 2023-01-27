@@ -12,6 +12,11 @@ overrides:
   cpy@8>globby: ^11.1.0
   qqjs>globby: ^11.1.0
 
+patchedDependencies:
+  element-ui@2.15.12:
+    hash: aaa3sc7bmwb4jwg35ga5npx4he
+    path: patches/element-ui@2.15.12.patch
+
 importers:
 
   .:
@@ -468,7 +473,7 @@ importers:
       webpack: ^4.46.0
       xss: ^1.0.14
     dependencies:
-      element-ui: 2.15.12_vue@2.7.14
+      element-ui: 2.15.12_aaa3sc7bmwb4jwg35ga5npx4he_vue@2.7.14
       markdown-it: 13.0.1
       markdown-it-emoji: 2.0.2
       markdown-it-link-attributes: 4.0.1
@@ -10909,7 +10914,7 @@ packages:
     resolution: {integrity: sha512-M8WEXFuKXMYMVr45fo8mq0wUrrJHheiKZf6BArTKk9ZBYCKJEOU5H8cdWgDT+qCVZf7Na4lVUaZsA+h6uA9+PA==}
     dev: true
 
-  /element-ui/2.15.12_vue@2.7.14:
+  /element-ui/2.15.12_aaa3sc7bmwb4jwg35ga5npx4he_vue@2.7.14:
     resolution: {integrity: sha512-Y5FMT2BPOindU2GkDEQ5ZKUVxDawKONRNMh2eL3uBx1FOtvUJ+L6IxXLVsNxq4WnaX/UnVNgWXebl7DobygZMg==}
     peerDependencies:
       vue: ^2.5.17
@@ -10922,6 +10927,7 @@ packages:
       throttle-debounce: 1.1.0
       vue: 2.7.14
     dev: false
+    patched: true
 
   /elliptic/6.5.4:
     resolution: {integrity: sha512-iLhC6ULemrljPZb+QutR5TQGB+pdW6KGD5RSegS+8sorOZT+rdQFbsQFJgvN3eRqNALqJer4oQ16YvJHlU8hzQ==}
