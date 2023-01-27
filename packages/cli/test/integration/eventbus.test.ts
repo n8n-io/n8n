@@ -81,11 +81,10 @@ async function confirmIdSent(id: string) {
 }
 
 beforeAll(async () => {
-	await testDb.init();
+	app = await utils.initTestServer({ endpointGroups: ['eventBus'] });
+
 	globalOwnerRole = await testDb.getGlobalOwnerRole();
 	owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	app = await utils.initTestServer({ endpointGroups: ['eventBus'], applyAuth: true });
 
 	unAuthOwnerAgent = utils.createAgent(app, {
 		apiPath: 'internal',
@@ -104,7 +103,6 @@ beforeAll(async () => {
 	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
 
 	utils.initConfigFile();
-	utils.initTestLogger();
 	config.set('eventBus.logWriter.logBaseName', 'n8n-test-logwriter');
 	config.set('eventBus.logWriter.keepLogCount', '1');
 	config.set('enterprise.features.logStreaming', true);

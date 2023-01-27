@@ -2,7 +2,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 import config from '@/config';
 import { v4 as uuidv4 } from 'uuid';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { StatisticsNames } from '@db/entities/WorkflowStatistics';
 
 export class RemoveWorkflowDataLoadedFlag1671726148419 implements MigrationInterface {
 	name = 'RemoveWorkflowDataLoadedFlag1671726148419';

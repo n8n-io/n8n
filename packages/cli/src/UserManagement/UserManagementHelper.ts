@@ -6,14 +6,13 @@ import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { PublicUser } from './Interfaces';
+import type { PublicUser, WhereClause } from '@/Interfaces';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
 import { Role } from '@db/entities/Role';
 import { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
-import { getWebhookBaseUrl } from '../WebhookHelpers';
+import { getWebhookBaseUrl } from '@/WebhookHelpers';
 import { getLicense } from '@/License';
-import { WhereClause } from '@/Interfaces';
 import { RoleService } from '@/role/role.service';
 
 export async function getWorkflowOwner(workflowId: string): Promise<User> {
@@ -177,7 +176,7 @@ export async function getUserById(userId: string): Promise<User> {
 /**
  * Check if a URL contains an auth-excluded endpoint.
  */
-export function isAuthExcluded(url: string, ignoredEndpoints: string[]): boolean {
+export function isAuthExcluded(url: string, ignoredEndpoints: Readonly<string[]>): boolean {
 	return !!ignoredEndpoints
 		.filter(Boolean) // skip empty paths
 		.find((ignoredEndpoint) => url.startsWith(`/${ignoredEndpoint}`));
