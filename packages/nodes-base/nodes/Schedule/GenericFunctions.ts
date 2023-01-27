@@ -29,8 +29,7 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).dayOfYear() >= (intervalSize + lastExecution) % 365 ||
-			moment.tz(timezone).dayOfYear() === lastExecution
+			moment.tz(timezone).dayOfYear() >= (intervalSize + lastExecution) % 365
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).dayOfYear();
 			return true;
@@ -38,8 +37,7 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).hour() >= (intervalSize + lastExecution) % 24 ||
-			moment.tz(timezone).hour() === lastExecution
+			moment.tz(timezone).hour() >= (intervalSize + lastExecution) % 24
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
 			return true;
