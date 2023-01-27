@@ -10,7 +10,7 @@ import {
 	COMMUNITY_NODES_RISKS_URL,
 	NPM_PACKAGE_URL,
 } from '@/audit/constants';
-import type { WorkflowEntity } from '@/databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type { Risk } from '@/audit/types';
 
 async function getCommunityNodeDetails() {

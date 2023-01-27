@@ -22,7 +22,6 @@ beforeAll(async () => {
 		applyAuth: false,
 		enablePublicAPI: true,
 	});
-	await testDb.init();
 
 	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole, fetchedWorkflowOwnerRole] =
 		await testDb.getAllRoles();
@@ -31,8 +30,6 @@ beforeAll(async () => {
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 
-	utils.initTestTelemetry();
-	utils.initTestLogger();
 	utils.initConfigFile();
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();

@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix } from '@/databases/utils/migrationHelpers';
+import { getTablePrefix } from '@db/utils/migrationHelpers';
 
 export class CreateIndexStoppedAt1594828256133 implements MigrationInterface {
 	name = 'CreateIndexStoppedAt1594828256133';
