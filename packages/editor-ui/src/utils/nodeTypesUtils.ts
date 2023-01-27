@@ -384,6 +384,7 @@ const findAlternativeAuthField = (
 // Gets all authentication types that a given node type supports
 export const getNodeAuthOptions = (
 	nodeType: INodeTypeDescription | null,
+	nodeVersion?: number,
 ): NodeAuthenticationOption[] => {
 	if (!nodeType) {
 		return [];
@@ -392,7 +393,9 @@ export const getNodeAuthOptions = (
 	const authProp = getMainAuthField(nodeType);
 	// Some nodes have multiple auth fields with same name but different display options so need
 	// take them all into account
-	const authProps = getNodeAuthFields(nodeType).filter((prop) => prop.name === authProp?.name);
+	const authProps = getNodeAuthFields(nodeType, nodeVersion).filter(
+		(prop) => prop.name === authProp?.name,
+	);
 
 	authProps.forEach((field) => {
 		if (field.options) {
@@ -404,6 +407,13 @@ export const getNodeAuthOptions = (
 					displayOptions: field.displayOptions,
 				})) || [],
 			);
+		}
+	});
+	// sort so recommended options are first
+	options.forEach((item, i) => {
+		if (item.name.includes('(recommended)')) {
+			options.splice(i, 1);
+			options.unshift(item);
 		}
 	});
 	return options;
@@ -474,7 +484,10 @@ export const isAuthRelatedParameter = (
 	return isRelated;
 };
 
-export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeProperties[] => {
+export const getNodeAuthFields = (
+	nodeType: INodeTypeDescription | null,
+	nodeVersion?: number,
+): INodeProperties[] => {
 	const authFields: INodeProperties[] = [];
 	if (nodeType && nodeType.credentials && nodeType.credentials.length > 0) {
 		nodeType.credentials.forEach((cred) => {
@@ -483,7 +496,10 @@ export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeP
 					const nodeFieldsForName = nodeType.properties.filter((prop) => prop.name === option);
 					if (nodeFieldsForName) {
 						nodeFieldsForName.forEach((nodeField) => {
-							if (!authFields.includes(nodeField)) {
+							if (
+								!authFields.includes(nodeField) &&
+								isNodeFieldMatchingNodeVersion(nodeField, nodeVersion)
+							) {
 								authFields.push(nodeField);
 							}
 						});
@@ -493,6 +509,16 @@ export const getNodeAuthFields = (nodeType: INodeTypeDescription | null): INodeP
 		});
 	}
 	return authFields;
+};
+
+export const isNodeFieldMatchingNodeVersion = (
+	nodeField: INodeProperties,
+	nodeVersion: number | undefined,
+) => {
+	if (nodeVersion && nodeField.displayOptions?.show?.['@version']) {
+		return nodeField.displayOptions.show['@version']?.includes(nodeVersion);
+	}
+	return true;
 };
 
 export const getCredentialsRelatedFields = (
