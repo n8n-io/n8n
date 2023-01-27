@@ -29,10 +29,10 @@ export function recurencyCheck(
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
 		if (
 			lastExecution === undefined ||
-			moment.tz(timezone).day() >= (intervalSize + lastExecution) % 365 ||
-			moment.tz(timezone).day() >= lastExecution
+			moment.tz(timezone).dayOfYear() >= (intervalSize + lastExecution) % 365 ||
+			moment.tz(timezone).dayOfYear() === lastExecution
 		) {
-			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).day();
+			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).dayOfYear();
 			return true;
 		}
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
