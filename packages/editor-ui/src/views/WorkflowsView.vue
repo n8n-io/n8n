@@ -22,8 +22,14 @@
 				</template>
 			</n8n-callout>
 		</template>
-		<template #default="{ data }">
-			<workflow-card :data="data" @click:tag="onClickTag" />
+		<template #default="{ data, updateItemSize }">
+			<workflow-card
+				data-test-id="resources-list-item"
+				class="mb-2xs"
+				:data="data"
+				@expand:tags="updateItemSize(data)"
+				@click:tag="onClickTag"
+			/>
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
