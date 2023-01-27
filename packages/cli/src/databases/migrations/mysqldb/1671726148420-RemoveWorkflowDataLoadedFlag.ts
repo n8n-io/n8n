@@ -32,9 +32,7 @@ export class RemoveWorkflowDataLoadedFlag1671726148420 implements MigrationInter
 			return undefined;
 		});
 
-		await queryRunner.query(
-			`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`,
-		);
+		await queryRunner.query(`ALTER TABLE ${tablePrefix}workflow_entity DROP COLUMN dataLoaded`);
 
 		logMigrationEnd(this.name);
 	}

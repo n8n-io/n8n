@@ -10,7 +10,7 @@ export const eventNamesWorkflow = [
 	'n8n.workflow.failed',
 ] as const;
 
-export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
+export type EventNamesWorkflowType = (typeof eventNamesWorkflow)[number];
 
 // --------------------------------------
 // EventMessage class for Workflow events
