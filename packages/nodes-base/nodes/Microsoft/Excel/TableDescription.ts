@@ -16,19 +16,19 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Add Row',
 				value: 'addRow',
-				description: 'Adds rows to the end of the table',
+				description: 'Add rows to the end of the table',
 				action: 'Add a row',
 			},
 			{
 				name: 'Add Table',
 				value: 'addTable',
-				description: 'Adds table based on range',
+				description: 'Add a table based on range',
 				action: 'Add a table',
 			},
 			{
 				name: 'Convert to Range',
 				value: 'convertToRange',
-				description: 'Converts a table to a range',
+				description: 'Convert a table to a range',
 				action: 'Convert to range',
 			},
 			{
@@ -40,19 +40,19 @@ export const tableOperations: INodeProperties[] = [
 			{
 				name: 'Get Columns',
 				value: 'getColumns',
-				description: 'Retrieve a list of tablecolumns',
+				description: 'Retrieve a list of table columns',
 				action: 'Get columns',
 			},
 			{
 				name: 'Get Rows',
 				value: 'getRows',
-				description: 'Retrieve a list of tablerows',
+				description: 'Retrieve a list of table rows',
 				action: 'Get rows',
 			},
 			{
 				name: 'Lookup',
 				value: 'lookup',
-				description: 'Looks for a specific column value and then returns the matching row',
+				description: 'Look for a specific column value and then returns the matching row',
 				action: 'Look up a column',
 			},
 		],
@@ -136,7 +136,7 @@ export const tableFields: INodeProperties[] = [
 		type: 'string',
 		default: '',
 		placeholder: 'A1:B2',
-		description: 'The range of cells that will be converted to table',
+		description: 'The range of cells that will be converted to a table',
 		displayOptions: {
 			show: {
 				operation: ['addTable'],
@@ -165,10 +165,10 @@ export const tableFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -186,7 +186,7 @@ export const tableFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				description:
-					'Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed',
+					'Specifies the relative position of the new row. If not defined, the addition happens at the end. Any row below the inserted row will be shifted downwards. First row index is 0.',
 			},
 		],
 	},
@@ -272,7 +272,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'A comma-separated list of the fields to include in the response',
 			},
 		],
 	},
@@ -357,7 +357,7 @@ export const tableFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'A comma-separated list of the fields to include in the response',
 			},
 		],
 	},

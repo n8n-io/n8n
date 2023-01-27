@@ -16,7 +16,7 @@ export const workbookOperations: INodeProperties[] = [
 			{
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
-				description: 'Adds a new worksheet to the workbook',
+				description: 'Add a new worksheet to the workbook',
 				action: 'Add a worksheet to a workbook',
 			},
 			{
@@ -50,10 +50,10 @@ export const workbookFields: INodeProperties[] = [
 	/*                                 workbook:addWorksheet                      */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Additional Fields',
+		displayName: 'Options',
 		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -68,7 +68,7 @@ export const workbookFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.',
+					'The name of the worksheet to be added. The name should be unique. If not specified, Excel will determine the name of the new worksheet.',
 			},
 		],
 	},
@@ -124,7 +124,7 @@ export const workbookFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'A comma-separated list of the fields to include in the response',
 			},
 		],
 	},

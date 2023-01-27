@@ -49,7 +49,7 @@ export class MicrosoftExcel implements INodeType {
 		properties: [
 			{
 				displayName:
-					'This node connects to the Microsoft 365 cloud platform. Use the \'Spreadsheet File\' node to manipulate spreadsheet files directly (.xls, .csv etc.). <a href="/templates/890" target="_blank">example</a>',
+					'This node connects to the Microsoft 365 cloud platform. Use the \'Spreadsheet File\' node to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="/templates/890" target="_blank">More info</a>.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -68,14 +68,13 @@ export class MicrosoftExcel implements INodeType {
 					{
 						name: 'Workbook',
 						value: 'workbook',
-						description:
-							'Workbook is the top level object which contains related workbook objects such as worksheets, tables, ranges, etc',
+						description: 'A workbook is the top level object which contains one or more worksheets',
 					},
 					{
 						name: 'Worksheet',
 						value: 'worksheet',
 						description:
-							'An Excel worksheet is a grid of cells. It can contain data, tables, charts, etc.',
+							'A worksheet is a grid of cells which can contain data, tables, charts, etc',
 					},
 				],
 				default: 'workbook',

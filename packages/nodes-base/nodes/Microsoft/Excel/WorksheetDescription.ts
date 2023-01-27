@@ -266,7 +266,7 @@ export const worksheetFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'Fields the response will containt. Multiple can be added separated by ,.',
+				description: 'A comma-separated list of the fields to include in the response',
 			},
 		],
 	},
@@ -317,7 +317,7 @@ export const worksheetFields: INodeProperties[] = [
 		description: 'The name of the property into which to write the RAW data',
 	},
 	{
-		displayName: 'Key Row',
+		displayName: 'Header Row',
 		name: 'keyRow',
 		type: 'number',
 		typeOptions: {
@@ -333,12 +333,11 @@ export const worksheetFields: INodeProperties[] = [
 			},
 		},
 		default: 0,
-		hint: "Index of the row which contains column names. Relative to 'Range'.",
-		description:
-			'The incoming node data is matched to the keys for assignment. The matching is case sensitve.',
+		hint: 'Index of the row which contains the column names',
+		description: "Relative to the set 'Range', first row index is 0",
 	},
 	{
-		displayName: 'Data Start Row',
+		displayName: 'First Data Row',
 		name: 'dataStartRow',
 		type: 'number',
 		typeOptions: {
@@ -354,7 +353,8 @@ export const worksheetFields: INodeProperties[] = [
 				rawData: [true],
 			},
 		},
-		hint: "Index of first row which contains the actual data. Relative to 'Range'.",
+		hint: 'Index of first row which contains the actual data',
+		description: "Relative to the set 'Range', first row index is 0",
 	},
 
 	{
