@@ -1,4 +1,9 @@
-import { MANUAL_TRIGGER_NODE_NAME, CODE_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME, SET_NODE_NAME } from './../constants';
+import {
+	MANUAL_TRIGGER_NODE_NAME,
+	CODE_NODE_NAME,
+	SCHEDULE_TRIGGER_NODE_NAME,
+	SET_NODE_NAME,
+} from './../constants';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 const WorkflowPage = new WorkflowPageClass();
@@ -57,14 +62,17 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.getters.nodeConnections().first().trigger('mouseover', { force: true });
-		cy.get('.connection-actions .add').as('AddNodeConnectionButton')
+		cy.get('.connection-actions .add').as('AddNodeConnectionButton');
 		cy.get('@AddNodeConnectionButton').invoke('show');
 		cy.get('@AddNodeConnectionButton').should('be.visible').click();
 		WorkflowPage.actions.addNodeToCanvas(SET_NODE_NAME);
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 2);
 		// And last node should be pushed to the right
-		WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 640px; top: 260px;');
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.should('have.attr', 'style', 'left: 640px; top: 260px;');
 	});
 
 	it('should delete node using node action button', () => {
@@ -114,37 +122,48 @@ describe('Canvas Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		WorkflowPage.actions.zoomToFit();
 		cy.drag('[data-test-id="canvas-node"].jtk-drag-selected', 50, 150);
-		WorkflowPage.getters.canvasNodes().last().should('have.attr', 'style', 'left: 740px; top: 360px;');
+		WorkflowPage.getters
+			.canvasNodes()
+			.last()
+			.should('have.attr', 'style', 'left: 740px; top: 360px;');
 	});
 
 	it('should zoom in', () => {
 		WorkflowPage.getters.zoomInButton().should('be.visible').click();
-		WorkflowPage.getters.nodeView().should(
-			'have.css',
-			'transform',
-			`matrix(${ ZOOM_IN_X1_FACTOR }, 0, 0, ${ ZOOM_IN_X1_FACTOR }, 0, 0)`
-		);
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${ZOOM_IN_X1_FACTOR}, 0, 0, ${ZOOM_IN_X1_FACTOR}, 0, 0)`,
+			);
 		WorkflowPage.getters.zoomInButton().click();
-		WorkflowPage.getters.nodeView().should(
-			'have.css',
-			'transform',
-			`matrix(${ ZOOM_IN_X2_FACTOR }, 0, 0, ${ ZOOM_IN_X2_FACTOR }, 0, 0)`
-		);
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${ZOOM_IN_X2_FACTOR}, 0, 0, ${ZOOM_IN_X2_FACTOR}, 0, 0)`,
+			);
 	});
 
 	it('should zoom out', () => {
 		WorkflowPage.getters.zoomOutButton().should('be.visible').click();
-		WorkflowPage.getters.nodeView().should(
-			'have.css',
-			'transform',
-			`matrix(${ ZOOM_OUT_X1_FACTOR }, 0, 0, ${ ZOOM_OUT_X1_FACTOR }, 0, 0)`
-		);
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${ZOOM_OUT_X1_FACTOR}, 0, 0, ${ZOOM_OUT_X1_FACTOR}, 0, 0)`,
+			);
 		WorkflowPage.getters.zoomOutButton().click();
-		WorkflowPage.getters.nodeView().should(
-			'have.css',
-			'transform',
-			`matrix(${ ZOOM_OUT_X2_FACTOR }, 0, 0, ${ ZOOM_OUT_X2_FACTOR }, 0, 0)`
-		);
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${ZOOM_OUT_X2_FACTOR}, 0, 0, ${ZOOM_OUT_X2_FACTOR}, 0, 0)`,
+			);
 	});
 
 	it('should reset zoom', () => {
@@ -152,11 +171,13 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.resetZoomButton().should('not.exist');
 		WorkflowPage.getters.zoomInButton().click();
 		WorkflowPage.getters.resetZoomButton().should('be.visible').click();
-		WorkflowPage.getters.nodeView().should(
-			'have.css',
-			'transform',
-			`matrix(${ DEFAULT_ZOOM_FACTOR }, 0, 0, ${ DEFAULT_ZOOM_FACTOR }, 0, 0)`
-		);
+		WorkflowPage.getters
+			.nodeView()
+			.should(
+				'have.css',
+				'transform',
+				`matrix(${DEFAULT_ZOOM_FACTOR}, 0, 0, ${DEFAULT_ZOOM_FACTOR}, 0, 0)`,
+			);
 	});
 
 	it('should zoom to fit', () => {
@@ -187,7 +208,7 @@ describe('Canvas Actions', () => {
 		WorkflowPage.getters.canvasNodes().last().should('have.class', 'jtk-drag-selected');
 	});
 
-	it ('should select nodes using shift and arrow keys', () => {
+	it('should select nodes using shift and arrow keys', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.addNodeToCanvas(CODE_NODE_NAME);
 		cy.wait(500);
@@ -260,7 +281,7 @@ describe('Canvas Actions', () => {
 			.click({ force: true });
 		WorkflowPage.getters.canvasNodes().should('have.length', 3);
 		WorkflowPage.getters.nodeConnections().should('have.length', 1);
-	})
+	});
 
 	it('should execute node', () => {
 		WorkflowPage.actions.addNodeToCanvas(MANUAL_TRIGGER_NODE_NAME);
