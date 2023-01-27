@@ -517,14 +517,6 @@ export class ScheduleTrigger implements INodeType {
 					);
 					cronJobs.push(cronJob);
 				}
-				const cronJob = new CronJob(
-					cronExpression,
-					async () => executeTrigger({ activated: false } as IRecurencyRule),
-					undefined,
-					true,
-					timezone,
-				);
-				cronJobs.push(cronJob);
 			}
 
 			if (interval[i].field === 'days') {
