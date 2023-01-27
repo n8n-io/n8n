@@ -893,4 +893,4 @@
 
 		return result;
 	}
-}.call(typeof window !== 'undefined' ? window : this));
+}).call(typeof window !== 'undefined' ? window : this);
