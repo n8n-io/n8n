@@ -84,6 +84,7 @@ import { registerController } from '@/decorators';
 import {
 	AuthController,
 	MeController,
+	NodeTypesController,
 	OwnerController,
 	PasswordResetController,
 	TranslationController,
@@ -91,7 +92,6 @@ import {
 } from '@/controllers';
 
 import { executionsController } from '@/executions/executions.controller';
-import { nodeTypesController } from '@/api/nodeTypes.api';
 import { tagsController } from '@/api/tags.api';
 import { workflowStatsController } from '@/api/workflowStats.api';
 import { loadPublicApiVersions } from '@/PublicApi';
@@ -366,7 +366,7 @@ class Server extends AbstractServer {
 	}
 
 	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
-		const { app, externalHooks, activeWorkflowRunner } = this;
+		const { app, externalHooks, activeWorkflowRunner, nodeTypes } = this;
 		const repositories = Db.collections;
 		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
 
@@ -391,6 +391,7 @@ class Server extends AbstractServer {
 				logger,
 				postHog,
 			}),
+			new NodeTypesController({ config, nodeTypes }),
 		];
 		controllers.forEach((controller) => registerController(app, config, controller));
 	}
@@ -639,12 +640,6 @@ class Server extends AbstractServer {
 				},
 			),
 		);
-
-		// ----------------------------------------
-		// Node-Types
-		// ----------------------------------------
-
-		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
 		// ----------------------------------------
 		// Active Workflows
