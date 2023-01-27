@@ -3,8 +3,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
-	DataSource as Connection,
+import type {
 	DataSourceOptions as ConnectionOptions,
 	EntityManager,
 	EntityTarget,
@@ -12,8 +11,9 @@ import {
 	ObjectLiteral,
 	Repository,
 } from 'typeorm';
-import { TlsOptions } from 'tls';
-import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
+import { DataSource as Connection } from 'typeorm';
+import type { TlsOptions } from 'tls';
+import type { DatabaseType, IDatabaseCollections } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 
 import config from '@/config';

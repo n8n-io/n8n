@@ -15,7 +15,7 @@
 import get from 'lodash.get';
 import isEqual from 'lodash.isequal';
 
-import {
+import type {
 	IContextObject,
 	INode,
 	INodeCredentialDescription,

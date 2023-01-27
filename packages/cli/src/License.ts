@@ -1,5 +1,6 @@
-import { LicenseManager, TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
-import { ILogger } from 'n8n-workflow';
+import type { TEntitlement, TLicenseContainerStr } from '@n8n_io/license-sdk';
+import { LicenseManager } from '@n8n_io/license-sdk';
+import type { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';

@@ -12,9 +12,9 @@ import config from '@/config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import type { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import type { EventMessageTypes } from '../EventMessageClasses';
+import type { EventMessageConfirmSource } from '../EventMessageClasses/EventMessageConfirm';
 import {
 	EventMessageConfirm,
-	EventMessageConfirmSource,
 	isEventMessageConfirm,
 } from '../EventMessageClasses/EventMessageConfirm';
 import { once as eventOnce } from 'events';

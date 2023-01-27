@@ -1,6 +1,7 @@
-import express from 'express';
+import type express from 'express';
 
-import { FindManyOptions, FindOptionsWhere, In } from 'typeorm';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import config from '@/config';
@@ -8,7 +9,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { ExternalHooks } from '@/ExternalHooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
-import { WorkflowRequest } from '../../../types';
+import type { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getWorkflowOwnerRole, isInstanceOwner } from '../users/users.service';

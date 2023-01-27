@@ -1,4 +1,4 @@
-import express from 'express';
+import type express from 'express';
 
 import { BinaryDataManager } from 'n8n-core';
 
@@ -10,7 +10,7 @@ import {
 } from './executions.service';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
-import { ExecutionRequest } from '../../../types';
+import type { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { InternalHooksManager } from '@/InternalHooksManager';

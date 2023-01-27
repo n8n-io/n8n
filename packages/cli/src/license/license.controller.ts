@@ -9,7 +9,7 @@ import { InternalHooksManager } from '@/InternalHooksManager';
 import type { ILicensePostResponse, ILicenseReadResponse } from '@/Interfaces';
 import { LicenseService } from './License.service';
 import { getLicense } from '@/License';
-import { AuthenticatedRequest, LicenseRequest } from '@/requests';
+import type { AuthenticatedRequest, LicenseRequest } from '@/requests';
 import { isInstanceOwner } from '@/PublicApi/v1/handlers/users/users.service';
 
 export const licenseController = express.Router();
