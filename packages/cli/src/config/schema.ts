@@ -380,6 +380,12 @@ export const schema = {
 					default: 10000,
 					env: 'QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD',
 				},
+				username: {
+					doc: 'Redis Username (needs Redis >= 6)',
+					format: String,
+					default: '',
+					env: 'QUEUE_BULL_REDIS_USERNAME',
+				},
 			},
 			queueRecoveryInterval: {
 				doc: 'If > 0 enables an active polling to the queue that can recover for Redis crashes. Given in seconds; 0 is disabled. May increase Redis traffic significantly.',
@@ -463,6 +469,14 @@ export const schema = {
 	},
 
 	security: {
+		audit: {
+			daysAbandonedWorkflow: {
+				doc: 'Days for a workflow to be considered abandoned if not executed',
+				format: Number,
+				default: 90,
+				env: 'N8N_SECURITY_AUDIT_DAYS_ABANDONED_WORKFLOW',
+			},
+		},
 		excludeEndpoints: {
 			doc: 'Additional endpoints to exclude auth checks. Multiple endpoints can be separated by colon (":")',
 			format: String,
@@ -559,13 +573,61 @@ export const schema = {
 				format: 'Boolean',
 				default: false,
 				env: 'N8N_METRICS',
-				doc: 'Enable metrics endpoint',
+				doc: 'Enable /metrics endpoint. Default: false',
 			},
 			prefix: {
 				format: String,
 				default: 'n8n_',
 				env: 'N8N_METRICS_PREFIX',
 				doc: 'An optional prefix for metric names. Default: n8n_',
+			},
+			includeDefaultMetrics: {
+				format: Boolean,
+				default: true,
+				env: 'N8N_METRICS_INCLUDE_DEFAULT_METRICS',
+				doc: 'Whether to expose default system and node.js metrics. Default: true',
+			},
+			includeWorkflowIdLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_WORKFLOW_ID_LABEL',
+				doc: 'Whether to include a label for the workflow ID on workflow metrics. Default: false',
+			},
+			includeNodeTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_NODE_TYPE_LABEL',
+				doc: 'Whether to include a label for the node type on node metrics. Default: false',
+			},
+			includeCredentialTypeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_CREDENTIAL_TYPE_LABEL',
+				doc: 'Whether to include a label for the credential type on credential metrics. Default: false',
+			},
+			includeApiEndpoints: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_ENDPOINTS',
+				doc: 'Whether to expose metrics for API endpoints. Default: false',
+			},
+			includeApiPathLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_PATH_LABEL',
+				doc: 'Whether to include a label for the path of API invocations. Default: false',
+			},
+			includeApiMethodLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_METHOD_LABEL',
+				doc: 'Whether to include a label for the HTTP method (GET, POST, ...) of API invocations. Default: false',
+			},
+			includeApiStatusCodeLabel: {
+				format: Boolean,
+				default: false,
+				env: 'N8N_METRICS_INCLUDE_API_STATUS_CODE_LABEL',
+				doc: 'Whether to include a label for the HTTP status code (200, 404, ...) of API invocations. Default: false',
 			},
 		},
 		rest: {
@@ -910,6 +972,14 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+			ldap: {
+				format: Boolean,
+				default: false,
+			},
+			logStreaming: {
+				format: Boolean,
+				default: false,
+			},
 		},
 	},
 
@@ -1037,5 +1107,34 @@ export const schema = {
 		default: false,
 		env: 'N8N_HIDE_USAGE_PAGE',
 		doc: 'Hide or show the usage page',
+	},
+
+	eventBus: {
+		checkUnsentInterval: {
+			doc: 'How often (in ms) to check for unsent event messages. Can in rare cases cause a message to be sent twice. 0=disabled',
+			format: Number,
+			default: 0,
+			env: 'N8N_EVENTBUS_CHECKUNSENTINTERVAL',
+		},
+		logWriter: {
+			keepLogCount: {
+				doc: 'How many event log files to keep.',
+				format: Number,
+				default: 3,
+				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
+			},
+			maxFileSizeInKB: {
+				doc: 'Maximum size of an event log file before a new one is started.',
+				format: Number,
+				default: 102400, // 100MB
+				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
+			},
+			logBaseName: {
+				doc: 'Basename of the event log file.',
+				format: String,
+				default: 'n8nEventLog',
+				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
+		},
 	},
 };

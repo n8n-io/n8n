@@ -69,6 +69,12 @@ export class ConflictError extends ResponseError {
 	}
 }
 
+export class UnprocessableRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 422);
+	}
+}
+
 export class InternalServerError extends ResponseError {
 	constructor(message: string, errorCode = 500) {
 		super(message, 500, errorCode);
@@ -225,7 +231,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 	};
 
 	if (fullExecutionData.id !== undefined) {
-		returnData.id = fullExecutionData.id.toString();
+		returnData.id = fullExecutionData.id;
 	}
 
 	if (fullExecutionData.retryOf !== undefined) {
@@ -246,7 +252,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
-		id: fullExecutionData.id.toString(),
+		id: fullExecutionData.id,
 		workflowData: fullExecutionData.workflowData as IWorkflowDb,
 		data: parse(fullExecutionData.data),
 		mode: fullExecutionData.mode,

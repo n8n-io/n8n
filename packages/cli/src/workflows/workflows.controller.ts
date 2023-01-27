@@ -5,12 +5,11 @@ import { v4 as uuid } from 'uuid';
 import { LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
+import type { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -24,6 +23,7 @@ import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
+import { In } from 'typeorm';
 
 export const workflowsController = express.Router();
 
@@ -62,8 +62,11 @@ workflowsController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+			newWorkflow.tags = await Db.collections.Tag.find({
 				select: ['id', 'name'],
+				where: {
+					id: In(tagIds),
+				},
 			});
 		}
 
@@ -76,7 +79,7 @@ workflowsController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
+			const role = await Db.collections.Role.findOneByOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});
@@ -104,9 +107,9 @@ workflowsController.post(
 		}
 
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
-		return WorkflowsService.entityToResponse(savedWorkflow);
+		return savedWorkflow;
 	}),
 );
 
@@ -116,8 +119,7 @@ workflowsController.post(
 workflowsController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = await WorkflowsService.getMany(req.user, req.query.filter);
-		return workflows.map((workflow) => WorkflowsService.entityToResponse(workflow));
+		return WorkflowsService.getMany(req.user, req.query.filter);
 	}),
 );
 
@@ -218,7 +220,7 @@ workflowsController.get(
 			);
 		}
 
-		return WorkflowsService.entityToResponse(shared.workflow);
+		return shared.workflow;
 	}),
 );
 
@@ -244,7 +246,7 @@ workflowsController.patch(
 			['owner'],
 		);
 
-		return WorkflowsService.entityToResponse(updatedWorkflow);
+		return updatedWorkflow;
 	}),
 );
 
@@ -257,19 +259,8 @@ workflowsController.delete(
 	ResponseHelper.send(async (req: WorkflowRequest.Delete) => {
 		const { id: workflowId } = req.params;
 
-		await ExternalHooks().run('workflow.delete', [workflowId]);
-
-		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow', 'role'],
-			where: whereClause({
-				user: req.user,
-				entityType: 'workflow',
-				entityId: workflowId,
-				roles: ['owner'],
-			}),
-		});
-
-		if (!shared) {
+		const workflow = await WorkflowsService.delete(req.user, workflowId);
+		if (!workflow) {
 			LoggerProxy.verbose('User attempted to delete a workflow without permissions', {
 				workflowId,
 				userId: req.user.id,
@@ -278,16 +269,6 @@ workflowsController.delete(
 				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
-
-		if (shared.workflow.active) {
-			// deactivate before deleting
-			await ActiveWorkflowRunner.getInstance().remove(workflowId);
-		}
-
-		await Db.collections.Workflow.delete(workflowId);
-
-		void InternalHooksManager.getInstance().onWorkflowDeleted(req.user.id, workflowId, false);
-		await ExternalHooks().run('workflow.afterDelete', [workflowId]);
 
 		return true;
 	}),

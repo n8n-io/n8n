@@ -19,6 +19,7 @@ import {
 	INodeTranslationHeaders,
 } from '@/Interface';
 import {
+	IAbstractEventMessage,
 	IDataObject,
 	ILoadOptions,
 	INodeCredentials,
@@ -179,8 +180,8 @@ export const restApi = Vue.extend({
 				getPastExecutions: (
 					filter: object,
 					limit: number,
-					lastId?: string | number,
-					firstId?: string | number,
+					lastId?: string,
+					firstId?: string,
 				): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
@@ -201,8 +202,20 @@ export const restApi = Vue.extend({
 				},
 
 				// Binary data
-				getBinaryUrl: (dataPath, mode): string =>
-					self.rootStore.getRestApiContext.baseUrl + `/data/${dataPath}?mode=${mode}`,
+				getBinaryUrl: (dataPath, mode, fileName, mimeType): string => {
+					let restUrl = self.rootStore.getRestUrl;
+					if (restUrl.startsWith('/')) restUrl = window.location.origin + restUrl;
+					const url = new URL(`${restUrl}/data/${dataPath}`);
+					url.searchParams.append('mode', mode);
+					if (fileName) url.searchParams.append('fileName', fileName);
+					if (mimeType) url.searchParams.append('mimeType', mimeType);
+					return url.toString();
+				},
+
+				// Returns all the available timezones
+				getExecutionEvents: (id: string): Promise<IAbstractEventMessage[]> => {
+					return self.restApi().makeRestApiRequest('GET', '/eventbus/execution/' + id);
+				},
 			};
 		},
 	},

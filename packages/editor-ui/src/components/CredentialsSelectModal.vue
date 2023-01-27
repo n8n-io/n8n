@@ -60,7 +60,6 @@
 <script lang="ts">
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/mixins/externalHooks';

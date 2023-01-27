@@ -67,6 +67,7 @@
 					class="ml-2xs"
 					icon="pencil-alt"
 					type="tertiary"
+					data-test-id="ndv-edit-pinned-data"
 					@click="enterEditMode({ origin: 'editIconButton' })"
 				/>
 				<n8n-tooltip
@@ -100,6 +101,7 @@
 						icon="thumbtack"
 						:disabled="editMode.enabled || (inputData.length === 0 && !hasPinData) || isReadOnly"
 						@click="onTogglePinData({ source: 'pin-icon-click' })"
+						data-test-id="ndv-pin-data"
 					/>
 				</n8n-tooltip>
 
@@ -314,6 +316,11 @@
 				:totalRuns="maxRunIndex"
 			/>
 
+			<run-data-html
+				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
+				:inputData="inputData"
+			/>
+
 			<run-data-schema
 				v-else-if="hasNodeRun && displayMode === 'schema'"
 				:data="jsonData"
@@ -473,6 +480,7 @@ import {
 	MAX_DISPLAY_DATA_SIZE,
 	MAX_DISPLAY_ITEMS_AUTO_ALL,
 	TEST_PIN_DATA,
+	HTML_NODE_TYPE,
 } from '@/constants';
 
 import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
@@ -495,6 +503,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
 const RunDataSchema = () => import('@/components/RunDataSchema.vue');
+const RunDataHtml = () => import('@/components/RunDataHtml.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -510,6 +519,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		RunDataTable,
 		RunDataJson,
 		RunDataSchema,
+		RunDataHtml,
 	},
 	props: {
 		nodeUi: {
@@ -590,15 +600,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			this.eventBus.$on('data-pinning-error', this.onDataPinningError);
 			this.eventBus.$on('data-unpinning', this.onDataUnpinning);
 
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
-			if (!hasSeenPinDataTooltip) {
-				this.showPinDataDiscoveryTooltip(this.jsonData);
-			}
+			this.showPinDataDiscoveryTooltip(this.jsonData);
 		}
 		this.ndvStore.setNDVBranchIndex({
 			pane: this.paneType as 'input' | 'output',
 			branchIndex: this.currentOutputIndex,
 		});
+
+		if (this.paneType === 'output') this.setDisplayMode();
 	},
 	destroyed() {
 		this.hidePinDataDiscoveryTooltip();
@@ -650,6 +659,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 
 			if (this.isPaneTypeInput && window.posthog?.isFeatureEnabled?.('schema-view')) {
 				defaults.unshift({ label: this.$locale.baseText('runData.schema'), value: 'schema' });
+			}
+
+			if (
+				this.isPaneTypeOutput &&
+				this.activeNode?.type === HTML_NODE_TYPE &&
+				this.activeNode.parameters.operation === 'generateHtmlTemplate'
+			) {
+				defaults.unshift({ label: 'HTML', value: 'html' });
 			}
 
 			return defaults;
@@ -834,6 +851,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		isPaneTypeInput(): boolean {
 			return this.paneType === 'input';
 		},
+		isPaneTypeOutput(): boolean {
+			return this.paneType === 'output';
+		},
 	},
 	methods: {
 		onItemHover(itemIndex: number | null) {
@@ -861,7 +881,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				return;
 			}
 
-			if (value && value.length > 0) {
+			if (
+				value &&
+				value.length > 0 &&
+				!this.isReadOnly &&
+				!localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG)
+			) {
 				this.pinDataDiscoveryComplete();
 
 				setTimeout(() => {
@@ -1202,7 +1227,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 			const { id, data, fileName, fileExtension, mimeType } = this.binaryData[index][key];
 
 			if (id) {
-				const url = this.restApi().getBinaryUrl(id, 'download');
+				const url = this.restApi().getBinaryUrl(id, 'download', fileName, mimeType);
 				saveAs(url, [fileName, fileExtension].join('.'));
 				return;
 			} else {
@@ -1271,10 +1296,25 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 				this.ndvStore.activeNodeName = this.node.name;
 			}
 		},
+		setDisplayMode() {
+			if (!this.activeNode) return;
+
+			const shouldDisplayHtml =
+				this.activeNode.type === HTML_NODE_TYPE &&
+				this.activeNode.parameters.operation === 'generateHtmlTemplate';
+
+			this.ndvStore.setPanelDisplayMode({
+				pane: 'output',
+				mode: shouldDisplayHtml ? 'html' : 'table',
+			});
+		},
 	},
 	watch: {
 		node() {
 			this.init();
+		},
+		hasNodeRun() {
+			if (this.paneType === 'output') this.setDisplayMode();
 		},
 		inputData: {
 			handler(data: INodeExecutionData[]) {
@@ -1290,11 +1330,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers, pinData).exten
 		},
 		jsonData(value: IDataObject[]) {
 			this.refreshDataSize();
-
-			const hasSeenPinDataTooltip = localStorage.getItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG);
-			if (!hasSeenPinDataTooltip) {
-				this.showPinDataDiscoveryTooltip(value);
-			}
+			this.showPinDataDiscoveryTooltip(value);
 		},
 		binaryData(newData: IBinaryKeyData[], prevData: IBinaryKeyData[]) {
 			if (newData.length && !prevData.length && this.displayMode !== 'binary') {

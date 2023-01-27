@@ -38,12 +38,12 @@ export abstract class BaseCommand extends Command {
 	};
 
 	async getInstanceOwner(): Promise<User> {
-		const globalRole = await Db.collections.Role.findOneOrFail({
+		const globalRole = await Db.collections.Role.findOneByOrFail({
 			name: 'owner',
 			scope: 'global',
 		});
 
-		const owner = await Db.collections.User.findOne({ globalRole });
+		const owner = await Db.collections.User.findOneBy({ globalRoleId: globalRole.id });
 
 		if (owner) return owner;
 
@@ -53,6 +53,6 @@ export abstract class BaseCommand extends Command {
 
 		await Db.collections.User.save(user);
 
-		return Db.collections.User.findOneOrFail({ globalRole });
+		return Db.collections.User.findOneByOrFail({ globalRoleId: globalRole.id });
 	}
 }

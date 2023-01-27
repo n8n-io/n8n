@@ -48,6 +48,7 @@ export class HtmlExtract implements INodeType {
 		icon: 'fa:cut',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		subtitle: '={{$parameter["sourceData"] + ": " + $parameter["dataPropertyName"]}}',
 		description: 'Extracts data from HTML',
 		defaults: {
@@ -214,7 +215,7 @@ export class HtmlExtract implements INodeType {
 		let item: INodeExecutionData;
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 				const extractionValues = this.getNodeParameter(
 					'extractionValues',
 					itemIndex,

@@ -28,7 +28,6 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { readFileSync } from 'fs';
 import { access as fsAccess } from 'fs/promises';
 import os from 'os';
 import { join as pathJoin, resolve as pathResolve } from 'path';
@@ -36,7 +35,7 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import { FindManyOptions, getConnectionManager, In } from 'typeorm';
+import { FindManyOptions, In } from 'typeorm';
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
@@ -61,29 +60,25 @@ import {
 	ITelemetrySettings,
 	LoggerProxy,
 	jsonParse,
-	WebhookHttpMethod,
 	WorkflowExecuteMode,
-	ErrorReporterProxy as ErrorReporter,
 	INodeTypes,
 	ICredentialTypes,
+	INode,
+	IWorkflowBase,
+	IRun,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
-import compression from 'compression';
 import jwt from 'jsonwebtoken';
 import jwks from 'jwks-rsa';
 // @ts-ignore
 import timezones from 'google-timezones-json';
-import parseUrl from 'parseurl';
-import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
-import bodyParser from 'body-parser';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { getCredentialTranslationPath } from '@/TranslationHelpers';
-import { WEBHOOK_METHODS } from '@/WebhookHelpers';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
@@ -92,6 +87,7 @@ import {
 	AUTH_COOKIE_NAME,
 	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
+	N8N_VERSION,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -99,6 +95,7 @@ import {
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
+	BinaryDataRequest,
 	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
@@ -126,17 +123,13 @@ import {
 	DatabaseType,
 	ICredentialsDb,
 	ICredentialsOverwrite,
-	ICustomRequest,
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IExecutionsSummary,
-	IExternalHooksClass,
 	IN8nUISettings,
-	IPackageVersions,
 } from '@/Interfaces';
 import * as ActiveExecutions from '@/ActiveExecutions';
-import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -144,116 +137,46 @@ import {
 } from '@/CredentialsHelper';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
-import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
-import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
-import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
-import { setupErrorMiddleware } from '@/ErrorReporting';
+import { eventBus } from '@/eventbus';
+import { eventBusRouter } from '@/eventbus/eventBusRoutes';
+import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
 import { corsMiddleware } from './middlewares/cors';
-
-require('body-parser-xml')(bodyParser);
+import { initEvents } from './events';
+import { ldapController } from './Ldap/routes/ldap.controller.ee';
+import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
+import { AbstractServer } from './AbstractServer';
+import { configureMetrics } from './metrics';
 
 const exec = promisify(callbackExec);
 
-const externalHooks: IExternalHooksClass = ExternalHooks();
-
-class App {
-	app: express.Application;
-
-	activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
-
-	testWebhooks: TestWebhooks.TestWebhooks;
-
-	endpointWebhook: string;
-
-	endpointWebhookWaiting: string;
-
-	endpointWebhookTest: string;
-
+class Server extends AbstractServer {
 	endpointPresetCredentials: string;
-
-	externalHooks: IExternalHooksClass;
 
 	waitTracker: WaitTrackerClass;
 
-	defaultWorkflowName: string;
-
-	defaultCredentialsName: string;
-
-	saveDataErrorExecution: 'all' | 'none';
-
-	saveDataSuccessExecution: 'all' | 'none';
-
-	saveManualExecutions: boolean;
-
-	executionTimeout: number;
-
-	maxExecutionTimeout: number;
-
-	timezone: string;
-
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
-
-	push: Push.Push;
-
-	versions: IPackageVersions | undefined;
-
-	restEndpoint: string;
-
-	publicApiEndpoint: string;
 
 	frontendSettings: IN8nUISettings;
 
-	protocol: string;
-
-	sslKey: string;
-
-	sslCert: string;
-
-	payloadSizeMax: number;
-
 	presetCredentialsLoaded: boolean;
-
-	webhookMethods: WebhookHttpMethod[];
 
 	nodeTypes: INodeTypes;
 
 	credentialTypes: ICredentialTypes;
 
 	constructor() {
-		this.app = express();
-		this.app.disable('x-powered-by');
-
-		this.endpointWebhook = config.getEnv('endpoints.webhook');
-		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
-		this.endpointWebhookTest = config.getEnv('endpoints.webhookTest');
-
-		this.defaultWorkflowName = config.getEnv('workflows.defaultName');
-		this.defaultCredentialsName = config.getEnv('credentials.defaultName');
-
-		this.saveDataErrorExecution = config.get('executions.saveDataOnError');
-		this.saveDataSuccessExecution = config.get('executions.saveDataOnSuccess');
-		this.saveManualExecutions = config.get('executions.saveDataManualExecutions');
-		this.executionTimeout = config.get('executions.timeout');
-		this.maxExecutionTimeout = config.get('executions.maxTimeout');
-		this.payloadSizeMax = config.get('endpoints.payloadSizeMax');
-		this.timezone = config.get('generic.timezone');
-		this.restEndpoint = config.get('endpoints.rest');
-		this.publicApiEndpoint = config.get('publicApi.path');
-
-		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-		this.testWebhooks = TestWebhooks.getInstance();
-		this.push = Push.getInstance();
+		super();
 
 		this.nodeTypes = NodeTypes();
 		this.credentialTypes = CredentialTypes();
@@ -261,16 +184,8 @@ class App {
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
 
-		this.protocol = config.getEnv('protocol');
-		this.sslKey = config.getEnv('ssl_key');
-		this.sslCert = config.getEnv('ssl_cert');
-
-		this.externalHooks = externalHooks;
-
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
-
-		void setupErrorMiddleware(this.app);
 
 		if (process.env.E2E_TESTS === 'true') {
 			this.app.use('/e2e', require('./api/e2e.api').e2eController);
@@ -299,11 +214,11 @@ class App {
 		this.frontendSettings = {
 			endpointWebhook: this.endpointWebhook,
 			endpointWebhookTest: this.endpointWebhookTest,
-			saveDataErrorExecution: this.saveDataErrorExecution,
-			saveDataSuccessExecution: this.saveDataSuccessExecution,
-			saveManualExecutions: this.saveManualExecutions,
-			executionTimeout: this.executionTimeout,
-			maxExecutionTimeout: this.maxExecutionTimeout,
+			saveDataErrorExecution: config.getEnv('executions.saveDataOnError'),
+			saveDataSuccessExecution: config.getEnv('executions.saveDataOnSuccess'),
+			saveManualExecutions: config.getEnv('executions.saveDataManualExecutions'),
+			executionTimeout: config.getEnv('executions.timeout'),
+			maxExecutionTimeout: config.getEnv('executions.maxTimeout'),
 			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
@@ -330,6 +245,10 @@ class App {
 					config.getEnv('userManagement.isInstanceOwnerSetUp') === false &&
 					config.getEnv('userManagement.skipInstanceOwnerSetup') === false,
 				smtpSetup: isEmailSetUp(),
+			},
+			ldap: {
+				loginEnabled: false,
+				loginLabel: '',
 			},
 			publicApi: {
 				enabled: !config.getEnv('publicApi.disabled'),
@@ -359,20 +278,14 @@ class App {
 			},
 			enterprise: {
 				sharing: false,
+				ldap: false,
+				logStreaming: config.getEnv('enterprise.features.logStreaming'),
 			},
 			hideUsagePage: config.getEnv('hideUsagePage'),
 			license: {
 				environment: config.getEnv('license.tenantId') === 1 ? 'production' : 'staging',
 			},
 		};
-	}
-
-	/**
-	 * Returns the current epoch time
-	 *
-	 */
-	getCurrentDate(): Date {
-		return new Date();
 	}
 
 	/**
@@ -391,7 +304,16 @@ class App {
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
+			logStreaming: isLogStreamingEnabled(),
+			ldap: isLdapEnabled(),
 		});
+
+		if (isLdapEnabled()) {
+			Object.assign(this.frontendSettings.ldap, {
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
 
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
@@ -402,7 +324,7 @@ class App {
 
 	async initLicense(): Promise<void> {
 		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+		await license.init(this.frontendSettings.instanceId);
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
@@ -414,23 +336,14 @@ class App {
 		}
 	}
 
-	async config(): Promise<void> {
-		const enableMetrics = config.getEnv('endpoints.metrics.enable');
-		let register: Registry;
-
-		if (enableMetrics) {
-			const prefix = config.getEnv('endpoints.metrics.prefix');
-			register = new promClient.Registry();
-			register.setDefaultLabels({ prefix });
-			promClient.collectDefaultMetrics({ register });
-		}
+	async configure(): Promise<void> {
+		configureMetrics(this.app);
 
 		this.frontendSettings.isNpmAvailable = await exec('npm --version')
 			.then(() => true)
 			.catch(() => false);
 
-		this.versions = await GenericHelpers.getVersions();
-		this.frontendSettings.versionCli = this.versions.cli;
+		this.frontendSettings.versionCli = N8N_VERSION;
 
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
@@ -438,6 +351,7 @@ class App {
 
 		await this.initLicense();
 
+		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
@@ -450,7 +364,7 @@ class App {
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-			config.getEnv('publicApi.disabled') ? this.publicApiEndpoint : '',
+			config.getEnv('publicApi.disabled') ? publicApiEndpoint : '',
 			...excludeEndpoints.split(':'),
 		].filter((u) => !!u);
 
@@ -627,7 +541,7 @@ class App {
 		// ----------------------------------------
 
 		if (!config.getEnv('publicApi.disabled')) {
-			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(this.publicApiEndpoint);
+			const { apiRouters, apiLatestVersion } = await loadPublicApiVersions(publicApiEndpoint);
 			this.app.use(...apiRouters);
 			this.frontendSettings.publicApi.latestVersion = apiLatestVersion;
 		}
@@ -635,6 +549,7 @@ class App {
 		this.app.use(cookieParser());
 
 		// Get push connections
+		const push = Push.getInstance();
 		this.app.use(`/${this.restEndpoint}/push`, corsMiddleware, async (req, res, next) => {
 			const { sessionId } = req.query;
 			if (sessionId === undefined) {
@@ -652,53 +567,8 @@ class App {
 				}
 			}
 
-			this.push.add(sessionId as string, req, res);
+			push.add(sessionId as string, req, res);
 		});
-
-		// Compress the response data
-		this.app.use(compression());
-
-		// Make sure that each request has the "parsedUrl" parameter
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			req.rawBody = Buffer.from('', 'base64');
-			next();
-		});
-
-		// Support application/json type post data
-		this.app.use(
-			bodyParser.json({
-				limit: `${this.payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		// Support application/xml type post data
-		this.app.use(
-			// @ts-ignore
-			bodyParser.xml({
-				limit: `${this.payloadSizeMax}mb`,
-				xmlParseOptions: {
-					normalize: true, // Trim whitespace inside text nodes
-					normalizeTags: true, // Transform tags to lowercase
-					explicitArray: false, // Only put properties in array if length > 1
-				},
-				verify: (req: express.Request, res: any, buf: any) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		this.app.use(
-			bodyParser.text({
-				limit: `${this.payloadSizeMax}mb`,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
 
 		// Make sure that Vue history mode works properly
 		this.app.use(
@@ -714,29 +584,6 @@ class App {
 			}),
 		);
 
-		// support application/x-www-form-urlencoded post data
-		this.app.use(
-			bodyParser.urlencoded({
-				limit: `${this.payloadSizeMax}mb`,
-				extended: false,
-				verify: (req, res, buf) => {
-					req.rawBody = buf;
-				},
-			}),
-		);
-
-		this.app.use(corsMiddleware);
-
-		// eslint-disable-next-line consistent-return
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			next();
-		});
-
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
@@ -749,51 +596,6 @@ class App {
 		// ----------------------------------------
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
-		}
-
-		// ----------------------------------------
-		// Healthcheck
-		// ----------------------------------------
-
-		// Does very basic health check
-		this.app.get('/healthz', async (req: express.Request, res: express.Response) => {
-			LoggerProxy.debug('Health check started!');
-
-			const connection = getConnectionManager().get();
-
-			try {
-				if (!connection.isConnected) {
-					// Connection is not active
-					throw new Error('No active database connection!');
-				}
-				// DB ping
-				await connection.query('SELECT 1');
-			} catch (err) {
-				ErrorReporter.error(err);
-				LoggerProxy.error('No Database connection!', err);
-				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
-				return ResponseHelper.sendErrorResponse(res, error);
-			}
-
-			// Everything fine
-			const responseData = {
-				status: 'ok',
-			};
-
-			LoggerProxy.debug('Health check completed successfully!');
-
-			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
-		});
-
-		// ----------------------------------------
-		// Metrics
-		// ----------------------------------------
-		if (enableMetrics) {
-			this.app.get('/metrics', async (req: express.Request, res: express.Response) => {
-				const response = await register.metrics();
-				res.setHeader('Content-Type', register.contentType);
-				ResponseHelper.sendSuccessResponse(res, response, true, 200);
-			});
 		}
 
 		// ----------------------------------------
@@ -815,6 +617,13 @@ class App {
 		// Tags
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
+
+		// ----------------------------------------
+		// LDAP
+		// ----------------------------------------
+		if (isLdapEnabled()) {
+			this.app.use(`/${this.restEndpoint}/ldap`, ldapController);
+		}
 
 		// Returns parameter values which normally get loaded from an external API or
 		// get generated dynamically
@@ -983,8 +792,7 @@ class App {
 			`/${this.restEndpoint}/active`,
 			ResponseHelper.send(async (req: WorkflowRequest.GetAllActive) => {
 				const activeWorkflows = await this.activeWorkflowRunner.getActiveWorkflows(req.user);
-
-				return activeWorkflows.map(({ id }) => id.toString());
+				return activeWorkflows.map(({ id }) => id);
 			}),
 		);
 
@@ -1148,7 +956,7 @@ class App {
 				const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 
 				// Add special database related data
-				newCredentialsData.updatedAt = this.getCurrentDate();
+				newCredentialsData.updatedAt = new Date();
 
 				// Update the credentials in DB
 				await Db.collections.Credentials.update(credentialId, newCredentialsData);
@@ -1260,7 +1068,7 @@ class App {
 					credentials.setData(decryptedDataOriginal, encryptionKey);
 					const newCredentialsData = credentials.getDataToSave() as unknown as ICredentialsDb;
 					// Add special database related data
-					newCredentialsData.updatedAt = this.getCurrentDate();
+					newCredentialsData.updatedAt = new Date();
 					// Save the credentials in DB
 					await Db.collections.Credentials.update(credentialId, newCredentialsData);
 
@@ -1365,22 +1173,21 @@ class App {
 					for (const data of executingWorkflows) {
 						if (
 							(filter.workflowId !== undefined && filter.workflowId !== data.workflowId) ||
-							(data.workflowId !== undefined &&
-								!sharedWorkflowIds.includes(data.workflowId.toString()))
+							(data.workflowId !== undefined && !sharedWorkflowIds.includes(data.workflowId))
 						) {
 							continue;
 						}
 
 						returnData.push({
-							id: data.id.toString(),
-							workflowId: data.workflowId === undefined ? '' : data.workflowId.toString(),
+							id: data.id,
+							workflowId: data.workflowId === undefined ? '' : data.workflowId,
 							mode: data.mode,
 							retryOf: data.retryOf,
 							startedAt: new Date(data.startedAt),
 						});
 					}
 
-					returnData.sort((a, b) => parseInt(b.id, 10) - parseInt(a.id, 10));
+					returnData.sort((a, b) => Number(b.id) - Number(a.id));
 
 					return returnData;
 				},
@@ -1435,7 +1242,7 @@ class App {
 					const queue = await Queue.getInstance();
 					const currentJobs = await queue.getJobs(['active', 'waiting']);
 
-					const job = currentJobs.find((job) => job.data.executionId.toString() === req.params.id);
+					const job = currentJobs.find((job) => job.data.executionId === req.params.id);
 
 					if (!job) {
 						throw new Error(`Could not stop "${req.params.id}" as it is no longer in queue.`);
@@ -1443,9 +1250,9 @@ class App {
 						await queue.stopJob(job);
 					}
 
-					const executionDb = (await Db.collections.Execution.findOne(
-						req.params.id,
-					)) as IExecutionFlattedDb;
+					const executionDb = (await Db.collections.Execution.findOneBy({
+						id: req.params.id,
+					})) as IExecutionFlattedDb;
 					const fullExecutionData = ResponseHelper.unflattenExecutionData(executionDb);
 
 					const returnData: IExecutionsStopData = {
@@ -1480,16 +1287,6 @@ class App {
 			}),
 		);
 
-		// Removes a test webhook
-		this.app.delete(
-			`/${this.restEndpoint}/test-webhook/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
-				// TODO UM: check if this needs validation with user management.
-				const workflowId = req.params.id;
-				return this.testWebhooks.cancelTestWebhook(workflowId);
-			}),
-		);
-
 		// ----------------------------------------
 		// Options
 		// ----------------------------------------
@@ -1509,19 +1306,24 @@ class App {
 		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
+			async (req: BinaryDataRequest, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
 				const identifier = req.params.path;
 				const binaryDataManager = BinaryDataManager.getInstance();
 				const binaryPath = binaryDataManager.getBinaryPath(identifier);
-				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
-					identifier,
-				);
+				let { mode, fileName, mimeType } = req.query;
+				if (!fileName || !mimeType) {
+					try {
+						const metadata = await binaryDataManager.getBinaryMetadata(identifier);
+						fileName = metadata.fileName;
+						mimeType = metadata.mimeType;
+						res.setHeader('Content-Length', metadata.fileSize);
+					} catch {}
+				}
 				if (mimeType) res.setHeader('Content-Type', mimeType);
-				if (req.query.mode === 'download' && fileName) {
+				if (mode === 'download') {
 					res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
 				}
-				res.setHeader('Content-Length', fileSize);
 				res.sendFile(binaryPath);
 			},
 		);
@@ -1545,73 +1347,25 @@ class App {
 		);
 
 		// ----------------------------------------
+		// EventBus Setup
+		// ----------------------------------------
+
+		if (!eventBus.isInitialized) {
+			await eventBus.initialize();
+		}
+		// add Event Bus REST endpoints
+		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
+
+		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------
 
 		if (!config.getEnv('endpoints.disableProductionWebhooksOnMainProcess')) {
-			WebhookServer.registerProductionWebhooks.apply(this);
+			this.setupWebhookEndpoint();
+			this.setupWaitingWebhookEndpoint();
 		}
 
-		// Register all webhook requests (test for UI)
-		this.app.all(
-			`/${this.endpointWebhookTest}/*`,
-			async (req: express.Request, res: express.Response) => {
-				// Cut away the "/webhook-test/" to get the registered part of the url
-				const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
-					this.endpointWebhookTest.length + 2,
-				);
-
-				const method = req.method.toUpperCase() as WebhookHttpMethod;
-
-				if (method === 'OPTIONS') {
-					let allowedMethods: string[];
-					try {
-						allowedMethods = await this.testWebhooks.getWebhookMethods(requestUrl);
-						allowedMethods.push('OPTIONS');
-
-						// Add custom "Allow" header to satisfy OPTIONS response.
-						res.append('Allow', allowedMethods);
-					} catch (error) {
-						ResponseHelper.sendErrorResponse(res, error);
-						return;
-					}
-
-					res.header('Access-Control-Allow-Origin', '*');
-
-					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
-					return;
-				}
-
-				if (!WEBHOOK_METHODS.includes(method)) {
-					ResponseHelper.sendErrorResponse(
-						res,
-						new Error(`The method ${method} is not supported.`),
-					);
-					return;
-				}
-
-				let response;
-				try {
-					response = await this.testWebhooks.callTestWebhook(method, requestUrl, req, res);
-				} catch (error) {
-					ResponseHelper.sendErrorResponse(res, error);
-					return;
-				}
-
-				if (response.noWebhookResponse === true) {
-					// Nothing else to do as the response got already sent
-					return;
-				}
-
-				ResponseHelper.sendSuccessResponse(
-					res,
-					response.data,
-					true,
-					response.responseCode,
-					response.headers,
-				);
-			},
-		);
+		this.setupTestWebhookEndpoint();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -1660,97 +1414,58 @@ class App {
 }
 
 export async function start(): Promise<void> {
-	const PORT = config.getEnv('port');
-	const ADDRESS = config.getEnv('listen_address');
+	const app = new Server();
+	await app.start();
 
-	const app = new App();
-
-	await app.config();
-
-	let server;
-
-	if (app.protocol === 'https' && app.sslKey && app.sslCert) {
-		const https = require('https');
-		const privateKey = readFileSync(app.sslKey, 'utf8');
-		const cert = readFileSync(app.sslCert, 'utf8');
-		const credentials = { key: privateKey, cert };
-		server = https.createServer(credentials, app.app);
-	} else {
-		const http = require('http');
-		server = http.createServer(app.app);
-	}
-
-	server.listen(PORT, ADDRESS, async () => {
-		const versions = await GenericHelpers.getVersions();
-		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
-		console.log(`Version: ${versions.cli}`);
-
-		const defaultLocale = config.getEnv('defaultLocale');
-
-		if (defaultLocale !== 'en') {
-			console.log(`Locale: ${defaultLocale}`);
-		}
-
-		await app.externalHooks.run('n8n.ready', [app, config]);
-		const cpus = os.cpus();
-		const binaryDataConfig = config.getEnv('binaryDataManager');
-		const diagnosticInfo: IDiagnosticInfo = {
-			basicAuthActive: config.getEnv('security.basicAuth.active'),
-			databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
-			disableProductionWebhooksOnMainProcess: config.getEnv(
-				'endpoints.disableProductionWebhooksOnMainProcess',
-			),
-			notificationsEnabled: config.getEnv('versionNotifications.enabled'),
-			versionCli: versions.cli,
-			systemInfo: {
-				os: {
-					type: os.type(),
-					version: os.version(),
-				},
-				memory: os.totalmem() / 1024,
-				cpus: {
-					count: cpus.length,
-					model: cpus[0].model,
-					speed: cpus[0].speed,
-				},
+	const cpus = os.cpus();
+	const binaryDataConfig = config.getEnv('binaryDataManager');
+	const diagnosticInfo: IDiagnosticInfo = {
+		basicAuthActive: config.getEnv('security.basicAuth.active'),
+		databaseType: (await GenericHelpers.getConfigValue('database.type')) as DatabaseType,
+		disableProductionWebhooksOnMainProcess: config.getEnv(
+			'endpoints.disableProductionWebhooksOnMainProcess',
+		),
+		notificationsEnabled: config.getEnv('versionNotifications.enabled'),
+		versionCli: N8N_VERSION,
+		systemInfo: {
+			os: {
+				type: os.type(),
+				version: os.version(),
 			},
-			executionVariables: {
-				executions_process: config.getEnv('executions.process'),
-				executions_mode: config.getEnv('executions.mode'),
-				executions_timeout: config.getEnv('executions.timeout'),
-				executions_timeout_max: config.getEnv('executions.maxTimeout'),
-				executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
-				executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
-				executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
-				executions_data_save_manual_executions: config.getEnv(
-					'executions.saveDataManualExecutions',
-				),
-				executions_data_prune: config.getEnv('executions.pruneData'),
-				executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
-				executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+			memory: os.totalmem() / 1024,
+			cpus: {
+				count: cpus.length,
+				model: cpus[0].model,
+				speed: cpus[0].speed,
 			},
-			deploymentType: config.getEnv('deployment.type'),
-			binaryDataMode: binaryDataConfig.mode,
-			n8n_multi_user_allowed: isUserManagementEnabled(),
-			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
-		};
+		},
+		executionVariables: {
+			executions_process: config.getEnv('executions.process'),
+			executions_mode: config.getEnv('executions.mode'),
+			executions_timeout: config.getEnv('executions.timeout'),
+			executions_timeout_max: config.getEnv('executions.maxTimeout'),
+			executions_data_save_on_error: config.getEnv('executions.saveDataOnError'),
+			executions_data_save_on_success: config.getEnv('executions.saveDataOnSuccess'),
+			executions_data_save_on_progress: config.getEnv('executions.saveExecutionProgress'),
+			executions_data_save_manual_executions: config.getEnv('executions.saveDataManualExecutions'),
+			executions_data_prune: config.getEnv('executions.pruneData'),
+			executions_data_max_age: config.getEnv('executions.pruneDataMaxAge'),
+			executions_data_prune_timeout: config.getEnv('executions.pruneDataTimeout'),
+		},
+		deploymentType: config.getEnv('deployment.type'),
+		binaryDataMode: binaryDataConfig.mode,
+		n8n_multi_user_allowed: isUserManagementEnabled(),
+		smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+		ldap_allowed: isLdapEnabled(),
+	};
 
-		void Db.collections
-			.Workflow!.findOne({
-				select: ['createdAt'],
-				order: { createdAt: 'ASC' },
-			})
-			.then(async (workflow) =>
-				InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt),
-			);
-	});
+	// Set up event handling
+	initEvents();
 
-	server.on('error', (error: Error & { code: string }) => {
-		if (error.code === 'EADDRINUSE') {
-			console.log(
-				`n8n's port ${PORT} is already in use. Do you have another instance of n8n running already?`,
-			);
-			process.exit(1);
-		}
+	const workflow = await Db.collections.Workflow.findOne({
+		select: ['createdAt'],
+		order: { createdAt: 'ASC' },
+		where: {},
 	});
+	await InternalHooksManager.getInstance().onServerStarted(diagnosticInfo, workflow?.createdAt);
 }

@@ -3,34 +3,34 @@
 exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1mtap_1"
+    class="schemaWrapper"
   >
     <div
       class=""
     >
       <div
-        class="_schema_1mtap_1"
+        class="schema"
       >
         <div
-          class="_item_14xdy_1"
+          class="item"
         >
           <!---->
           <!---->
           <!---->
           <!---->
           <div
-            class="_sub_14xdy_14"
+            class="sub"
           >
             <div
-              class="_item_14xdy_1"
+              class="item"
               style="transition-delay: 0s;"
             >
               <div
-                class="_pill_14xdy_51 _mappable_14xdy_70"
+                class="pill mappable"
                 title="string"
               >
                 <span
-                  class="_label_14xdy_89"
+                  class="label"
                   data-depth="1"
                   data-name="name"
                   data-path="[\\"name\\"]"
@@ -50,7 +50,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="_text_14xdy_100"
+                class="text"
               >
                 John
               </span>
@@ -59,15 +59,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
               <!---->
             </div>
             <div
-              class="_item_14xdy_1"
+              class="item"
               style="transition-delay: 0.033s;"
             >
               <div
-                class="_pill_14xdy_51 _mappable_14xdy_70"
+                class="pill mappable"
                 title="number"
               >
                 <span
-                  class="_label_14xdy_89"
+                  class="label"
                   data-depth="1"
                   data-name="age"
                   data-path="[\\"age\\"]"
@@ -87,7 +87,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 </span>
               </div>
               <span
-                class="_text_14xdy_100"
+                class="text"
               >
                 22
               </span>
@@ -96,15 +96,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
               <!---->
             </div>
             <div
-              class="_item_14xdy_1"
+              class="item"
               style="transition-delay: 0.066s;"
             >
               <div
-                class="_pill_14xdy_51 _mappable_14xdy_70"
+                class="pill mappable"
                 title="array"
               >
                 <span
-                  class="_label_14xdy_89"
+                  class="label"
                   data-depth="1"
                   data-name="hobbies"
                   data-path="[\\"hobbies\\"]"
@@ -130,7 +130,7 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 type="checkbox"
               />
               <label
-                class="_toggle_14xdy_20"
+                class="toggle"
                 for="array-0-2"
               >
                 <font-awesome-icon-stub
@@ -138,18 +138,18 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                 />
               </label>
               <div
-                class="_sub_14xdy_14"
+                class="sub"
               >
                 <div
-                  class="_item_14xdy_1"
+                  class="item"
                   style="transition-delay: 0s;"
                 >
                   <div
-                    class="_pill_14xdy_51 _mappable_14xdy_70"
+                    class="pill mappable"
                     title="string"
                   >
                     <span
-                      class="_label_14xdy_89"
+                      class="label"
                       data-depth="2"
                       data-name="string[0]"
                       data-path="[\\"hobbies\\"][0]"
@@ -164,14 +164,14 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_14xdy_94"
+                        class="arrayIndex"
                       >
                         [0]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_14xdy_100"
+                    class="text"
                   >
                     surfing
                   </span>
@@ -180,15 +180,15 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                   <!---->
                 </div>
                 <div
-                  class="_item_14xdy_1"
+                  class="item"
                   style="transition-delay: 0.033s;"
                 >
                   <div
-                    class="_pill_14xdy_51 _mappable_14xdy_70"
+                    class="pill mappable"
                     title="string"
                   >
                     <span
-                      class="_label_14xdy_89"
+                      class="label"
                       data-depth="2"
                       data-name="string[1]"
                       data-path="[\\"hobbies\\"][1]"
@@ -203,14 +203,14 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
                         hobbies
                       </span>
                       <span
-                        class="_arrayIndex_14xdy_94"
+                        class="arrayIndex"
                       >
                         [1]
                       </span>
                     </span>
                   </div>
                   <span
-                    class="_text_14xdy_100"
+                    class="text"
                   >
                     traveling
                   </span>
@@ -235,19 +235,19 @@ exports[`RunDataJsonSchema.vue > renders schema for data 1`] = `
 exports[`RunDataJsonSchema.vue > renders schema for empty data 1`] = `
 <div>
   <div
-    class="_schemaWrapper_1mtap_1"
+    class="schemaWrapper"
   >
     <div
-      class="n8n-info-tip _info_3egb8_33 _note_3egb8_16 _base_3egb8_1 _bold_3egb8_12"
+      class="n8n-info-tip info note bold"
     >
       <span
-        class="_iconText_3egb8_28"
+        class="iconText"
       >
         <span
-          class="n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5"
+          class="n8n-icon n8n-text compact size-medium regular"
         >
           <font-awesome-icon-stub
-            class="_medium_1pnjy_9"
+            class="medium"
             icon="info-circle"
           />
         </span>

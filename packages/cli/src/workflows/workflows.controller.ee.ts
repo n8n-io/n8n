@@ -17,6 +17,7 @@ import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
+import { In } from 'typeorm';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -92,7 +93,7 @@ EEWorkflowController.get(
 			relations.push('tags');
 		}
 
-		const workflow = await EEWorkflows.get({ id: parseInt(workflowId, 10) }, { relations });
+		const workflow = await EEWorkflows.get({ id: workflowId }, { relations });
 
 		if (!workflow) {
 			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
@@ -108,7 +109,7 @@ EEWorkflowController.get(
 
 		EEWorkflows.addOwnerAndSharings(workflow);
 		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
-		return EEWorkflows.entityToResponse(workflow);
+		return workflow;
 	}),
 );
 
@@ -130,8 +131,11 @@ EEWorkflowController.post(
 		const { tags: tagIds } = req.body;
 
 		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
-			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+			newWorkflow.tags = await Db.collections.Tag.find({
 				select: ['id', 'name'],
+				where: {
+					id: In(tagIds),
+				},
 			});
 		}
 
@@ -157,7 +161,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
+			const role = await Db.collections.Role.findOneByOrFail({
 				name: 'owner',
 				scope: 'workflow',
 			});
@@ -187,9 +191,9 @@ EEWorkflowController.post(
 		}
 
 		await ExternalHooks().run('workflow.afterCreate', [savedWorkflow]);
-		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user, newWorkflow, false);
 
-		return EEWorkflows.entityToResponse(savedWorkflow);
+		return savedWorkflow;
 	}),
 );
 
@@ -205,7 +209,7 @@ EEWorkflowController.get(
 		return workflows.map((workflow) => {
 			EEWorkflows.addOwnerAndSharings(workflow);
 			workflow.nodes = [];
-			return EEWorkflows.entityToResponse(workflow);
+			return workflow;
 		});
 	}),
 );
@@ -230,7 +234,7 @@ EEWorkflowController.patch(
 			forceSave,
 		);
 
-		return EEWorkflows.entityToResponse(updatedWorkflow);
+		return updatedWorkflow;
 	}),
 );
 
@@ -244,11 +248,7 @@ EEWorkflowController.post(
 		Object.assign(workflow, req.body.workflowData);
 
 		if (workflow.id !== undefined) {
-			const safeWorkflow = await EEWorkflows.preventTampering(
-				workflow,
-				workflow.id.toString(),
-				req.user,
-			);
+			const safeWorkflow = await EEWorkflows.preventTampering(workflow, workflow.id, req.user);
 			req.body.workflowData.nodes = safeWorkflow.nodes;
 		}
 

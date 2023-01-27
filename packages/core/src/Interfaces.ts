@@ -1,4 +1,5 @@
-import {
+import type { Readable } from 'stream';
+import type {
 	IPollResponse,
 	ITriggerResponse,
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
@@ -9,6 +10,7 @@ import {
 	IPollFunctions as IPollFunctionsBase,
 	ITriggerFunctions as ITriggerFunctionsBase,
 	IWebhookFunctions as IWebhookFunctionsBase,
+	BinaryMetadata,
 } from 'n8n-workflow';
 
 // TODO: remove these after removing `n8n-core` dependency from `nodes-bases`
@@ -55,21 +57,16 @@ export interface IBinaryDataConfig {
 	persistedBinaryDataTTL: number;
 }
 
-export interface BinaryMetadata {
-	fileName?: string;
-	mimeType?: string;
-	fileSize: number;
-}
-
 export interface IBinaryDataManager {
 	init(startPurger: boolean): Promise<void>;
 	getFileSize(filePath: string): Promise<number>;
 	copyBinaryFile(filePath: string, executionId: string): Promise<string>;
 	storeBinaryMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
 	getBinaryMetadata(identifier: string): Promise<BinaryMetadata>;
-	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
+	storeBinaryData(binaryData: Buffer | Readable, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
 	getBinaryPath(identifier: string): string;
+	getBinaryStream(identifier: string, chunkSize?: number): Readable;
 	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;

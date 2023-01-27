@@ -2,6 +2,7 @@ import {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	ICredentialTypes,
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
@@ -16,6 +17,7 @@ const TEST_ENCRYPTION_KEY = 'test';
 const mockNodesAndCredentials: INodesAndCredentials = {
 	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
+	credentialTypes: {} as ICredentialTypes,
 };
 
 describe('CredentialsHelper', () => {

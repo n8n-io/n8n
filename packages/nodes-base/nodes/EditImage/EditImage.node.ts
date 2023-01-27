@@ -986,7 +986,7 @@ export class EditImage implements INodeType {
 				item = items[itemIndex];
 
 				const operation = this.getNodeParameter('operation', itemIndex);
-				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
+				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex);
 
 				const options = this.getNodeParameter('options', itemIndex, {});
 
@@ -1106,6 +1106,7 @@ export class EditImage implements INodeType {
 						const operator = operationData.operator as string;
 
 						const geometryString =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							(positionX >= 0 ? '+' : '') + positionX + (positionY >= 0 ? '+' : '') + positionY;
 
 						if (item.binary![operationData.dataPropertyNameComposite as string] === undefined) {
@@ -1286,6 +1287,7 @@ export class EditImage implements INodeType {
 					const fileName = newItem.binary![dataPropertyName].fileName;
 					if (fileName?.includes('.')) {
 						newItem.binary![dataPropertyName].fileName =
+							// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 							fileName.split('.').slice(0, -1).join('.') + '.' + options.format;
 					}
 				}

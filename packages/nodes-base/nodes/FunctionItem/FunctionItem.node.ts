@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-loop-func */
+import { NodeVM, NodeVMOptions, VMRequire } from 'vm2';
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
@@ -9,8 +10,6 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-const { NodeVM } = require('vm2');
 
 export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
@@ -156,26 +155,28 @@ return item;`,
 				const dataProxy = this.getWorkflowDataProxy(itemIndex);
 				Object.assign(sandbox, dataProxy);
 
-				const options = {
+				const options: NodeVMOptions = {
 					console: mode === 'manual' ? 'redirect' : 'inherit',
 					sandbox,
 					require: {
-						external: false as boolean | { modules: string[] },
-						builtin: [] as string[],
+						external: false,
+						builtin: [],
 					},
 				};
 
+				const vmRequire = options.require as VMRequire;
 				if (process.env.NODE_FUNCTION_ALLOW_BUILTIN) {
-					options.require.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
+					vmRequire.builtin = process.env.NODE_FUNCTION_ALLOW_BUILTIN.split(',');
 				}
 
 				if (process.env.NODE_FUNCTION_ALLOW_EXTERNAL) {
-					options.require.external = {
+					vmRequire.external = {
 						modules: process.env.NODE_FUNCTION_ALLOW_EXTERNAL.split(','),
+						transitive: false,
 					};
 				}
 
-				const vm = new NodeVM(options);
+				const vm = new NodeVM(options as unknown as NodeVMOptions);
 
 				if (mode === 'manual') {
 					vm.on('console.log', this.sendMessageToUI);

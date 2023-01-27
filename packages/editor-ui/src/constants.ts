@@ -43,6 +43,7 @@ export const ONBOARDING_CALL_SIGNUP_MODAL_KEY = 'onboardingCallSignup';
 export const COMMUNITY_PACKAGE_INSTALL_MODAL_KEY = 'communityPackageInstall';
 export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfirm';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
+export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',
@@ -91,6 +92,7 @@ export const ELASTIC_SECURITY_NODE_TYPE = 'n8n-nodes-base.elasticSecurity';
 export const EMAIL_SEND_NODE_TYPE = 'n8n-nodes-base.emailSend';
 export const EMAIL_IMAP_NODE_TYPE = 'n8n-nodes-base.emailReadImap';
 export const EXECUTE_COMMAND_NODE_TYPE = 'n8n-nodes-base.executeCommand';
+export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HUBSPOT_TRIGGER_NODE_TYPE = 'n8n-nodes-base.hubspotTrigger';
 export const IF_NODE_TYPE = 'n8n-nodes-base.if';
@@ -126,18 +128,21 @@ export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
 
+export const EXECUTABLE_TRIGGER_NODE_TYPES = [
+	START_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+];
+
 export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 ];
 
-export const MULTIPLE_OUTPUT_NODE_TYPES = [IF_NODE_TYPE, SWITCH_NODE_TYPE];
-
-export const PIN_DATA_NODE_TYPES_DENYLIST = [
-	...MULTIPLE_OUTPUT_NODE_TYPES,
-	SPLIT_IN_BATCHES_NODE_TYPE,
-];
+export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE];
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
@@ -292,8 +297,7 @@ export const TEMPLATES_NODES_FILTER = ['n8n-nodes-base.start', 'n8n-nodes-base.r
 export enum VIEWS {
 	HOMEPAGE = 'Homepage',
 	COLLECTION = 'TemplatesCollectionView',
-	EXECUTION = 'ExecutionById',
-	EXECUTIONS = 'ExecutionList',
+	EXECUTIONS = 'Executions',
 	EXECUTION_PREVIEW = 'ExecutionPreview',
 	EXECUTION_HOME = 'ExecutionsLandingPage',
 	TEMPLATE = 'TemplatesWorkflowView',
@@ -309,18 +313,22 @@ export enum VIEWS {
 	FORGOT_PASSWORD = 'ForgotMyPasswordView',
 	CHANGE_PASSWORD = 'ChangePasswordView',
 	USERS_SETTINGS = 'UsersSettings',
+	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	FAKE_DOOR = 'ComingSoon',
 	COMMUNITY_NODES = 'CommunityNodes',
 	WORKFLOWS = 'WorkflowsView',
+	WORKFLOW_EXECUTIONS = 'WorkflowExecutions',
 	USAGE = 'Usage',
+	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
 }
 
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
+	SSO = 'sso',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -375,6 +383,8 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
+	LogStreaming = 'logStreaming',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -435,4 +445,15 @@ export enum STORES {
 	HISTORY = 'history',
 }
 
+export enum SignInType {
+	LDAP = 'ldap',
+	EMAIL = 'email',
+}
+
+export const N8N_SALES_EMAIL = 'sales@n8n.io';
+
+export const N8N_CONTACT_EMAIL = 'contact@n8n.io';
+
 export const EXPRESSION_EDITOR_PARSER_TIMEOUT = 15_000; // ms
+
+export const POSTHOG_ASSUMPTION_TEST = 'adore-assumption-tests';

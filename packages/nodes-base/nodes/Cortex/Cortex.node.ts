@@ -201,7 +201,7 @@ export class Cortex implements INodeType {
 								});
 							}
 
-							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 
 							if (item.binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "0.209.4",
+  "version": "0.212.1",
   "private": true,
   "homepage": "https://n8n.io",
   "engines": {
@@ -27,6 +27,7 @@
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
     "cypress:install": "cypress install",
+    "cypress:open": "CYPRESS_BASE_URL=http://localhost:8080 cypress open",
     "test:e2e:ui": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress open'",
     "test:e2e:dev": "cross-env E2E_TESTS=true CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico 'cypress open'",
     "test:e2e:smoke": "cross-env E2E_TESTS=true start-server-and-test start http://localhost:5678/favicon.ico 'cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"'",
@@ -66,6 +67,7 @@
       "browserslist": "^4.21.4",
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
+      "jsonwebtoken": "9.0.0",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
     }

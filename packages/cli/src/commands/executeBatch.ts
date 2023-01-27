@@ -25,7 +25,6 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import * as GenericHelpers from '@/GenericHelpers';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { NodeTypes } from '@/NodeTypes';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -35,6 +34,9 @@ import config from '@/config';
 import { User } from '@db/entities/User';
 import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
 import { findCliWorkflowStart } from '@/utils';
+import { initEvents } from '@/events';
+
+const re = /\d+/;
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -196,11 +198,14 @@ export class ExecuteBatch extends Command {
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(ExecuteBatch);
 
+		// Add event handlers
+		initEvents();
+
 		ExecuteBatch.debug = flags.debug;
 		ExecuteBatch.concurrency = flags.concurrency || 1;
 
-		const ids: number[] = [];
-		const skipIds: number[] = [];
+		const ids: string[] = [];
+		const skipIds: string[] = [];
 
 		if (flags.snapshot !== undefined) {
 			if (fs.existsSync(flags.snapshot)) {
@@ -241,13 +246,10 @@ export class ExecuteBatch extends Command {
 		if (flags.ids !== undefined) {
 			if (fs.existsSync(flags.ids)) {
 				const contents = fs.readFileSync(flags.ids, { encoding: 'utf-8' });
-				ids.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+				ids.push(...contents.split(',').filter((id) => re.exec(id)));
 			} else {
 				const paramIds = flags.ids.split(',');
-				const re = /\d+/;
-				const matchedIds = paramIds
-					.filter((id) => re.exec(id))
-					.map((id) => parseInt(id.trim(), 10));
+				const matchedIds = paramIds.filter((id) => re.exec(id));
 
 				if (matchedIds.length === 0) {
 					console.log(
@@ -263,7 +265,7 @@ export class ExecuteBatch extends Command {
 		if (flags.skipList !== undefined) {
 			if (fs.existsSync(flags.skipList)) {
 				const contents = fs.readFileSync(flags.skipList, { encoding: 'utf-8' });
-				skipIds.push(...contents.split(',').map((id) => parseInt(id.trim(), 10)));
+				skipIds.push(...contents.split(',').filter((id) => re.exec(id)));
 			} else {
 				console.log('Skip list file not found. Exiting.');
 				return;
@@ -326,8 +328,7 @@ export class ExecuteBatch extends Command {
 		CredentialTypes(loadNodesAndCredentials);
 
 		const instanceId = await UserSettings.getInstanceId();
-		const { cli } = await GenericHelpers.getVersions();
-		await InternalHooksManager.init(instanceId, cli, nodeTypes);
+		await InternalHooksManager.init(instanceId, nodeTypes);
 
 		// Send a shallow copy of allWorkflows so we still have all workflow data.
 		const results = await this.runTests([...allWorkflows]);

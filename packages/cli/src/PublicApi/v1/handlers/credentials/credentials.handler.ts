@@ -39,7 +39,7 @@ export = {
 				const savedCredential = await saveCredential(newCredential, req.user, encryptedData);
 
 				// LoggerProxy.verbose('New credential created', {
-				// 	credentialId: newCredential.id,
+				// 	credentialsId: newCredential.id,
 				// 	ownerId: req.user.id,
 				// });
 
@@ -77,8 +77,6 @@ export = {
 			}
 
 			await removeCredential(credential);
-			credential.id = Number(credentialId);
-
 			return res.json(sanitizeCredentials(credential));
 		},
 	],

@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import { INodeUi } from '@/Interface';
-import { IPinData } from 'n8n-workflow';
+import { INodeTypeDescription, IPinData } from 'n8n-workflow';
 import { stringSizeInBytes } from '@/utils';
 import { MAX_WORKFLOW_PINNED_DATA_SIZE, PIN_DATA_NODE_TYPES_DENYLIST } from '@/constants';
 import { mapStores } from 'pinia';
@@ -8,6 +8,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 
 export interface IPinDataContext {
 	node: INodeUi;
+	nodeType: INodeTypeDescription;
 	$showError(error: Error, title: string): void;
 }
 
@@ -21,7 +22,14 @@ export const pinData = (Vue as Vue.VueConstructor<Vue & IPinDataContext>).extend
 			return !!this.node && typeof this.pinData !== 'undefined';
 		},
 		isPinDataNodeType(): boolean {
-			return !!this.node && !PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type);
+			return (
+				!!this.node &&
+				!this.isMultipleOutputsNodeType &&
+				!PIN_DATA_NODE_TYPES_DENYLIST.includes(this.node.type)
+			);
+		},
+		isMultipleOutputsNodeType(): boolean {
+			return this.nodeType?.outputs.length > 1;
 		},
 	},
 	methods: {

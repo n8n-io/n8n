@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.149.2",
+  "version": "0.151.2",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -34,6 +34,7 @@
     "bin"
   ],
   "devDependencies": {
+    "@types/concat-stream": "^2.0.0",
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
@@ -45,6 +46,7 @@
   "dependencies": {
     "axios": "^0.21.1",
     "client-oauth2": "^4.2.5",
+    "concat-stream": "^2.0.0",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
     "fast-glob": "^3.2.5",
@@ -53,7 +55,7 @@
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.131.2",
+    "n8n-workflow": "~0.133.2",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "pretty-bytes": "^5.6.0",
