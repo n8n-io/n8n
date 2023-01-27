@@ -1,10 +1,11 @@
-import config from '@/config';
-import { InternalHooksManager } from '@/InternalHooksManager';
-import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
 import { LoggerProxy, WorkflowExecuteMode } from 'n8n-workflow';
-import { getLogger } from '@/Logger';
-import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
 import { QueryFailedError } from 'typeorm';
+import config from '@/config';
+import { StatisticsNames } from '@/databases/entities/WorkflowStatistics';
+import { nodeFetchedData, workflowExecutionCompleted } from '@/events/WorkflowStatistics';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { getLogger } from '@/Logger';
+import  * as UserManagementHelper from '@/UserManagement/UserManagementHelper';
 
 const FAKE_USER_ID = 'abcde-fghij';
 
@@ -41,12 +42,8 @@ jest.mock('@/Db', () => {
 		},
 	};
 });
-jest.mock('@/UserManagement/UserManagementHelper', () => {
-	return {
-		getWorkflowOwner: jest.fn((workflowId) => {
-			return { id: FAKE_USER_ID };
-		}),
-	};
+jest.spyOn(UserManagementHelper, 'getWorkflowOwner').mockImplementation(async (workflowId) => {
+	return { id: FAKE_USER_ID };
 });
 
 describe('Events', () => {
@@ -86,6 +83,7 @@ describe('Events', () => {
 				startedAt: new Date(),
 			};
 			await workflowExecutionCompleted(workflow, runData);
+			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(0);
 		});
 
 		test('should create metrics for production successes', async () => {
