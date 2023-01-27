@@ -1,5 +1,6 @@
 import FormData from 'form-data';
-import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 // Define these because we'll be using them in two separate places
 const metagenerationFilters: INodeProperties[] = [

@@ -1,14 +1,9 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import type { JsonObject, IDataObject, IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 

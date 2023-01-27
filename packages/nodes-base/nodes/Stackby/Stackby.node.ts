@@ -1,14 +1,15 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, apiRequestAllItems, IRecord } from './GenericFunction';
+import type { IRecord } from './GenericFunction';
+import { apiRequest, apiRequestAllItems } from './GenericFunction';
 
 export class Stackby implements INodeType {
 	description: INodeTypeDescription = {

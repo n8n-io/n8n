@@ -48,7 +48,7 @@
     "jest-mock": "^29.3.1",
     "nock": "^13.2.9",
     "node-fetch": "^2.6.7",
-    "prettier": "^2.3.2",
+    "prettier": "^2.8.3",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^1.14.0",
@@ -68,8 +68,12 @@
       "ejs": "^3.1.8",
       "fork-ts-checker-webpack-plugin": "^6.0.4",
       "jsonwebtoken": "9.0.0",
+      "prettier": "^2.8.3",
       "cpy@8>globby": "^11.1.0",
       "qqjs>globby": "^11.1.0"
+    },
+    "patchedDependencies": {
+      "element-ui@2.15.12": "patches/element-ui@2.15.12.patch"
     }
   }
 }

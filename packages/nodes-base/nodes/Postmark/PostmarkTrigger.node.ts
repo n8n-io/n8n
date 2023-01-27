@@ -1,7 +1,7 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	INodeExecutionData,
+import type {
+	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -250,7 +250,7 @@ export class PostmarkTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [this.helpers.returnJsonArray(req.body as INodeExecutionData)],
+			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject[])],
 		};
 	}
 }

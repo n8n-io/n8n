@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -8,8 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 import { messageFields, messageOperations } from './MessageDescription';
@@ -20,7 +20,7 @@ import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userProfileFields, userProfileOperations } from './UserProfileDescription';
 import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './GenericFunctions';
-import { IAttachment } from './MessageInterface';
+import type { IAttachment } from './MessageInterface';
 
 import moment from 'moment';
 

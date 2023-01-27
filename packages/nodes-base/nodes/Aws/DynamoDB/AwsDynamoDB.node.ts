@@ -1,7 +1,7 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -14,7 +14,7 @@ import { awsApiRequest, awsApiRequestAllItems } from './GenericFunctions';
 
 import { itemFields, itemOperations } from './ItemDescription';
 
-import {
+import type {
 	FieldsUiValues,
 	IAttributeNameUi,
 	IAttributeValueUi,

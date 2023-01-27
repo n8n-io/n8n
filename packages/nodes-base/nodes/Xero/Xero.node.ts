@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -16,9 +16,9 @@ import { invoiceFields, invoiceOperations } from './InvoiceDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { IInvoice, ILineItem } from './InvoiceInterface';
+import type { IInvoice, ILineItem } from './InvoiceInterface';
 
-import { IAddress, IContact, IPhone } from './IContactInterface';
+import type { IAddress, IContact, IPhone } from './IContactInterface';
 
 export class Xero implements INodeType {
 	description: INodeTypeDescription = {

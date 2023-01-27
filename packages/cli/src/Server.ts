@@ -63,9 +63,6 @@ import {
 	WorkflowExecuteMode,
 	INodeTypes,
 	ICredentialTypes,
-	INode,
-	IWorkflowBase,
-	IRun,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -103,8 +100,15 @@ import type {
 	OAuthRequest,
 	WorkflowRequest,
 } from '@/requests';
-import { userManagementRouter } from '@/UserManagement';
-import { resolveJwt } from '@/UserManagement/auth/jwt';
+import { registerController } from '@/decorators';
+import {
+	AuthController,
+	MeController,
+	OwnerController,
+	PasswordResetController,
+	UsersController,
+} from '@/controllers';
+import { resolveJwt } from '@/auth/jwt';
 
 import { executionsController } from '@/executions/executions.controller';
 import { nodeTypesController } from '@/api/nodeTypes.api';
@@ -118,6 +122,7 @@ import {
 	isUserManagementEnabled,
 	whereClause,
 } from '@/UserManagement/UserManagementHelper';
+import { getInstance as getMailerInstance } from '@/UserManagement/email';
 import * as Db from '@/Db';
 import {
 	DatabaseType,
@@ -151,7 +156,7 @@ import { eventBusRouter } from '@/eventbus/eventBusRoutes';
 import { isLogStreamingEnabled } from '@/eventbus/MessageEventBus/MessageEventBusHelper';
 import { getLicense } from '@/License';
 import { licenseController } from './license/license.controller';
-import { corsMiddleware } from './middlewares/cors';
+import { corsMiddleware, setupAuthMiddlewares } from './middlewares';
 import { initEvents } from './events';
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
@@ -336,6 +341,33 @@ class Server extends AbstractServer {
 		}
 	}
 
+	private registerControllers(ignoredEndpoints: Readonly<string[]>) {
+		const { app, externalHooks, activeWorkflowRunner } = this;
+		const repositories = Db.collections;
+		setupAuthMiddlewares(app, ignoredEndpoints, this.restEndpoint, repositories.User);
+
+		const logger = LoggerProxy;
+		const internalHooks = InternalHooksManager.getInstance();
+		const mailer = getMailerInstance();
+
+		const controllers = [
+			new AuthController({ config, internalHooks, repositories, logger }),
+			new OwnerController({ config, internalHooks, repositories, logger }),
+			new MeController({ externalHooks, internalHooks, repositories, logger }),
+			new PasswordResetController({ config, externalHooks, internalHooks, repositories, logger }),
+			new UsersController({
+				config,
+				mailer,
+				externalHooks,
+				internalHooks,
+				repositories,
+				activeWorkflowRunner,
+				logger,
+			}),
+		];
+		controllers.forEach((controller) => registerController(app, config, controller));
+	}
+
 	async configure(): Promise<void> {
 		configureMetrics(this.app);
 
@@ -354,7 +386,7 @@ class Server extends AbstractServer {
 		const publicApiEndpoint = config.getEnv('publicApi.path');
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
-		const ignoredEndpoints = [
+		const ignoredEndpoints: Readonly<string[]> = [
 			'assets',
 			'healthz',
 			'metrics',
@@ -587,7 +619,7 @@ class Server extends AbstractServer {
 		// ----------------------------------------
 		// User Management
 		// ----------------------------------------
-		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
+		this.registerControllers(ignoredEndpoints);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
 

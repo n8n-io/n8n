@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/dot-notation */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -9,8 +9,8 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { alertFields, alertOperations } from './descriptions/AlertDescription';
 
@@ -22,7 +22,8 @@ import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
 import { logFields, logOperations } from './descriptions/LogDescription';
 
-import { And, Between, ContainsString, Eq, Id, In, IQueryObject, Parent } from './QueryFunctions';
+import type { IQueryObject } from './QueryFunctions';
+import { And, Between, ContainsString, Eq, Id, In, Parent } from './QueryFunctions';
 
 import {
 	buildCustomFieldSearch,

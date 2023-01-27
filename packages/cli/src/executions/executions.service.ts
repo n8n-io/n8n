@@ -15,7 +15,7 @@ import {
 import { FindOperator, FindOptionsWhere, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
-import type { User } from '@/databases/entities/User';
+import type { User } from '@db/entities/User';
 import type { ExecutionEntity } from '@db/entities/ExecutionEntity';
 import {
 	IExecutionFlattedResponse,

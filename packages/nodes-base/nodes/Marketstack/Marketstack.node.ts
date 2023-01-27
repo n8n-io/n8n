@@ -1,12 +1,12 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import {
 	endOfDayDataFields,
@@ -24,7 +24,7 @@ import {
 	validateTimeOptions,
 } from './GenericFunctions';
 
-import { EndOfDayDataFilters, Operation, Resource } from './types';
+import type { EndOfDayDataFilters, Operation, Resource } from './types';
 
 export class Marketstack implements INodeType {
 	description: INodeTypeDescription = {

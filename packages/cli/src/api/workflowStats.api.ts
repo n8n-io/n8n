@@ -1,4 +1,4 @@
-import { User } from '@/databases/entities/User';
+import { User } from '@db/entities/User';
 import { whereClause } from '@/UserManagement/UserManagementHelper';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';

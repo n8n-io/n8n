@@ -1,10 +1,7 @@
-import { IDataObject, jsonParse } from 'n8n-workflow';
-import {
-	Context,
-	FormatDueDatetime,
-	todoistApiRequest,
-	todoistSyncRequest,
-} from '../GenericFunctions';
+import type { IDataObject } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import type { Context } from '../GenericFunctions';
+import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
 import type { Section, TodoistResponse } from './Service';
 import { v4 as uuid } from 'uuid';
 

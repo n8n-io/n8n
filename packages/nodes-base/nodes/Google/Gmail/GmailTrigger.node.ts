@@ -1,14 +1,14 @@
-import { IPollFunctions } from 'n8n-core';
+import type { IPollFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	LoggerProxy as Logger,
 } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import {
 	googleApiRequest,

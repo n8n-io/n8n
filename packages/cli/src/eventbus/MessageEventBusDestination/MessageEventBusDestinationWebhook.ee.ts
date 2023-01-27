@@ -18,10 +18,10 @@ import {
 	MessageEventBusDestinationWebhookParameterItem,
 	MessageEventBusDestinationWebhookParameterOptions,
 } from 'n8n-workflow';
-import { CredentialsHelper } from '../../CredentialsHelper';
+import { CredentialsHelper } from '@/CredentialsHelper';
 import { UserSettings } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
-import config from '../../config';
+import config from '@/config';
 import { isLogStreamingEnabled } from '../MessageEventBus/MessageEventBusHelper';
 import { eventMessageGenericDestinationTestEvent } from '../EventMessageClasses/EventMessageGeneric';
 

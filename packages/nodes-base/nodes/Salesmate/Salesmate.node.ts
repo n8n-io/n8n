@@ -1,13 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import {
 	salesmateApiRequest,
 	salesmateApiRequestAllItems,
@@ -16,9 +16,9 @@ import {
 } from './GenericFunctions';
 import { companyFields, companyOperations } from './CompanyDescription';
 import { activityFields, activityOperations } from './ActivityDescription';
-import { ICompany } from './CompanyInterface';
-import { IActivity } from './ActivityInterface';
-import { IDeal } from './DealInterface';
+import type { ICompany } from './CompanyInterface';
+import type { IActivity } from './ActivityInterface';
+import type { IDeal } from './DealInterface';
 import { dealFields, dealOperations } from './DealDescription';
 
 export class Salesmate implements INodeType {

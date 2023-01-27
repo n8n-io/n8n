@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -18,7 +18,7 @@ import {
 	certificateRequestOperations,
 } from './CertificateRequestDescription';
 
-import {
+import type {
 	ICertficateKeystoreRequest,
 	ICertficateRequest,
 	ICsrAttributes,

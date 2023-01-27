@@ -1,20 +1,21 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { listFields, listOperations } from './ListDescription';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
-import { mailFields, mailOperations, SendMailBody } from './MailDescription';
+import type { SendMailBody } from './MailDescription';
+import { mailFields, mailOperations } from './MailDescription';
 
 import { sendGridApiRequest, sendGridApiRequestAllItems } from './GenericFunctions';
 

@@ -1,17 +1,13 @@
-import { OptionsWithUri } from 'request';
+import type { OptionsWithUri } from 'request';
 
-import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
-import { IMessage } from './MessageInterface';
-import { IStream } from './StreamInterface';
-import { IUser } from './UserInterface';
+import type { IMessage } from './MessageInterface';
+import type { IStream } from './StreamInterface';
+import type { IUser } from './UserInterface';
+
+import type { IDataObject, IHookFunctions, IWebhookFunctions, JsonObject } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 export async function zulipApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

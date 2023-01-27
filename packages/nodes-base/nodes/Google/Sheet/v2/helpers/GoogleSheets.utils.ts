@@ -1,20 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeListSearchItems,
 	INodePropertyOptions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { GoogleSheet } from './GoogleSheet';
-import {
+import type {
 	RangeDetectionOptions,
 	ResourceLocator,
-	ResourceLocatorUiNames,
-	ROW_NUMBER,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
+import { ResourceLocatorUiNames, ROW_NUMBER } from './GoogleSheets.types';
 
 export const untilSheetSelected = { sheetName: [''] };
 
