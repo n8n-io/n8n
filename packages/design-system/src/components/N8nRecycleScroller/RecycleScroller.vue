@@ -87,7 +87,7 @@ export default defineComponent({
 			});
 			const index = foundIndex + props.offset;
 
-			return index === -1 ? props.items.length - 1 : index;
+			return foundIndex === -1 ? props.items.length - 1 : index;
 		});
 
 		const visibleItems = computed(() => {
