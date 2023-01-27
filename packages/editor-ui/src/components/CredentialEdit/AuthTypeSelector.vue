@@ -56,7 +56,7 @@ const activeNodeType = computed<INodeTypeDescription | null>(() => {
 });
 
 const authOptions = computed<NodeAuthenticationOption[]>(() => {
-	return getNodeAuthOptions(activeNodeType.value);
+	return getNodeAuthOptions(activeNodeType.value, ndvStore.activeNode?.typeVersion);
 });
 
 const filteredNodeAuthOptions = computed<NodeAuthenticationOption[]>(() => {
