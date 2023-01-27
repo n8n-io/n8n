@@ -438,10 +438,14 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
 
-			const recurrencyResult = recurencyCheck(recurency, staticData.recurrencyRules, timezone);
-			staticData.recurrencyRules = recurrencyResult.recurrencyRules;
-			if (!recurency.activated || recurrencyResult.needToExecute) {
+			if (!recurency.activated) {
 				this.emit([this.helpers.returnJsonArray([resultData])]);
+			} else {
+				const recurrencyResult = recurencyCheck(recurency, staticData.recurrencyRules, timezone);
+				staticData.recurrencyRules = recurrencyResult.recurrencyRules;
+				if (recurrencyResult.needToExecute) {
+					this.emit([this.helpers.returnJsonArray([resultData])]);
+				}
 			}
 		};
 
