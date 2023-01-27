@@ -9,7 +9,6 @@ import {
 import {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
-	IExecutionsSummary,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -28,6 +27,7 @@ import {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IExecutionsSummary,
 	INode,
 	INodeConnections,
 	INodeCredentials,

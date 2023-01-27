@@ -1,10 +1,9 @@
-import { IExecutionsSummary } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { genericHelpers } from './genericHelpers';
-import { ExecutionStatus } from 'n8n-workflow';
+import { IExecutionsSummary } from 'n8n-workflow';
 
 export interface IExecutionUIData {
 	name: string;

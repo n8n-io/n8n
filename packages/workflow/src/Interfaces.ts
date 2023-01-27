@@ -1844,3 +1844,24 @@ export type PublicInstalledNode = {
 export interface NodeExecutionWithMetadata extends INodeExecutionData {
 	pairedItem: IPairedItemData | IPairedItemData[];
 }
+
+export interface IExecutionsSummary {
+	id: string;
+	finished?: boolean;
+	mode: WorkflowExecuteMode;
+	retryOf?: string;
+	retrySuccessId?: string;
+	waitTill?: Date;
+	startedAt: Date;
+	stoppedAt?: Date;
+	workflowId: string;
+	workflowName?: string;
+	status?: ExecutionStatus;
+	lastNodeExecuted?: string;
+	executionError?: ExecutionError;
+	nodeErrors?: {
+		[key: string]: Array<{
+			[key: string]: string;
+		}>;
+	};
+}

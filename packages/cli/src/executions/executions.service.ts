@@ -12,6 +12,9 @@ import {
 	jsonParse,
 	Workflow,
 	ExecutionStatus,
+	IRunExecutionData,
+	NodeOperationError,
+	IExecutionsSummary,
 } from 'n8n-workflow';
 import { FindOperator, FindOptionsWhere, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
@@ -22,7 +25,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IExecutionsSummary,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
@@ -34,6 +36,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import type { DatabaseType } from '@/Interfaces';
 import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
+import { parse } from 'flatted';
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
@@ -270,6 +273,37 @@ export class ExecutionsService {
 		);
 
 		const formattedExecutions: IExecutionsSummary[] = executions.map((execution) => {
+			// inject potential node execution errors into the execution response
+			const nodeErrors = {};
+			let lastNodeExecuted;
+			let executionError;
+			try {
+				const data = parse(execution.data) as IRunExecutionData;
+				lastNodeExecuted = data?.resultData?.lastNodeExecuted ?? '';
+				executionError = data?.resultData?.error;
+				if (data?.resultData?.runData) {
+					for (const key of Object.keys(data.resultData.runData)) {
+						const errors = data.resultData.runData[key]
+							?.filter((taskdata) => taskdata.error?.name)
+							?.map((taskdata) => {
+								if (taskdata.error?.name === 'NodeOperationError') {
+									return {
+										name: (taskdata.error as NodeOperationError).name,
+										message: (taskdata.error as NodeOperationError).message,
+										description: (taskdata.error as NodeOperationError).description,
+									};
+								} else {
+									return {
+										name: taskdata.error?.name,
+									};
+								}
+							});
+						if (errors?.length > 0) {
+							Object.assign(nodeErrors, { [key]: errors });
+						}
+					}
+				}
+			} catch {}
 			return {
 				id: execution.id,
 				finished: execution.finished,
@@ -282,9 +316,11 @@ export class ExecutionsService {
 				workflowId: execution.workflowData?.id ?? '',
 				workflowName: execution.workflowData?.name,
 				status: execution.status,
+				lastNodeExecuted,
+				executionError,
+				nodeErrors,
 			};
 		});
-
 		return {
 			count,
 			results: formattedExecutions,

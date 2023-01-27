@@ -20,6 +20,7 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	ExecutionStatus,
+	IExecutionsSummary,
 } from 'n8n-workflow';
 
 import { WorkflowExecute } from 'n8n-core';
@@ -220,20 +221,6 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt?: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	finished?: boolean;
-	mode: WorkflowExecuteMode;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
-	status?: ExecutionStatus;
 }
 
 export interface IExecutionsCurrentSummary {

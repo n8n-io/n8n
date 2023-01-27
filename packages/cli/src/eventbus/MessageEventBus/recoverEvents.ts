@@ -22,6 +22,7 @@ export async function recoverExecutionDataFromEventLogMessages(
 
 	if (executionEntry && messages) {
 		let executionData: IRunExecutionData | undefined;
+		let workflowError: WorkflowOperationError | undefined;
 		try {
 			executionData = parse(executionEntry.data) as IRunExecutionData;
 		} catch {}
@@ -71,22 +72,32 @@ export async function recoverExecutionDataFromEventLogMessages(
 					? nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis()
 					: 0;
 
-			const error = nodeByName
-				? new NodeOperationError(nodeByName, 'Node did not finish, possible Out Of Memory issue?')
-				: new WorkflowOperationError('Node did not finish, possible Out Of Memory issue?');
-
-			const iRunData: ITaskData = {
+			const taskData: ITaskData = {
 				startTime: nodeStartedMessage ? nodeStartedMessage.ts.toUnixInteger() : 0,
 				executionTime,
 				source: [null],
 			};
 
-			if (!nodeFinishedMessage) {
-				iRunData.error = error;
+			if (nodeStartedMessage && !nodeFinishedMessage) {
+				const nodeError = new NodeOperationError(
+					nodeByName,
+					'Node did not finish, possible out of memory issue',
+					{
+						message: 'Node did not finish',
+						description: 'Could be caused by an Out Of Memory issue.',
+					},
+				);
+				workflowError = new WorkflowOperationError(
+					'Workflow did not finish, possible Out Of Memory issue.',
+				);
+				taskData.error = nodeError;
 				executionData.resultData.lastNodeExecuted = nodeName;
 				if (nodeStartedMessage) lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
-			executionData.resultData.runData[nodeName] = [iRunData];
+			executionData.resultData.runData[nodeName] = [taskData];
+		}
+		if (!executionData.resultData.error && workflowError) {
+			executionData.resultData.error = workflowError;
 		}
 		if (!lastNodeRunTimestamp) {
 			const workflowEndedMessage = messages.find((message) =>

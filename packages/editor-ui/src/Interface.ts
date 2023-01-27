@@ -37,7 +37,8 @@ import {
 	INodeListSearchItems,
 	NodeParameterValueType,
 	INodeActionTypeDescription,
-	ExecutionStatus,
+	IExecutionsSummary,
+	IAbstractEventMessage,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
 import { SignInType } from './constants';
@@ -466,20 +467,6 @@ export interface IExecutionsStopData {
 	mode: WorkflowExecuteMode;
 	startedAt: Date;
 	stoppedAt: Date;
-}
-
-export interface IExecutionsSummary {
-	id: string;
-	mode: WorkflowExecuteMode;
-	finished?: boolean;
-	retryOf?: string;
-	retrySuccessId?: string;
-	waitTill?: Date;
-	startedAt: Date;
-	stoppedAt?: Date;
-	workflowId: string;
-	workflowName?: string;
-	status?: ExecutionStatus;
 }
 
 export interface IExecutionDeleteFilter {

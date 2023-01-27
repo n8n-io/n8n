@@ -95,7 +95,6 @@ export abstract class MessageEventBusDestination implements MessageEventBusDesti
 			skipUpdateIfNoValuesChanged: true,
 			conflictPaths: ['id'],
 		});
-		Db.collections.EventDestinations.createQueryBuilder().insert().into('something').onConflict('');
 		return dbResult;
 	}
 

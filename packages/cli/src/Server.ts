@@ -63,10 +63,8 @@ import {
 	WorkflowExecuteMode,
 	INodeTypes,
 	ICredentialTypes,
-	INode,
-	IWorkflowBase,
-	IRun,
 	ExecutionStatus,
+	IExecutionsSummary,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -127,7 +125,6 @@ import {
 	IDiagnosticInfo,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
-	IExecutionsSummary,
 	IN8nUISettings,
 } from '@/Interfaces';
 import * as ActiveExecutions from '@/ActiveExecutions';
