@@ -42,7 +42,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		value: {
-			type: [Object, String, Number, Boolean] as PropType<NodeParameterValueType>,
+			type: [Object, String, Number, Boolean, Array] as PropType<NodeParameterValueType>,
 		},
 		showOptions: {
 			type: Boolean,
