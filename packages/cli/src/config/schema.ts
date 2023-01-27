@@ -1126,7 +1126,7 @@ export const schema = {
 			maxFileSizeInKB: {
 				doc: 'Maximum size of an event log file before a new one is started.',
 				format: Number,
-				default: 102400, // 100MB
+				default: 10240, // 10MB
 				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
 			},
 			logBaseName: {
