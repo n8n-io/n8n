@@ -490,7 +490,7 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'hours') {
 				const hour = interval[i].hoursInterval as number;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const cronTimes: string[] = [minute, `*/${hour}`, '*', '*', '*'];
+				const cronTimes: string[] = [minute, '*', '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				if (hour === 1) {
 					const cronJob = new CronJob(
@@ -520,19 +520,36 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			if (interval[i].field === 'days') {
-				const day = interval[i].daysInterval?.toString() as string;
+				const day = interval[i].daysInterval as number;
 				const hour = interval[i].triggerAtHour?.toString() as string;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const cronTimes: string[] = [minute, hour, `*/${day}`, '*', '*'];
+				const cronTimes: string[] = [minute, hour, '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
-				const cronJob = new CronJob(
-					cronExpression,
-					async () => executeTrigger({ activated: false } as IRecurencyRule),
-					undefined,
-					true,
-					timezone,
-				);
-				cronJobs.push(cronJob);
+				if (day === 1) {
+					const cronJob = new CronJob(
+						cronExpression,
+						async () => executeTrigger({ activated: false } as IRecurencyRule),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				} else {
+					const cronJob = new CronJob(
+						cronExpression,
+						async () =>
+							executeTrigger({
+								activated: true,
+								index: i,
+								intervalSize: day,
+								typeInterval: 'days',
+							} as IRecurencyRule),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				}
 			}
 
 			if (interval[i].field === 'weeks') {
@@ -556,7 +573,12 @@ export class ScheduleTrigger implements INodeType {
 					const cronJob = new CronJob(
 						cronExpression,
 						async () =>
-							executeTrigger({ activated: true, index: i, intervalSize: week } as IRecurencyRule),
+							executeTrigger({
+								activated: true,
+								index: i,
+								intervalSize: week,
+								typeInterval: 'weeks',
+							} as IRecurencyRule),
 						undefined,
 						true,
 						timezone,
