@@ -10,13 +10,13 @@
  * Imported in design-system-next
  */
 
+//@use './base.scss';
 
 
 /**
  * Remaining in design-system
  */
 
-@use './base.scss';
 @use './pagination.scss';
 @use './dialog.scss';
 // @use "./autocomplete.scss";

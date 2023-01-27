@@ -211,7 +211,7 @@ $fill-base: $color-white;
 
 /* Typography
 -------------------------- */
-$font-path: 'fonts' !default;
+$font-path: './fonts' !default;
 $font-display: 'auto';
 /// fontSize|1|Font Size|0
 $font-size-extra-large: var(--font-size-xl);

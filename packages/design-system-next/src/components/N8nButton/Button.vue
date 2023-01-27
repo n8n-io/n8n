@@ -1,8 +1,7 @@
 <script lang="ts">
-import { computed, defineComponent } from "vue";
 import { N8nIcon } from "../N8nIcon";
 import { N8nSpinner } from "../N8nSpinner";
-import { useCssModule } from "vue-demi";
+import { useCssModule, computed, defineComponent } from "vue";
 
 export default defineComponent({
 	name: "n8n-button",
