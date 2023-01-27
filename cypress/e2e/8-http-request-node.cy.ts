@@ -2,15 +2,17 @@ import { WorkflowPage, WorkflowsPage, NDV } from '../pages';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
-const ndv = new NDV()
+const ndv = new NDV();
 
 describe('HTTP Request node', () => {
-	before(() => {
+	beforeEach(() => {
 		cy.resetAll();
 		cy.skipSetup();
 	});
 
 	it('should make a request with a URL and receive a response', () => {
+		cy.visit(workflowsPage.url);
+
 		workflowsPage.actions.createWorkflowFromCard();
 		workflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		workflowPage.actions.addNodeToCanvas('HTTP Request');
