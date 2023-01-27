@@ -15,6 +15,7 @@
 		"types": ["vitest/globals"],
 		"paths": {
 			"@/*": ["src/*"],
+			"n8n-design-system-next/*": ["../design-system-next/src/*"],
 			"n8n-design-system/*": ["../design-system/src/*"]
 		},
 		"lib": ["esnext", "dom", "dom.iterable", "scripthost"],

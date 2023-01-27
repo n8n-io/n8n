@@ -1,6 +1,21 @@
-@use './tokens.scss';
-@use './tokens.dark.scss' as dark;
-@use './reset.scss';
+/**
+ * Moved to design-system-next
+ */
+
+//@use './tokens.scss';
+//@use './tokens.dark.scss' as dark;
+//@use './reset.scss';
+
+/**
+ * Imported in design-system-next
+ */
+
+
+
+/**
+ * Remaining in design-system
+ */
+
 @use './base.scss';
 @use './pagination.scss';
 @use './dialog.scss';

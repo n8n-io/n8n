@@ -1,26 +1,8 @@
-<template>
-	<button
-		:class="classes"
-		:disabled="disabled || loading"
-		:aria-disabled="ariaDisabled"
-		:aria-busy="ariaBusy"
-		aria-live="polite"
-		v-bind="$attrs"
-	>
-		<span :class="$style.icon" v-if="loading || icon">
-			<N8nSpinner v-if="loading" :size="size" />
-			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
-		</span>
-		<span v-if="label || $slots.default">
-			<slot>{{ label }}</slot>
-		</span>
-	</button>
-</template>
-
 <script lang="ts">
-import { defineComponent } from "vue";
+import { computed, defineComponent } from "vue";
 import { N8nIcon } from "../N8nIcon";
 import { N8nSpinner } from "../N8nSpinner";
+import { useCssModule } from "vue-demi";
 
 export default defineComponent({
 	name: "n8n-button",
@@ -87,35 +69,64 @@ export default defineComponent({
 		N8nSpinner,
 		N8nIcon,
 	},
-	computed: {
-		ariaBusy(): string {
-			return this.loading ? "true" : "false";
-		},
-		ariaDisabled(): string {
-			return this.disabled ? "true" : "false";
-		},
-		classes(): string {
+	setup(props) {
+		const css = useCssModule();
+
+		const ariaBusy = computed(() => {
+			return props.loading ? "true" : "false";
+		});
+
+		const ariaDisabled = computed(() => {
+			return props.disabled ? "true" : "false";
+		});
+
+		const classes = computed(() => {
 			return (
-				`n8n-button ${this.$style[this.type]}` +
-				`${this.size ? ` ${this.$style[this.size]}` : ""}` +
-				`${this.outline ? ` ${this.$style.outline}` : ""}` +
-				`${this.loading ? ` ${this.$style.loading}` : ""}` +
-				`${this.float ? ` ${this.$style[`float-${this.float}`]}` : ""}` +
-				`${this.text ? ` ${this.$style.text}` : ""}` +
-				`${this.disabled ? ` ${this.$style.disabled}` : ""}` +
-				`${this.block ? ` ${this.$style.block}` : ""}` +
-				`${this.active ? ` ${this.$style.active}` : ""}` +
-				`${this.icon || this.loading ? ` ${this.$style.icon}` : ""}` +
-				`${this.square ? ` ${this.$style.square}` : ""}`
+				`n8n-button ${css[props.type]}` +
+				`${props.size ? ` ${css[props.size]}` : ""}` +
+				`${props.outline ? ` ${css.outline}` : ""}` +
+				`${props.loading ? ` ${css.loading}` : ""}` +
+				`${props.float ? ` ${css[`float-${props.float}`]}` : ""}` +
+				`${props.text ? ` ${css.text}` : ""}` +
+				`${props.disabled ? ` ${css.disabled}` : ""}` +
+				`${props.block ? ` ${css.block}` : ""}` +
+				`${props.active ? ` ${css.active}` : ""}` +
+				`${props.icon || props.loading ? ` ${css.icon}` : ""}` +
+				`${props.square ? ` ${css.square}` : ""}`
 			);
-		},
+		});
+
+		return {
+			ariaBusy,
+			ariaDisabled,
+			classes,
+		};
 	},
 });
 </script>
 
+<template>
+	<button
+		:class="classes"
+		:disabled="disabled || loading"
+		:aria-disabled="ariaDisabled"
+		:aria-busy="ariaBusy"
+		aria-live="polite"
+		v-bind="$attrs"
+	>
+		<span :class="$style.icon" v-if="loading || icon">
+			<N8nSpinner v-if="loading" :size="size" />
+			<N8nIcon v-else-if="icon" :icon="icon" :size="size" />
+		</span>
+		<span v-if="label || $slots.default">
+			<slot>{{ label }}</slot>
+		</span>
+	</button>
+</template>
+
 <style lang="scss" module>
 @import "../../css/mixins/utils";
-@import "../../css/common/var";
+@import "../../css/variables/element";
 
 $loading-overlay-background-color: rgba(255, 255, 255, 0);
 

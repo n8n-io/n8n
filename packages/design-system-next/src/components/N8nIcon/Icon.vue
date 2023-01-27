@@ -1,15 +1,3 @@
-<template>
-	<N8nText
-		:size="size"
-		:color="color"
-		:compact="true"
-		class="n8n-icon"
-		v-bind="$attrs"
-	>
-		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
-	</N8nText>
-</template>
-
 <script lang="ts">
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { N8nText } from "../N8nText";
@@ -39,6 +27,18 @@ export default defineComponent({
 	},
 });
 </script>
+
+<template>
+	<N8nText
+		:size="size"
+		:color="color"
+		:compact="true"
+		class="n8n-icon"
+		v-bind="$attrs"
+	>
+		<FontAwesomeIcon :icon="icon" :spin="spin" :class="$style[size]" />
+	</N8nText>
+</template>
 
 <style lang="scss" module>
 .xlarge {
