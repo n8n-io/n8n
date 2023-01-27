@@ -1,11 +1,11 @@
-import {
+import type {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
-	jsonParse,
 } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
 	{

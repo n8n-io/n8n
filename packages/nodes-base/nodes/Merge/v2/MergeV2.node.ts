@@ -1,9 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
 import { merge } from 'lodash';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -12,16 +12,18 @@ import {
 	IPairedItemData,
 } from 'n8n-workflow';
 
+import type {
+	ClashResolveOptions,
+	MatchFieldsJoinMode,
+	MatchFieldsOptions,
+	MatchFieldsOutput,
+} from './GenericFunctions';
 import {
 	addSourceField,
 	addSuffixToEntriesKeys,
 	checkInput,
 	checkMatchFieldsInput,
-	ClashResolveOptions,
 	findMatches,
-	MatchFieldsJoinMode,
-	MatchFieldsOptions,
-	MatchFieldsOutput,
 	mergeMatched,
 	selectMergeMethod,
 } from './GenericFunctions';

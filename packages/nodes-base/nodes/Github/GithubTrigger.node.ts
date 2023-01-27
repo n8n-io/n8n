@@ -1,13 +1,12 @@
-import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { githubApiRequest } from './GenericFunctions';
 

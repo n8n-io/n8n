@@ -1,14 +1,14 @@
-import {
+import type {
 	IDataObject,
 	IExecuteFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	IWebhookFunctions,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import {
+import type {
 	OnfleetAdmins,
 	OnfleetCloneOverrideTaskOptions,
 	OnfleetCloneTask,

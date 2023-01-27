@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { IData, IDimension, IMetric } from '../../helpers/Interfaces';
+import type { IExecuteFunctions } from 'n8n-core';
+import type { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import type { IData, IDimension, IMetric } from '../../helpers/Interfaces';
 import {
 	checkDuplicates,
 	defaultEndDate,
