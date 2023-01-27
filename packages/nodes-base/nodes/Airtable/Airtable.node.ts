@@ -538,7 +538,7 @@ export class Airtable implements INodeType {
 					if (addAllFields) {
 						// Add all the fields the item has
 						row.fields = { ...items[i].json };
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 					} else {
 						// Add only the specified fields
 						row.fields = {} as IDataObject;
@@ -739,7 +739,7 @@ export class Airtable implements INodeType {
 						// Update all the fields the item has
 						row.fields = { ...items[i].json };
 						// remove id field
-						delete (row.fields! as any).id;
+						delete (row.fields as any).id;
 
 						if (options.ignoreFields && options.ignoreFields !== '') {
 							const ignoreFields = (options.ignoreFields as string)
