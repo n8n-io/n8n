@@ -1,5 +1,5 @@
 import { NodeCreator } from '../pages/features/node-creator';
-import { INodeTypeDescription } from '../../packages/workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 import CustomNodeFixture from '../fixtures/Custom_node.json';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
