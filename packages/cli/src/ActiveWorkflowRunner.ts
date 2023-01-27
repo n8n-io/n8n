@@ -813,9 +813,13 @@ export class ActiveWorkflowRunner {
 			}
 
 			const mode = 'trigger';
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(
-				(workflowData as WorkflowEntity).shared[0].user.id,
+			const workflowOwner = (workflowData as WorkflowEntity).shared.find(
+				(shared) => shared.role.name === 'owner',
 			);
+			if (!workflowOwner) {
+				throw new Error('Workflow cannot be activated because it has no owner');
+			}
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.user.id);
 			const getTriggerFunctions = this.getExecuteTriggerFunctions(
 				workflowData,
 				additionalData,
