@@ -1,9 +1,9 @@
 <template>
 	<div :class="$style.category">
-		<span :class="$style.name">
-			{{ renderCategoryName(item.category) }}{{ count !== undefined ? ` (${count})` : '' }}
+		<span :class="$style.name" v-text="item.name">
+			<!-- {{ renderCategoryName(item.category) }}{{ count !== undefined ? ` (${count})` : '' }} -->
 		</span>
-		<font-awesome-icon v-if="isExpanded" icon="chevron-down" :class="$style.arrow" />
+		<font-awesome-icon v-if="item.expanded" icon="chevron-down" :class="$style.arrow" />
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>
 </template>
@@ -15,20 +15,21 @@ import { CategoryName } from '@/plugins/i18n';
 import { INodeCreateElement, ICategoryItemProps } from '@/Interface';
 
 export interface Props {
-	item: INodeCreateElement;
+	item: unknown;
 	count?: number;
 }
 const props = defineProps<Props>();
-const instance = getCurrentInstance();
+// const instance = getCurrentInstance();
 
-const isExpanded = computed<boolean>(() => (props.item.properties as ICategoryItemProps).expanded);
+// const isExpanded = computed<boolean>(() => (props.item.properties as ICategoryItemProps).expanded);
 
-function renderCategoryName(categoryName: string) {
-	const camelCasedCategoryName = camelcase(categoryName) as CategoryName;
-	const key = `nodeCreator.categoryNames.${camelCasedCategoryName}` as const;
+// function renderCategoryName(categoryName: string) {
+// 	const camelCasedCategoryName = camelcase(categoryName) as CategoryName;
+// 	const key = `nodeCreator.categoryNames.${camelCasedCategoryName}` as const;
 
-	return instance?.proxy.$locale.exists(key) ? instance?.proxy.$locale.baseText(key) : categoryName;
-}
+// 	return instance?.proxy.$locale.exists(key) ? instance?.proxy.$locale.baseText(key) : categoryName;
+// }
+//
 </script>
 
 <style lang="scss" module>

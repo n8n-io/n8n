@@ -1,6 +1,6 @@
 <template>
-	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
-		<categorized-items
+	<div :class="{ [$style.mainPanel]: true, [$style.isRoot]: isRoot }">
+		<CategorizedItems
 			:expandAllCategories="isActionsActive"
 			:subcategoryOverride="nodeAppSubcategory"
 			:alwaysShowSearch="isActionsActive"
@@ -14,7 +14,7 @@
 			:flatten="!isActionsActive && isAppEventSubcategory"
 			:filterByType="false"
 			:lazyRender="true"
-			:allItems="allNodes"
+			:allItems="transformCreateElements(mergedAppNodes)"
 			:searchPlaceholder="searchPlaceholder"
 			ref="categorizedItemsRef"
 			@subcategoryClose="onSubcategoryClose"
@@ -23,17 +23,57 @@
 			@actionsOpen="setActiveActionsNodeType"
 			@actionSelected="onActionSelected"
 		>
-			<template #noResultsTitle v-if="isActionsActive">
-				<i />
-			</template>
-			<template #noResultsAction v-if="isActionsActive">
-				<p
-					v-if="containsAPIAction"
-					v-html="getCustomAPICallHintLocale('apiCallNoResult')"
-					class="clickable"
-					@click.stop="addHttpNode"
-				/>
-				<p v-else v-text="$locale.baseText('nodeCreator.noResults.noMatchingActions')" />
+			<template #noResults="{ filteredAllNodeTypes, filteredNodeTypes }">
+				<no-results
+					data-test-id="categorized-no-results"
+					:showRequest="!isActionsActive && filteredAllNodeTypes.length === 0"
+					:show-icon="!isActionsActive && filteredAllNodeTypes.length === 0"
+				>
+					<!-- Partial results -->
+					<!-- <template v-else #title>
+						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
+					</template> -->
+
+					<!-- <template v-if="isActionsActive" #action>
+						<p
+							v-if="containsAPIAction"
+							v-html="getCustomAPICallHintLocale('apiCallNoResult')"
+							class="clickable"
+							@click.stop="addHttpNode"
+						/>
+						<p v-else v-text="$locale.baseText('nodeCreator.noResults.noMatchingActions')" />
+					</template> -->
+
+					<!-- <template v-else-if="filteredAllNodeTypes.length === 0" #action>
+						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+						<n8n-link
+							@click="selectHttpRequest"
+							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+						</n8n-link>
+						<template v-if="nodeCreatorStore.selectedView === ALL_NODE_FILTER">
+							{{ $locale.baseText('nodeCreator.noResults.or') }}
+						</template> -->
+
+					<!-- <n8n-link
+							@click="selectWebhook"
+							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+						</n8n-link> -->
+					<!-- {{ $locale.baseText('nodeCreator.noResults.node') }}
+					</template> -->
+
+					<!-- <n8n-link
+						@click="selectWebhook"
+						v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
+					>
+						{{ $locale.baseText('nodeCreator.noResults.webhook') }}
+						{{ $locale.baseText('nodeCreator.noResults.node') }}
+					</n8n-link> -->
+				</no-results>
+				<!-- <p>{{ filteredAllNodeTypes.length }}<p -->
 			</template>
 
 			<template #header>
@@ -57,7 +97,7 @@
 					@click.stop="addHttpNode"
 				/>
 			</template>
-		</categorized-items>
+		</CategorizedItems>
 	</div>
 </template>
 
@@ -98,6 +138,8 @@ import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { BaseTextKey } from '@/plugins/i18n';
+import NoResults from './NoResults.vue';
+import ItemIterator from './ItemIterator.vue';
 
 const instance = getCurrentInstance();
 
@@ -386,9 +428,15 @@ const firstLevelItems = computed(() => (isRoot.value ? items.value : []));
 const items = computed(() => activeView.value.items);
 const isSearchActive = computed(() => useNodeCreatorStore().itemsFilter !== '');
 const searchItems = computed<INodeCreateElement[]>(() => {
-	const sorted = state.activeNodeActions
-		? [...selectedNodeActions.value]
-		: [...filteredMergedAppNodes.value];
+	return state.activeNodeActions
+		? transformCreateElements(selectedNodeActions.value)
+		: transformCreateElements(filteredMergedAppNodes.value);
+});
+
+function transformCreateElements(
+	createElements: Array<INodeTypeDescription | INodeActionTypeDescription>,
+): INodeCreateElement[] {
+	const sorted = [...createElements];
 
 	sorted.sort((a, b) => {
 		const textA = a.displayName.toLowerCase();
@@ -398,16 +446,16 @@ const searchItems = computed<INodeCreateElement[]>(() => {
 
 	return sorted.map((nodeType) => ({
 		type: 'node',
-		category: '',
+		category: nodeType.codex?.categories,
 		key: nodeType.name,
 		properties: {
 			nodeType,
-			subcategory: state.activeNodeActions ? state.activeNodeActions.displayName : '',
+			subcategory: state.activeNodeActions?.displayName ?? '',
 		},
 		includedByTrigger: nodeType.group.includes('trigger'),
 		includedByRegular: !nodeType.group.includes('trigger'),
 	}));
-});
+}
 
 function onNodeTypeSelected(nodeTypes: string[]) {
 	emit(
@@ -515,7 +563,7 @@ const { isRoot, activeNodeActions } = toRefs(state);
 </script>
 
 <style lang="scss" module>
-.triggerHelperContainer {
+.mainPanel {
 	--node-icon-color: var(--color-text-base);
 	height: 100%;
 	display: flex;

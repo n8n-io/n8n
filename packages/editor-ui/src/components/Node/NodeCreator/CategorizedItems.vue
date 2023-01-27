@@ -53,63 +53,9 @@
 				@input="onNodeFilterChange"
 			/>
 
-			<template v-if="searchFilter.length > 0 && filteredNodeTypes.length === 0">
-				<no-results
-					data-test-id="categorized-no-results"
-					:showRequest="
-						!$slots.noResultsTitle && !$slots.noResultsAction && filteredAllNodeTypes.length === 0
-					"
-					:show-icon="
-						!$slots.noResultsTitle && !$slots.noResultsAction && filteredAllNodeTypes.length === 0
-					"
-				>
-					<template v-if="$slots.noResultsTitle" #title>
-						<slot name="noResultsTitle" />
-					</template>
-					<!-- There are results in other sub-categories/tabs  -->
-					<template v-else-if="filteredAllNodeTypes.length > 0" #title>
-						<p v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
-					</template>
-					<template v-else #title>
-						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-					</template>
-
-					<template v-if="$slots.noResultsAction" #action>
-						<slot name="noResultsAction" />
-					</template>
-					<template v-else-if="filteredAllNodeTypes.length === 0" #action>
-						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-						<n8n-link
-							@click="selectHttpRequest"
-							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
-						>
-							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
-						</n8n-link>
-						<template v-if="nodeCreatorStore.selectedView === ALL_NODE_FILTER">
-							{{ $locale.baseText('nodeCreator.noResults.or') }}
-						</template>
-
-						<n8n-link
-							@click="selectWebhook"
-							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
-						>
-							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-						</n8n-link>
-						{{ $locale.baseText('nodeCreator.noResults.node') }}
-					</template>
-
-					<n8n-link
-						@click="selectWebhook"
-						v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedView)"
-					>
-						{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-						{{ $locale.baseText('nodeCreator.noResults.node') }}
-					</n8n-link>
-				</no-results>
-			</template>
-			<div :class="$style.scrollable" ref="scrollableContainer" v-else>
+			<div :class="$style.scrollable" ref="scrollableContainer">
 				<item-iterator
-					:elements="searchFilter.length === 0 ? renderedItems : filteredNodeTypes"
+					:elements="searchFilter.length === 0 ? renderedItems : localGlobalDeltaNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:with-actions-getter="withActionsGetter"
 					:lazyRender="lazyRender"
@@ -117,12 +63,26 @@
 					@selected="selected"
 					@actionsOpen="$listeners.actionsOpen"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-				>
-				</item-iterator>
+				/>
 				<div :class="$style.footer" v-if="$slots.footer">
 					<slot name="footer" />
 				</div>
 			</div>
+
+			<!-- <template v-if="localGlobalDeltaNodeTypes.length > 0">
+				Partial results
+				<item-iterator
+					:elements="localGlobalDeltaNodeTypes"
+					:activeIndex="0"
+					:with-actions-getter="withActionsGetter"
+					:lazyRender="lazyRender"
+					:enable-global-categories-counter="false"
+					@selected="selected"
+					@actionsOpen="$listeners.actionsOpen"
+					@nodeTypeSelected="$listeners.nodeTypeSelected"
+				/>
+				<!-- <slot name="noResults" v-bind="{ filteredNodeTypes, filteredAllNodeTypes }" /> -->
+			<!-- </template> -->
 		</div>
 	</transition>
 </template>
@@ -140,7 +100,7 @@ import {
 	nextTick,
 } from 'vue';
 import camelcase from 'lodash.camelcase';
-
+import differenceBy from 'lodash.differenceby';
 import { externalHooks } from '@/mixins/externalHooks';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { INodeTypeDescription } from 'n8n-workflow';
@@ -155,6 +115,7 @@ import {
 	ICategoriesWithNodes,
 	SubcategoryCreateElement,
 	NodeCreateElement,
+	CategoryCreateElement,
 } from '@/Interface';
 import {
 	WEBHOOK_NODE_TYPE,
@@ -186,13 +147,14 @@ export interface Props {
 	initialActiveCategories?: string[]; // Delete?
 	initialActiveIndex?: number; // Delete?
 	categorizedItems: INodeCreateElement[];
-	allItems: INodeCreateElement[];
 	categoriesWithNodes: ICategoriesWithNodes;
 	subcategoryOverride?: SubcategoryCreateElement | undefined;
+	allItems?: INodeCreateElement[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	filterByType: true,
+	allItems: () => [],
 	searchItems: () => [],
 	excludedSubcategories: () => [],
 	firstLevelItems: () => [],
@@ -209,8 +171,6 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
-// const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
-
 const { $externalHooks } = new externalHooks();
 
 const { defaultLocale } = useRootStore();
@@ -218,7 +178,7 @@ const { workflowId } = useWorkflowsStore();
 const nodeCreatorStore = useNodeCreatorStore();
 
 const state = reactive({
-	activeCategory: props.initialActiveCategories,
+	activeCategories: props.initialActiveCategories,
 	// Keep track of activated subcategories so we could traverse back more than one level
 	activeSubcategoryHistory: [] as Array<{
 		scrollPosition: number;
@@ -270,10 +230,10 @@ const matchedTypeNodes = computed<INodeCreateElement[]>(() => {
 		matchesSelectType(el, nodeCreatorStore.selectedView),
 	);
 });
-
 const selectedViewType = computed(() => nodeCreatorStore.selectedView);
 const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 	const filter = searchFilter.value;
+	const startTime = performance.now();
 
 	let returnItems: INodeCreateElement[] = [];
 	if (defaultLocale !== 'en') {
@@ -296,17 +256,60 @@ const filteredNodeTypes = computed<INodeCreateElement[]>(() => {
 		returnItems = matchedCategorizedNodes.map(({ item }) => item);
 	}
 
+	const endTime = performance.now();
+	console.log('Filtered node types took:' + (endTime - startTime).toFixed(3) + ' milliseconds');
 	return returnItems;
 });
 
-const filteredAllNodeTypes = computed<INodeCreateElement[]>(() => {
-	if (filteredNodeTypes.value.length > 0) return [];
+const trimTriggerNodeName = (nodeName) => nodeName.toLowerCase().replace('trigger', '');
+const globalFilteredNodeTypes = computed<INodeCreateElement[]>(() => {
+	const startTime = performance.now();
+	const result = (
+		sublimeSearch<INodeCreateElement>(searchFilter.value, props.allItems, [
+			{ key: 'properties.nodeType.displayName', weight: 2 },
+			{ key: 'properties.nodeType.codex.alias', weight: 1 },
+		]) || []
+	).reduce((acc, { item }) => {
+		if (acc.find((el) => trimTriggerNodeName(el.key) === trimTriggerNodeName(item.key))) {
+			return acc;
+		}
 
-	const matchedAllNodex = props.allItems.filter((el: INodeCreateElement) => {
-		return searchFilter.value && el.type === 'node' && matchesNodeType(el, searchFilter.value);
+		return [...acc, item];
+	}, []);
+	const endTime = performance.now();
+	console.log(
+		'Global filterd node types took:' + (endTime - startTime).toFixed(3) + ' milliseconds',
+	);
+	return result;
+});
+
+const localGlobalDelta = computed(() => {
+	const startTime = performance.now();
+	const filteredData = globalFilteredNodeTypes.value.filter((el) => {
+		return !filteredNodeTypes.value.find(
+			(el2) => trimTriggerNodeName(el2.key) === trimTriggerNodeName(el.key),
+		);
 	});
+	const endTime = performance.now();
+	console.log('localglobal delta took:' + (endTime - startTime).toFixed(3) + ' milliseconds');
+	return filteredData;
+});
 
-	return matchedAllNodex;
+const localGlobalDeltaNodeTypes = computed<INodeCreateElement[]>(() => {
+	const isExpanded = state.activeCategories.includes('searchAll');
+	const searchCategory = {
+		type: 'category',
+		properties: {
+			type: 'category',
+			category: 'searchAll',
+			name: `Results in other categories (${localGlobalDelta.value.length})`,
+			expanded: isExpanded,
+		},
+	};
+	const nodeTypes = [];
+	nodeTypes.push(...filteredNodeTypes.value, searchCategory, ...localGlobalDelta.value);
+
+	return nodeTypes;
 });
 
 const categorized = computed<INodeCreateElement[]>(() => {
@@ -320,7 +323,7 @@ const categorized = computed<INodeCreateElement[]>(() => {
 			return accu;
 		}
 
-		if (el.type !== 'category' && !state.activeCategory.includes(el.category)) {
+		if (el.type !== 'category' && !state.activeCategories.includes(el.key)) {
 			return accu;
 		}
 
@@ -330,9 +333,14 @@ const categorized = computed<INodeCreateElement[]>(() => {
 
 		if (el.type === 'category') {
 			accu.push({
-				...el,
+				// includedByRegular: false,
+				// includedByTrigger: true,
+				type: 'category',
+				// category: el.category,
+				key: el.key,
 				properties: {
-					expanded: state.activeCategory.includes(el.category),
+					name: el.key,
+					expanded: state.activeCategories.includes(el.key),
 				},
 			} as INodeCreateElement);
 			return accu;
@@ -496,8 +504,9 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 	}
 }
 function selected(element: INodeCreateElement) {
+	console.log('🚀 ~ file: CategorizedItems.vue:467 ~ selected ~ element', element);
 	const typeHandler = {
-		category: () => onCategorySelected(element.category),
+		category: () => onCategorySelected(element),
 		subcategory: () => onSubcategorySelected(element),
 		node: () => onNodeSelected(element as NodeCreateElement),
 		action: () => onActionSelected(element),
@@ -521,19 +530,22 @@ function onNodeSelected(element: NodeCreateElement) {
 	emit('nodeTypeSelected', [element.key]);
 }
 
-function onCategorySelected(category: string) {
-	if (state.activeCategory.includes(category)) {
-		state.activeCategory = state.activeCategory.filter((active: string) => active !== category);
+function onCategorySelected(element: CategoryCreateElement) {
+	const categoryKey = element.key;
+	if (state.activeCategories.includes(categoryKey)) {
+		state.activeCategories = state.activeCategories.filter(
+			(active: string) => active !== categoryKey,
+		);
 	} else {
-		state.activeCategory = [...state.activeCategory, category];
+		state.activeCategories = [...state.activeCategories, categoryKey];
 		instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', {
-			category_name: category,
+			category_name: categoryKey,
 			workflow_id: workflowId,
 		});
 	}
 
 	state.activeIndex = categorized.value.findIndex(
-		(el: INodeCreateElement) => el.category === category,
+		(el: INodeCreateElement) => el.key === categoryKey,
 	);
 }
 function onActionSelected(element: INodeCreateElement) {
@@ -590,7 +602,7 @@ async function onBackButton() {
 watch(
 	() => props.expandAllCategories,
 	(expandAll) => {
-		if (expandAll) state.activeCategory = Object.keys(props.categoriesWithNodes);
+		if (expandAll) state.activeCategories = Object.keys(props.categoriesWithNodes);
 	},
 );
 

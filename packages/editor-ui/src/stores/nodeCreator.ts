@@ -305,11 +305,9 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, {
 		visibleNodesWithActions(): INodeTypeDescription[] {
 			const nodes = deepCopy(useNodeTypesStore().visibleNodeTypes);
 			const nodesWithActions = nodes.map((node) => {
-				const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
+				// const isCoreNode = node.codex?.categories?.includes(CORE_NODES_CATEGORY);
 				// Core nodes shouldn't support actions
 				node.actions = [];
-				if (isCoreNode) return node;
-
 				node.actions.push(
 					...triggersCategory(node),
 					...operationsCategory(node),

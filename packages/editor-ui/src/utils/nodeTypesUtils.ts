@@ -63,7 +63,7 @@ const addNodeToCategory = (
 	}
 	accu[category][subcategory].nodes.push({
 		type: nodeType.actionKey ? 'action' : 'node',
-		key: `${category}_${nodeType.name}`,
+		key: `${nodeType.name}`,
 		category,
 		properties: {
 			nodeType,

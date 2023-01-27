@@ -881,7 +881,6 @@ export interface ICategoryItemProps {
 }
 
 export interface CreateElementBase {
-	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
