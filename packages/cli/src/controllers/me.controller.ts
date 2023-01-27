@@ -10,10 +10,10 @@ import { BadRequestError } from '@/ResponseHelper';
 import { User } from '@db/entities/User';
 import { validateEntity } from '@/GenericHelpers';
 import { issueCookie } from '@/auth/jwt';
-import type { Response } from 'express';
+import { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
-import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { AuthenticatedRequest, MeRequest } from '@/requests';
 import type {
 	PublicUser,
 	IDatabaseCollections,

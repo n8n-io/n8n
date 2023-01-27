@@ -9,13 +9,13 @@ import express from 'express';
 
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
-import { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import type { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
 import * as ResponseHelper from '@/ResponseHelper';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
 import { validateEntity } from '@/GenericHelpers';
 import { TagEntity } from '@db/entities/TagEntity';
-import { TagsRequest } from '@/requests';
+import type { TagsRequest } from '@/requests';
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 

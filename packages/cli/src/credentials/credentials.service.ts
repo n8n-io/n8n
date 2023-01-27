@@ -1,20 +1,19 @@
 /* eslint-disable no-restricted-syntax */
 import { Credentials, UserSettings } from 'n8n-core';
-import {
-	deepCopy,
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
 	INodeCredentialTestResult,
 	INodeProperties,
-	LoggerProxy,
-	NodeHelpers,
 } from 'n8n-workflow';
-import { FindManyOptions, FindOptionsWhere, In } from 'typeorm';
+import { deepCopy, LoggerProxy, NodeHelpers } from 'n8n-workflow';
+import type { FindManyOptions, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
-import { ICredentialsDb } from '@/Interfaces';
+import type { ICredentialsDb } from '@/Interfaces';
 import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
 import { CREDENTIAL_BLANKING_VALUE, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';

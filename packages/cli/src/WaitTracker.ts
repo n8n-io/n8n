@@ -10,14 +10,15 @@ import {
 	LoggerProxy as Logger,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import type { FindManyOptions, ObjectLiteral } from 'typeorm';
+import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ActiveExecutions from '@/ActiveExecutions';
-import {
+import type {
 	DatabaseType,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
