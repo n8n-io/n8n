@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 import jwt from 'jsonwebtoken';
-import { Response } from 'express';
+import type { Response } from 'express';
 import { createHash } from 'crypto';
 import * as Db from '@/Db';
 import { AUTH_COOKIE_NAME } from '@/constants';
-import { JwtPayload, JwtToken } from '@/Interfaces';
-import { User } from '@db/entities/User';
+import type { JwtPayload, JwtToken } from '@/Interfaces';
+import type { User } from '@db/entities/User';
 import config from '@/config';
 import * as ResponseHelper from '@/ResponseHelper';
 

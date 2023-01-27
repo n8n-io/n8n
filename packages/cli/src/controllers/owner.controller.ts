@@ -8,11 +8,11 @@ import {
 	validatePassword,
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
-import type { Response } from 'express';
+import { Response } from 'express';
 import type { Repository } from 'typeorm';
 import type { ILogger } from 'n8n-workflow';
 import type { Config } from '@/config';
-import type { OwnerRequest } from '@/requests';
+import { OwnerRequest } from '@/requests';
 import type { IDatabaseCollections, IInternalHooksClass } from '@/Interfaces';
 import type { Settings } from '@db/entities/Settings';
 import type { User } from '@db/entities/User';

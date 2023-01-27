@@ -1,14 +1,15 @@
-import { FindManyOptions, In, UpdateResult } from 'typeorm';
+import type { FindManyOptions, UpdateResult } from 'typeorm';
+import { In } from 'typeorm';
 import intersection from 'lodash.intersection';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import * as Db from '@/Db';
-import { User } from '@db/entities/User';
+import type { User } from '@db/entities/User';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { isInstanceOwner } from '../users/users.service';
-import { Role } from '@db/entities/Role';
+import type { Role } from '@db/entities/Role';
 import config from '@/config';
 
 function insertIf(condition: boolean, elements: string[]): string[] {

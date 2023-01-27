@@ -3,7 +3,8 @@
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import path from 'path';

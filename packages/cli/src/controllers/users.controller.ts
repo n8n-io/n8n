@@ -1,6 +1,8 @@
 import validator from 'validator';
-import { In, Repository } from 'typeorm';
-import { ErrorReporterProxy as ErrorReporter, ILogger } from 'n8n-workflow';
+import type { Repository } from 'typeorm';
+import { In } from 'typeorm';
+import type { ILogger } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 import { User } from '@db/entities/User';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
@@ -17,9 +19,9 @@ import {
 } from '@/UserManagement/UserManagementHelper';
 import { issueCookie } from '@/auth/jwt';
 import { BadRequestError, InternalServerError, NotFoundError } from '@/ResponseHelper';
-import type { Response } from 'express';
+import { Response } from 'express';
 import type { Config } from '@/config';
-import type { UserRequest } from '@/requests';
+import { UserRequest } from '@/requests';
 import type { UserManagementMailer } from '@/UserManagement/email';
 import type { Role } from '@db/entities/Role';
 import type {

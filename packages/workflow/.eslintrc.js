@@ -9,6 +9,7 @@ module.exports = {
 	...sharedOptions(__dirname),
 
 	rules: {
+		'@typescript-eslint/consistent-type-imports': 'error',
 		'import/order': 'off', // TODO: remove this
 	},
 };

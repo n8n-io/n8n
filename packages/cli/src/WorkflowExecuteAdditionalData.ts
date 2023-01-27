@@ -17,7 +17,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
@@ -32,10 +32,12 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
 	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	Workflow,
-	WorkflowExecuteMode,
 	WorkflowHooks,
 } from 'n8n-workflow';
 
@@ -46,7 +48,7 @@ import * as Db from '@/Db';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { CredentialsHelper } from '@/CredentialsHelper';
 import { ExternalHooks } from '@/ExternalHooks';
-import {
+import type {
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,

@@ -1,4 +1,5 @@
-import { EntityManager, FindOptionsWhere, In } from 'typeorm';
+import type { EntityManager, FindOptionsWhere } from 'typeorm';
+import { In } from 'typeorm';
 import * as Db from '@/Db';
 import { User } from '@db/entities/User';
 

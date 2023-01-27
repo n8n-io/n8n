@@ -1,5 +1,5 @@
-import { DateTime } from 'luxon';
-import { INodeCredentials } from './Interfaces';
+import type { DateTime } from 'luxon';
+import type { INodeCredentials } from './Interfaces';
 
 // ===============================
 // General Enums And Interfaces
