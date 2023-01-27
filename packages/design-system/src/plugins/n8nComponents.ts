@@ -45,6 +45,7 @@ import N8nUserInfo from '../components/N8nUserInfo';
 import N8nUserSelect from '../components/N8nUserSelect';
 import N8nUsersList from '../components/N8nUsersList';
 import N8nResizeWrapper from '../components/N8nResizeWrapper';
+import N8nRecycleScroller from '../components/N8nRecycleScroller';
 
 export default {
 	install: (app: typeof Vue) => {
@@ -94,5 +95,6 @@ export default {
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
 		app.component('n8n-resize-wrapper', N8nResizeWrapper);
+		app.component('n8n-recycle-scroller', N8nRecycleScroller);
 	},
 };
