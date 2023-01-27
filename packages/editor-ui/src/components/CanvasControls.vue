@@ -76,11 +76,13 @@ onBeforeUnmount(() => {
 .zoomMenu {
 	position: absolute;
 	width: 210px;
-	bottom: 108px;
+	height: 42px;
+	bottom: 42px;
 	left: 35px;
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
+	z-index: 2;
 
 	button {
 		border: var(--border-base);

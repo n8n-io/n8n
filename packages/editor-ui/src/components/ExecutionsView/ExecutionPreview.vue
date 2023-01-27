@@ -103,12 +103,7 @@
 				/>
 			</div>
 		</div>
-		<workflow-preview
-			mode="execution"
-			loaderType="spinner"
-			:executionId="executionId"
-			:executionMode="executionMode"
-		/>
+		<NodeView :is-demo="true" :executionId="executionId" :executionMode="executionMode" />
 	</div>
 </template>
 
@@ -116,7 +111,7 @@
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import NodeView from '@/views/NodeView.vue';
 import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
@@ -127,7 +122,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
 		ElDropdown,
-		WorkflowPreview,
+		NodeView,
 	},
 	data() {
 		return {
@@ -179,19 +174,21 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 
 <style module lang="scss">
 .previewContainer {
-	height: calc(100% - $header-height);
-	overflow: hidden;
+	position: relative;
+	width: 100%;
+	height: 100%;
 }
 
 .executionDetails {
 	position: absolute;
+	width: 100%;
 	padding: var(--spacing-m);
 	padding-right: var(--spacing-xl);
-	width: calc(100% - 510px);
 	display: flex;
 	justify-content: space-between;
 	transition: all 150ms ease-in-out;
 	pointer-events: none;
+	z-index: 1;
 
 	& * {
 		pointer-events: all;

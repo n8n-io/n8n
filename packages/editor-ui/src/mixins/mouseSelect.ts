@@ -3,16 +3,17 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useCanvasStore } from '@/stores/canvas';
 import {
 	getMousePosition,
 	getRelativePosition,
 	HEADER_HEIGHT,
 	SIDEBAR_WIDTH,
 	SIDEBAR_WIDTH_EXPANDED,
+	EXECUTION_SIDEBAR_WIDTH,
 } from '@/utils/nodeViewUtils';
 
 export const mouseSelect = mixins(deviceSupportHelpers).extend({
@@ -26,10 +27,7 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 		this.createSelectBox();
 	},
 	computed: {
-		...mapStores(useUIStore, useWorkflowsStore),
-		isDemo(): boolean {
-			return this.$route.name === VIEWS.DEMO;
-		},
+		...mapStores(useUIStore, useWorkflowsStore, useCanvasStore),
 	},
 	methods: {
 		createSelectBox() {
@@ -57,16 +55,13 @@ export const mouseSelect = mixins(deviceSupportHelpers).extend({
 		},
 		getMousePositionWithinNodeView(event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
-			const sidebarOffset = this.isDemo
-				? 0
-				: this.uiStore.sidebarMenuCollapsed
-				? SIDEBAR_WIDTH
-				: SIDEBAR_WIDTH_EXPANDED;
-			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
+			const sidebarOffset =
+				(this.uiStore.sidebarMenuCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED) +
+				(this.canvasStore.isDemo ? EXECUTION_SIDEBAR_WIDTH : 0);
 			// @ts-ignore
 			return getRelativePosition(
 				x - sidebarOffset,
-				y - headerOffset,
+				y - HEADER_HEIGHT,
 				this.nodeViewScale,
 				this.uiStore.nodeViewOffsetPosition,
 			);

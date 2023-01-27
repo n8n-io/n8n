@@ -26,13 +26,8 @@
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
-			<div :class="$style.image">
-				<WorkflowPreview
-					v-if="showPreview"
-					:loading="loading"
-					:workflow="template && template.workflow"
-					@close="onHidePreview"
-				/>
+			<div v-if="template" :class="$style.image">
+				<NodeView :is-demo="true" :workflow="template.workflow" />
 			</div>
 			<div :class="$style.content">
 				<div :class="$style.markdown">
@@ -57,7 +52,7 @@
 <script lang="ts">
 import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplatesView from './TemplatesView.vue';
-import WorkflowPreview from '@/components/WorkflowPreview.vue';
+import NodeView from '@/views/NodeView.vue';
 
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
@@ -72,7 +67,7 @@ export default mixins(workflowHelpers).extend({
 	components: {
 		TemplateDetails,
 		TemplatesView,
-		WorkflowPreview,
+		NodeView,
 	},
 	computed: {
 		...mapStores(useTemplatesStore),
@@ -169,6 +164,7 @@ export default mixins(workflowHelpers).extend({
 }
 
 .image {
+	position: relative;
 	width: 100%;
 	height: 500px;
 	border: var(--border-base);

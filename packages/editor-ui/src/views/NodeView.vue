@@ -311,6 +311,24 @@ export default mixins(
 		NodeCreation,
 		CanvasControls,
 	},
+	props: {
+		isDemo: {
+			type: Boolean,
+			default: false,
+		},
+		workflow: {
+			type: Object as () => IWorkflowDb,
+			required: false,
+		},
+		executionId: {
+			type: String,
+			required: false,
+		},
+		executionMode: {
+			type: String,
+			required: false,
+		},
+	},
 	setup() {
 		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
@@ -378,6 +396,11 @@ export default mixins(
 			const element = this.$refs.nodeView as HTMLDivElement;
 			if (element) {
 				element.style.transform = `scale(${newScale})`;
+			}
+		},
+		executionId(newExecId) {
+			if (newExecId) {
+				this.openExecution(newExecId);
 			}
 		},
 	},
@@ -473,8 +496,8 @@ export default mixins(
 		executionWaitingForWebhook(): boolean {
 			return this.workflowsStore.executionWaitingForWebhook;
 		},
-		isDemo(): boolean {
-			return this.$route.name === VIEWS.DEMO;
+		isProductionExecutionPreview(): boolean {
+			return this.executionMode !== 'manual';
 		},
 		showCanvasAddButton(): boolean {
 			return this.loadingService === null && !this.containsTrigger && !this.isDemo;
@@ -587,7 +610,6 @@ export default mixins(
 			isExecutionPreview: false,
 			showTriggerMissingTooltip: false,
 			workflowData: null as INewWorkflowData | null,
-			isProductionExecutionPreview: false,
 			// jsplumb automatically deletes all loose connections which is in turn recorded
 			// in undo history as a user action.
 			// This should prevent automatically removed connections from populating undo stack
@@ -3571,56 +3593,6 @@ export default mixins(
 				this.stopLoading();
 			}
 		},
-		async onPostMessageReceived(message: MessageEvent) {
-			try {
-				const json = JSON.parse(message.data);
-				if (json && json.command === 'openWorkflow') {
-					try {
-						await this.importWorkflowExact(json);
-						this.isExecutionPreview = false;
-					} catch (e) {
-						if (window.top) {
-							window.top.postMessage(
-								JSON.stringify({
-									command: 'error',
-									message: this.$locale.baseText('openWorkflow.workflowImportError'),
-								}),
-								'*',
-							);
-						}
-						this.$showMessage({
-							title: this.$locale.baseText('openWorkflow.workflowImportError'),
-							message: (e as Error).message,
-							type: 'error',
-						});
-					}
-				} else if (json && json.command === 'openExecution') {
-					try {
-						// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
-						// so everything it needs has to be sent using post messages and passed down to child components
-						this.isProductionExecutionPreview = json.executionMode !== 'manual';
-
-						await this.openExecution(json.executionId);
-						this.isExecutionPreview = true;
-					} catch (e) {
-						if (window.top) {
-							window.top.postMessage(
-								JSON.stringify({
-									command: 'error',
-									message: this.$locale.baseText('nodeView.showError.openExecution.title'),
-								}),
-								'*',
-							);
-						}
-						this.$showMessage({
-							title: this.$locale.baseText('nodeView.showError.openExecution.title'),
-							message: (e as Error).message,
-							type: 'error',
-						});
-					}
-				}
-			} catch (e) {}
-		},
 		async onImportWorkflowDataEvent(data: IDataObject) {
 			await this.importWorkflowData(data.data as IWorkflowDataUpdate, undefined, 'file');
 		},
@@ -3780,8 +3752,8 @@ export default mixins(
 		},
 	},
 	async mounted() {
+		this.canvasStore.isDemo = this.isDemo;
 		this.$titleReset();
-		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.startLoading();
 		this.resetWorkspace();
@@ -3813,11 +3785,12 @@ export default mixins(
 					this.initNodeView();
 				} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 				await this.initView();
-				if (window.top) {
-					window.top.postMessage(
-						JSON.stringify({ command: 'n8nReady', version: this.rootStore.versionCli }),
-						'*',
-					);
+				if (this.executionId) {
+					this.isExecutionPreview = true;
+					await this.openExecution(this.executionId);
+				}
+				if (this.workflow) {
+					await this.importWorkflowExact({ workflow: this.workflow });
 				}
 			} catch (error) {
 				this.$showError(
@@ -3881,7 +3854,6 @@ export default mixins(
 
 		document.addEventListener('keydown', this.keyDown);
 		document.addEventListener('keyup', this.keyUp);
-		window.addEventListener('message', this.onPostMessageReceived);
 
 		this.$root.$on('newWorkflow', this.newWorkflow);
 		this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3897,13 +3869,10 @@ export default mixins(
 		dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 		dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
-
-		this.canvasStore.isDemo = this.isDemo;
 	},
 	deactivated() {
 		document.removeEventListener('keydown', this.keyDown);
 		document.removeEventListener('keyup', this.keyUp);
-		window.removeEventListener('message', this.onPostMessageReceived);
 
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3923,7 +3892,6 @@ export default mixins(
 	destroyed() {
 		this.resetWorkspace();
 		this.uiStore.stateIsDirty = false;
-		window.removeEventListener('message', this.onPostMessageReceived);
 		this.$root.$off('newWorkflow', this.newWorkflow);
 		this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 		this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
@@ -3935,16 +3903,15 @@ export default mixins(
 <style scoped lang="scss">
 .node-view-root {
 	position: relative;
-	flex: 1;
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
-	width: 100%;
-	height: 100%;
-	position: relative;
 }
 
 .node-view-wrapper {
-	position: fixed;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	z-index: 1;
 }
 
 .node-view {
@@ -3958,8 +3925,12 @@ export default mixins(
 .node-view-background {
 	background-color: var(--color-canvas-background);
 	position: absolute;
-	width: 10000px;
-	height: 10000px;
+	width: 100%;
+	height: 100%;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
 	z-index: -2;
 }
 
@@ -3984,8 +3955,9 @@ export default mixins(
 	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
-	bottom: 110px;
+	bottom: 42px;
 	width: auto;
+	z-index: 2;
 
 	@media (max-width: $breakpoint-2xs) {
 		bottom: 150px;
@@ -4121,9 +4093,9 @@ export default mixins(
 <style module lang="scss">
 .content {
 	position: relative;
-	display: flex;
+	display: grid;
 	overflow: auto;
-	height: 100vh;
+	height: 100%;
 }
 
 .shake {

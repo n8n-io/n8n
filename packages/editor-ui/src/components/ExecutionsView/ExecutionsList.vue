@@ -366,7 +366,8 @@ export default mixins(
 
 			existingExecutions = existingExecutions.filter(
 				(execution) =>
-					!gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10),
+					!gaps.includes(parseInt(execution.id, 10)) &&
+					(lastId === 0 || lastId >= parseInt(execution.id, 10)),
 			);
 			this.workflowsStore.currentWorkflowExecutions = existingExecutions;
 			if (updatedActiveExecution !== null) {

@@ -236,14 +236,13 @@ export default mixins(showMessage, userHelpers, restApi, historyHelper).extend({
 	grid-template-areas:
 		'sidebar header'
 		'sidebar content';
-	grid-auto-columns: fit-content($sidebar-expanded-width) 1fr;
-	grid-template-rows: fit-content($sidebar-width) 1fr;
+	grid-auto-columns: auto 1fr;
+	grid-template-rows: auto 1fr;
 }
 
 .content {
 	grid-area: content;
 	overflow: auto;
-	height: 100vh;
 }
 
 .header {
