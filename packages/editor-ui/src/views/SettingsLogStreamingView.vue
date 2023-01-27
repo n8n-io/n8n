@@ -90,11 +90,8 @@ import { useSettingsStore } from '../stores/settings';
 import { useUIStore } from '../stores/ui';
 import { LOG_STREAM_MODAL_KEY, EnterpriseEditionFeature } from '../constants';
 import Vue from 'vue';
-import {
-	deepCopy,
-	defaultMessageEventBusDestinationOptions,
-	MessageEventBusDestinationOptions,
-} from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationOptions } from 'n8n-workflow';
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import EventDestinationCard from '@/components/SettingsLogStreaming/EventDestinationCard.ee.vue';
 

@@ -31,13 +31,13 @@
 </template>
 
 <script lang="ts">
-import { IUser, IUserListAction } from '../../types';
+import type { IUser, IUserListAction } from '../../types';
 import N8nActionToggle from '../N8nActionToggle';
 import N8nBadge from '../N8nBadge';
 import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 
 export default mixins(Locale).extend({
 	name: 'n8n-users-list',

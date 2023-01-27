@@ -6,7 +6,7 @@ import normalizeWheel from 'normalize-wheel';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
-import { INodeUi, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 import { scaleBigger, scaleReset, scaleSmaller } from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import '@/plugins/N8nCustomConnectorType';

@@ -57,7 +57,7 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from '@/constants';
 
 import { showMessage } from '@/mixins/showMessage';

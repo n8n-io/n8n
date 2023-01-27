@@ -25,15 +25,16 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { IExecutionResponse, INodeUi } from '@/Interface';
-import {
+import type { INodeUi } from '@/Interface';
+import { IExecutionResponse } from '@/Interface';
+import type {
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
-	WorkflowDataProxy,
 } from 'n8n-workflow';
+import { WorkflowDataProxy } from 'n8n-workflow';
 
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/constants';
 import { CodeEditor } from './forms';

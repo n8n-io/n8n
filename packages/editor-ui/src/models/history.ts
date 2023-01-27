@@ -1,7 +1,7 @@
-import { INodeUi } from '@/Interface';
-import { IConnection } from 'n8n-workflow';
-import Vue from 'vue';
-import { XYPosition } from '../Interface';
+import type { INodeUi } from '@/Interface';
+import type { IConnection } from 'n8n-workflow';
+import type Vue from 'vue';
+import type { XYPosition } from '../Interface';
 
 // Command names don't serve any particular purpose in the app
 // but they make it easier to identify each command on stack

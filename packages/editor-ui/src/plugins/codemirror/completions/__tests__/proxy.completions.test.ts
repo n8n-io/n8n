@@ -14,7 +14,7 @@ import {
 	prevNodeProxy,
 	workflowProxy,
 } from './proxyMocks';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 
 const EXPLICIT = false;
 

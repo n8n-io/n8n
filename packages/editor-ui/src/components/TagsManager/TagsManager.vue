@@ -31,7 +31,7 @@
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import { ITag } from '@/Interface';
+import type { ITag } from '@/Interface';
 
 import { showMessage } from '@/mixins/showMessage';
 import TagsView from '@/components/TagsManager/TagsView/TagsView.vue';

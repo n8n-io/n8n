@@ -1,10 +1,10 @@
-import {
+import type {
 	IInviteResponse,
 	IPersonalizationLatestVersion,
 	IRestApiContext,
 	IUserResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/utils';
 
 export function loginCurrentUser(context: IRestApiContext): Promise<IUserResponse | null> {

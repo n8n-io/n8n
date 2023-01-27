@@ -16,11 +16,12 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import camelcase from 'lodash.camelcase';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import { INodeCreateElement, ISubcategoryItemProps } from '@/Interface';
+import type { INodeCreateElement, ISubcategoryItemProps } from '@/Interface';
 export default Vue.extend({
 	components: {
 		NodeIcon,

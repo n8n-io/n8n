@@ -96,15 +96,15 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import { restApi } from '@/mixins/restApi';
-import {
+import type {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
-import {
+import type {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,

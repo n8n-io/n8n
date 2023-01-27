@@ -30,7 +30,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/constants';
-import {
+import type {
 	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,

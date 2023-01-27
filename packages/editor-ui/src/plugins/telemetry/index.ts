@@ -1,6 +1,6 @@
-import _Vue from 'vue';
-import { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import type _Vue from 'vue';
+import type { ITelemetrySettings, ITelemetryTrackProperties, IDataObject } from 'n8n-workflow';
+import type { Route } from 'vue-router';
 
 import type { INodeCreateElement } from '@/Interface';
 import type { IUserNodesPanelSession } from './telemetry.types';

@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { computed, watch, reactive, toRefs } from 'vue';
 
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';

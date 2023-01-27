@@ -57,7 +57,7 @@
 
 <script lang="ts">
 import { VALID_EMAIL_REGEX, VALUE_SURVEY_MODAL_KEY } from '@/constants';
-import { IN8nPromptResponse } from '@/Interface';
+import type { IN8nPromptResponse } from '@/Interface';
 
 import ModalDrawer from './ModalDrawer.vue';
 

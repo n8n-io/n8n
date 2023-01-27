@@ -1,8 +1,15 @@
 import { closestNumberDivisibleBy, getStyleTokenValue, isNumber } from '@/utils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from '@/constants';
-import { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
-import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from 'jsplumb';
-import {
+import type { EndpointStyle, IBounds, INodeUi, XYPosition } from '@/Interface';
+import type {
+	AnchorArraySpec,
+	Connection,
+	Endpoint,
+	Overlay,
+	OverlaySpec,
+	PaintStyle,
+} from 'jsplumb';
+import type {
 	IConnection,
 	INode,
 	ITaskData,

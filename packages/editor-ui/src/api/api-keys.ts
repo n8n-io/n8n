@@ -1,4 +1,4 @@
-import { IRestApiContext } from '@/Interface';
+import type { IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 
 export function getApiKey(context: IRestApiContext): Promise<{ apiKey: string | null }> {

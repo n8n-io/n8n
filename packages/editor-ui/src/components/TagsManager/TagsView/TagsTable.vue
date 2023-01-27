@@ -106,7 +106,7 @@
 
 <script lang="ts">
 import { MAX_TAG_NAME_LENGTH } from '@/constants';
-import { ITagRow } from '@/Interface';
+import type { ITagRow } from '@/Interface';
 import Vue from 'vue';
 
 const INPUT_TRANSITION_TIMEOUT = 350;

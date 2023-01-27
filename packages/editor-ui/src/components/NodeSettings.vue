@@ -153,16 +153,16 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
-import {
+import type { PropType } from 'vue';
+import Vue from 'vue';
+import type {
 	INodeTypeDescription,
 	INodeParameters,
 	INodeProperties,
-	NodeHelpers,
 	NodeParameterValue,
-	deepCopy,
 } from 'n8n-workflow';
-import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import { NodeHelpers, deepCopy } from 'n8n-workflow';
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 
 import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,

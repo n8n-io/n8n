@@ -133,12 +133,12 @@ import camelcase from 'lodash.camelcase';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
-import SearchBar from './SearchBar.vue';
+import type SearchBar from './SearchBar.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
-import {
+import type {
 	INodeCreateElement,
 	ISubcategoryItemProps,
 	ICategoryItemProps,
@@ -154,7 +154,7 @@ import {
 	REGULAR_NODE_FILTER,
 	NODE_TYPE_COUNT_MAPPER,
 } from '@/constants';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch, matchesNodeType, matchesSelectType } from '@/utils';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';

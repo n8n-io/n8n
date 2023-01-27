@@ -45,7 +45,7 @@ import { EnterpriseEditionFeature, INVITE_USER_MODAL_KEY, VIEWS } from '@/consta
 
 import PageAlert from '../components/PageAlert.vue';
 import FeatureComingSoon from '@/components/FeatureComingSoon.vue';
-import { IFakeDoor, IUser, IUserListAction } from '@/Interface';
+import type { IFakeDoor, IUser, IUserListAction } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';

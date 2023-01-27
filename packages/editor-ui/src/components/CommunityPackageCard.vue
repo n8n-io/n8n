@@ -63,7 +63,7 @@
 
 <script lang="ts">
 import { useUIStore } from '@/stores/ui';
-import { PublicInstalledPackage } from 'n8n-workflow';
+import type { PublicInstalledPackage } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { NPM_PACKAGE_DOCS_BASE_URL, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';

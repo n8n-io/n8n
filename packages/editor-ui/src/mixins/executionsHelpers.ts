@@ -1,4 +1,4 @@
-import { IExecutionsSummary } from '@/Interface';
+import type { IExecutionsSummary } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { i18n as locale } from '@/plugins/i18n';
 import { mapStores } from 'pinia';

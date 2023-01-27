@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { INodeUi, Schema } from '@/Interface';
+import type { INodeUi, Schema } from '@/Interface';
 import { checkExhaustive, shorten } from '@/utils';
 
 type Props = {

@@ -41,7 +41,7 @@ import {
 } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
-import { INodeCreateElement } from '@/Interface';
+import type { INodeCreateElement } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { useNodeTypesStore } from '@/stores/nodeTypes';

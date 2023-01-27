@@ -60,7 +60,7 @@ import {
 	GOOGLE_SHEETS_NODE_TYPE,
 	CODE_NODE_TYPE,
 } from '@/constants';
-import {
+import type {
 	IPermissions,
 	IPersonalizationSurveyAnswersV1,
 	IPersonalizationSurveyAnswersV2,
@@ -68,7 +68,7 @@ import {
 	IPersonalizationSurveyVersions,
 	IUser,
 } from '@/Interface';
-import { ILogInStatus, IRole, IUserPermissions } from '@/Interface';
+import type { ILogInStatus, IRole, IUserPermissions } from '@/Interface';
 
 /*
 	Utility functions used to handle users in n8n

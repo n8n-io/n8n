@@ -1,6 +1,6 @@
 import { getNextVersions } from '@/api/versions';
 import { STORES } from '@/constants';
-import { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
+import type { IVersion, IVersionNotificationSettings, IVersionsState } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useRootStore } from './n8nRootStore';
 

@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import type Vue from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
 import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';

@@ -1,5 +1,6 @@
 import Vue from 'vue';
-import { Diagnostic, linter as createLinter } from '@codemirror/lint';
+import type { Diagnostic } from '@codemirror/lint';
+import { linter as createLinter } from '@codemirror/lint';
 import * as esprima from 'esprima-next';
 
 import {

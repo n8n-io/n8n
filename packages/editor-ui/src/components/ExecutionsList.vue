@@ -263,14 +263,14 @@ import { restApi } from '@/mixins/restApi';
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
 	IExecutionsListResponse,
 	IExecutionsSummary,
 	IWorkflowShortResponse,
 } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { range as _range } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';

@@ -1,7 +1,7 @@
-import { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
+import type { CREDENTIAL_EDIT_MODAL_KEY } from './constants';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { IMenuItem } from 'n8n-design-system';
-import {
+import type { IMenuItem } from 'n8n-design-system';
+import type {
 	jsPlumbInstance,
 	DragOptions,
 	DropOptions,
@@ -12,7 +12,7 @@ import {
 	EndpointRectangleOptions,
 	EndpointSpec,
 } from 'jsplumb';
-import {
+import type {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -41,9 +41,9 @@ import {
 	IDisplayOptions,
 	IAbstractEventMessage,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
-import { SignInType } from './constants';
-import { BulkCommand, Undoable } from '@/models/history';
+import type { FAKE_DOOR_FEATURES } from './constants';
+import type { SignInType } from './constants';
+import type { BulkCommand, Undoable } from '@/models/history';
 
 export * from 'n8n-design-system/types';
 

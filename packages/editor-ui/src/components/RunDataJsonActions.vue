@@ -27,11 +27,11 @@
 </template>
 
 <script lang="ts">
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import jp from 'jsonpath';
-import { INodeUi } from '@/Interface';
-import { IDataObject } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
+import type { IDataObject } from 'n8n-workflow';
 import { copyPaste } from '@/mixins/copyPaste';
 import { pinData } from '@/mixins/pinData';
 import { nodeHelpers } from '@/mixins/nodeHelpers';

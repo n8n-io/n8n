@@ -58,12 +58,12 @@
 
 <script setup lang="ts">
 import { reactive, toRefs, getCurrentInstance, computed, onMounted, ref } from 'vue';
-import {
+import type {
 	INodeTypeDescription,
 	INodeActionTypeDescription,
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
-import {
+import type {
 	INodeCreateElement,
 	IActionItemProps,
 	SubcategoryCreateElement,
@@ -81,12 +81,12 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
-import CategorizedItems from './CategorizedItems.vue';
+import type CategorizedItems from './CategorizedItems.vue';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { getCategoriesWithNodes, getCategorizedList } from '@/utils';
 import { externalHooks } from '@/mixins/externalHooks';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 const instance = getCurrentInstance();
 const items: INodeCreateElement[] = [

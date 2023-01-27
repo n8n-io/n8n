@@ -25,8 +25,9 @@
 </template>
 
 <script lang="ts">
-import { NodeParameterValueType } from 'n8n-workflow';
-import Vue, { PropType } from 'vue';
+import type { NodeParameterValueType } from 'n8n-workflow';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { isValueExpression, isResourceLocatorValue } from '@/utils';
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';

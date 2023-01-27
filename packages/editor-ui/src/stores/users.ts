@@ -20,7 +20,7 @@ import {
 	validateSignupToken,
 } from '@/api/users';
 import { EnterpriseEditionFeature, PERSONALIZATION_MODAL_KEY, STORES } from '@/constants';
-import {
+import type {
 	ICredentialsResponse,
 	IInviteResponse,
 	IPersonalizationLatestVersion,

@@ -1,4 +1,4 @@
-import { INodeUi, XYPosition } from '@/Interface';
+import type { INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 

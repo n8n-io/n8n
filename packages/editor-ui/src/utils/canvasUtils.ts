@@ -1,9 +1,9 @@
 import { MAIN_HEADER_TABS, VIEWS } from '@/constants';
-import { IZoomConfig } from '@/Interface';
+import type { IZoomConfig } from '@/Interface';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { OnConnectionBindInfo } from 'jsplumb';
-import { IConnection } from 'n8n-workflow';
-import { Route } from 'vue-router';
+import type { OnConnectionBindInfo } from 'jsplumb';
+import type { IConnection } from 'n8n-workflow';
+import type { Route } from 'vue-router';
 
 /*
 	Constants and utility functions mainly used by canvas store

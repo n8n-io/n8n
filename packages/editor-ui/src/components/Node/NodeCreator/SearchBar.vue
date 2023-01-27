@@ -24,7 +24,8 @@
 </template>
 
 <script setup lang="ts">
-import Vue, { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
+import type Vue from 'vue';
+import { onMounted, reactive, toRefs, onBeforeUnmount } from 'vue';
 import { externalHooks } from '@/mixins/externalHooks';
 
 export interface Props {

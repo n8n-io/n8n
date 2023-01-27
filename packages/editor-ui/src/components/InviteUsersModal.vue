@@ -68,7 +68,7 @@ import { showMessage } from '@/mixins/showMessage';
 import { copyPaste } from '@/mixins/copyPaste';
 import Modal from './Modal.vue';
 import Vue from 'vue';
-import { IFormInputs, IInviteResponse, IUser } from '@/Interface';
+import type { IFormInputs, IInviteResponse, IUser } from '@/Interface';
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from '@/constants';
 import { ROLE } from '@/utils';
 import { mapStores } from 'pinia';

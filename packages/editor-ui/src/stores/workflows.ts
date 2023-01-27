@@ -6,7 +6,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STORES,
 } from '@/constants';
-import {
+import type {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
@@ -23,8 +23,7 @@ import {
 	WorkflowsState,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import {
-	deepCopy,
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -39,8 +38,8 @@ import {
 	IRunData,
 	ITaskData,
 	IWorkflowSettings,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import Vue from 'vue';
 
 import { useRootStore } from './n8nRootStore';

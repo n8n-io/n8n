@@ -20,7 +20,8 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { Tooltip as ElTooltip } from 'element-ui';
 import type { IN8nButton } from '@/types';
 import N8nButton from '../N8nButton';

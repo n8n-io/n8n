@@ -58,7 +58,7 @@
 </template>
 
 <script lang="ts">
-import { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, IWebhookDescription } from 'n8n-workflow';
 
 import { WEBHOOK_NODE_TYPE } from '@/constants';
 import { copyPaste } from '@/mixins/copyPaste';

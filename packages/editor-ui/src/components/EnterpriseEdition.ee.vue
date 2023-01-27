@@ -7,7 +7,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import type { EnterpriseEditionFeature } from '@/constants';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 

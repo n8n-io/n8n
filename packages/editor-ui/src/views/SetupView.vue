@@ -13,7 +13,7 @@ import AuthView from './AuthView.vue';
 import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
-import { IFormBoxConfig } from '@/Interface';
+import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';

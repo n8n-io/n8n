@@ -32,12 +32,13 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { ICredentialsResponse, IUser } from '@/Interface';
-import { ICredentialType } from 'n8n-workflow';
+import type { ICredentialsResponse, IUser } from '@/Interface';
+import type { ICredentialType } from 'n8n-workflow';
 import { EnterpriseEditionFeature } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import CredentialIcon from '@/components/CredentialIcon.vue';
-import { getCredentialPermissions, IPermissions } from '@/permissions';
+import type { IPermissions } from '@/permissions';
+import { getCredentialPermissions } from '@/permissions';
 import dateformat from 'dateformat';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

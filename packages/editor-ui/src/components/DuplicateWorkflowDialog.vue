@@ -61,8 +61,9 @@ import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useWorkflowsStore } from '@/stores/workflows';
-import { IWorkflowDataUpdate } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IWorkflowDataUpdate } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({

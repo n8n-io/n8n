@@ -121,7 +121,7 @@ import {
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
-import {
+import type {
 	IFormInputs,
 	IPersonalizationLatestVersion,
 	IPersonalizationSurveyAnswersV3,
@@ -129,7 +129,7 @@ import {
 } from '@/Interface';
 import Vue from 'vue';
 import { getAccountAge } from '@/utils';
-import { GenericValue } from 'n8n-workflow';
+import type { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';

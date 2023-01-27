@@ -1,6 +1,7 @@
 import { MAIN_HEADER_TABS } from './../constants';
 import { useNDVStore } from '@/stores/ndv';
-import { BulkCommand, Undoable } from '@/models/history';
+import type { Undoable } from '@/models/history';
+import { BulkCommand } from '@/models/history';
 import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

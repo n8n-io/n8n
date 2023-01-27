@@ -3,7 +3,8 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { STORES } from '@/constants';
-import {
+import type {
 	ITemplatesCategory,
 	ITemplatesCollection,
 	ITemplatesCollectionFull,

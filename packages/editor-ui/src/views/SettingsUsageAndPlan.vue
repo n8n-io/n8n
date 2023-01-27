@@ -2,7 +2,8 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router/composables';
 import { Notification } from 'element-ui';
-import { UsageTelemetry, useUsageStore } from '@/stores/usage';
+import type { UsageTelemetry } from '@/stores/usage';
+import { useUsageStore } from '@/stores/usage';
 import { telemetry } from '@/plugins/telemetry';
 import { i18n as locale } from '@/plugins/i18n';
 import { N8N_PRICING_PAGE_URL } from '@/constants';

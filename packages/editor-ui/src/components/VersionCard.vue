@@ -60,7 +60,7 @@ import NodeIcon from './NodeIcon.vue';
 import TimeAgo from './TimeAgo.vue';
 import Badge from './Badge.vue';
 import WarningTooltip from './WarningTooltip.vue';
-import { IVersionNode } from '@/Interface';
+import type { IVersionNode } from '@/Interface';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TimeAgo', TimeAgo);

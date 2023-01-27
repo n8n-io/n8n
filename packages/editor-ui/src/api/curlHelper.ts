@@ -1,4 +1,4 @@
-import { CurlToJSONResponse, IRestApiContext } from '@/Interface';
+import type { CurlToJSONResponse, IRestApiContext } from '@/Interface';
 import { makeRestApiRequest } from '@/utils';
 
 export function getCurlToJson(

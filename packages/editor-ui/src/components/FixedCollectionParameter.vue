@@ -112,17 +112,17 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component, PropType } from 'vue';
-import { IUpdateInformation } from '@/Interface';
+import type { Component, PropType } from 'vue';
+import Vue from 'vue';
+import type { IUpdateInformation } from '@/Interface';
 
-import {
+import type {
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
 	NodeParameterValue,
-	deepCopy,
-	isINodePropertyCollectionList,
 } from 'n8n-workflow';
+import { deepCopy, isINodePropertyCollectionList } from 'n8n-workflow';
 
 import { get } from 'lodash';
 

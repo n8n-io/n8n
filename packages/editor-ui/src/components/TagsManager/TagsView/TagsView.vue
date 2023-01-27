@@ -24,7 +24,7 @@
 <script lang="ts">
 import Vue from 'vue';
 
-import { ITag, ITagRow } from '@/Interface';
+import type { ITag, ITagRow } from '@/Interface';
 import TagsTableHeader from '@/components/TagsManager/TagsView/TagsTableHeader.vue';
 import TagsTable from '@/components/TagsManager/TagsView/TagsTable.vue';
 import { mapStores } from 'pinia';

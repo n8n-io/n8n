@@ -149,7 +149,7 @@
 <script lang="ts">
 import { convertToDisplayDate } from '@/utils';
 import { showMessage } from '@/mixins/showMessage';
-import {
+import type {
 	ILdapConfig,
 	ILdapSyncData,
 	ILdapSyncTable,

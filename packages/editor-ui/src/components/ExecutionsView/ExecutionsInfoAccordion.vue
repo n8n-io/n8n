@@ -42,7 +42,8 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
+import type { IWorkflowSettings } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 

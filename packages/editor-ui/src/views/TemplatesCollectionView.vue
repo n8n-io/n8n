@@ -55,7 +55,7 @@ import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
-import {
+import type {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
 	ITemplatesWorkflow,

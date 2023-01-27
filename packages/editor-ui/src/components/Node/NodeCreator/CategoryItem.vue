@@ -11,8 +11,8 @@
 <script lang="ts" setup>
 import { computed, getCurrentInstance } from 'vue';
 import camelcase from 'lodash.camelcase';
-import { CategoryName } from '@/plugins/i18n';
-import { INodeCreateElement, ICategoryItemProps } from '@/Interface';
+import type { CategoryName } from '@/plugins/i18n';
+import type { INodeCreateElement, ICategoryItemProps } from '@/Interface';
 
 export interface Props {
 	item: INodeCreateElement;

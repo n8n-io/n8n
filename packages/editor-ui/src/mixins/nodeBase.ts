@@ -1,10 +1,10 @@
-import { PropType } from 'vue';
+import type { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
+import type { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 
-import { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

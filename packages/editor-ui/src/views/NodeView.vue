@@ -209,8 +209,7 @@ import CanvasAddButton from './CanvasAddButton.vue';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import {
-	deepCopy,
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -225,11 +224,10 @@ import {
 	ITaskData,
 	ITelemetryTrackProperties,
 	IWorkflowBase,
-	NodeHelpers,
-	TelemetryHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
+import { deepCopy, NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
+import type {
 	ICredentialsResponse,
 	IExecutionResponse,
 	IWorkflowDb,
@@ -252,7 +250,7 @@ import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { Route, RawLocation } from 'vue-router';
+import type { Route, RawLocation } from 'vue-router';
 import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';

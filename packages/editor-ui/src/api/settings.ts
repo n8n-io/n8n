@@ -1,4 +1,4 @@
-import {
+import type {
 	IRestApiContext,
 	IN8nPrompts,
 	IN8nValueSurveyData,

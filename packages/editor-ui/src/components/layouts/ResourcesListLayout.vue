@@ -163,14 +163,15 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { IUser } from '@/Interface';
+import type { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from '@/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/components/layouts/PageViewLayoutList.vue';
 import { EnterpriseEditionFeature } from '@/constants';
 import TemplateCard from '@/components/TemplateCard.vue';
-import Vue, { PropType } from 'vue';
+import type { PropType } from 'vue';
+import type Vue from 'vue';
 import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from '@/components/forms/ResourceOwnershipSelect.ee.vue';
 import ResourceFiltersDropdown from '@/components/forms/ResourceFiltersDropdown.vue';

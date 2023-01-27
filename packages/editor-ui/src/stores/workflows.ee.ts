@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import { IUser } from '../Interface';
+import type { IUser } from '../Interface';
 import { setWorkflowSharedWith } from '@/api/workflows.ee';
 import { EnterpriseEditionFeature, STORES } from '@/constants';
 import { useRootStore } from '@/stores/n8nRootStore';

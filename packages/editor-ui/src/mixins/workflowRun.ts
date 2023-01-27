@@ -1,12 +1,7 @@
-import { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
+import type { IExecutionPushResponse, IExecutionResponse, IStartRunData } from '@/Interface';
 
-import {
-	IRunData,
-	IRunExecutionData,
-	IWorkflowBase,
-	NodeHelpers,
-	TelemetryHelpers,
-} from 'n8n-workflow';
+import type { IRunData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import { NodeHelpers, TelemetryHelpers } from 'n8n-workflow';
 
 import { externalHooks } from '@/mixins/externalHooks';
 import { restApi } from '@/mixins/restApi';

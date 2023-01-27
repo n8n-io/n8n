@@ -31,26 +31,26 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/constants';
-import {
+import type {
 	IExecutionsListResponse,
 	IExecutionsSummary,
 	INodeUi,
 	ITag,
 	IWorkflowDb,
 } from '@/Interface';
-import {
+import type {
 	IConnection,
 	IConnections,
 	IDataObject,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/mixins/restApi';
 import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
-import { Route } from 'vue-router';
+import type { Route } from 'vue-router';
 import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '@/mixins/debounce';

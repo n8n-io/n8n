@@ -12,7 +12,9 @@ import { html } from 'codemirror-lang-html-n8n';
 import { autocompletion } from '@codemirror/autocomplete';
 import { indentWithTab, insertNewlineAndIndent, history } from '@codemirror/commands';
 import { bracketMatching, ensureSyntaxTree, foldGutter, indentOnInput } from '@codemirror/language';
-import { EditorState, Extension } from '@codemirror/state';
+import type { Extension } from '@codemirror/state';
+import { EditorState } from '@codemirror/state';
+import type { ViewUpdate } from '@codemirror/view';
 import {
 	dropCursor,
 	EditorView,
@@ -20,7 +22,6 @@ import {
 	highlightActiveLineGutter,
 	keymap,
 	lineNumbers,
-	ViewUpdate,
 } from '@codemirror/view';
 
 import { expressionInputHandler } from '@/plugins/codemirror/inputHandlers/expression.inputHandler';

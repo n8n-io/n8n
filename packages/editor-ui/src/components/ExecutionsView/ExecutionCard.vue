@@ -80,9 +80,10 @@
 </template>
 
 <script lang="ts">
-import { IExecutionsSummary } from '@/Interface';
+import type { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import type { IExecutionUIData } from '@/mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { showMessage } from '@/mixins/showMessage';
 import { restApi } from '@/mixins/restApi';

@@ -77,8 +77,9 @@
 </template>
 
 <script lang="ts">
-import { IResourceLocatorResultExpanded } from '@/Interface';
-import Vue, { PropType } from 'vue';
+import type { IResourceLocatorResultExpanded } from '@/Interface';
+import type { PropType } from 'vue';
+import Vue from 'vue';
 
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;

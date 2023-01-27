@@ -141,8 +141,10 @@ import {
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
-import { IUser, IWorkflowDb, UIState } from '@/Interface';
-import { getWorkflowPermissions, IPermissions } from '@/permissions';
+import type { IUser, IWorkflowDb } from '@/Interface';
+import { UIState } from '@/Interface';
+import type { IPermissions } from '@/permissions';
+import { getWorkflowPermissions } from '@/permissions';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/mixins/showMessage';
 import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
@@ -152,9 +154,9 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useWorkflowsEEStore } from '@/stores/workflows.ee';
-import { ITelemetryTrackProperties } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { useUsageStore } from '@/stores/usage';
-import { BaseTextKey } from '@/plugins/i18n';
+import type { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(showMessage).extend({
 	name: 'workflow-share-modal',

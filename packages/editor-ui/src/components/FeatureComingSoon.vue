@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { IFakeDoor } from '@/Interface';
+import type { IFakeDoor } from '@/Interface';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
