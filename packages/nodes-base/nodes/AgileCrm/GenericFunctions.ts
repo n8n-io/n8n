@@ -33,7 +33,7 @@ export async function agileCrmApiRequest(
 			password: credentials.apiKey as string,
 		},
 		qs: query,
-		uri: uri ?? `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
+		uri: uri || `https://${credentials.subdomain}.agilecrm.com/dev/${endpoint}`,
 		json: true,
 	};
 
@@ -113,7 +113,7 @@ export async function agileCrmApiRequestUpdate(
 			username: credentials.email as string,
 			password: credentials.apiKey as string,
 		},
-		uri: uri ?? baseUri,
+		uri: uri || baseUri,
 		json: true,
 	};
 

@@ -22,7 +22,7 @@ export async function contentfulApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
+		uri: uri || `https://${isPreview ? 'preview' : 'cdn'}.contentful.com${resource}`,
 		json: true,
 	};
 

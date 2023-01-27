@@ -41,7 +41,7 @@ export async function zendeskApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? getUri(resource, credentials.subdomain),
+		uri: uri || getUri(resource, credentials.subdomain),
 		json: true,
 		qsStringifyOptions: {
 			arrayFormat: 'brackets',

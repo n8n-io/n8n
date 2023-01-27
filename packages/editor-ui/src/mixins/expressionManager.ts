@@ -1,6 +1,6 @@
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
-import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
+import { ensureSyntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
@@ -9,7 +9,7 @@ import { EXPRESSION_EDITOR_PARSER_TIMEOUT } from '@/constants';
 import type { PropType } from 'vue';
 import type { EditorView } from '@codemirror/view';
 import type { TargetItem } from '@/Interface';
-import type { Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
+import type { Html, Plaintext, RawSegment, Resolvable, Segment } from '@/types/expressions';
 
 export const expressionManager = mixins(workflowHelpers).extend({
 	props: {
@@ -54,6 +54,10 @@ export const expressionManager = mixins(workflowHelpers).extend({
 
 		plaintextSegments(): Plaintext[] {
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+		},
+
+		htmlSegments(): Html[] {
+			return this.segments.filter((s): s is Html => s.kind !== 'resolvable');
 		},
 
 		segments(): Segment[] {

@@ -88,7 +88,9 @@ export function executeErrorWorkflow(
 
 	let pastExecutionUrl: string | undefined;
 	if (executionId !== undefined) {
-		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}execution/${executionId}`;
+		pastExecutionUrl = `${WebhookHelpers.getWebhookBaseUrl()}workflow/${
+			workflowData.id
+		}/executions/${executionId}`;
 	}
 
 	if (fullRunData.data.resultData.error !== undefined) {
@@ -1011,7 +1013,12 @@ async function executeWorkflow(
 
 	await externalHooks.run('workflow.postExecute', [data, workflowData, executionId]);
 
-	void InternalHooksManager.getInstance().onWorkflowBeforeExecute(executionId || '', runData);
+	void InternalHooksManager.getInstance().onWorkflowPostExecute(
+		executionId,
+		workflowData,
+		data,
+		additionalData.userId,
+	);
 
 	if (data.finished === true) {
 		// Workflow did finish successfully

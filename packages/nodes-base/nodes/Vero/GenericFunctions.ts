@@ -22,7 +22,7 @@ export async function veroApiRequest(
 			auth_token: credentials.authToken,
 			...body,
 		},
-		uri: uri ?? `https://api.getvero.com/api/v2${resource}`,
+		uri: uri || `https://api.getvero.com/api/v2${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

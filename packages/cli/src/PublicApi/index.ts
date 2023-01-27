@@ -3,6 +3,9 @@ import express, { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 
+import validator from 'validator';
+import { middleware as openapiValidatorMiddleware } from 'express-openapi-validator';
+import YAML from 'yamljs';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import type { OpenAPIV3 } from 'openapi-types';
 import type { JsonObject } from 'swagger-ui-express';
@@ -16,11 +19,9 @@ async function createApiRouter(
 	version: string,
 	openApiSpecPath: string,
 	handlersDirectory: string,
-	swaggerThemeCss: string,
 	publicApiEndpoint: string,
 ): Promise<Router> {
 	const n8nPath = config.getEnv('path');
-	const YAML = await import('yamljs');
 	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
@@ -33,6 +34,8 @@ async function createApiRouter(
 
 	if (!config.getEnv('publicApi.swaggerUi.disabled')) {
 		const { serveFiles, setup } = await import('swagger-ui-express');
+		const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
+		const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
 
 		apiController.use(
 			`/${publicApiEndpoint}/${version}/docs`,
@@ -45,12 +48,10 @@ async function createApiRouter(
 		);
 	}
 
-	const { default: validator } = await import('validator');
-	const { middleware } = await import('express-openapi-validator');
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
-		middleware({
+		openapiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
@@ -129,15 +130,13 @@ async function createApiRouter(
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
-	const swaggerThemePath = path.join(__dirname, 'swaggerTheme.css');
 	const folders = await fs.readdir(__dirname);
-	const css = (await fs.readFile(swaggerThemePath)).toString();
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
 
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
-			return createApiRouter(version, openApiPath, __dirname, css, publicApiEndpoint);
+			return createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);
 

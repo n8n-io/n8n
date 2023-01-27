@@ -72,7 +72,7 @@ export class UserManagementMailer {
 	}
 
 	async passwordReset(passwordResetData: PasswordResetData): Promise<SendEmailResult> {
-		const template = await getTemplate('passwordReset');
+		const template = await getTemplate('passwordReset', 'passwordReset.html');
 		const result = await this.mailer?.sendMail({
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',

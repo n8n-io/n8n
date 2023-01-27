@@ -27,7 +27,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `https://stackby.com/api/betav1${endpoint}`,
+		uri: uri || `https://stackby.com/api/betav1${endpoint}`,
 		json: true,
 	};
 

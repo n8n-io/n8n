@@ -29,7 +29,7 @@ export async function workableApiRequest(
 		method,
 		qs,
 		body,
-		uri: uri ?? `https://${credentials.subdomain}.workable.com/spi/v3${resource}`,
+		uri: uri || `https://${credentials.subdomain}.workable.com/spi/v3${resource}`,
 		json: true,
 	};
 	options = Object.assign({}, options, option);

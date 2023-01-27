@@ -32,7 +32,15 @@
 		"Map",
 		"Format",
 		"Nested",
-		"Iterate"
+		"Iterate",
+		"Summarise",
+		"Summarize",
+		"Group",
+		"Pivot",
+		"Sum",
+		"Count",
+		"Min",
+		"Max"
 	],
 	"subcategories": {
 		"Core Nodes": ["Helpers", "Data Transformation"]

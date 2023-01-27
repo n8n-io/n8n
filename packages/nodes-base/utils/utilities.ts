@@ -1,3 +1,7 @@
+import { IDisplayOptions, INodeProperties } from 'n8n-workflow';
+
+import { merge } from 'lodash';
+
 /**
  * Creates an array of elements split into groups the length of `size`.
  * If `array` can't be split evenly, the final chunk will be the remaining
@@ -54,4 +58,16 @@ export function flatten(nestedArray: any[][]) {
 	})(nestedArray);
 
 	return result;
+}
+
+export function updateDisplayOptions(
+	displayOptions: IDisplayOptions,
+	properties: INodeProperties[],
+) {
+	return properties.map((nodeProperty) => {
+		return {
+			...nodeProperty,
+			displayOptions: merge({}, nodeProperty.displayOptions, displayOptions),
+		};
+	});
 }

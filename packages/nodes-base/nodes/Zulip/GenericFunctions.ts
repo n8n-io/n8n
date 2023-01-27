@@ -38,7 +38,7 @@ export async function zulipApiRequest(
 		method,
 		form: body,
 		qs: query,
-		uri: uri ?? `${endpoint}${resource}`,
+		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
 	if (!Object.keys(body).length) {

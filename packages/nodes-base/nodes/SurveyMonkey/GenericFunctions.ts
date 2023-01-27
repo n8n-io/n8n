@@ -31,7 +31,7 @@ export async function surveyMonkeyApiRequest(
 		method,
 		body,
 		qs: query,
-		uri: uri ?? `${endpoint}${resource}`,
+		uri: uri || `${endpoint}${resource}`,
 		json: true,
 	};
 

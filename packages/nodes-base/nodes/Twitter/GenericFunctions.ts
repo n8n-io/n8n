@@ -30,7 +30,7 @@ export async function twitterApiRequest(
 		method,
 		body,
 		qs,
-		url: uri ?? `https://api.twitter.com/1.1${resource}`,
+		url: uri || `https://api.twitter.com/1.1${resource}`,
 		json: true,
 	};
 	try {

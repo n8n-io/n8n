@@ -17,7 +17,7 @@ export async function zoomApiRequest(
 
 	let options: OptionsWithUri = {
 		method,
-		headers: headers ?? {
+		headers: headers || {
 			'Content-Type': 'application/json',
 		},
 		body,
