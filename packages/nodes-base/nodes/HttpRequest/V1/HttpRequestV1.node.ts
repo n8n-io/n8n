@@ -1,19 +1,18 @@
 // eslint-disable-next-line n8n-nodes-base/node-filename-against-convention
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
-	sleep,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
-import { OptionsWithUri } from 'request';
-import { IAuthDataSanitizeKeys, replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
+import type { OptionsWithUri } from 'request';
+import type { IAuthDataSanitizeKeys } from '../GenericFunctions';
+import { replaceNullValues, sanitizeUiMessage } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;

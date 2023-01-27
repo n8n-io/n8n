@@ -1,6 +1,7 @@
-import { Request, sign } from 'aws4';
+import type { Request } from 'aws4';
+import { sign } from 'aws4';
 
-import {
+import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,

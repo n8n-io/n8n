@@ -1,15 +1,14 @@
-import { IExecuteFunctions } from 'n8n-core';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	encodeURIComponentOnce,
@@ -23,7 +22,7 @@ import { eventFields, eventOperations } from './EventDescription';
 
 import { calendarFields, calendarOperations } from './CalendarDescription';
 
-import { IEvent } from './EventInterface';
+import type { IEvent } from './EventInterface';
 
 import moment from 'moment-timezone';
 

@@ -1,14 +1,15 @@
-import { NodeVM, NodeVMOptions } from 'vm2';
-import { IExecuteFunctions } from 'n8n-core';
+import type { NodeVMOptions } from 'vm2';
+import { NodeVM } from 'vm2';
+import type { IExecuteFunctions } from 'n8n-core';
 
-import {
+import type {
 	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	NodeOperationError,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
 

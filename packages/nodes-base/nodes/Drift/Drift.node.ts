@@ -1,8 +1,13 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-core';
+import type {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 import { driftApiRequest } from './GenericFunctions';
 import { contactFields, contactOperations } from './ContactDescription';
-import { IContact } from './ContactInterface';
+import type { IContact } from './ContactInterface';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {

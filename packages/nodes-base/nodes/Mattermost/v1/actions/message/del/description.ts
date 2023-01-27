@@ -1,4 +1,4 @@
-import { MessageProperties } from '../../Interfaces';
+import type { MessageProperties } from '../../Interfaces';
 
 export const messageDeleteDescription: MessageProperties = [
 	{
