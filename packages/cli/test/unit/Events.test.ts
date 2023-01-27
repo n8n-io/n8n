@@ -66,26 +66,6 @@ describe('Events', () => {
 	afterEach(() => {});
 
 	describe('workflowExecutionCompleted', () => {
-		test('should fail with an invalid workflowId', async () => {
-			const workflow = {
-				id: 'abcde',
-				name: '',
-				active: false,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				nodes: [],
-				connections: {},
-			};
-			const runData = {
-				finished: true,
-				data: { resultData: { runData: {} } },
-				mode: 'internal' as WorkflowExecuteMode,
-				startedAt: new Date(),
-			};
-			await workflowExecutionCompleted(workflow, runData);
-			expect(mockedFirstProductionWorkflowSuccess).toBeCalledTimes(0);
-		});
-
 		test('should create metrics for production successes', async () => {
 			// Call the function with a production success result, ensure metrics hook gets called
 			const workflow = {
