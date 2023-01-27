@@ -8,11 +8,8 @@ import compression from 'compression';
 import parseUrl from 'parseurl';
 import type { RedisOptions } from 'ioredis';
 
-import {
-	ErrorReporterProxy as ErrorReporter,
-	LoggerProxy as Logger,
-	WebhookHttpMethod,
-} from 'n8n-workflow';
+import type { WebhookHttpMethod } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import config from '@/config';
 import { N8N_VERSION, inDevelopment } from '@/constants';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';

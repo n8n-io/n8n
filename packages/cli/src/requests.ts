@@ -1,5 +1,5 @@
-import express from 'express';
-import {
+import type express from 'express';
+import type {
 	IConnections,
 	ICredentialDataDecryptedObject,
 	ICredentialNodeAccess,
@@ -13,7 +13,7 @@ import {
 import type { PublicUser, IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
 import type { Role } from '@db/entities/Role';
 import type { User } from '@db/entities/User';
-import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 
 export type AuthlessRequest<
 	RouteParams = {},
