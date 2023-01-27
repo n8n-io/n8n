@@ -195,6 +195,11 @@ const config = (module.exports = {
 		'@typescript-eslint/consistent-type-assertions': 'error',
 
 		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/consistent-type-imports.md
+		 */
+		'@typescript-eslint/consistent-type-imports': 'error',
+
+		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/member-delimiter-style.md
 		 */
 		'@typescript-eslint/member-delimiter-style': [
@@ -410,6 +415,20 @@ const config = (module.exports = {
 			files: ['**/*.d.ts'],
 			rules: {
 				'@typescript-eslint/no-unused-vars': 'off',
+			},
+		},
+		// @TODO Remove these exceptions
+		{
+			files: [
+				'./packages/cli/**/*.ts',
+				'./packages/workflow/**/*.ts',
+				'./packages/core/**/*.ts',
+				'./packages/node-dev/**/*.ts',
+				'./packages/editor-ui/**/*.ts',
+				'./packages/design-system/**/*.ts',
+			],
+			rules: {
+				'@typescript-eslint/consistent-type-imports': 'off',
 			},
 		},
 	],
