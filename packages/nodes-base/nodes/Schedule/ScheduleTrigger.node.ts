@@ -441,9 +441,7 @@ export class ScheduleTrigger implements INodeType {
 			if (!recurency.activated) {
 				this.emit([this.helpers.returnJsonArray([resultData])]);
 			} else {
-				const recurrencyResult = recurencyCheck(recurency, staticData.recurrencyRules, timezone);
-				staticData.recurrencyRules = recurrencyResult.recurrencyRules;
-				if (recurrencyResult.needToExecute) {
+				if (recurencyCheck(recurency, staticData.recurrencyRules, timezone)) {
 					this.emit([this.helpers.returnJsonArray([resultData])]);
 				}
 			}
