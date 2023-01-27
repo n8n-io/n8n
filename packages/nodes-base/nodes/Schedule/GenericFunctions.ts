@@ -1,11 +1,11 @@
-import { IRecurencyRule } from './SchedulerInterface';
+import { IRecurencyRule, IRecurrencyResult } from './SchedulerInterface';
 import moment from 'moment';
 
 export function recurencyCheck(
 	recurrency: IRecurencyRule,
 	recurrencyRules: number[],
 	timezone: string,
-): boolean {
+): IRecurrencyResult {
 	const recurrencyRuleIndex = recurrency.index;
 	const intervalSize = recurrency.intervalSize;
 	const typeInterval = recurrency.typeInterval;
@@ -24,7 +24,11 @@ export function recurencyCheck(
 			moment.tz(timezone).week() + 52 >= intervalSize + lastExecution // not first time, correct interval but year has passed
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
-			return true;
+			const result = {
+				needToExecute: true,
+				recurrencyRules,
+			} as IRecurrencyResult;
+			return result;
 		}
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'days') {
 		if (
@@ -33,7 +37,11 @@ export function recurencyCheck(
 			moment.tz(timezone).day() + 365 >= intervalSize + lastExecution
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).day();
-			return true;
+			const result = {
+				needToExecute: true,
+				recurrencyRules,
+			} as IRecurrencyResult;
+			return result;
 		}
 	} else if (intervalSize && recurrencyRuleIndex !== undefined && typeInterval === 'hours') {
 		if (
@@ -42,10 +50,22 @@ export function recurencyCheck(
 			moment.tz(timezone).hour() + 24 >= intervalSize + lastExecution
 		) {
 			recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).hour();
-			return true;
+			const result = {
+				needToExecute: true,
+				recurrencyRules,
+			} as IRecurrencyResult;
+			return result;
 		}
 	} else {
-		return true;
+		const result = {
+			needToExecute: true,
+			recurrencyRules,
+		} as IRecurrencyResult;
+		return result;
 	}
-	return false;
+	const result = {
+		needToExecute: false,
+		recurrencyRules,
+	} as IRecurrencyResult;
+	return result;
 }
