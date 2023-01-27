@@ -39,7 +39,15 @@
 			:buttonLabel="$locale.baseText('credentialEdit.credentialConfig.reconnect')"
 			:buttonTitle="$locale.baseText('credentialEdit.credentialConfig.reconnectOAuth2Credential')"
 			@click="$emit('oauth')"
-		/>
+		>
+			<template #button>
+				<p
+					v-text="`${$locale.baseText('credentialEdit.credentialConfig.reconnect')}:`"
+					:class="$style.googleReconnectLabel"
+				/>
+				<GoogleAuthButton v-if="isGoogleOAuthType" @click="$emit('oauth')" />
+			</template>
+		</banner>
 
 		<banner
 			v-show="testedSuccessfully && !showValidationWarning"
@@ -132,6 +140,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
+import GoogleAuthButton from './GoogleAuthButton.vue';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -140,6 +149,7 @@ export default mixins(restApi).extend({
 		CopyInput,
 		CredentialInputs,
 		OauthButton,
+		GoogleAuthButton,
 	},
 	props: {
 		credentialType: {
@@ -304,5 +314,8 @@ export default mixins(restApi).extend({
 	> * {
 		margin-bottom: var(--spacing-l);
 	}
+}
+.googleReconnectLabel {
+	margin-right: var(--spacing-3xs);
 }
 </style>

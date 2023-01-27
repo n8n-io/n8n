@@ -122,6 +122,38 @@ export async function dateTimeToEpochPreSendAction(
 	return requestOptions;
 }
 
+export async function highLevelApiRequest(
+	this:
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| IWebhookFunctions
+		| IPollFunctions
+		| IHookFunctions
+		| ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
+	let options: OptionsWithUri = {
+		method,
+		body,
+		qs,
+		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
+		json: true,
+	};
+	if (!Object.keys(body).length) {
+		delete options.body;
+	}
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+	options = Object.assign({}, options, option);
+	return this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
+}
+
 export async function opportunityUpdatePreSendAction(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
@@ -201,38 +233,6 @@ export async function highLevelApiPagination(
 	} while (returnAll && responseTotal > responseData.length);
 
 	return responseData;
-}
-
-export async function highLevelApiRequest(
-	this:
-		| IExecuteFunctions
-		| IExecuteSingleFunctions
-		| IWebhookFunctions
-		| IPollFunctions
-		| IHookFunctions
-		| ILoadOptionsFunctions,
-	method: string,
-	resource: string,
-	body: IDataObject = {},
-	qs: IDataObject = {},
-	uri?: string,
-	option: IDataObject = {},
-) {
-	let options: OptionsWithUri = {
-		method,
-		body,
-		qs,
-		uri: uri || `https://rest.gohighlevel.com/v1${resource}`,
-		json: true,
-	};
-	if (!Object.keys(body).length) {
-		delete options.body;
-	}
-	if (!Object.keys(qs).length) {
-		delete options.qs;
-	}
-	options = Object.assign({}, options, option);
-	return this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
 }
 
 export async function getPipelineStages(

@@ -50,6 +50,7 @@ import {
 	getExecutionData,
 	getFinishedExecutions,
 	getNewWorkflow,
+	getWorkflow,
 	getWorkflows,
 } from '@/api/workflows';
 import { useUIStore } from './ui';
@@ -227,6 +228,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				this.nodeMetadata[nodeName] && this.nodeMetadata[nodeName].parametersLastUpdatedAt;
 		},
 
+		isNodePristine(): (name: string) => boolean {
+			return (nodeName: string) =>
+				this.nodeMetadata[nodeName] === undefined || this.nodeMetadata[nodeName].pristine === true;
+		},
 		// Executions getters
 		getExecutionDataById(): (id: string) => IExecutionsSummary | undefined {
 			return (id: string): IExecutionsSummary | undefined =>
@@ -252,6 +257,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const workflows = await getWorkflows(rootStore.getRestApiContext);
 			this.setWorkflows(workflows);
 			return workflows;
+		},
+
+		async fetchWorkflow(id: string): Promise<IWorkflowDb> {
+			const rootStore = useRootStore();
+			const workflow = await getWorkflow(rootStore.getRestApiContext, id);
+			this.addWorkflow(workflow);
+			return workflow;
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
@@ -731,7 +743,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				// TODO: Check if there is an error or whatever that is supposed to be returned
 				return;
 			}
+
 			this.workflow.nodes.push(nodeData);
+			// Init node metadata
+			if (!this.nodeMetadata[nodeData.name]) {
+				Vue.set(this.nodeMetadata, nodeData.name, {});
+			}
 		},
 
 		removeNode(node: INodeUi): void {
@@ -821,6 +838,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (!this.nodeMetadata[node.name]) {
 				Vue.set(this.nodeMetadata, node.name, {});
 			}
+
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
 		},
 
@@ -959,6 +977,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					this.currentWorkflowExecutions.push(execution);
 				}
 			});
+		},
+		setNodePristine(nodeName: string, isPristine: boolean): void {
+			Vue.set(this.nodeMetadata[nodeName], 'pristine', isPristine);
 		},
 	},
 });

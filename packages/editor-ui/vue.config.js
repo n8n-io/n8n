@@ -6,10 +6,6 @@ module.exports = {
 		config.resolve.symlinks(false);
 		// config.plugins.delete("prefetch"); // enable when language package grows
 	},
-	// transpileDependencies: [
-	//   // 'node_modules/quill'
-	//   /\/node_modules\/quill\//
-	// ]
 	pluginOptions: {
 		webpackBundleAnalyzer: {
 			openAnalyzer: false,
@@ -50,5 +46,4 @@ module.exports = {
 			},
 		},
 	},
-	publicPath: process.env.VUE_APP_PUBLIC_PATH ?? '/',
 };

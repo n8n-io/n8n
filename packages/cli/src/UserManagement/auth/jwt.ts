@@ -8,6 +8,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { JwtPayload, JwtToken } from '../Interfaces';
 import { User } from '@db/entities/User';
 import config from '@/config';
+import * as ResponseHelper from '@/ResponseHelper';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;
@@ -27,6 +28,7 @@ export function issueJWT(user: User): JwtToken {
 
 	const signedToken = jwt.sign(payload, config.getEnv('userManagement.jwtSecret'), {
 		expiresIn: expiresIn / 1000 /* in seconds */,
+		algorithm: 'HS256',
 	});
 
 	return {
@@ -36,7 +38,8 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOne(jwtPayload.id, {
+	const user = await Db.collections.User.findOne({
+		where: { id: jwtPayload.id },
 		relations: ['globalRole'],
 	});
 
@@ -45,6 +48,12 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 		passwordHash = createHash('sha256')
 			.update(user.password.slice(user.password.length / 2))
 			.digest('hex');
+	}
+
+	// currently only LDAP users during synchronization
+	// can be set to disabled
+	if (user?.disabled) {
+		throw new ResponseHelper.AuthError('Unauthorized');
 	}
 
 	if (!user || jwtPayload.password !== passwordHash || user.email !== jwtPayload.email) {
@@ -56,7 +65,9 @@ export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
 }
 
 export async function resolveJwt(token: string): Promise<User> {
-	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret')) as JwtPayload;
+	const jwtPayload = jwt.verify(token, config.getEnv('userManagement.jwtSecret'), {
+		algorithms: ['HS256'],
+	}) as JwtPayload;
 	return resolveJwtContent(jwtPayload);
 }
 

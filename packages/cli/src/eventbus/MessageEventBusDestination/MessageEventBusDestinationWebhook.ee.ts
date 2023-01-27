@@ -192,8 +192,6 @@ export class MessageEventBusDestinationWebhook
 				} catch (_) {
 					console.log('JSON parameter need to be an valid JSON');
 				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
 			}
 		}
@@ -212,8 +210,6 @@ export class MessageEventBusDestinationWebhook
 				} catch (_) {
 					console.log('JSON parameter need to be an valid JSON');
 				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
 			}
 		}
@@ -222,7 +218,6 @@ export class MessageEventBusDestinationWebhook
 		if (this.axiosRequestOptions.headers === undefined) {
 			this.axiosRequestOptions.headers = {};
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.axiosRequestOptions.headers['Content-Type'] = 'application/json';
 	}
 
@@ -336,10 +331,8 @@ export class MessageEventBusDestinationWebhook
 				password: httpBasicAuth.password as string,
 			};
 		} else if (httpHeaderAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
 		} else if (httpQueryAuth) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
 		} else if (httpDigestAuth) {
 			this.axiosRequestOptions.auth = {
@@ -353,13 +346,13 @@ export class MessageEventBusDestinationWebhook
 			if (requestResponse) {
 				if (this.responseCodeMustMatch) {
 					if (requestResponse.status === this.expectedStatusCode) {
-						await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+						eventBus.confirmSent(msg, { id: this.id, name: this.label });
 						sendResult = true;
 					} else {
 						sendResult = false;
 					}
 				} else {
-					await eventBus.confirmSent(msg, { id: this.id, name: this.label });
+					eventBus.confirmSent(msg, { id: this.id, name: this.label });
 					sendResult = true;
 				}
 			}

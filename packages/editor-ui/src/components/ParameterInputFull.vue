@@ -5,7 +5,7 @@
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
-		size="small"
+		:size="label.size"
 		color="text-dark"
 	>
 		<template #options>
@@ -53,6 +53,7 @@
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
 							:hint="hint"
+							:hide-issues="hideIssues"
 							@valueChanged="valueChanged"
 							@textInput="onTextInput"
 							@focus="onFocus"
@@ -84,7 +85,7 @@ import {
 	isValueExpression,
 } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
+import { INodeParameters, INodeProperties, INodePropertyMode, IParameterLabel } from 'n8n-workflow';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
@@ -119,6 +120,10 @@ export default mixins(showMessage).extend({
 			type: Boolean,
 			default: false,
 		},
+		hideIssues: {
+			type: Boolean,
+			default: false,
+		},
 		parameter: {
 			type: Object as PropType<INodeProperties>,
 		},
@@ -127,6 +132,12 @@ export default mixins(showMessage).extend({
 		},
 		value: {
 			type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
+		},
+		label: {
+			type: Object as PropType<IParameterLabel>,
+			default: () => ({
+				size: 'small',
+			}),
 		},
 	},
 	created() {
@@ -197,6 +208,7 @@ export default mixins(showMessage).extend({
 			if (!this.parameter.noDataExpression) {
 				this.ndvStore.setMappableNDVInputFocus('');
 			}
+			this.$emit('blur');
 		},
 		onMenuExpanded(expanded: boolean) {
 			this.menuExpanded = expanded;
