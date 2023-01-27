@@ -24,7 +24,7 @@ export const eventNamesAudit = [
 	'n8n.audit.workflow.deleted',
 	'n8n.audit.workflow.updated',
 ] as const;
-export type EventNamesAuditType = typeof eventNamesAudit[number];
+export type EventNamesAuditType = (typeof eventNamesAudit)[number];
 
 // --------------------------------------
 // EventMessage class for Audit events

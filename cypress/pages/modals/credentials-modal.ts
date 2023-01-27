@@ -23,7 +23,8 @@ export class CredentialsModal extends BasePage {
 		closeButton: () => this.getters.editCredentialModal().find('.el-dialog__close').first(),
 		credentialsEditModal: () => cy.getByTestId('credential-edit-dialog'),
 		credentialsAuthTypeSelector: () => cy.getByTestId('node-auth-type-selector'),
-		credentialAuthTypeRadioButtons: () => this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
+		credentialAuthTypeRadioButtons: () =>
+			this.getters.credentialsAuthTypeSelector().find('label[role=radio]'),
 		credentialInputs: () => cy.getByTestId('credential-connection-parameter'),
 	};
 	actions = {
@@ -49,9 +50,12 @@ export class CredentialsModal extends BasePage {
 		fillCredentialsForm: () => {
 			this.getters.credentialsEditModal().should('be.visible');
 			this.getters.credentialInputs().should('have.length.greaterThan', 0);
-			this.getters.credentialInputs().find('input[type=text], input[type=password]').each(($el) => {
-				cy.wrap($el).type('test');
-			});
+			this.getters
+				.credentialInputs()
+				.find('input[type=text], input[type=password]')
+				.each(($el) => {
+					cy.wrap($el).type('test');
+				});
 			this.getters.saveButton().click();
 			this.getters.closeButton().click();
 		},
@@ -59,6 +63,6 @@ export class CredentialsModal extends BasePage {
 			this.getters.nameInput().type('{selectall}');
 			this.getters.nameInput().type(newName);
 			this.getters.nameInput().type('{enter}');
-		}
+		},
 	};
 }

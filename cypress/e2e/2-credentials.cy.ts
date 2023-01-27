@@ -1,7 +1,21 @@
 import { HTTP_REQUEST_NODE_TYPE } from './../../packages/editor-ui/src/constants';
-import { NEW_NOTION_ACCOUNT_NAME, NOTION_NODE_NAME, PIPEDRIVE_NODE_NAME, HTTP_REQUEST_NODE_NAME, NEW_QUERY_AUTH_ACCOUNT_NAME } from './../constants';
+import {
+	NEW_NOTION_ACCOUNT_NAME,
+	NOTION_NODE_NAME,
+	PIPEDRIVE_NODE_NAME,
+	HTTP_REQUEST_NODE_NAME,
+	NEW_QUERY_AUTH_ACCOUNT_NAME,
+} from './../constants';
 import { visit } from 'recast';
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD, GMAIL_NODE_NAME, NEW_GOOGLE_ACCOUNT_NAME, NEW_TRELLO_ACCOUNT_NAME, SCHEDULE_TRIGGER_NODE_NAME, TRELLO_NODE_NAME } from '../constants';
+import {
+	DEFAULT_USER_EMAIL,
+	DEFAULT_USER_PASSWORD,
+	GMAIL_NODE_NAME,
+	NEW_GOOGLE_ACCOUNT_NAME,
+	NEW_TRELLO_ACCOUNT_NAME,
+	SCHEDULE_TRIGGER_NODE_NAME,
+	TRELLO_NODE_NAME,
+} from '../constants';
 import { randFirstName, randLastName } from '@ngneat/falso';
 import { CredentialsPage, CredentialsModal, WorkflowPage, NDV } from '../pages';
 
@@ -106,7 +120,7 @@ describe('Credentials', () => {
 		credentialsModal.actions.fillCredentialsForm();
 		cy.get('.el-message-box').find('button').contains('Close').click();
 		workflowPage.getters.nodeCredentialsSelect().should('contain', NEW_GOOGLE_ACCOUNT_NAME);
-	})
+	});
 
 	it('should show multiple credential types in the same dropdown', () => {
 		workflowPage.actions.visit();
@@ -226,7 +240,10 @@ describe('Credentials', () => {
 		nodeDetailsView.getters.parameterInput('authentication').find('li').last().click();
 		nodeDetailsView.getters.parameterInput('genericAuthType').should('exist');
 		nodeDetailsView.getters.parameterInput('genericAuthType').click();
-		nodeDetailsView.getters.parameterInput('genericAuthType').find('li').should('have.length.greaterThan', 0);
+		nodeDetailsView.getters
+			.parameterInput('genericAuthType')
+			.find('li')
+			.should('have.length.greaterThan', 0);
 		nodeDetailsView.getters.parameterInput('genericAuthType').find('li').last().click();
 
 		workflowPage.getters.nodeCredentialsSelect().should('exist');
