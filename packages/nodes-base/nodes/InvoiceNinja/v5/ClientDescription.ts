@@ -1,0 +1,847 @@
+import { INodeProperties } from 'n8n-workflow';
+
+export const clientOperations: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a client',
+				action: 'Get a client',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many clients',
+				action: 'Get many clients',
+			},
+			{
+				name: 'Create',
+				value: 'create',
+				description: 'Create a new client',
+				action: 'Create a client',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update an existing client',
+				action: 'Update a client',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a client',
+				action: 'Delete a client',
+			},
+		],
+		default: 'create',
+	},
+];
+
+export const clientFields: INodeProperties[] = [
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:get                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['get'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['get'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Invoices',
+						value: 'invoices',
+					},
+				],
+				default: 'invoices',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                  client:getAll                             */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['getAll'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Include',
+				name: 'include',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Invoices',
+						value: 'invoices',
+					},
+				],
+				default: 'invoices',
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:create                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['create'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Display Name',
+				name: 'displayName',
+				type: 'string',
+				default: '',
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'ID Number',
+				name: 'idNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'VAT Number',
+				name: 'vatNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Address',
+		name: 'addressUi',
+		placeholder: 'Add Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'AddressValue',
+				displayName: 'Address',
+				values: [
+					{
+						displayName: 'Address Line 1',
+						name: 'address1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Address Line 2',
+						name: 'address2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodesV5',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Contacts',
+		name: 'contactsUi',
+		placeholder: 'Add Contact',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'contactValues',
+				displayName: 'Contact',
+				values: [
+					{
+						displayName: 'First Name',
+						name: 'firstName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'lastName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+					},
+					{
+						displayName: 'Phone',
+						name: 'phone',
+						type: 'string',
+						required: false,
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						required: false,
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						required: false,
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						required: false,
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						required: false,
+						default: '',
+					},
+					{
+						displayName: 'Send E-Mails',
+						name: 'sendEmail',
+						type: 'boolean',
+						required: false,
+						default: true,
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Shipping Address',
+		name: 'shippingAddressUi',
+		placeholder: 'Add Shipping Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['create'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'shippingAddressValue',
+				displayName: 'Shipping Address',
+				values: [
+					{
+						displayName: 'Address Line 1',
+						name: 'address1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Address Line 2',
+						name: 'address2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodesV5',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:update                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				operation: ['update'],
+				resource: ['client'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Number',
+				name: 'number',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Display Name',
+				name: 'displayName',
+				type: 'string',
+				default: '',
+			},
+            {
+				displayName: 'User (Origin)',
+				name: 'userId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+            {
+				displayName: 'User (Assigned)',
+				name: 'assignedUserId',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getUsersV5',
+				},
+				default: '',
+			},
+			{
+				displayName: 'ID Number',
+				name: 'idNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'VAT Number',
+				name: 'vatNumber',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Phone',
+				name: 'phone',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Website',
+				name: 'website',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Private Notes',
+				name: 'privateNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Public Notes',
+				name: 'publicNotes',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 1',
+				name: 'customValue1',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 2',
+				name: 'customValue2',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 3',
+				name: 'customValue3',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+			{
+				displayName: 'Custom Value 4',
+				name: 'customValue4',
+				type: 'string',
+				typeOptions: {},
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Address',
+		name: 'addressUi',
+		placeholder: 'Add Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'AddressValue',
+				displayName: 'Address',
+				values: [
+					{
+						displayName: 'Address Line 1',
+						name: 'address1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Address Line 2',
+						name: 'address2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodesV5',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Contacts',
+		name: 'contactsUi',
+		placeholder: 'Add Contact',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: true,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'contactValues',
+				displayName: 'Contact',
+				values: [
+					{
+						displayName: 'First Name',
+						name: 'firstName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Last Name',
+						name: 'lastName',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Email',
+						name: 'email',
+						type: 'string',
+						placeholder: 'name@email.com',
+						default: '',
+					},
+					{
+						displayName: 'Phone',
+						name: 'phone',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 1',
+						name: 'customValue1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 2',
+						name: 'customValue2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 3',
+						name: 'customValue3',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Custom Value 4',
+						name: 'customValue4',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Send E-Mails',
+						name: 'sendEmail',
+						type: 'boolean',
+						default: true,
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Shipping Address',
+		name: 'shippingAddressUi',
+		placeholder: 'Add Shipping Address',
+		type: 'fixedCollection',
+		typeOptions: {
+			multipleValues: false,
+		},
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['update'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				name: 'shippingAddressValue',
+				displayName: 'Shipping Address',
+				values: [
+					{
+						displayName: 'Address Line 1',
+						name: 'address1',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Address Line 2',
+						name: 'address2',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'City',
+						name: 'city',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Postal Code',
+						name: 'postalCode',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Country Code Name or ID',
+						name: 'countryId',
+						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+						typeOptions: {
+							loadOptionsMethod: 'getCountryCodesV5',
+						},
+						default: '',
+					},
+				],
+			},
+		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 client:delete                              */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Client ID',
+		name: 'clientId',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				apiVersion: ['v5'],
+				resource: ['client'],
+				operation: ['delete'],
+			},
+		},
+	},
+];

@@ -11,6 +11,14 @@ import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-w
 
 import { get } from 'lodash';
 
+export const eventID: { [key: string]: string } = {
+	create_client: '1',
+	create_invoice: '2',
+	create_quote: '3',
+	create_payment: '4',
+	create_vendor: '5',
+};
+
 export async function invoiceNinjaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
@@ -29,25 +37,6 @@ export async function invoiceNinjaApiRequest(
 
 	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
 	const baseUrl = credentials.url || defaultUrl;
-
-	// CREATE / UPDATE - Parameter: jsonBody - for more parameters to send via the api
-	let jsonBody;
-	try { 
-		jsonBody = this.getNodeParameter('jsonBody', 0) as object || {};
-	} catch(err) {
-
-	}
-	if (jsonBody) try {
-		if (typeof jsonBody == 'string') jsonBody = JSON.parse(jsonBody);
-		if (Array.isArray(jsonBody) || typeof jsonBody != 'object') throw new Error('Invalid Input');
-		body = {
-			...body,
-			...jsonBody,
-		}
-	} catch(err) {
-		throw new Error('Could not parse Parameter: jsonBody')
-	}
-	
 
 	const options: OptionsWithUri = {
 		method,
