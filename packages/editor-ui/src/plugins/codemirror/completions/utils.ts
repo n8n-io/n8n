@@ -2,8 +2,8 @@ import { NODE_TYPES_EXCLUDED_FROM_AUTOCOMPLETION } from '@/components/CodeNodeEd
 import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/constants';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { resolveParameter } from '@/mixins/workflowHelpers';
-import { CompletionContext } from '@codemirror/autocomplete';
 import { useNDVStore } from '@/stores/ndv';
+import type { Completion, CompletionContext } from '@codemirror/autocomplete';
 
 /**
  * Split user input into base (to resolve) and tail (to filter).
@@ -103,5 +103,16 @@ export function autocompletableNodeNames() {
 		.map((node) => node.name);
 }
 
-export const noParensAfterCursor = (context: CompletionContext) =>
-	context.state.sliceDoc(context.pos, context.pos + 2) !== '()';
+/**
+ * Remove excess parens from an option label when the cursor is followed
+ * by parens already, e.g. `$json.myStr.|()` -> `isNumeric`
+ */
+export const stripExcessParens = (context: CompletionContext) => (option: Completion) => {
+	const followedByParens = context.state.sliceDoc(context.pos, context.pos + 2) === '()';
+
+	if (option.label.endsWith('()') && followedByParens) {
+		option.label = option.label.slice(0, -2);
+	}
+
+	return option;
+};

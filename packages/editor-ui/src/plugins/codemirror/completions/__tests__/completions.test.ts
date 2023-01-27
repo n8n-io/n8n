@@ -19,10 +19,7 @@ beforeEach(() => {
 	setActivePinia(createTestingPinia());
 	vi.spyOn(utils, 'receivesNoBinaryData').mockReturnValue(true); // hide $binary
 	vi.spyOn(utils, 'isSplitInBatchesAbsent').mockReturnValue(false); // show context
-	vi.spyOn(utils, 'noParensAfterCursor').mockReturnValue(true); // show context
 });
-
-// @TODO: Fix tests
 
 describe('Top-level completions', () => {
 	test('should return blank completions for: {{ | }}', () => {
@@ -80,18 +77,21 @@ describe('Luxon method completions', () => {
 describe('Resolution-based completions', () => {
 	describe('literals', () => {
 		test('should return completions for string literal', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce('abc');
 
 			expect(completions('{{ "abc".| }}')).toHaveLength(extensions('string').length);
 		});
 
 		test('should return completions for number literal', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce(123);
 
 			expect(completions('{{ (123).| }}')).toHaveLength(extensions('number').length);
 		});
 
 		test('should return completions for array literal', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValueOnce([1, 2, 3]);
 
 			expect(completions('{{ [1, 2, 3].| }}')).toHaveLength(extensions('array').length);
@@ -134,6 +134,7 @@ describe('Resolution-based completions', () => {
 		);
 
 		test('should return no completions for: {{ $input.all().| }}', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue([mock.item]);
 
 			expect(completions('{{ $input.all().| }}')).toBeNull();
@@ -153,18 +154,21 @@ describe('Resolution-based completions', () => {
 		});
 
 		test('should return completions for: {{ $input.item.json.str.| }}', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.str);
 
 			expect(completions('{{ $input.item.json.str.| }}')).toHaveLength(extensions('string').length);
 		});
 
 		test('should return completions for: {{ $input.item.json.num.| }}', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.num);
 
 			expect(completions('{{ $input.item.json.num.| }}')).toHaveLength(extensions('number').length);
 		});
 
 		test('should return completions for: {{ $input.item.json.arr.| }}', () => {
+			// @ts-ignore
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockReturnValue(mock.item.json.arr);
 
 			expect(completions('{{ $input.item.json.arr.| }}')).toHaveLength(extensions('array').length);

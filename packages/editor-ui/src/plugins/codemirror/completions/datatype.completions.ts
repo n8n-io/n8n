@@ -10,7 +10,7 @@ import {
 	longestCommonPrefix,
 	splitBaseTail,
 	isPseudoParam,
-	noParensAfterCursor,
+	stripExcessParens,
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { Resolved } from './types';
@@ -66,7 +66,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	let options: Completion[] = [];
 
 	try {
-		options = datatypeOptions(resolved, base, context);
+		options = datatypeOptions(resolved, base).map(stripExcessParens(context));
 	} catch (_) {
 		return null;
 	}
@@ -89,19 +89,23 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	};
 }
 
-function datatypeOptions(resolved: Resolved, toResolve: string, context: CompletionContext) {
+function datatypeOptions(
+	resolved: Resolved,
+	toResolve: string,
+	{ noParens } = { noParens: false },
+) {
 	if (resolved === null) return [];
 
-	if (typeof resolved === 'number') return extensions('number', context);
+	if (typeof resolved === 'number') return extensions('number');
 
-	if (typeof resolved === 'string') return extensions('string', context);
+	if (typeof resolved === 'string') return extensions('string');
 
-	if (resolved instanceof Date) return extensions('date', context);
+	if (resolved instanceof Date) return extensions('date');
 
 	if (Array.isArray(resolved)) {
 		if (toResolve.endsWith('all()')) return [];
 
-		const arrayExtensions = extensions('array', context);
+		const arrayExtensions = extensions('array');
 
 		if (resolved.length > 0 && resolved.some((i) => typeof i !== 'number')) {
 			const NUMBER_ONLY_ARRAY_EXTENSIONS = new Set(['max()', 'min()', 'sum()', 'average()']);
@@ -131,8 +135,6 @@ function datatypeOptions(resolved: Resolved, toResolve: string, context: Complet
 		if (toResolve === 'Math') {
 			rawKeys = Object.keys(Object.getOwnPropertyDescriptors(Math));
 		}
-
-		const noParens = noParensAfterCursor(context);
 
 		const keys = bringToStart(rawKeys, BOOST)
 			.filter((key) => !SKIP.has(key) && isAllowedInDotNotation(key) && !isPseudoParam(key))
@@ -165,33 +167,27 @@ function datatypeOptions(resolved: Resolved, toResolve: string, context: Complet
 
 		if (skipObjectExtensions) return keys;
 
-		return [...keys, ...extensions('object', context)];
+		return [...keys, ...extensions('object')];
 	}
 
 	return [];
 }
 
-export const extensions = (
-	typeName: 'number' | 'string' | 'date' | 'array' | 'object',
-	context: CompletionContext,
-) => {
+export const extensions = (typeName: 'number' | 'string' | 'date' | 'array' | 'object') => {
 	const extensions = ExpressionExtensions.find((ee) => ee.typeName.toLowerCase() === typeName);
 
 	if (!extensions) return [];
-
-	const noParens = noParensAfterCursor(context);
 
 	return Object.entries(extensions.functions)
 		.filter(([_, fn]) => fn.length === 1) // @TODO: Remove in next phase
 		.sort((a, b) => a[0].localeCompare(b[0]))
 		.map(([name, fn]) => {
 			const option: Completion = {
-				label: noParens ? name + '()' : name,
+				label: name + '()',
 				type: 'function',
 			};
 
 			option.info = () => {
-				// @TODO: Tooltip will be refactored completely in next phase
 				const tooltipContainer = document.createElement('div');
 
 				if (!fn.doc?.description) return null;

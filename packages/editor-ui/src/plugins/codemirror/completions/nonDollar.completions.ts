@@ -3,7 +3,7 @@ import type { CompletionContext, CompletionResult } from '@codemirror/autocomple
 import { prefixMatch } from './utils';
 
 /**
- * Completions offered at the base position for any char other than `$`.
+ * Completions offered at the initial position for any char other than `$`.
  *
  * Currently only `D...` for `DateTime` and `M...` for `Math`
  */

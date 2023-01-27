@@ -1,5 +1,5 @@
 import { i18n } from '@/plugins/i18n';
-import { prefixMatch, longestCommonPrefix, splitBaseTail, noParensAfterCursor } from './utils';
+import { prefixMatch, longestCommonPrefix, splitBaseTail, stripExcessParens } from './utils';
 import { DateTime } from 'luxon';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
@@ -19,7 +19,9 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 
 	const [base, tail] = splitBaseTail(word.text);
 
-	let options = base === 'DateTime' ? dateTimeOptions(context) : nowTodayOptions(context);
+	let options = (base === 'DateTime' ? dateTimeOptions() : nowTodayOptions()).map(
+		stripExcessParens(context),
+	);
 
 	if (tail !== '') {
 		options = options.filter((o) => prefixMatch(o.label, tail));
@@ -39,10 +41,8 @@ export function luxonCompletions(context: CompletionContext): CompletionResult |
 	};
 }
 
-export const nowTodayOptions = (context: CompletionContext) => {
+export const nowTodayOptions = () => {
 	const SKIP = new Set(['constructor', 'get', 'invalidExplanation', 'invalidReason']);
-
-	const noParens = noParensAfterCursor(context);
 
 	return Object.entries(Object.getOwnPropertyDescriptors(DateTime.prototype))
 		.filter(([key]) => !SKIP.has(key))
@@ -51,7 +51,7 @@ export const nowTodayOptions = (context: CompletionContext) => {
 			const isFunction = typeof descriptor.value === 'function';
 
 			const option: Completion = {
-				label: isFunction && noParens ? key + '()' : key,
+				label: isFunction ? key + '()' : key,
 				type: isFunction ? 'function' : 'keyword',
 			};
 
@@ -63,17 +63,15 @@ export const nowTodayOptions = (context: CompletionContext) => {
 		});
 };
 
-export const dateTimeOptions = (context: CompletionContext) => {
+export const dateTimeOptions = () => {
 	const SKIP = new Set(['prototype', 'name', 'length', 'invalid']);
-
-	const noParens = noParensAfterCursor(context);
 
 	return Object.keys(Object.getOwnPropertyDescriptors(DateTime))
 		.filter((key) => !SKIP.has(key) && !key.includes('_'))
 		.sort((a, b) => a.localeCompare(b))
 		.map((key) => {
 			const option: Completion = {
-				label: noParens ? key + '()' : key,
+				label: key + '()',
 				type: 'function',
 			};
 
