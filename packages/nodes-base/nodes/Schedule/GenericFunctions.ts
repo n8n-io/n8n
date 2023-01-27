@@ -1,11 +1,11 @@
 import { IRecurencyRule } from './SchedulerInterface';
 import moment from 'moment';
 
-export async function recurencyCheck(
+export function recurencyCheck(
 	recurrency: IRecurencyRule,
 	recurrencyRules: number[],
 	timezone: string,
-): Promise<boolean> {
+): boolean {
 	const recurrencyRuleIndex = recurrency.index;
 	const intervalSize = recurrency.intervalSize;
 	const typeInterval = recurrency.typeInterval;

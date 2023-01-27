@@ -437,7 +437,7 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			recurency.activated || (await recurencyCheck(recurency, staticData.recurrencyRules, timezone))
+			recurency.activated || recurencyCheck(recurency, staticData.recurrencyRules, timezone)
 				? this.emit([this.helpers.returnJsonArray([resultData])])
 				: null;
 		};
